@@ -47,6 +47,7 @@
 #   -implicit_radiation  implicit radiation transport module
 #   -cr                  enable cosmic ray transport
 #   -crdiff              enable cosmic ray diffusion with Multigrid
+#   -mgfld               enable FLD with Multigrid
 # ----------------------------------------------------------------------------------------
 
 # Modules
@@ -273,6 +274,12 @@ parser.add_argument('-crdiff',
                     action='store_true',
                     default=False,
                     help='enable implicit cosmic ray diffusion')
+
+# -mgfld argument
+parser.add_argument('-mgfld',
+                    action='store_true',
+                    default=False,
+                    help='enable FLD with Multigrid')
 
 # The main choices for --cxx flag, using "ctype[-suffix]" formatting, where "ctype" is the
 # major family/suite/group of compilers and "suffix" may represent variants of the
@@ -571,6 +578,11 @@ if args['crdiff']:
 else:
     definitions['CRDIFFUSION_ENABLED'] = '0'
 
+# -mgfld argument
+if args['mgfld']:
+    definitions['MGFLD_ENABLED'] = '1'
+else:
+    definitions['MGFLD_ENABLED'] = '0'
 
 # --cxx=[name] argument
 if args['cxx'] == 'g++':
@@ -1039,6 +1051,7 @@ output_config('Radiative Transfer', ('ON' if args['nr_radiation'] else 'OFF'), f
 output_config('Implicit Radiation', ('ON' if args['implicit_radiation'] else 'OFF'), flog)
 output_config('Cosmic Ray Transport', ('ON' if args['cr'] else 'OFF'), flog)
 output_config('Cosmic Ray Diffusion', ('ON' if args['crdiff'] else 'OFF'), flog)
+output_config('FLD with Multigrid', ('ON' if args['mgfld'] else 'OFF'), flog)
 output_config('Frame transformations', ('ON' if args['t'] else 'OFF'), flog)
 output_config('Self-Gravity', self_grav_string, flog)
 output_config('Super-Time-Stepping', ('ON' if args['sts'] else 'OFF'), flog)

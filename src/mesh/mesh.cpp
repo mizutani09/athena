@@ -53,6 +53,8 @@
 #include "../orbital_advection/orbital_advection.hpp"
 #include "../outputs/io_wrapper.hpp"
 #include "../parameter_input.hpp"
+#include "../rad_fld/mg_rad_fld.hpp"
+#include "../rad_fld/rad_fld.hpp"
 #include "../reconstruct/reconstruction.hpp"
 #include "../scalars/scalars.hpp"
 #include "../units/units.hpp"
@@ -127,8 +129,11 @@ Mesh::Mesh(ParameterInput *pin, int mesh_test) :
     MGCRDiffusionBoundaryFunction_{nullptr, nullptr, nullptr, nullptr, nullptr, nullptr},
     MGCRDiffusionCoeffBoundaryFunction_{nullptr, nullptr, nullptr,
                                         nullptr, nullptr, nullptr},
+    MGFLDBoundaryFunction_{nullptr, nullptr, nullptr, nullptr, nullptr, nullptr},
+    MGFLDCoeffBoundaryFunction_{nullptr, nullptr, nullptr, nullptr, nullptr, nullptr},
     MGGravitySourceMaskFunction_{}, MGCRDiffusionSourceMaskFunction_{},
-    MGCRDiffusionCoeffMaskFunction_{} {
+    MGCRDiffusionCoeffMaskFunction_{},
+    MGFLDSourceMaskFunction_{}, MGFLDCoeffMaskFunction_{} {
   std::stringstream msg;
   BoundaryFlag block_bcs[6];
   std::int64_t nbmax;
@@ -548,6 +553,9 @@ Mesh::Mesh(ParameterInput *pin, int mesh_test) :
     pimrad = new IMRadiation(this, pin);
   }
 
+  if (MGFLD_ENABLED)
+    pmfld = new MGFLDDriver(this, pin);
+
   // create MeshBlock list for this process
   gids_ = nslist[Globals::my_rank];
   gide_ = gids_ + nblist[Globals::my_rank] - 1;
@@ -629,8 +637,11 @@ Mesh::Mesh(ParameterInput *pin, IOWrapper& resfile, int mesh_test) :
     MGCRDiffusionBoundaryFunction_{nullptr, nullptr, nullptr, nullptr, nullptr, nullptr},
     MGCRDiffusionCoeffBoundaryFunction_{nullptr, nullptr, nullptr,
                                         nullptr, nullptr, nullptr},
+    MGFLDBoundaryFunction_{nullptr, nullptr, nullptr, nullptr, nullptr, nullptr},
+    MGFLDCoeffBoundaryFunction_{nullptr, nullptr, nullptr, nullptr, nullptr, nullptr},
     MGGravitySourceMaskFunction_{}, MGCRDiffusionSourceMaskFunction_{},
-    MGCRDiffusionCoeffMaskFunction_{} {
+    MGCRDiffusionCoeffMaskFunction_{},
+    MGFLDSourceMaskFunction_{}, MGFLDCoeffMaskFunction_{} {
   std::stringstream msg;
   BoundaryFlag block_bcs[6];
   IOWrapperSizeT *offset{};
@@ -882,6 +893,8 @@ Mesh::Mesh(ParameterInput *pin, IOWrapper& resfile, int mesh_test) :
     pimrad = new IMRadiation(this, pin);
   }
 
+  if (MGFLD_ENABLED)
+    pmfld = new MGFLDDriver(this, pin);
 
   // allocate data buffer
   int nbmin = nblist[0];
@@ -1248,6 +1261,24 @@ void Mesh::EnrollUserMGCRDiffusionBoundaryFunction(BoundaryFace dir,
 
 
 //----------------------------------------------------------------------------------------
+//! \fn void Mesh::EnrollUserMGFLDBoundaryFunction(BoundaryFace dir,
+//!                                                        MGBoundaryFunc my_bc)
+//! \brief Enroll a user-defined Multigrid FLD boundary function
+
+void Mesh::EnrollUserMGFLDBoundaryFunction(BoundaryFace dir,
+                                                   MGBoundaryFunc my_bc) {
+  std::stringstream msg;
+  if (dir < 0 || dir > 5) {
+    msg << "### FATAL ERROR in EnrollUserMGFLDBoundaryFunction" << std::endl
+        << "dirName = " << dir << " not valid" << std::endl;
+    ATHENA_ERROR(msg);
+  }
+  MGFLDBoundaryFunction_[static_cast<int>(dir)] = my_bc;
+  return;
+}
+
+
+//----------------------------------------------------------------------------------------
 //! \fn void Mesh::EnrollUserMGGravitySourceMaskFunction(MGMaskFunc srcmask)
 //  \brief Enroll a user-defined Multigrid gravity source mask function
 
@@ -1273,6 +1304,26 @@ void Mesh::EnrollUserMGCRDiffusionSourceMaskFunction(MGMaskFunc srcmask) {
 
 void Mesh::EnrollUserMGCRDiffusionCoefficientMaskFunction(MGMaskFunc coeffmask) {
   MGCRDiffusionCoeffMaskFunction_ = coeffmask;
+  return;
+}
+
+
+//----------------------------------------------------------------------------------------
+//! \fn void Mesh::EnrollUserMGFLDSourceMaskFunction(MGMaskFunc srcmask)
+//  \brief Enroll a user-defined Multigrid FLD source mask function
+
+void Mesh::EnrollUserMGFLDSourceMaskFunction(MGMaskFunc srcmask) {
+  MGFLDSourceMaskFunction_ = srcmask;
+  return;
+}
+
+
+//----------------------------------------------------------------------------------------
+//! \fn void Mesh::EnrollUserMGFLDCoefficientMaskFunction(MGMaskFunc coeffmask)
+//  \brief Enroll a user-defined Multigrid FLD coefficient mask function
+
+void Mesh::EnrollUserMGFLDCoefficientMaskFunction(MGMaskFunc coeffmask) {
+  MGFLDCoeffMaskFunction_ = coeffmask;
   return;
 }
 
@@ -1566,6 +1617,8 @@ void Mesh::Initialize(int res_flag, ParameterInput *pin) {
         pmb->pnrrad->rad_bvar.SetupPersistentMPI();
       if (CRDIFFUSION_ENABLED)
         pmb->pcrdiff->crbvar.SetupPersistentMPI();
+      if (MGFLD_ENABLED)
+        pmb->pfld->fldbvar.SetupPersistentMPI();
     }
 
     // solve gravity for the first time
@@ -1831,6 +1884,9 @@ void Mesh::Initialize(int res_flag, ParameterInput *pin) {
 
     if (CRDIFFUSION_ENABLED) // CR has to be processed after MHD boundaries
       pmcrd->Solve(1, 0.0);
+
+    if (MGFLD_ENABLED)  // MGFLD has to be processed after MHD boundaries (caution)
+      pmfld->Solve(1, 0.0);
 
     if (!res_flag && adaptive) {
       iflag = false;
@@ -2170,6 +2226,9 @@ void Mesh::ReserveMeshBlockPhysIDs() {
     ReserveTagPhysIDs(CellCenteredBoundaryVariable::max_phys_id);
   }
   if (CRDIFFUSION_ENABLED) {
+    ReserveTagPhysIDs(1);
+  }
+  if (MGFLD_ENABLED) {
     ReserveTagPhysIDs(1);
   }
 

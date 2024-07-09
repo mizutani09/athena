@@ -40,6 +40,7 @@
 #include "../nr_radiation/radiation.hpp"
 #include "../orbital_advection/orbital_advection.hpp"
 #include "../parameter_input.hpp"
+#include "../rad_fld/rad_fld.hpp"
 #include "../reconstruct/reconstruction.hpp"
 #include "../scalars/scalars.hpp"
 #include "../utils/buffer_utils.hpp"
@@ -263,6 +264,11 @@ MeshBlock::MeshBlock(int igid, int ilid, LogicalLocation iloc, RegionSize input_
     pbval->AdvanceCounterPhysID(CellCenteredBoundaryVariable::max_phys_id);
   }
 
+  if (MGFLD_ENABLED) {
+    pfld = new FLD(this, pin);
+    pbval->AdvanceCounterPhysID(CellCenteredBoundaryVariable::max_phys_id);
+  }
+
   // OrbitalAdvection: constructor depends on Coordinates, Hydro, Field, PassiveScalars.
   porb = new OrbitalAdvection(this, pin);
 
@@ -462,6 +468,11 @@ MeshBlock::MeshBlock(int igid, int ilid, Mesh *pm, ParameterInput *pin,
     pbval->AdvanceCounterPhysID(CellCenteredBoundaryVariable::max_phys_id);
   }
 
+  if (MGFLD_ENABLED) {
+    pfld = new FLD(this, pin);
+    pbval->AdvanceCounterPhysID(CellCenteredBoundaryVariable::max_phys_id);
+  }
+
   // OrbitalAdvection: constructor depends on Coordinates, Hydro, Field, PassiveScalars.
   porb = new OrbitalAdvection(this, pin);
 
@@ -542,6 +553,12 @@ MeshBlock::MeshBlock(int igid, int ilid, Mesh *pm, ParameterInput *pin,
     os += pcrdiff->ecr.GetSizeInBytes();
   }
 
+  if (MGFLD_ENABLED) {
+    std::memcpy(pfld->Tg.data(), &(mbdata[os]), pfld->Tg.GetSizeInBytes());
+    std::memcpy(pfld->Tr.data(), &(mbdata[os]), pfld->Tr.GetSizeInBytes());
+    os += pfld->Tg.GetSizeInBytes(); // caution
+  }
+
   // (conserved variable) Passive scalars:
   if (NSCALARS > 0) {
     std::memcpy(pscalars->s.data(), &(mbdata[os]), pscalars->s.GetSizeInBytes());
@@ -591,6 +608,7 @@ MeshBlock::~MeshBlock() {
   if (NR_RADIATION_ENABLED || IM_RADIATION_ENABLED) delete pnrrad;
   if (CR_ENABLED) delete pcr;
   if (CRDIFFUSION_ENABLED) delete pcrdiff;
+  if (MGFLD_ENABLED) delete pfld;
 
   // BoundaryValues should be destructed AFTER all BoundaryVariable objects are destroyed
   delete pbval;
@@ -703,6 +721,8 @@ std::size_t MeshBlock::GetBlockSizeInBytes() {
     size += pcr->u_cr.GetSizeInBytes();
   if (CRDIFFUSION_ENABLED)
     size += pcrdiff->ecr.GetSizeInBytes();
+  if (MGFLD_ENABLED)
+    size += pfld->Tg.GetSizeInBytes();
 
   // calculate user MeshBlock data size
   for (int n=0; n<nint_user_meshblock_data_; n++)
@@ -739,6 +759,8 @@ std::size_t MeshBlock::GetBlockSizeInBytesGray() {
     size += pcr->u_cr.GetSizeInBytes();
   if (CRDIFFUSION_ENABLED)
     size += pcrdiff->ecr.GetSizeInBytes();
+  if (MGFLD_ENABLED)
+    size += pfld->Tg.GetSizeInBytes();
 
 
   // calculate user MeshBlock data size

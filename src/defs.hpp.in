@@ -73,6 +73,9 @@
 // include cosmic ray diffusion? default=0 (false)
 #define CRDIFFUSION_ENABLED @CRDIFFUSION_ENABLED@
 
+// include FLD with Multigrid? default=0 (false)
+#define MGFLD_ENABLED @MGFLD_ENABLED@
+
 // enable special or general relativity? default=0 (false)
 #define RELATIVISTIC_DYNAMICS @RELATIVISTIC_DYNAMICS@
 

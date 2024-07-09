@@ -50,6 +50,8 @@ class Hydro;
 class CosmicRay;
 class CRDiffusion;
 class MGCRDiffusionDriver;
+class FLD;
+class MGFLDDriver;
 class EquationOfState;
 class Field;
 class Gravity;
@@ -129,6 +131,7 @@ class MeshBlock {
   NRRadiation *pnrrad;
   CosmicRay *pcr;
   CRDiffusion *pcrdiff;
+  FLD *pfld;
   Field *pfield;
   Gravity *pgrav;
   PassiveScalars *pscalars;
@@ -226,6 +229,7 @@ class Mesh {
   friend class MultigridDriver;
   friend class MGGravityDriver;
   friend class MGCRDiffusionDriver;
+  friend class MGFLDDriver;
   friend class Gravity;
   friend class HydroDiffusion;
   friend class FieldDiffusion;
@@ -274,6 +278,7 @@ class Mesh {
   FFTGravityDriver *pfgrd;
   MGGravityDriver *pmgrd;
   MGCRDiffusionDriver *pmcrd;
+  MGFLDDriver *pmfld;
   Units *punit;
 
   // implicit radiation iteration
@@ -360,9 +365,13 @@ class Mesh {
   MGBoundaryFunc MGGravityBoundaryFunction_[6];
   MGBoundaryFunc MGCRDiffusionBoundaryFunction_[6];
   MGBoundaryFunc MGCRDiffusionCoeffBoundaryFunction_[6];
+  MGBoundaryFunc MGFLDBoundaryFunction_[6];
+  MGBoundaryFunc MGFLDCoeffBoundaryFunction_[6];
   MGMaskFunc MGGravitySourceMaskFunction_;
   MGMaskFunc MGCRDiffusionSourceMaskFunction_;
   MGMaskFunc MGCRDiffusionCoeffMaskFunction_;
+  MGMaskFunc MGFLDSourceMaskFunction_;
+  MGMaskFunc MGFLDCoeffMaskFunction_;
 
   void AllocateRealUserMeshDataField(int n);
   void AllocateIntUserMeshDataField(int n);
@@ -403,11 +412,14 @@ class Mesh {
   void EnrollUserMGGravitySourceMaskFunction(MGMaskFunc srcmask);
   void EnrollUserMGCRDiffusionSourceMaskFunction(MGMaskFunc srcmask);
   void EnrollUserMGCRDiffusionCoefficientMaskFunction(MGMaskFunc coeffmask);
+  void EnrollUserMGFLDSourceMaskFunction(MGMaskFunc srcmask);
+  void EnrollUserMGFLDCoefficientMaskFunction(MGMaskFunc coeffmask);
 
   void EnrollUserRadBoundaryFunction(BoundaryFace face, RadBoundaryFunc my_func);
   void EnrollUserCRBoundaryFunction(BoundaryFace face, CRBoundaryFunc my_func);
 
   void EnrollUserMGCRDiffusionBoundaryFunction(BoundaryFace dir, MGBoundaryFunc my_bc);
+  void EnrollUserMGFLDBoundaryFunction(BoundaryFace dir, MGBoundaryFunc my_bc);
 
   //! \deprecated (felker):
   //! * provide trivial overload for old-style BoundaryFace enum argument

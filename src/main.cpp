@@ -46,6 +46,7 @@
 #include "outputs/io_wrapper.hpp"
 #include "outputs/outputs.hpp"
 #include "parameter_input.hpp"
+#include "rad_fld/mg_rad_fld.hpp"
 #include "task_list/chem_rad_task_list.hpp"
 #include "utils/utils.hpp"
 
@@ -485,6 +486,10 @@ int main(int argc, char *argv[]) {
 
     if (CRDIFFUSION_ENABLED) {
       pmesh->pmcrd->Solve(0, pmesh->dt);
+    }
+
+    if (MGFLD_ENABLED) {
+      pmesh->pmfld->Solve(0, pmesh->dt);
     }
 
     // chemistry with radiation
