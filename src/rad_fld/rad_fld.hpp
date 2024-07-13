@@ -27,12 +27,15 @@ class MGFLD;
 class MGFLDDriver;
 
 namespace RadFLD {
-  constexpr int NCOEFF = 7, NMATRIX = 19;
-  enum CoeffIndex {DXX=0, DXY=1, DYX=1, DXZ=2, DZX=2, DYY=3, DYZ=4, DZY=4, DZZ=5,
-                  NLAMBDA=6};
-  enum MatrixIndex {CCC=0, CCM=1, CCP=2, CMC=3, CPC=4, MCC=5, PCC=6, CMM=7, CMP=8, CPM=9,
-                    CPP=10, MCM=11, MCP=12, PCM=13, PCP=14, MMC=15, MPC=16, PMC=17, PPC=18};
+  constexpr int NTEMP=2, NMATRIX=8, NCOEFF=11;
+  enum TempTndex {GAS=0, RAD=1};
+  enum CoeffIndex {DXM=0, DXP=1, DYM=2, DYP=3, DZM=4, DZP=5, DSIGMAP=6, DCOUPLE=7, DEGAS=8,
+                   DCPH=9, DAR=10};
+  enum MatrixIndex {CCC=0, CCM=1, CCP=2, CMC=3, CPC=4, MCC=5, PCC=6, DT=7};
+                    // CMM=7, CMP=8, CPM=9,
+                    // CPP=10, MCM=11, MCP=12, PCM=13, PCP=14, MMC=15, MPC=16, PMC=17, PPC=18};
 }
+
 //! \class FLD
 //! \brief gravitational potential data and functions
 
@@ -43,23 +46,27 @@ class FLD {
 
   MeshBlock* pmy_block;
   MGFLD *pmg;
-  AthenaArray<Real> ecr, source, zeta, coeff; //!
-  AthenaArray<Real> Tg, Tr;//, source, coeff;
-  AthenaArray<Real> coarse_ecr, empty_flux[3]; //!
-  AthenaArray<Real> coarse_Tg, coarse_Tr;
+  // AthenaArray<Real> ecr, source, zeta, coeff; //!
+  AthenaArray<Real> source, coeff;
+  AthenaArray<Real> u, coarse_u;
+  AthenaArray<Real> empty_flux[3];
   AthenaArray<Real> def;   // defect from the Multigrid solver
   bool output_defect;
+  bool calc_in_temp;
+  bool is_couple;
+  bool only_rad;
+  Real c_ph, a_r;
 
-  CellCenteredBoundaryVariable fldbvar;
-
+  void LoadHydroVariables(const AthenaArray<Real> &w, AthenaArray<Real> &u);
   void CalculateCoefficients(const AthenaArray<Real> &w,
-                             const AthenaArray<Real> &bcc);
+                             const AthenaArray<Real> &u);
+  void UpdateHydroVariables(AthenaArray<Real> &w, const AthenaArray<Real> &u);
+  CellCenteredBoundaryVariable rfldbvar;
 
   friend class MGFLDDriver;
 
  private:
   int refinement_idx_;
-  Real Dpara_, Dperp_, Lambda_; //!
 };
 
 #endif // RAD_FLD_RAD_FLD_HPP_

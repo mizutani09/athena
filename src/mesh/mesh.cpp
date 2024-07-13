@@ -1618,7 +1618,7 @@ void Mesh::Initialize(int res_flag, ParameterInput *pin) {
       if (CRDIFFUSION_ENABLED)
         pmb->pcrdiff->crbvar.SetupPersistentMPI();
       if (MGFLD_ENABLED)
-        pmb->pfld->fldbvar.SetupPersistentMPI();
+        pmb->prfld->rfldbvar.SetupPersistentMPI();
     }
 
     // solve gravity for the first time

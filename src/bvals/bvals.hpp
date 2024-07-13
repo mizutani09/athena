@@ -125,7 +125,7 @@ class BoundaryValues : public BoundaryBase, //public BoundaryPhysics,
   //! subset of bvars that are exchanged in the SuperTimeStepTaskList
   std::vector<BoundaryVariable *> bvars_sts;
   //! Pointer to the Gravity, CRDiffusion and FLD Boundary Variable
-  CellCenteredBoundaryVariable *pgbvar, *pcrbvar, *pfldbvar;
+  CellCenteredBoundaryVariable *pgbvar, *pcrbvar, *prfldbvar;
 
   // inherited functions (interface shared with BoundaryVariable objects):
   // ------

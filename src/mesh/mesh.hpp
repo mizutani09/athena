@@ -131,7 +131,7 @@ class MeshBlock {
   NRRadiation *pnrrad;
   CosmicRay *pcr;
   CRDiffusion *pcrdiff;
-  FLD *pfld;
+  FLD *prfld;
   Field *pfield;
   Gravity *pgrav;
   PassiveScalars *pscalars;

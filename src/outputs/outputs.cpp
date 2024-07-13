@@ -101,6 +101,7 @@
 #include "../nr_radiation/radiation.hpp"
 #include "../orbital_advection/orbital_advection.hpp"
 #include "../parameter_input.hpp"
+#include "../rad_fld/rad_fld.hpp"
 #include "../scalars/scalars.hpp"
 #include "outputs.hpp"
 
@@ -354,6 +355,7 @@ void OutputType::LoadOutputData(MeshBlock *pmb) {
   NRRadiation *prad=pmb->pnrrad;
   CosmicRay *pcr=pmb->pcr;
   CRDiffusion *pcrdiff=pmb->pcrdiff;
+  FLD *prfld=pmb->prfld;
   PassiveScalars *psclr = pmb->pscalars;
   ChemRadiation *pchemrad = pmb->pchemrad;
   Gravity *pgrav = pmb->pgrav;
@@ -1175,6 +1177,37 @@ void OutputType::LoadOutputData(MeshBlock *pmb) {
       num_vars_++;
     }
   }
+
+  // if (MGFLD_ENABLED) {
+  //   if (ContainVariable(output_params.variable, "ecr") ||
+  //       ContainVariable(output_params.variable, "prim") ||
+  //       ContainVariable(output_params.variable, "cons")) {
+  //     pod = new OutputData;
+  //     pod->type = "VECTORS";
+  //     pod->name = "T";
+  //     pod->data.InitWithShallowSlice(prfld->u,4,0,1);
+  //     AppendOutputDataNode(pod);
+  //     num_vars_++;
+  //     if (pcrdiff->output_defect) {
+  //       pod = new OutputData;
+  //       pod->type = "SCALARS";
+  //       pod->name = "defect-ecr";
+  //       pod->data.InitWithShallowSlice(pcrdiff->def, 4, 0, 1);
+  //       AppendOutputDataNode(pod);
+  //       num_vars_++;
+  //     }
+  //   }
+  //   if (ContainVariable(output_params.variable, "zeta") ||
+  //       ContainVariable(output_params.variable, "prim") ||
+  //       ContainVariable(output_params.variable, "cons")) {
+  //     pod = new OutputData;
+  //     pod->type = "SCALARS";
+  //     pod->name = "zeta";
+  //     pod->data.InitWithShallowSlice(pcrdiff->zeta,4,0,1);
+  //     AppendOutputDataNode(pod);
+  //     num_vars_++;
+  //   }
+  // } // end MGFLD_ENABLED
 
   // note, the Bcc variables are stored in a separate HDF5 dataset from the above Output
   // nodes, and it must come after those nodes in the linked list

@@ -30,6 +30,7 @@
 #include "../mesh/mesh.hpp"
 #include "../nr_radiation/radiation.hpp"
 #include "../parameter_input.hpp"
+#include "../rad_fld/rad_fld.hpp"
 #include "../scalars/scalars.hpp"
 #include "./outputs.hpp"
 
@@ -194,6 +195,11 @@ void RestartOutput::WriteOutputFile(Mesh *pm, ParameterInput *pin, bool force_wr
     if (CRDIFFUSION_ENABLED) {
       std::memcpy(pdata,pmb->pcrdiff->ecr.data(),pmb->pcrdiff->ecr.GetSizeInBytes());
       pdata += pmb->pcrdiff->ecr.GetSizeInBytes();
+    }
+
+    if (MGFLD_ENABLED) {
+      std::memcpy(pdata,pmb->prfld->u.data(),pmb->prfld->u.GetSizeInBytes());
+      pdata += pmb->prfld->u.GetSizeInBytes();
     }
 
     // (conserved variable) Passive scalars:

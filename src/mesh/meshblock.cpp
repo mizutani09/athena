@@ -265,7 +265,7 @@ MeshBlock::MeshBlock(int igid, int ilid, LogicalLocation iloc, RegionSize input_
   }
 
   if (MGFLD_ENABLED) {
-    pfld = new FLD(this, pin);
+    prfld = new FLD(this, pin);
     pbval->AdvanceCounterPhysID(CellCenteredBoundaryVariable::max_phys_id);
   }
 
@@ -469,7 +469,7 @@ MeshBlock::MeshBlock(int igid, int ilid, Mesh *pm, ParameterInput *pin,
   }
 
   if (MGFLD_ENABLED) {
-    pfld = new FLD(this, pin);
+    prfld = new FLD(this, pin);
     pbval->AdvanceCounterPhysID(CellCenteredBoundaryVariable::max_phys_id);
   }
 
@@ -554,9 +554,8 @@ MeshBlock::MeshBlock(int igid, int ilid, Mesh *pm, ParameterInput *pin,
   }
 
   if (MGFLD_ENABLED) {
-    std::memcpy(pfld->Tg.data(), &(mbdata[os]), pfld->Tg.GetSizeInBytes());
-    std::memcpy(pfld->Tr.data(), &(mbdata[os]), pfld->Tr.GetSizeInBytes());
-    os += pfld->Tg.GetSizeInBytes(); // caution
+    std::memcpy(prfld->u.data(), &(mbdata[os]), prfld->u.GetSizeInBytes());
+    os += prfld->u.GetSizeInBytes();
   }
 
   // (conserved variable) Passive scalars:
@@ -608,7 +607,7 @@ MeshBlock::~MeshBlock() {
   if (NR_RADIATION_ENABLED || IM_RADIATION_ENABLED) delete pnrrad;
   if (CR_ENABLED) delete pcr;
   if (CRDIFFUSION_ENABLED) delete pcrdiff;
-  if (MGFLD_ENABLED) delete pfld;
+  if (MGFLD_ENABLED) delete prfld;
 
   // BoundaryValues should be destructed AFTER all BoundaryVariable objects are destroyed
   delete pbval;
@@ -722,7 +721,7 @@ std::size_t MeshBlock::GetBlockSizeInBytes() {
   if (CRDIFFUSION_ENABLED)
     size += pcrdiff->ecr.GetSizeInBytes();
   if (MGFLD_ENABLED)
-    size += pfld->Tg.GetSizeInBytes();
+    size += prfld->u.GetSizeInBytes();
 
   // calculate user MeshBlock data size
   for (int n=0; n<nint_user_meshblock_data_; n++)
@@ -760,7 +759,7 @@ std::size_t MeshBlock::GetBlockSizeInBytesGray() {
   if (CRDIFFUSION_ENABLED)
     size += pcrdiff->ecr.GetSizeInBytes();
   if (MGFLD_ENABLED)
-    size += pfld->Tg.GetSizeInBytes();
+    size += prfld->u.GetSizeInBytes();
 
 
   // calculate user MeshBlock data size

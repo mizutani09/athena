@@ -32,6 +32,7 @@
 #include "../mesh/mesh.hpp"
 #include "../nr_radiation/radiation.hpp"
 #include "../parameter_input.hpp"
+#include "../rad_fld/rad_fld.hpp"
 #include "outputs.hpp"
 
 // Only proceed if HDF5 output enabled
@@ -149,6 +150,12 @@ void ATHDF5Output::WriteOutputFile(Mesh *pm, ParameterInput *pin, bool flag) {
     if(CRDIFFUSION_ENABLED) {
       num_variables[n_dataset] += 2;
       if (pmb->pcrdiff->output_defect)
+        num_variables[n_dataset] += 1;
+    }
+
+    if(MGFLD_ENABLED) {
+      num_variables[n_dataset] += 2;
+      if (pmb->prfld->output_defect)
         num_variables[n_dataset] += 1;
     }
 

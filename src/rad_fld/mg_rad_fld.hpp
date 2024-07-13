@@ -33,7 +33,7 @@ class MGFLD : public Multigrid {
   MGFLD(MGFLDDriver *pmd, MeshBlock *pmb);
   ~MGFLD();
 
-  void AddFLDSource(const AthenaArray<Real> &src, int ngh, Real dt);
+  // void AddFLDSource(const AthenaArray<Real> &src, int ngh, Real dt);
 
   void Smooth(AthenaArray<Real> &dst, const AthenaArray<Real> &src,
               const AthenaArray<Real> &coeff, const AthenaArray<Real> &matrix, int rlev,
@@ -64,7 +64,8 @@ class MGFLDDriver : public MultigridDriver {
   MGFLDDriver(Mesh *pm, ParameterInput *pin);
   ~MGFLDDriver();
   void Solve(int stage, Real dt) final;
-
+  void ProlongateOctetBoundariesFluxCons(AthenaArray<Real> &dst,
+                 AthenaArray<Real> &cbuf, const AthenaArray<bool> &ncoarse) final;
   friend class MGFLD;
 
  private:
