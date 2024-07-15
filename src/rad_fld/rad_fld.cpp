@@ -41,8 +41,6 @@ FLD::FLD(MeshBlock *pmb, ParameterInput *pin) :
     empty_flux{AthenaArray<Real>(), AthenaArray<Real>(), AthenaArray<Real>()},
     output_defect(false), rfldbvar(pmb, &u, &coarse_u, empty_flux, false), //!
     refinement_idx_(), calc_in_temp(), is_couple(), only_rad(), a_r(), c_ph() {
-  a_r = 1.0;
-  c_ph = 1.0;
   is_couple = pin->GetOrAddBoolean("mgfld", "is_couple", false);
   output_defect = pin->GetOrAddBoolean("mgfld", "output_defect", false);
   calc_in_temp = pin->GetOrAddBoolean("mgfld", "calc_in_temp", false);
@@ -102,7 +100,11 @@ void FLD::CalculateCoefficients(const AthenaArray<Real> &w,
         Real grad = sqrt(dEr1*dEr1 + dEr2*dEr2 + dEr3*dEr3)/u(RadFLD::RAD,k,j,i);
 
         for(int n=0; n<RadFLD::NCOEFF-1; ++n) {
-          sigma_r(n) = 1.0; // calc_sigma_r(rho, T); on surface Howeell & Greenough 2003
+          if (const_opacity > 0.0) {
+            sigma_r(n) = const_opacity;
+          } else {
+            sigma_r(n) = 1.0; // calc_sigma_r(rho, T); on surface Howeell & Greenough 2003
+          }
           Real R = grad/sigma_r(n);
           Real lambda = (2.0+R)/(6.0+2.0*R+R*R);
           coeff(n,k,j,i) = c_ph*lambda/sigma_r(n);
@@ -111,8 +113,8 @@ void FLD::CalculateCoefficients(const AthenaArray<Real> &w,
 
         // for later calculation
         if (is_couple) {
-          coeff(RadFLD::DSIGMAP,k,j,i) = 1.0; // calc_sigma_p(rho, T); on center?
-          coeff(RadFLD::DCOUPLE,k,j,i) = gm1/w(IDN,k,j,i); // /k_b?
+          coeff(RadFLD::DSIGMAP,k,j,i) = const_opacity; // calc_sigma_p(rho, T); on center?
+          coeff(RadFLD::DCOUPLE,k,j,i) = gm1/w(IDN,k,j,i);
         } else {
           coeff(RadFLD::DSIGMAP,k,j,i) = 0.0;
           coeff(RadFLD::DCOUPLE,k,j,i) = 0.0;

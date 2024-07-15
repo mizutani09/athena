@@ -55,7 +55,8 @@ class FLD {
   bool calc_in_temp;
   bool is_couple;
   bool only_rad;
-  Real c_ph, a_r;
+  Real c_ph, a_r; // be decided in pgen
+  Real const_opacity; // be decided in pgen
 
   void LoadHydroVariables(const AthenaArray<Real> &w, AthenaArray<Real> &u);
   void CalculateCoefficients(const AthenaArray<Real> &w,

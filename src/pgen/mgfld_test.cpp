@@ -53,6 +53,8 @@ namespace {
   Real HistoryTr(MeshBlock *pmb, int iout);
   Real HistoryEg(MeshBlock *pmb, int iout);
   Real HistoryEr(MeshBlock *pmb, int iout);
+  Real rho_unit, x_unit, t_unit;
+  Real v_unit, e_unit, sigma_unit, T_unit, a_r_unit;
 }
 
 void FLDFixedInnerX1(AthenaArray<Real> &dst, Real time, int nvar,
@@ -235,25 +237,49 @@ int AMRCondition(MeshBlock *pmb) {
 //========================================================================================
 
 void Mesh::InitUserMeshData(ParameterInput *pin) {
-
+  rho_unit = pin->GetReal("problem", "rho_unit");
   rho0 = 1.0;
-  r0 = 0.4;
-  a_r = 1.0;
+  x_unit = pin->GetReal("problem", "x_unit");
+  r0 = 0.5;
+  t_unit = pin->GetReal("problem", "t_unit");
+  v_unit = x_unit/t_unit;
+  e_unit = rho_unit*v_unit*v_unit;
+  // Rgas in cgs
+  Real Rgas = 8.31451e+7; // erg/(mol*K)
+  Real mu = pin->GetOrAddReal("problem", "mu", 0.5);
+  T_unit = mu/Rgas*v_unit*v_unit;
+  a_r_unit = std::pow(Rgas/mu, 4)*rho_unit*std::pow(v_unit, -6);
+  a_r = 7.57e-15/a_r_unit;
+
+  // output units
+  std::cout << "rho_unit = " << rho_unit << " g cm^-3" << std::endl;
+  std::cout << "x_unit = " << x_unit << " cm" << std::endl;
+  std::cout << "t_unit = " << t_unit << " s" << std::endl;
+  std::cout << "v_unit = " << v_unit << " cm s^-1" << std::endl;
+  std::cout << "e_unit = " << e_unit << " erg g^-1" << std::endl;
+  std::cout << "T_unit = " << T_unit << " K" << std::endl;
+  std::cout << "a_r_unit = " << a_r_unit << " erg cm^-3 K^-4" << std::endl;
+
   calc_in_temp = pin->GetOrAddBoolean("mgfld", "calc_in_temp", false);
   is_gauss = pin->GetOrAddBoolean("problem", "is_gauss", false);
   Real gamma = 5.0/3.0;
   Real gm1 = gamma - 1.0;
   Real igm1 = 1.0/(gamma-1.0);
   if (calc_in_temp) {
-    Tg_0 = 1.0;
-    Tr_0 = 2.0;
+    Tg_0 = pin->GetOrAddReal("problem", "Tg_0", 1.0)/T_unit;
+    Tr_0 = pin->GetOrAddReal("problem", "Tr_0", 2.0)/T_unit;
     eg_0 = rho0*Tg_0*igm1;
     Er_0 = a_r*std::pow(Tr_0,4);
   } else {
-    eg_0 = 1e+0;
-    Er_0 = 1e+2;
+    eg_0 = pin->GetOrAddReal("problem", "eg_0", 1.0)/e_unit;
+    Er_0 = pin->GetOrAddReal("problem", "Er_0", 1.0)/e_unit;
     Tg_0 = gm1*eg_0/rho0;
     Tr_0 = std::pow(Er_0/a_r,0.25);
+
+    std::cout << "eg_0 in sim = " << eg_0 << std::endl;
+    std::cout << "Er_0 in sim = " << Er_0 << std::endl;
+    std::cout << "Tg_0 in sim = " << Tg_0 << std::endl;
+    std::cout << "Tr_0 in sim = " << Tr_0 << std::endl;
   }
   // EnrollUserRefinementCondition(AMRCondition);
   EnrollUserMGFLDBoundaryFunction(BoundaryFace::inner_x1, FLDFixedInnerX1);
@@ -267,6 +293,7 @@ void Mesh::InitUserMeshData(ParameterInput *pin) {
   EnrollUserHistoryOutput(1, HistoryTr, "T_rad");
   EnrollUserHistoryOutput(2, HistoryEg, "e_gas");
   EnrollUserHistoryOutput(3, HistoryEr, "E_rad");
+  std::cout << "End of InitUserMeshData" << std::endl;
 }
 
 
@@ -338,11 +365,20 @@ void MeshBlock::ProblemGenerator(ParameterInput *pin) {
 
 
 void MeshBlock::InitUserMeshBlockData(ParameterInput *pin) {
+  sigma_unit = 1.0/x_unit;
+  Real const_opacity = pin->GetOrAddReal("problem", "const_opacity", -1.0); // -1.0 for non-const
+  prfld->const_opacity = const_opacity/sigma_unit;
+  Real c_ph = 3.00e+10; // cm s^-1
+  prfld->c_ph = c_ph/v_unit;
+  prfld->a_r = a_r;
+  std::cout << "opacity in sim = " << prfld->const_opacity << std::endl;
+  std::cout << "c_ph in sim = " << prfld->c_ph << std::endl;
+  std::cout << "a_r in sim = " << prfld->a_r << std::endl;
   AllocateUserOutputVariables(4);
-    SetUserOutputVariableName(0, "e_gas");
-    SetUserOutputVariableName(1, "E_rad");
-    SetUserOutputVariableName(2, "_gas");
-    SetUserOutputVariableName(3, "T_rad");
+  SetUserOutputVariableName(0, "e_gas");
+  SetUserOutputVariableName(1, "E_rad");
+  SetUserOutputVariableName(2, "T_gas");
+  SetUserOutputVariableName(3, "T_rad");
   return;
 }
 
@@ -352,10 +388,10 @@ void MeshBlock::UserWorkBeforeOutput(ParameterInput *pin) {
     for (int j=js; j<=je; j++) {
       for (int i=is; i<=ie; i++) {
         // assume cal in E
-        user_out_var(0,k,j,i) = prfld->u(RadFLD::GAS,k,j,i);
-        user_out_var(1,k,j,i) = prfld->u(RadFLD::RAD,k,j,i);
-        user_out_var(2,k,j,i) = prfld->u(RadFLD::GAS,k,j,i)*gm1/phydro->w(IDN,k,j,i);
-        user_out_var(3,k,j,i) = std::pow(prfld->u(RadFLD::RAD,k,j,i)/a_r, 0.25);
+        user_out_var(0,k,j,i) = prfld->u(RadFLD::GAS,k,j,i)*e_unit;
+        user_out_var(1,k,j,i) = prfld->u(RadFLD::RAD,k,j,i)*e_unit;
+        user_out_var(2,k,j,i) = prfld->u(RadFLD::GAS,k,j,i)*gm1/phydro->w(IDN,k,j,i)*T_unit;
+        user_out_var(3,k,j,i) = std::pow(prfld->u(RadFLD::RAD,k,j,i)/a_r, 0.25)*T_unit;
       }
     }
   }
@@ -378,7 +414,7 @@ Real HistoryTg(MeshBlock *pmb, int iout) {
     }
   }
   T /= num;
-  return T;
+  return T*T_unit;
 }
 
 Real HistoryTr(MeshBlock *pmb, int iout) {
@@ -394,7 +430,7 @@ Real HistoryTr(MeshBlock *pmb, int iout) {
     }
   }
   T /= num;
-  return T;
+  return T*T_unit;
 }
 
 Real HistoryEg(MeshBlock *pmb, int iout) {
@@ -411,7 +447,7 @@ Real HistoryEg(MeshBlock *pmb, int iout) {
     }
   }
   e /= num;
-  return e;
+  return e*e_unit;
 }
 
 Real HistoryEr(MeshBlock *pmb, int iout) {
@@ -427,7 +463,7 @@ Real HistoryEr(MeshBlock *pmb, int iout) {
     }
   }
   E /= num;
-  return E;
+  return E*e_unit;
 }
 
 } // namespace
