@@ -359,8 +359,8 @@ void MGFLD::Smooth(AthenaArray<Real> &u, const AthenaArray<Real> &src,
               Real a_r = coeff(RadFLD::DAR,k,j,i);
               Real M = 0.0;
               M += matrix(RadFLD::DT,k,j,i)*c_ph*coeff(RadFLD::DSIGMAP,k,j,i)
-                 *a_r*(std::pow(coeff(RadFLD::DCOUPLE,k,j,i)*coeff(RadFLD::DEGAS,k,j,i), 4)
-                      -4*coeff(RadFLD::DCOUPLE,k,j,i)*coeff(RadFLD::DEGAS,k,j,i)-u(RadFLD::RAD,k,j,i));
+                 *(a_r*std::pow(coeff(RadFLD::DCOUPLE,k,j,i)*coeff(RadFLD::DEGAS,k,j,i), 4)
+                      -a_r*4*coeff(RadFLD::DCOUPLE,k,j,i)*coeff(RadFLD::DEGAS,k,j,i)-u(RadFLD::RAD,k,j,i));
               Real tmp = 1.0+matrix(RadFLD::DT,k,j,i)*c_ph*a_r*coeff(RadFLD::DSIGMAP,k,j,i)*4.0*coeff(RadFLD::DCOUPLE,k,j,i);
               work(k,j,i) = (src(RadFLD::GAS,k,j,i) - M) / tmp;
             }
@@ -422,8 +422,8 @@ void MGFLD::Smooth(AthenaArray<Real> &u, const AthenaArray<Real> &src,
               Real a_r = coeff(RadFLD::DAR,k,j,i);
               Real M = 0.0;
               M += matrix(RadFLD::DT,k,j,i)*c_ph*coeff(RadFLD::DSIGMAP,k,j,i)
-                 *a_r*(std::pow(coeff(RadFLD::DCOUPLE,k,j,i)*coeff(RadFLD::DEGAS,k,j,i), 4)
-                      -4*coeff(RadFLD::DCOUPLE,k,j,i)*coeff(RadFLD::DEGAS,k,j,i)-u(RadFLD::RAD,k,j,i));
+                 *(a_r*std::pow(coeff(RadFLD::DCOUPLE,k,j,i)*coeff(RadFLD::DEGAS,k,j,i), 4)
+                      -a_r*4*coeff(RadFLD::DCOUPLE,k,j,i)*coeff(RadFLD::DEGAS,k,j,i)-u(RadFLD::RAD,k,j,i));
               Real tmp = 1.0+matrix(RadFLD::DT,k,j,i)*c_ph*a_r*coeff(RadFLD::DSIGMAP,k,j,i)*4.0*coeff(RadFLD::DCOUPLE,k,j,i);
               work(k,j,i) = (src(RadFLD::GAS,k,j,i) - M) / tmp;
             }
@@ -542,8 +542,8 @@ void MGFLD::CalculateDefect(AthenaArray<Real> &def, const AthenaArray<Real> &u,
         tmp = 1.0+matrix(RadFLD::DT,k,j,i)*c_ph*a_r*coeff(RadFLD::DSIGMAP,k,j,i)*4.0*coeff(RadFLD::DCOUPLE,k,j,i);
         M = tmp*u(RadFLD::GAS,k,j,i);
         M += matrix(RadFLD::DT,k,j,i)*c_ph*coeff(RadFLD::DSIGMAP,k,j,i)
-            *a_r*(std::pow(coeff(RadFLD::DCOUPLE,k,j,i)*coeff(RadFLD::DEGAS,k,j,i), 4)
-                -4*coeff(RadFLD::DCOUPLE,k,j,i)*coeff(RadFLD::DEGAS,k,j,i)-u(RadFLD::RAD,k,j,i));
+            *(a_r*std::pow(coeff(RadFLD::DCOUPLE,k,j,i)*coeff(RadFLD::DEGAS,k,j,i), 4)
+                -a_r*4*coeff(RadFLD::DCOUPLE,k,j,i)*coeff(RadFLD::DEGAS,k,j,i)-u(RadFLD::RAD,k,j,i));
         def(RadFLD::GAS,k,j,i) = src(RadFLD::GAS,k,j,i) - M;
       }
     }
@@ -590,8 +590,8 @@ void MGFLD::CalculateFASRHS(AthenaArray<Real> &src, const AthenaArray<Real> &u,
         tmp = 1.0+matrix(RadFLD::DT,k,j,i)*c_ph*a_r*coeff(RadFLD::DSIGMAP,k,j,i)*4.0*coeff(RadFLD::DCOUPLE,k,j,i);
         M = tmp*u(RadFLD::GAS,k,j,i);
         M += matrix(RadFLD::DT,k,j,i)*c_ph*coeff(RadFLD::DSIGMAP,k,j,i)
-            *a_r*(std::pow(coeff(RadFLD::DCOUPLE,k,j,i)*coeff(RadFLD::DEGAS,k,j,i), 4)
-                -4*coeff(RadFLD::DCOUPLE,k,j,i)*coeff(RadFLD::DEGAS,k,j,i)-u(RadFLD::RAD,k,j,i));
+            *(a_r*std::pow(coeff(RadFLD::DCOUPLE,k,j,i)*coeff(RadFLD::DEGAS,k,j,i), 4)
+                -a_r*4*coeff(RadFLD::DCOUPLE,k,j,i)*coeff(RadFLD::DEGAS,k,j,i)-u(RadFLD::RAD,k,j,i));
         src(RadFLD::GAS,k,j,i) += M;
       }
     }
