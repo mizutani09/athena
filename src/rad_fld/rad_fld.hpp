@@ -55,9 +55,9 @@ class FLD {
   bool calc_in_temp;
   bool is_couple;
   bool only_rad;
-  Real c_ph, a_r; // be decided in pgen
-  Real const_opacity; // be decided in pgen
+  Real c_ph, a_r, const_opacity;
 
+  void InitFLDConstants(ParameterInput *pin);
   void LoadHydroVariables(const AthenaArray<Real> &w, AthenaArray<Real> &u);
   void CalculateCoefficients(const AthenaArray<Real> &w,
                              const AthenaArray<Real> &u);

@@ -40,11 +40,12 @@ FLD::FLD(MeshBlock *pmb, ParameterInput *pin) :
     coarse_u(RadFLD::NTEMP, pmb->ncc3, pmb->ncc2, pmb->ncc1), //!
     empty_flux{AthenaArray<Real>(), AthenaArray<Real>(), AthenaArray<Real>()},
     output_defect(false), rfldbvar(pmb, &u, &coarse_u, empty_flux, false), //!
-    refinement_idx_(), calc_in_temp(), is_couple(), only_rad(), a_r(), c_ph() {
+    refinement_idx_(), calc_in_temp(), is_couple(), only_rad() {
   is_couple = pin->GetOrAddBoolean("mgfld", "is_couple", false);
   output_defect = pin->GetOrAddBoolean("mgfld", "output_defect", false);
   calc_in_temp = pin->GetOrAddBoolean("mgfld", "calc_in_temp", false);
   only_rad = pin->GetOrAddBoolean("mgfld", "only_rad", false);
+  InitFLDConstants(pin);
   if (calc_in_temp) {
     // raise error
     std::stringstream msg;
@@ -77,6 +78,36 @@ FLD::~FLD() {
 
 
 //----------------------------------------------------------------------------------------
+//! \fn void FLD::InitFLDConstants(ParameterInput *pin)
+//! \brief Initialize constants required for FLD calculation
+void FLD::InitFLDConstants(ParameterInput *pin) {
+  Real c_ph_dim = 2.99792458e10; // speed of light in cm s^-1
+  Real a_r_dim = 7.5657e-15; // radiation constant in erg cm^-3 K^-4
+  Real R_gas = 8.3144621e7; // gas constant in erg K^-1 mol^-1
+  Real const_opacity_dim = pin->GetReal("mgfld", "const_opacity"); // caution: in cm^2 g^-1
+
+  Real rho_unit = pin->GetReal("hydro", "rho_unit");
+  Real egas_unit = pin->GetReal("hydro", "egas_unit");
+  Real pres_unit = egas_unit;
+  Real vel_unit = std::sqrt(pres_unit/rho_unit);
+  Real leng_unit = pin->GetReal("hydro", "leng_unit");
+  Real time_unit = leng_unit/vel_unit;
+  Real mu = pin->GetReal("hydro", "mu");
+  Real T_unit = pres_unit/rho_unit*mu/R_gas;
+
+  c_ph = c_ph_dim/vel_unit;
+  a_r = egas_unit/std::pow(T_unit, 4);
+  const_opacity_dim *= rho_unit;
+  const_opacity = const_opacity_dim*leng_unit;
+
+  std::cout << "c_ph in sim: " << c_ph << std::endl;
+  std::cout << "a_r in sim: " << a_r << std::endl;
+  std::cout << "const_opacity in sim: " << const_opacity << std::endl;
+  return;
+}
+
+
+//----------------------------------------------------------------------------------------
 //! \fn void FLD::CalculateCoefficients()
 //! \brief Calculate coefficients required for FLD calculation
 void FLD::CalculateCoefficients(const AthenaArray<Real> &w,
@@ -99,7 +130,7 @@ void FLD::CalculateCoefficients(const AthenaArray<Real> &w,
         Real dEr3 = hidx*(u(RadFLD::RAD,k+1,j,i) - u(RadFLD::RAD,k-1,j,i));
         Real grad = sqrt(dEr1*dEr1 + dEr2*dEr2 + dEr3*dEr3)/u(RadFLD::RAD,k,j,i);
 
-        for(int n=0; n<RadFLD::NCOEFF-1; ++n) {
+        for(int n=0; n<=RadFLD::DZP; ++n) {
           if (const_opacity > 0.0) {
             sigma_r(n) = const_opacity;
           } else {

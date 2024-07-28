@@ -59,7 +59,11 @@ nx3        = 4
 
 <hydro>
 gamma           = 1.666666666667 # gamma = C_p/C_v
-iso_sound_speed = 0.4082482905   # equivalent to sqrt(gamma*p/d) for p=0.1, d=1
+# iso_sound_speed = 0.4082482905   # equivalent to sqrt(gamma*p/d) for p=0.1, d=1
+rho_unit        = 1.0            # in g cm^-3
+egas_unit       = 1.0            # in erg cm^-3
+leng_unit       = 1.0            # in cm
+mu              = 0.6            # mean molecular weight in g mol^-1
 
 <mgfld>
 mgmode          = FMG
@@ -81,13 +85,10 @@ ox3_bc          = user
 calc_in_temp    = false
 is_couple       = true
 only_rad        = true
+const_opacity   = 4e-8 # in cm^-1, -1.0 for non-constant
 
 <problem>
 is_gauss        = false
-rho_unit        = 1e-7 # in g cm^-3
-x_unit          = 1e-2 # in cm
-t_unit          = 1e-10 # in s
-mu              = 0.6 # mean molecular weight
 Er_0            = 1e+12 # in erg cm^-3
 eg_0            = 1e+10 # in erg cm^-3
-const_opacity   = 4e-8 # in cm^-1, -1.0 for non-constant
+rho0            = 1.0   # in g cm^-3
