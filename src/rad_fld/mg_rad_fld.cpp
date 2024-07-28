@@ -395,7 +395,7 @@ void MGFLD::Smooth(AthenaArray<Real> &u, const AthenaArray<Real> &src,
                    + matrix(RadFLD::MCC,k,j,i)*u(RadFLD::RAD,k-1,j,i)   + matrix(RadFLD::PCC,k,j,i)*u(RadFLD::RAD,k+1,j,i);
             Real d_eg = u(RadFLD::GAS,k,j,i) - coeff(RadFLD::DEGAS,k,j,i);
             M += matrix(RadFLD::DT,k,j,i)*c_ph*coeff(RadFLD::DSIGMAP,k,j,i)
-                *a_r*(-std::pow(coeff(RadFLD::DCOUPLE,k,j,i)*coeff(RadFLD::DEGAS,k,j,i), 4)+4*coeff(RadFLD::DCOUPLE,k,j,i)*d_eg);
+                *a_r*(-std::pow(coeff(RadFLD::DCOUPLE,k,j,i)*coeff(RadFLD::DEGAS,k,j,i), 4)-4*coeff(RadFLD::DCOUPLE,k,j,i)*d_eg);
             Real tmp = matrix(RadFLD::DT,k,j,i)*c_ph*coeff(RadFLD::DSIGMAP,k,j,i);
             work(k,j,i) = (src(RadFLD::RAD,k,j,i) - M) / (matrix(RadFLD::CCC,k,j,i) + tmp);
           }
@@ -535,7 +535,7 @@ void MGFLD::CalculateDefect(AthenaArray<Real> &def, const AthenaArray<Real> &u,
                + matrix(RadFLD::MCC,k,j,i)*u(RadFLD::RAD,k-1,j,i)+matrix(RadFLD::PCC,k,j,i)*u(RadFLD::RAD,k+1,j,i);
         Real d_eg = u(RadFLD::GAS,k,j,i) - coeff(RadFLD::DEGAS,k,j,i);
         M += matrix(RadFLD::DT,k,j,i)*c_ph*coeff(RadFLD::DSIGMAP,k,j,i)
-            *a_r*(-std::pow(coeff(RadFLD::DCOUPLE,k,j,i)*coeff(RadFLD::DEGAS,k,j,i), 4)+4*coeff(RadFLD::DCOUPLE,k,j,i)*d_eg);
+            *a_r*(-std::pow(coeff(RadFLD::DCOUPLE,k,j,i)*coeff(RadFLD::DEGAS,k,j,i), 4)-4*coeff(RadFLD::DCOUPLE,k,j,i)*d_eg);
         def(RadFLD::RAD,k,j,i) = src(RadFLD::RAD,k,j,i) - M;
 
         // for GAS
@@ -583,7 +583,7 @@ void MGFLD::CalculateFASRHS(AthenaArray<Real> &src, const AthenaArray<Real> &u,
                + matrix(RadFLD::MCC,k,j,i)*u(RadFLD::RAD,k-1,j,i)+matrix(RadFLD::PCC,k,j,i)*u(RadFLD::RAD,k+1,j,i);
         Real d_eg = u(RadFLD::GAS,k,j,i) - coeff(RadFLD::DEGAS,k,j,i);
         M += matrix(RadFLD::DT,k,j,i)*c_ph*coeff(RadFLD::DSIGMAP,k,j,i)
-            *a_r*(-std::pow(coeff(RadFLD::DCOUPLE,k,j,i)*coeff(RadFLD::DEGAS,k,j,i), 4)+4*coeff(RadFLD::DCOUPLE,k,j,i)*d_eg);
+            *a_r*(-std::pow(coeff(RadFLD::DCOUPLE,k,j,i)*coeff(RadFLD::DEGAS,k,j,i), 4)-4*coeff(RadFLD::DCOUPLE,k,j,i)*d_eg);
         src(RadFLD::RAD,k,j,i) += M;
 
         // for GAS
