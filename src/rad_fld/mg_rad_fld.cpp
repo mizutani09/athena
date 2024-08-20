@@ -314,7 +314,6 @@ void MGFLD::Smooth(AthenaArray<Real> &u, const AthenaArray<Real> &src,
   if (fsmoother_ == 1) { // jacobi-rb
     if (th == true && (ku-kl) >=  minth_) {
       AthenaArray<Real> &work = temp[0];
-      // for RAD
 #pragma omp parallel num_threads(pmy_driver_->nthreads_)
       {
 #pragma omp for
@@ -323,58 +322,25 @@ void MGFLD::Smooth(AthenaArray<Real> &u, const AthenaArray<Real> &src,
             int c = (color + k + j) & 1;
 #pragma ivdep
             for (int i=il+c; i<=iu; i+=2) {
-              Real c_ph = coeff(RadFLD::DCPH,k,j,i);
-              Real a_r = coeff(RadFLD::DAR,k,j,i);
               Real M = matrix(RadFLD::CCM,k,j,i)*u(RadFLD::RAD,k,j,i-1)+matrix(RadFLD::CCP,k,j,i)*u(RadFLD::RAD,k,j,i+1)
                      + matrix(RadFLD::CMC,k,j,i)*u(RadFLD::RAD,k,j-1,i)+matrix(RadFLD::CPC,k,j,i)*u(RadFLD::RAD,k,j+1,i)
                      + matrix(RadFLD::MCC,k,j,i)*u(RadFLD::RAD,k-1,j,i)+matrix(RadFLD::PCC,k,j,i)*u(RadFLD::RAD,k+1,j,i);
-              Real Tg_prev = coeff(RadFLD::DCOUPLE,k,j,i)*coeff(RadFLD::DEGAS,k,j,i);
-              Real Tg_next = coeff(RadFLD::DCOUPLE,k,j,i)*u(RadFLD::GAS,k,j,i);
-              M += matrix(RadFLD::DT,k,j,i)*c_ph*coeff(RadFLD::DSIGMAP,k,j,i)
-                 *a_r*std::pow(Tg_prev, 3)*(-3*Tg_prev+4*Tg_next);
-              Real tmp = matrix(RadFLD::DT,k,j,i)*c_ph*coeff(RadFLD::DSIGMAP,k,j,i);
-              work(k,j,i) = (src(RadFLD::RAD,k,j,i) - M) / (matrix(RadFLD::CCC,k,j,i) + tmp);
+              Real egas_n = (src(RadFLD::GAS,k,j,i)-matrix(RadFLD::CPGR,k,j,i)*u(RadFLD::RAD,k,j,i)-matrix(RadFLD::CPGC,k,j,i))/matrix(RadFLD::CPGG,k,j,i);
+              M += matrix(RadFLD::CPRG,k,j,i)*egas_n;
+              M += matrix(RadFLD::CPRC,k,j,i);
+              work(k,j,i) = (src(RadFLD::RAD,k,j,i) - M) / (matrix(RadFLD::CCC,k,j,i) + matrix(RadFLD::CPRR,k,j,i));
             }
           }
         }
-#pragma omp for
-        for (int k=kl; k<=ku; k++) {
-          for (int j=jl; j<=ju; j++) {
-            int c = (color + k + j) & 1;
-#pragma ivdep
-            for (int i=il+c; i<=iu; i+=2)
-              u(RadFLD::RAD,k,j,i) += omega_ * (work(k,j,i) - u(RadFLD::RAD,k,j,i));
-          }
-        }
-      }
-      // for GAS
-#pragma omp parallel num_threads(pmy_driver_->nthreads_)
-      {
 #pragma omp for
         for (int k=kl; k<=ku; k++) {
           for (int j=jl; j<=ju; j++) {
             int c = (color + k + j) & 1;
 #pragma ivdep
             for (int i=il+c; i<=iu; i+=2) {
-              Real c_ph = coeff(RadFLD::DCPH,k,j,i);
-              Real a_r = coeff(RadFLD::DAR,k,j,i);
-              Real M = 0.0;
-              Real Tg_prev = coeff(RadFLD::DCOUPLE,k,j,i)*coeff(RadFLD::DEGAS,k,j,i);
-              Real Tg_next = coeff(RadFLD::DCOUPLE,k,j,i)*u(RadFLD::GAS,k,j,i);
-              M += matrix(RadFLD::DT,k,j,i)*c_ph*coeff(RadFLD::DSIGMAP,k,j,i)
-                  *(-3*a_r*std::pow(Tg_prev, 4)-u(RadFLD::RAD,k,j,i));
-              Real tmp = 1.0+4*matrix(RadFLD::DT,k,j,i)*c_ph*a_r*coeff(RadFLD::DSIGMAP,k,j,i)*std::pow(Tg_prev, 3)*Tg_next;
-              work(k,j,i) = (src(RadFLD::GAS,k,j,i) - M) / tmp;
+              u(RadFLD::RAD,k,j,i) += omega_ * (work(k,j,i) - u(RadFLD::RAD,k,j,i));
+              u(RadFLD::GAS,k,j,i) = (src(RadFLD::GAS,k,j,i)-matrix(RadFLD::CPGR,k,j,i)*u(RadFLD::RAD,k,j,i)-matrix(RadFLD::CPGC,k,j,i))/matrix(RadFLD::CPGG,k,j,i);
             }
-          }
-        }
-#pragma omp for
-        for (int k=kl; k<=ku; k++) {
-          for (int j=jl; j<=ju; j++) {
-            int c = (color + k + j) & 1;
-#pragma ivdep
-            for (int i=il+c; i<=iu; i+=2)
-              u(RadFLD::GAS,k,j,i) += omega_ * (work(k,j,i) - u(RadFLD::GAS,k,j,i));
           }
         }
       }
@@ -384,23 +350,18 @@ void MGFLD::Smooth(AthenaArray<Real> &u, const AthenaArray<Real> &src,
       t = omp_get_thread_num();
 #endif
       AthenaArray<Real> &work = temp[t];
-      // for RAD
       for (int k=kl; k<=ku; k++) {
         for (int j=jl; j<=ju; j++) {
           int c = (color + k + j) & 1;
 #pragma ivdep
           for (int i=il+c; i<=iu; i+=2) {
-            Real c_ph = coeff(RadFLD::DCPH,k,j,i);
-            Real a_r = coeff(RadFLD::DAR,k,j,i);
-            Real M = matrix(RadFLD::CCM,k,j,i)*u(RadFLD::RAD,k,j,i-1)   + matrix(RadFLD::CCP,k,j,i)*u(RadFLD::RAD,k,j,i+1)
-                   + matrix(RadFLD::CMC,k,j,i)*u(RadFLD::RAD,k,j-1,i)   + matrix(RadFLD::CPC,k,j,i)*u(RadFLD::RAD,k,j+1,i)
-                   + matrix(RadFLD::MCC,k,j,i)*u(RadFLD::RAD,k-1,j,i)   + matrix(RadFLD::PCC,k,j,i)*u(RadFLD::RAD,k+1,j,i);
-            Real Tg_prev = coeff(RadFLD::DCOUPLE,k,j,i)*coeff(RadFLD::DEGAS,k,j,i);
-            Real Tg_next = coeff(RadFLD::DCOUPLE,k,j,i)*u(RadFLD::GAS,k,j,i);
-            M += matrix(RadFLD::DT,k,j,i)*c_ph*coeff(RadFLD::DSIGMAP,k,j,i)
-                *a_r*std::pow(Tg_prev, 3)*(-3*Tg_prev+4*Tg_next);
-            Real tmp = matrix(RadFLD::DT,k,j,i)*c_ph*coeff(RadFLD::DSIGMAP,k,j,i);
-            work(k,j,i) = (src(RadFLD::RAD,k,j,i) - M) / (matrix(RadFLD::CCC,k,j,i) + tmp);
+            Real M = matrix(RadFLD::CCM,k,j,i)*u(RadFLD::RAD,k,j,i-1)+matrix(RadFLD::CCP,k,j,i)*u(RadFLD::RAD,k,j,i+1)
+                    + matrix(RadFLD::CMC,k,j,i)*u(RadFLD::RAD,k,j-1,i)+matrix(RadFLD::CPC,k,j,i)*u(RadFLD::RAD,k,j+1,i)
+                    + matrix(RadFLD::MCC,k,j,i)*u(RadFLD::RAD,k-1,j,i)+matrix(RadFLD::PCC,k,j,i)*u(RadFLD::RAD,k+1,j,i);
+            Real egas_n = (src(RadFLD::GAS,k,j,i)-matrix(RadFLD::CPGR,k,j,i)*u(RadFLD::RAD,k,j,i)-matrix(RadFLD::CPGC,k,j,i))/matrix(RadFLD::CPGG,k,j,i);
+            M += matrix(RadFLD::CPRG,k,j,i)*egas_n;
+            M += matrix(RadFLD::CPRC,k,j,i);
+            work(k,j,i) = (src(RadFLD::RAD,k,j,i) - M) / (matrix(RadFLD::CCC,k,j,i) + matrix(RadFLD::CPRR,k,j,i));
           }
         }
       }
@@ -408,38 +369,9 @@ void MGFLD::Smooth(AthenaArray<Real> &u, const AthenaArray<Real> &src,
         for (int j=jl; j<=ju; j++) {
           int c = (color + k + j) & 1;
 #pragma ivdep
-          for (int i=il+c; i<=iu; i+=2)
+          for (int i=il+c; i<=iu; i+=2) {
             u(RadFLD::RAD,k,j,i) += omega_ * (work(k,j,i) - u(RadFLD::RAD,k,j,i));
-        }
-      }
-      // for GAS
-#pragma omp parallel num_threads(pmy_driver_->nthreads_)
-      {
-#pragma omp for
-        for (int k=kl; k<=ku; k++) {
-          for (int j=jl; j<=ju; j++) {
-            int c = (color + k + j) & 1;
-#pragma ivdep
-            for (int i=il+c; i<=iu; i+=2) {
-              Real c_ph = coeff(RadFLD::DCPH,k,j,i);
-              Real a_r = coeff(RadFLD::DAR,k,j,i);
-              Real M = 0.0;
-              Real Tg_prev = coeff(RadFLD::DCOUPLE,k,j,i)*coeff(RadFLD::DEGAS,k,j,i);
-              Real Tg_next = coeff(RadFLD::DCOUPLE,k,j,i)*u(RadFLD::GAS,k,j,i);
-              M += matrix(RadFLD::DT,k,j,i)*c_ph*coeff(RadFLD::DSIGMAP,k,j,i)
-                  *(-3*a_r*std::pow(Tg_prev, 4)-u(RadFLD::RAD,k,j,i));
-              Real tmp = 1.0+4*matrix(RadFLD::DT,k,j,i)*c_ph*a_r*coeff(RadFLD::DSIGMAP,k,j,i)*std::pow(Tg_prev, 3)*Tg_next;
-              work(k,j,i) = (src(RadFLD::GAS,k,j,i) - M) / tmp;
-            }
-          }
-        }
-#pragma omp for
-        for (int k=kl; k<=ku; k++) {
-          for (int j=jl; j<=ju; j++) {
-            int c = (color + k + j) & 1;
-#pragma ivdep
-            for (int i=il+c; i<=iu; i+=2)
-              u(RadFLD::GAS,k,j,i) += omega_ * (work(k,j,i) - u(RadFLD::GAS,k,j,i));
+            u(RadFLD::GAS,k,j,i) = (src(RadFLD::GAS,k,j,i)-matrix(RadFLD::CPGR,k,j,i)*u(RadFLD::RAD,k,j,i)-matrix(RadFLD::CPGC,k,j,i))/matrix(RadFLD::CPGG,k,j,i);
           }
         }
       }
@@ -529,25 +461,19 @@ void MGFLD::CalculateDefect(AthenaArray<Real> &def, const AthenaArray<Real> &u,
     for (int j=jl; j<=ju; j++) {
 #pragma omp simd
       for (int i=il; i<=iu; i++) {
-        Real c_ph = coeff(RadFLD::DCPH,k,j,i);
-        Real a_r = coeff(RadFLD::DAR,k,j,i);
         // for RAD
-        Real tmp = matrix(RadFLD::DT,k,j,i)*c_ph*coeff(RadFLD::DSIGMAP,k,j,i);
-        Real M =(matrix(RadFLD::CCC,k,j,i)+tmp)*u(RadFLD::RAD,k,j,i)
+        Real M =(matrix(RadFLD::CCC,k,j,i)+matrix(RadFLD::CPRR,k,j,i))*u(RadFLD::RAD,k,j,i)
                + matrix(RadFLD::CCM,k,j,i)*u(RadFLD::RAD,k,j,i-1)+matrix(RadFLD::CCP,k,j,i)*u(RadFLD::RAD,k,j,i+1)
                + matrix(RadFLD::CMC,k,j,i)*u(RadFLD::RAD,k,j-1,i)+matrix(RadFLD::CPC,k,j,i)*u(RadFLD::RAD,k,j+1,i)
                + matrix(RadFLD::MCC,k,j,i)*u(RadFLD::RAD,k-1,j,i)+matrix(RadFLD::PCC,k,j,i)*u(RadFLD::RAD,k+1,j,i);
-        Real Tg_prev = coeff(RadFLD::DCOUPLE,k,j,i)*coeff(RadFLD::DEGAS,k,j,i);
-        Real Tg_next = coeff(RadFLD::DCOUPLE,k,j,i)*u(RadFLD::GAS,k,j,i);
-        Real couple = matrix(RadFLD::DT,k,j,i)*c_ph*coeff(RadFLD::DSIGMAP,k,j,i)
-            *a_r*(std::pow(Tg_prev, 3)*(-3*Tg_prev+4*Tg_next)-u(RadFLD::RAD,k,j,i));
-        M += couple;
+        M += matrix(RadFLD::CPRG,k,j,i)*u(RadFLD::GAS,k,j,i-1);
+        M += matrix(RadFLD::CPRC,k,j,i);
         def(RadFLD::RAD,k,j,i) = src(RadFLD::RAD,k,j,i) - M;
 
         // for GAS
-        tmp = 1.0+4*matrix(RadFLD::DT,k,j,i)*c_ph*a_r*coeff(RadFLD::DSIGMAP,k,j,i)*std::pow(Tg_prev, 3)*Tg_next;
-        M = tmp*u(RadFLD::GAS,k,j,i);
-        M -= couple;
+        M = matrix(RadFLD::CPGG,k,j,i)*u(RadFLD::GAS,k,j,i);
+        M += matrix(RadFLD::CPGR,k,j,i)*u(RadFLD::RAD,k,j,i);
+        M += matrix(RadFLD::CPGC,k,j,i);
         def(RadFLD::GAS,k,j,i) = src(RadFLD::GAS,k,j,i) - M;
       }
     }
@@ -577,25 +503,19 @@ void MGFLD::CalculateFASRHS(AthenaArray<Real> &src, const AthenaArray<Real> &u,
     for (int j=jl; j<=ju; j++) {
 #pragma omp simd
       for (int i=il; i<=iu; i++) {
-        Real c_ph = coeff(RadFLD::DCPH,k,j,i);
-        Real a_r = coeff(RadFLD::DAR,k,j,i);
         // for RAD
-        Real tmp = matrix(RadFLD::DT,k,j,i)*c_ph*coeff(RadFLD::DSIGMAP,k,j,i);
-        Real M = (matrix(RadFLD::CCC,k,j,i)+tmp)*u(RadFLD::RAD,k,j,i)
+        Real M = (matrix(RadFLD::CCC,k,j,i)+matrix(RadFLD::CPRR,k,j,i))*u(RadFLD::RAD,k,j,i)
                + matrix(RadFLD::CCM,k,j,i)*u(RadFLD::RAD,k,j,i-1)+matrix(RadFLD::CCP,k,j,i)*u(RadFLD::RAD,k,j,i+1)
                + matrix(RadFLD::CMC,k,j,i)*u(RadFLD::RAD,k,j-1,i)+matrix(RadFLD::CPC,k,j,i)*u(RadFLD::RAD,k,j+1,i)
                + matrix(RadFLD::MCC,k,j,i)*u(RadFLD::RAD,k-1,j,i)+matrix(RadFLD::PCC,k,j,i)*u(RadFLD::RAD,k+1,j,i);
-        Real Tg_prev = coeff(RadFLD::DCOUPLE,k,j,i)*coeff(RadFLD::DEGAS,k,j,i);
-        Real Tg_next = coeff(RadFLD::DCOUPLE,k,j,i)*u(RadFLD::GAS,k,j,i);
-        Real couple = matrix(RadFLD::DT,k,j,i)*c_ph*coeff(RadFLD::DSIGMAP,k,j,i)
-            *a_r*(std::pow(Tg_prev, 3)*(-3*Tg_prev+4*Tg_next)-u(RadFLD::RAD,k,j,i));
-        M += couple;
+        M += matrix(RadFLD::CPRG,k,j,i)*u(RadFLD::GAS,k,j,i-1);
+        M += matrix(RadFLD::CPRC,k,j,i);
         src(RadFLD::RAD,k,j,i) += M;
 
         // for GAS
-        tmp = 1.0+4*matrix(RadFLD::DT,k,j,i)*c_ph*a_r*coeff(RadFLD::DSIGMAP,k,j,i)*std::pow(Tg_prev, 3)*Tg_next;
-        M = tmp*u(RadFLD::GAS,k,j,i);
-        M -= couple;
+        M = matrix(RadFLD::CPGG,k,j,i)*u(RadFLD::GAS,k,j,i);
+        M += matrix(RadFLD::CPGR,k,j,i)*u(RadFLD::RAD,k,j,i);
+        M += matrix(RadFLD::CPGC,k,j,i);
         src(RadFLD::GAS,k,j,i) += M;
       }
     }
@@ -706,7 +626,16 @@ void MGFLD::CalculateMatrix(AthenaArray<Real> &matrix,
         matrix(RadFLD::MCC,k,j,i) = -fac*coeff(RadFLD::DZM,k,j,i);
         matrix(RadFLD::PCC,k,j,i) = -fac*coeff(RadFLD::DZP,k,j,i);
 
-        matrix(RadFLD::DT,k,j,i) = dt;
+        // coupling
+        Real c_ph = coeff(RadFLD::DCPH,k,j,i);
+        Real a_r = coeff(RadFLD::DAR,k,j,i);
+        Real Tg_prev = coeff(RadFLD::DCOUPLE,k,j,i)*coeff(RadFLD::DEGAS,k,j,i);
+        matrix(RadFLD::CPRR,k,j,i) = dt*c_ph*coeff(RadFLD::DSIGMAP,k,j,i);
+        matrix(RadFLD::CPRG,k,j,i) = -dt*c_ph*coeff(RadFLD::DSIGMAP,k,j,i)*a_r*std::pow(Tg_prev, 3)*coeff(RadFLD::DCOUPLE,k,j,i);
+        matrix(RadFLD::CPRC,k,j,i) = 3.0*dt*c_ph*coeff(RadFLD::DSIGMAP,k,j,i)*a_r*std::pow(Tg_prev, 4);
+        matrix(RadFLD::CPGR,k,j,i) = -dt*c_ph*coeff(RadFLD::DSIGMAP,k,j,i);
+        matrix(RadFLD::CPGG,k,j,i) = 1.0+4*dt*c_ph*coeff(RadFLD::DSIGMAP,k,j,i)*a_r*std::pow(Tg_prev, 3)*coeff(RadFLD::DCOUPLE,k,j,i);
+        matrix(RadFLD::CPGC,k,j,i) = -3.0*dt*c_ph*coeff(RadFLD::DSIGMAP,k,j,i)*a_r*std::pow(Tg_prev, 4);
       }
     }
   }

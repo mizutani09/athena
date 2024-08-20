@@ -27,11 +27,12 @@ class MGFLD;
 class MGFLDDriver;
 
 namespace RadFLD {
-  constexpr int NTEMP=2, NMATRIX=8, NCOEFF=11;
+  constexpr int NTEMP=2, NMATRIX=13, NCOEFF=11;
   enum TempTndex {GAS=0, RAD=1};
   enum CoeffIndex {DXM=0, DXP=1, DYM=2, DYP=3, DZM=4, DZP=5, DSIGMAP=6, DCOUPLE=7, DEGAS=8,
                    DCPH=9, DAR=10};
-  enum MatrixIndex {CCC=0, CCM=1, CCP=2, CMC=3, CPC=4, MCC=5, PCC=6, DT=7};
+  enum MatrixIndex {CCC=0, CCM=1, CCP=2, CMC=3, CPC=4, MCC=5, PCC=6,
+                    CPRR=7, CPRG=8, CPRC=9, CPGR=10, CPGG=11, CPGC=12};
                     // CMM=7, CMP=8, CPM=9,
                     // CPP=10, MCM=11, MCP=12, PCM=13, PCP=14, MMC=15, MPC=16, PMC=17, PPC=18};
 }
