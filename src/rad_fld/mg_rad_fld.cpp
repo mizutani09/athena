@@ -375,6 +375,10 @@ void MGFLD::Smooth(AthenaArray<Real> &u, const AthenaArray<Real> &src,
           }
         }
       }
+/*      std::cout << "CPRR " <<matrix(RadFLD::CPRR,2,2,2) << " CPRG " << matrix(RadFLD::CPRG,2,2,2) << " CPGR " <<matrix(RadFLD::CPGR,2,2,2) << " CPGG " << matrix(RadFLD::CPGG,2,2,2) << " CPGC " << matrix(RadFLD::CPGC,2,2,2) << " CPRC " << matrix(RadFLD::CPRC,2,2,2)<< std::endl;
+      std::cout << "RSRC " << src(RadFLD::RAD,2,2,2) << " MGSRC " << matrix(RadFLD::CPRG,2,2,2)/matrix(RadFLD::CPGG,2,2,2)*src(RadFLD::GAS,2,2,2) << " MGCG " << matrix(RadFLD::CPRG,2,2,2)/matrix(RadFLD::CPGG,2,2,2)*matrix(RadFLD::CPGC,2,2,2) << " CPRC " <<matrix(RadFLD::CPRC,2,2,2)<< " CPRCS " << matrix(RadFLD::CPRCS,2,2,2) << std::endl;
+      std::cout << src(RadFLD::RAD,2,2,2)-matrix(RadFLD::CPRG,2,2,2)/matrix(RadFLD::CPGG,2,2,2)*(src(RadFLD::GAS,2,2,2)-matrix(RadFLD::CPGC,2,2,2))-matrix(RadFLD::CPRC,2,2,2)<< std::endl;
+      std::cout << "RAD " << u(RadFLD::RAD,2,2,2) << " GAS " << u(RadFLD::GAS,2,2,2) << " GSRC " <<src(RadFLD::GAS,2,2,2) << " DEGAS " << coeff(RadFLD::DEGAS,2,2,2) << std::endl;*/
     }
   } else { // jacobi
     if (th == true && (ku-kl) >=  minth_) {
@@ -632,14 +636,14 @@ void MGFLD::CalculateMatrix(AthenaArray<Real> &matrix,
         Real Tg_prev = coeff(RadFLD::DCOUPLE,k,j,i)*coeff(RadFLD::DEGAS,k,j,i);
         matrix(RadFLD::CPRR,k,j,i) = dt*c_ph*coeff(RadFLD::DSIGMAP,k,j,i);
         matrix(RadFLD::CPRG,k,j,i) = -4.0*dt*c_ph*coeff(RadFLD::DSIGMAP,k,j,i)*a_r*std::pow(Tg_prev, 3)*coeff(RadFLD::DCOUPLE,k,j,i);
-        matrix(RadFLD::CPRC,k,j,i) = 3.0*dt*c_ph*coeff(RadFLD::DSIGMAP,k,j,i)*a_r*std::pow(Tg_prev, 4);
+        matrix(RadFLD::CPRC,k,j,i) =  3.0*dt*c_ph*coeff(RadFLD::DSIGMAP,k,j,i)*a_r*std::pow(Tg_prev, 4);
         matrix(RadFLD::CPGR,k,j,i) = -dt*c_ph*coeff(RadFLD::DSIGMAP,k,j,i);
-        matrix(RadFLD::CPGG,k,j,i) = 1.0+4*dt*c_ph*coeff(RadFLD::DSIGMAP,k,j,i)*a_r*std::pow(Tg_prev, 3)*coeff(RadFLD::DCOUPLE,k,j,i);
+        matrix(RadFLD::CPGG,k,j,i) = 1.0+4.0*dt*c_ph*coeff(RadFLD::DSIGMAP,k,j,i)*a_r*std::pow(Tg_prev, 3)*coeff(RadFLD::DCOUPLE,k,j,i);
         matrix(RadFLD::CPGC,k,j,i) = -3.0*dt*c_ph*coeff(RadFLD::DSIGMAP,k,j,i)*a_r*std::pow(Tg_prev, 4);
 
         // additional term from egas
         matrix(RadFLD::CPRRS,k,j,i) = -matrix(RadFLD::CPRG,k,j,i)*matrix(RadFLD::CPGR,k,j,i)/matrix(RadFLD::CPGG,k,j,i);
-        matrix(RadFLD::CPRCS,k,j,i) = matrix(RadFLD::CPRG,k,j,i)*(matrix(RadFLD::DEGAS,k,j,i)-matrix(RadFLD::CPGC,k,j,i))/matrix(RadFLD::CPGG,k,j,i);
+        matrix(RadFLD::CPRCS,k,j,i) = matrix(RadFLD::CPRG,k,j,i)*(coeff(RadFLD::DEGAS,k,j,i)-matrix(RadFLD::CPGC,k,j,i))/matrix(RadFLD::CPGG,k,j,i);
       }
     }
   }

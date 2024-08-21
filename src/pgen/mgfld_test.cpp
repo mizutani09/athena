@@ -271,12 +271,12 @@ void Mesh::InitUserMeshData(ParameterInput *pin) {
     Er_0 = pin->GetOrAddReal("problem", "Er_0", 1.0)/egas_unit;
     rho0 = pin->GetOrAddReal("problem", "rho0", 1.0)/rho_unit;
     Tg_0 = gm1*eg_0/rho0;
-    // Tr_0 = std::pow(Er_0/a_r,0.25);
+    Tr_0 = std::pow(Er_0*egas_unit/a_r_dim,0.25)/T_unit;
 
     std::cout << "eg_0 in sim = " << eg_0 << std::endl;
     std::cout << "Er_0 in sim = " << Er_0 << std::endl;
-    // std::cout << "Tg_0 in sim = " << Tg_0 << std::endl;
-    // std::cout << "Tr_0 in sim = " << Tr_0 << std::endl;
+    std::cout << "Tg_0 in sim = " << Tg_0 << " " << Tg_0 * T_unit << std::endl;
+    std::cout << "Tr_0 in sim = " << Tr_0 << " " << Tr_0 * T_unit << std::endl;
     if (is_gauss) {
       r0 = pin->GetOrAddReal("problem", "r0", 0.5);
     }

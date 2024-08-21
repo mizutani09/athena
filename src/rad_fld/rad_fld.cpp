@@ -96,7 +96,7 @@ void FLD::InitFLDConstants(ParameterInput *pin) {
   Real T_unit = pres_unit/rho_unit*mu/R_gas;
 
   c_ph = c_ph_dim/vel_unit;
-  a_r = egas_unit/std::pow(T_unit, 4);
+  a_r = a_r_dim/(egas_unit/std::pow(T_unit, 4));
   const_opacity_dim *= rho_unit;
   const_opacity = const_opacity_dim*leng_unit;
 
@@ -150,7 +150,7 @@ void FLD::CalculateCoefficients(const AthenaArray<Real> &w,
           coeff(RadFLD::DSIGMAP,k,j,i) = 0.0;
           coeff(RadFLD::DCOUPLE,k,j,i) = 0.0;
         }
-        coeff(RadFLD::DEGAS,k,j,i) = u(RadFLD::GAS,k,j,i);
+        coeff(RadFLD::DEGAS,k,j,i) = u(RadFLD::GAS,k,j,i); // we can just reuse src(RadFLD::GAS,k,j,i)
 
         coeff(RadFLD::DCPH,k,j,i) = c_ph; // should be different way
         coeff(RadFLD::DAR,k,j,i) = a_r;
@@ -168,6 +168,7 @@ void FLD::LoadHydroVariables(const AthenaArray<Real> &w, AthenaArray<Real> &u) {
   int il = pmy_block->is - NGHOST, iu = pmy_block->ie + NGHOST;
   int jl = pmy_block->js, ju = pmy_block->je;
   int kl = pmy_block->ks, ku = pmy_block->ke;
+  Real igm1 = 1.0/(pmy_block->peos->GetGamma() - 1.0);
   if (pmy_block->pmy_mesh->f2)
     jl -= NGHOST, ju += NGHOST;
   if (pmy_block->pmy_mesh->f3)
@@ -175,7 +176,7 @@ void FLD::LoadHydroVariables(const AthenaArray<Real> &w, AthenaArray<Real> &u) {
   for (int k = kl; k <= ku; ++k) {
     for (int j = jl; j <= ju; ++j) {
       for (int i = il; i <= iu; ++i) {
-        u(RadFLD::GAS,k,j,i) = w(IEN,k,j,i);
+        u(RadFLD::GAS,k,j,i) = igm1*w(IPR,k,j,i);
       }
     }
   }
@@ -190,6 +191,7 @@ void FLD::UpdateHydroVariables(AthenaArray<Real> &w, const AthenaArray<Real> &u)
   int il = pmy_block->is - NGHOST, iu = pmy_block->ie + NGHOST;
   int jl = pmy_block->js, ju = pmy_block->je;
   int kl = pmy_block->ks, ku = pmy_block->ke;
+  Real gm1 = pmy_block->peos->GetGamma() - 1.0;
   if (pmy_block->pmy_mesh->f2)
     jl -= NGHOST, ju += NGHOST;
   if (pmy_block->pmy_mesh->f3)
@@ -197,7 +199,7 @@ void FLD::UpdateHydroVariables(AthenaArray<Real> &w, const AthenaArray<Real> &u)
   for (int k = kl; k <= ku; ++k) {
     for (int j = jl; j <= ju; ++j) {
       for (int i = il; i <= iu; ++i) {
-        w(IEN,k,j,i) = u(RadFLD::GAS,k,j,i);
+        w(IPR,k,j,i) = gm1*u(RadFLD::GAS,k,j,i);
       }
     }
   }
