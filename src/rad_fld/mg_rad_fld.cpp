@@ -631,7 +631,7 @@ void MGFLD::CalculateMatrix(AthenaArray<Real> &matrix,
         Real a_r = coeff(RadFLD::DAR,k,j,i);
         Real Tg_prev = coeff(RadFLD::DCOUPLE,k,j,i)*coeff(RadFLD::DEGAS,k,j,i);
         matrix(RadFLD::CPRR,k,j,i) = dt*c_ph*coeff(RadFLD::DSIGMAP,k,j,i);
-        matrix(RadFLD::CPRG,k,j,i) = -dt*c_ph*coeff(RadFLD::DSIGMAP,k,j,i)*a_r*std::pow(Tg_prev, 3)*coeff(RadFLD::DCOUPLE,k,j,i);
+        matrix(RadFLD::CPRG,k,j,i) = -4.0*dt*c_ph*coeff(RadFLD::DSIGMAP,k,j,i)*a_r*std::pow(Tg_prev, 3)*coeff(RadFLD::DCOUPLE,k,j,i);
         matrix(RadFLD::CPRC,k,j,i) = 3.0*dt*c_ph*coeff(RadFLD::DSIGMAP,k,j,i)*a_r*std::pow(Tg_prev, 4);
         matrix(RadFLD::CPGR,k,j,i) = -dt*c_ph*coeff(RadFLD::DSIGMAP,k,j,i);
         matrix(RadFLD::CPGG,k,j,i) = 1.0+4*dt*c_ph*coeff(RadFLD::DSIGMAP,k,j,i)*a_r*std::pow(Tg_prev, 3)*coeff(RadFLD::DCOUPLE,k,j,i);
