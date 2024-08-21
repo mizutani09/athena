@@ -138,8 +138,8 @@ void FLD::CalculateCoefficients(const AthenaArray<Real> &w,
           }
           Real R = grad/sigma_r(n);
           Real lambda = (2.0+R)/(6.0+2.0*R+R*R);
-          coeff(n,k,j,i) = c_ph*lambda/sigma_r(n);
-          // coeff(n,k,j,i) = 1.0;
+          // coeff(n,k,j,i) = c_ph*lambda/sigma_r(n);
+          coeff(n,k,j,i) = 0.0; // caution!
         }
 
         // for later calculation
