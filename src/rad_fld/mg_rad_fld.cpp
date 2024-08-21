@@ -327,8 +327,8 @@ void MGFLD::Smooth(AthenaArray<Real> &u, const AthenaArray<Real> &src,
                      + matrix(RadFLD::MCC,k,j,i)*u(RadFLD::RAD,k-1,j,i)+matrix(RadFLD::PCC,k,j,i)*u(RadFLD::RAD,k+1,j,i);
               // Real egas_n = (src(RadFLD::GAS,k,j,i)-matrix(RadFLD::CPGR,k,j,i)*u(RadFLD::RAD,k,j,i)-matrix(RadFLD::CPGC,k,j,i))/matrix(RadFLD::CPGG,k,j,i);
               // M += matrix(RadFLD::CPRG,k,j,i)*egas_n;
-              M += matrix(RadFLD::CPRC,k,j,i);
-              work(k,j,i) = (src(RadFLD::RAD,k,j,i) - M) / (matrix(RadFLD::CCC,k,j,i) + matrix(RadFLD::CPRR,k,j,i));
+              M += matrix(RadFLD::CPRC,k,j,i) + matrix(RadFLD::CPRCS,k,j,i);
+              work(k,j,i) = (src(RadFLD::RAD,k,j,i) - M) / (matrix(RadFLD::CCC,k,j,i) + matrix(RadFLD::CPRR,k,j,i) + matrix(RadFLD::CPRRS,k,j,i));
             }
           }
         }
@@ -360,8 +360,8 @@ void MGFLD::Smooth(AthenaArray<Real> &u, const AthenaArray<Real> &src,
                     + matrix(RadFLD::MCC,k,j,i)*u(RadFLD::RAD,k-1,j,i)+matrix(RadFLD::PCC,k,j,i)*u(RadFLD::RAD,k+1,j,i);
             // Real egas_n = (src(RadFLD::GAS,k,j,i)-matrix(RadFLD::CPGR,k,j,i)*u(RadFLD::RAD,k,j,i)-matrix(RadFLD::CPGC,k,j,i))/matrix(RadFLD::CPGG,k,j,i);
             // M += matrix(RadFLD::CPRG,k,j,i)*egas_n;
-            M += matrix(RadFLD::CPRC,k,j,i);
-            work(k,j,i) = (src(RadFLD::RAD,k,j,i) - M) / (matrix(RadFLD::CCC,k,j,i) + matrix(RadFLD::CPRR,k,j,i));
+            M += matrix(RadFLD::CPRC,k,j,i) + matrix(RadFLD::CPRCS,k,j,i);
+            work(k,j,i) = (src(RadFLD::RAD,k,j,i) - M) / (matrix(RadFLD::CCC,k,j,i) + matrix(RadFLD::CPRR,k,j,i) + matrix(RadFLD::CPRRS,k,j,i));
           }
         }
       }
@@ -638,8 +638,8 @@ void MGFLD::CalculateMatrix(AthenaArray<Real> &matrix,
         matrix(RadFLD::CPGC,k,j,i) = -3.0*dt*c_ph*coeff(RadFLD::DSIGMAP,k,j,i)*a_r*std::pow(Tg_prev, 4);
 
         // additional term from egas
-        matrix(RadFLD::CPRR,k,j,i) += -matrix(RadFLD::CPRG,k,j,i)*matrix(RadFLD::CPGR,k,j,i)/matrix(RadFLD::CPGG,k,j,i);
-        matrix(RadFLD::CPRC,k,j,i) += matrix(RadFLD::CPRG,k,j,i)*(matrix(RadFLD::DEGAS,k,j,i)-matrix(RadFLD::CPGC,k,j,i))/matrix(RadFLD::CPGG,k,j,i);
+        matrix(RadFLD::CPRRS,k,j,i) = -matrix(RadFLD::CPRG,k,j,i)*matrix(RadFLD::CPGR,k,j,i)/matrix(RadFLD::CPGG,k,j,i);
+        matrix(RadFLD::CPRCS,k,j,i) = matrix(RadFLD::CPRG,k,j,i)*(matrix(RadFLD::DEGAS,k,j,i)-matrix(RadFLD::CPGC,k,j,i))/matrix(RadFLD::CPGG,k,j,i);
       }
     }
   }
