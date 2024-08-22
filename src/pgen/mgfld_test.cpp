@@ -53,8 +53,9 @@ namespace {
   Real HistoryEg(MeshBlock *pmb, int iout);
   Real HistoryEr(MeshBlock *pmb, int iout);
   Real HistoryaTg4(MeshBlock *pmb, int iout);
+  Real HistoryRtime(MeshBlock *pmb, int iout);
   Real rho_unit, egas_unit, leng_unit;
-  Real T_unit;
+  Real T_unit, time_unit;
   Real a_r_dim, Rgas, mu;
 }
 
@@ -249,7 +250,7 @@ void Mesh::InitUserMeshData(ParameterInput *pin) {
   a_r_dim = 7.5657e-15; // radiation constant in erg cm^-3 K^-4
 
   Real vel_unit = std::sqrt(pres_unit/rho_unit);
-  Real time_unit = leng_unit/vel_unit;
+  time_unit = leng_unit/vel_unit;
   std::cout << "time_unit = " << time_unit << " s" << std::endl;
 
   calc_in_temp = pin->GetOrAddBoolean("mgfld", "calc_in_temp", false);
@@ -288,12 +289,13 @@ void Mesh::InitUserMeshData(ParameterInput *pin) {
   EnrollUserMGFLDBoundaryFunction(BoundaryFace::outer_x2, FLDFixedOuterX2);
   EnrollUserMGFLDBoundaryFunction(BoundaryFace::inner_x3, FLDFixedInnerX3);
   EnrollUserMGFLDBoundaryFunction(BoundaryFace::outer_x3, FLDFixedOuterX3);
-  AllocateUserHistoryOutput(5);
+  AllocateUserHistoryOutput(6);
   EnrollUserHistoryOutput(0, HistoryTg, "T_gas");
   EnrollUserHistoryOutput(1, HistoryTr, "T_rad");
   EnrollUserHistoryOutput(2, HistoryEg, "e_gas");
   EnrollUserHistoryOutput(3, HistoryEr, "E_rad");
   EnrollUserHistoryOutput(4, HistoryaTg4, "aTgas^4");
+  EnrollUserHistoryOutput(5, HistoryRtime, "Rtime", UserHistoryOperation::max);
 }
 
 
@@ -365,7 +367,7 @@ void MeshBlock::ProblemGenerator(ParameterInput *pin) {
 
 
 void MeshBlock::InitUserMeshBlockData(ParameterInput *pin) {
-  AllocateUserOutputVariables(4);
+  AllocateUserOutputVariables(5);
   SetUserOutputVariableName(0, "e_gas");
   SetUserOutputVariableName(1, "E_rad");
   SetUserOutputVariableName(2, "T_gas");
@@ -376,9 +378,15 @@ void MeshBlock::InitUserMeshBlockData(ParameterInput *pin) {
 void MeshBlock::UserWorkBeforeOutput(ParameterInput *pin) {
   Real gm1 = peos->GetGamma() - 1.0;
   Real temp_coef = gm1*mu/Rgas*egas_unit/rho_unit;
-  for (int k=ks; k<=ke; k++) {
-    for (int j=js; j<=je; j++) {
-      for (int i=is; i<=ie; i++) {
+  int kl = ks-NGHOST;
+  int ku = ke+NGHOST;
+  int jl = js-NGHOST;
+  int ju = je+NGHOST;
+  int il = is-NGHOST;
+  int iu = ie+NGHOST;
+  for (int k=kl; k<=ku; k++) {
+    for (int j=jl; j<=ju; j++) {
+      for (int i=il; i<=iu; i++) {
         // assume cal in E
         user_out_var(0,k,j,i) = prfld->u(RadFLD::GAS,k,j,i)*egas_unit;
         user_out_var(1,k,j,i) = prfld->u(RadFLD::RAD,k,j,i)*egas_unit;
@@ -474,6 +482,10 @@ Real HistoryaTg4(MeshBlock *pmb, int iout) {
   aT4 *= a_r_dim;
   aT4 /= num;
   return aT4;
+}
+
+Real HistoryRtime(MeshBlock *pmb, int iout) {
+  return pmb->pmy_mesh->time*time_unit;
 }
 
 } // namespace

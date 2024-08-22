@@ -374,14 +374,15 @@ void MGFLD::Smooth(AthenaArray<Real> &u, const AthenaArray<Real> &src,
 #pragma ivdep
           for (int i=il+c; i<=iu; i+=2) {
             u(RadFLD::RAD,k,j,i) += omega_ * (work(k,j,i) - u(RadFLD::RAD,k,j,i));
+            u(RadFLD::RAD,k,j,i) = 100.0; // caution!
             u(RadFLD::GAS,k,j,i) = (src(RadFLD::GAS,k,j,i)-matrix(RadFLD::CPGR,k,j,i)*u(RadFLD::RAD,k,j,i)-matrix(RadFLD::CPGC,k,j,i))/matrix(RadFLD::CPGG,k,j,i);
           }
         }
       }
-/*      std::cout << "CPRR " <<matrix(RadFLD::CPRR,2,2,2) << " CPRG " << matrix(RadFLD::CPRG,2,2,2) << " CPGR " <<matrix(RadFLD::CPGR,2,2,2) << " CPGG " << matrix(RadFLD::CPGG,2,2,2) << " CPGC " << matrix(RadFLD::CPGC,2,2,2) << " CPRC " << matrix(RadFLD::CPRC,2,2,2)<< std::endl;
-      std::cout << "RSRC " << src(RadFLD::RAD,2,2,2) << " MGSRC " << matrix(RadFLD::CPRG,2,2,2)/matrix(RadFLD::CPGG,2,2,2)*src(RadFLD::GAS,2,2,2) << " MGCG " << matrix(RadFLD::CPRG,2,2,2)/matrix(RadFLD::CPGG,2,2,2)*matrix(RadFLD::CPGC,2,2,2) << " CPRC " <<matrix(RadFLD::CPRC,2,2,2)<< " CPRCS " << matrix(RadFLD::CPRCS,2,2,2) << std::endl;
-      std::cout << src(RadFLD::RAD,2,2,2)-matrix(RadFLD::CPRG,2,2,2)/matrix(RadFLD::CPGG,2,2,2)*(src(RadFLD::GAS,2,2,2)-matrix(RadFLD::CPGC,2,2,2))-matrix(RadFLD::CPRC,2,2,2)<< std::endl;
-      std::cout << "RAD " << u(RadFLD::RAD,2,2,2) << " GAS " << u(RadFLD::GAS,2,2,2) << " GSRC " <<src(RadFLD::GAS,2,2,2) << " DEGAS " << coeff(RadFLD::DEGAS,2,2,2) << std::endl;*/
+      // std::cout << "CPRR " <<matrix(RadFLD::CPRR,1,1,1) << " CPRG " << matrix(RadFLD::CPRG,1,1,1) << " CPGR " <<matrix(RadFLD::CPGR,1,1,1) << " CPGG " << matrix(RadFLD::CPGG,1,1,1) << " CPGC " << matrix(RadFLD::CPGC,1,1,1) << " CPRC " << matrix(RadFLD::CPRC,1,1,1)<< std::endl;
+      // std::cout << "RSRC " << src(RadFLD::RAD,1,1,1) << " MGSRC " << matrix(RadFLD::CPRG,1,1,1)/matrix(RadFLD::CPGG,1,1,1)*src(RadFLD::GAS,1,1,1) << " MGCG " << matrix(RadFLD::CPRG,1,1,1)/matrix(RadFLD::CPGG,1,1,1)*matrix(RadFLD::CPGC,1,1,1) << " CPRC " <<matrix(RadFLD::CPRC,1,1,1)<< " CPRCS " << matrix(RadFLD::CPRCS,1,1,1) << std::endl;
+      // std::cout << src(RadFLD::RAD,1,1,1)-matrix(RadFLD::CPRG,1,1,1)/matrix(RadFLD::CPGG,1,1,1)*(src(RadFLD::GAS,1,1,1)-matrix(RadFLD::CPGC,1,1,1))-matrix(RadFLD::CPRC,1,1,1)<< std::endl;
+      // std::cout << "RAD " << u(RadFLD::RAD,1,1,1) << " GAS " << u(RadFLD::GAS,1,1,1) << " GSRC " <<src(RadFLD::GAS,1,1,1) << " DEGAS " << coeff(RadFLD::DEGAS,1,1,1) << std::endl;
     }
   } else { // jacobi
     if (th == true && (ku-kl) >=  minth_) {
