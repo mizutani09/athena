@@ -54,6 +54,7 @@ namespace {
   Real HistoryEr(MeshBlock *pmb, int iout);
   Real HistoryaTg4(MeshBlock *pmb, int iout);
   Real HistoryRtime(MeshBlock *pmb, int iout);
+  Real HistoryEall(MeshBlock *pmb, int iout);
   Real rho_unit, egas_unit, leng_unit;
   Real T_unit, time_unit;
   Real a_r_dim, Rgas, mu;
@@ -303,13 +304,14 @@ void Mesh::InitUserMeshData(ParameterInput *pin) {
   EnrollUserMGFLDBoundaryFunction(BoundaryFace::outer_x2, FLDFixedOuterX2);
   EnrollUserMGFLDBoundaryFunction(BoundaryFace::inner_x3, FLDFixedInnerX3);
   EnrollUserMGFLDBoundaryFunction(BoundaryFace::outer_x3, FLDFixedOuterX3);
-  AllocateUserHistoryOutput(6);
-  EnrollUserHistoryOutput(0, HistoryTg, "T_gas");
-  EnrollUserHistoryOutput(1, HistoryTr, "T_rad");
-  EnrollUserHistoryOutput(2, HistoryEg, "e_gas");
-  EnrollUserHistoryOutput(3, HistoryEr, "E_rad");
-  EnrollUserHistoryOutput(4, HistoryaTg4, "aTgas^4");
+  AllocateUserHistoryOutput(7);
+  EnrollUserHistoryOutput(0, HistoryTg, "T_gas", UserHistoryOperation::max);
+  EnrollUserHistoryOutput(1, HistoryTr, "T_rad", UserHistoryOperation::max);
+  EnrollUserHistoryOutput(2, HistoryEg, "e_gas", UserHistoryOperation::max);
+  EnrollUserHistoryOutput(3, HistoryEr, "E_rad", UserHistoryOperation::max);
+  EnrollUserHistoryOutput(4, HistoryaTg4, "aTgas^4", UserHistoryOperation::max);
   EnrollUserHistoryOutput(5, HistoryRtime, "Rtime", UserHistoryOperation::max);
+  EnrollUserHistoryOutput(6, HistoryEall, "all-E", UserHistoryOperation::sum);
 }
 
 
@@ -381,7 +383,7 @@ void MeshBlock::ProblemGenerator(ParameterInput *pin) {
 
 
 void MeshBlock::InitUserMeshBlockData(ParameterInput *pin) {
-  AllocateUserOutputVariables(5);
+  AllocateUserOutputVariables(4);
   SetUserOutputVariableName(0, "e_gas");
   SetUserOutputVariableName(1, "E_rad");
   SetUserOutputVariableName(2, "T_gas");
@@ -447,6 +449,7 @@ Real HistoryTr(MeshBlock *pmb, int iout) {
   return T;
 }
 
+// caution! this is for a mean of gas energy density.
 Real HistoryEg(MeshBlock *pmb, int iout) {
   const Real gm1  = pmb->peos->GetGamma() - 1.0;
   int is = pmb->is, ie = pmb->ie, js = pmb->js, je = pmb->je, ks = pmb->ks, ke = pmb->ke;
@@ -464,6 +467,7 @@ Real HistoryEg(MeshBlock *pmb, int iout) {
   return e*egas_unit;
 }
 
+// caution! this is for a mean of radiation energy density.
 Real HistoryEr(MeshBlock *pmb, int iout) {
   int is = pmb->is, ie = pmb->ie, js = pmb->js, je = pmb->je, ks = pmb->ks, ke = pmb->ke;
   int num = 0;
@@ -500,6 +504,25 @@ Real HistoryaTg4(MeshBlock *pmb, int iout) {
 
 Real HistoryRtime(MeshBlock *pmb, int iout) {
   return pmb->pmy_mesh->time*time_unit;
+}
+
+// caution! this is for a sum of all energy.
+Real HistoryEall(MeshBlock *pmb, int iout) {
+  int is = pmb->is, ie = pmb->ie, js = pmb->js, je = pmb->je, ks = pmb->ks, ke = pmb->ke;
+  AthenaArray<Real> vol;
+  vol.NewAthenaArray((ie-is)+2*NGHOST);
+  int num = 0;
+  Real E = 0;
+  for (int k=ks; k<=ke; k++) {
+    for (int j=js; j<=je; j++) {
+      pmb->pcoord->CellVolume(k, j, is, ie, vol);
+      for (int i=is; i<=ie; i++) {
+        E += pmb->prfld->u(RadFLD::GAS,k,j,i)*vol(i);
+        E += pmb->prfld->u(RadFLD::RAD,k,j,i)*vol(i);
+      }
+    }
+  }
+  return E*egas_unit;
 }
 
 } // namespace
