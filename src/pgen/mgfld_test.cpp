@@ -241,7 +241,19 @@ int AMRCondition(MeshBlock *pmb) {
 void Mesh::InitUserMeshData(ParameterInput *pin) {
   rho_unit = pin->GetReal("hydro", "rho_unit");
   egas_unit = pin->GetReal("hydro", "egas_unit");
-  leng_unit = pin->GetReal("hydro", "leng_unit");
+  time_unit = pin->GetOrAddReal("hydro", "time_unit", -1.0);
+  leng_unit = pin->GetOrAddReal("hydro", "leng_unit", -1.0);
+  if (time_unit < 0.0 && leng_unit < 0.0) {
+    std::stringstream msg;
+    msg << "### FATAL ERROR in function [Mesh::InitUserMeshData]" << std::endl;
+    msg << "time_unit or leng_unit must be specified in block 'hydro'.";
+    ATHENA_ERROR(msg);
+  } else if (time_unit > 0.0 && leng_unit > 0.0) {
+    std::stringstream msg;
+    msg << "### FATAL ERROR in function [Mesh::InitUserMeshData]" << std::endl;
+    msg << "time_unit and leng_unit cannot be specified at the same time.";
+    ATHENA_ERROR(msg);
+  }
   Real pres_unit = egas_unit;
   // Rgas in cgs
   Rgas = 8.31451e+7; // erg/(mol*K)
@@ -250,8 +262,10 @@ void Mesh::InitUserMeshData(ParameterInput *pin) {
   a_r_dim = 7.5657e-15; // radiation constant in erg cm^-3 K^-4
 
   Real vel_unit = std::sqrt(pres_unit/rho_unit);
-  time_unit = leng_unit/vel_unit;
+  if (time_unit < 0.0) time_unit = leng_unit/vel_unit;
+  if (leng_unit < 0.0) leng_unit = vel_unit*time_unit;
   std::cout << "time_unit = " << time_unit << " s" << std::endl;
+  std::cout << "leng_unit = " << leng_unit << " cm" << std::endl;
 
   calc_in_temp = pin->GetOrAddBoolean("mgfld", "calc_in_temp", false);
   is_gauss = pin->GetOrAddBoolean("problem", "is_gauss", false);

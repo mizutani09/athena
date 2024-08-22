@@ -90,8 +90,22 @@ void FLD::InitFLDConstants(ParameterInput *pin) {
   Real egas_unit = pin->GetReal("hydro", "egas_unit");
   Real pres_unit = egas_unit;
   Real vel_unit = std::sqrt(pres_unit/rho_unit);
-  Real leng_unit = pin->GetReal("hydro", "leng_unit");
-  Real time_unit = leng_unit/vel_unit;
+
+  Real time_unit = pin->GetOrAddReal("hydro", "time_unit", -1.0);
+  Real leng_unit = pin->GetOrAddReal("hydro", "leng_unit", -1.0);
+  if (time_unit < 0.0 && leng_unit < 0.0) {
+    std::stringstream msg;
+    msg << "### FATAL ERROR in function [FLD::InitFLDConstants]" << std::endl;
+    msg << "time_unit or leng_unit must be specified in block 'hydro'.";
+    ATHENA_ERROR(msg);
+  } else if (time_unit > 0.0 && leng_unit > 0.0) {
+    std::stringstream msg;
+    msg << "time_unit and leng_unit cannot be specified at the same time.";
+    ATHENA_ERROR(msg);
+  }
+  if (time_unit < 0.0) time_unit = leng_unit/vel_unit;
+  if (leng_unit < 0.0) leng_unit = vel_unit*time_unit;
+
   Real mu = pin->GetReal("hydro", "mu");
   Real T_unit = pres_unit/rho_unit*mu/R_gas;
 
