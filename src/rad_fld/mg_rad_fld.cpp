@@ -284,13 +284,16 @@ void MGFLDDriver::Solve(int stage, Real dt) {
     // std::cout << "End RetrieveResult" << std::endl;
     if (prfld->output_defect)
       pmg->RetrieveDefect(prfld->def, 0, NGHOST);
-    // std::cout << "Finish RetrieveDefect" << std::endl;
+  }
+  fldtlist_->DoTaskListOneStage(pmy_mesh_, stage);
+#pragma omp parallel for num_threads(nthreads_)
+  for (auto itr = vmg_.begin(); itr < vmg_.end(); itr++) {
+    MGFLD *pmg = static_cast<MGFLD*>(*itr);
+    FLD *prfld = pmg->pmy_block_->prfld;
+    Hydro *phydro = pmg->pmy_block_->phydro;
     if (!prfld->only_rad)
       prfld->UpdateHydroVariables(phydro->w, prfld->u);
   }
-  // std::cout << "pre-DoTaskListOneStage" << std::endl;
-  fldtlist_->DoTaskListOneStage(pmy_mesh_, stage);
-  // std::cout << "End MGFLDDriver::Solve" << std::endl;
   return;
 }
 
