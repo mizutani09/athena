@@ -62,7 +62,8 @@ class FLD {
   void LoadHydroVariables(const AthenaArray<Real> &w, AthenaArray<Real> &u);
   void CalculateCoefficients(const AthenaArray<Real> &w,
                              const AthenaArray<Real> &u);
-  void UpdateHydroVariables(AthenaArray<Real> &w, const AthenaArray<Real> &u);
+  void UpdateHydroVariables(AthenaArray<Real> &w,
+       AthenaArray<Real> &hydro_u, const AthenaArray<Real> &fld_u);
   CellCenteredBoundaryVariable rfldbvar;
 
   friend class MGFLDDriver;

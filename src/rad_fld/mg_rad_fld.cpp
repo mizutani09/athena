@@ -292,7 +292,7 @@ void MGFLDDriver::Solve(int stage, Real dt) {
     FLD *prfld = pmg->pmy_block_->prfld;
     Hydro *phydro = pmg->pmy_block_->phydro;
     if (!prfld->only_rad)
-      prfld->UpdateHydroVariables(phydro->w, prfld->u);
+      prfld->UpdateHydroVariables(phydro->w, phydro->u, prfld->u);
   }
   return;
 }
@@ -374,7 +374,6 @@ void MGFLD::Smooth(AthenaArray<Real> &u, const AthenaArray<Real> &src,
 #pragma ivdep
           for (int i=il+c; i<=iu; i+=2) {
             u(RadFLD::RAD,k,j,i) += omega_ * (work(k,j,i) - u(RadFLD::RAD,k,j,i));
-            u(RadFLD::RAD,k,j,i) = 100.0; // caution!
             u(RadFLD::GAS,k,j,i) = (src(RadFLD::GAS,k,j,i)-matrix(RadFLD::CPGR,k,j,i)*u(RadFLD::RAD,k,j,i)-matrix(RadFLD::CPGC,k,j,i))/matrix(RadFLD::CPGG,k,j,i);
           }
         }

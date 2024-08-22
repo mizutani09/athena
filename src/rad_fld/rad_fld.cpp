@@ -199,13 +199,15 @@ void FLD::LoadHydroVariables(const AthenaArray<Real> &w, AthenaArray<Real> &u) {
 
 
 //----------------------------------------------------------------------------------------
-//! \fn void FLD::UpdateHydroVariables(AthenaArray<Real> &w, const AthenaArray<Real> &u)
+//! \fn void FLD::UpdateHydroVariables(AthenaArray<Real> &w,
+//!               AthenaArray<Real> &hydro_u, const AthenaArray<Real> &fld_u)
 //! \brief Update conserved variables from hydro variables
-void FLD::UpdateHydroVariables(AthenaArray<Real> &w, const AthenaArray<Real> &u) {
+void FLD::UpdateHydroVariables(AthenaArray<Real> &w, AthenaArray<Real> &hydro_u, const AthenaArray<Real> &fld_u) {
   int il = pmy_block->is - NGHOST, iu = pmy_block->ie + NGHOST;
   int jl = pmy_block->js, ju = pmy_block->je;
   int kl = pmy_block->ks, ku = pmy_block->ke;
   Real gm1 = pmy_block->peos->GetGamma() - 1.0;
+  Real igm1 = 1.0/gm1;
   if (pmy_block->pmy_mesh->f2)
     jl -= NGHOST, ju += NGHOST;
   if (pmy_block->pmy_mesh->f3)
@@ -213,7 +215,8 @@ void FLD::UpdateHydroVariables(AthenaArray<Real> &w, const AthenaArray<Real> &u)
   for (int k = kl; k <= ku; ++k) {
     for (int j = jl; j <= ju; ++j) {
       for (int i = il; i <= iu; ++i) {
-        w(IPR,k,j,i) = gm1*u(RadFLD::GAS,k,j,i);
+        hydro_u(IEN,k,j,i) += (fld_u(RadFLD::GAS,k,j,i) - igm1*w(IPR,k,j,i));
+        w(IPR,k,j,i) = gm1*fld_u(RadFLD::GAS,k,j,i);
       }
     }
   }
