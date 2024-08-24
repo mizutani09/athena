@@ -114,7 +114,7 @@ class Multigrid {
   void SmoothBlock(int color);
   void CalculateDefectBlock();
   void CalculateFASRHSBlock();
-  void CalculateMatrixBlock(Real dt);
+  void CalculateMatrixBlock();
   void SetFromRootGrid(bool folddata);
   Real CalculateDefectNorm(MGNormType nrm, int n);
   Real CalculateTotal(MGVariable type, int n);
@@ -156,7 +156,7 @@ class Multigrid {
                  const AthenaArray<Real> &coeff, const AthenaArray<Real> &matrix,
                  int rlev, int il, int iu, int jl, int ju, int kl, int ku, bool th) = 0;
   virtual void CalculateMatrix(AthenaArray<Real> &matrix, const AthenaArray<Real> &coeff,
-          Real dt, int rlev, int il, int iu, int jl, int ju, int kl, int ku, bool th) {}
+               int rlev, int il, int iu, int jl, int ju, int kl, int ku, bool th) {}
 
   friend class MultigridDriver;
   friend class MultigridTaskList;
@@ -207,7 +207,7 @@ class MultigridDriver {
  protected:
   void CheckBoundaryFunctions();
   void SubtractAverage(MGVariable type);
-  void SetupMultigrid(Real dt, bool ftrivial);
+  void SetupMultigrid(bool ftrivial = false);
   void SetupCoefficients();
   void TransferFromBlocksToRoot(bool initflag);
   void TransferFromRootToBlocks(bool folddata);
@@ -222,7 +222,7 @@ class MultigridDriver {
 
   virtual void SolveCoarsestGrid();
   Real CalculateDefectNorm(MGNormType nrm, int n);
-  void CalculateMatrix(Real dt);
+  void CalculateMatrixAll();
   Multigrid* FindMultigrid(int tgid);
 
   // octet manipulation functions

@@ -46,7 +46,7 @@ class MGCRDiffusion : public Multigrid {
                 const AthenaArray<Real> &coeff, const AthenaArray<Real> &matrix,
                 int rlev, int il, int iu, int jl, int ju, int kl, int ku, bool th) final;
   void CalculateMatrix(AthenaArray<Real> &matrix, const AthenaArray<Real> &coeff,
-       Real dt, int rlev, int il, int iu, int jl, int ju, int kl, int ku, bool th) final;
+                int rlev, int il, int iu, int jl, int ju, int kl, int ku, bool th) final;
 
   friend class MGCRDiffusionDriver;
 
@@ -63,7 +63,7 @@ class MGCRDiffusionDriver : public MultigridDriver {
  public:
   MGCRDiffusionDriver(Mesh *pm, ParameterInput *pin);
   ~MGCRDiffusionDriver();
-  void Solve(int stage, Real dt) final;
+  void Solve(int stage, Real dt = 0.0) final;
 
   friend class MGCRDiffusion;
 
@@ -72,6 +72,7 @@ class MGCRDiffusionDriver : public MultigridDriver {
   Real omega_;
   int fsmoother_;
   bool fsteady_;
+  Real dt_;
 };
 
 #endif // CRDIFFUSION_MG_CRDIFFUSION_HPP_

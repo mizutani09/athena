@@ -533,16 +533,16 @@ void Multigrid::CalculateFASRHSBlock() {
 
 
 //----------------------------------------------------------------------------------------
-//! \fn void Multigrid::CalculateMatrixBlock(Real dt)
+//! \fn void Multigrid::CalculateMatrixBlock()
 //  \brief calculate matrix elements for all the levels
 
-void Multigrid::CalculateMatrixBlock(Real dt) {
+void Multigrid::CalculateMatrixBlock() {
   int is, ie, js, je, ks, ke;
   is=js=ks=ngh_;
   for (int lev = nlevel_ - 1; lev >= 0; lev--) {
     int ll = nlevel_ - lev - 1;
     ie=is+(size_.nx1>>ll)-1, je=js+(size_.nx2>>ll)-1, ke=ks+(size_.nx3>>ll)-1;
-    CalculateMatrix(matrix_[lev], coeff_[lev], dt, -ll, is, ie, js, je, ks, ke, false);
+    CalculateMatrix(matrix_[lev], coeff_[lev], -ll, is, ie, js, je, ks, ke, false);
   }
 
   return;

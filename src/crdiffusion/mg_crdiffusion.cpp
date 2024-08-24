@@ -206,6 +206,7 @@ void MGCRDiffusion::AddCRSource(const AthenaArray<Real> &src, int ngh, Real dt) 
 //! \brief load the data and solve
 
 void MGCRDiffusionDriver::Solve(int stage, Real dt) {
+  dt_ = dt;
   // Construct the Multigrid array
   vmg_.clear();
   for (int i = 0; i < pmy_mesh_->nblocal; ++i)
@@ -225,11 +226,11 @@ void MGCRDiffusionDriver::Solve(int stage, Real dt) {
     if (mode_ == 1) // load the current data as the initial guess
       pmg->LoadFinestData(pcrdiff->ecr, 0, NGHOST);
     pmg->LoadCoefficients(pcrdiff->coeff, NGHOST);
-    pmg->AddCRSource(pcrdiff->source, NGHOST, dt);
+    pmg->AddCRSource(pcrdiff->source, NGHOST, dt_);
   }
 
-  if (dt > 0.0 || fsteady_) {
-    SetupMultigrid(dt, false);
+  if (dt_ > 0.0 || fsteady_) {
+    SetupMultigrid(false);
     if (mode_ == 0) {
       SolveFMGCycle();
     } else {
@@ -239,7 +240,7 @@ void MGCRDiffusionDriver::Solve(int stage, Real dt) {
         SolveIterativeFixedTimes();
     }
   } else { // just copy trivial solution and set boundaries
-    SetupMultigrid(dt, true);
+    SetupMultigrid(true);
     if (mode_ != 1) {
 #pragma omp parallel for num_threads(nthreads_)
       for (auto itr = vmg_.begin(); itr < vmg_.end(); itr++) {
@@ -503,15 +504,15 @@ void MGCRDiffusion::CalculateFASRHS(AthenaArray<Real> &src, const AthenaArray<Re
 
 //----------------------------------------------------------------------------------------
 //! \fn void MGCRDiffusion::CalculateMatrix(AthenaArray<Real> &matrix,
-//!                         const AthenaArray<Real> &coeff, int rlev, Real dt,
+//!                         const AthenaArray<Real> &coeff, int rlev,
 //!                         int il, int iu, int jl, int ju, int kl, int ku, bool th)
 //! \brief calculate Matrix element for cosmic ray transport
 //!        rlev = relative level from the finest level of this Multigrid block
 
 void MGCRDiffusion::CalculateMatrix(AthenaArray<Real> &matrix,
-                             const AthenaArray<Real> &coeff, Real dt, int rlev,
+                             const AthenaArray<Real> &coeff, int rlev,
                              int il, int iu, int jl, int ju, int kl, int ku, bool th) {
-  Real dx;
+  Real dx, dt = static_cast<MGCRDiffusionDriver*>(pmy_driver_)->dt_;
   if (rlev <= 0) dx = rdx_*static_cast<Real>(1<<(-rlev));
   else           dx = rdx_/static_cast<Real>(1<<rlev);
   if (!(static_cast<MGCRDiffusionDriver*>(pmy_driver_)->fsteady_)) { // time-dependent

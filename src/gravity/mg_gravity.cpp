@@ -185,7 +185,7 @@ void MGGravityDriver::Solve(int stage, Real dt) {
       pmg->LoadFinestData(pmg->pmy_block_->pgrav->phi, 0, NGHOST);
   }
 
-  SetupMultigrid(dt, false);
+  SetupMultigrid(false);
 
   if (mode_ == 0) {
     SolveFMGCycle();

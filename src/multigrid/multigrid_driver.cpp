@@ -401,10 +401,10 @@ void MultigridDriver::SubtractAverage(MGVariable type) {
 
 
 //----------------------------------------------------------------------------------------
-//! \fn void MultigridDriver::SetupMultigrid(Real dt, bool ftrivial)
+//! \fn void MultigridDriver::SetupMultigrid(bool ftrivial)
 //  \brief initialize the source assuming that the source terms are already loaded
 
-void MultigridDriver::SetupMultigrid(Real dt, bool ftrivial) {
+void MultigridDriver::SetupMultigrid(bool ftrivial) {
   locrootlevel_ = pmy_mesh_->root_level;
   nrootlevel_ = mgroot_->GetNumberOfLevels();
   nmblevel_ = vmg_[0]->GetNumberOfLevels();
@@ -508,7 +508,7 @@ void MultigridDriver::SetupMultigrid(Real dt, bool ftrivial) {
     if (ncoeff_ > 0)
       SetupCoefficients();
     if (nmatrix_ > 0)
-      CalculateMatrix(dt);
+      CalculateMatrixAll();
 
     if (mode_ == 0) { // FMG
 #pragma omp parallel for num_threads(nthreads_)
@@ -1279,14 +1279,14 @@ void MultigridDriver::RestrictOctets() {
 
 
 //----------------------------------------------------------------------------------------
-//! \fn void MultigridDriver::CalculateMatrix(Real dt)
+//! \fn void MultigridDriver::CalculateMatrixAll()
 //! \brief Calculate Matrix elements
 
-void MultigridDriver::CalculateMatrix(Real dt) {
+void MultigridDriver::CalculateMatrixAll() {
 #pragma omp parallel for num_threads(nthreads_)
   for (auto itr = vmg_.begin(); itr < vmg_.end(); itr++) {
     Multigrid *pmg = *itr;
-    pmg->CalculateMatrixBlock(dt);
+    pmg->CalculateMatrixBlock();
   }
   if (nreflevel_ > 0) {
     const int &ngh = mgroot_->ngh_;
@@ -1294,12 +1294,12 @@ void MultigridDriver::CalculateMatrix(Real dt) {
 #pragma omp parallel for num_threads(nthreads_)
       for (int o = 0; o < noctets_[l]; ++o) {
         MGOctet &oct = octets_[l][o];
-        mgroot_->CalculateMatrix(oct.matrix, oct.coeff, dt, l+1,
+        mgroot_->CalculateMatrix(oct.matrix, oct.coeff, l+1,
                           os_, oe_, os_, oe_, os_, oe_, false);
       }
     }
   }
-  mgroot_->CalculateMatrixBlock(dt);
+  mgroot_->CalculateMatrixBlock();
 
   return;
 }
