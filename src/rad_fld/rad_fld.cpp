@@ -111,8 +111,7 @@ void FLD::InitFLDConstants(ParameterInput *pin) {
 
   c_ph = c_ph_dim/vel_unit;
   a_r = a_r_dim/(egas_unit/std::pow(T_unit, 4));
-  const_opacity_dim *= rho_unit;
-  const_opacity = const_opacity_dim*leng_unit;
+  const_opacity = const_opacity_dim*leng_unit*rho_unit; // to be multiplied by rho
 
   std::cout << "c_ph in sim: " << c_ph << std::endl;
   std::cout << "a_r in sim: " << a_r << std::endl;
@@ -158,7 +157,7 @@ void FLD::CalculateCoefficients(const AthenaArray<Real> &w,
 
         // for later calculation
         if (is_couple) {
-          coeff(RadFLD::DSIGMAP,k,j,i) = const_opacity; // calc_sigma_p(rho, T); on center?
+          coeff(RadFLD::DSIGMAP,k,j,i) = const_opacity*w(IDN,k,j,i); // calc_sigma_p(rho, T); on center?
           coeff(RadFLD::DCOUPLE,k,j,i) = gm1/w(IDN,k,j,i);
         } else {
           coeff(RadFLD::DSIGMAP,k,j,i) = 0.0;
