@@ -90,15 +90,28 @@ void FLD::InitFLDConstants(ParameterInput *pin) {
   Real egas_unit = pin->GetReal("hydro", "egas_unit");
   Real pres_unit = egas_unit;
   Real vel_unit = std::sqrt(pres_unit/rho_unit);
-  Real leng_unit = pin->GetReal("hydro", "leng_unit");
-  Real time_unit = leng_unit/vel_unit;
+
+  Real time_unit = pin->GetOrAddReal("hydro", "time_unit", -1.0);
+  Real leng_unit = pin->GetOrAddReal("hydro", "leng_unit", -1.0);
+  if (time_unit < 0.0 && leng_unit < 0.0) {
+    std::stringstream msg;
+    msg << "### FATAL ERROR in function [FLD::InitFLDConstants]" << std::endl;
+    msg << "time_unit or leng_unit must be specified in block 'hydro'.";
+    ATHENA_ERROR(msg);
+  } else if (time_unit > 0.0 && leng_unit > 0.0) {
+    std::stringstream msg;
+    msg << "time_unit and leng_unit cannot be specified at the same time.";
+    ATHENA_ERROR(msg);
+  }
+  if (time_unit < 0.0) time_unit = leng_unit/vel_unit;
+  if (leng_unit < 0.0) leng_unit = vel_unit*time_unit;
+
   Real mu = pin->GetReal("hydro", "mu");
   Real T_unit = pres_unit/rho_unit*mu/R_gas;
 
   c_ph = c_ph_dim/vel_unit;
   a_r = a_r_dim/(egas_unit/std::pow(T_unit, 4));
-  const_opacity_dim *= rho_unit;
-  const_opacity = const_opacity_dim*leng_unit;
+  const_opacity = const_opacity_dim*leng_unit*rho_unit; // to be multiplied by rho
 
   std::cout << "c_ph in sim: " << c_ph << std::endl;
   std::cout << "a_r in sim: " << a_r << std::endl;
@@ -144,7 +157,7 @@ void FLD::CalculateCoefficients(const AthenaArray<Real> &w,
 
         // for later calculation
         if (is_couple) {
-          coeff(RadFLD::DSIGMAP,k,j,i) = const_opacity; // calc_sigma_p(rho, T); on center?
+          coeff(RadFLD::DSIGMAP,k,j,i) = const_opacity*w(IDN,k,j,i); // calc_sigma_p(rho, T); on center?
           coeff(RadFLD::DCOUPLE,k,j,i) = gm1/w(IDN,k,j,i);
         } else {
           coeff(RadFLD::DSIGMAP,k,j,i) = 0.0;
@@ -185,13 +198,15 @@ void FLD::LoadHydroVariables(const AthenaArray<Real> &w, AthenaArray<Real> &u) {
 
 
 //----------------------------------------------------------------------------------------
-//! \fn void FLD::UpdateHydroVariables(AthenaArray<Real> &w, const AthenaArray<Real> &u)
+//! \fn void FLD::UpdateHydroVariables(AthenaArray<Real> &w,
+//!               AthenaArray<Real> &hydro_u, const AthenaArray<Real> &fld_u)
 //! \brief Update conserved variables from hydro variables
-void FLD::UpdateHydroVariables(AthenaArray<Real> &w, const AthenaArray<Real> &u) {
+void FLD::UpdateHydroVariables(AthenaArray<Real> &w, AthenaArray<Real> &hydro_u, const AthenaArray<Real> &fld_u) {
   int il = pmy_block->is - NGHOST, iu = pmy_block->ie + NGHOST;
   int jl = pmy_block->js, ju = pmy_block->je;
   int kl = pmy_block->ks, ku = pmy_block->ke;
   Real gm1 = pmy_block->peos->GetGamma() - 1.0;
+  Real igm1 = 1.0/gm1;
   if (pmy_block->pmy_mesh->f2)
     jl -= NGHOST, ju += NGHOST;
   if (pmy_block->pmy_mesh->f3)
@@ -199,7 +214,8 @@ void FLD::UpdateHydroVariables(AthenaArray<Real> &w, const AthenaArray<Real> &u)
   for (int k = kl; k <= ku; ++k) {
     for (int j = jl; j <= ju; ++j) {
       for (int i = il; i <= iu; ++i) {
-        w(IPR,k,j,i) = gm1*u(RadFLD::GAS,k,j,i);
+        hydro_u(IEN,k,j,i) += (fld_u(RadFLD::GAS,k,j,i) - igm1*w(IPR,k,j,i));
+        w(IPR,k,j,i) = gm1*fld_u(RadFLD::GAS,k,j,i);
       }
     }
   }

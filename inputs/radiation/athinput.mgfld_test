@@ -16,39 +16,41 @@ dcycle     = 1       # time increment between outputs
 #dcycle     = 10       # time increment between outputs
 #x2_slice   = 0.0        # slice location in X2
 #x3_slice   = 0.0        # slice location in X3
+#ghost_zones     = true
 
-<output3>
-file_type  = tab
-variable   = uov
-# dcycle     = 1
-dt         = 0.1
-x2_slice   = 0.0
-x3_slice   = 0.0
+#<output3>
+#file_type  = tab
+#variable   = uov
+#dcycle     = 10
+# dt         = 0.1
+#x2_slice   = 0.0
+#x3_slice   = 0.0
+#ghost_zones     = true
 
 <time>
-cfl_number = 0.3        # The Courant, Friedrichs, & Lewy (CFL) Number
-nlim       = -1          # cycle limit
-tlim       = 1.0        # time limit
+cfl_number = 0.003        # The Courant, Friedrichs, & Lewy (CFL) Number
+nlim       = 100          # cycle limit
+tlim       = -1        # time limit
 integrator  = rk2       # time integration algorithm
 xorder      = 2         # order of spatial reconstruction
 ncycle_out  = 10         # interval for stdout summary info
 
 <mesh>
 nx1        = 4         # Number of zones in X1-direction
-x1min      = -0.8       # minimum value of X1
-x1max      = 0.8        # maximum value of X1
+x1min      = -0.1       # minimum value of X1
+x1max      = 0.1        # maximum value of X1
 ix1_bc     = outflow    # inner-X1 boundary flag
 ox1_bc     = outflow    # outer-X1 boundary flag
 
 nx2        = 4         # Number of zones in X2-direction
-x2min      = -0.8       # minimum value of X2
-x2max      = 0.8        # maximum value of X2
+x2min      = -0.1       # minimum value of X2
+x2max      = 0.1        # maximum value of X2
 ix2_bc     = outflow    # inner-X2 boundary flag
 ox2_bc     = outflow    # outer-X2 boundary flag
 
 nx3        = 4         # Number of zones in X3-direction
-x3min      = -0.8       # minimum value of X3
-x3max      = 0.8        # maximum value of X3
+x3min      = -0.1       # minimum value of X3
+x3max      = 0.1        # maximum value of X3
 ix3_bc     = outflow    # inner-X3 boundary flag
 ox3_bc     = outflow    # outer-X3 boundary flag
 
@@ -59,10 +61,11 @@ nx3        = 4
 
 <hydro>
 gamma           = 1.666666666667 # gamma = C_p/C_v
-# iso_sound_speed = 0.4082482905   # equivalent to sqrt(gamma*p/d) for p=0.1, d=1
-rho_unit        = 1.0            # in g cm^-3
-egas_unit       = 1.0            # in erg cm^-3
-leng_unit       = 1.0            # in cm
+# iso_sound_speed = 0.4082482905 # equivalent to sqrt(gamma*p/d) for p=0.1, d=1
+rho_unit        = 1e-7           # in g cm^-3
+egas_unit       = 1e10           # in erg cm^-3
+# leng_unit       = 1e-2            # in cm
+time_unit       = 1e-8          # in s
 mu              = 0.6            # mean molecular weight in g mol^-1
 
 <mgfld>
@@ -71,7 +74,7 @@ fas             = true
 smoother        = jacobi-rb
 npresmooth      = 2
 npostsmooth     = 2
-omega           = 1.1
+omega           = 1.0
 niteration      = 10
 #threshold       = 0.00001
 output_defect   = true
@@ -85,10 +88,11 @@ ox3_bc          = user
 calc_in_temp    = false
 is_couple       = true
 only_rad        = true
-const_opacity   = 4e-8 # in cm^-1, -1.0 for non-constant
+const_opacity   = 0.4 # in cm^2 g^-1 caution!
 
 <problem>
 is_gauss        = false
 Er_0            = 1e+12 # in erg cm^-3
-eg_0            = 1e+10 # in erg cm^-3
-rho0            = 1.0   # in g cm^-3
+eg_0            = 1e+2 # in erg cm^-3
+rho0            = 1e-7   # in g cm^-3
+r0              = 0.5   # non_dim
