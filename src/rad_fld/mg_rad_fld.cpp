@@ -52,13 +52,13 @@ MGFLDDriver::MGFLDDriver(Mesh *pm, ParameterInput *pin)
   eps_ = pin->GetOrAddReal("mgfld", "threshold", -1.0);
   niter_ = pin->GetOrAddInteger("mgfld", "niteration", -1);
   ffas_ = pin->GetOrAddBoolean("mgfld", "fas", ffas_);
-  fsubtract_average_ = false;
   omega_ = pin->GetOrAddReal("mgfld", "omega", 1.0);
   fsteady_ = pin->GetOrAddBoolean("mgfld", "steady", false);
   npresmooth_ = pin->GetOrAddReal("mgfld", "npresmooth", 2);
   npostsmooth_ = pin->GetOrAddReal("mgfld", "npostsmooth", 2);
   fshowdef_ = pin->GetOrAddBoolean("mgfld", "show_defect", fshowdef_);
   std::string smoother = pin->GetOrAddString("mgfld", "smoother", "jacobi-rb");
+  matrixmode_ = 1;
   if (smoother == "jacobi-rb") {
     fsmoother_ = 1;
     redblack_ = true;
@@ -109,6 +109,7 @@ MGFLDDriver::MGFLDDriver(Mesh *pm, ParameterInput *pin)
   mg_mesh_bcs_[outer_x3] =
               GetMGBoundaryFlag(pin->GetOrAddString("mgfld", "ox3_bc", "none"));
   CheckBoundaryFunctions();
+  fsubtract_average_ = false; // override the subtract average flag
 
   mgtlist_ = new MultigridTaskList(this);
 
@@ -228,9 +229,8 @@ void MGFLDDriver::Solve(int stage, Real dt) {
     prfld->CalculateCoefficients(phydro->w, prfld->u);
     pmg->LoadSource(prfld->u, 0, NGHOST, 1.0);
     // std::cout << "post-LoadSource" << std::endl;
-    if (mode_ == 1) // load the current data as the initial guess
-      pmg->LoadFinestData(prfld->u, 0, NGHOST);
-      pmg->LoadCoefficients(prfld->coeff, NGHOST);
+    pmg->LoadFinestData(prfld->u, 0, NGHOST); // always load the initial guess
+    pmg->LoadCoefficients(prfld->coeff, NGHOST);
     // pmg->AddFLDSource(prfld->source, NGHOST, dt_);
     // std::cout << "Finish LoadFinesData" << std::endl;
   }
@@ -598,15 +598,16 @@ void MGFLDDriver::ProlongateOctetBoundariesFluxCons(AthenaArray<Real> &dst,
 
 
 //----------------------------------------------------------------------------------------
-//! \fn void MGFLD::CalculateMatrix(AthenaArray<Real> &matrix,
-//!                          const AthenaArray<Real> &coeff, int rlev,
-//!                          int il, int iu, int jl, int ju, int kl, int ku, bool th)
+//! \fn void MGFLD::CalculateMatrix(AthenaArray<Real> &matrix, const AthenaArray<Real> &u,
+//!                 const AthenaArray<Real> &src, const AthenaArray<Real> &coeff, 
+//!                 int rlev, int il, int iu, int jl, int ju, int kl, int ku, bool th)
 //! \brief calculate Matrix element for FLD
 //!        rlev = relative level from the finest level of this Multigrid block
 
-void MGFLD::CalculateMatrix(AthenaArray<Real> &matrix, const AthenaArray<Real> &coeff,
+void MGFLD::CalculateMatrix(AthenaArray<Real> &matrix, const AthenaArray<Real> &u,
+                     const AthenaArray<Real> &src, const AthenaArray<Real> &coeff,
                      int rlev, int il, int iu, int jl, int ju, int kl, int ku, bool th) {
-  Real dx, dt = static_cast<MGFLDDriver*>(pmy_driver_)->dt_;
+  Real dx, dt = pmy_driver_->dt_;
   if (rlev <= 0) dx = rdx_*static_cast<Real>(1<<(-rlev));
   else           dx = rdx_/static_cast<Real>(1<<rlev);
   Real idx = 1.0/dx;
@@ -618,9 +619,12 @@ void MGFLD::CalculateMatrix(AthenaArray<Real> &matrix, const AthenaArray<Real> &
       for (int i=il; i<=iu; i++) {
         // center
         matrix(RadFLD::CCC,k,j,i) = 1.0
-                                  + fac * (coeff(RadFLD::DXM,k,j,i) + coeff(RadFLD::DXP,k,j,i)
-                                         + coeff(RadFLD::DYM,k,j,i) + coeff(RadFLD::DYP,k,j,i)
-                                         + coeff(RadFLD::DZM,k,j,i) + coeff(RadFLD::DZP,k,j,i));
+                                  + fac * (coeff(RadFLD::DXM,k,j,i)
+                                         + coeff(RadFLD::DXP,k,j,i)
+                                         + coeff(RadFLD::DYM,k,j,i)
+                                         + coeff(RadFLD::DYP,k,j,i)
+                                         + coeff(RadFLD::DZM,k,j,i)
+                                         + coeff(RadFLD::DZP,k,j,i));
 
         // face
         matrix(RadFLD::CCM,k,j,i) = -fac*coeff(RadFLD::DXM,k,j,i);
@@ -633,17 +637,25 @@ void MGFLD::CalculateMatrix(AthenaArray<Real> &matrix, const AthenaArray<Real> &
         // coupling
         Real c_ph = coeff(RadFLD::DCPH,k,j,i);
         Real a_r = coeff(RadFLD::DAR,k,j,i);
-        Real Tg_prev = coeff(RadFLD::DCOUPLE,k,j,i)*coeff(RadFLD::DEGAS,k,j,i);
+        Real Tg = coeff(RadFLD::DCOUPLE,k,j,i)*u(RadFLD::GAS,k,j,i); // latest energy
         matrix(RadFLD::CPRR,k,j,i) = dt*c_ph*coeff(RadFLD::DSIGMAP,k,j,i);
-        matrix(RadFLD::CPRG,k,j,i) = -4.0*dt*c_ph*coeff(RadFLD::DSIGMAP,k,j,i)*a_r*std::pow(Tg_prev, 3)*coeff(RadFLD::DCOUPLE,k,j,i);
-        matrix(RadFLD::CPRC,k,j,i) =  3.0*dt*c_ph*coeff(RadFLD::DSIGMAP,k,j,i)*a_r*std::pow(Tg_prev, 4);
+        matrix(RadFLD::CPRG,k,j,i) = -4.0*dt*c_ph*coeff(RadFLD::DSIGMAP,k,j,i)
+                                     *a_r*std::pow(Tg, 3)*coeff(RadFLD::DCOUPLE,k,j,i);
+        matrix(RadFLD::CPRC,k,j,i) =  3.0*dt*c_ph*coeff(RadFLD::DSIGMAP,k,j,i)
+                                     *a_r*std::pow(Tg, 4);
         matrix(RadFLD::CPGR,k,j,i) = -dt*c_ph*coeff(RadFLD::DSIGMAP,k,j,i);
-        matrix(RadFLD::CPGG,k,j,i) = 1.0+4.0*dt*c_ph*coeff(RadFLD::DSIGMAP,k,j,i)*a_r*std::pow(Tg_prev, 3)*coeff(RadFLD::DCOUPLE,k,j,i);
-        matrix(RadFLD::CPGC,k,j,i) = -3.0*dt*c_ph*coeff(RadFLD::DSIGMAP,k,j,i)*a_r*std::pow(Tg_prev, 4);
+        matrix(RadFLD::CPGG,k,j,i) = 1.0+4.0*dt*c_ph*coeff(RadFLD::DSIGMAP,k,j,i)
+                                     *a_r*std::pow(Tg, 3)*coeff(RadFLD::DCOUPLE,k,j,i);
+        matrix(RadFLD::CPGC,k,j,i) = -3.0*dt*c_ph*coeff(RadFLD::DSIGMAP,k,j,i)
+                                     *a_r*std::pow(Tg, 4);
 
         // additional term from egas
-        matrix(RadFLD::CPRRS,k,j,i) = -matrix(RadFLD::CPRG,k,j,i)*matrix(RadFLD::CPGR,k,j,i)/matrix(RadFLD::CPGG,k,j,i);
-        matrix(RadFLD::CPRCS,k,j,i) = matrix(RadFLD::CPRG,k,j,i)*(coeff(RadFLD::DEGAS,k,j,i)-matrix(RadFLD::CPGC,k,j,i))/matrix(RadFLD::CPGG,k,j,i);
+        matrix(RadFLD::CPRRS,k,j,i) = -matrix(RadFLD::CPRG,k,j,i)
+                                      *matrix(RadFLD::CPGR,k,j,i)
+                                      /matrix(RadFLD::CPGG,k,j,i);
+        matrix(RadFLD::CPRCS,k,j,i) = matrix(RadFLD::CPRG,k,j,i)
+                                     /matrix(RadFLD::CPGG,k,j,i)
+                                     *(u(RadFLD::GAS,k,j,i)-matrix(RadFLD::CPGC,k,j,i));
       }
     }
   }

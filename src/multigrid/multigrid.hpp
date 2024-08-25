@@ -104,6 +104,7 @@ class Multigrid {
   void LoadCoefficients(const AthenaArray<Real> &coeff, int ngh);
   void ApplyMask();
   void RestrictFMGSource();
+  void RestrictInitialData();
   void RetrieveResult(AthenaArray<Real> &dst, int ns, int ngh);
   void RetrieveDefect(AthenaArray<Real> &dst, int ns, int ngh);
   void ZeroClearData();
@@ -114,7 +115,8 @@ class Multigrid {
   void SmoothBlock(int color);
   void CalculateDefectBlock();
   void CalculateFASRHSBlock();
-  void CalculateMatrixBlock();
+  void CalculateMatrixBlockCurrent();
+  void CalculateMatrixBlockAll();
   void SetFromRootGrid(bool folddata);
   Real CalculateDefectNorm(MGNormType nrm, int n);
   Real CalculateTotal(MGVariable type, int n);
@@ -155,7 +157,8 @@ class Multigrid {
   virtual void CalculateFASRHS(AthenaArray<Real> &def, const AthenaArray<Real> &src,
                  const AthenaArray<Real> &coeff, const AthenaArray<Real> &matrix,
                  int rlev, int il, int iu, int jl, int ju, int kl, int ku, bool th) = 0;
-  virtual void CalculateMatrix(AthenaArray<Real> &matrix, const AthenaArray<Real> &coeff,
+  virtual void CalculateMatrix(AthenaArray<Real> &matrix, const AthenaArray<Real> &u,
+               const AthenaArray<Real> &src, const AthenaArray<Real> &coeff,
                int rlev, int il, int iu, int jl, int ju, int kl, int ku, bool th) {}
 
   friend class MultigridDriver;
@@ -209,6 +212,7 @@ class MultigridDriver {
   void SubtractAverage(MGVariable type);
   void SetupMultigrid(bool ftrivial = false);
   void SetupCoefficients();
+  void RestrictInitialData();
   void TransferFromBlocksToRoot(bool initflag);
   void TransferFromRootToBlocks(bool folddata);
   void TransferCoefficientFromBlocksToRoot();
@@ -263,7 +267,7 @@ class MultigridDriver {
   // small functions
   int GetNumMultigrids() { return nblist_[Globals::my_rank]; }
 
-  int nranks_, nthreads_, nbtotal_, nvar_, ncoeff_, nmatrix_, mode_;
+  int nranks_, nthreads_, nbtotal_, nvar_, ncoeff_, nmatrix_, mode_, matrixmode_;
   int locrootlevel_, nrootlevel_, nmblevel_, ntotallevel_, nreflevel_, maxreflevel_;
   int current_level_, fmglevel_;
   int *nslist_, *nblist_, *nvlist_, *nvslist_, *nvlisti_, *nvslisti_,
@@ -278,7 +282,7 @@ class MultigridDriver {
   Multigrid *mgroot_;
   bool fsubtract_average_, ffas_, redblack_, needinit_, fshowdef_;
   Real last_ave_;
-  Real eps_;
+  Real eps_, dt_;
   int niter_, npresmooth_, npostsmooth_;
   int os_, oe_;
   int coffset_;

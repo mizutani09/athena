@@ -319,6 +319,23 @@ void Multigrid::RestrictCoefficients() {
 
 
 //----------------------------------------------------------------------------------------
+//! \fn void Multigrid::RestrictInitialData()
+//! \brief restrict initial data within a Multigrid object
+
+void Multigrid::RestrictInitialData() {
+  int is, ie, js, je, ks, ke;
+  is=js=ks=ngh_;
+  for (int lev = nlevel_ - 1; lev > 0; lev--) {
+    int ll = nlevel_ - lev;
+    ie=is+(size_.nx1>>ll)-1, je=js+(size_.nx2>>ll)-1, ke=ks+(size_.nx3>>ll)-1;
+    Restrict(u_[lev-1], u_[lev], nvar_, is, ie, js, je, ks, ke, false);
+    Restrict(src_[lev-1], src_[lev], nvar_, is, ie, js, je, ks, ke, false);
+  }
+  return;
+}
+
+
+//----------------------------------------------------------------------------------------
 //! \fn void Multigrid::RetrieveResult(AthenaArray<Real> &dst, int ns, int ngh)
 //! \brief Set the result, including the ghost zone
 
@@ -533,16 +550,35 @@ void Multigrid::CalculateFASRHSBlock() {
 
 
 //----------------------------------------------------------------------------------------
-//! \fn void Multigrid::CalculateMatrixBlock()
-//  \brief calculate matrix elements for all the levels
+//! \fn void Multigrid::CalculateMatrixBlockCurrent()
+//  \brief calculate matrix elements for the current level
 
-void Multigrid::CalculateMatrixBlock() {
+void Multigrid::CalculateMatrixBlockCurrent() {
   int is, ie, js, je, ks, ke;
   is=js=ks=ngh_;
-  for (int lev = nlevel_ - 1; lev >= 0; lev--) {
-    int ll = nlevel_ - lev - 1;
+  int ll = nlevel_ - current_level_ - 1;
+  ie=is+(size_.nx1>>ll)-1, je=js+(size_.nx2>>ll)-1, ke=ks+(size_.nx3>>ll)-1;
+
+  CalculateMatrix(matrix_[current_level_], u_[current_level_], src_[current_level_],
+                  coeff_[current_level_], -ll, is, ie, js, je, ks, ke, false);
+
+  return;
+}
+
+
+//----------------------------------------------------------------------------------------
+//! \fn void Multigrid::CalculateMatrixBlockAll()
+//  \brief calculate matrix elements for the levels coarser than the current level
+
+void Multigrid::CalculateMatrixBlockAll() {
+  int is, ie, js, je, ks, ke;
+  is=js=ks=ngh_;
+
+  for (int lev = current_level_; lev >= 0; lev--) {
+   int ll = nlevel_ - lev - 1;
     ie=is+(size_.nx1>>ll)-1, je=js+(size_.nx2>>ll)-1, ke=ks+(size_.nx3>>ll)-1;
-    CalculateMatrix(matrix_[lev], coeff_[lev], -ll, is, ie, js, je, ks, ke, false);
+    CalculateMatrix(matrix_[lev], u_[lev], src_[lev], coeff_[lev],
+                    -ll, is, ie, js, je, ks, ke, false);
   }
 
   return;

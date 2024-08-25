@@ -150,7 +150,7 @@ void FLD::CalculateCoefficients(const AthenaArray<Real> &w,
           coeff(RadFLD::DSIGMAP,k,j,i) = 0.0;
           coeff(RadFLD::DCOUPLE,k,j,i) = 0.0;
         }
-        coeff(RadFLD::DEGAS,k,j,i) = u(RadFLD::GAS,k,j,i); // we can just reuse src(RadFLD::GAS,k,j,i)
+        coeff(RadFLD::DEGAS,k,j,i) = u(RadFLD::GAS,k,j,i);
 
         coeff(RadFLD::DCPH,k,j,i) = c_ph; // should be different way
         coeff(RadFLD::DAR,k,j,i) = a_r;

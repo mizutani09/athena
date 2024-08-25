@@ -504,14 +504,15 @@ void MGCRDiffusion::CalculateFASRHS(AthenaArray<Real> &src, const AthenaArray<Re
 
 //----------------------------------------------------------------------------------------
 //! \fn void MGCRDiffusion::CalculateMatrix(AthenaArray<Real> &matrix,
+//!                         const AthenaArray<Real> &u, const AthenaArray<Real> &src,
 //!                         const AthenaArray<Real> &coeff, int rlev,
 //!                         int il, int iu, int jl, int ju, int kl, int ku, bool th)
 //! \brief calculate Matrix element for cosmic ray transport
 //!        rlev = relative level from the finest level of this Multigrid block
 
-void MGCRDiffusion::CalculateMatrix(AthenaArray<Real> &matrix,
-                             const AthenaArray<Real> &coeff, int rlev,
-                             int il, int iu, int jl, int ju, int kl, int ku, bool th) {
+void MGCRDiffusion::CalculateMatrix(AthenaArray<Real> &matrix, const AthenaArray<Real> &u,
+                    const AthenaArray<Real> &src, const AthenaArray<Real> &coeff,
+                    int rlev, int il, int iu, int jl, int ju, int kl, int ku, bool th) {
   Real dx, dt = static_cast<MGCRDiffusionDriver*>(pmy_driver_)->dt_;
   if (rlev <= 0) dx = rdx_*static_cast<Real>(1<<(-rlev));
   else           dx = rdx_/static_cast<Real>(1<<rlev);
