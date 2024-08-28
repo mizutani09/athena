@@ -27,10 +27,9 @@ class MGFLD;
 class MGFLDDriver;
 
 namespace RadFLD {
-  constexpr int NTEMP=2, NMATRIX=15, NCOEFF=11;
+  constexpr int NTEMP=2, NMATRIX=15, NCOEFF=8;
   enum TempTndex {GAS=0, RAD=1};
-  enum CoeffIndex {DXM=0, DXP=1, DYM=2, DYP=3, DZM=4, DZP=5, DSIGMAP=6, DCOUPLE=7, DEGAS=8,
-                   DCPH=9, DAR=10};
+  enum CoeffIndex {DXM=0, DXP=1, DYM=2, DYP=3, DZM=4, DZP=5, DSIGMAP=6, DCOUPLE=7};
   enum MatrixIndex {CCC=0, CCM=1, CCP=2, CMC=3, CPC=4, MCC=5, PCC=6,
                     CPRR=7, CPRRS=8, CPRG=9, CPRC=10, CPRCS=11, CPGR=12, CPGG=13, CPGC=14};
                     // CMM=7, CMP=8, CPM=9,
@@ -56,9 +55,7 @@ class FLD {
   bool calc_in_temp;
   bool is_couple;
   bool only_rad;
-  Real c_ph, a_r, const_opacity;
 
-  void InitFLDConstants(ParameterInput *pin);
   void LoadHydroVariables(const AthenaArray<Real> &w, AthenaArray<Real> &u);
   void CalculateCoefficients(const AthenaArray<Real> &w,
                              const AthenaArray<Real> &u);

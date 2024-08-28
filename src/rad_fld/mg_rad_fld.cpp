@@ -114,7 +114,7 @@ MGFLDDriver::MGFLDDriver(Mesh *pm, ParameterInput *pin)
   mgtlist_ = new MultigridTaskList(this);
 
   // Allocate the root multigrid
-  mgroot_ = new MGFLD(this, nullptr);
+  mgroot_ = new MGFLD(this, nullptr, pin);
 
   fldtlist_ = new FLDBoundaryTaskList(pin, pm);
 
@@ -144,13 +144,49 @@ MGFLDDriver::~MGFLDDriver() {
 
 
 //----------------------------------------------------------------------------------------
-//! \fn MGFLD::MGFLD(MGFLDDriver *pmd, MeshBlock *pmb)
+//! \fn MGFLD::MGFLD(MGFLDDriver *pmd, MeshBlock *pmb, ParameterInput *pin)
 //! \brief MGFLD constructor
 
-MGFLD::MGFLD(MGFLDDriver *pmd, MeshBlock *pmb)
+MGFLD::MGFLD(MGFLDDriver *pmd, MeshBlock *pmb, ParameterInput *pin)
   : Multigrid(pmd, pmb, 1), omega_(pmd->omega_), fsmoother_(pmd->fsmoother_) {
   btype = btypef = BoundaryQuantity::mg;
   pmgbval = new MGBoundaryValues(this, mg_block_bcs_);
+  // initialize the constants
+
+  Real c_ph_dim = 2.99792458e10; // speed of light in cm s^-1
+  Real a_r_dim = 7.5657e-15; // radiation constant in erg cm^-3 K^-4
+  Real R_gas = 8.3144621e7; // gas constant in erg K^-1 mol^-1
+  Real const_opacity_dim = pin->GetReal("mgfld", "const_opacity");//caution: in cm^2 g^-1
+
+  Real rho_unit = pin->GetReal("hydro", "rho_unit");
+  Real egas_unit = pin->GetReal("hydro", "egas_unit");
+  Real pres_unit = egas_unit;
+  Real vel_unit = std::sqrt(pres_unit/rho_unit);
+
+  Real time_unit = pin->GetOrAddReal("hydro", "time_unit", -1.0);
+  Real leng_unit = pin->GetOrAddReal("hydro", "leng_unit", -1.0);
+  if (time_unit < 0.0 && leng_unit < 0.0) {
+    std::stringstream msg;
+    msg << "### FATAL ERROR in function [FLD::InitFLDConstants]" << std::endl;
+    msg << "time_unit or leng_unit must be specified in block 'hydro'.";
+    ATHENA_ERROR(msg);
+  } else if (time_unit > 0.0 && leng_unit > 0.0) {
+    std::stringstream msg;
+    msg << "time_unit and leng_unit cannot be specified at the same time.";
+    ATHENA_ERROR(msg);
+  }
+  if (time_unit < 0.0) time_unit = leng_unit/vel_unit;
+  if (leng_unit < 0.0) leng_unit = vel_unit*time_unit;
+
+  Real mu = pin->GetReal("hydro", "mu");
+  Real T_unit = pres_unit/rho_unit*mu/R_gas;
+  c_ph = c_ph_dim/vel_unit;
+  a_r = a_r_dim/(egas_unit/std::pow(T_unit, 4));
+  const_opacity = const_opacity_dim*leng_unit*rho_unit; // to be multiplied by rho
+
+  // std::cout << "c_ph in sim: " << c_ph << std::endl;
+  // std::cout << "a_r in sim: " << a_r << std::endl;
+  // std::cout << "const_opacity in sim: " << const_opacity << std::endl;
 }
 
 
@@ -638,8 +674,6 @@ void MGFLD::CalculateMatrix(AthenaArray<Real> &matrix, const AthenaArray<Real> &
         matrix(RadFLD::PCC,k,j,i) = -fac*coeff(RadFLD::DZP,k,j,i);
 
         // coupling
-        Real c_ph = coeff(RadFLD::DCPH,k,j,i);
-        Real a_r = coeff(RadFLD::DAR,k,j,i);
         Real Tg = coeff(RadFLD::DCOUPLE,k,j,i)*u(RadFLD::GAS,k,j,i); // latest energy
         matrix(RadFLD::CPRR,k,j,i) = dt*c_ph*coeff(RadFLD::DSIGMAP,k,j,i);
         matrix(RadFLD::CPRG,k,j,i) = -4.0*dt*c_ph*coeff(RadFLD::DSIGMAP,k,j,i)
