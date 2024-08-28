@@ -84,13 +84,14 @@ void FLD::CalculateCoefficients(const AthenaArray<Real> &w,
   int il = pmy_block->is - NGHOST, iu = pmy_block->ie + NGHOST;
   int jl = pmy_block->js, ju = pmy_block->je;
   int kl = pmy_block->ks, ku = pmy_block->ke;
-  Real hidx = 1.0/(2.0*pmy_block->pcoord->dx1f(pmy_block->is));
-  AthenaArray<Real> sigma_r(RadFLD::NCOEFF);
+  Real idx = 1.0/pmy_block->pcoord->dx1f(pmy_block->is);
+  Real hidx = 0.5*idx;
   Real gm1 = pmy_block->peos->GetGamma() - 1.0;
   if (pmy_block->pmy_mesh->f2)
     jl -= NGHOST, ju += NGHOST;
   if (pmy_block->pmy_mesh->f3)
     kl -= NGHOST, ku += NGHOST;
+  AthenaArray<Real> sigma_r(6); // for each adjacent cell
   for (int k = kl; k <= ku; ++k) {
     for (int j = jl; j <= ju; ++j) {
       for (int i = il; i <= iu; ++i) {
@@ -99,16 +100,22 @@ void FLD::CalculateCoefficients(const AthenaArray<Real> &w,
         Real dEr3 = hidx*(u(RadFLD::RAD,k+1,j,i) - u(RadFLD::RAD,k-1,j,i));
         Real grad = sqrt(dEr1*dEr1 + dEr2*dEr2 + dEr3*dEr3)/u(RadFLD::RAD,k,j,i);
 
-        for(int n=0; n<=RadFLD::DZP; ++n) {
-          if (pmg->const_opacity > 0.0) {
-            sigma_r(n) = pmg->const_opacity;
-          } else {
-            sigma_r(n) = 1.0; // calc_sigma_r(rho, T); on surface Howeell & Greenough 2003
-          }
-          Real R = grad/sigma_r(n);
+        // note: should use already calculated sigma_r?
+        Real sigma_rhere = CalculateSigmaR(w(IDN,k,j,i), w(IEN,k,j,i));
+        sigma_r(RadFLD::DXM) = CalculateSigmaR(w(IDN,k,j,i-1), w(IEN,k,j,i-1));
+        sigma_r(RadFLD::DXP) = CalculateSigmaR(w(IDN,k,j,i+1), w(IEN,k,j,i+1));
+        sigma_r(RadFLD::DYM) = CalculateSigmaR(w(IDN,k,j-1,i), w(IEN,k,j-1,i));
+        sigma_r(RadFLD::DYP) = CalculateSigmaR(w(IDN,k,j+1,i), w(IEN,k,j+1,i));
+        sigma_r(RadFLD::DZM) = CalculateSigmaR(w(IDN,k-1,j,i), w(IEN,k-1,j,i));
+        sigma_r(RadFLD::DZP) = CalculateSigmaR(w(IDN,k+1,j,i), w(IEN,k+1,j,i));
+
+        for (int n = 0; n <= RadFLD::DZP; ++n) {
+          Real sigma_rface = std::min(0.5*(sigma_rhere + sigma_r(n)),
+                std::max(2.0*sigma_rhere*sigma_r(n)/(sigma_rhere + sigma_r(n)),
+                2.0*TWO_3RD*idx)); // Howell & Greenough 2002 (after eq. 15)
+          Real R = grad/sigma_rface;
           Real lambda = (2.0+R)/(6.0+2.0*R+R*R);
-          // coeff(n,k,j,i) = c_ph*lambda/sigma_r(n);
-          coeff(n,k,j,i) = 0.0; // caution!
+          coeff(n,k,j,i) = pmg->c_ph*lambda/sigma_rface;
         }
 
         // for later calculation
@@ -123,6 +130,15 @@ void FLD::CalculateCoefficients(const AthenaArray<Real> &w,
     }
   }
   return;
+}
+
+
+//----------------------------------------------------------------------------------------
+//! \fn Real FLD::CalculateSigmaR(const Real den, const Real egas)
+//! \brief Calculate Rosseland mean opacity
+Real FLD::CalculateSigmaR(const Real den, const Real egas) {
+  Real sigma_r = pmg->const_opacity*den; // temporary
+  return sigma_r;
 }
 
 

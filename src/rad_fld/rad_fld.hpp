@@ -61,6 +61,7 @@ class FLD {
                              const AthenaArray<Real> &u);
   void UpdateHydroVariables(AthenaArray<Real> &w,
        AthenaArray<Real> &hydro_u, const AthenaArray<Real> &fld_u);
+  Real CalculateSigmaR(const Real den, const Real egas);
   CellCenteredBoundaryVariable rfldbvar;
 
   friend class MGFLDDriver;
