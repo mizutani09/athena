@@ -49,6 +49,7 @@ namespace {
   Real T_unit, time_unit;
   Real a_r_dim, Rgas, mu;
   int dim;
+  Real init_ratio;
 }
 
 void FLDFixedInnerX1(AthenaArray<Real> &dst, Real time, int nvar,
@@ -155,6 +156,7 @@ void FLDFixedOuterX3(AthenaArray<Real> &dst, Real time, int nvar,
 
 void Mesh::InitUserMeshData(ParameterInput *pin) {
   dim = pin->GetInteger("problem", "dim");
+  init_ratio = pin->GetReal("problem", "init_ratio");
   rho_unit = pin->GetReal("hydro", "rho_unit");
   egas_unit = pin->GetReal("hydro", "egas_unit");
   time_unit = pin->GetOrAddReal("hydro", "time_unit", -1.0);
@@ -205,23 +207,26 @@ void Mesh::InitUserMeshData(ParameterInput *pin) {
 //======================================================================================
 
 void MeshBlock::ProblemGenerator(ParameterInput *pin) {
-  Real rho0 = 1.0, p0 = 1.0, Er0 = 1e-10, Edelta = 1e+5;
+  Real rho0 = 1.0, p0 = 1.0, Er0 = 1e+5;
   Real gamma = peos->GetGamma();
   Real igm1 = 1.0/(gamma-1.0);
   Real dx1 = pcoord->dx1f(4);
+  Real courant = pin->GetReal("time", "cfl_number");
+  Real dt_exp = courant*dx1*std::sqrt(rho0/(gamma*p0))*time_unit;
+  Real const_opasity = pin->GetReal("mgfld", "const_opacity");
+  Real c_ph_dim = 2.99792458e10; // speed of light in cm s^-1
+  Real tau_diff = leng_unit*leng_unit*rho_unit*const_opasity/(4.0*c_ph_dim);
+  Real tau_diff_dt = tau_diff/dt_exp;
+
   if (gid == 0) {
     std::cout << "dx = " << dx1*leng_unit << " cm" << std::endl;
-    Real courant = pin->GetReal("time", "cfl_number");
-    Real dt = courant*dx1*std::sqrt(rho0/(gamma*p0))*time_unit;
-    std::cout << "dt = " << dt << " s" << std::endl;
-
-    Real const_opasity = pin->GetReal("mgfld", "const_opacity");
-    Real c_ph_dim = 2.99792458e10; // speed of light in cm s^-1
-    Real tau_diff = leng_unit*leng_unit*rho_unit*const_opasity/(4.0*c_ph_dim);
+    std::cout << "dt = " << dt_exp << " s" << std::endl;
     std::cout << "tau_diff = " << tau_diff << " s" << std::endl;
-    Real tau_diff_dt = tau_diff/dt;
     std::cout << "tau_diff/dt = " << tau_diff_dt << std::endl;
+
+    std::cout << "tmp = " << const_opasity*rho_unit/(1/leng_unit) << std::endl;
   }
+
   int kl = ks-NGHOST;
   int ku = ke+NGHOST;
   int jl = js-NGHOST;
@@ -246,6 +251,12 @@ void MeshBlock::ProblemGenerator(ParameterInput *pin) {
     }
   }
 
+  Real c_ph_sim = c_ph_dim/(leng_unit/time_unit);
+  Real mfp_sim = 1.0/(const_opasity*rho_unit)/leng_unit;
+  Real chi = c_ph_sim*mfp_sim/3.0;
+  std::cout << "chi = " << chi*leng_unit*leng_unit/time_unit << " cm^2 s^-1" << std::endl;
+  Real t_diff = tau_diff/(time_unit)*init_ratio;
+  std::cout << "init_time = " << t_diff * time_unit << " s" << std::endl;
   if (dim == 3) {
     for(int k=kl; k<=ku; ++k) {
       Real z = pcoord->x3v(k);
@@ -255,11 +266,8 @@ void MeshBlock::ProblemGenerator(ParameterInput *pin) {
           Real x = pcoord->x1v(i);
           Real r_sq = SQR(x-0.5)+SQR(y-0.5)+SQR(z-0.5);
           prfld->u(RadFLD::GAS,k,j,i) = phydro->u(IEN,k,j,i);
-          if (r_sq < SQR(dx1) && x > 0.5 && y > 0.5 && z > 0.5) {
-            prfld->u(RadFLD::RAD,k,j,i) = Edelta/CUBE(dx1);
-          } else {
-            prfld->u(RadFLD::RAD,k,j,i) = Er0;
-          }
+          Real res = Er0/(8*std::pow(M_PI*chi*t_diff, 1.5))*std::exp(-r_sq/(4*chi*t_diff));
+          prfld->u(RadFLD::RAD,k,j,i) = res;
         }
       }
     }
@@ -269,11 +277,8 @@ void MeshBlock::ProblemGenerator(ParameterInput *pin) {
         for (int i=il; i<=iu; i++) {
           Real r_sq = SQR(pcoord->x1v(i)-0.5)+SQR(pcoord->x2v(j)-0.5);
           prfld->u(RadFLD::GAS,k,j,i) = phydro->u(IEN,k,j,i);
-          if (r_sq < SQR(dx1) && pcoord->x1v(i) > 0.5 && pcoord->x2v(j) > 0.5) {
-            prfld->u(RadFLD::RAD,k,j,i) = Edelta/SQR(dx1);
-          } else {
-            prfld->u(RadFLD::RAD,k,j,i) = Er0;
-          }
+          Real res = Er0/(4*M_PI*chi*t_diff)*std::exp(-r_sq/(4*chi*t_diff));
+          prfld->u(RadFLD::RAD,k,j,i) = res;
         }
       }
     }
@@ -283,11 +288,8 @@ void MeshBlock::ProblemGenerator(ParameterInput *pin) {
         for (int i=il; i<=iu; i++) {
           Real r_sq = SQR(pcoord->x1v(i)-0.5);
           prfld->u(RadFLD::GAS,k,j,i) = phydro->u(IEN,k,j,i);
-          if (r_sq < SQR(dx1) && pcoord->x1v(i) > 0.5) {
-            prfld->u(RadFLD::RAD,k,j,i) = Edelta/(dx1);
-          } else {
-            prfld->u(RadFLD::RAD,k,j,i) = Er0;
-          }
+          Real res = Er0/(2*std::sqrt(M_PI*chi*t_diff))*std::exp(-r_sq/(4*chi*t_diff));
+          prfld->u(RadFLD::RAD,k,j,i) = res;
         }
       }
     }
