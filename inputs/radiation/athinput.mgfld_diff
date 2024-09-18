@@ -46,14 +46,14 @@ ox1_bc     = outflow    # outer-X1 boundary flag
 nx2        = 16         # Number of zones in X2-direction
 x2min      = 0.0       # minimum value of X2
 x2max      = 1.0        # maximum value of X2
-ix2_bc     = outflow    # inner-X2 boundary flag
-ox2_bc     = outflow    # outer-X2 boundary flag
+ix2_bc     = periodic    # inner-X2 boundary flag
+ox2_bc     = periodic    # outer-X2 boundary flag
 
 nx3        = 16         # Number of zones in X3-direction
 x3min      = 0.0       # minimum value of X3
 x3max      = 1.0        # maximum value of X3
-ix3_bc     = outflow    # inner-X3 boundary flag
-ox3_bc     = outflow    # outer-X3 boundary flag
+ix3_bc     = periodic    # inner-X3 boundary flag
+ox3_bc     = periodic    # outer-X3 boundary flag
 
 <meshblock>
 nx1        = 16
@@ -65,7 +65,7 @@ gamma           = 1.666666666667 # gamma = C_p/C_v
 # iso_sound_speed = 0.4082482905 # equivalent to sqrt(gamma*p/d) for p=0.1, d=1
 rho_unit        = 1e-7           # in g cm^-3
 egas_unit       = 1e+7           # in erg cm^-3
-leng_unit       = 2.5e+10            # in cm
+leng_unit       = 4e+10            # in cm
 # time_unit       = 1          # in s
 mu              = 1.0            # mean molecular weight in g mol^-1
 
@@ -81,10 +81,10 @@ niteration      = 10
 output_defect   = true
 ix1_bc          = user
 ox1_bc          = user
-ix2_bc          = user
-ox2_bc          = user
-ix3_bc          = user
-ox3_bc          = user
+ix2_bc          = periodic
+ox2_bc          = periodic
+ix3_bc          = periodic
+ox3_bc          = periodic
 
 # calc_in_temp    = false
 is_couple       = false
@@ -93,4 +93,4 @@ const_opacity   = 0.4 # in cm^2 g^-1 caution!
 
 <problem>
 dim             = 1
-init_ratio      = 0.1 # the time for initial profile of analytic solution
+init_ratio      = 0.01 # the time for initial profile of analytic solution

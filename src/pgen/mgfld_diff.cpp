@@ -62,6 +62,7 @@ void FLDFixedInnerX1(AthenaArray<Real> &dst, Real time, int nvar,
           // dst(RadFLD::RAD,k,j,is-i-1) = Er_0;
           dst(RadFLD::GAS,k,j,is-i-1) = dst(RadFLD::GAS,k,j,is);
           dst(RadFLD::RAD,k,j,is-i-1) = dst(RadFLD::RAD,k,j,is);
+          // dst(RadFLD::RAD,k,j,is-i-1) = 1e-7;
       }
       }
   }
@@ -78,6 +79,7 @@ void FLDFixedOuterX1(AthenaArray<Real> &dst, Real time, int nvar,
         // dst(RadFLD::RAD,k,j,ie+i+1) = Er_0;
         dst(RadFLD::GAS,k,j,ie+i+1) = dst(RadFLD::GAS,k,j,ie);
         dst(RadFLD::RAD,k,j,ie+i+1) = dst(RadFLD::RAD,k,j,ie);
+        // dst(RadFLD::RAD,k,j,ie+i+1) = 1e-7;
       }
     }
   }
@@ -94,6 +96,7 @@ void FLDFixedInnerX2(AthenaArray<Real> &dst, Real time, int nvar,
         // dst(RadFLD::RAD,k,js-j-1,i) = Er_0;
         dst(RadFLD::GAS,k,js-j-1,i) = dst(RadFLD::GAS,k,js,i);
         dst(RadFLD::RAD,k,js-j-1,i) = dst(RadFLD::RAD,k,js,i);
+        // dst(RadFLD::RAD,k,js-j-1,i) = 1e-7;
       }
     }
   }
@@ -110,6 +113,7 @@ void FLDFixedOuterX2(AthenaArray<Real> &dst, Real time, int nvar,
         // dst(RadFLD::RAD,k,je+j+1,i) = Er_0;
         dst(RadFLD::GAS,k,je+j+1,i) = dst(RadFLD::GAS,k,je,i);
         dst(RadFLD::RAD,k,je+j+1,i) = dst(RadFLD::RAD,k,je,i);
+        // dst(RadFLD::RAD,k,je+j+1,i) = 1e-7;
       }
     }
   }
@@ -126,6 +130,7 @@ void FLDFixedInnerX3(AthenaArray<Real> &dst, Real time, int nvar,
         // dst(RadFLD::RAD,ks-k-1,j,i) = Er_0;
         dst(RadFLD::GAS,ks-k-1,j,i) = dst(RadFLD::GAS,ks,j,i);
         dst(RadFLD::RAD,ks-k-1,j,i) = dst(RadFLD::RAD,ks,j,i);
+        // dst(RadFLD::RAD,ks-k-1,j,i) = 1e-7;
       }
     }
   }
@@ -142,6 +147,7 @@ void FLDFixedOuterX3(AthenaArray<Real> &dst, Real time, int nvar,
         // dst(RadFLD::RAD,ke+k+1,j,i) = Er_0;
         dst(RadFLD::GAS,ke+k+1,j,i) = dst(RadFLD::GAS,ke,j,i);
         dst(RadFLD::RAD,ke+k+1,j,i) = dst(RadFLD::RAD,ke,j,i);
+        // dst(RadFLD::RAD,ke+k+1,j,i) = 1e-7;
       }
     }
   }
@@ -222,6 +228,7 @@ void MeshBlock::ProblemGenerator(ParameterInput *pin) {
     std::cout << "dx = " << dx1*leng_unit << " cm" << std::endl;
     std::cout << "dt = " << dt_exp << " s" << std::endl;
     std::cout << "tau_diff = " << tau_diff << " s" << std::endl;
+    std::cout << "tau_diff in sim = " << tau_diff/time_unit << std::endl;
     std::cout << "tau_diff/dt = " << tau_diff_dt << std::endl;
 
     std::cout << "tmp = " << const_opasity*rho_unit/(1/leng_unit) << std::endl;
