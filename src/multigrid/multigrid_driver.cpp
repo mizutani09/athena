@@ -42,7 +42,7 @@ MultigridDriver::MultigridDriver(Mesh *pm, MGBoundaryFunc *MGBoundary,
                  MGMaskFunc MGCoeffMask, int invar, int ncoeff, int nmatrix) :
     nranks_(Globals::nranks), nthreads_(pm->num_mesh_threads_), nbtotal_(pm->nbtotal),
     nvar_(invar), ncoeff_(ncoeff), nmatrix_(nmatrix), mode_(0), // 0: FMG+V, 1: V-cycle
-    matrixmode_(0), // 0: fixed, 1: update after every V-cycle, 2: update at every level
+    matrixmode_(0), // 0: fixed, 1: update after every V-cycle
     maxreflevel_(pm->multilevel?pm->max_level-pm->root_level:0),
     nrbx1_(pm->nrbx1), nrbx2_(pm->nrbx2), nrbx3_(pm->nrbx3), srcmask_(MGSourceMask),
     coeffmask_(MGCoeffMask), pmy_mesh_(pm), fsubtract_average_(false),
@@ -509,7 +509,7 @@ void MultigridDriver::SetupMultigrid(bool ftrivial) {
   if (!ftrivial) {
     if (ncoeff_ > 0)
       SetupCoefficients();
-    if (nmatrix_ > 0 && matrixmode_ <= 1)
+    if (nmatrix_ > 0)
       CalculateMatrixAll();
     if (mode_ == 0) { // FMG
 #pragma omp parallel for num_threads(nthreads_)
