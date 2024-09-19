@@ -30,7 +30,7 @@ class FLDBoundaryTaskList;
 
 class MGFLD : public Multigrid {
  public:
-  MGFLD(MGFLDDriver *pmd, MeshBlock *pmb);
+  MGFLD(MGFLDDriver *pmd, MeshBlock *pmb, ParameterInput *pin);
   ~MGFLD();
 
   // void AddFLDSource(const AthenaArray<Real> &src, int ngh, Real dt);
@@ -50,6 +50,7 @@ class MGFLD : public Multigrid {
                 int rlev, int il, int iu, int jl, int ju, int kl, int ku, bool th) final;
 
   friend class MGFLDDriver;
+  Real c_ph, a_r, const_opacity;
 
  private:
   Real omega_;
