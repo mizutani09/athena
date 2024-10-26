@@ -49,6 +49,7 @@ class FLD {
   // AthenaArray<Real> ecr, source, zeta, coeff; //!
   AthenaArray<Real> source, coeff;
   AthenaArray<Real> u, coarse_u;
+  AthenaArray<Real> sigma_r;
   AthenaArray<Real> empty_flux[3];
   AthenaArray<Real> def;   // defect from the Multigrid solver
   bool output_defect;
@@ -61,10 +62,14 @@ class FLD {
                              const AthenaArray<Real> &u);
   void UpdateHydroVariables(AthenaArray<Real> &w,
        AthenaArray<Real> &hydro_u, const AthenaArray<Real> &fld_u);
-  Real CalculateSigmaR(const Real den, const Real egas);
+  // Real CalculateSigmaR(const Real den, const Real egas);
   CellCenteredBoundaryVariable rfldbvar;
 
   friend class MGFLDDriver;
+
+  // Function in problem generators to update opacity
+  void EnrollOpacityFunction(FLDOpacityFunc MyOpacityFunction);
+  FLDOpacityFunc UpdateOpacity;
 
  private:
   int refinement_idx_;

@@ -36,6 +36,7 @@ class FLDBoundaryTaskList : public TaskList {
   TaskStatus SetFLDBoundary(MeshBlock *pmb, int stage);
   TaskStatus ProlongateFLDBoundary(MeshBlock *pmb, int stage);
   TaskStatus PhysicalBoundary(MeshBlock *pmb, int stage);
+  TaskStatus UpdateOpacity(MeshBlock *pmb, int stage);
 
  private:
   void AddTask(const TaskID& id, const TaskID& dep) override;
@@ -54,5 +55,6 @@ const TaskID RECV_FLD_BND(3);
 const TaskID SETB_FLD_BND(4);
 const TaskID PROLONG_FLD_BND(5);
 const TaskID FLD_PHYS_BND(6);
+const TaskID UPD_OPA(7);
 }
 #endif // TASK_LIST_RAD_FLD_TASK_LIST_HPP_

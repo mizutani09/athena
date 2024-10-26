@@ -240,4 +240,7 @@ using CRSrcTermFunc = void (*)(
     MeshBlock *pmb, const Real time, const Real dt,
     const AthenaArray<Real> &prim, FaceField &b, AthenaArray<Real> &u_cr);
 
+using FLDOpacityFunc = void (*)(MeshBlock *pmb, AthenaArray<Real> &u_fld,
+                      AthenaArray<Real> &prim);
+
 #endif // ATHENA_HPP_

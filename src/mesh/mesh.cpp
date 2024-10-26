@@ -1862,6 +1862,15 @@ void Mesh::Initialize(int res_flag, ParameterInput *pin) {
         }
       }
 
+      // calculate opacity for MGFLD
+      if (MGFLD_ENABLED) {
+        for (int i=0; i<nblocal; ++i) {
+          pmb = my_blocks(i); ph = pmb->phydro;
+          FLD *prfld = pmb->prfld;
+          prfld->UpdateOpacity(pmb, prfld->u, ph->w);
+        }
+      }
+
       // Calc initial diffusion coefficients
 #pragma omp for private(pmb,ph,pf)
       for (int i=0; i<nblocal; ++i) {
