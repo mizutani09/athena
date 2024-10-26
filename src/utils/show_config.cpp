@@ -61,6 +61,11 @@ void ShowConfig() {
   } else {
     std::cout<<"  Cosmic Ray Diffusion:       OFF" << std::endl;
   }
+  if (MGFLD_ENABLED) {
+    std::cout<<"  FLD with Multigrid:         ON" << std::endl;
+  } else {
+    std::cout<<"  FLD with Multigrid:         OFF" << std::endl;
+  }
 
   // configure.py output: "Frame transformations"
   if (SELF_GRAVITY_ENABLED == 1) {
