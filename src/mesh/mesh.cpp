@@ -1600,6 +1600,14 @@ void Mesh::Initialize(int res_flag, ParameterInput *pin) {
       }
     }
 
+    // initialize Opacity for MGFLD
+    if (MGFLD_ENABLED) {
+      for (int i=0; i<nblocal; ++i) {
+        MeshBlock *pmb = my_blocks(i);
+        pmb->prfld->UpdateOpacity(pmb, pmb->prfld->u, pmb->phydro->w);
+      }
+    }
+
     // Create send/recv MPI_Requests for all BoundaryData objects
 #pragma omp parallel for num_threads(nthreads)
     for (int i=0; i<nblocal; ++i) {
