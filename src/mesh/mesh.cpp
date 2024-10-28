@@ -974,6 +974,8 @@ Mesh::~Mesh() {
   if (SELF_GRAVITY_ENABLED == 1) delete pfgrd;
   else if (SELF_GRAVITY_ENABLED == 2) delete pmgrd;
   if (IM_RADIATION_ENABLED) delete pimrad;
+  if (CRDIFFUSION_ENABLED) delete pmcrd;
+  if (MGFLD_ENABLED) delete pmfld;
   if (turb_flag > 0) delete ptrbd;
   if (adaptive) { // deallocate arrays for AMR
     delete [] nref;
