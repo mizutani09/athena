@@ -128,7 +128,6 @@ void HydroInnerX1(MeshBlock *pmb, Coordinates *pco, AthenaArray<Real> &prim, Fac
         for (int i=0; i<ngh; i++) {
           Real x = pco->x1v(is-i-1);
           Real r_sq = SQR(x-0.5);
-          pmb->prfld->u(RadFLD::RAD,k,j,is-i-1) = coef*std::exp(-r_sq/(4*chi_t));
           prim(IDN,k,j,is-i-1) = prim(IDN,k,j,is);
           prim(IVX,k,j,is-i-1) = prim(IVX,k,j,is);
           prim(IVY,k,j,is-i-1) = prim(IVY,k,j,is);
@@ -152,7 +151,6 @@ void HydroOuterX1(MeshBlock *pmb, Coordinates *pco, AthenaArray<Real> &prim, Fac
         for (int i=0; i<ngh; i++) {
           Real x = pco->x1v(ie+i+1);
           Real r_sq = SQR(x-0.5);
-          pmb->prfld->u(RadFLD::RAD,k,j,ie+i+1) = coef*std::exp(-r_sq/(4*chi_t));
           prim(IDN,k,j,ie+i+1) = prim(IDN,k,j,ie);
           prim(IVX,k,j,ie+i+1) = prim(IVX,k,j,ie);
           prim(IVY,k,j,ie+i+1) = prim(IVY,k,j,ie);

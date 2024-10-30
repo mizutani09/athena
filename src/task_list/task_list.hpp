@@ -235,6 +235,11 @@ class TimeIntegratorTaskList : public TaskList {
   TaskStatus SetBoundariesCRTC(MeshBlock *pmb, int stage);
   TaskStatus CRTCOpacity(MeshBlock *pmb, int stage);
 
+  TaskStatus CalculateMGFLDFlux(MeshBlock *pmb, int stage);
+  TaskStatus SendMGFLDFlux(MeshBlock *pmb, int stage);
+  TaskStatus ReceiveMGFLDFlux(MeshBlock *pmb, int stage);
+  TaskStatus IntegrateMGFLDFlux(MeshBlock *pmb, int stage);
+
   bool CheckNextMainStage(int stage) const {return stage_wghts[stage%nstages].main_stage;}
 
  private:
@@ -386,6 +391,11 @@ const TaskID SEND_RADSH(72);
 const TaskID RECV_RADSH(73);
 
 const TaskID SRCTERM_IMRAD(74);
+
+const TaskID CALC_MGFLDFLX(75);
+const TaskID SEND_MGFLDFLX(76);
+const TaskID RECV_MGFLDFLX(77);
+const TaskID INT_MGFLDFLX(78);
 
 }  // namespace HydroIntegratorTaskNames
 #endif  // TASK_LIST_TASK_LIST_HPP_

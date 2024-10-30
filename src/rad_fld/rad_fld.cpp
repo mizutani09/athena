@@ -35,14 +35,14 @@ inline void DefaultOpacity(MeshBlock *pmb, AthenaArray<Real> &u_fld,
   FLD *prfld = pmb->prfld;
   int kl=pmb->ks, ku=pmb->ke;
   int jl=pmb->js, ju=pmb->je;
-  int il=pmb->is-1, iu=pmb->ie+1;
+  int il=pmb->is-NGHOST, iu=pmb->ie+NGHOST;
   if (pmb->block_size.nx2 > 1) {
-    jl -= 1;
-    ju += 1;
+    jl -= NGHOST;
+    ju += NGHOST;
   }
   if (pmb->block_size.nx3 > 1) {
-    kl -= 1;
-    ku += 1;
+    kl -= NGHOST;
+    ku += NGHOST;
   }
   for(int k=kl; k<=ku; ++k) {
     for(int j=jl; j<=ju; ++j) {
@@ -59,12 +59,26 @@ inline void DefaultOpacity(MeshBlock *pmb, AthenaArray<Real> &u_fld,
 //! \brief FLD constructor
 FLD::FLD(MeshBlock *pmb, ParameterInput *pin) :
     pmy_block(pmb), u(RadFLD::NTEMP, pmb->ncells3, pmb->ncells2, pmb->ncells1),
+    r1(RadFLD::NADV, pmb->ncells3, pmb->ncells2, pmb->ncells1),
+    r(RadFLD::NADV, pmb->ncells3, pmb->ncells2, pmb->ncells1),
     source(RadFLD::NTEMP, pmb->ncells3, pmb->ncells2, pmb->ncells1),
     coeff(RadFLD::NCOEFF, pmb->ncells3, pmb->ncells2, pmb->ncells1),
     coarse_u(RadFLD::NTEMP, pmb->ncc3, pmb->ncc2, pmb->ncc1), //!
-    sigma_r(pmb->ncells3,pmb->ncells2,pmb->ncells1),
+    sigma_r(pmb->ncells3+1,pmb->ncells2+1,pmb->ncells1+1),
     empty_flux{AthenaArray<Real>(), AthenaArray<Real>(), AthenaArray<Real>()},
-    output_defect(false), rfldbvar(pmb, &u, &coarse_u, empty_flux, false), //!
+    output_defect(false), mgfldbvar(pmb, &u, &coarse_u, empty_flux, false), //!
+    u_flux{ {RadFLD::NADV, pmb->ncells3, pmb->ncells2, pmb->ncells1+1},
+            {RadFLD::NADV, pmb->ncells3, pmb->ncells2+1, pmb->ncells1,
+             (pmb->pmy_mesh->f2 ? AthenaArray<Real>::DataStatus::allocated :
+              AthenaArray<Real>::DataStatus::empty)},
+            {RadFLD::NADV, pmb->ncells3+1, pmb->ncells2, pmb->ncells1,
+             (pmb->pmy_mesh->f3 ? AthenaArray<Real>::DataStatus::allocated :
+              AthenaArray<Real>::DataStatus::empty)}
+    },
+    rfldbvar(pmb, &u, &coarse_u, u_flux, true),
+    // coarse_r_(RadFLD::NADV, pmb->ncc3, pmb->ncc2, pmb->ncc1,
+    //           (pmb->pmy_mesh->multilevel ? AthenaArray<Real>::DataStatus::allocated :
+    //            AthenaArray<Real>::DataStatus::empty)),
     refinement_idx_(), calc_in_temp(), is_couple(), only_rad() {
   is_couple = pin->GetOrAddBoolean("mgfld", "is_couple", false);
   output_defect = pin->GetOrAddBoolean("mgfld", "output_defect", false);
@@ -80,16 +94,58 @@ FLD::FLD(MeshBlock *pmb, ParameterInput *pin) :
     def.NewAthenaArray(RadFLD::NTEMP, pmb->ncells3, pmb->ncells2, pmb->ncells1);
 
   pmb->RegisterMeshBlockData(u); //!
+
+  // If user-requested time integrator is type 3S*, allocate additional memory registers
+  std::string integrator = pin->GetOrAddString("time", "integrator", "vl2");
+  if (integrator == "ssprk5_4" || STS_ENABLED)
+    // future extension may add "int nregister" to Hydro class
+    r2.NewAthenaArray(RadFLD::NADV, pmb->ncells3, pmb->ncells2, pmb->ncells1);
+
+  // If STS RKL2, allocate additional memory registers
+  if (STS_ENABLED) {
+    std::string sts_integrator = pin->GetOrAddString("time", "sts_integrator", "rkl2");
+    if (sts_integrator == "rkl2") {
+      r0.NewAthenaArray(RadFLD::NADV, pmb->ncells3, pmb->ncells2, pmb->ncells1);
+      r_fl_div.NewAthenaArray(RadFLD::NADV, pmb->ncells3, pmb->ncells2, pmb->ncells1);
+    }
+  }
+
   // "Enroll" in S/AMR by adding to vector of tuples of pointers in MeshRefinement class
   if (pmb->pmy_mesh->multilevel)
     refinement_idx_ = pmy_block->pmr->AddToRefinement(&u, &coarse_u); //!
 
   pmg = new MGFLD(pmb->pmy_mesh->pmfld, pmb, pin);
 
-  // Enroll CellCenteredBoundaryVariable object
+  // Enroll CellCenteredBoundaryVariable object for multigrid
+  mgfldbvar.bvar_index = pmb->pbval->bvars.size();
+  pmb->pbval->bvars.push_back(&mgfldbvar);
+  pmb->pbval->prfldbvar = &mgfldbvar;
+
+  // Enroll CellCenteredBoundaryVariable object for advection
   rfldbvar.bvar_index = pmb->pbval->bvars.size();
   pmb->pbval->bvars.push_back(&rfldbvar);
   pmb->pbval->prfldbvar = &rfldbvar;
+  pmb->pbval->bvars_main_int.push_back(&rfldbvar); // for main integration
+
+  // int tmp = pmb->pbval->prfldbvar->nu_;
+  // std::cout << "tmp: " << tmp << std::endl;
+
+  // Allocate memory for scratch arrays
+  rl_.NewAthenaArray(RadFLD::NADV, pmb->ncells1);
+  rr_.NewAthenaArray(RadFLD::NADV, pmb->ncells1);
+  rlb_.NewAthenaArray(RadFLD::NADV, pmb->ncells1);
+  x1face_area_.NewAthenaArray(pmb->ncells1+1);
+  Mesh *pm = pmy_block->pmy_mesh;
+  if (pm->f2) {
+    x2face_area_.NewAthenaArray(pmb->ncells1);
+    x2face_area_p1_.NewAthenaArray(pmb->ncells1);
+  }
+  if (pm->f3) {
+    x3face_area_.NewAthenaArray(pmb->ncells1);
+    x3face_area_p1_.NewAthenaArray(pmb->ncells1);
+  }
+  cell_volume_.NewAthenaArray(pmb->ncells1);
+  dflx_.NewAthenaArray(RadFLD::NADV, pmb->ncells1);
 
   // set a default opacity function
   UpdateOpacity = DefaultOpacity;
@@ -105,6 +161,13 @@ void FLD::EnrollOpacityFunction(FLDOpacityFunc MyOpacityFunction) {
 //! \brief FLD destructor
 FLD::~FLD() {
   delete pmg;
+  u_flux[X1DIR].DeleteAthenaArray();
+  if (pmy_block->pmy_mesh->f2) {
+    u_flux[X2DIR].DeleteAthenaArray();
+  }
+  if (pmy_block->pmy_mesh->f3) {
+    u_flux[X3DIR].DeleteAthenaArray();
+  }
 }
 
 
@@ -113,16 +176,16 @@ FLD::~FLD() {
 //! \brief Calculate coefficients required for FLD calculation
 void FLD::CalculateCoefficients(const AthenaArray<Real> &w,
                                 const AthenaArray<Real> &u) {
-  int il = pmy_block->is - NGHOST, iu = pmy_block->ie + NGHOST;
+  int il = pmy_block->is - 1, iu = pmy_block->ie + 1; // caution
   int jl = pmy_block->js, ju = pmy_block->je;
   int kl = pmy_block->ks, ku = pmy_block->ke;
   Real idx = 1.0/pmy_block->pcoord->dx1f(pmy_block->is);
   Real hidx = 0.5*idx;
   Real gm1 = pmy_block->peos->GetGamma() - 1.0;
   if (pmy_block->pmy_mesh->f2)
-    jl -= NGHOST, ju += NGHOST;
+    jl -= 1, ju += 1;
   if (pmy_block->pmy_mesh->f3)
-    kl -= NGHOST, ku += NGHOST;
+    kl -= 1, ku += 1;
   for (int k = kl; k <= ku; ++k) {
     for (int j = jl; j <= ju; ++j) {
       for (int i = il; i <= iu; ++i) {
@@ -205,6 +268,11 @@ void FLD::CalculateCoefficients(const AthenaArray<Real> &w,
           coeff(RadFLD::DSIGMAP,k,j,i) = 0.0;
           coeff(RadFLD::DCOUPLE,k,j,i) = 0.0;
         }
+
+        // // for test
+        // for (int n = 0; n <= RadFLD::DZP; ++n) {
+        //   coeff(n,k,j,i) = 0.0;
+        // }
       }
     }
   }

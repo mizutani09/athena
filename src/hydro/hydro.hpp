@@ -89,6 +89,9 @@ class Hydro {
   void CalculateVelocityDifferences(const int k, const int j, const int il, const int iu,
     const int ivx, AthenaArray<Real> &dvn, AthenaArray<Real> &dvt);
 
+  // velocity vectors derived from the Riemann solver
+  AthenaArray<Real> vf[3];
+
  private:
   AthenaArray<Real> dt1_, dt2_, dt3_;  // scratch arrays used in NewTimeStep
   // scratch space used to compute fluxes

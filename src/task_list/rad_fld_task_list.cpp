@@ -92,25 +92,25 @@ void FLDBoundaryTaskList::AddTask(const TaskID& id, const TaskID& dep) {
 }
 
 void FLDBoundaryTaskList::StartupTaskList(MeshBlock *pmb, int stage) {
-  pmb->prfld->rfldbvar.StartReceiving(BoundaryCommSubset::all);
+  pmb->prfld->mgfldbvar.StartReceiving(BoundaryCommSubset::all);
   return;
 }
 
 TaskStatus FLDBoundaryTaskList::ClearFLDBoundary(MeshBlock *pmb,
                                                                  int stage) {
-  pmb->prfld->rfldbvar.ClearBoundary(BoundaryCommSubset::all);
+  pmb->prfld->mgfldbvar.ClearBoundary(BoundaryCommSubset::all);
   return TaskStatus::success;
 }
 
 TaskStatus FLDBoundaryTaskList::SendFLDBoundary(MeshBlock *pmb,
                                                                 int stage) {
-  pmb->prfld->rfldbvar.SendBoundaryBuffers();
+  pmb->prfld->mgfldbvar.SendBoundaryBuffers();
   return TaskStatus::success;
 }
 
 TaskStatus FLDBoundaryTaskList::ReceiveFLDBoundary(MeshBlock *pmb,
                                                                    int stage) {
-  bool ret = pmb->prfld->rfldbvar.ReceiveBoundaryBuffers();
+  bool ret = pmb->prfld->mgfldbvar.ReceiveBoundaryBuffers();
   if (!ret)
     return TaskStatus::fail;
   return TaskStatus::success;
@@ -118,18 +118,18 @@ TaskStatus FLDBoundaryTaskList::ReceiveFLDBoundary(MeshBlock *pmb,
 
 TaskStatus FLDBoundaryTaskList::SetFLDBoundary(MeshBlock *pmb,
                                                                int stage) {
-  pmb->prfld->rfldbvar.SetBoundaries();
+  pmb->prfld->mgfldbvar.SetBoundaries();
   return TaskStatus::success;
 }
 
 TaskStatus FLDBoundaryTaskList::ProlongateFLDBoundary(MeshBlock *pmb,
                                                                       int stage) {
-  pmb->pbval->ProlongateBoundariesPostMG(&(pmb->prfld->rfldbvar));
+  pmb->pbval->ProlongateBoundariesPostMG(&(pmb->prfld->mgfldbvar));
   return TaskStatus::success;
 }
 
 TaskStatus FLDBoundaryTaskList::PhysicalBoundary(MeshBlock *pmb, int stage) {
-  pmb->prfld->rfldbvar.ExpandPhysicalBoundaries();
+  pmb->prfld->mgfldbvar.ExpandPhysicalBoundaries();
   return TaskStatus::next;
 }
 

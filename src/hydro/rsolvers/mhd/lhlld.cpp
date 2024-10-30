@@ -41,6 +41,7 @@ void Hydro::RiemannSolver(const int k, const int j, const int il, const int iu,
   Real flxi[(NWAVE)];             // temporary variable to store flux
   Real wli[(NWAVE)],wri[(NWAVE)]; // L/R states, primitive variables (input)
   Real spd[5];                    // signal speeds, left to right
+  Real vf;                        // Velocity at the cell face for any advection term
   constexpr Real SMALL_NUMBER = 1.0e-4;
 
   Real igm1;
@@ -50,7 +51,7 @@ void Hydro::RiemannSolver(const int k, const int j, const int il, const int iu,
 
   CalculateVelocityDifferences(k, j, il, iu, ivx, dvn, dvt);
 
-#pragma omp simd simdlen(SIMD_WIDTH) private(wli,wri,spd,flxi)
+#pragma omp simd simdlen(SIMD_WIDTH) private(wli,wri,spd,flxi,vf)
   for (int i=il; i<=iu; ++i) {
     Cons1D ul,ur;                   // L/R states, conserved variables (computed)
     Cons1D ulst,uldst,urdst,urst;   // Conserved variable for all states
@@ -326,6 +327,7 @@ void Hydro::RiemannSolver(const int k, const int j, const int il, const int iu,
       flxi[IEN] = fl.e;
       flxi[IBY] = fl.by;
       flxi[IBZ] = fl.bz;
+      vf = wli[IVX];
     } else if (spd[4] <= 0.0) {
       // return Fr if flow is supersonic
       flxi[IDN] = fr.d;
@@ -335,6 +337,7 @@ void Hydro::RiemannSolver(const int k, const int j, const int il, const int iu,
       flxi[IEN] = fr.e;
       flxi[IBY] = fr.by;
       flxi[IBZ] = fr.bz;
+      vf = wri[IVX];
     } else if (spd[1] >= 0.0) {
       // return Fl*
       flxi[IDN] = fl.d  + ulst.d;
@@ -344,6 +347,7 @@ void Hydro::RiemannSolver(const int k, const int j, const int il, const int iu,
       flxi[IEN] = fl.e  + ulst.e;
       flxi[IBY] = fl.by + ulst.by;
       flxi[IBZ] = fl.bz + ulst.bz;
+      vf = spd[2];
     } else if (spd[2] >= 0.0) {
       // return Fl**
       flxi[IDN] = fl.d  + ulst.d + uldst.d;
@@ -353,6 +357,7 @@ void Hydro::RiemannSolver(const int k, const int j, const int il, const int iu,
       flxi[IEN] = fl.e  + ulst.e + uldst.e;
       flxi[IBY] = fl.by + ulst.by + uldst.by;
       flxi[IBZ] = fl.bz + ulst.bz + uldst.bz;
+      vf = spd[2];
     } else if (spd[3] > 0.0) {
       // return Fr**
       flxi[IDN] = fr.d + urst.d + urdst.d;
@@ -362,6 +367,7 @@ void Hydro::RiemannSolver(const int k, const int j, const int il, const int iu,
       flxi[IEN] = fr.e + urst.e + urdst.e;
       flxi[IBY] = fr.by + urst.by + urdst.by;
       flxi[IBZ] = fr.bz + urst.bz + urdst.bz;
+      vf = spd[2];
     } else {
       // return Fr*
       flxi[IDN] = fr.d  + urst.d;
@@ -371,6 +377,7 @@ void Hydro::RiemannSolver(const int k, const int j, const int il, const int iu,
       flxi[IEN] = fr.e  + urst.e;
       flxi[IBY] = fr.by + urst.by;
       flxi[IBZ] = fr.bz + urst.bz;
+      vf = spd[2];
     }
 
     flx(IDN,k,j,i) = flxi[IDN];
@@ -380,6 +387,8 @@ void Hydro::RiemannSolver(const int k, const int j, const int il, const int iu,
     flx(IEN,k,j,i) = flxi[IEN];
     ey(k,j,i) = -flxi[IBY];
     ez(k,j,i) =  flxi[IBZ];
+
+    pmy_block->phydro->vf[ivx-IVX](k,j,i) = vf;
 
     wct(k,j,i) = GetWeightForCT(flxi[IDN], wli[IDN], wri[IDN], dxw(i), dt);
   }

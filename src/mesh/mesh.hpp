@@ -352,6 +352,7 @@ class Mesh {
   // radiation boundaries
   RadBoundaryFunc RadBoundaryFunc_[6];
   CRBoundaryFunc CRBoundaryFunc_[6];
+  FLDAdvBoundaryFunc FLDAdvBoundaryFunc_[6];
 
   AMRFlagFunc AMRFlag_;
   SrcTermFunc UserSourceTerm_;
@@ -417,6 +418,7 @@ class Mesh {
 
   void EnrollUserRadBoundaryFunction(BoundaryFace face, RadBoundaryFunc my_func);
   void EnrollUserCRBoundaryFunction(BoundaryFace face, CRBoundaryFunc my_func);
+  void EnrollUserFLDAdvBoundaryFunction(BoundaryFace face, FLDAdvBoundaryFunc my_func);
 
   void EnrollUserMGCRDiffusionBoundaryFunction(BoundaryFace dir, MGBoundaryFunc my_bc);
   void EnrollUserMGFLDBoundaryFunction(BoundaryFace dir, MGBoundaryFunc my_bc);
@@ -426,6 +428,7 @@ class Mesh {
   void EnrollUserBoundaryFunction(int face, BValFunc my_func);
   void EnrollUserRadBoundaryFunction(int face, RadBoundaryFunc my_func);
   void EnrollUserCRBoundaryFunction(int face, CRBoundaryFunc my_func);
+  void EnrollUserFLDAdvBoundaryFunction(int face, FLDAdvBoundaryFunc my_func);
 
   void EnrollUserRefinementCondition(AMRFlagFunc amrflag);
   void EnrollUserMeshGenerator(CoordinateDirection dir, MeshGenFunc my_mg);

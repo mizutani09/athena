@@ -1,0 +1,98 @@
+<comment>
+problem   = FLD test with Multigrid
+reference =
+configure = --prob=mg_fld -mgfld
+
+<job>
+problem_id = MGFLD # problem ID: basename of output filenames
+
+<output1>
+file_type  = hst        # History data dump
+dcycle     = 1       # time increment between outputs
+
+#<output2>
+#file_type  = tab        # Binary data dump
+#variable   = prim       # variables to be output
+#dcycle     = 10       # time increment between outputs
+#x2_slice   = 0.5        # slice location in X2
+#x3_slice   = 0.5        # slice location in X3
+# ghost_zones     = true
+
+<output3>
+file_type  = hdf5
+id         = uov_x_slice
+variable   = uov
+dcycle     = 1
+# dt         = 0.1
+x2_slice   = 0.5
+x3_slice   = 0.5
+ghost_zones     = true
+
+<time>
+cfl_number = 0.3        # The Courant, Friedrichs, & Lewy (CFL) Number
+nlim       = 50          # cycle limit
+tlim       = 100000.0        # time limit
+integrator  = rk2       # time integration algorithm
+xorder      = 2         # order of spatial reconstruction
+ncycle_out  = 10         # interval for stdout summary info
+
+<mesh>
+nx1        = 16         # Number of zones in X1-direction
+x1min      = 0.0       # minimum value of X1
+x1max      = 1.0        # maximum value of X1
+ix1_bc     = periodic    # inner-X1 boundary flag
+ox1_bc     = periodic    # outer-X1 boundary flag
+
+nx2        = 16         # Number of zones in X2-direction
+x2min      = 0.0       # minimum value of X2
+x2max      = 1.0        # maximum value of X2
+ix2_bc     = periodic    # inner-X2 boundary flag
+ox2_bc     = periodic    # outer-X2 boundary flag
+
+nx3        = 16         # Number of zones in X3-direction
+x3min      = 0.0       # minimum value of X3
+x3max      = 1.0        # maximum value of X3
+ix3_bc     = periodic    # inner-X3 boundary flag
+ox3_bc     = periodic    # outer-X3 boundary flag
+
+<meshblock>
+nx1        = 16
+nx2        = 16
+nx3        = 16
+
+<hydro>
+gamma           = 1.666666666667 # gamma = C_p/C_v
+# iso_sound_speed = 0.4082482905 # equivalent to sqrt(gamma*p/d) for p=0.1, d=1
+rho_unit        = 1e-7           # in g cm^-3
+egas_unit       = 1e+7           # in erg cm^-3
+# leng_unit       = 4e+10            # in cm
+time_unit       = 4e+2          # in s
+mu              = 1.0            # mean molecular weight in g mol^-1
+
+<mgfld>
+mgmode          = FMG
+fas             = true
+smoother        = jacobi-rb
+npresmooth      = 2
+npostsmooth     = 2
+omega           = 1.0
+niteration      = 10
+# threshold       = 0.0
+output_defect   = true
+ix1_bc          = periodic
+ox1_bc          = periodic
+ix2_bc          = periodic
+ox2_bc          = periodic
+ix3_bc          = periodic
+ox3_bc          = periodic
+
+# calc_in_temp    = false
+is_couple       = false
+only_rad        = true
+const_opacity   = 0.4 # in cm^2 g^-1 caution!
+
+<problem>
+rho0            = 1.0
+p0              = 1e+2
+v0              = 0.5
+Er0             = 100.0
