@@ -32,6 +32,7 @@
 #include "../nr_radiation/radiation.hpp"
 #include "../orbital_advection/orbital_advection.hpp"
 #include "../parameter_input.hpp"
+#include "../rad_fld/rad_fld.hpp"
 #include "../reconstruct/reconstruction.hpp"
 #include "../scalars/scalars.hpp"
 #include "task_list.hpp"
@@ -918,10 +919,14 @@ TimeIntegratorTaskList::TimeIntegratorTaskList(ParameterInput *pin, Mesh *pm) {
         AddTask(DIFFUSE_SCLR,NONE);
         AddTask(CALC_SCLRFLX,(CALC_HYDFLX|DIFFUSE_SCLR));
       }
+      if (MGFLD_ENABLED)
+        AddTask(CALC_MGFLDFLX,CALC_HYDFLX);
     } else { // STS enabled:
       AddTask(CALC_HYDFLX,NONE);
       if (NSCALARS > 0)
         AddTask(CALC_SCLRFLX,CALC_HYDFLX);
+      if (MGFLD_ENABLED)
+        AddTask(CALC_MGFLDFLX,CALC_HYDFLX);
     }
     if (pm->multilevel || SHEAR_PERIODIC) { // SMR or AMR or shear periodic
       AddTask(SEND_HYDFLX,CALC_HYDFLX);
@@ -1039,6 +1044,16 @@ TimeIntegratorTaskList::TimeIntegratorTaskList(ParameterInput *pin, Mesh *pm) {
       if (SHEAR_PERIODIC) {
         AddTask(SEND_SCLRSH,SETB_SCLR);
         AddTask(RECV_SCLRSH,SEND_SCLRSH);
+      }
+    }
+
+    if (MGFLD_ENABLED) {
+      if (pm->multilevel) {
+          AddTask(SEND_MGFLDFLX,CALC_MGFLDFLX);
+          AddTask(RECV_MGFLDFLX,CALC_MGFLDFLX);
+          AddTask(INT_MGFLDFLX,RECV_MGFLDFLX);
+      } else {
+          AddTask(INT_MGFLDFLX,CALC_MGFLDFLX);
       }
     }
 
@@ -1589,6 +1604,22 @@ void TimeIntegratorTaskList::AddTask(const TaskID& id, const TaskID& dep) {
         static_cast<TaskStatus (TaskList::*)(MeshBlock*,int)>
         (&TimeIntegratorTaskList::CRTCOpacity);
     task_list_[ntasks].lb_time = true;
+  } else if (id == CALC_MGFLDFLX) {
+    task_list_[ntasks].TaskFunc=
+        static_cast<TaskStatus (TaskList::*)(MeshBlock*,int)>
+        (&TimeIntegratorTaskList::CalculateMGFLDFlux);
+  } else if (id == SEND_MGFLDFLX) {
+    task_list_[ntasks].TaskFunc=
+        static_cast<TaskStatus (TaskList::*)(MeshBlock*,int)>
+        (&TimeIntegratorTaskList::SendMGFLDFlux);
+  } else if (id == RECV_MGFLDFLX) {
+    task_list_[ntasks].TaskFunc=
+        static_cast<TaskStatus (TaskList::*)(MeshBlock*,int)>
+        (&TimeIntegratorTaskList::ReceiveMGFLDFlux);
+  } else if (id == INT_MGFLDFLX) {
+    task_list_[ntasks].TaskFunc=
+        static_cast<TaskStatus (TaskList::*)(MeshBlock*,int)>
+        (&TimeIntegratorTaskList::IntegrateMGFLDFlux);
   } else {
     std::stringstream msg;
     msg << "### FATAL ERROR in AddTask" << std::endl
@@ -3073,6 +3104,105 @@ TaskStatus TimeIntegratorTaskList::AddSourceTermsCRTC(MeshBlock *pmb, int stage)
       // Both u and ir are partially updated, only w is from the beginning of the step
       if (CR_ENABLED)
         pcr->pcrintegrator->AddSourceTerms(pmb, dt, ph->u, ph->w, pf->bcc, pcr->u_cr);
+    }
+    return TaskStatus::next;
+  }
+  return TaskStatus::fail;
+}
+
+
+TaskStatus TimeIntegratorTaskList::CalculateMGFLDFlux(MeshBlock *pmb, int stage) {
+  FLD *prfld = pmb->prfld;
+  if (stage <= nstages) {
+    if (stage_wghts[stage-1].main_stage) {
+      if ((integrator == "vl2") && (stage-stage_wghts[0].orbital_stage == 1)) {
+        prfld->CalculateFluxes(prfld->u, 1);
+      } else {
+        prfld->CalculateFluxes(prfld->u, pmb->precon->xorder);
+      }
+    }
+    return TaskStatus::next;
+  }
+  return TaskStatus::fail;
+}
+
+
+TaskStatus TimeIntegratorTaskList::SendMGFLDFlux(MeshBlock *pmb, int stage) {
+  if (stage <= nstages) {
+    if (stage_wghts[stage-1].main_stage ||
+        pmb->pmy_mesh->sts_loc == TaskType::op_split_before ||
+        pmb->pmy_mesh->sts_loc == TaskType::op_split_after) {
+      pmb->prfld->rfldbvar.SendFluxCorrection();
+    }
+    return TaskStatus::success;
+  }
+  return TaskStatus::fail;
+}
+
+
+TaskStatus TimeIntegratorTaskList::ReceiveMGFLDFlux(MeshBlock *pmb, int stage) {
+  if (stage <= nstages) {
+    if (stage_wghts[stage-1].main_stage ||
+        pmb->pmy_mesh->sts_loc == TaskType::op_split_before ||
+        pmb->pmy_mesh->sts_loc == TaskType::op_split_after) {
+      if (pmb->prfld->rfldbvar.ReceiveFluxCorrection()) {
+        return TaskStatus::next;
+      } else {
+        return TaskStatus::fail;
+      }
+    } else {
+      return TaskStatus::next;
+    }
+  }
+  return TaskStatus::fail;
+}
+
+
+TaskStatus TimeIntegratorTaskList::IntegrateMGFLDFlux(MeshBlock *pmb, int stage) {
+  if (pmb->pmy_mesh->fluid_setup == FluidFormulation::fixed) return TaskStatus::next;
+
+  FLD *prfld = pmb->prfld;
+
+  if (stage <= nstages) {
+    if (stage_wghts[stage-1].main_stage) {
+      // This time-integrator-specific averaging operation logic is identical to
+      // IntegrateHydro, IntegrateField
+      Real ave_wghts[5];
+      ave_wghts[0] = 1.0;
+      ave_wghts[1] = stage_wghts[stage-1].delta;
+      ave_wghts[2] = 0.0;
+      ave_wghts[3] = 0.0;
+      ave_wghts[4] = 0.0;
+      // std::cout << "nstages: " << nstages << ", stage: " << stage << std::endl;
+      // std::cout << "ave_wghts: " << ave_wghts[0] << " " << ave_wghts[1] << " " << ave_wghts[2] << " " << ave_wghts[3] << " " << ave_wghts[4] << std::endl;
+      pmb->WeightedAve(prfld->r1, prfld->r, prfld->r2, prfld->r0, prfld->r_fl_div, ave_wghts);
+
+      ave_wghts[0] = stage_wghts[stage-1].gamma_1;
+      ave_wghts[1] = stage_wghts[stage-1].gamma_2;
+      ave_wghts[2] = stage_wghts[stage-1].gamma_3;
+      // std::cout << "ave_wghts: " << ave_wghts[0] << " " << ave_wghts[1] << " " << ave_wghts[2] << " " << ave_wghts[3] << " " << ave_wghts[4] << std::endl;
+      if (ave_wghts[0] == 0.0 && ave_wghts[1] == 1.0 && ave_wghts[2] == 0.0) {
+        prfld->u.SwapAthenaArray(prfld->r1);
+      } else {
+        pmb->WeightedAve(prfld->r, prfld->r1, prfld->r2, prfld->r0, prfld->r_fl_div, ave_wghts);
+      }
+
+      const Real wght = stage_wghts[stage-1].beta*pmb->pmy_mesh->dt;
+      prfld->AddFluxDivergence(wght, prfld->r);
+
+      // // Hardcode an additional flux divergence weighted average for the penultimate
+      // // stage of SSPRK(5,4) since it cannot be expressed in a 3S* framework
+      // if (stage == 4 && integrator == "ssprk5_4") {
+      //   // From Gottlieb (2009), u^(n+1) partial calculation
+      //   ave_wghts[0] = -1.0; // -u^(n) coeff.
+      //   ave_wghts[1] = 0.0;
+      //   ave_wghts[2] = 0.0;
+      //   const Real beta = 0.063692468666290; // F(u^(3)) coeff.
+      //   const Real wght_ssp = beta*pmb->pmy_mesh->dt;
+      //   // writing out to s2 register
+      //   pmb->WeightedAve(prfld>s2, prfld->s1, prfld->s2, prfld->s0, prfld->s_fl_div, ave_wghts);
+      //   prfld->AddFluxDivergence(wght_ssp, prfld->s2);
+      // }
     }
     return TaskStatus::next;
   }

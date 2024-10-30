@@ -145,6 +145,20 @@ Hydro::Hydro(MeshBlock *pmb, ParameterInput *pin) :
   }
 
   UserTimeStep_ = pmb->pmy_mesh->UserTimeStep_;
+
+  // START:: For MGFLD advection term
+  if (MGFLD_ENABLED) {
+    vf[X1DIR].NewAthenaArray(pmb->ncells3,pmb->ncells2,pmb->ncells1+1);
+    if (pmy_block->block_size.nx2 > 1)
+      vf[X2DIR].NewAthenaArray(pmb->ncells3,pmb->ncells2+1,pmb->ncells1);
+    if (pmy_block->block_size.nx3 > 1)
+      vf[X3DIR].NewAthenaArray(pmb->ncells3+1,pmb->ncells2,pmb->ncells1);
+
+    // divV_.NewAthenaArray(pmb->ncells3,pmb->ncells2,pmb->ncells1);
+
+    // bcc_wrk_.NewAthenaArray(NFIELD,
+    //   pmy_block->ncells3, pmy_block->ncells2, pmy_block->ncells1);
+  }
 }
 
 //----------------------------------------------------------------------------------------

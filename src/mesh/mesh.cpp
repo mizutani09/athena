@@ -974,6 +974,8 @@ Mesh::~Mesh() {
   if (SELF_GRAVITY_ENABLED == 1) delete pfgrd;
   else if (SELF_GRAVITY_ENABLED == 2) delete pmgrd;
   if (IM_RADIATION_ENABLED) delete pimrad;
+  if (CRDIFFUSION_ENABLED) delete pmcrd;
+  if (MGFLD_ENABLED) delete pmfld;
   if (turb_flag > 0) delete ptrbd;
   if (adaptive) { // deallocate arrays for AMR
     delete [] nref;
@@ -1378,6 +1380,29 @@ void Mesh::EnrollUserCRBoundaryFunction(int dir, CRBoundaryFunc my_bc) {
 }
 
 
+void Mesh::EnrollUserFLDAdvBoundaryFunction(BoundaryFace dir, FLDAdvBoundaryFunc my_bc) {
+  std::stringstream msg;
+  if (dir < 0 || dir > 5) {
+    msg << "### FATAL ERROR in EnrollUserFLDAdvBoundaryCondition function" << std::endl
+        << "dirName = " << dir << " not valid" << std::endl;
+    ATHENA_ERROR(msg);
+  }
+  if (mesh_bcs[dir] != BoundaryFlag::user) {
+    msg << "### FATAL ERROR in EnrollUserFLDAdvBoundaryFunction" << std::endl
+        << "The boundary condition flag must be set to the string 'user' in the "
+        << " <mesh> block in the input file to use user-enrolled BCs" << std::endl;
+    ATHENA_ERROR(msg);
+  }
+  FLDAdvBoundaryFunc_[static_cast<int>(dir)]=my_bc;
+  return;
+}
+
+void Mesh::EnrollUserFLDAdvBoundaryFunction(int dir, FLDAdvBoundaryFunc my_bc) {
+  EnrollUserFLDAdvBoundaryFunction(static_cast<BoundaryFace>(dir), my_bc);
+  return;
+}
+
+
 
 
 //----------------------------------------------------------------------------------------
@@ -1600,6 +1625,14 @@ void Mesh::Initialize(int res_flag, ParameterInput *pin) {
       }
     }
 
+    // initialize Opacity for MGFLD
+    if (MGFLD_ENABLED) {
+      for (int i=0; i<nblocal; ++i) {
+        MeshBlock *pmb = my_blocks(i);
+        pmb->prfld->UpdateOpacity(pmb, pmb->prfld->u, pmb->phydro->w);
+      }
+    }
+
     // Create send/recv MPI_Requests for all BoundaryData objects
 #pragma omp parallel for num_threads(nthreads)
     for (int i=0; i<nblocal; ++i) {
@@ -1618,7 +1651,7 @@ void Mesh::Initialize(int res_flag, ParameterInput *pin) {
       if (CRDIFFUSION_ENABLED)
         pmb->pcrdiff->crbvar.SetupPersistentMPI();
       if (MGFLD_ENABLED)
-        pmb->prfld->rfldbvar.SetupPersistentMPI();
+        pmb->prfld->mgfldbvar.SetupPersistentMPI();
     }
 
     // solve gravity for the first time
@@ -1859,6 +1892,15 @@ void Mesh::Initialize(int res_flag, ParameterInput *pin) {
           CosmicRay *pcr = pmb->pcr;
           pf=pmb->pfield;
           pcr->UpdateOpacity(pmb,pcr->u_cr,ph->w,pf->bcc);
+        }
+      }
+
+      // calculate opacity for MGFLD
+      if (MGFLD_ENABLED) {
+        for (int i=0; i<nblocal; ++i) {
+          pmb = my_blocks(i); ph = pmb->phydro;
+          FLD *prfld = pmb->prfld;
+          prfld->UpdateOpacity(pmb, prfld->u, ph->w);
         }
       }
 

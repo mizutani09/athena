@@ -67,6 +67,7 @@
 #include "../hydro/hydro.hpp"
 #include "../mesh/mesh.hpp"
 #include "../nr_radiation/radiation.hpp"
+#include "../rad_fld/rad_fld.hpp"
 #include "../scalars/scalars.hpp"
 #include "./bvals.hpp"
 #include "cc/hydro/bvals_hydro.hpp"
@@ -144,6 +145,13 @@ void BoundaryValues::ProlongateBoundaries(const Real time, const Real dt,
   if (CR_ENABLED) {
     pcr = pmb->pcr;
     pcrbvar = &(pcr->cr_bvar);
+  }
+
+  FLD *prfld=nullptr;
+  CellCenteredBoundaryVariable *pfldbvar = nullptr;
+  if (MGFLD_ENABLED) {
+    prfld = pmb->prfld;
+    pfldbvar = &(prfld->rfldbvar);
   }
 
   // For each finer neighbor, to prolongate a boundary we need to fill one more cell
@@ -231,6 +239,9 @@ void BoundaryValues::ProlongateBoundaries(const Real time, const Real dt,
     if (CR_ENABLED)
       pcrbvar->var_cc = &(pcr->coarse_cr_);
 
+    if (MGFLD_ENABLED)
+      pfldbvar->var_cc = &(prfld->coarse_u);
+
     // Step 2. Re-apply physical boundaries on the coarse boundary:
     ApplyPhysicalBoundariesOnCoarseLevel(nb, time, dt, si, ei, sj, ej, sk, ek,
                                          bvars_subset);
@@ -250,6 +261,9 @@ void BoundaryValues::ProlongateBoundaries(const Real time, const Real dt,
 
     if (CR_ENABLED)
       pcrbvar->var_cc = &(pcr->u_cr);
+
+    if (MGFLD_ENABLED)
+      pfldbvar->var_cc = &(prfld->u);
 
     // Step 3. Finally, the ghost-ghost zones are ready for prolongation:
     ProlongateGhostCells(nb, si, ei, sj, ej, sk, ek);
@@ -397,6 +411,9 @@ void BoundaryValues::ApplyPhysicalBoundariesOnCoarseLevel(
   if (CR_ENABLED)
     pcr = pmb->pcr;
 
+  FLD *prfld = nullptr;
+  if (MGFLD_ENABLED)
+    prfld = pmb->prfld;
 
   // convert the ghost zone and ghost-ghost zones into primitive variables
   // this includes cell-centered field calculation
@@ -454,6 +471,7 @@ void BoundaryValues::ApplyPhysicalBoundariesOnCoarseLevel(
                                 pmb->cis, pmb->cie, sj, ej, sk, ek, 1,
                                 ph->coarse_prim_, pf->coarse_b_,
                                 pnrrad->coarse_ir_, pcr->coarse_cr_,
+                                prfld->coarse_u,
                                 BoundaryFace::inner_x1,
                                 bvars_subset);
     }
@@ -462,6 +480,7 @@ void BoundaryValues::ApplyPhysicalBoundariesOnCoarseLevel(
                                 pmb->cis, pmb->cie, sj, ej, sk, ek, 1,
                                 ph->coarse_prim_, pf->coarse_b_,
                                 pnrrad->coarse_ir_, pcr->coarse_cr_,
+                                prfld->coarse_u,
                                 BoundaryFace::outer_x1,
                                 bvars_subset);
     }
@@ -472,6 +491,7 @@ void BoundaryValues::ApplyPhysicalBoundariesOnCoarseLevel(
                                 si, ei, pmb->cjs, pmb->cje, sk, ek, 1,
                                 ph->coarse_prim_, pf->coarse_b_,
                                 pnrrad->coarse_ir_, pcr->coarse_cr_,
+                                prfld->coarse_u,
                                 BoundaryFace::inner_x2,
                                 bvars_subset);
     }
@@ -487,6 +507,7 @@ void BoundaryValues::ApplyPhysicalBoundariesOnCoarseLevel(
                                 si, ei, pmb->cjs, pmb->cje, sk, ek, 1,
                                 ph->coarse_prim_, pf->coarse_b_,
                                 pnrrad->coarse_ir_, pcr->coarse_cr_,
+                                prfld->coarse_u,
                                 BoundaryFace::outer_x2,
                                 bvars_subset);
     }
@@ -503,6 +524,7 @@ void BoundaryValues::ApplyPhysicalBoundariesOnCoarseLevel(
                                 si, ei, sj, ej, pmb->cks, pmb->cke, 1,
                                 ph->coarse_prim_, pf->coarse_b_,
                                 pnrrad->coarse_ir_, pcr->coarse_cr_,
+                                prfld->coarse_u,
                                 BoundaryFace::inner_x3,
                                 bvars_subset);
     }
@@ -520,6 +542,7 @@ void BoundaryValues::ApplyPhysicalBoundariesOnCoarseLevel(
                                 si, ei, sj, ej, pmb->cks, pmb->cke, 1,
                                 ph->coarse_prim_, pf->coarse_b_,
                                 pnrrad->coarse_ir_, pcr->coarse_cr_,
+                                prfld->coarse_u,
                                 BoundaryFace::outer_x3,
                                 bvars_subset);
     }
