@@ -1,7 +1,7 @@
 <comment>
 problem   = FLD test with Multigrid
 reference =
-configure = --prob=mgfld_adv -mgfld -hdf5
+configure = --prob=mgfld_adv -mgfld
 
 <job>
 problem_id = MGFLD # problem ID: basename of output filenames
@@ -11,18 +11,19 @@ file_type  = hst        # History data dump
 dcycle     = 1       # time increment between outputs
 
 #<output2>
-#file_type  = tab        # Binary data dump
+#file_type  = hdf5        # Binary data dump
+#id         = prim_x_slice
 #variable   = prim       # variables to be output
-#dcycle     = 10       # time increment between outputs
+#dcycle     = 1       # time increment between outputs
 #x2_slice   = 0.5        # slice location in X2
 #x3_slice   = 0.5        # slice location in X3
-# ghost_zones     = true
+#ghost_zones     = true
 
 <output3>
 file_type  = hdf5
 id         = uov_x_slice
 variable   = uov
-dcycle     = 1
+dcycle     = 10
 # dt         = 0.1
 x2_slice   = 0.5
 x3_slice   = 0.5
@@ -30,8 +31,8 @@ ghost_zones     = true
 
 <time>
 cfl_number = 0.3        # The Courant, Friedrichs, & Lewy (CFL) Number
-nlim       = 50          # cycle limit
-tlim       = 100000.0        # time limit
+nlim       = 10          # cycle limit
+tlim       = 30.0        # time limit
 integrator  = rk2       # time integration algorithm
 xorder      = 2         # order of spatial reconstruction
 ncycle_out  = 10         # interval for stdout summary info
@@ -93,6 +94,8 @@ const_opacity   = 0.4 # in cm^2 g^-1 caution!
 
 <problem>
 rho0            = 1.0
-p0              = 1e+2
-v0              = 0.5
+p0              = 1.0
+v0              = 0.1
 Er0             = 100.0
+r0              = 0.5
+r_sigma         = 0.1
