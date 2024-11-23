@@ -39,33 +39,16 @@
 //! - high-order calculation of scalar fluxes will require other Hydro flux
 //!   approximations (flux_fc in calculate_fluxes.cpp is currently not saved persistently
 //!   in Hydro class but each flux dir is temp. stored in 4D scratch array scr1_nkji_)
-void FLD::CalculateFluxes(AthenaArray<Real> &u, const int order) {
+void FLD::CalculateFluxes(AthenaArray<Real> &r, const int order) {
   MeshBlock *pmb = pmy_block;
-
-  // load u(RadFLD::RAD) to r
-  // r.InitWithShallowSlice(u, 4, RadFLD::RAD, 1);
-  r.InitWithShallowSlice(u, 4, 0, 1);
-
   Hydro &hyd = *(pmb->phydro);
 
-  AthenaArray<Real> &x1flux = u_flux[X1DIR];
+  AthenaArray<Real> &x1flux = r_flux[X1DIR];
   AthenaArray<Real> vf;
   vf.InitWithShallowSlice(hyd.vf[X1DIR], 4, 0, 1);
   int is = pmb->is; int js = pmb->js; int ks = pmb->ks;
   int ie = pmb->ie; int je = pmb->je; int ke = pmb->ke;
   int il, iu, jl, ju, kl, ku;
-
-  // std::cout << "is = " << is << ", ie = " << ie << std::endl;
-
-  // // confirm the content of u and r
-  // for (int k = ks; k <= ke; ++k) {
-  //   for (int j = js; j <= je; ++j) {
-  //     for (int i = is; i <= ie; ++i) {
-  //         std::cout << "u(" << RadFLD::RAD << "," << k << "," << j << "," << i << ") = " << u(RadFLD::RAD, k, j, i) << std::endl;
-  //         std::cout << "r(" << k << "," << j << "," << i << ") = " << r(k, j, i) << std::endl;
-  //     }
-  //   }
-  // }
 
   //--------------------------------------------------------------------------------------
   // i-direction
@@ -101,20 +84,11 @@ void FLD::CalculateFluxes(AthenaArray<Real> &u, const int order) {
     }
   }
 
-  // il = is, iu = ie;
-  // // std::cout << "rl_(" <<
-  // for (int i = il; i <= iu; ++i) {
-  //   int k = (kl+ku)/2, j = (jl+ju)/2;
-  //   std::cout << "r(" << k << "," << j << "," << i << ") = " << r(0,k,j,i) << std::endl;
-  //   std::cout << "rl_(" << k << "," << j << "," << i << ") = " << rl_(0,i) << std::endl;
-  //   std::cout << "rr_(" << k << "," << j << "," << i << ") = " << rr_(0,i) << std::endl;
-  // }
-
   //--------------------------------------------------------------------------------------
   // j-direction
 
   if (pmb->pmy_mesh->f2) {
-    AthenaArray<Real> &x2flux = u_flux[X2DIR];
+    AthenaArray<Real> &x2flux = r_flux[X2DIR];
     vf.InitWithShallowSlice(hyd.vf[X2DIR], 4, 0, 1);
 
     // set the loop limits
@@ -172,7 +146,7 @@ void FLD::CalculateFluxes(AthenaArray<Real> &u, const int order) {
   // k-direction
 
   if (pmb->pmy_mesh->f3) {
-    AthenaArray<Real> &x3flux = u_flux[X3DIR];
+    AthenaArray<Real> &x3flux = r_flux[X3DIR];
     vf.InitWithShallowSlice(hyd.vf[X3DIR], 4, 0, 1);
 
     // set the loop limits
@@ -229,17 +203,24 @@ void FLD::ComputeUpwindFlux(const int k, const int j, const int il,
                                        AthenaArray<Real> &rl, AthenaArray<Real> &rr, // 2D
                                        AthenaArray<Real> &vf,  // 3D
                                        AthenaArray<Real> &flx_out) { // 4D
-  const int nu = RadFLD::NADV - 1;
 
-  for (int n=0; n<=nu; n++) {
 #pragma omp simd
-    for (int i=il; i<=iu; i++) {
-      Real fluid_flx = vf(k,j,i);
-      if (fluid_flx >= 0.0)
-        flx_out(n,k,j,i) = fluid_flx*rl_(n,i);
-      else
-        flx_out(n,k,j,i) = fluid_flx*rr_(n,i);
-    }
+  for (int i=il; i<=iu; i++) {
+    Real fluid_flx = vf(k,j,i);
+    if (fluid_flx >= 0.0)
+      flx_out(k,j,i) = fluid_flx*rl_(i);
+    else
+      flx_out(k,j,i) = fluid_flx*rr_(i);
   }
+  return;
+}
+
+
+//----------------------------------------------------------------------------------------
+//! \fn  void FLD::LoadRadEnergyforFlux
+//! \brief Load Erad from u to r
+//!
+void FLD::LoadRadEnergyforFlux(AthenaArray<Real> &u, AthenaArray<Real> &r) {
+  r.InitWithShallowSlice(u, 4, RadFLD::RAD, 1);
   return;
 }

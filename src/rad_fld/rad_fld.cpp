@@ -58,24 +58,26 @@ inline void DefaultOpacity(MeshBlock *pmb, AthenaArray<Real> &u_fld,
 //! \fn FLD::FLD(MeshBlock *pmb, ParameterInput *pin)
 //! \brief FLD constructor
 FLD::FLD(MeshBlock *pmb, ParameterInput *pin) :
-    pmy_block(pmb), u(RadFLD::NTEMP, pmb->ncells3, pmb->ncells2, pmb->ncells1),
-    r1(RadFLD::NADV, pmb->ncells3, pmb->ncells2, pmb->ncells1),
-    r(RadFLD::NADV, pmb->ncells3, pmb->ncells2, pmb->ncells1),
+    pmy_block(pmb),
+    u(RadFLD::NTEMP, pmb->ncells3, pmb->ncells2, pmb->ncells1), // bad free?
+    r1(pmb->ncells3, pmb->ncells2, pmb->ncells1),
+    r(pmb->ncells3, pmb->ncells2, pmb->ncells1), // for advection of Erad
     source(RadFLD::NTEMP, pmb->ncells3, pmb->ncells2, pmb->ncells1),
     coeff(RadFLD::NCOEFF, pmb->ncells3, pmb->ncells2, pmb->ncells1),
     coarse_u(RadFLD::NTEMP, pmb->ncc3, pmb->ncc2, pmb->ncc1), //!
+    coarse_r(pmb->ncc3, pmb->ncc2, pmb->ncc1),
     sigma_r(pmb->ncells3+1,pmb->ncells2+1,pmb->ncells1+1),
     empty_flux{AthenaArray<Real>(), AthenaArray<Real>(), AthenaArray<Real>()},
     output_defect(false), mgfldbvar(pmb, &u, &coarse_u, empty_flux, false), //!
-    u_flux{ {RadFLD::NADV, pmb->ncells3, pmb->ncells2, pmb->ncells1+1},
-            {RadFLD::NADV, pmb->ncells3, pmb->ncells2+1, pmb->ncells1,
+    r_flux{ {pmb->ncells3, pmb->ncells2, pmb->ncells1+1},
+            {pmb->ncells3, pmb->ncells2+1, pmb->ncells1,
              (pmb->pmy_mesh->f2 ? AthenaArray<Real>::DataStatus::allocated :
               AthenaArray<Real>::DataStatus::empty)},
-            {RadFLD::NADV, pmb->ncells3+1, pmb->ncells2, pmb->ncells1,
+            {pmb->ncells3+1, pmb->ncells2, pmb->ncells1,
              (pmb->pmy_mesh->f3 ? AthenaArray<Real>::DataStatus::allocated :
               AthenaArray<Real>::DataStatus::empty)}
     },
-    rfldbvar(pmb, &u, &coarse_u, u_flux, true),
+    rfldbvar(pmb, &r, &coarse_r, r_flux, true),
     // coarse_r_(RadFLD::NADV, pmb->ncc3, pmb->ncc2, pmb->ncc1,
     //           (pmb->pmy_mesh->multilevel ? AthenaArray<Real>::DataStatus::allocated :
     //            AthenaArray<Real>::DataStatus::empty)),
@@ -99,20 +101,26 @@ FLD::FLD(MeshBlock *pmb, ParameterInput *pin) :
   std::string integrator = pin->GetOrAddString("time", "integrator", "vl2");
   if (integrator == "ssprk5_4" || STS_ENABLED)
     // future extension may add "int nregister" to Hydro class
-    r2.NewAthenaArray(RadFLD::NADV, pmb->ncells3, pmb->ncells2, pmb->ncells1);
+    r2.NewAthenaArray(pmb->ncells3, pmb->ncells2, pmb->ncells1);
 
   // If STS RKL2, allocate additional memory registers
   if (STS_ENABLED) {
     std::string sts_integrator = pin->GetOrAddString("time", "sts_integrator", "rkl2");
     if (sts_integrator == "rkl2") {
-      r0.NewAthenaArray(RadFLD::NADV, pmb->ncells3, pmb->ncells2, pmb->ncells1);
-      r_fl_div.NewAthenaArray(RadFLD::NADV, pmb->ncells3, pmb->ncells2, pmb->ncells1);
+      r0.NewAthenaArray(pmb->ncells3, pmb->ncells2, pmb->ncells1);
+      r_fl_div.NewAthenaArray(pmb->ncells3, pmb->ncells2, pmb->ncells1);
     }
   }
 
   // "Enroll" in S/AMR by adding to vector of tuples of pointers in MeshRefinement class
   if (pmb->pmy_mesh->multilevel)
     refinement_idx_ = pmy_block->pmr->AddToRefinement(&u, &coarse_u); //!
+
+  // caution!
+    // "Enroll" in SMR/AMR by adding to vector of pointers in MeshRefinement class
+  if (pmb->pmy_mesh->multilevel) {
+    refinement_idx = pmy_block->pmr->AddToRefinement(&r, &coarse_r);
+  }
 
   pmg = new MGFLD(pmb->pmy_mesh->pmfld, pmb, pin);
 
@@ -131,9 +139,9 @@ FLD::FLD(MeshBlock *pmb, ParameterInput *pin) :
   // std::cout << "tmp: " << tmp << std::endl;
 
   // Allocate memory for scratch arrays
-  rl_.NewAthenaArray(RadFLD::NADV, pmb->ncells1);
-  rr_.NewAthenaArray(RadFLD::NADV, pmb->ncells1);
-  rlb_.NewAthenaArray(RadFLD::NADV, pmb->ncells1);
+  rl_.NewAthenaArray(pmb->ncells1);
+  rr_.NewAthenaArray(pmb->ncells1);
+  rlb_.NewAthenaArray(pmb->ncells1);
   x1face_area_.NewAthenaArray(pmb->ncells1+1);
   Mesh *pm = pmy_block->pmy_mesh;
   if (pm->f2) {
@@ -145,7 +153,7 @@ FLD::FLD(MeshBlock *pmb, ParameterInput *pin) :
     x3face_area_p1_.NewAthenaArray(pmb->ncells1);
   }
   cell_volume_.NewAthenaArray(pmb->ncells1);
-  dflx_.NewAthenaArray(RadFLD::NADV, pmb->ncells1);
+  dflx_.NewAthenaArray(pmb->ncells1);
 
   // set a default opacity function
   UpdateOpacity = DefaultOpacity;
@@ -161,13 +169,6 @@ void FLD::EnrollOpacityFunction(FLDOpacityFunc MyOpacityFunction) {
 //! \brief FLD destructor
 FLD::~FLD() {
   delete pmg;
-  u_flux[X1DIR].DeleteAthenaArray();
-  if (pmy_block->pmy_mesh->f2) {
-    u_flux[X2DIR].DeleteAthenaArray();
-  }
-  if (pmy_block->pmy_mesh->f3) {
-    u_flux[X3DIR].DeleteAthenaArray();
-  }
 }
 
 
@@ -269,10 +270,10 @@ void FLD::CalculateCoefficients(const AthenaArray<Real> &w,
           coeff(RadFLD::DCOUPLE,k,j,i) = 0.0;
         }
 
-        // // for test
-        // for (int n = 0; n <= RadFLD::DZP; ++n) {
-        //   coeff(n,k,j,i) = 0.0;
-        // }
+        // for test
+        for (int n = 0; n <= RadFLD::DZP; ++n) {
+          coeff(n,k,j,i) = 0.0;
+        }
       }
     }
   }
@@ -336,3 +337,26 @@ void FLD::UpdateHydroVariables(AthenaArray<Real> &w, AthenaArray<Real> &hydro_u,
   }
   return;
 }
+
+
+//----------------------------------------------------------------------------------------
+//! \fn void FLD::UpdateRadiationEnergy(AthenaArray<Real> &u, const AthenaArray<Real> &r)
+//! \brief Update radiation energy using advected radiation energy
+void FLD::UpdateRadiationEnergy(AthenaArray<Real> &u, const AthenaArray<Real> &r) {
+  int il = pmy_block->is - NGHOST, iu = pmy_block->ie + NGHOST;
+  int jl = pmy_block->js, ju = pmy_block->je;
+  int kl = pmy_block->ks, ku = pmy_block->ke;
+  if (pmy_block->pmy_mesh->f2)
+    jl -= NGHOST, ju += NGHOST;
+  if (pmy_block->pmy_mesh->f3)
+    kl -= NGHOST, ku += NGHOST;
+  for (int k = kl; k <= ku; ++k) {
+    for (int j = jl; j <= ju; ++j) {
+      for (int i = il; i <= iu; ++i) {
+        u(RadFLD::RAD,k,j,i) = r(k,j,i);
+      }
+    }
+  }
+  return;
+}
+

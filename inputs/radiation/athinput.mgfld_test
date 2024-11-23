@@ -1,7 +1,7 @@
 <comment>
 problem   = FLD test with Multigrid
 reference =
-configure = --prob=mg_fld -mgfld
+configure = --prob=mgfld_test -mgfld -hdf5
 
 <job>
 problem_id = MGFLD # problem ID: basename of output filenames

@@ -57,6 +57,37 @@ namespace {
   Real HistoryEall(MeshBlock *pmb, int iout);
   // Real HistoryL1norm(MeshBlock *pmb, int iout);
   Real Er0, rho0, p0, v0;
+  Real r0, r_sigma;
+}
+
+void FLDOutflowInnerX1(AthenaArray<Real> &dst, Real time, int nvar,
+                    int is, int ie, int js, int je, int ks, int ke, int ngh,
+                    const MGCoordinates &coord) {
+  // for outflow boundary condition
+  for (int k=ks; k<=ke; k++) {
+    for (int j=js; j<=je; j++) {
+      for (int i=0; i<ngh; i++) {
+        dst(RadFLD::GAS,k,j,is-i-1) = dst(RadFLD::GAS,k,j,is);
+        dst(RadFLD::RAD,k,j,is-i-1) = dst(RadFLD::RAD,k,j,is);
+      }
+    }
+  }
+  return;
+}
+
+void FLDOutflowOuterX1(AthenaArray<Real> &dst, Real time, int nvar,
+                    int is, int ie, int js, int je, int ks, int ke, int ngh,
+                    const MGCoordinates &coord) {
+  // for outflow boundary condition
+  for (int k=ks; k<=ke; k++) {
+    for (int j=js; j<=je; j++) {
+      for (int i=0; i<ngh; i++) {
+        dst(RadFLD::GAS,k,j,ie+i+1) = dst(RadFLD::GAS,k,j,ie);
+        dst(RadFLD::RAD,k,j,ie+i+1) = dst(RadFLD::RAD,k,j,ie);
+      }
+    }
+  }
+  return;
 }
 
 //========================================================================================
@@ -101,6 +132,13 @@ void Mesh::InitUserMeshData(ParameterInput *pin) {
   p0 = pin->GetReal("problem", "p0");
   Er0 = pin->GetReal("problem", "Er0");
   v0 = pin->GetReal("problem", "v0");
+  r0 = pin->GetReal("problem", "r0");
+  r_sigma = pin->GetReal("problem", "r_sigma");
+
+  std::string ix1_bc = pin->GetString("mgfld", "ix1_bc");
+  std::string ox1_bc = pin->GetString("mgfld", "ox1_bc");
+  if (ix1_bc == "user") EnrollUserMGFLDBoundaryFunction(BoundaryFace::inner_x1, FLDOutflowInnerX1);
+  if (ox1_bc == "user") EnrollUserMGFLDBoundaryFunction(BoundaryFace::outer_x1, FLDOutflowOuterX1);
 
   AllocateUserHistoryOutput(7);
   EnrollUserHistoryOutput(0, HistoryTg, "T_gas", UserHistoryOperation::max);
@@ -162,26 +200,30 @@ void MeshBlock::ProblemGenerator(ParameterInput *pin) {
         phydro->u(IM2,k,j,i) = 0.0;
         phydro->u(IM3,k,j,i) = 0.0;
         if (NON_BAROTROPIC_EOS)
-          phydro->u(IEN,k,j,i) = p0*igm1;
+          phydro->u(IEN,k,j,i) = p0*igm1 + 0.5*rho0*v0*v0;
       }
     }
   }
-  Real x0 = 0.5, x_sigma = 0.1;
-  Real x_sigma_sq = SQR(x_sigma);
+  Real r_sigma_sq = SQR(r_sigma);
   for (int k=kl; k<=ku; k++) {
     for (int j=jl; j<=ju; j++) {
       for (int i=il; i<=iu; i++) {
-        Real r_sq = SQR(pcoord->x1v(i)-x0);
+        Real r_sq = SQR(pcoord->x1v(i)-r0);
         prfld->u(RadFLD::GAS,k,j,i) = phydro->u(IEN,k,j,i);
-        prfld->u(RadFLD::RAD,k,j,i) = Er0*(1.0+std::exp(-r_sq/x_sigma_sq));
+        if (r_sigma < 0.0) {
+          prfld->u(RadFLD::RAD,k,j,i) = Er0;
+        } else {
+          prfld->u(RadFLD::RAD,k,j,i) = Er0*(1.0+std::exp(-r_sq/r_sigma_sq));
+        }
+        // if (k == (ks+ke)/2 && j == (js+je)/2) {
+        //   std::cout << "i = " << i << ", x1v = " << pcoord->x1v(i) << ", Erad = " << prfld->u(RadFLD::RAD,k,j,i) << std::endl;
+        // }
       }
     }
   }
 
   return;
 }
-
-
 
 
 void MeshBlock::InitUserMeshBlockData(ParameterInput *pin) {

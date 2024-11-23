@@ -39,11 +39,11 @@
 //! \todo (felker): remove the following unnecessary private class member?
 //! field_diffusion.cpp:66:    cell_volume_.NewAthenaArray(nc1);
 
-void FLD::AddFluxDivergence(const Real wght, AthenaArray<Real> &u_out) {
+void FLD::AddFluxDivergence(const Real wght, AthenaArray<Real> &r_out) {
   MeshBlock *pmb = pmy_block;
-  AthenaArray<Real> &x1flux = u_flux[X1DIR];
-  AthenaArray<Real> &x2flux = u_flux[X2DIR];
-  AthenaArray<Real> &x3flux = u_flux[X3DIR];
+  AthenaArray<Real> &x1flux = r_flux[X1DIR];
+  AthenaArray<Real> &x2flux = r_flux[X2DIR];
+  AthenaArray<Real> &x3flux = r_flux[X3DIR];
   int is = pmb->is; int js = pmb->js; int ks = pmb->ks;
   int ie = pmb->ie; int je = pmb->je; int ke = pmb->ke;
   AthenaArray<Real> &x1area = x1face_area_, &x2area = x2face_area_,
@@ -54,47 +54,46 @@ void FLD::AddFluxDivergence(const Real wght, AthenaArray<Real> &u_out) {
     for (int j=js; j<=je; ++j) {
       // calculate x1-flux divergence
       pmb->pcoord->Face1Area(k, j, is, ie+1, x1area);
-      for (int n=0; n<RadFLD::NADV; ++n) {
+      // for (int n=0; n<RadFLD::NADV; ++n) {
 #pragma omp simd
         for (int i=is; i<=ie; ++i) {
-          dflx(n,i) = (x1area(i+1)*x1flux(n,k,j,i+1) - x1area(i)*x1flux(n,k,j,i));
+          dflx(i) = (x1area(i+1)*x1flux(k,j,i+1) - x1area(i)*x1flux(k,j,i));
         }
-      }
+      // }
 
       // calculate x2-flux divergence
       if (pmb->block_size.nx2 > 1) {
         pmb->pcoord->Face2Area(k, j  , is, ie, x2area   );
         pmb->pcoord->Face2Area(k, j+1, is, ie, x2area_p1);
-        for (int n=0; n<RadFLD::NADV; ++n) {
+        // for (int n=0; n<RadFLD::NADV; ++n) {
 #pragma omp simd
           for (int i=is; i<=ie; ++i) {
-            dflx(n,i) += (x2area_p1(i)*x2flux(n,k,j+1,i) - x2area(i)*x2flux(n,k,j,i));
+            dflx(i) += (x2area_p1(i)*x2flux(k,j+1,i) - x2area(i)*x2flux(k,j,i));
           }
-        }
+        // }
       }
 
       // calculate x3-flux divergence
       if (pmb->block_size.nx3 > 1) {
         pmb->pcoord->Face3Area(k  , j, is, ie, x3area   );
         pmb->pcoord->Face3Area(k+1, j, is, ie, x3area_p1);
-        for (int n=0; n<RadFLD::NADV; ++n) {
+        // for (int n=0; n<RadFLD::NADV; ++n) {
 #pragma omp simd
           for (int i=is; i<=ie; ++i) {
-            dflx(n,i) += (x3area_p1(i)*x3flux(n,k+1,j,i) - x3area(i)*x3flux(n,k,j,i));
+            dflx(i) += (x3area_p1(i)*x3flux(k+1,j,i) - x3area(i)*x3flux(k,j,i));
           }
-        }
+        // }
       }
 
       // update conserved variables
       pmb->pcoord->CellVolume(k, j, is, ie, vol);
-      for (int n=0; n<RadFLD::NADV; ++n) {
-        if (n == RadFLD::GAS) continue;
+      // for (int n=0; n<RadFLD::NADV; ++n) {
+        // if (n == RadFLD::GAS) continue;
 #pragma omp simd
         for (int i=is; i<=ie; ++i) {
-          u_out(n,k,j,i) -= wght*dflx(n,i)/vol(i); // caution
-          u(RadFLD::RAD,k,j,i) = u_out(n,k,j,i); // caution
+          r_out(k,j,i) -= wght*dflx(i)/vol(i); // caution
         }
-      }
+      // }
     }
   }
   return;

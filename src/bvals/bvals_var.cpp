@@ -210,19 +210,11 @@ void BoundaryVariable::SetCompletedFlagSameProcess(NeighborBlock& nb) {
 //! \brief Send boundary buffers of variables
 
 void BoundaryVariable::SendBoundaryBuffers() {
-  // std::cout << "In SendBoundaryBuffers\n";
   MeshBlock *pmb = pmy_block_;
   int mylevel = pmb->loc.level;
-  // std::cout << pbval_->nneighbor << " neighbors\n";
   for (int n=0; n<pbval_->nneighbor; n++) {
-    // std::cout << "n = " << n << "\n";
     NeighborBlock& nb = pbval_->neighbor[n];
-    // std::cout << 1 << std::endl;
-    // std::cout << "nb.bufid = " << nb.bufid << "\n";
-    // std::cout << "bd_var_.sflag[nb.bufid] == BoundaryStatus::completed = " << (bd_var_.sflag[nb.bufid] == BoundaryStatus::completed) << "\n";
-    // std::cout << "mylevel = " << mylevel << "\n";
     if (bd_var_.sflag[nb.bufid] == BoundaryStatus::completed) continue;
-    // std::cout << 2 << std::endl;
     int ssize;
     if (nb.snb.level == mylevel)
       ssize = LoadBoundaryBufferSameLevel(bd_var_.send[nb.bufid], nb);
@@ -230,9 +222,6 @@ void BoundaryVariable::SendBoundaryBuffers() {
       ssize = LoadBoundaryBufferToCoarser(bd_var_.send[nb.bufid], nb);
     else
       ssize = LoadBoundaryBufferToFiner(bd_var_.send[nb.bufid], nb);
-    // std::cout << "ssize = " << ssize << "\n";
-    // std::cout << "nb.snb.rank = " << nb.snb.rank << "\n";
-    // std::cout << "Globals::my_rank = " << Globals::my_rank << "\n";
     if (nb.snb.rank == Globals::my_rank) {  // on the same process
       CopyVariableBufferSameProcess(nb, ssize);
     }

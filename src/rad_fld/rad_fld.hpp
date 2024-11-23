@@ -27,7 +27,7 @@ class MGFLD;
 class MGFLDDriver;
 
 namespace RadFLD {
-  constexpr int NTEMP=2, NMATRIX=15, NCOEFF=8, NADV=2;
+  constexpr int NTEMP=2, NMATRIX=15, NCOEFF=8;//, NADV=2;
   enum TempTndex {GAS=0, RAD=1};
   enum CoeffIndex {DXM=0, DXP=1, DYM=2, DYP=3, DZM=4, DZP=5, DSIGMAP=6, DCOUPLE=7};
   enum MatrixIndex {CCC=0, CCM=1, CCP=2, CMC=3, CPC=4, MCC=5, PCC=6,
@@ -49,9 +49,13 @@ class FLD {
   // AthenaArray<Real> ecr, source, zeta, coeff; //!
   AthenaArray<Real> source, coeff;
   AthenaArray<Real> u, coarse_u;
-  AthenaArray<Real> r1, r2;  // (no more than MAX_NREGISTER allowed)
+
+  AthenaArray<Real> r, r1, r2;  // (no more than MAX_NREGISTER allowed)
   AthenaArray<Real> r0, r_fl_div;  // rkl2 STS memory registers;
-  AthenaArray<Real> r;//, coarse_r_;
+  AthenaArray<Real> r_flux[3];  // face-averaged flux vector
+  AthenaArray<Real> coarse_r;
+  int refinement_idx{-1}; // for r
+
   AthenaArray<Real> sigma_r;
   AthenaArray<Real> empty_flux[3];
   AthenaArray<Real> def;   // defect from the Multigrid solver
@@ -61,6 +65,7 @@ class FLD {
   bool only_rad;
 
   void LoadHydroVariables(const AthenaArray<Real> &w, AthenaArray<Real> &u);
+  void UpdateRadiationEnergy(AthenaArray<Real> &u, const AthenaArray<Real> &r);
   void CalculateCoefficients(const AthenaArray<Real> &w,
                              const AthenaArray<Real> &u);
   void UpdateHydroVariables(AthenaArray<Real> &w,
@@ -69,6 +74,7 @@ class FLD {
   CellCenteredBoundaryVariable mgfldbvar;
   CellCenteredBoundaryVariable rfldbvar;
   void CalculateFluxes(AthenaArray<Real> &u, const int order);
+  void LoadRadEnergyforFlux(AthenaArray<Real> &u, AthenaArray<Real> &r);
 
   friend class MGFLDDriver;
 
@@ -76,8 +82,8 @@ class FLD {
   void EnrollOpacityFunction(FLDOpacityFunc MyOpacityFunction);
   FLDOpacityFunc UpdateOpacity;
 
-  AthenaArray<Real> u_flux[3];  // face-averaged flux vector
   void AddFluxDivergence(const Real wght, AthenaArray<Real> &u_out);
+  void CheckFLD(const AthenaArray<Real> &r);
 
  private:
   int refinement_idx_;
