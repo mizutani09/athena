@@ -76,8 +76,6 @@ void FLDFixedInnerX1(AthenaArray<Real> &dst, Real time, int nvar,
     for (int k=ks; k<=ke; k++) {
       for (int j=js; j<=je; j++) {
         for (int i=0; i<ngh; i++) {
-          // dst(RadFLD::GAS,k,j,is-i-1) = eg_0;
-          // dst(RadFLD::RAD,k,j,is-i-1) = Er_0;
           dst(RadFLD::GAS,k,j,is-i-1) = dst(RadFLD::GAS,k,j,is);
           dst(RadFLD::RAD,k,j,is-i-1) = dst(RadFLD::RAD,k,j,is);
         }
@@ -103,8 +101,6 @@ void FLDFixedOuterX1(AthenaArray<Real> &dst, Real time, int nvar,
     for (int k=ks; k<=ke; k++) {
       for (int j=js; j<=je; j++) {
         for (int i=0; i<ngh; i++) {
-          // dst(RadFLD::GAS,k,j,ie+i+1) = eg_0;
-          // dst(RadFLD::RAD,k,j,ie+i+1) = Er_0;
           dst(RadFLD::GAS,k,j,ie+i+1) = dst(RadFLD::GAS,k,j,ie);
           dst(RadFLD::RAD,k,j,ie+i+1) = dst(RadFLD::RAD,k,j,ie);
         }
@@ -130,8 +126,6 @@ void FLDFixedInnerX2(AthenaArray<Real> &dst, Real time, int nvar,
     for (int k=ks; k<=ke; k++) {
       for (int j=0; j<ngh; j++) {
         for (int i=is; i<=ie; i++) {
-          // dst(RadFLD::GAS,k,js-j-1,i) = eg_0;
-          // dst(RadFLD::RAD,k,js-j-1,i) = Er_0;
           dst(RadFLD::GAS,k,js-j-1,i) = dst(RadFLD::GAS,k,js,i);
           dst(RadFLD::RAD,k,js-j-1,i) = dst(RadFLD::RAD,k,js,i);
         }
@@ -157,8 +151,6 @@ void FLDFixedOuterX2(AthenaArray<Real> &dst, Real time, int nvar,
     for (int k=ks; k<=ke; k++) {
       for (int j=0; j<ngh; j++) {
         for (int i=is; i<=ie; i++) {
-          // dst(RadFLD::GAS,k,je+j+1,i) = eg_0;
-          // dst(RadFLD::RAD,k,je+j+1,i) = Er_0;
           dst(RadFLD::GAS,k,je+j+1,i) = dst(RadFLD::GAS,k,je,i);
           dst(RadFLD::RAD,k,je+j+1,i) = dst(RadFLD::RAD,k,je,i);
         }
@@ -184,8 +176,6 @@ void FLDFixedInnerX3(AthenaArray<Real> &dst, Real time, int nvar,
     for (int k=0; k<ngh; k++) {
       for (int j=js; j<=je; j++) {
         for (int i=is; i<=ie; i++) {
-          // dst(RadFLD::GAS,ks-k-1,j,i) = eg_0;
-          // dst(RadFLD::RAD,ks-k-1,j,i) = Er_0;
           dst(RadFLD::GAS,ks-k-1,j,i) = dst(RadFLD::GAS,ks,j,i);
           dst(RadFLD::RAD,ks-k-1,j,i) = dst(RadFLD::RAD,ks,j,i);
         }
@@ -211,8 +201,6 @@ void FLDFixedOuterX3(AthenaArray<Real> &dst, Real time, int nvar,
     for (int k=0; k<ngh; k++) {
       for (int j=js; j<=je; j++) {
         for (int i=is; i<=ie; i++) {
-          // dst(RadFLD::GAS,ke+k+1,j,i) = eg_0;
-          // dst(RadFLD::RAD,ke+k+1,j,i) = Er_0;
           dst(RadFLD::GAS,ke+k+1,j,i) = dst(RadFLD::GAS,ke,j,i);
           dst(RadFLD::RAD,ke+k+1,j,i) = dst(RadFLD::RAD,ke,j,i);
         }
@@ -223,15 +211,15 @@ void FLDFixedOuterX3(AthenaArray<Real> &dst, Real time, int nvar,
 }
 
 
-int AMRCondition(MeshBlock *pmb) {
-  if (pmb->block_size.x1min >= 0.25 && pmb->block_size.x1min <=0.251
-  &&  pmb->block_size.x2min >= 0.25 && pmb->block_size.x2min <=0.251
-  &&  pmb->block_size.x3min >= 0.25 && pmb->block_size.x3min <=0.251) {
-    if (pmb->pmy_mesh->ncycle >= pmb->loc.level - 1)
-      return 1;
-  }
-  return 0;
-}
+// int AMRCondition(MeshBlock *pmb) {
+//   if (pmb->block_size.x1min >= 0.25 && pmb->block_size.x1min <=0.251
+//   &&  pmb->block_size.x2min >= 0.25 && pmb->block_size.x2min <=0.251
+//   &&  pmb->block_size.x3min >= 0.25 && pmb->block_size.x3min <=0.251) {
+//     if (pmb->pmy_mesh->ncycle >= pmb->loc.level - 1)
+//       return 1;
+//   }
+//   return 0;
+// }
 
 
 //========================================================================================
@@ -265,38 +253,15 @@ void Mesh::InitUserMeshData(ParameterInput *pin) {
   Real vel_unit = std::sqrt(pres_unit/rho_unit);
   if (time_unit < 0.0) time_unit = leng_unit/vel_unit;
   if (leng_unit < 0.0) leng_unit = vel_unit*time_unit;
-  std::cout << "time_unit = " << time_unit << " s" << std::endl;
-  std::cout << "leng_unit = " << leng_unit << " cm" << std::endl;
 
   calc_in_temp = pin->GetOrAddBoolean("mgfld", "calc_in_temp", false);
-  is_gauss = pin->GetOrAddBoolean("problem", "is_gauss", false);
-  Real gamma = 5.0/3.0;
-  Real gm1 = gamma - 1.0;
-  Real igm1 = 1.0/(gamma-1.0);
   if (calc_in_temp) {
     // raise error
     std::stringstream msg;
     msg << "calc_in_temp is not supported in this version.";
     ATHENA_ERROR(msg);
-    // Tg_0 = pin->GetOrAddReal("problem", "Tg_0", 1.0)/T_unit;
-    // Tr_0 = pin->GetOrAddReal("problem", "Tr_0", 2.0)/T_unit;
-    // eg_0 = rho0*Tg_0*igm1;
-    // Er_0 = a_r*std::pow(Tr_0,4);
-  } else {
-    eg_0 = pin->GetOrAddReal("problem", "eg_0", 1.0)/egas_unit;
-    Er_0 = pin->GetOrAddReal("problem", "Er_0", 1.0)/egas_unit;
-    rho0 = pin->GetOrAddReal("problem", "rho0", 1.0)/rho_unit;
-    Tg_0 = gm1*eg_0/rho0;
-    Tr_0 = std::pow(Er_0*egas_unit/a_r_dim,0.25)/T_unit;
-
-    std::cout << "eg_0 in sim = " << eg_0 << std::endl;
-    std::cout << "Er_0 in sim = " << Er_0 << std::endl;
-    std::cout << "Tg_0 in sim = " << Tg_0 << " " << Tg_0 * T_unit << std::endl;
-    std::cout << "Tr_0 in sim = " << Tr_0 << " " << Tr_0 * T_unit << std::endl;
-    if (is_gauss) {
-      r0 = pin->GetOrAddReal("problem", "r0", 0.5);
-    }
   }
+
   // EnrollUserRefinementCondition(AMRCondition);
   EnrollUserMGFLDBoundaryFunction(BoundaryFace::inner_x1, FLDFixedInnerX1);
   EnrollUserMGFLDBoundaryFunction(BoundaryFace::outer_x1, FLDFixedOuterX1);
@@ -321,9 +286,29 @@ void Mesh::InitUserMeshData(ParameterInput *pin) {
 //======================================================================================
 
 void MeshBlock::ProblemGenerator(ParameterInput *pin) {
-  Real gamma = peos->GetGamma();
-  Real igm1 = 1.0/(gamma-1.0);
-  Real r_0_sq = SQR(r0);
+  Real gm1 = peos->GetGamma() - 1.0;
+  Real igm1 = 1.0/gm1;
+  eg_0 = pin->GetReal("problem", "eg_0")/egas_unit;
+  Er_0 = pin->GetReal("problem", "Er_0")/egas_unit;
+  rho0 = pin->GetReal("problem", "rho0")/rho_unit;
+  Tg_0 = gm1*eg_0/rho0;
+  Tr_0 = std::pow(Er_0*egas_unit/a_r_dim,0.25)/T_unit;
+  if (gid == 0) {
+    std::cout << "time_unit = " << time_unit << " s" << std::endl;
+    std::cout << "leng_unit = " << leng_unit << " cm" << std::endl;
+    Real sound = std::sqrt(Tg_0*peos->GetGamma());
+    Real dx = pcoord->dx1f(0);
+    Real dt_exp = dx / sound * pmy_mesh->cfl_number;
+    std::cout << "sound = " << sound << std::endl;
+    std::cout << "dx = " << dx << std::endl;
+    std::cout << "dt_exp = " << dt_exp << std::endl;
+
+
+    std::cout << "eg_0 in sim = " << eg_0 << std::endl;
+    std::cout << "Er_0 in sim = " << Er_0 << std::endl;
+    std::cout << "Tg_0 in sim = " << Tg_0 << " " << Tg_0 * T_unit << std::endl;
+    std::cout << "Tr_0 in sim = " << Tr_0 << " " << Tr_0 * T_unit << std::endl;
+  }
   int kl = ks-NGHOST;
   int ku = ke+NGHOST;
   int jl = js-NGHOST;
@@ -338,7 +323,7 @@ void MeshBlock::ProblemGenerator(ParameterInput *pin) {
       for (int i=il; i<=iu; ++i) {
         Real x1 = pcoord->x1v(i);
         Real r2 = SQR(x1)+SQR(x2)+SQR(x3);
-        phydro->u(IDN,k,j,i) = rho0;//rho0/std::min(r2,r0*r0);
+        phydro->u(IDN,k,j,i) = rho0;
         phydro->u(IM1,k,j,i) = 0.0;
         phydro->u(IM2,k,j,i) = 0.0;
         phydro->u(IM3,k,j,i) = 0.0;
@@ -347,31 +332,11 @@ void MeshBlock::ProblemGenerator(ParameterInput *pin) {
       }
     }
   }
-
-  if (calc_in_temp) { // for temp
-    for(int k=kl; k<=ku; ++k) {
-      for(int j=jl; j<=ju; ++j) {
-        for(int i=il; i<=iu; ++i) {
-            prfld->u(RadFLD::GAS,k,j,i) = Tg_0;
-            prfld->u(RadFLD::RAD,k,j,i) = Tr_0;
-        }
-      }
-    }
-  } else { // for energy
-    for(int k=kl; k<=ku; ++k) {
-      Real z = pcoord->x3v(k);
-      for(int j=jl; j<=ju; ++j) {
-        Real y = pcoord->x2v(j);
-        for(int i=il; i<=iu; ++i) {
-          Real x = pcoord->x1v(i);
-          prfld->u(RadFLD::GAS,k,j,i) = phydro->u(IEN,k,j,i);
-          if (is_gauss) {
-            Real r_sq = SQR(x)+SQR(y)+SQR(z);
-            prfld->u(RadFLD::RAD,k,j,i) = Er_0 * std::exp(-r_sq/r_0_sq);
-          } else {
-            prfld->u(RadFLD::RAD,k,j,i) = Er_0;
-          }
-        }
+  for(int k=kl; k<=ku; ++k) {
+    for(int j=jl; j<=ju; ++j) {
+      for(int i=il; i<=iu; ++i) {
+        prfld->u(RadFLD::GAS,k,j,i) = phydro->u(IEN,k,j,i);
+        prfld->u(RadFLD::RAD,k,j,i) = Er_0;
       }
     }
   }
