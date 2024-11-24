@@ -86,6 +86,7 @@ FLD::FLD(MeshBlock *pmb, ParameterInput *pin) :
   output_defect = pin->GetOrAddBoolean("mgfld", "output_defect", false);
   calc_in_temp = pin->GetOrAddBoolean("mgfld", "calc_in_temp", false);
   only_rad = pin->GetOrAddBoolean("mgfld", "only_rad", false);
+  cut_diff = pin->GetOrAddBoolean("mgfld", "cut_diff", false);
   if (calc_in_temp) {
     // raise error
     std::stringstream msg;
@@ -262,21 +263,38 @@ void FLD::CalculateCoefficients(const AthenaArray<Real> &w,
         coeff(RadFLD::DZP,k,j,i) = pmg->c_ph*lambda/sigma_rface;
 
         // for later calculation
-        if (is_couple) {
-          coeff(RadFLD::DSIGMAP,k,j,i) = sigma_r(k,j,i)*w(IDN,k,j,i);
-          coeff(RadFLD::DCOUPLE,k,j,i) = gm1/w(IDN,k,j,i);
-        } else {
-          coeff(RadFLD::DSIGMAP,k,j,i) = 0.0;
-          coeff(RadFLD::DCOUPLE,k,j,i) = 0.0;
-        }
+        coeff(RadFLD::DSIGMAP,k,j,i) = sigma_r(k,j,i)*w(IDN,k,j,i);
+        coeff(RadFLD::DCOUPLE,k,j,i) = gm1/w(IDN,k,j,i);
 
-        // for test
-        // for (int n = 0; n <= RadFLD::DZP; ++n) {
-        //   coeff(n,k,j,i) = 0.0;
-        // }
       }
     }
   }
+
+  // for test
+  if (cut_diff) {
+    for (int k = kl; k <= ku; ++k) {
+      for (int j = jl; j <= ju; ++j) {
+        for (int i = il; i <= iu; ++i) {
+          for (int n = 0; n <= RadFLD::DZP; ++n) {
+            coeff(n,k,j,i) = 0.0;
+          }
+        }
+      }
+    }
+  }
+
+  // for test
+  if (!is_couple) {
+    for (int k = kl; k <= ku; ++k) {
+      for (int j = jl; j <= ju; ++j) {
+        for (int i = il; i <= iu; ++i) {
+          coeff(RadFLD::DSIGMAP,k,j,i) = 0.0;
+          coeff(RadFLD::DCOUPLE,k,j,i) = 0.0;
+        }
+      }
+    }
+  }
+
   return;
 }
 

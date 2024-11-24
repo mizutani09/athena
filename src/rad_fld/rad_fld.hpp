@@ -63,6 +63,7 @@ class FLD {
   bool calc_in_temp;
   bool is_couple;
   bool only_rad;
+  bool cut_diff;
 
   void LoadHydroVariables(const AthenaArray<Real> &w, AthenaArray<Real> &u);
   void UpdateRadiationEnergy(AthenaArray<Real> &u, const AthenaArray<Real> &r);
