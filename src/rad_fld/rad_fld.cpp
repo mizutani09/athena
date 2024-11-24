@@ -271,9 +271,9 @@ void FLD::CalculateCoefficients(const AthenaArray<Real> &w,
         }
 
         // for test
-        for (int n = 0; n <= RadFLD::DZP; ++n) {
-          coeff(n,k,j,i) = 0.0;
-        }
+        // for (int n = 0; n <= RadFLD::DZP; ++n) {
+        //   coeff(n,k,j,i) = 0.0;
+        // }
       }
     }
   }
