@@ -82,7 +82,7 @@ FLD::FLD(MeshBlock *pmb, ParameterInput *pin) :
     //           (pmb->pmy_mesh->multilevel ? AthenaArray<Real>::DataStatus::allocated :
     //            AthenaArray<Real>::DataStatus::empty)),
     refinement_idx_(), calc_in_temp(), is_couple(), only_rad() {
-  is_couple = pin->GetOrAddBoolean("mgfld", "is_couple", false);
+  is_couple = pin->GetOrAddBoolean("mgfld", "is_couple", true);
   output_defect = pin->GetOrAddBoolean("mgfld", "output_defect", false);
   calc_in_temp = pin->GetOrAddBoolean("mgfld", "calc_in_temp", false);
   only_rad = pin->GetOrAddBoolean("mgfld", "only_rad", false);
