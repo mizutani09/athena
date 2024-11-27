@@ -1,65 +1,65 @@
 <comment>
-problem   = FLD test with Multigrid
-reference =
-configure = --prob=mgfld_adv -mgfld
+problem         = test for advection term of FLD with Multigrid
+reference       =
+configure       = --prob=mgfld_adv -mgfld
 
 <job>
-problem_id = MGFLD # problem ID: basename of output filenames
+problem_id      = MGFLD # problem ID: basename of output filenames
 
 <output1>
-file_type  = hst        # History data dump
-dcycle     = 1       # time increment between outputs
+file_type       = hst        # History data dump
+dcycle          = 1       # time increment between outputs
 
 #<output2>
-#file_type  = hdf5        # Binary data dump
-#id         = prim_x_slice
-#variable   = prim       # variables to be output
-#dcycle     = 1       # time increment between outputs
-#x2_slice   = 0.5        # slice location in X2
-#x3_slice   = 0.5        # slice location in X3
+#file_type       = hdf5        # Binary data dump
+#id              = prim_x_slice
+#variable        = prim       # variables to be output
+#dcycle          = 1       # time increment between outputs
+#x2_slice        = 0.5        # slice location in X2
+#x3_slice        = 0.5        # slice location in X3
 #ghost_zones     = true
 
 <output3>
-file_type  = hdf5
-id         = uov_x_slice
-variable   = uov
-dcycle     = 10
-# dt         = 0.1
-x2_slice   = 0.5
-x3_slice   = 0.5
+file_type       = hdf5
+id              = uov_x_slice
+variable        = uov
+dcycle          = 20
+# dt              = 0.1
+x2_slice        = 0.5
+x3_slice        = 0.5
 ghost_zones     = true
 
 <time>
-cfl_number = 0.3        # The Courant, Friedrichs, & Lewy (CFL) Number
-nlim       = 10          # cycle limit
-tlim       = 30.0        # time limit
-integrator  = rk2       # time integration algorithm
-xorder      = 2         # order of spatial reconstruction
-ncycle_out  = 10         # interval for stdout summary info
+cfl_number      = 0.3        # The Courant, Friedrichs, & Lewy (CFL) Number
+nlim            = -1          # cycle limit
+tlim            = 10.0        # time limit
+integrator      = rk2       # time integration algorithm
+xorder          = 2         # order of spatial reconstruction
+ncycle_out      = 10         # interval for stdout summary info
 
 <mesh>
-nx1        = 16         # Number of zones in X1-direction
-x1min      = 0.0       # minimum value of X1
-x1max      = 1.0        # maximum value of X1
-ix1_bc     = periodic    # inner-X1 boundary flag
-ox1_bc     = periodic    # outer-X1 boundary flag
+nx1             = 16 # Number of zones in X1-direction
+x1min           = 0.0       # minimum value of X1
+x1max           = 1.0        # maximum value of X1
+ix1_bc          = periodic    # inner-X1 boundary flag
+ox1_bc          = periodic    # outer-X1 boundary flag
 
-nx2        = 16         # Number of zones in X2-direction
-x2min      = 0.0       # minimum value of X2
-x2max      = 1.0        # maximum value of X2
-ix2_bc     = periodic    # inner-X2 boundary flag
-ox2_bc     = periodic    # outer-X2 boundary flag
+nx2             = 16 # Number of zones in X2-direction
+x2min           = 0.0       # minimum value of X2
+x2max           = 1.0        # maximum value of X2
+ix2_bc          = periodic    # inner-X2 boundary flag
+ox2_bc          = periodic    # outer-X2 boundary flag
 
-nx3        = 16         # Number of zones in X3-direction
-x3min      = 0.0       # minimum value of X3
-x3max      = 1.0        # maximum value of X3
-ix3_bc     = periodic    # inner-X3 boundary flag
-ox3_bc     = periodic    # outer-X3 boundary flag
+nx3             = 16 # Number of zones in X3-direction
+x3min           = 0.0       # minimum value of X3
+x3max           = 1.0        # maximum value of X3
+ix3_bc          = periodic    # inner-X3 boundary flag
+ox3_bc          = periodic    # outer-X3 boundary flag
 
 <meshblock>
-nx1        = 16
-nx2        = 16
-nx3        = 16
+nx1             = 16
+nx2             = 16
+nx3             = 16
 
 <hydro>
 gamma           = 1.666666666667 # gamma = C_p/C_v
@@ -88,6 +88,7 @@ ix3_bc          = periodic
 ox3_bc          = periodic
 
 # calc_in_temp    = false
+cut_diff        = true
 is_couple       = false
 only_rad        = true
 const_opacity   = 0.4 # in cm^2 g^-1 caution!

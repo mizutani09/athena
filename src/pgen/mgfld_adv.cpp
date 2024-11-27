@@ -55,7 +55,7 @@ namespace {
   Real HistoryaTg4(MeshBlock *pmb, int iout);
   Real HistoryRtime(MeshBlock *pmb, int iout);
   Real HistoryEall(MeshBlock *pmb, int iout);
-  // Real HistoryL1norm(MeshBlock *pmb, int iout);
+  Real HistoryL1norm(MeshBlock *pmb, int iout);
   Real Er0, rho0, p0, v0;
   Real r0, r_sigma;
 }
@@ -116,7 +116,6 @@ void Mesh::InitUserMeshData(ParameterInput *pin) {
   Rgas = 8.31451e+7; // erg/(mol*K)
   mu = pin->GetReal("hydro", "mu");
   T_unit = pres_unit/rho_unit*mu/Rgas;
-  std::cout << "T_unit = " << T_unit << " K" << std::endl;
   a_r_dim = 7.5657e-15; // radiation constant in erg cm^-3 K^-4
 
   Real vel_unit = std::sqrt(pres_unit/rho_unit);
@@ -140,7 +139,7 @@ void Mesh::InitUserMeshData(ParameterInput *pin) {
   if (ix1_bc == "user") EnrollUserMGFLDBoundaryFunction(BoundaryFace::inner_x1, FLDOutflowInnerX1);
   if (ox1_bc == "user") EnrollUserMGFLDBoundaryFunction(BoundaryFace::outer_x1, FLDOutflowOuterX1);
 
-  AllocateUserHistoryOutput(7);
+  AllocateUserHistoryOutput(8);
   EnrollUserHistoryOutput(0, HistoryTg, "T_gas", UserHistoryOperation::max);
   EnrollUserHistoryOutput(1, HistoryTr, "T_rad", UserHistoryOperation::max);
   EnrollUserHistoryOutput(2, HistoryEg, "e_gas", UserHistoryOperation::max);
@@ -148,7 +147,7 @@ void Mesh::InitUserMeshData(ParameterInput *pin) {
   EnrollUserHistoryOutput(4, HistoryaTg4, "aTgas^4", UserHistoryOperation::max);
   EnrollUserHistoryOutput(5, HistoryRtime, "Rtime", UserHistoryOperation::max);
   EnrollUserHistoryOutput(6, HistoryEall, "all-E", UserHistoryOperation::sum);
-  // EnrollUserHistoryOutput(7, HistoryL1norm, "L1norm", UserHistoryOperation::sum);
+  EnrollUserHistoryOutput(7, HistoryL1norm, "L1norm", UserHistoryOperation::sum);
 }
 
 
@@ -176,6 +175,7 @@ void MeshBlock::ProblemGenerator(ParameterInput *pin) {
     std::cout << "time_unit = " << time_unit << " s" << std::endl;
     std::cout << "leng_unit = " << leng_unit << " cm" << std::endl;
     std::cout << "vel_unit = " << leng_unit/time_unit << " cm s^-1" << std::endl;
+    std::cout << "T_unit = " << T_unit << " K" << std::endl;
     std::cout << "c_ph_sim = " << c_ph_sim << " cm s^-1" << std::endl;
     std::cout << "dx = " << dx1*leng_unit << " cm" << std::endl;
     std::cout << "dt = " << dt_exp << " s" << std::endl;
@@ -215,9 +215,6 @@ void MeshBlock::ProblemGenerator(ParameterInput *pin) {
         } else {
           prfld->u(RadFLD::RAD,k,j,i) = Er0*(1.0+std::exp(-r_sq/r_sigma_sq));
         }
-        // if (k == (ks+ke)/2 && j == (js+je)/2) {
-        //   std::cout << "i = " << i << ", x1v = " << pcoord->x1v(i) << ", Erad = " << prfld->u(RadFLD::RAD,k,j,i) << std::endl;
-        // }
       }
     }
   }
@@ -375,26 +372,29 @@ Real HistoryEall(MeshBlock *pmb, int iout) {
   return E*egas_unit;
 }
 
-// Real HistoryL1norm(MeshBlock *pmb, int iout) {
-//   int is = pmb->is, ie = pmb->ie, js = pmb->js, je = pmb->je, ks = pmb->ks, ke = pmb->ke;
-//   Real L1norm = 0;
-//   Real x_L = pmb->pmy_mesh->mesh_size.x1min - pmb->pcoord->dx1f(0)/2.0;
-//   Real x_R = pmb->pmy_mesh->mesh_size.x1max + pmb->pcoord->dx1f(0)/2.0;
-//   Real slope = (Er0_R-Er0_L)/(x_R-x_L);
-//   Real cons = Er0_L - slope*x_L;
-//   for (int k=ks; k<=ke; k++) {
-//     for (int j=js; j<=je; j++) {
-//       for (int i=is; i<=ie; i++) {
-//         Real x = pmb->pcoord->x1v(i);
-//         Real an = slope*x + cons;
-//         L1norm += std::abs(pmb->prfld->u(RadFLD::RAD,k,j,i) - an)/std::abs(an);
-//       }
-//     }
-//   }
-//   int nbtotal = pmb->pmy_mesh->nbtotal;
-//   int ncells = (ie-is+1)*(je-js+1)*(ke-ks+1);
-//   L1norm /= ncells*nbtotal;
-//   return L1norm;
-// }
+Real HistoryL1norm(MeshBlock *pmb, int iout) {
+  int is = pmb->is, ie = pmb->ie, js = pmb->js, je = pmb->je, ks = pmb->ks, ke = pmb->ke;
+  Real L1norm = 0;
+  Real r_sigma_sq = SQR(r_sigma);
+  for (int k=ks; k<=ke; k++) {
+    for (int j=js; j<=je; j++) {
+      for (int i=is; i<=ie; i++) {
+        Real x = (pmb->pcoord->x1v(i) - r0) - v0*pmb->pmy_mesh->time;
+        Real r_sq = SQR(x);
+        Real an;
+        if (r_sigma < 0.0) {
+          an = Er0;
+        } else {
+          an = Er0*(1.0+std::exp(-r_sq/r_sigma_sq));
+        }
+        L1norm += std::abs(pmb->prfld->u(RadFLD::RAD,k,j,i) - an)/std::abs(an);
+      }
+    }
+  }
+  int nbtotal = pmb->pmy_mesh->nbtotal;
+  int ncells = (ie-is+1)*(je-js+1)*(ke-ks+1);
+  L1norm /= ncells*nbtotal;
+  return L1norm;
+}
 
 } // namespace
