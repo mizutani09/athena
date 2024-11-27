@@ -65,8 +65,8 @@ void FLDFixedInnerX1(AthenaArray<Real> &dst, Real time, int nvar,
                     const MGCoordinates &coord) {
   for (int k=ks; k<=ke; k++) {
     for (int j=js; j<=je; j++) {
-      for (int i=0; i<ngh; i++) {
-        dst(RadFLD::RAD,k,j,is-i-1) = coord.x1v(is-i-1) < 0.5? Er0_L : Er0_R;
+      for (int i=1; i<=ngh; i++) {
+        dst(RadFLD::RAD,k,j,is-i) = coord.x1v(is-i) < 0.5? Er0_L : Er0_R;
       }
     }
   }
@@ -78,8 +78,8 @@ void FLDFixedOuterX1(AthenaArray<Real> &dst, Real time, int nvar,
                     const MGCoordinates &coord) {
   for (int k=ks; k<=ke; k++) {
     for (int j=js; j<=je; j++) {
-      for (int i=0; i<ngh; i++) {
-        dst(RadFLD::RAD,k,j,ie+i+1) = coord.x1v(ie+i+1) < 0.5? Er0_L : Er0_R;
+      for (int i=1; i<=ngh; i++) {
+        dst(RadFLD::RAD,k,j,ie+i) = coord.x1v(ie+i) < 0.5? Er0_L : Er0_R;
       }
     }
   }
@@ -90,15 +90,10 @@ void FLDAdvFixedInnerX1(
      MeshBlock *pmb, Coordinates *pco, FLD *prfld,
      const AthenaArray<Real> &w, FaceField &b, AthenaArray<Real> &u_fld,
      Real time, Real dt, int is, int ie, int js, int je, int ks, int ke, int ngh) {
-  //std::cout << "is = " << is << ", ie = " << ie << std::endl;
-  //std::cout << "js = " << js << ", je = " << je << std::endl;
-  //std::cout << "ks = " << ks << ", ke = " << ke << std::endl;
-  //int dim1 = prfld->u.GetDim1(), dim2 = prfld->u.GetDim2(), dim3 = prfld->u.GetDim3(), dim4 = prfld->u.GetDim4();
-  //std::cout << "dim1 = " << dim1 << ", dim2 = " << dim2 << ", dim3 = " << dim3 << ", dim4 = " << dim4 << std::endl;
   for (int k=ks; k<=ke; k++) {
     for (int j=js; j<=je; j++) {
-      for (int i=0; i<ngh; i++) {
-        prfld->u(RadFLD::RAD,k,j,is-i-1) = pco->x1v(is-i-1) < 0.5? Er0_L : Er0_R;
+      for (int i=1; i<=ngh; i++) {
+        prfld->u(RadFLD::RAD,k,j,is-i) = pco->x1v(is-i) < 0.5? Er0_L : Er0_R;
       }
     }
   }
@@ -111,8 +106,8 @@ void FLDAdvFixedOuterX1(
      Real time, Real dt, int is, int ie, int js, int je, int ks, int ke, int ngh) {
   for (int k=ks; k<=ke; k++) {
     for (int j=js; j<=je; j++) {
-      for (int i=0; i<ngh; i++) {
-        prfld->u(RadFLD::RAD,k,j,ie+i+1) = pco->x1v(ie+i+1) < 0.5? Er0_L : Er0_R;
+      for (int i=1; i<=ngh; i++) {
+        prfld->u(RadFLD::RAD,k,j,ie+i) = pco->x1v(ie+i) < 0.5? Er0_L : Er0_R;
       }
     }
   }
@@ -123,12 +118,12 @@ void HydroInnerX1(MeshBlock *pmb, Coordinates *pco, AthenaArray<Real> &prim, Fac
     Real time, Real dt, int is, int ie, int js, int je, int ks, int ke, int ngh) {
   for (int k=ks; k<=ke; k++) {
     for (int j=js; j<=je; j++) {
-      for (int i=0; i<ngh; i++) {
-        prim(IDN,k,j,is-i-1) = prim(IDN,k,j,is);
-        prim(IVX,k,j,is-i-1) = prim(IVX,k,j,is);
-        prim(IVY,k,j,is-i-1) = prim(IVY,k,j,is);
-        prim(IVZ,k,j,is-i-1) = prim(IVZ,k,j,is);
-        prim(IPR,k,j,is-i-1) = prim(IPR,k,j,is);
+      for (int i=1; i<=ngh; i++) {
+        prim(IDN,k,j,is-i) = prim(IDN,k,j,is);
+        prim(IVX,k,j,is-i) = prim(IVX,k,j,is);
+        prim(IVY,k,j,is-i) = prim(IVY,k,j,is);
+        prim(IVZ,k,j,is-i) = prim(IVZ,k,j,is);
+        prim(IPR,k,j,is-i) = prim(IPR,k,j,is);
       }
     }
   }
@@ -139,64 +134,12 @@ void HydroOuterX1(MeshBlock *pmb, Coordinates *pco, AthenaArray<Real> &prim, Fac
     Real time, Real dt, int is, int ie, int js, int je, int ks, int ke, int ngh) {
   for (int k=ks; k<=ke; k++) {
     for (int j=js; j<=je; j++) {
-      for (int i=0; i<ngh; i++) {
-        prim(IDN,k,j,ie+i+1) = prim(IDN,k,j,ie);
-        prim(IVX,k,j,ie+i+1) = prim(IVX,k,j,ie);
-        prim(IVY,k,j,ie+i+1) = prim(IVY,k,j,ie);
-        prim(IVZ,k,j,ie+i+1) = prim(IVZ,k,j,ie);
-        prim(IPR,k,j,ie+i+1) = prim(IPR,k,j,ie);
-      }
-    }
-  }
-  return;
-}
-
-void FLDFixedInnerX2(AthenaArray<Real> &dst, Real time, int nvar,
-                    int is, int ie, int js, int je, int ks, int ke, int ngh,
-                    const MGCoordinates &coord) {
-  for (int k=ks; k<=ke; k++) {
-    for (int j=0; j<ngh; j++) {
-      for (int i=is; i<=ie; i++) {
-        dst(RadFLD::RAD,k,js-j-1,i) = coord.x1v(i) < 0.5? Er0_L : Er0_R;
-      }
-    }
-  }
-  return;
-}
-
-void FLDFixedOuterX2(AthenaArray<Real> &dst, Real time, int nvar,
-                    int is, int ie, int js, int je, int ks, int ke, int ngh,
-                    const MGCoordinates &coord) {
-  for (int k=ks; k<=ke; k++) {
-    for (int j=0; j<ngh; j++) {
-      for (int i=is; i<=ie; i++) {
-        dst(RadFLD::RAD,k,je+j+1,i) = coord.x1v(i) < 0.5? Er0_L : Er0_R;
-      }
-    }
-  }
-  return;
-}
-
-void FLDFixedInnerX3(AthenaArray<Real> &dst, Real time, int nvar,
-                    int is, int ie, int js, int je, int ks, int ke, int ngh,
-                    const MGCoordinates &coord) {
-  for (int k=0; k<ngh; k++) {
-    for (int j=js; j<=je; j++) {
-      for (int i=is; i<=ie; i++) {
-        dst(RadFLD::RAD,ks-k-1,j,i) = coord.x1v(i) < 0.5? Er0_L : Er0_R;
-      }
-    }
-  }
-  return;
-}
-
-void FLDFixedOuterX3(AthenaArray<Real> &dst, Real time, int nvar,
-                    int is, int ie, int js, int je, int ks, int ke, int ngh,
-                    const MGCoordinates &coord) {
-  for (int k=0; k<ngh; k++) {
-    for (int j=js; j<=je; j++) {
-      for (int i=is; i<=ie; i++) {
-        dst(RadFLD::RAD,ke+k+1,j,i) = coord.x1v(i) < 0.5? Er0_L : Er0_R;
+      for (int i=1; i<=ngh; i++) {
+        prim(IDN,k,j,ie+i) = prim(IDN,k,j,ie);
+        prim(IVX,k,j,ie+i) = prim(IVX,k,j,ie);
+        prim(IVY,k,j,ie+i) = prim(IVY,k,j,ie);
+        prim(IVZ,k,j,ie+i) = prim(IVZ,k,j,ie);
+        prim(IPR,k,j,ie+i) = prim(IPR,k,j,ie);
       }
     }
   }
@@ -230,7 +173,6 @@ void Mesh::InitUserMeshData(ParameterInput *pin) {
   Rgas = 8.31451e+7; // erg/(mol*K)
   mu = pin->GetReal("hydro", "mu");
   T_unit = pres_unit/rho_unit*mu/Rgas;
-  std::cout << "T_unit = " << T_unit << " K" << std::endl;
   a_r_dim = 7.5657e-15; // radiation constant in erg cm^-3 K^-4
 
   Real vel_unit = std::sqrt(pres_unit/rho_unit);
@@ -303,6 +245,7 @@ void MeshBlock::ProblemGenerator(ParameterInput *pin) {
     std::cout << "time_unit = " << time_unit << " s" << std::endl;
     std::cout << "leng_unit = " << leng_unit << " cm" << std::endl;
     std::cout << "vel_unit = " << leng_unit/time_unit << " cm s^-1" << std::endl;
+    std::cout << "T_unit = " << T_unit << " K" << std::endl;
     std::cout << "c_ph_sim = " << c_ph_sim << " cm s^-1" << std::endl;
     std::cout << "chi = " << chi*leng_unit*leng_unit/time_unit << " cm^2 s^-1" << std::endl;
     std::cout << "dx = " << dx1*leng_unit << " cm" << std::endl;
