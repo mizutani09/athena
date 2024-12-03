@@ -321,7 +321,7 @@ void MeshBlock::ProblemGenerator(ParameterInput *pin) {
           phydro->u(IEN,k,j,i) = egas0 + 0.5*rho0*SQR(vel_piston);
 
         // for FLD
-        prfld->u(RadFLD::GAS,k,j,i) = phydro->u(IEN,k,j,i);
+        prfld->u(RadFLD::GAS,k,j,i) = egas0;
         prfld->u(RadFLD::RAD,k,j,i) = Er0;
       }
     }

@@ -308,7 +308,7 @@ void MeshBlock::ProblemGenerator(ParameterInput *pin) {
         for(int i=il; i<=iu; ++i) {
           Real x = pcoord->x1v(i);
           Real r_sq = SQR(x-0.5)+SQR(y-0.5)+SQR(z-0.5);
-          prfld->u(RadFLD::GAS,k,j,i) = phydro->u(IEN,k,j,i);
+          prfld->u(RadFLD::GAS,k,j,i) = p0*igm1;
           Real res = Er0/(8*std::pow(M_PI*chi*init_time, 1.5))*std::exp(-r_sq/(4*chi*init_time));
           prfld->u(RadFLD::RAD,k,j,i) = res;
         }
@@ -319,7 +319,7 @@ void MeshBlock::ProblemGenerator(ParameterInput *pin) {
       for (int j=jl; j<=ju; j++) {
         for (int i=il; i<=iu; i++) {
           Real r_sq = SQR(pcoord->x1v(i)-0.5)+SQR(pcoord->x2v(j)-0.5);
-          prfld->u(RadFLD::GAS,k,j,i) = phydro->u(IEN,k,j,i);
+          prfld->u(RadFLD::GAS,k,j,i) = p0*igm1;
           Real res = Er0/(4*M_PI*chi*init_time)*std::exp(-r_sq/(4*chi*init_time));
           prfld->u(RadFLD::RAD,k,j,i) = res;
         }
@@ -330,7 +330,7 @@ void MeshBlock::ProblemGenerator(ParameterInput *pin) {
       for (int j=jl; j<=ju; j++) {
         for (int i=il; i<=iu; i++) {
           Real r_sq = SQR(pcoord->x1v(i)-0.5);
-          prfld->u(RadFLD::GAS,k,j,i) = phydro->u(IEN,k,j,i);
+          prfld->u(RadFLD::GAS,k,j,i) = p0*igm1;
           Real res = Er0/(2*std::sqrt(M_PI*chi*init_time))*std::exp(-r_sq/(4*chi*init_time));
           prfld->u(RadFLD::RAD,k,j,i) = res;
         }

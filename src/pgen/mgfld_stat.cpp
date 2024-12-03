@@ -295,7 +295,7 @@ void MeshBlock::ProblemGenerator(ParameterInput *pin) {
   for (int k=kl; k<=ku; k++) {
     for (int j=jl; j<=ju; j++) {
       for (int i=il; i<=iu; i++) {
-        prfld->u(RadFLD::GAS,k,j,i) = phydro->u(IEN,k,j,i);
+        prfld->u(RadFLD::GAS,k,j,i) = p0*igm1;
         if (pcoord->x1v(i) < 0.5) {
         prfld->u(RadFLD::RAD,k,j,i) = Er0_L;
         } else {

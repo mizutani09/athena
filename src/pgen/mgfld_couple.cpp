@@ -328,14 +328,14 @@ void MeshBlock::ProblemGenerator(ParameterInput *pin) {
         phydro->u(IM2,k,j,i) = 0.0;
         phydro->u(IM3,k,j,i) = 0.0;
         if (NON_BAROTROPIC_EOS)
-          phydro->u(IEN,k,j,i) = phydro->u(IDN,k,j,i)*Tg_0*igm1;
+          phydro->u(IEN,k,j,i) = eg_0;
       }
     }
   }
   for(int k=kl; k<=ku; ++k) {
     for(int j=jl; j<=ju; ++j) {
       for(int i=il; i<=iu; ++i) {
-        prfld->u(RadFLD::GAS,k,j,i) = phydro->u(IEN,k,j,i);
+        prfld->u(RadFLD::GAS,k,j,i) = eg_0;
         prfld->u(RadFLD::RAD,k,j,i) = Er_0;
       }
     }

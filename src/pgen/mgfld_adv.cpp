@@ -190,6 +190,7 @@ void MeshBlock::ProblemGenerator(ParameterInput *pin) {
   int iu = ie+NGHOST;
 
 
+  Real r_sigma_sq = SQR(r_sigma);
   for(int k=kl; k<=ku; ++k) {
     Real x3 = pcoord->x3v(k);
     for (int j=jl; j<=ju; ++j) {
@@ -201,20 +202,11 @@ void MeshBlock::ProblemGenerator(ParameterInput *pin) {
         phydro->u(IM3,k,j,i) = 0.0;
         if (NON_BAROTROPIC_EOS)
           phydro->u(IEN,k,j,i) = p0*igm1 + 0.5*rho0*v0*v0;
-      }
-    }
-  }
-  Real r_sigma_sq = SQR(r_sigma);
-  for (int k=kl; k<=ku; k++) {
-    for (int j=jl; j<=ju; j++) {
-      for (int i=il; i<=iu; i++) {
+
+        // for FLD
+        prfld->u(RadFLD::GAS,k,j,i) = p0*igm1;
         Real r_sq = SQR(pcoord->x1v(i)-r0);
-        prfld->u(RadFLD::GAS,k,j,i) = phydro->u(IEN,k,j,i);
-        if (r_sigma < 0.0) {
-          prfld->u(RadFLD::RAD,k,j,i) = Er0;
-        } else {
-          prfld->u(RadFLD::RAD,k,j,i) = Er0*(1.0+std::exp(-r_sq/r_sigma_sq));
-        }
+        prfld->u(RadFLD::RAD,k,j,i) = Er0*(1.0+std::exp(-r_sq/r_sigma_sq));
       }
     }
   }
