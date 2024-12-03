@@ -90,10 +90,15 @@ void FLDAdvFixedInnerX1(
      MeshBlock *pmb, Coordinates *pco, FLD *prfld,
      const AthenaArray<Real> &w, FaceField &b, AthenaArray<Real> &u_fld,
      Real time, Real dt, int is, int ie, int js, int je, int ks, int ke, int ngh) {
+  Real x_L = pmb->pmy_mesh->mesh_size.x1min - pmb->pcoord->dx1f(0)/2.0;
+  Real x_R = pmb->pmy_mesh->mesh_size.x1max + pmb->pcoord->dx1f(0)/2.0;
+  Real slope = (Er0_R-Er0_L)/(x_R-x_L);
+  Real cons = Er0_L - slope*x_L;
   for (int k=ks; k<=ke; k++) {
     for (int j=js; j<=je; j++) {
       for (int i=1; i<=ngh; i++) {
-        prfld->u(RadFLD::RAD,k,j,is-i) = pco->x1v(is-i) < 0.5? Er0_L : Er0_R;
+        Real an = slope*pco->x1v(is-i) + cons;
+        prfld->u(RadFLD::RAD,k,j,is-i) = an;
       }
     }
   }
@@ -104,10 +109,15 @@ void FLDAdvFixedOuterX1(
      MeshBlock *pmb, Coordinates *pco, FLD *prfld,
      const AthenaArray<Real> &w, FaceField &b, AthenaArray<Real> &u_fld,
      Real time, Real dt, int is, int ie, int js, int je, int ks, int ke, int ngh) {
+  Real x_L = pmb->pmy_mesh->mesh_size.x1min - pmb->pcoord->dx1f(0)/2.0;
+  Real x_R = pmb->pmy_mesh->mesh_size.x1max + pmb->pcoord->dx1f(0)/2.0;
+  Real slope = (Er0_R-Er0_L)/(x_R-x_L);
+  Real cons = Er0_L - slope*x_L;
   for (int k=ks; k<=ke; k++) {
     for (int j=js; j<=je; j++) {
       for (int i=1; i<=ngh; i++) {
-        prfld->u(RadFLD::RAD,k,j,ie+i) = pco->x1v(ie+i) < 0.5? Er0_L : Er0_R;
+        Real an = slope*pco->x1v(ie+i) + cons;
+        prfld->u(RadFLD::RAD,k,j,ie+i) = an;
       }
     }
   }
@@ -262,6 +272,10 @@ void MeshBlock::ProblemGenerator(ParameterInput *pin) {
   int ju = je+NGHOST;
   int il = is-NGHOST;
   int iu = ie+NGHOST;
+  Real x_L = pmy_mesh->mesh_size.x1min - pcoord->dx1f(0)/2.0;
+  Real x_R = pmy_mesh->mesh_size.x1max + pcoord->dx1f(0)/2.0;
+  Real slope = (Er0_R-Er0_L)/(x_R-x_L);
+  Real cons = Er0_L - slope*x_L;
 
   for(int k=kl; k<=ku; ++k) {
     Real x3 = pcoord->x3v(k);
@@ -269,7 +283,6 @@ void MeshBlock::ProblemGenerator(ParameterInput *pin) {
       Real x2 = pcoord->x2v(j);
       for (int i=il; i<=iu; ++i) {
         Real x1 = pcoord->x1v(i);
-        Real r2 = SQR(x1)+SQR(x2)+SQR(x3);
         phydro->u(IDN,k,j,i) = rho0;
         phydro->u(IM1,k,j,i) = 0.0;
         phydro->u(IM2,k,j,i) = 0.0;
@@ -287,6 +300,11 @@ void MeshBlock::ProblemGenerator(ParameterInput *pin) {
         prfld->u(RadFLD::RAD,k,j,i) = Er0_L;
         } else {
         prfld->u(RadFLD::RAD,k,j,i) = Er0_R;
+        }
+
+        if (i == il || i == iu) {
+          Real an = slope*pcoord->x1v(i) + cons;
+          prfld->u(RadFLD::RAD,k,j,i) = an;
         }
       }
     }

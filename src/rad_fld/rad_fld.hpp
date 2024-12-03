@@ -64,6 +64,7 @@ class FLD {
   bool is_couple;
   bool only_rad;
   bool cut_diff;
+  bool fixed_flux_limitter;
 
   void LoadHydroVariables(const AthenaArray<Real> &w, AthenaArray<Real> &u);
   void UpdateRadiationEnergy(AthenaArray<Real> &u, const AthenaArray<Real> &r);

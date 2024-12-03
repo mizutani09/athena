@@ -87,6 +87,7 @@ FLD::FLD(MeshBlock *pmb, ParameterInput *pin) :
   calc_in_temp = pin->GetOrAddBoolean("mgfld", "calc_in_temp", false);
   only_rad = pin->GetOrAddBoolean("mgfld", "only_rad", false);
   cut_diff = pin->GetOrAddBoolean("mgfld", "cut_diff", false);
+  fixed_flux_limitter = pin->GetOrAddBoolean("mgfld", "fixed_flux_limitter", false);
   if (calc_in_temp) {
     // raise error
     std::stringstream msg;
@@ -214,12 +215,13 @@ void FLD::CalculateCoefficients(const AthenaArray<Real> &w,
         // }
 
         Real sigma_rface, R, lambda;
+        if (fixed_flux_limitter) lambda = ONE_3RD;
         // for DXM
         sigma_rface = std::min(0.5*(sigma_r(k,j,i) + sigma_r(k,j,i-1)),
               std::max(2.0*sigma_r(k,j,i)*sigma_r(k,j,i-1)/(sigma_r(k,j,i) + sigma_r(k,j,i-1)),
               2.0*TWO_3RD*idx)); // Howell & Greenough 2002 (after eq. 15)
         R = grad/sigma_rface;
-        lambda = (2.0+R)/(6.0+2.0*R+R*R);
+        if (!fixed_flux_limitter) lambda = (2.0+R)/(6.0+2.0*R+R*R);
         coeff(RadFLD::DXM,k,j,i) = pmg->c_ph*lambda/sigma_rface;
 
         // for DXP
@@ -227,7 +229,7 @@ void FLD::CalculateCoefficients(const AthenaArray<Real> &w,
               std::max(2.0*sigma_r(k,j,i)*sigma_r(k,j,i+1)/(sigma_r(k,j,i) + sigma_r(k,j,i+1)),
               2.0*TWO_3RD*idx)); // Howell & Greenough 2002 (after eq. 15)
         R = grad/sigma_rface;
-        lambda = (2.0+R)/(6.0+2.0*R+R*R);
+        if (!fixed_flux_limitter) lambda = (2.0+R)/(6.0+2.0*R+R*R);
         coeff(RadFLD::DXP,k,j,i) = pmg->c_ph*lambda/sigma_rface;
 
         // for DYM
@@ -235,7 +237,7 @@ void FLD::CalculateCoefficients(const AthenaArray<Real> &w,
               std::max(2.0*sigma_r(k,j,i)*sigma_r(k,j-1,i)/(sigma_r(k,j,i) + sigma_r(k,j-1,i)),
               2.0*TWO_3RD*idx)); // Howell & Greenough 2002 (after eq. 15)
         R = grad/sigma_rface;
-        lambda = (2.0+R)/(6.0+2.0*R+R*R);
+        if (!fixed_flux_limitter) lambda = (2.0+R)/(6.0+2.0*R+R*R);
         coeff(RadFLD::DYM,k,j,i) = pmg->c_ph*lambda/sigma_rface;
 
         // for DYP
@@ -243,7 +245,7 @@ void FLD::CalculateCoefficients(const AthenaArray<Real> &w,
               std::max(2.0*sigma_r(k,j,i)*sigma_r(k,j+1,i)/(sigma_r(k,j,i) + sigma_r(k,j+1,i)),
               2.0*TWO_3RD*idx)); // Howell & Greenough 2002 (after eq. 15)
         R = grad/sigma_rface;
-        lambda = (2.0+R)/(6.0+2.0*R+R*R);
+        if (!fixed_flux_limitter) lambda = (2.0+R)/(6.0+2.0*R+R*R);
         coeff(RadFLD::DYP,k,j,i) = pmg->c_ph*lambda/sigma_rface;
 
         // for DZM
@@ -251,7 +253,7 @@ void FLD::CalculateCoefficients(const AthenaArray<Real> &w,
               std::max(2.0*sigma_r(k,j,i)*sigma_r(k-1,j,i)/(sigma_r(k,j,i) + sigma_r(k-1,j,i)),
               2.0*TWO_3RD*idx)); // Howell & Greenough 2002 (after eq. 15)
         R = grad/sigma_rface;
-        lambda = (2.0+R)/(6.0+2.0*R+R*R);
+        if (!fixed_flux_limitter) lambda = (2.0+R)/(6.0+2.0*R+R*R);
         coeff(RadFLD::DZM,k,j,i) = pmg->c_ph*lambda/sigma_rface;
 
         // for DZP
@@ -259,7 +261,7 @@ void FLD::CalculateCoefficients(const AthenaArray<Real> &w,
               std::max(2.0*sigma_r(k,j,i)*sigma_r(k+1,j,i)/(sigma_r(k,j,i) + sigma_r(k+1,j,i)),
               2.0*TWO_3RD*idx)); // Howell & Greenough 2002 (after eq. 15)
         R = grad/sigma_rface;
-        lambda = (2.0+R)/(6.0+2.0*R+R*R);
+        if (!fixed_flux_limitter) lambda = (2.0+R)/(6.0+2.0*R+R*R);
         coeff(RadFLD::DZP,k,j,i) = pmg->c_ph*lambda/sigma_rface;
 
         // for later calculation
