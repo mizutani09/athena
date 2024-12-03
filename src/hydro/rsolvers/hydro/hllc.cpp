@@ -121,7 +121,7 @@ void Hydro::RiemannSolver(const int k, const int j, const int il, const int iu,
 
     // Determine the contact wave speed...
     Real am = (tl - tr)/(ml + mr);
-    pmy_block->phydro->vf[ivx-IVX](k,j,i) = am;
+    if (MGFLD_ENABLED) pmy_block->phydro->vf[ivx-IVX](k,j,i) = am;
     // ...and the pressure at the contact surface
     Real cp = (ml*tr + mr*tl)/(ml + mr);
     cp = cp > 0.0 ? cp : 0.0;
