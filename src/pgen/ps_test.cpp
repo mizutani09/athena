@@ -92,10 +92,10 @@ void MeshBlock::ProblemGenerator(ParameterInput *pin) {
   Real gamma = peos->GetGamma();
   Real igm1 = 1.0/(gamma-1.0);
 
-  int kl = ks-NGHOST;
-  int ku = ke+NGHOST;
-  int jl = js-NGHOST;
-  int ju = je+NGHOST;
+  int kl = ks-NGHOST*pmy_mesh->f3;
+  int ku = ke+NGHOST*pmy_mesh->f3;
+  int jl = js-NGHOST*pmy_mesh->f2;
+  int ju = je+NGHOST*pmy_mesh->f2;
   int il = is-NGHOST;
   int iu = ie+NGHOST;
 
@@ -127,10 +127,10 @@ void MeshBlock::ProblemGenerator(ParameterInput *pin) {
 void MeshBlock::UserWorkInLoop() {
   // to fix hydro variables
   Real igm1 = 1.0/(peos->GetGamma()-1.0);
-  int kl = ks-NGHOST;
-  int ku = ke+NGHOST;
-  int jl = js-NGHOST;
-  int ju = je+NGHOST;
+  int kl = ks-NGHOST*pmy_mesh->f3;
+  int ku = ke+NGHOST*pmy_mesh->f3;
+  int jl = js-NGHOST*pmy_mesh->f2;
+  int ju = je+NGHOST*pmy_mesh->f2;
   int il = is-NGHOST;
   int iu = ie+NGHOST;
 
