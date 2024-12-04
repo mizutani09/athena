@@ -167,10 +167,13 @@ Real HistoryL1norm(MeshBlock *pmb, int iout) {
   int is = pmb->is, ie = pmb->ie, js = pmb->js, je = pmb->je, ks = pmb->ks, ke = pmb->ke;
   Real L1norm = 0;
   Real r_sigma_sq = SQR(r_sigma);
+  Real l_sim = pmb->pmy_mesh->mesh_size.x1max - pmb->pmy_mesh->mesh_size.x1min;
   for (int k=ks; k<=ke; k++) {
     for (int j=js; j<=je; j++) {
       for (int i=is; i<=ie; i++) {
-        Real x = (pmb->pcoord->x1v(i) - r0) - v0*pmb->pmy_mesh->time;
+        Real ref_x = pmb->pcoord->x1v(i) - v0*pmb->pmy_mesh->time;
+        if (ref_x < 0) ref_x += l_sim*(1+std::floor(-ref_x/l_sim));
+        Real x = ref_x - r0;
         Real r_sq = SQR(x);
         Real an;
         if (r_sigma < 0.0) {
