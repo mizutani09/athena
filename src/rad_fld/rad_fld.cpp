@@ -281,7 +281,7 @@ void FLD::CalculateCoefficients(const AthenaArray<Real> &w,
 
         AthenaArray<Real> ngrad;
         ngrad.NewAthenaArray(3);
-        for (int ii = 0; ii < 3; ++ii) ngrad(ii) = dEr(ii)/gradE;
+        for (int ii = 0; ii < 3; ++ii) ngrad(ii) = dEr(ii)/(gradE+TINY_NUMBER);
 
         coeff(RadFLD::DPV,k,j,i) = 0.0; // for P:\nabla v
         for (int jj = 0; jj < 3; ++jj) {
