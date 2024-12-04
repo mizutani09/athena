@@ -87,6 +87,7 @@ FLD::FLD(MeshBlock *pmb, ParameterInput *pin) :
   calc_in_temp = pin->GetOrAddBoolean("mgfld", "calc_in_temp", false);
   only_rad = pin->GetOrAddBoolean("mgfld", "only_rad", false);
   cut_diff = pin->GetOrAddBoolean("mgfld", "cut_diff", false);
+  cut_Pnablav = pin->GetOrAddBoolean("mgfld", "cut_Pnablav", false);
   fixed_flux_limitter = pin->GetOrAddBoolean("mgfld", "fixed_flux_limitter", false);
   if (calc_in_temp) {
     // raise error
@@ -192,82 +193,113 @@ void FLD::CalculateCoefficients(const AthenaArray<Real> &w,
   for (int k = kl; k <= ku; ++k) {
     for (int j = jl; j <= ju; ++j) {
       for (int i = il; i <= iu; ++i) {
-        Real dEr1 = hidx*(u(RadFLD::RAD,k,j,i+1) - u(RadFLD::RAD,k,j,i-1));
-        Real dEr2 = hidx*(u(RadFLD::RAD,k,j+1,i) - u(RadFLD::RAD,k,j-1,i));
-        Real dEr3 = hidx*(u(RadFLD::RAD,k+1,j,i) - u(RadFLD::RAD,k-1,j,i));
-        Real grad = sqrt(SQR(dEr1) + SQR(dEr2) + SQR(dEr3))/u(RadFLD::RAD,k,j,i);
-
-        // Real sigma_rhere = sigma_r(k,j,i);
-        // sigma_r(RadFLD::DXM) = sigma_r(k,j,i-1);
-        // sigma_r(RadFLD::DXP) = sigma_r(k,j,i+1);
-        // sigma_r(RadFLD::DYM) = sigma_r(k,j-1,i);
-        // sigma_r(RadFLD::DYP) = sigma_r(k,j+1,i);
-        // sigma_r(RadFLD::DZM) = sigma_r(k-1,j,i);
-        // sigma_r(RadFLD::DZP) = sigma_r(k+1,j,i);
-
-        // for (int n = 0; n <= RadFLD::DZP; ++n) {
-        //   Real sigma_rface = std::min(0.5*(sigma_rhere + sigma_r(n)),
-        //         std::max(2.0*sigma_rhere*sigma_r(n)/(sigma_rhere + sigma_r(n)),
-        //         2.0*TWO_3RD*idx)); // Howell & Greenough 2002 (after eq. 15)
-        //   Real R = grad/sigma_rface;
-        //   Real lambda = (2.0+R)/(6.0+2.0*R+R*R);
-        //   coeff(n,k,j,i) = pmg->c_ph*lambda/sigma_rface;
-        // }
+        AthenaArray<Real> dEr;
+        dEr.NewAthenaArray(3);
+        for (int ii = 0; ii < 3; ++ii) {
+          int di = (ii == 0) ? 1 : 0;
+          int dj = (ii == 1) ? 1 : 0;
+          int dk = (ii == 2) ? 1 : 0;
+          dEr(ii) = hidx*(u(RadFLD::RAD,k+dk,j+dj,i+di) - u(RadFLD::RAD,k-dk,j-dj,i-di));
+        }
+        // Real dEr1 = hidx*(u(RadFLD::RAD,k,j,i+1) - u(RadFLD::RAD,k,j,i-1));
+        // Real dEr2 = hidx*(u(RadFLD::RAD,k,j+1,i) - u(RadFLD::RAD,k,j-1,i));
+        // Real dEr3 = hidx*(u(RadFLD::RAD,k+1,j,i) - u(RadFLD::RAD,k-1,j,i));
+        // Real gradE = std::sqrt(SQR(dEr1) + SQR(dEr2) + SQR(dEr3));
+        Real gradE = std::sqrt(SQR(dEr(0)) + SQR(dEr(1)) + SQR(dEr(2)));
 
         Real sigma_rface, R, lambda;
         if (fixed_flux_limitter) lambda = ONE_3RD;
-        // for DXM
-        sigma_rface = std::min(0.5*(sigma_r(k,j,i) + sigma_r(k,j,i-1)),
-              std::max(2.0*sigma_r(k,j,i)*sigma_r(k,j,i-1)/(sigma_r(k,j,i) + sigma_r(k,j,i-1)),
-              2.0*TWO_3RD*idx)); // Howell & Greenough 2002 (after eq. 15)
-        R = grad/sigma_rface;
-        if (!fixed_flux_limitter) lambda = (2.0+R)/(6.0+2.0*R+R*R);
-        coeff(RadFLD::DXM,k,j,i) = pmg->c_ph*lambda/sigma_rface;
 
-        // for DXP
-        sigma_rface = std::min(0.5*(sigma_r(k,j,i) + sigma_r(k,j,i+1)),
-              std::max(2.0*sigma_r(k,j,i)*sigma_r(k,j,i+1)/(sigma_r(k,j,i) + sigma_r(k,j,i+1)),
-              2.0*TWO_3RD*idx)); // Howell & Greenough 2002 (after eq. 15)
-        R = grad/sigma_rface;
-        if (!fixed_flux_limitter) lambda = (2.0+R)/(6.0+2.0*R+R*R);
-        coeff(RadFLD::DXP,k,j,i) = pmg->c_ph*lambda/sigma_rface;
+        for (int ii = 0; ii < 6; ++ii) {
+          int di = (ii == 0) ? -1 : (ii == 1) ? 1 : 0;
+          int dj = (ii == 2) ? -1 : (ii == 3) ? 1 : 0;
+          int dk = (ii == 4) ? -1 : (ii == 5) ? 1 : 0;
+          sigma_rface = std::min(0.5*(sigma_r(k,j,i) + sigma_r(k+dk,j+dj,i+di)),
+                std::max(2.0*sigma_r(k,j,i)*sigma_r(k+dk,j+dj,i+di)/(sigma_r(k,j,i) + sigma_r(k+dk,j+dj,i+di)),
+                2.0*TWO_3RD*idx)); // Howell & Greenough 2002 (after eq. 15)
+          R = gradE/(sigma_rface*u(RadFLD::RAD,k,j,i));
+          if (!fixed_flux_limitter) lambda = (2.0+R)/(6.0+2.0*R+R*R);
+          coeff(RadFLD::DXM+ii,k,j,i) = pmg->c_ph*lambda/sigma_rface;
+        }
 
-        // for DYM
-        sigma_rface = std::min(0.5*(sigma_r(k,j,i) + sigma_r(k,j-1,i)),
-              std::max(2.0*sigma_r(k,j,i)*sigma_r(k,j-1,i)/(sigma_r(k,j,i) + sigma_r(k,j-1,i)),
-              2.0*TWO_3RD*idx)); // Howell & Greenough 2002 (after eq. 15)
-        R = grad/sigma_rface;
-        if (!fixed_flux_limitter) lambda = (2.0+R)/(6.0+2.0*R+R*R);
-        coeff(RadFLD::DYM,k,j,i) = pmg->c_ph*lambda/sigma_rface;
+        // // for DXM
+        // sigma_rface = std::min(0.5*(sigma_r(k,j,i) + sigma_r(k,j,i-1)),
+        //       std::max(2.0*sigma_r(k,j,i)*sigma_r(k,j,i-1)/(sigma_r(k,j,i) + sigma_r(k,j,i-1)),
+        //       2.0*TWO_3RD*idx)); // Howell & Greenough 2002 (after eq. 15)
+        // R = gradE/(sigma_rface*u(RadFLD::RAD,k,j,i));
+        // if (!fixed_flux_limitter) lambda = (2.0+R)/(6.0+2.0*R+R*R);
+        // coeff(RadFLD::DXM,k,j,i) = pmg->c_ph*lambda/sigma_rface;
 
-        // for DYP
-        sigma_rface = std::min(0.5*(sigma_r(k,j,i) + sigma_r(k,j+1,i)),
-              std::max(2.0*sigma_r(k,j,i)*sigma_r(k,j+1,i)/(sigma_r(k,j,i) + sigma_r(k,j+1,i)),
-              2.0*TWO_3RD*idx)); // Howell & Greenough 2002 (after eq. 15)
-        R = grad/sigma_rface;
-        if (!fixed_flux_limitter) lambda = (2.0+R)/(6.0+2.0*R+R*R);
-        coeff(RadFLD::DYP,k,j,i) = pmg->c_ph*lambda/sigma_rface;
+        // // for DXP
+        // sigma_rface = std::min(0.5*(sigma_r(k,j,i) + sigma_r(k,j,i+1)),
+        //       std::max(2.0*sigma_r(k,j,i)*sigma_r(k,j,i+1)/(sigma_r(k,j,i) + sigma_r(k,j,i+1)),
+        //       2.0*TWO_3RD*idx)); // Howell & Greenough 2002 (after eq. 15)
+        // R = gradE/(sigma_rface*u(RadFLD::RAD,k,j,i));
+        // if (!fixed_flux_limitter) lambda = (2.0+R)/(6.0+2.0*R+R*R);
+        // coeff(RadFLD::DXP,k,j,i) = pmg->c_ph*lambda/sigma_rface;
 
-        // for DZM
-        sigma_rface = std::min(0.5*(sigma_r(k,j,i) + sigma_r(k-1,j,i)),
-              std::max(2.0*sigma_r(k,j,i)*sigma_r(k-1,j,i)/(sigma_r(k,j,i) + sigma_r(k-1,j,i)),
-              2.0*TWO_3RD*idx)); // Howell & Greenough 2002 (after eq. 15)
-        R = grad/sigma_rface;
-        if (!fixed_flux_limitter) lambda = (2.0+R)/(6.0+2.0*R+R*R);
-        coeff(RadFLD::DZM,k,j,i) = pmg->c_ph*lambda/sigma_rface;
+        // // for DYM
+        // sigma_rface = std::min(0.5*(sigma_r(k,j,i) + sigma_r(k,j-1,i)),
+        //       std::max(2.0*sigma_r(k,j,i)*sigma_r(k,j-1,i)/(sigma_r(k,j,i) + sigma_r(k,j-1,i)),
+        //       2.0*TWO_3RD*idx)); // Howell & Greenough 2002 (after eq. 15)
+        // R = gradE/(sigma_rface*u(RadFLD::RAD,k,j,i));
+        // if (!fixed_flux_limitter) lambda = (2.0+R)/(6.0+2.0*R+R*R);
+        // coeff(RadFLD::DYM,k,j,i) = pmg->c_ph*lambda/sigma_rface;
 
-        // for DZP
-        sigma_rface = std::min(0.5*(sigma_r(k,j,i) + sigma_r(k+1,j,i)),
-              std::max(2.0*sigma_r(k,j,i)*sigma_r(k+1,j,i)/(sigma_r(k,j,i) + sigma_r(k+1,j,i)),
-              2.0*TWO_3RD*idx)); // Howell & Greenough 2002 (after eq. 15)
-        R = grad/sigma_rface;
-        if (!fixed_flux_limitter) lambda = (2.0+R)/(6.0+2.0*R+R*R);
-        coeff(RadFLD::DZP,k,j,i) = pmg->c_ph*lambda/sigma_rface;
+        // // for DYP
+        // sigma_rface = std::min(0.5*(sigma_r(k,j,i) + sigma_r(k,j+1,i)),
+        //       std::max(2.0*sigma_r(k,j,i)*sigma_r(k,j+1,i)/(sigma_r(k,j,i) + sigma_r(k,j+1,i)),
+        //       2.0*TWO_3RD*idx)); // Howell & Greenough 2002 (after eq. 15)
+        // R = gradE/(sigma_rface*u(RadFLD::RAD,k,j,i));
+        // if (!fixed_flux_limitter) lambda = (2.0+R)/(6.0+2.0*R+R*R);
+        // coeff(RadFLD::DYP,k,j,i) = pmg->c_ph*lambda/sigma_rface;
+
+        // // for DZM
+        // sigma_rface = std::min(0.5*(sigma_r(k,j,i) + sigma_r(k-1,j,i)),
+        //       std::max(2.0*sigma_r(k,j,i)*sigma_r(k-1,j,i)/(sigma_r(k,j,i) + sigma_r(k-1,j,i)),
+        //       2.0*TWO_3RD*idx)); // Howell & Greenough 2002 (after eq. 15)
+        // R = gradE/(sigma_rface*u(RadFLD::RAD,k,j,i));
+        // if (!fixed_flux_limitter) lambda = (2.0+R)/(6.0+2.0*R+R*R);
+        // coeff(RadFLD::DZM,k,j,i) = pmg->c_ph*lambda/sigma_rface;
+
+        // // for DZP
+        // sigma_rface = std::min(0.5*(sigma_r(k,j,i) + sigma_r(k+1,j,i)),
+        //       std::max(2.0*sigma_r(k,j,i)*sigma_r(k+1,j,i)/(sigma_r(k,j,i) + sigma_r(k+1,j,i)),
+        //       2.0*TWO_3RD*idx)); // Howell & Greenough 2002 (after eq. 15)
+        // R = gradE/(sigma_rface*u(RadFLD::RAD,k,j,i));
+        // if (!fixed_flux_limitter) lambda = (2.0+R)/(6.0+2.0*R+R*R);
+        // coeff(RadFLD::DZP,k,j,i) = pmg->c_ph*lambda/sigma_rface;
 
         // for later calculation
         coeff(RadFLD::DSIGMAP,k,j,i) = sigma_r(k,j,i)*w(IDN,k,j,i);
         coeff(RadFLD::DCOUPLE,k,j,i) = gm1/w(IDN,k,j,i);
 
+        // for P:\nabla v
+        R = gradE/(sigma_r(k,j,i)*u(RadFLD::RAD,k,j,i)); // center
+        if (!fixed_flux_limitter) lambda = (2.0+R)/(6.0+2.0*R+R*R);
+        Real chi = lambda+std::pow(lambda*R,2);
+
+        AthenaArray<Real> ngrad;
+        ngrad.NewAthenaArray(3);
+        for (int ii = 0; ii < 3; ++ii) ngrad(ii) = dEr(ii)/gradE;
+
+        coeff(RadFLD::DPV,k,j,i) = 0.0; // for P:\nabla v
+        for (int jj = 0; jj < 3; ++jj) {
+          for (int ii = 0; ii < 3; ++ii) {
+            Real D_edd = 0.0;
+            if (ii == jj) D_edd += .5*(1.-chi);
+            D_edd += .5*(3.*chi-1.)*ngrad(jj)*ngrad(ii); //caution
+
+            int di = ii == 0 ? 1 : 0;
+            int dj = ii == 1 ? 1 : 0;
+            int dk = ii == 2 ? 1 : 0;
+
+            Real dv_dx = hidx*(w(IVX+jj,k+dk,j+dj,i+di) - w(IVX+jj,k-dk,j-dj,i-di));
+            coeff(RadFLD::DPV,k,j,i) += D_edd * dv_dx;
+          }
+        }
+
+        ngrad.DeleteAthenaArray();
       }
     }
   }
@@ -292,6 +324,16 @@ void FLD::CalculateCoefficients(const AthenaArray<Real> &w,
         for (int i = il; i <= iu; ++i) {
           coeff(RadFLD::DSIGMAP,k,j,i) = 0.0;
           coeff(RadFLD::DCOUPLE,k,j,i) = 0.0;
+        }
+      }
+    }
+  }
+
+  if (cut_Pnablav) {
+    for (int k = kl; k <= ku; ++k) {
+      for (int j = jl; j <= ju; ++j) {
+        for (int i = il; i <= iu; ++i) {
+          coeff(RadFLD::DPV,k,j,i) = 0.0;
         }
       }
     }

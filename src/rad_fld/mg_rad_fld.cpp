@@ -675,7 +675,8 @@ void MGFLD::CalculateMatrix(AthenaArray<Real> &matrix, const AthenaArray<Real> &
 
         // coupling
         Real Tg = coeff(RadFLD::DCOUPLE,k,j,i)*u(RadFLD::GAS,k,j,i); // latest energy
-        matrix(RadFLD::CPRR,k,j,i) = dt*c_ph*coeff(RadFLD::DSIGMAP,k,j,i);
+        matrix(RadFLD::CPRR,k,j,i) = dt*c_ph*coeff(RadFLD::DSIGMAP,k,j,i)
+                                   + dt*coeff(RadFLD::DPV,k,j,i); // for P: \nabla v
         matrix(RadFLD::CPRG,k,j,i) = -4.0*dt*c_ph*coeff(RadFLD::DSIGMAP,k,j,i)
                                      *a_r*std::pow(Tg, 3)*coeff(RadFLD::DCOUPLE,k,j,i);
         matrix(RadFLD::CPRC,k,j,i) =  3.0*dt*c_ph*coeff(RadFLD::DSIGMAP,k,j,i)

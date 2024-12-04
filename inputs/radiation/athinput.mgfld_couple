@@ -88,6 +88,7 @@ ox3_bc          = user
 is_couple       = true
 only_rad        = true
 cut_diff        = true
+cut_Pnablav     = true
 const_opacity   = 0.4    # in cm^2 g^-1 caution!
 
 <problem>

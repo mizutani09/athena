@@ -91,6 +91,7 @@ ox3_bc          = periodic
 cut_diff        = true
 is_couple       = false
 only_rad        = true
+cut_Pnablav     = true
 const_opacity   = 0.4 # in cm^2 g^-1 caution!
 
 <problem>

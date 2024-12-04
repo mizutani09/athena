@@ -89,6 +89,7 @@ ox3_bc          = periodic
 # calc_in_temp    = false
 is_couple       = false
 only_rad        = true
+cut_Pnablav     = true
 const_opacity   = 0.4 # in cm^2 g^-1 caution!
 
 <problem>

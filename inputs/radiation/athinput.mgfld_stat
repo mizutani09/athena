@@ -29,7 +29,7 @@ x3_slice        = 0.5
 ghost_zones     = true
 
 <time>
-cfl_number      = 0.3        # The Courant, Friedrichs, & Lewy (CFL) Number
+cfl_number      = 0.03        # The Courant, Friedrichs, & Lewy (CFL) Number
 nlim            = 128 # cycle limit
 tlim            = 100000.0        # time limit
 integrator      = rk2       # time integration algorithm
@@ -76,7 +76,7 @@ smoother        = jacobi-rb
 npresmooth      = 2
 npostsmooth     = 2
 omega           = 1.0
-niteration      = 20
+niteration      = 10
 # threshold       = 0.0
 output_defect   = true
 ix1_bc          = user
@@ -89,6 +89,7 @@ ox3_bc          = periodic
 # calc_in_temp    = false
 is_couple       = false
 only_rad        = true
+cut_Pnablav     = true
 fixed_flux_limitter  = true
 const_opacity   = 0.4 # in cm^2 g^-1 caution!
 
