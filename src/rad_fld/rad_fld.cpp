@@ -48,6 +48,7 @@ inline void DefaultOpacity(MeshBlock *pmb, AthenaArray<Real> &u_fld,
     for(int j=jl; j<=ju; ++j) {
 #pragma omp simd
       for(int i=il; i<=iu; ++i) {
+        prfld->sigma_p(k,j,i) = prfld->pmg->const_opacity*prim(IDN,k,j,i); //temporary
         prfld->sigma_r(k,j,i) = prfld->pmg->const_opacity*prim(IDN,k,j,i); //temporary
       }
     }
@@ -66,7 +67,8 @@ FLD::FLD(MeshBlock *pmb, ParameterInput *pin) :
     coeff(RadFLD::NCOEFF, pmb->ncells3, pmb->ncells2, pmb->ncells1),
     coarse_u(RadFLD::NTEMP, pmb->ncc3, pmb->ncc2, pmb->ncc1), //!
     coarse_r(pmb->ncc3, pmb->ncc2, pmb->ncc1),
-    sigma_r(pmb->ncells3+1,pmb->ncells2+1,pmb->ncells1+1),
+    sigma_p(pmb->ncells3,pmb->ncells2,pmb->ncells1),
+    sigma_r(pmb->ncells3,pmb->ncells2,pmb->ncells1),
     empty_flux{AthenaArray<Real>(), AthenaArray<Real>(), AthenaArray<Real>()},
     output_defect(false), mgfldbvar(pmb, &u, &coarse_u, empty_flux, false), //!
     r_flux{ {pmb->ncells3, pmb->ncells2, pmb->ncells1+1},
@@ -271,7 +273,7 @@ void FLD::CalculateCoefficients(const AthenaArray<Real> &w,
         // coeff(RadFLD::DZP,k,j,i) = pmg->c_ph*lambda/sigma_rface;
 
         // for later calculation
-        coeff(RadFLD::DSIGMAP,k,j,i) = sigma_r(k,j,i)*w(IDN,k,j,i);
+        coeff(RadFLD::DSIGMAP,k,j,i) = sigma_p(k,j,i)*w(IDN,k,j,i);
         coeff(RadFLD::DCOUPLE,k,j,i) = gm1/w(IDN,k,j,i);
 
         // for P:\nabla v

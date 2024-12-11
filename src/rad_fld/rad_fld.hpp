@@ -56,7 +56,7 @@ class FLD {
   AthenaArray<Real> coarse_r;
   int refinement_idx{-1}; // for r
 
-  AthenaArray<Real> sigma_r;
+  AthenaArray<Real> sigma_p, sigma_r;
   AthenaArray<Real> empty_flux[3];
   AthenaArray<Real> def;   // defect from the Multigrid solver
   bool output_defect;

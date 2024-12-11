@@ -156,7 +156,7 @@ MGFLD::MGFLD(MGFLDDriver *pmd, MeshBlock *pmb, ParameterInput *pin)
   Real c_ph_dim = 2.99792458e10; // speed of light in cm s^-1
   Real a_r_dim = 7.5657e-15; // radiation constant in erg cm^-3 K^-4
   Real R_gas = 8.3144621e7; // gas constant in erg K^-1 mol^-1
-  Real const_opacity_dim = pin->GetReal("mgfld", "const_opacity");//caution: in cm^2 g^-1
+  Real const_opacity_dim = pin->GetOrAddReal("mgfld", "const_opacity", 0.4);//caution: in cm^2 g^-1
 
   Real rho_unit = pin->GetReal("hydro", "rho_unit");
   Real egas_unit = pin->GetReal("hydro", "egas_unit");
