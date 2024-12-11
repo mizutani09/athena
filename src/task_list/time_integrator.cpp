@@ -978,8 +978,12 @@ TimeIntegratorTaskList::TimeIntegratorTaskList(ParameterInput *pin, Mesh *pm) {
       AddTask(SETB_CRTC,(RECV_CRTC|SRCTERM_CRTC));
     }
 
-    if (NSCALARS > 0) {
+    if (NSCALARS > 0 && MGFLD_ENABLED) {
+      AddTask(SRC_TERM,(INT_HYD|INT_SCLR|INT_CHM|INT_MGFLD));
+    } else if (NSCALARS > 0) {
       AddTask(SRC_TERM,(INT_HYD|INT_SCLR|INT_CHM));
+    } else if (MGFLD_ENABLED) {
+      AddTask(SRC_TERM,(INT_HYD|INT_MGFLD));
     } else {
       AddTask(SRC_TERM,INT_HYD);
     }
@@ -1104,8 +1108,12 @@ TimeIntegratorTaskList::TimeIntegratorTaskList(ParameterInput *pin, Mesh *pm) {
             setb=(setb|RECV_HYDSH|RECV_FLDSH);
           }
         } else {
-          if (NSCALARS > 0) {
+          if (NSCALARS > 0 && MGFLD_ENABLED) {
+            setb=(setb|SETB_HYD|SETB_FLD|SEND_SCLR|SETB_SCLR|SEND_MGFLD|SETB_MGFLD);
+          } else if (NSCALARS > 0) {
             setb=(setb|SETB_HYD|SETB_FLD|SEND_SCLR|SETB_SCLR);
+          } else if (MGFLD_ENABLED) {
+            setb=(setb|SETB_HYD|SETB_FLD|SEND_MGFLD|SETB_MGFLD);
           } else {
             setb=(setb|SETB_HYD|SETB_FLD);
           }
@@ -1131,8 +1139,12 @@ TimeIntegratorTaskList::TimeIntegratorTaskList(ParameterInput *pin, Mesh *pm) {
             AddTask(CONS2PRIM,(RECV_HYDSH|RECV_FLDSH));
           }
         } else {
-          if (NSCALARS > 0) {
+          if (NSCALARS > 0 && MGFLD_ENABLED) {
+            AddTask(CONS2PRIM,(SETB_HYD|SETB_FLD|SETB_SCLR|SETB_MGFLD));
+          } else if (NSCALARS > 0) {
             AddTask(CONS2PRIM,(SETB_HYD|SETB_FLD|SETB_SCLR));
+          } else if (MGFLD_ENABLED) {
+            AddTask(CONS2PRIM,(SETB_HYD|SETB_FLD|SETB_MGFLD));
           } else {
             AddTask(CONS2PRIM,(SETB_HYD|SETB_FLD));
           }
@@ -1149,8 +1161,12 @@ TimeIntegratorTaskList::TimeIntegratorTaskList(ParameterInput *pin, Mesh *pm) {
             setb=(setb|RECV_HYDSH);
           }
         } else {
-          if (NSCALARS > 0) {
+          if (NSCALARS > 0 && MGFLD_ENABLED) {
+            setb=(setb|SETB_HYD|SEND_SCLR|SETB_SCLR|SEND_MGFLD|SETB_MGFLD);
+          } else if (NSCALARS > 0) {
             setb=(setb|SETB_HYD|SEND_SCLR|SETB_SCLR);
+          } else if (MGFLD_ENABLED) {
+            setb=(setb|SETB_HYD|SEND_MGFLD|SETB_MGFLD);
           } else {
             setb=(setb|SETB_HYD);
           }
@@ -1175,8 +1191,12 @@ TimeIntegratorTaskList::TimeIntegratorTaskList(ParameterInput *pin, Mesh *pm) {
             AddTask(CONS2PRIM,RECV_HYDSH);
           }
         } else {
-          if (NSCALARS > 0) {
+          if (NSCALARS > 0 && MGFLD_ENABLED) {
+            AddTask(CONS2PRIM,(SETB_HYD|SETB_SCLR|SETB_MGFLD));
+          } else if (NSCALARS > 0) {
             AddTask(CONS2PRIM,(SETB_HYD|SETB_SCLR));
+          } else if (MGFLD_ENABLED) {
+            AddTask(CONS2PRIM,(SETB_HYD|SETB_MGFLD));
           } else {
             AddTask(CONS2PRIM,SETB_HYD);
           }

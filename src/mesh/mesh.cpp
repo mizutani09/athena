@@ -1695,6 +1695,13 @@ void Mesh::Initialize(int res_flag, ParameterInput *pin) {
           }
           pmb->pscalars->sbvar.SendBoundaryBuffers();
         }
+        if (MGFLD_ENABLED) {
+          pmb->prfld->rfldbvar.var_cc = &(pmb->prfld->r);
+          if (pmb->pmy_mesh->multilevel) {
+            pmb->prfld->rfldbvar.coarse_buf = &(pmb->prfld->coarse_r);
+          }
+          pmb->prfld->rfldbvar.SendBoundaryBuffers();
+        }
 
 
         if (NR_RADIATION_ENABLED || IM_RADIATION_ENABLED) {
@@ -1713,6 +1720,9 @@ void Mesh::Initialize(int res_flag, ParameterInput *pin) {
           pmb->pfield->fbvar.ReceiveAndSetBoundariesWithWait();
         if (NSCALARS > 0)
           pmb->pscalars->sbvar.ReceiveAndSetBoundariesWithWait();
+
+        if (MGFLD_ENABLED)
+          pmb->prfld->rfldbvar.ReceiveAndSetBoundariesWithWait();
 
         if (NR_RADIATION_ENABLED || IM_RADIATION_ENABLED)
           pmb->pnrrad->rad_bvar.ReceiveAndSetBoundariesWithWait();
@@ -1765,6 +1775,9 @@ void Mesh::Initialize(int res_flag, ParameterInput *pin) {
           if (NSCALARS > 0) {
             pmb->pscalars->sbvar.ReceiveAndSetBoundariesWithWait();
           }
+          if (MGFLD_ENABLED) {
+            pmb->prfld->rfldbvar.ReceiveAndSetBoundariesWithWait();
+          }
           pbval->ClearBoundarySubset(BoundaryCommSubset::gr_amr,
                                      pbval->bvars_main_int);
           pmb->phydro->hbvar.SwapHydroQuantity(pmb->phydro->u,
@@ -1773,6 +1786,12 @@ void Mesh::Initialize(int res_flag, ParameterInput *pin) {
             pmb->pscalars->sbvar.var_cc = &(pmb->pscalars->s);
             if (pmb->pmy_mesh->multilevel) {
               pmb->pscalars->sbvar.coarse_buf = &(pmb->pscalars->coarse_s_);
+            }
+          }
+          if (MGFLD_ENABLED) {
+            pmb->prfld->rfldbvar.var_cc = &(pmb->prfld->r);
+            if (pmb->pmy_mesh->multilevel) {
+              pmb->prfld->rfldbvar.coarse_buf = &(pmb->prfld->coarse_r);
             }
           }
         }
@@ -1799,10 +1818,12 @@ void Mesh::Initialize(int res_flag, ParameterInput *pin) {
       Hydro *ph;
       Field *pf;
       PassiveScalars *ps;
+      FLD *prfld;
 #pragma omp for private(pmb,pbval,ph,pf,ps)
       for (int i=0; i<nblocal; ++i) {
         pmb = my_blocks(i);
         pbval = pmb->pbval, ph = pmb->phydro, pf = pmb->pfield, ps = pmb->pscalars;
+        prfld = pmb->prfld;
         if (multilevel)
           pbval->ProlongateBoundaries(time, 0.0, pbval->bvars_main_int);
 
@@ -1850,6 +1871,12 @@ void Mesh::Initialize(int res_flag, ParameterInput *pin) {
               ps->sbvar.coarse_buf = &(ps->coarse_r_);
             }
           }
+          if (MGFLD_ENABLED) {
+            prfld->rfldbvar.var_cc = &(prfld->r);
+            if (pmb->pmy_mesh->multilevel) {
+              prfld->rfldbvar.coarse_buf = &(prfld->coarse_r);
+            }
+          }
           pbval->ApplyPhysicalBoundaries(time, 0.0, pbval->bvars_main_int);
           // Perform 4th order W(U)
           pmb->peos->ConservedToPrimitiveCellAverage(ph->u, ph->w1, pf->b,
@@ -1870,6 +1897,12 @@ void Mesh::Initialize(int res_flag, ParameterInput *pin) {
           ps->sbvar.var_cc = &(ps->r);
           if (pmb->pmy_mesh->multilevel) {
             ps->sbvar.coarse_buf = &(ps->coarse_r_);
+          }
+        }
+        if (MGFLD_ENABLED) {
+          prfld->rfldbvar.var_cc = &(prfld->r);
+          if (pmb->pmy_mesh->multilevel) {
+            prfld->rfldbvar.coarse_buf = &(prfld->coarse_r);
           }
         }
 
