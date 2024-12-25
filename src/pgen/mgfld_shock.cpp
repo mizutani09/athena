@@ -194,6 +194,14 @@ void ConstantOpacity(MeshBlock *pmb, AthenaArray<Real> &u_fld,
 //========================================================================================
 
 void Mesh::InitUserMeshData(ParameterInput *pin) {
+  Real fixed_flux_limitter = pin->GetOrAddBoolean("mgfld", "fixed_flux_limitter", false);
+  if (!fixed_flux_limitter) {
+    std::stringstream msg;
+    msg << "### FATAL ERROR in function [Mesh::InitUserMeshData]" << std::endl;
+    msg << "fixed_flux_limitter must be used in this problem." << std::endl;
+    msg << "Please set fixed_flux_limitter = true in block 'mgfld'.";
+    ATHENA_ERROR(msg);
+  }
   rho_unit = pin->GetReal("hydro", "rho_unit");
   egas_unit = pin->GetReal("hydro", "egas_unit");
   time_unit = pin->GetOrAddReal("hydro", "time_unit", -1.0);
@@ -214,7 +222,6 @@ void Mesh::InitUserMeshData(ParameterInput *pin) {
   Rgas = 8.31451e+7; // erg/(mol*K)
   mu = pin->GetReal("hydro", "mu");
   T_unit = pres_unit/rho_unit*mu/Rgas;
-  std::cout << "T_unit = " << T_unit << " K" << std::endl;
   a_r_dim = 7.5657e-15; // radiation constant in erg cm^-3 K^-4
   a_r_sim = a_r_dim/(egas_unit/std::pow(T_unit, 4));
 
@@ -223,8 +230,8 @@ void Mesh::InitUserMeshData(ParameterInput *pin) {
   if (leng_unit < 0.0) leng_unit = vel_unit*time_unit;
 
   // Real const_opasity = pin->GetReal("mgfld", "const_opacity");
-  sigma_P = pin->GetReal("mgfld", "const_opacity_P");
-  sigma_R = pin->GetReal("mgfld", "const_opacity_R");
+  sigma_P = pin->GetReal("mgfld", "const_opacity_P") * (leng_unit);
+  sigma_R = pin->GetReal("mgfld", "const_opacity_R") * (leng_unit);
   Real c_ph_dim = 2.99792458e10; // speed of light in cm s^-1
   Real c_ph_sim = c_ph_dim/(leng_unit/time_unit);
   // Real mfp_sim = 1.0/(const_opasity*rho_unit)/leng_unit;
@@ -314,6 +321,7 @@ void MeshBlock::ProblemGenerator(ParameterInput *pin) {
     std::cout << "time_unit = " << time_unit << " s" << std::endl;
     std::cout << "leng_unit = " << leng_unit << " cm" << std::endl;
     std::cout << "vel_unit = " << leng_unit/time_unit << " cm s^-1" << std::endl;
+    std::cout << "T_unit = " << T_unit << " K" << std::endl;
     std::cout << "c_ph_sim = " << c_ph_sim << " cm s^-1" << std::endl;
     std::cout << "dx = " << dx1*leng_unit << " cm" << std::endl;
     std::cout << "dt = " << dt_exp << " s" << std::endl;
@@ -322,7 +330,11 @@ void MeshBlock::ProblemGenerator(ParameterInput *pin) {
     std::cout << "p0_R = " << p0_R << std::endl;
     std::cout << "Er0_L = " << Er0_L << std::endl;
     std::cout << "Er0_R = " << Er0_R << std::endl;
+    std::cout << "v0_L = " << v0_L << std::endl;
+    std::cout << "v0_R = " << v0_R << std::endl;
     std::cout << "expected cycle = " << exp_cycle << std::endl;
+    std::cout << "sigma_P = " << sigma_P << std::endl;
+    std::cout << "sigma_R = " << sigma_R << std::endl;
 
     // also output the upper values in txt file
     std::ofstream ofs("problem_parameters.txt");
@@ -351,6 +363,8 @@ void MeshBlock::ProblemGenerator(ParameterInput *pin) {
     ofs << "p0_R            = " << p0_R << std::endl;
     ofs << "Er0_L           = " << Er0_L << std::endl;
     ofs << "Er0_R           = " << Er0_R << std::endl;
+    ofs << "sigma_P         = " << sigma_P << std::endl;
+    ofs << "sigma_R         = " << sigma_R << std::endl;
     ofs.close();
   }
 
