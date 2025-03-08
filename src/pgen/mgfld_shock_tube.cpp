@@ -69,7 +69,16 @@ namespace {
   Real egas0_L, egas0_R;
   Real Er0_L, Er0_R;
   Real sigma_P, sigma_R;
+  int rk_cycle;
+
+  // for iuser_meshblock
+  int TSTEP_COUNTER = 0;
 }
+
+void AddRadiativeForceAndWork(MeshBlock *pmb, const Real time, const Real dt,
+  const AthenaArray<Real> &prim, const AthenaArray<Real> &prim_scalar,
+  const AthenaArray<Real> &bcc, AthenaArray<Real> &cons,
+  AthenaArray<Real> &cons_scalar);
 
 void FLDFixedInnerX1(AthenaArray<Real> &dst, Real time, int nvar,
                     int is, int ie, int js, int je, int ks, int ke, int ngh,
@@ -194,14 +203,14 @@ void ConstantOpacity(MeshBlock *pmb, AthenaArray<Real> &u_fld,
 //========================================================================================
 
 void Mesh::InitUserMeshData(ParameterInput *pin) {
-  Real fixed_flux_limitter = pin->GetOrAddBoolean("mgfld", "fixed_flux_limitter", false);
-  if (!fixed_flux_limitter) {
-    std::stringstream msg;
-    msg << "### FATAL ERROR in function [Mesh::InitUserMeshData]" << std::endl;
-    msg << "fixed_flux_limitter must be used in this problem." << std::endl;
-    msg << "Please set fixed_flux_limitter = true in block 'mgfld'.";
-    ATHENA_ERROR(msg);
-  }
+  // Real fixed_flux_limitter = pin->GetOrAddBoolean("mgfld", "fixed_flux_limitter", false);
+  // if (!fixed_flux_limitter) {
+  //   std::stringstream msg;
+  //   msg << "### FATAL ERROR in function [Mesh::InitUserMeshData]" << std::endl;
+  //   msg << "fixed_flux_limitter must be used in this problem." << std::endl;
+  //   msg << "Please set fixed_flux_limitter = true in block 'mgfld'.";
+  //   ATHENA_ERROR(msg);
+  // }
   rho_unit = pin->GetReal("hydro", "rho_unit");
   egas_unit = pin->GetReal("hydro", "egas_unit");
   time_unit = pin->GetOrAddReal("hydro", "time_unit", -1.0);
@@ -259,6 +268,20 @@ void Mesh::InitUserMeshData(ParameterInput *pin) {
     EnrollUserFLDAdvBoundaryFunction(BoundaryFace::outer_x1, FLDAdvFixedOuterX1);
   }
 
+  EnrollUserExplicitSourceFunction(AddRadiativeForceAndWork);
+
+  std::string integrator = pin->GetString("time","integrator");
+  if (integrator == "rk3") {
+    rk_cycle = 3;
+  } else if (integrator == "rk2") {
+    rk_cycle = 2;
+  } else {
+    std::stringstream msg;
+    msg << "### FATAL ERROR about integrator " << std::endl
+        << "now only support the rk2 or rk3 integrator" << std::endl;
+    ATHENA_ERROR(msg);
+  }
+
   AllocateUserHistoryOutput(7);
   EnrollUserHistoryOutput(0, HistoryTg, "Tgas", UserHistoryOperation::max);
   EnrollUserHistoryOutput(1, HistoryTr, "Trad", UserHistoryOperation::max);
@@ -280,6 +303,13 @@ void MeshBlock::InitUserMeshBlockData(ParameterInput *pin) {
   Er0_R = a_r_sim*std::pow(T0_R, 4);
   egas0_L = p0_L*igm1;
   egas0_R = p0_R*igm1;
+
+  int idata_size = 0;
+  idata_size += 1; // for test counter
+  AllocateIntUserMeshBlockDataField(idata_size);
+
+  iuser_meshblock_data[TSTEP_COUNTER].NewAthenaArray(1);
+  iuser_meshblock_data[TSTEP_COUNTER](0) = 0;
 
   AllocateUserOutputVariables(5);
   SetUserOutputVariableName(0, "e_gas");
@@ -432,6 +462,53 @@ void MeshBlock::UserWorkBeforeOutput(ParameterInput *pin) {
     }
   }
   return;
+}
+
+
+void AddRadiativeForceAndWork(MeshBlock *pmb, const Real time, const Real dt,
+  const AthenaArray<Real> &prim, const AthenaArray<Real> &prim_scalar,
+  const AthenaArray<Real> &bcc, AthenaArray<Real> &cons,
+  AthenaArray<Real> &cons_scalar) {
+  Real gamma = pmb->peos->GetGamma();
+  Real gm1 = gamma - 1.0;
+  Real igm1 = 1.0 / gm1;
+
+  // if ((pmb->iuser_meshblock_data[TSTEP_COUNTER](0) + 1) % rk_cycle == 0) {
+    int il = pmb->is, iu = pmb->ie;
+    int jl = pmb->js, ju = pmb->je;
+    int kl = pmb->ks, ku = pmb->ke;
+    Real idx = 1.0/pmb->pcoord->dx1f(pmb->is);
+    Real hidx = 0.5*idx;
+    Real dEr[3]; // caution when you use simd
+
+    FLD *prfld = pmb->prfld;
+    AthenaArray<Real> &fld_u = prfld->u;
+
+    for (int k = kl; k <= ku; ++k) {
+      for (int j = jl; j <= ju; ++j) {
+        for (int i = il; i <= iu; ++i) {
+          for (int ii = 0; ii < 3; ++ii) {
+            int di = (ii == 0) ? 1 : 0;
+            int dj = (ii == 1) ? 1 : 0;
+            int dk = (ii == 2) ? 1 : 0;
+            dEr[ii] = hidx*(fld_u(RadFLD::RAD,k+dk,j+dj,i+di) - fld_u(RadFLD::RAD,k-dk,j-dj,i-di));
+          }
+          Real gradE = std::sqrt(SQR(dEr[0]) + SQR(dEr[1]) + SQR(dEr[2]));
+
+          Real R = gradE/(prfld->sigma_r(k,j,i)*fld_u(RadFLD::RAD,k,j,i)); // center
+          Real lambda = (2.0+R)/(6.0+2.0*R+R*R);
+
+          cons(IM1,k,j,i) += -lambda*dt*dEr[0];
+          cons(IM2,k,j,i) += -lambda*dt*dEr[1];
+          cons(IM3,k,j,i) += -lambda*dt*dEr[2];
+          Real nablaE_v = dEr[0]*prim(IVX,k,j,i) + dEr[1]*prim(IVY,k,j,i) + dEr[2]*prim(IVZ,k,j,i);
+          cons(IEN,k,j,i) += -lambda*dt*nablaE_v;
+        }
+      }
+    }
+  // }
+  pmb->iuser_meshblock_data[TSTEP_COUNTER](0)++;
+  pmb->iuser_meshblock_data[TSTEP_COUNTER](0) %= rk_cycle;
 }
 
 namespace {

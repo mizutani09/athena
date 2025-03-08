@@ -1,7 +1,7 @@
 <comment>
 problem         = FLD test with Multigrid
 reference       = W. Zhang, L. Howell, A. Almgren, A. Burrows, J. Bell, Astrophys. J. Suppl. Ser. 196, 20 (2011). for section 6.5: Shock Tube Problem in the Strong Equilibrium Regime
-configure       = --prob=mgfld_shock_tube -mgfld -hdf5 -mpi
+configure       = --prob=mgfld_shock_tube -mgfld -hdf5 -mpi -debug
 
 <job>
 problem_id      = MGFLD       # problem ID: basename of output filenames
@@ -14,7 +14,8 @@ dcycle          = 1           # time increment between outputs
 file_type       = hdf5        # Binary data dump
 id              = prim_x_slice
 variable        = prim        # variables to be output
-dcycle          = 1         # time increment between outputs
+# dcycle          = 1         # time increment between outputs
+dt              = 0.005
 x2_slice        = 0.0         # slice location in X2
 x3_slice        = 0.0         # slice location in X3
 ghost_zones     = true
@@ -23,8 +24,8 @@ ghost_zones     = true
 file_type       = hdf5
 id              = uov_x_slice
 variable        = uov
-dcycle          = 1
-# dt              = 0.1
+# dcycle          = 1
+dt              = 0.005
 x2_slice        = 0.0
 x3_slice        = 0.0
 ghost_zones     = true
@@ -78,7 +79,7 @@ npresmooth      = 2
 npostsmooth     = 2
 omega           = 1.0
 # niteration      = 10
-threshold       = 1e-4
+threshold       = 1e-10
 output_defect   = true
 ix1_bc          = user
 ox1_bc          = user
@@ -87,9 +88,9 @@ ox2_bc          = periodic
 ix3_bc          = periodic
 ox3_bc          = periodic
 
-const_opacity_P     = 1e6   # in cm^-1 caution!
-const_opacity_R     = 1e8     # in cm^-1 caution!
-fixed_flux_limitter = true
+const_opacity_P = 1e6   # in cm^-1 caution!
+const_opacity_R = 1e8     # in cm^-1 caution!
+fixed_flux_limitter = false
 
 <problem>
 rho0_L          = 1e-5  # in g cm^-3
