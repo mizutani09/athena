@@ -415,10 +415,11 @@ void MGFLD::Smooth(AthenaArray<Real> &u, const AthenaArray<Real> &src,
           }
         }
       }
+      // std::cout << "rlev " << rlev << " il " << il << " iu " << iu << " jl " << jl << " ju " << ju << " kl " << kl << " ku " << ku << std::endl;
       // std::cout << "CPRR " <<matrix(RadFLD::CPRR,1,1,1) << " CPRG " << matrix(RadFLD::CPRG,1,1,1) << " CPGR " <<matrix(RadFLD::CPGR,1,1,1) << " CPGG " << matrix(RadFLD::CPGG,1,1,1) << " CPGC " << matrix(RadFLD::CPGC,1,1,1) << " CPRC " << matrix(RadFLD::CPRC,1,1,1)<< std::endl;
       // std::cout << "RSRC " << src(RadFLD::RAD,1,1,1) << " MGSRC " << matrix(RadFLD::CPRG,1,1,1)/matrix(RadFLD::CPGG,1,1,1)*src(RadFLD::GAS,1,1,1) << " MGCG " << matrix(RadFLD::CPRG,1,1,1)/matrix(RadFLD::CPGG,1,1,1)*matrix(RadFLD::CPGC,1,1,1) << " CPRC " <<matrix(RadFLD::CPRC,1,1,1)<< " CPRCS " << matrix(RadFLD::CPRCS,1,1,1) << std::endl;
       // std::cout << src(RadFLD::RAD,1,1,1)-matrix(RadFLD::CPRG,1,1,1)/matrix(RadFLD::CPGG,1,1,1)*(src(RadFLD::GAS,1,1,1)-matrix(RadFLD::CPGC,1,1,1))-matrix(RadFLD::CPRC,1,1,1)<< std::endl;
-      // std::cout << "RAD " << u(RadFLD::RAD,1,1,1) << " GAS " << u(RadFLD::GAS,1,1,1) << " GSRC " <<src(RadFLD::GAS,1,1,1) << " DEGAS " << coeff(RadFLD::DEGAS,1,1,1) << std::endl;
+      // std::cout << "RAD " << u(RadFLD::RAD,1,1,1) << " GAS " << u(RadFLD::GAS,1,1,1) << " GSRC " <<src(RadFLD::GAS,1,1,1) << std::endl;
     }
   } else { // jacobi
     if (th == true && (ku-kl) >=  minth_) {
@@ -510,7 +511,7 @@ void MGFLD::CalculateDefect(AthenaArray<Real> &def, const AthenaArray<Real> &u,
                + matrix(RadFLD::CCM,k,j,i)*u(RadFLD::RAD,k,j,i-1)+matrix(RadFLD::CCP,k,j,i)*u(RadFLD::RAD,k,j,i+1)
                + matrix(RadFLD::CMC,k,j,i)*u(RadFLD::RAD,k,j-1,i)+matrix(RadFLD::CPC,k,j,i)*u(RadFLD::RAD,k,j+1,i)
                + matrix(RadFLD::MCC,k,j,i)*u(RadFLD::RAD,k-1,j,i)+matrix(RadFLD::PCC,k,j,i)*u(RadFLD::RAD,k+1,j,i);
-        M += matrix(RadFLD::CPRG,k,j,i)*u(RadFLD::GAS,k,j,i-1);
+        M += matrix(RadFLD::CPRG,k,j,i)*u(RadFLD::GAS,k,j,i);
         M += matrix(RadFLD::CPRC,k,j,i);
         def(RadFLD::RAD,k,j,i) = src(RadFLD::RAD,k,j,i) - M;
 
@@ -552,7 +553,7 @@ void MGFLD::CalculateFASRHS(AthenaArray<Real> &src, const AthenaArray<Real> &u,
                + matrix(RadFLD::CCM,k,j,i)*u(RadFLD::RAD,k,j,i-1)+matrix(RadFLD::CCP,k,j,i)*u(RadFLD::RAD,k,j,i+1)
                + matrix(RadFLD::CMC,k,j,i)*u(RadFLD::RAD,k,j-1,i)+matrix(RadFLD::CPC,k,j,i)*u(RadFLD::RAD,k,j+1,i)
                + matrix(RadFLD::MCC,k,j,i)*u(RadFLD::RAD,k-1,j,i)+matrix(RadFLD::PCC,k,j,i)*u(RadFLD::RAD,k+1,j,i);
-        M += matrix(RadFLD::CPRG,k,j,i)*u(RadFLD::GAS,k,j,i-1);
+        M += matrix(RadFLD::CPRG,k,j,i)*u(RadFLD::GAS,k,j,i);
         M += matrix(RadFLD::CPRC,k,j,i);
         src(RadFLD::RAD,k,j,i) += M;
 
