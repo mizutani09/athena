@@ -311,7 +311,7 @@ void MeshBlock::ProblemGenerator(ParameterInput *pin) {
   Real c_ph_dim = 2.99792458e10; // speed of light in cm s^-1
   Real c_ph_sim = c_ph_dim/(leng_unit/time_unit);
   // Real mfp_sim = 1.0/(const_opasity*rho_unit)/leng_unit;
-  Real t_lim = 10.0; // in s
+  Real t_lim = 0.05; // in s
   Real exp_cycle = t_lim/dt_exp;
 
   Real L = pmy_mesh->mesh_size.x1max - pmy_mesh->mesh_size.x1min;
