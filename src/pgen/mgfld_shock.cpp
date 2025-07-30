@@ -305,16 +305,18 @@ void MeshBlock::ProblemGenerator(ParameterInput *pin) {
   Real Cs_L = std::sqrt(gamma*p0_L/rho0_L);
   Real Cs_R = std::sqrt(gamma*p0_R/rho0_R);
   Real max_vel = std::max(std::abs(v0_L+Cs_L), std::abs(v0_R+Cs_R));
-  Real dt_exp = courant*dx1/max_vel*time_unit;
+  Real dt_exp = courant*dx1/max_vel;
   // Real const_opasity = pin->GetReal("mgfld", "const_opacity");
   // Real const_opasity_sim = const_opasity*leng_unit*rho_unit;
   Real c_ph_dim = 2.99792458e10; // speed of light in cm s^-1
   Real c_ph_sim = c_ph_dim/(leng_unit/time_unit);
   // Real mfp_sim = 1.0/(const_opasity*rho_unit)/leng_unit;
-  Real t_lim = 0.05; // in s
-  Real exp_cycle = t_lim/dt_exp;
 
   Real L = pmy_mesh->mesh_size.x1max - pmy_mesh->mesh_size.x1min;
+  Real t_sc = L/max_vel;
+  Real t_lim = 0.05 / time_unit; // in s
+  Real exp_cycle = t_lim / dt_exp;
+  Real exp_cycle_sc = t_sc / dt_exp;
   if (gid == 0) {
     std::cout << "rho_unit = " << rho_unit << " g cm^-3" << std::endl;
     std::cout << "egas_unit = " << egas_unit << " erg cm^-3" << std::endl;
@@ -324,8 +326,14 @@ void MeshBlock::ProblemGenerator(ParameterInput *pin) {
     std::cout << "T_unit = " << T_unit << " K" << std::endl;
     std::cout << "c_ph_sim = " << c_ph_sim << " cm s^-1" << std::endl;
     std::cout << "dx = " << dx1*leng_unit << " cm" << std::endl;
-    std::cout << "dt = " << dt_exp << " s" << std::endl;
-    std::cout << "dt_sim = " << dt_exp/time_unit << std::endl;
+    std::cout << "dt = " << dt_exp*time_unit << " s" << std::endl;
+    std::cout << "dt_sim = " << dt_exp << std::endl;
+    std::cout << "t_lim_dim = " << t_lim*time_unit << " s" << std::endl;
+    std::cout << "t_lim_sim = " << t_lim << std::endl;
+    std::cout << "exp_cycle = " << exp_cycle << std::endl;
+    std::cout << "t_sc_dim = " << t_sc*time_unit << " s" << std::endl;
+    std::cout << "t_sc_sim = " << t_sc << std::endl;
+    std::cout << "exp_cycle for t_sc = " << exp_cycle_sc << std::endl;
     std::cout << "p0_L = " << p0_L << std::endl;
     std::cout << "p0_R = " << p0_R << std::endl;
     std::cout << "Er0_L = " << Er0_L << std::endl;
@@ -349,22 +357,28 @@ void MeshBlock::ProblemGenerator(ParameterInput *pin) {
     ofs << std::endl;
 
     ofs << "- Simulation parameters" << std::endl;
-    ofs << "c_ph_sim        = " << c_ph_sim << std::endl;
-    ofs << "dx_dim          = " << dx1*leng_unit << " cm" << std::endl;
-    ofs << "dt_dim          = " << dt_exp << " s" << std::endl;
-    ofs << "dt_sim          = " << dt_exp/time_unit << std::endl;
-    ofs << "rho0_L          = " << rho0_L << std::endl;
-    ofs << "rho0_R          = " << rho0_R << std::endl;
-    ofs << "T0_L            = " << T0_L << std::endl;
-    ofs << "T0_R            = " << T0_R << std::endl;
-    ofs << "v0_L            = " << v0_L << std::endl;
-    ofs << "v0_R            = " << v0_R << std::endl;
-    ofs << "p0_L            = " << p0_L << std::endl;
-    ofs << "p0_R            = " << p0_R << std::endl;
-    ofs << "Er0_L           = " << Er0_L << std::endl;
-    ofs << "Er0_R           = " << Er0_R << std::endl;
-    ofs << "sigma_P         = " << sigma_P << std::endl;
-    ofs << "sigma_R         = " << sigma_R << std::endl;
+    ofs << "c_ph_sim         = " << c_ph_sim << std::endl;
+    ofs << "dx_dim           = " << dx1*leng_unit << " cm" << std::endl;
+    ofs << "dt_dim           = " << dt_exp*time_unit << " s" << std::endl;
+    ofs << "dt_sim           = " << dt_exp << std::endl;
+    ofs << "t_lim_dim        = " << t_lim*time_unit << " s" << std::endl;
+    ofs << "t_lim_sim        = " << t_lim << std::endl;
+    ofs << "exp_cycle(t_lim) = " << exp_cycle << std::endl;
+    ofs << "t_sc_dim         = " << t_sc*time_unit << " s" << std::endl;
+    ofs << "t_sc_sim         = " << t_sc << std::endl;
+    ofs << "exp_cycle(t_sc)  = " << exp_cycle << std::endl;
+    ofs << "rho0_L           = " << rho0_L << std::endl;
+    ofs << "rho0_R           = " << rho0_R << std::endl;
+    ofs << "T0_L             = " << T0_L << std::endl;
+    ofs << "T0_R             = " << T0_R << std::endl;
+    ofs << "v0_L             = " << v0_L << std::endl;
+    ofs << "v0_R             = " << v0_R << std::endl;
+    ofs << "p0_L             = " << p0_L << std::endl;
+    ofs << "p0_R             = " << p0_R << std::endl;
+    ofs << "Er0_L            = " << Er0_L << std::endl;
+    ofs << "Er0_R            = " << Er0_R << std::endl;
+    ofs << "sigma_P          = " << sigma_P << std::endl;
+    ofs << "sigma_R          = " << sigma_R << std::endl;
     ofs.close();
   }
 
