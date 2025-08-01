@@ -69,6 +69,7 @@ namespace {
   Real egas0_L, egas0_R;
   Real Er0_L, Er0_R;
   Real sigma_P, sigma_R;
+  Real t_lim_dim;
 }
 
 void FLDFixedInnerX1(AthenaArray<Real> &dst, Real time, int nvar,
@@ -314,7 +315,8 @@ void MeshBlock::ProblemGenerator(ParameterInput *pin) {
 
   Real L = pmy_mesh->mesh_size.x1max - pmy_mesh->mesh_size.x1min;
   Real t_sc = L/max_vel;
-  Real t_lim = 0.05 / time_unit; // in s
+  Real t_lim_dim = pin->GetReal("problem", "t_lim");
+  Real t_lim = t_lim_dim / time_unit; // in s
   Real exp_cycle = t_lim / dt_exp;
   Real exp_cycle_sc = t_sc / dt_exp;
   if (gid == 0) {
