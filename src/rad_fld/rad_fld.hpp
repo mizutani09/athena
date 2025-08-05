@@ -121,12 +121,7 @@ class UserOpacityTable : public InterpTable2D {
   // Data members for opacity table properties
   Real tempMin, tempMax;    // Temperature limits
   Real densityMin, densityMax;  // Density limits
-  Real T_unit, rho_unit;   // Units for temperature and density
-  Real opacity_unit;
   int nTemp, nDensity, nVar;    // Table dimensions
   AthenaArray<Real> OpacityTables;  // Tables for each variable
-  
-  // For 1D paired data storage
-  AthenaArray<Real> temp_coords, density_coords;  // Coordinate arrays for 1D paired data
 };
 #endif // RAD_FLD_RAD_FLD_HPP_

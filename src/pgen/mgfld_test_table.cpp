@@ -153,29 +153,35 @@ void MeshBlock::InitUserMeshBlockData(ParameterInput *pin) {
 
 void MeshBlock::ProblemGenerator(ParameterInput *pin) {
 
-  Real rho=1e-10, temp=1e5;
+  Real rho=1e-10, temp=1e5; // g/cm³, K
+  // Real rho=7e-11, temp=6e3;
+  // Real rho=8.89e-02, temp=3.16e+07;
+  // Real rho=2.81e-08, temp=1.00e+05;
   // std::cout << "Input fluid parameters and retrieve the corresponding opacity value." << '\n'
   //           << "Non-positive inputs will exit loop." << '\n';
 
   // while(true) {
-    // std::cout << "Input density in g cm^-3: ";
-    // std::cin >> rho;
-    // std::cout << "Input temperature in K: ";
-    // std::cin >> temp;
+  //   std::cout << "Input density in g cm^-3: ";
+  //   std::cin >> rho;
+  //   std::cout << "Input temperature in K: ";
+  //   std::cin >> temp;
 
-    // if (rho <= 0.0 || temp <= 0.0) {
-    //   std::cout << "Exiting..." << std::endl;
-    //   break;
-    // }
-
-    sigma_P = puser_table->GetOpacity(RadFLD::SIGMA_P, rho/rho_unit, temp/T_unit);
-    sigma_R = puser_table->GetOpacity(RadFLD::SIGMA_R, rho/rho_unit, temp/T_unit);
+  //   if (rho <= 0.0 || temp <= 0.0) {
+  //     std::cout << "Exiting..." << std::endl;
+  //     break;
+  //   }
 
     std::cout << ">>> Input parameters <<<" << std::endl;
     std::cout << "Density: " << rho << " g cm^-3" << std::endl;
     std::cout << "Temperature: " << temp << " K" << std::endl;
-    std::cout << "Rosseland opacity: " << sigma_R*opacity_unit << " cm^2/g" << std::endl;
-    std::cout << "Planck opacity: " << sigma_P*opacity_unit << " cm^2/g" << std::endl;
+
+    // GetOpacity now expects physical density and temperature for log-scale tables
+    sigma_P = puser_table->GetOpacity(RadFLD::SIGMA_P, rho, temp);
+    sigma_R = puser_table->GetOpacity(RadFLD::SIGMA_R, rho, temp);
+    // std::cout << "opacity_unit: " << opacity_unit << " cm^2/g" << std::endl;
+
+    std::cout << "Rosseland opacity: " << sigma_R << " cm^2/g" << std::endl;
+    std::cout << "Planck opacity: " << sigma_P << " cm^2/g" << std::endl;
     std::cout << "----------------------------------------" << std::endl;
   // }
 
