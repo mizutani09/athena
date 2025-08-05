@@ -273,6 +273,10 @@ void FLD::CalculateCoefficients(const AthenaArray<Real> &w,
         // coeff(RadFLD::DZP,k,j,i) = pmg->c_ph*lambda/sigma_rface;
 
         // for later calculation
+        // if (k == (kl+ku)/2 && j == (jl+ju)/2 && i == (il+iu)/2) {
+        //   std::cout << "sigma_p: " << sigma_p(k,j,i) << std::endl;
+        //   std::cout << "sigma_r: " << sigma_r(k,j,i) << std::endl;
+        // }
         coeff(RadFLD::DSIGMAP,k,j,i) = sigma_p(k,j,i)*w(IDN,k,j,i);
         coeff(RadFLD::DCOUPLE,k,j,i) = gm1/w(IDN,k,j,i);
 
