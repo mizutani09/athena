@@ -41,17 +41,16 @@ const char *opacity_var_names[] = {"planck_mean_opacity", "rosseland_mean_opacit
 //! \fn void ReadAsciiOpacityTable(std::string fn, UserOpacityTable *puser_table, ParameterInput *pin)
 //  \brief Read data from ascii opacity table and initialize interpolated table.
 void ReadAsciiOpacityTable(std::string fn, UserOpacityTable *puser_table, ParameterInput *pin) {
-  bool read_tables = pin->GetOrAddBoolean("problem", "opacity_table_read_tables", true);
   AthenaArray<Real> *ptables = nullptr;
-  if (read_tables) ptables = &puser_table->OpacityTables;
+  if (puser_table->use_tables) ptables = &puser_table->OpacityTables;
 
-  // If read_tables then OpacityTables.NewAthenaArray is called in ASCIITableLoader
+  // If use_tables then OpacityTables.NewAthenaArray is called in ASCIITableLoader
   ASCIITableLoader(fn.c_str(), *puser_table, ptables);
-  puser_table->GetSize(puser_table->nVar, puser_table->nDensity, puser_table->nTemp);
-  puser_table->GetX2lim(puser_table->densityMin, puser_table->densityMax);
+  puser_table->GetSize(puser_table->nVar, puser_table->nPressure, puser_table->nTemp);
+  puser_table->GetX2lim(puser_table->pressureMin, puser_table->pressureMax);
   puser_table->GetX1lim(puser_table->tempMin, puser_table->tempMax);
 
-  if (!read_tables) {
+  if (!puser_table->use_tables) {
     puser_table->OpacityTables.NewAthenaArray(puser_table->nVar);
     for (int i=0; i<puser_table->nVar; ++i) puser_table->OpacityTables(i) = 1.0;
   }
@@ -69,7 +68,7 @@ void ReadHDF5OpacityTable(std::string fn, UserOpacityTable *puser_table, Paramet
   const char **var_names = opacity_var_names;
 
   // Read 2D grid format: separate 1D coordinate arrays and 2D opacity grids
-  AthenaArray<Real> temp_array, density_array;
+  AthenaArray<Real> temp_array, pressure_array;
 
   // Read temperature coordinate array to get its size
   int temp_size = 0;
@@ -87,16 +86,16 @@ void ReadHDF5OpacityTable(std::string fn, UserOpacityTable *puser_table, Paramet
     H5Pclose(property_list_file);
   }
 
-  // Read density coordinate array to get its size
-  int density_size = 0;
+  // Read pressure coordinate array to get its size
+  int pressure_size = 0;
   {
     hid_t property_list_file = H5Pcreate(H5P_FILE_ACCESS);
     hid_t file = H5Fopen(fn.c_str(), H5F_ACC_RDONLY, property_list_file);
-    hid_t dataset = H5Dopen(file, "log_density", H5P_DEFAULT);
+    hid_t dataset = H5Dopen(file, "log_pressure", H5P_DEFAULT);
     hid_t dspace = H5Dget_space(dataset);
     hsize_t dims[1];
     H5Sget_simple_extent_dims(dspace, dims, NULL);
-    density_size = static_cast<int>(dims[0]);
+    pressure_size = static_cast<int>(dims[0]);
     H5Sclose(dspace);
     H5Dclose(dataset);
     H5Fclose(file);
@@ -104,34 +103,34 @@ void ReadHDF5OpacityTable(std::string fn, UserOpacityTable *puser_table, Paramet
   }
 
   // Set up proper 2D table structure
-  puser_table->SetSize(nvar, density_size, temp_size);  // nvar, nx2=density_size, nx1=temp_size
+  puser_table->SetSize(nvar, pressure_size, temp_size);  // nvar, nx2=pressure_size, nx1=temp_size
   puser_table->nVar = nvar;
   puser_table->nTemp = temp_size;
-  puser_table->nDensity = density_size;
+  puser_table->nPressure = pressure_size;
 
   // Read coordinate arrays
   temp_array.NewAthenaArray(temp_size);
-  density_array.NewAthenaArray(density_size);
+  pressure_array.NewAthenaArray(pressure_size);
 
   int start_file[1] = {0};
   int start_mem[1] = {0};
   int count_temp[1] = {temp_size};
-  int count_density[1] = {density_size};
+  int count_pressure[1] = {pressure_size};
 
   HDF5ReadRealArray(fn.c_str(), "log_temperature", 1, start_file, count_temp,
                     1, start_mem, count_temp, temp_array);
-  HDF5ReadRealArray(fn.c_str(), "log_density", 1, start_file, count_density,
-                    1, start_mem, count_density, density_array);
+  HDF5ReadRealArray(fn.c_str(), "log_pressure", 1, start_file, count_pressure,
+                    1, start_mem, count_pressure, pressure_array);
 
   // Set coordinate limits in physical units
   puser_table->tempMin = temp_array(0);
   puser_table->tempMax = temp_array(temp_size - 1);
-  puser_table->densityMin = density_array(0);
-  puser_table->densityMax = density_array(density_size - 1);
+  puser_table->pressureMin = pressure_array(0);
+  puser_table->pressureMax = pressure_array(pressure_size - 1);
 
   // Set grid bounds in physical units for InterpTable2D
   puser_table->SetX1lim(puser_table->tempMin, puser_table->tempMax);
-  puser_table->SetX2lim(puser_table->densityMin, puser_table->densityMax);
+  puser_table->SetX2lim(puser_table->pressureMin, puser_table->pressureMax);
 
   // Read 2D opacity data arrays
   for (int ivar = 0; ivar < nvar; ++ivar) {
@@ -157,29 +156,29 @@ void ReadHDF5OpacityTable(std::string fn, UserOpacityTable *puser_table, Paramet
     }
 
     // Verify dimensions match coordinate arrays
-    if (static_cast<int>(opacity_dims[0]) != density_size ||
+    if (static_cast<int>(opacity_dims[0]) != pressure_size ||
         static_cast<int>(opacity_dims[1]) != temp_size) {
       std::stringstream msg;
       msg << "### FATAL ERROR in ReadHDF5OpacityTable" << std::endl
           << "Opacity array dimensions [" << opacity_dims[0] << "," << opacity_dims[1]
-          << "] must match coordinate arrays [" << density_size << "," << temp_size << "]" << std::endl;
+          << "] must match coordinate arrays [" << pressure_size << "," << temp_size << "]" << std::endl;
       ATHENA_ERROR(msg);
     }
 
     // Read 2D opacity data
     AthenaArray<Real> opacity_2d;
-    opacity_2d.NewAthenaArray(density_size, temp_size);
+    opacity_2d.NewAthenaArray(pressure_size, temp_size);
 
     int start_file_2d[2] = {0, 0};
     int start_mem_2d[2] = {0, 0};
-    int count_2d[2] = {density_size, temp_size};
+    int count_2d[2] = {pressure_size, temp_size};
 
     HDF5ReadRealArray(fn.c_str(), var_names[ivar], 2, start_file_2d, count_2d,
                       2, start_mem_2d, count_2d, opacity_2d);
 
     // Store 2D opacity data with unit conversion from physical units (cm^2/g) to code units
-    // Note: HDF5 data is opacity[density_idx, temp_idx], InterpTable2D expects data(ivar, j, i)
-    for (int j = 0; j < density_size; ++j) {
+    // Note: HDF5 data is opacity[pressure_idx, temp_idx], InterpTable2D expects data(ivar, j, i)
+    for (int j = 0; j < pressure_size; ++j) {
       for (int i = 0; i < temp_size; ++i) {
         puser_table->data(ivar, j, i) = opacity_2d(j, i);
       }
@@ -190,11 +189,9 @@ void ReadHDF5OpacityTable(std::string fn, UserOpacityTable *puser_table, Paramet
 
   // Clean up coordinate arrays
   temp_array.DeleteAthenaArray();
-  density_array.DeleteAthenaArray();
+  pressure_array.DeleteAthenaArray();
 
-  // Initialize tables (if needed)
-  bool read_tables = pin->GetOrAddBoolean("mgfld", "opacity_table_read_tables", false);
-  if (!read_tables) {
+  if (!puser_table->use_tables) {
     puser_table->OpacityTables.NewAthenaArray(puser_table->nVar);
     for (int i=0; i<puser_table->nVar; ++i) puser_table->OpacityTables(i) = 1.0;
   }
@@ -213,6 +210,8 @@ void ReadHDF5OpacityTable(std::string fn, UserOpacityTable *puser_table, Paramet
 //   \note The table is read from a file specified in the parameter input, and the size of
 //         the table is set based on the data read.
 UserOpacityTable::UserOpacityTable(ParameterInput *pin) : InterpTable2D() {
+  use_tables = pin->GetOrAddBoolean("mgfld", "use_opacity_table", false);
+  if (!use_tables) return;
   std::string opacity_fn, opacity_file_type;
 
   // Get file name and type from parameters
@@ -260,22 +259,30 @@ UserOpacityTable::UserOpacityTable(ParameterInput *pin) : InterpTable2D() {
 //! \fn Real UserOpacityTable::GetOpacity(int var_index, Real x2, Real x1)
 //  \brief Gets interpolated opacity data from the 2D table using bilinear interpolation.
 //   \param var_index Index of the opacity variable
-//   \param x2 Second coordinate (density in physical units)
+//   \param x2 Second coordinate (pressure in physical units)
 //   \param x1 First coordinate (temperature in physical units)
-//   \note x2 and x1 are expected to be in physical units (g/cm³ for density, K for temperature)
-//   \note The interpolation is done on a logarithmic scale for both density and temperature
+//   \note x2 and x1 are expected to be in physical units (erg/cm^3 for pressure, K for temperature)
+//   \note The interpolation is done on a logarithmic scale for both pressure and temperature
 Real UserOpacityTable::GetOpacity(int var_index, Real x2, Real x1) {
-  // For log-scale tables: x2 and x1 are physical density (g/cm³) and temperature (K)
+  // For log-scale tables: x2 and x1 are physical pressure (erg/cm^3) and temperature (K)
   // Take logarithms and interpolate on the log grid
-  Real log_density = std::log10(x2);
+
+  if (!use_tables) {
+    std::stringstream msg;
+    msg << "### FATAL ERROR in UserOpacityTable::GetOpacity" << std::endl
+        << "Opacity tables are not enabled. Set 'mgfld/use_opacity_table' to true." << std::endl;
+    ATHENA_ERROR(msg);
+  }
+
+  Real log_pressure = std::log10(x2);
   Real log_temperature = std::log10(x1);
 
   // Interpolate and return the result (already in code units)
-  Real result = interpolate(var_index, log_density, log_temperature);
+  Real result = interpolate(var_index, log_pressure, log_temperature);
   if (result < 0.0) {
     result = TINY_NUMBER; // Ensure non-negative opacity
     std::cerr << "Warning: Negative opacity value encountered. Returning TINY_NUMBER instead." << std::endl;
-    std::cerr << "log_density: " << log_density << ", log_temperature: " << log_temperature << std::endl;
+    std::cerr << "log_pressure: " << log_pressure << ", log_temperature: " << log_temperature << std::endl;
     std::cerr << "Interpolated result: " << result << std::endl;
   }
   return result;
@@ -288,6 +295,6 @@ UserOpacityTable::~UserOpacityTable() {
   if (OpacityTables.GetDim1() > 0) {
     OpacityTables.DeleteAthenaArray();
   }
-  // Note: temp_coords and density_coords are AthenaArray objects,
+  // Note: temp_coords and pressure_coords are AthenaArray objects,
   // their destructors will handle cleanup automatically
 }

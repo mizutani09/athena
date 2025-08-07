@@ -65,11 +65,8 @@ ox2_bc          = periodic
 ix3_bc          = periodic
 ox3_bc          = periodic
 
-opacity_table_read_tables = true
+use_opacity_table = true
 opacity_table_file = path/to/your/opacity_table.h5
 opacity_table_file_type = hdf5
-opacity_temp_unit = 1.0    # in K
-opacity_density_unit = 1.0 # in g cm^-3
-
 
 <problem>

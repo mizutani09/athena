@@ -154,6 +154,7 @@ void MeshBlock::InitUserMeshBlockData(ParameterInput *pin) {
 void MeshBlock::ProblemGenerator(ParameterInput *pin) {
 
   Real rho=1e-10, temp=1e5; // g/cm³, K
+  Real press = rho*temp*Rgas/mu; // in cgs
   // Real rho=7e-11, temp=6e3;
   // Real rho=8.89e-02, temp=3.16e+07;
   // Real rho=2.81e-08, temp=1.00e+05;
@@ -174,10 +175,11 @@ void MeshBlock::ProblemGenerator(ParameterInput *pin) {
     std::cout << ">>> Input parameters <<<" << std::endl;
     std::cout << "Density: " << rho << " g cm^-3" << std::endl;
     std::cout << "Temperature: " << temp << " K" << std::endl;
+    std::cout << "Pressure: " << press << " erg cm^-3" << std::endl;
 
     // GetOpacity now expects physical density and temperature for log-scale tables
-    sigma_P = puser_table->GetOpacity(RadFLD::SIGMA_P, rho, temp);
-    sigma_R = puser_table->GetOpacity(RadFLD::SIGMA_R, rho, temp);
+    sigma_P = puser_table->GetOpacity(RadFLD::SIGMA_P, press, temp);
+    sigma_R = puser_table->GetOpacity(RadFLD::SIGMA_R, press, temp);
     // std::cout << "opacity_unit: " << opacity_unit << " cm^2/g" << std::endl;
 
     std::cout << "Rosseland opacity: " << sigma_R << " cm^2/g" << std::endl;

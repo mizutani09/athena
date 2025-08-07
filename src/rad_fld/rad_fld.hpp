@@ -116,12 +116,13 @@ class UserOpacityTable : public InterpTable2D {
   ~UserOpacityTable();
 
   // Methods for opacity interpolation
-  Real GetOpacity(int var_index, Real x2, Real x1); // Generic interface (x2=density, x1=temperature)
+  Real GetOpacity(int var_index, Real x2, Real x1); // Generic interface (x2=pressure, x1=temperature)
 
+  bool use_tables; // Flag to indicate if tables are used
   // Data members for opacity table properties
   Real tempMin, tempMax;    // Temperature limits
-  Real densityMin, densityMax;  // Density limits
-  int nTemp, nDensity, nVar;    // Table dimensions
+  Real pressureMin, pressureMax;  // Pressure limits
+  int nTemp, nPressure, nVar;    // Table dimensions
   AthenaArray<Real> OpacityTables;  // Tables for each variable
 };
 #endif // RAD_FLD_RAD_FLD_HPP_
