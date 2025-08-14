@@ -51,7 +51,7 @@
 namespace {
   // Real HistoryRtime(MeshBlock *pmb, int iout);
   Real rho_unit, egas_unit, leng_unit, grav_unit;
-  Real T_unit, time_unit, vel_unit;
+  Real T_unit, time_unit, vel_unit, opacity_unit;
   Real a_r_dim, Rgas, mu;
   Real a_r_sim;
   Real HistoryTg(MeshBlock *pmb, int iout);
@@ -71,6 +71,7 @@ namespace {
   Real sigma_P, sigma_R;
   int rk_cycle;
   int iuov_max;
+  UserOpacityTable *puser_table = nullptr;
 
   // for iuser_meshblock
   int TSTEP_COUNTER = 0;
@@ -84,10 +85,14 @@ void AddRadiativeForceAndWork(MeshBlock *pmb, const Real time, const Real dt,
 void FLDFixedInnerX3(AthenaArray<Real> &dst, Real time, int nvar,
                     int is, int ie, int js, int je, int ks, int ke, int ngh,
                     const MGCoordinates &coord) {
-  // for fixed boundary condition
+  Real z_ref = coord.x3v(ks);
   for (int k=1; k<=ngh; k++) {
+    Real z = coord.x3v(ks-k);
+    Real dz = z-z_ref;
     for (int j=js; j<=je; j++) {
       for (int i=is; i<=ie; i++) {
+        // Real Tgas_ref = dst(RadFLD::GAS,ks,j,i)
+        // Real Tgas = -grav_acc*dz/(poly_n+1.0)+T_ref;
         dst(RadFLD::GAS,ks-k,j,i) = egas_bottom;
         dst(RadFLD::RAD,ks-k,j,i) = Er_bottom;
       }
@@ -206,12 +211,14 @@ void HydroFixedOuterX3(MeshBlock *pmb, Coordinates *pco, AthenaArray<Real> &prim
   return;
 }
 
-void ConstantOpacity(MeshBlock *pmb, AthenaArray<Real> &u_fld,
+void TableOpacity(MeshBlock *pmb, AthenaArray<Real> &u_fld,
               AthenaArray<Real> &prim) {
+  std::cout << "Updating opacity using table..." << std::endl;
   FLD *prfld = pmb->prfld;
   int kl=pmb->ks, ku=pmb->ke;
   int jl=pmb->js, ju=pmb->je;
   int il=pmb->is-NGHOST, iu=pmb->ie+NGHOST;
+  // int il=pmb->is, iu=pmb->ie;
   if (pmb->block_size.nx2 > 1) {
     jl -= NGHOST;
     ju += NGHOST;
@@ -224,11 +231,19 @@ void ConstantOpacity(MeshBlock *pmb, AthenaArray<Real> &u_fld,
     for(int j=jl; j<=ju; ++j) {
 #pragma omp simd
       for(int i=il; i<=iu; ++i) {
-        prfld->sigma_p(k,j,i) = sigma_P;
-        prfld->sigma_r(k,j,i) = sigma_R;
+        Real rho = prim(IDN,k,j,i);
+        Real press = prim(IPR,k,j,i);
+        Real temp = press/rho;
+        press *= egas_unit;
+        temp *= T_unit;
+        prfld->sigma_p(k,j,i) = puser_table->GetOpacity(RadFLD::SIGMA_P, press, temp)/opacity_unit*rho;
+        prfld->sigma_r(k,j,i) = puser_table->GetOpacity(RadFLD::SIGMA_R, press, temp)/opacity_unit*rho;
+        // prfld->sigma_p(k,j,i) = sigma_P;
+        // prfld->sigma_r(k,j,i) = sigma_R;
       }
     }
   }
+  std::cout << "Opacity updated." << std::endl;
 }
 
 //========================================================================================
@@ -272,17 +287,18 @@ void Mesh::InitUserMeshData(ParameterInput *pin) {
   if (time_unit < 0.0) time_unit = leng_unit/vel_unit;
   if (leng_unit < 0.0) leng_unit = vel_unit*time_unit;
   grav_unit = vel_unit / time_unit;
+  opacity_unit = 1.0/(rho_unit*leng_unit); // opacity unit in cm^2/g
 
   // Real const_opasity = pin->GetReal("mgfld", "const_opacity");
-  sigma_P = pin->GetReal("mgfld", "const_opacity_P") * (leng_unit);
-  sigma_R = pin->GetReal("mgfld", "const_opacity_R") * (leng_unit);
+  // sigma_P = pin->GetReal("mgfld", "const_opacity_P") * (leng_unit);
+  // sigma_R = pin->GetReal("mgfld", "const_opacity_R") * (leng_unit);
   Real c_ph_dim = 2.99792458e10; // speed of light in cm s^-1
   Real c_ph_sim = c_ph_dim/(leng_unit/time_unit);
   // Real mfp_sim = 1.0/(const_opasity*rho_unit)/leng_unit;
 
   poly_n = pin->GetReal("problem", "poly_n");
-  rho_bottom = pin->GetReal("problem", "rho_bottom") / rho_unit;
-  T_bottom = pin->GetReal("problem", "T_bottom") / T_unit;
+  rho_top = pin->GetReal("problem", "rho_top") / rho_unit;
+  T_top = pin->GetReal("problem", "T_top") / T_unit;
   grav_acc = pin->GetReal("problem", "grav_acc") / grav_unit;
 
   std::string ix3_bc = pin->GetString("mgfld", "ix3_bc");
@@ -330,14 +346,23 @@ void Mesh::InitUserMeshData(ParameterInput *pin) {
 
 void MeshBlock::InitUserMeshBlockData(ParameterInput *pin) {
   Real igm1 = 1.0/(peos->GetGamma()-1.0);
+
+  Real z_ref = pmy_mesh->mesh_size.x3max; // reference is top
+  Real T_ref = T_top;
+  Real rho_ref = rho_top;
+
+  Real z = pmy_mesh->mesh_size.x3min;
+  Real dz = z-z_ref;
+  Real tmp = -grav_acc*dz/((poly_n+1.0)*T_ref)+1.0;
+  T_bottom = -grav_acc*dz/(poly_n+1.0)+T_ref;
+  rho_bottom = rho_ref*std::pow(tmp, poly_n);
+
+
+
   press_bottom = rho_bottom*T_bottom;
   Er_bottom = a_r_sim*std::pow(T_bottom, 4);
   egas_bottom = press_bottom*igm1;
 
-  Real dz = pmy_mesh->mesh_size.x3max - pmy_mesh->mesh_size.x3min;
-  Real tmp = -grav_acc*dz/((poly_n+1.0)*T_bottom)+1.0;
-  T_top = -grav_acc*dz/(poly_n+1.0)+T_bottom;
-  rho_top = rho_bottom*std::pow(tmp, poly_n);
   press_top = rho_top*T_top;
   egas_top = igm1*press_top;
   Er_top = a_r_sim*std::pow(T_top, 4);
@@ -370,7 +395,9 @@ void MeshBlock::InitUserMeshBlockData(ParameterInput *pin) {
   SetUserOutputVariableName(iuov, "sound"), iuov++;
   SetUserOutputVariableName(iuov, "Mach"), iuov++;
 
-  prfld->EnrollOpacityFunction(ConstantOpacity);
+  puser_table = new UserOpacityTable(pin);
+  prfld->EnrollOpacityFunction(TableOpacity);
+
   return;
 }
 
@@ -386,16 +413,16 @@ void MeshBlock::ProblemGenerator(ParameterInput *pin) {
   Real dx1 = pcoord->dx1f(4);
   Real courant = pin->GetReal("time", "cfl_number");
   Real Cs_bottom = std::sqrt(gamma*press_bottom/rho_bottom);
-  Real dt_exp = courant*dx1/Cs_bottom*time_unit;
+  Real dt_exp = courant*dx1/Cs_bottom;
   // Real const_opasity = pin->GetReal("mgfld", "const_opacity");
   // Real const_opasity_sim = const_opasity*leng_unit*rho_unit;
   Real c_ph_dim = 2.99792458e10; // speed of light in cm s^-1
   Real c_ph_sim = c_ph_dim/(leng_unit/time_unit);
   // Real mfp_sim = 1.0/(const_opasity*rho_unit)/leng_unit;
-  Real t_lim = 1e-6; // in s
-  Real exp_cycle = t_lim/dt_exp;
-
   Real L = pmy_mesh->mesh_size.x1max - pmy_mesh->mesh_size.x1min;
+  Real t_sc = L/Cs_bottom;
+  Real exp_cycle = t_sc/dt_exp;
+
   Real optical_depth = sigma_P*L;
   if (gid == 0) {
     std::cout << "rho_unit = " << rho_unit << " g cm^-3" << std::endl;
@@ -406,15 +433,15 @@ void MeshBlock::ProblemGenerator(ParameterInput *pin) {
     std::cout << "T_unit = " << T_unit << " K" << std::endl;
     std::cout << "c_ph_sim = " << c_ph_sim << " cm s^-1" << std::endl;
     std::cout << "dx = " << dx1*leng_unit << " cm" << std::endl;
-    std::cout << "dt = " << dt_exp << " s" << std::endl;
-    std::cout << "dt_sim = " << dt_exp/time_unit << std::endl;
+    std::cout << "dt = " << dt_exp*time_unit << " s" << std::endl;
+    std::cout << "dt_sim = " << dt_exp << std::endl;
     std::cout << "t_sc = " << L/Cs_bottom*time_unit << " s" << std::endl;
     std::cout << "t_sc_sim = " << L/Cs_bottom << std::endl;
     std::cout << "T_bottom = " << T_bottom*T_unit << " K" << std::endl;
     std::cout << "T_top = " << T_top*T_unit << " K" << std::endl;
     std::cout << "press_bottom = " << press_bottom << std::endl;
     std::cout << "Er_bottom = " << Er_bottom << std::endl;
-    std::cout << "expected cycle = " << exp_cycle << std::endl;
+    std::cout << "expected cycle for t_sc = " << exp_cycle << std::endl;
     std::cout << "sigma_P = " << sigma_P << std::endl;
     std::cout << "sigma_R = " << sigma_R << std::endl;
     std::cout << "optical depth = " << optical_depth << std::endl;
@@ -432,27 +459,28 @@ void MeshBlock::ProblemGenerator(ParameterInput *pin) {
     ofs << std::endl;
 
     ofs << "- Simulation parameters" << std::endl;
-    ofs << "c_ph_sim        = " << c_ph_sim << std::endl;
-    ofs << "dx_dim          = " << dx1*leng_unit << " cm" << std::endl;
-    ofs << "dt_dim          = " << dt_exp << " s" << std::endl;
-    ofs << "dt_sim          = " << dt_exp/time_unit << std::endl;
-    ofs << "t_sc            = " << L/Cs_bottom*time_unit << " s" << std::endl;
-    ofs << "t_sc_sim        = " << L/Cs_bottom << std::endl;
-    ofs << "grav_acc        = " << grav_acc << std::endl;
-    ofs << "poly_n          = " << poly_n << std::endl;
-    ofs << "rho_bottom      = " << rho_bottom << std::endl;
-    ofs << "rho_top         = " << rho_top << std::endl;
-    ofs << "T_bottom        = " << T_bottom << std::endl;
-    ofs << "T_top           = " << T_top << std::endl;
-    ofs << "press_bottom    = " << press_bottom << std::endl;
-    ofs << "press_top       = " << press_top << std::endl;
-    ofs << "egas_bottom     = " << egas_bottom << std::endl;
-    ofs << "egas_top        = " << egas_top << std::endl;
-    ofs << "Er_bottom       = " << Er_bottom << std::endl;
-    ofs << "Er_top          = " << Er_top << std::endl;
-    ofs << "sigma_P         = " << sigma_P << std::endl;
-    ofs << "sigma_R         = " << sigma_R << std::endl;
-    ofs << "optical_depth   = " << optical_depth << std::endl;
+    ofs << "c_ph_sim           = " << c_ph_sim << std::endl;
+    ofs << "dx_dim             = " << dx1*leng_unit << " cm" << std::endl;
+    ofs << "dt_dim             = " << dt_exp*time_unit << " s" << std::endl;
+    ofs << "dt_sim             = " << dt_exp << std::endl;
+    ofs << "t_sc               = " << t_sc*time_unit << " s" << std::endl;
+    ofs << "t_sc_sim           = " << t_sc << std::endl;
+    ofs << "exp_cycle for t_sc = " << exp_cycle << std::endl;
+    ofs << "grav_acc           = " << grav_acc << std::endl;
+    ofs << "poly_n             = " << poly_n << std::endl;
+    ofs << "rho_bottom         = " << rho_bottom << std::endl;
+    ofs << "rho_top            = " << rho_top << std::endl;
+    ofs << "T_bottom           = " << T_bottom << std::endl;
+    ofs << "T_top              = " << T_top << std::endl;
+    ofs << "press_bottom       = " << press_bottom << std::endl;
+    ofs << "press_top          = " << press_top << std::endl;
+    ofs << "egas_bottom        = " << egas_bottom << std::endl;
+    ofs << "egas_top           = " << egas_top << std::endl;
+    ofs << "Er_bottom          = " << Er_bottom << std::endl;
+    ofs << "Er_top             = " << Er_top << std::endl;
+    ofs << "sigma_P            = " << sigma_P << std::endl;
+    ofs << "sigma_R            = " << sigma_R << std::endl;
+    ofs << "optical_depth      = " << optical_depth << std::endl;
     ofs.close();
   }
 
@@ -463,14 +491,17 @@ void MeshBlock::ProblemGenerator(ParameterInput *pin) {
   int il = is-NGHOST;
   int iu = ie+NGHOST;
 
-  Real z0 = pmy_mesh->mesh_size.x3min;
+  Real z_ref = pmy_mesh->mesh_size.x3max;
+  Real T_ref = T_top;
+  Real rho_ref = rho_top;
 
 
   for(int k=kl; k<=ku; ++k) {
     Real z = pcoord->x3v(k);
-    Real tmp = -grav_acc*(z-z0)/((poly_n+1.0)*T_bottom)+1.0;
-    Real T = -grav_acc*(z-z0)/(poly_n+1.0)+T_bottom;
-    Real rho = rho_bottom*std::pow(tmp, poly_n);
+    Real dz = z-z_ref;
+    Real tmp = -grav_acc*dz/((poly_n+1.0)*T_ref)+1.0;
+    Real T = -grav_acc*dz/(poly_n+1.0)+T_ref;
+    Real rho = rho_ref*std::pow(tmp, poly_n);
     Real pres = rho*T;
 
     for (int j=jl; j<=ju; ++j) {
@@ -489,6 +520,7 @@ void MeshBlock::ProblemGenerator(ParameterInput *pin) {
       }
     }
   }
+  std::cout << "ProblemGenerator completed." << std::endl;
   return;
 }
 
