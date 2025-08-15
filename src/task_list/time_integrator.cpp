@@ -2274,6 +2274,7 @@ TaskStatus TimeIntegratorTaskList::Primitives(MeshBlock *pmb, int stage) {
   Hydro *ph = pmb->phydro;
   Field *pf = pmb->pfield;
   PassiveScalars *ps = pmb->pscalars;
+  FLD *prfld = pmb->prfld;
   BoundaryValues *pbval = pmb->pbval;
 
   int il = pmb->is, iu = pmb->ie, jl = pmb->js, ju = pmb->je, kl = pmb->ks, ku = pmb->ke;
@@ -2328,6 +2329,12 @@ TaskStatus TimeIntegratorTaskList::Primitives(MeshBlock *pmb, int stage) {
           ps->sbvar.coarse_buf = &(ps->coarse_r_);
         }
       }
+      if (MGFLD_ENABLED) {
+        prfld->rfldbvar.var_cc = &(prfld->r);
+        if (pmb->pmy_mesh->multilevel) {
+          prfld->rfldbvar.coarse_buf = &(prfld->coarse_r);
+        }
+      }
       pbval->ApplyPhysicalBoundaries(t_end_stage, dt, pmb->pbval->bvars_main_int);
       // Perform 4th order W(U)
       pmb->peos->ConservedToPrimitiveCellAverage(ph->u, ph->w, pf->b,
@@ -2351,6 +2358,7 @@ TaskStatus TimeIntegratorTaskList::Primitives(MeshBlock *pmb, int stage) {
 TaskStatus TimeIntegratorTaskList::PhysicalBoundary(MeshBlock *pmb, int stage) {
   Hydro *ph = pmb->phydro;
   PassiveScalars *ps = pmb->pscalars;
+  FLD *prfld = pmb->prfld;
   BoundaryValues *pbval = pmb->pbval;
 
   if (stage <= nstages) {
@@ -2366,6 +2374,12 @@ TaskStatus TimeIntegratorTaskList::PhysicalBoundary(MeshBlock *pmb, int stage) {
       ps->sbvar.var_cc = &(ps->r);
       if (pmb->pmy_mesh->multilevel) {
         ps->sbvar.coarse_buf = &(ps->coarse_r_);
+      }
+    }
+    if (MGFLD_ENABLED) {
+      prfld->rfldbvar.var_cc = &(prfld->r);
+      if (pmb->pmy_mesh->multilevel) {
+        prfld->rfldbvar.coarse_buf = &(prfld->coarse_r);
       }
     }
     pbval->ApplyPhysicalBoundaries(t_end_stage, dt, pmb->pbval->bvars_main_int);

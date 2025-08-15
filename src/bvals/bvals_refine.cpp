@@ -608,6 +608,10 @@ void BoundaryValues::ProlongateGhostCells(const NeighborBlock& nb,
     PassiveScalars *ps = pmb->pscalars;
     pmr->pvars_cc_[ps->refinement_idx] = std::make_tuple(&ps->s, &ps->coarse_s_);
   }
+  if (MGFLD_ENABLED) {
+    FLD *prfld = pmb->prfld;
+    pmr->pvars_cc_[prfld->refinement_idx] = std::make_tuple(&prfld->r, &prfld->coarse_r);
+  }
 
   // prolongate face-centered S/AMR-enrolled quantities (magnetic fields)
   const int& mylevel = pmb->loc.level;
