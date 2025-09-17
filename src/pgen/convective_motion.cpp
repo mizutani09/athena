@@ -54,6 +54,7 @@ namespace {
   Real T_unit, time_unit, vel_unit, opacity_unit;
   Real a_r_dim, Rgas, mu;
   Real a_r_sim;
+  Real dt_initial;
   Real HistoryTg(MeshBlock *pmb, int iout);
   Real HistoryTr(MeshBlock *pmb, int iout);
   Real HistoryEg(MeshBlock *pmb, int iout);
@@ -64,14 +65,31 @@ namespace {
   // Real HistoryL1norm(MeshBlock *pmb, int iout);
   Real poly_n;
   Real grav_acc;
-  Real rho_bottom, T_bottom;
-  Real press_bottom, egas_bottom, Er_bottom;
-  Real rho_top, T_top;
-  Real press_top, egas_top, Er_top;
+  // Real rho_bottom, T_bottom;
+  // Real press_bottom, egas_bottom, Er_bottom;
+  // Real rho_top, T_top;
+  // Real press_top, egas_top, Er_top;
+  Real z_ref, rho_ref, T_ref;
+  Real igm1;
   Real sigma_P, sigma_R;
   int rk_cycle;
   int iuov_max;
   UserOpacityTable *puser_table = nullptr;
+
+  // for fixed boundaries
+  enum BIDX {
+    RHO=0,
+    PRESS=1,
+    EGAS=2,
+    ERAD=3,
+    NBIDX,
+  };
+  Real bottom_boundary[NGHOST*NBIDX];
+  Real top_boundary[NGHOST*NBIDX];
+
+  // for ruser_meshblock
+  int UBTOP = 0;
+  int UBBOTTOM = 1;
 
   // for iuser_meshblock
   int TSTEP_COUNTER = 0;
@@ -85,14 +103,18 @@ void AddRadiativeForceAndWork(MeshBlock *pmb, const Real time, const Real dt,
 void FLDFixedInnerX3(AthenaArray<Real> &dst, Real time, int nvar,
                     int is, int ie, int js, int je, int ks, int ke, int ngh,
                     const MGCoordinates &coord) {
-  Real z_ref = coord.x3v(ks);
   for (int k=1; k<=ngh; k++) {
     Real z = coord.x3v(ks-k);
     Real dz = z-z_ref;
+    Real tmp = -grav_acc*dz/((poly_n+1.0)*T_ref)+1.0;
+    Real T_bottom = -grav_acc*dz/(poly_n+1.0)+T_ref;
+    Real rho_bottom = rho_ref*std::pow(tmp, poly_n);
+
+    Real press_bottom = rho_bottom*T_bottom;
+    Real Er_bottom = a_r_sim*std::pow(T_bottom, 4);
+    Real egas_bottom = press_bottom*igm1;
     for (int j=js; j<=je; j++) {
       for (int i=is; i<=ie; i++) {
-        // Real Tgas_ref = dst(RadFLD::GAS,ks,j,i)
-        // Real Tgas = -grav_acc*dz/(poly_n+1.0)+T_ref;
         dst(RadFLD::GAS,ks-k,j,i) = egas_bottom;
         dst(RadFLD::RAD,ks-k,j,i) = Er_bottom;
       }
@@ -106,6 +128,15 @@ void FLDFixedOuterX3(AthenaArray<Real> &dst, Real time, int nvar,
                     const MGCoordinates &coord) {
   // for fixed boundary condition
   for (int k=1; k<=ngh; k++) {
+    Real z = coord.x3v(ke+k);
+    Real dz = z-z_ref;
+    Real tmp = -grav_acc*dz/((poly_n+1.0)*T_ref)+1.0;
+    Real T_top = -grav_acc*dz/(poly_n+1.0)+T_ref;
+    Real rho_top = rho_ref*std::pow(tmp, poly_n);
+
+    Real press_top = rho_top*T_top;
+    Real Er_top = a_r_sim*std::pow(T_top, 4);
+    Real egas_top = press_top*igm1;
     for (int j=js; j<=je; j++) {
       for (int i=is; i<=ie; i++) {
         dst(RadFLD::GAS,ke+k,j,i) = egas_top;
@@ -121,6 +152,11 @@ void FLDAdvFixedInnerX3(MeshBlock *pmb, Coordinates *pco, FLD *prfld,
     Real time, Real dt, int is, int ie, int js, int je, int ks, int ke, int ngh) {
   // for fixed boundary condition
   for (int k=1; k<=ngh; k++) {
+    Real z = pco->x3v(ks-k);
+    Real dz = z-z_ref;
+    Real tmp = -grav_acc*dz/((poly_n+1.0)*T_ref)+1.0;
+    Real T_bottom = -grav_acc*dz/(poly_n+1.0)+T_ref;
+    Real Er_bottom = a_r_sim*std::pow(T_bottom, 4);
     for (int j=js; j<=je; j++) {
       for (int i=is; i<=ie; i++) {
         r_fld(ks-k,j,i) = Er_bottom;
@@ -135,6 +171,11 @@ void FLDAdvFixedOuterX3(MeshBlock *pmb, Coordinates *pco, FLD *prfld,
     Real time, Real dt, int is, int ie, int js, int je, int ks, int ke, int ngh) {
   // for fixed boundary condition
   for (int k=1; k<=ngh; k++) {
+    Real z = pco->x3v(ke+k);
+    Real dz = z-z_ref;
+    Real tmp = -grav_acc*dz/((poly_n+1.0)*T_ref)+1.0;
+    Real T_top = -grav_acc*dz/(poly_n+1.0)+T_ref;
+    Real Er_top = a_r_sim*std::pow(T_top, 4);
     for (int j=js; j<=je; j++) {
       for (int i=is; i<=ie; i++) {
         r_fld(ke+k,j,i) = Er_top;
@@ -148,6 +189,12 @@ void HydroFixedInnerX3(MeshBlock *pmb, Coordinates *pco, AthenaArray<Real> &prim
     Real time, Real dt, int is, int ie, int js, int je, int ks, int ke, int ngh) {
   // for fixed boundary condition
   for (int k=1; k<=ngh; k++) {
+    Real z = pco->x3v(ks-k);
+    Real dz = z-z_ref;
+    Real tmp = -grav_acc*dz/((poly_n+1.0)*T_ref)+1.0;
+    Real T_bottom = -grav_acc*dz/(poly_n+1.0)+T_ref;
+    Real rho_bottom = rho_ref*std::pow(tmp, poly_n);
+    Real press_bottom = rho_bottom*T_bottom;
     for (int j=js; j<=je; j++) {
       for (int i=is; i<=ie; i++) {
         prim(IDN,ks-k,j,i) = rho_bottom;
@@ -165,6 +212,12 @@ void HydroFixedOuterX3(MeshBlock *pmb, Coordinates *pco, AthenaArray<Real> &prim
     Real time, Real dt, int is, int ie, int js, int je, int ks, int ke, int ngh) {
   // for fixed boundary condition
   for (int k=1; k<=ngh; k++) {
+    Real z = pco->x3v(ke+k);
+    Real dz = z-z_ref;
+    Real tmp = -grav_acc*dz/((poly_n+1.0)*T_ref)+1.0;
+    Real T_top = -grav_acc*dz/(poly_n+1.0)+T_ref;
+    Real rho_top = rho_ref*std::pow(tmp, poly_n);
+    Real press_top = rho_top*T_top;
     for (int j=js; j<=je; j++) {
       for (int i=is; i<=ie; i++) {
         prim(IDN,ke+k,j,i) = rho_top;
@@ -297,9 +350,10 @@ void Mesh::InitUserMeshData(ParameterInput *pin) {
   // Real mfp_sim = 1.0/(const_opasity*rho_unit)/leng_unit;
 
   poly_n = pin->GetReal("problem", "poly_n");
-  rho_top = pin->GetReal("problem", "rho_top") / rho_unit;
-  T_top = pin->GetReal("problem", "T_top") / T_unit;
+  rho_ref = pin->GetReal("problem", "rho_top") / rho_unit;
+  T_ref = pin->GetReal("problem", "T_top") / T_unit;
   grav_acc = pin->GetReal("problem", "grav_acc") / grav_unit;
+  z_ref = mesh_size.x3max; // reference is top
 
   std::string ix3_bc = pin->GetString("mgfld", "ix3_bc");
   std::string ox3_bc = pin->GetString("mgfld", "ox3_bc");
@@ -345,27 +399,14 @@ void Mesh::InitUserMeshData(ParameterInput *pin) {
 
 
 void MeshBlock::InitUserMeshBlockData(ParameterInput *pin) {
-  Real igm1 = 1.0/(peos->GetGamma()-1.0);
+  igm1 = 1.0/(peos->GetGamma()-1.0);
 
-  Real z_ref = pmy_mesh->mesh_size.x3max; // reference is top
-  Real T_ref = T_top;
-  Real rho_ref = rho_top;
+  // Real T_ref = T_top;
+  // Real rho_ref = rho_top;
 
-  Real z = pmy_mesh->mesh_size.x3min;
-  Real dz = z-z_ref;
-  Real tmp = -grav_acc*dz/((poly_n+1.0)*T_ref)+1.0;
-  T_bottom = -grav_acc*dz/(poly_n+1.0)+T_ref;
-  rho_bottom = rho_ref*std::pow(tmp, poly_n);
-
-
-
-  press_bottom = rho_bottom*T_bottom;
-  Er_bottom = a_r_sim*std::pow(T_bottom, 4);
-  egas_bottom = press_bottom*igm1;
-
-  press_top = rho_top*T_top;
-  egas_top = igm1*press_top;
-  Er_top = a_r_sim*std::pow(T_top, 4);
+  // press_top = rho_top*T_top;
+  // egas_top = igm1*press_top;
+  // Er_top = a_r_sim*std::pow(T_top, 4);
 
   int idata_size = 0;
   idata_size += 1; // for test counter
@@ -373,7 +414,6 @@ void MeshBlock::InitUserMeshBlockData(ParameterInput *pin) {
 
   iuser_meshblock_data[TSTEP_COUNTER].NewAthenaArray(1);
   iuser_meshblock_data[TSTEP_COUNTER](0) = 0;
-
 
   // user output variables
   int iuov = 0; // initialize
@@ -384,6 +424,7 @@ void MeshBlock::InitUserMeshBlockData(ParameterInput *pin) {
   iuov_max += 1; // for ent
   iuov_max += 1; // for sound speed
   iuov_max += 1; // for Mach number
+  iuov_max += 2; // for opacity
 
   AllocateUserOutputVariables(iuov_max);
   SetUserOutputVariableName(iuov, "e_gas"), iuov++;
@@ -394,6 +435,8 @@ void MeshBlock::InitUserMeshBlockData(ParameterInput *pin) {
   SetUserOutputVariableName(iuov, "ent"), iuov++;
   SetUserOutputVariableName(iuov, "sound"), iuov++;
   SetUserOutputVariableName(iuov, "Mach"), iuov++;
+  SetUserOutputVariableName(iuov, "sigma_P"), iuov++;
+  SetUserOutputVariableName(iuov, "sigma_R"), iuov++;
 
   puser_table = new UserOpacityTable(pin);
   prfld->EnrollOpacityFunction(TableOpacity);
@@ -412,8 +455,18 @@ void MeshBlock::ProblemGenerator(ParameterInput *pin) {
   Real igm1 = 1.0/(gamma-1.0);
   Real dx1 = pcoord->dx1f(4);
   Real courant = pin->GetReal("time", "cfl_number");
+  Real z = pmy_mesh->mesh_size.x3min;
+  Real dz = z-z_ref;
+  Real tmp = -grav_acc*dz/((poly_n+1.0)*T_ref)+1.0;
+  Real T_bottom = -grav_acc*dz/(poly_n+1.0)+T_ref;
+  Real rho_bottom = rho_ref*std::pow(tmp, poly_n);
+
+  Real press_bottom = rho_bottom*T_bottom;
+  Real Er_bottom = a_r_sim*std::pow(T_bottom, 4);
+  Real egas_bottom = press_bottom*igm1;
   Real Cs_bottom = std::sqrt(gamma*press_bottom/rho_bottom);
   Real dt_exp = courant*dx1/Cs_bottom;
+  dt_initial = dt_exp;
   // Real const_opasity = pin->GetReal("mgfld", "const_opacity");
   // Real const_opasity_sim = const_opasity*leng_unit*rho_unit;
   Real c_ph_dim = 2.99792458e10; // speed of light in cm s^-1
@@ -438,7 +491,7 @@ void MeshBlock::ProblemGenerator(ParameterInput *pin) {
     std::cout << "t_sc = " << L/Cs_bottom*time_unit << " s" << std::endl;
     std::cout << "t_sc_sim = " << L/Cs_bottom << std::endl;
     std::cout << "T_bottom = " << T_bottom*T_unit << " K" << std::endl;
-    std::cout << "T_top = " << T_top*T_unit << " K" << std::endl;
+    std::cout << "T_top = " << T_ref*T_unit << " K" << std::endl;
     std::cout << "press_bottom = " << press_bottom << std::endl;
     std::cout << "Er_bottom = " << Er_bottom << std::endl;
     std::cout << "expected cycle for t_sc = " << exp_cycle << std::endl;
@@ -469,10 +522,13 @@ void MeshBlock::ProblemGenerator(ParameterInput *pin) {
     ofs << "grav_acc           = " << grav_acc << std::endl;
     ofs << "poly_n             = " << poly_n << std::endl;
     ofs << "rho_bottom         = " << rho_bottom << std::endl;
-    ofs << "rho_top            = " << rho_top << std::endl;
+    ofs << "rho_top            = " << rho_ref << std::endl;
     ofs << "T_bottom           = " << T_bottom << std::endl;
-    ofs << "T_top              = " << T_top << std::endl;
+    ofs << "T_top              = " << T_ref << std::endl;
     ofs << "press_bottom       = " << press_bottom << std::endl;
+    Real press_top = rho_ref*T_ref;
+    Real egas_top = press_top*igm1;
+    Real Er_top = a_r_sim*std::pow(T_ref, 4);
     ofs << "press_top          = " << press_top << std::endl;
     ofs << "egas_bottom        = " << egas_bottom << std::endl;
     ofs << "egas_top           = " << egas_top << std::endl;
@@ -490,10 +546,6 @@ void MeshBlock::ProblemGenerator(ParameterInput *pin) {
   int ju = je+NGHOST;
   int il = is-NGHOST;
   int iu = ie+NGHOST;
-
-  Real z_ref = pmy_mesh->mesh_size.x3max;
-  Real T_ref = T_top;
-  Real rho_ref = rho_top;
 
 
   for(int k=kl; k<=ku; ++k) {
@@ -522,6 +574,15 @@ void MeshBlock::ProblemGenerator(ParameterInput *pin) {
   }
   std::cout << "ProblemGenerator completed." << std::endl;
   return;
+}
+
+void Mesh::UserWorkInLoop() {
+  if (dt > 1e2*dt_initial || dt < 1e-2*dt_initial) {
+    std::stringstream msg;
+    msg << "### FATAL ERROR in function [Mesh::UserWorkInLoop]" << std::endl;
+    msg << "The calculation is crushed" << std::endl;
+    ATHENA_ERROR(msg);
+  }
 }
 
 void MeshBlock::UserWorkBeforeOutput(ParameterInput *pin) {
@@ -564,6 +625,10 @@ void MeshBlock::UserWorkBeforeOutput(ParameterInput *pin) {
         Real v_sq = SQR(vx) + SQR(vy) + SQR(vz);
         Real mach = std::sqrt(v_sq) / sound;
         user_out_var(iuov,k,j,i) = mach; iuov++;
+
+        // for opacity
+        user_out_var(iuov,k,j,i) = prfld->sigma_p(k,j,i); iuov++;
+        user_out_var(iuov,k,j,i) = prfld->sigma_r(k,j,i); iuov++;
       }
     }
   }

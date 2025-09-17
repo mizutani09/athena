@@ -9,14 +9,14 @@ problem_id      = MGFLD       # problem ID: basename of output filenames
 <output1>
 file_type       = hst         # History data dump
 # dcycle          = 1           # time increment between outputs
-dt              = 0.01
+dt              = 0.005
 
 <output2>
 file_type       = hdf5        # Binary data dump
 id              = prim_z_slice
 variable        = prim        # variables to be output
-# dcycle          = 1         # time increment between outputs
-dt              = 0.01
+dcycle          = 1         # time increment between outputs
+# dt              = 0.005
 x1_slice        = 0.0         # slice location in X1
 x2_slice        = 0.0         # slice location in X2
 ghost_zones     = true
@@ -25,8 +25,8 @@ ghost_zones     = true
 file_type       = hdf5
 id              = uov_z_slice
 variable        = uov
-# dcycle          = 1
-dt              = 0.01
+dcycle          = 1
+# dt              = 0.005
 x1_slice        = 0.0
 x2_slice        = 0.0
 ghost_zones     = true
@@ -36,7 +36,7 @@ file_type       = hdf5
 id              = prim_xy_slice
 variable        = prim
 # dcycle          = 1
-dt              = 0.05
+dt              = 0.02
 x3_slice        = 4.608
 ghost_zones     = true
 
@@ -45,7 +45,7 @@ file_type       = hdf5
 id              = uov_xy_slice
 variable        = uov
 # dcycle          = 1
-dt              = 0.05
+dt              = 0.02
 x3_slice        = 4.608
 ghost_zones     = true
 
@@ -54,7 +54,7 @@ file_type       = hdf5
 id              = prim_xz_slice
 variable        = prim
 # dcycle          = 1
-dt              = 0.05
+dt              = 0.02
 x2_slice        = 0.0
 ghost_zones     = true
 
@@ -63,14 +63,18 @@ file_type       = hdf5
 id              = uov_xz_slice
 variable        = uov
 # dcycle          = 1
-dt              = 0.05
+dt              = 0.02
 x2_slice        = 0.0
 ghost_zones     = true
 
+<output8>
+file_type       = rst
+dt              = 1e60
+
 <time>
-cfl_number      = 0.3         # The Courant, Friedrichs, & Lewy (CFL) Number
+cfl_number      = 0.01         # The Courant, Friedrichs, & Lewy (CFL) Number
 nlim            = -1        # cycle limit
-tlim            = 0.1        # time limit
+tlim            = 1e60        # time limit
 integrator      = rk2         # time integration algorithm
 xorder          = 2           # order of spatial reconstruction
 ncycle_out      = 1            # interval for stdout summary info
@@ -130,17 +134,15 @@ ox2_bc          = periodic
 ix3_bc          = user
 ox3_bc          = user
 
-const_opacity_P = 0.08   # in cm^-1 caution!
-const_opacity_R = 0.08     # in cm^-1 caution!
+use_opacity_table = true
+opacity_table_file = path/to/your/opacity_table.h5
+opacity_table_file_type = hdf5
 fixed_flux_limitter = false
 
 <problem>
 poly_n          = 1.48
-# rho_bottom      = 0.20   # in g cm^-3
-# T_bottom        = 2.3e6  # in K
 
-rho_bottom      = 2e-6     # in g cm^-3
-# T_bottom        = 5725     # in K
-T_bottom        = 8.75e4      # in K
+rho_top         = 2e-6
+T_top           = 5725
 grav_acc        = 2.74e4   # in cm s^-2
 
