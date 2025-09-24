@@ -269,6 +269,27 @@ void MGFLDDriver::Solve(int stage, Real dt) {
     pmg->LoadCoefficients(prfld->coeff, NGHOST);
     // pmg->AddFLDSource(prfld->source, NGHOST, dt_);
     // std::cout << "Finish LoadFinesData" << std::endl;
+
+    // 供給側の ghost 幅をはっきり観測
+const int ngh_src = NGHOST;  // prfld->u の仕様どおり
+const int ni_src = prfld->u.GetDim3();
+const int nj_src = prfld->u.GetDim2();
+const int nk_src = prfld->u.GetDim1();
+
+const int ni_int_src = ni_src - 2*ngh_src;
+const int nj_int_src = nj_src - 2*ngh_src;
+const int nk_int_src = nk_src - 2*ngh_src;
+
+// MG 側 finest の内部幅（size_ は MG の）
+const int ni_int_mg = pmg->size_.nx1;
+const int nj_int_mg = pmg->size_.nx2;
+const int nk_int_mg = pmg->size_.nx3;
+
+// fprintf(stderr,
+//   "src int=(%d,%d,%d)  mg int=(%d,%d,%d)  nvar(u)=%d  nvar(MG)=%d  ngh_src=%d ngh_mg=%d\n",
+//   nk_int_src,nj_int_src,ni_int_src,
+//       nk_int_mg,nj_int_mg,ni_int_mg,
+//       prfld->u.GetDim4(), pmg->nvar_, ngh_src, pmg->ngh_);
   }
 
   // if (dt_ > 0.0 || fsteady_) {
@@ -496,6 +517,7 @@ void MGFLD::CalculateDefect(AthenaArray<Real> &def, const AthenaArray<Real> &u,
                     const AthenaArray<Real> &src, const AthenaArray<Real> &coeff,
                     const AthenaArray<Real> &matrix, int rlev, int il, int iu,
                     int jl, int ju, int kl, int ku, bool th) {
+  // std::cout << "In MGFLD::CalculateDefect" << std::endl;
   Real dx;
   if (rlev <= 0) dx = rdx_*static_cast<Real>(1<<(-rlev));
   else           dx = rdx_/static_cast<Real>(1<<rlev);
@@ -539,6 +561,7 @@ void MGFLD::CalculateDefect(AthenaArray<Real> &def, const AthenaArray<Real> &u,
 void MGFLD::CalculateFASRHS(AthenaArray<Real> &src, const AthenaArray<Real> &u,
                     const AthenaArray<Real> &coeff, const AthenaArray<Real> &matrix,
                     int rlev, int il, int iu, int jl, int ju, int kl, int ku, bool th) {
+  // std::cout << "In MGFLD::CalculateFASRHS" << std::endl;
   Real dx;
   if (rlev <= 0) dx = rdx_*static_cast<Real>(1<<(-rlev));
   else           dx = rdx_/static_cast<Real>(1<<rlev);

@@ -132,6 +132,9 @@ Multigrid::Multigrid(MultigridDriver *pmd, MeshBlock *pmb, int nghost) :
     int ncx=(size_.nx1>>ll)+2*ngh_;
     int ncy=(size_.nx2>>ll)+2*ngh_;
     int ncz=(size_.nx3>>ll)+2*ngh_;
+    std::cout << "Multigrid level " << l << ": "
+              << "nx = " << ncx << ", ny = " << ncy << ", nz = " << ncz
+              << ", nghost = " << ngh_ << std::endl;
     u_[l].NewAthenaArray(nvar_,ncz,ncy,ncx);
     src_[l].NewAthenaArray(nvar_,ncz,ncy,ncx);
     def_[l].NewAthenaArray(nvar_,ncz,ncy,ncx);
@@ -784,6 +787,37 @@ Real Multigrid::GetCoarsestData(MGVariable type, int n) {
 //! \brief set a value to a cell on the current level
 
 void Multigrid::SetData(MGVariable type, int n, int k, int j, int i, Real v) {
+  auto& arr = (type == MGVariable::src) ? src_[current_level_] :
+             (type == MGVariable::u  ) ? u_[current_level_] :
+                                         coeff_[current_level_];
+
+  const int lvl   = current_level_;
+  const int niTot = arr.GetDim3(), njTot = arr.GetDim2(), nkTot = arr.GetDim1();
+const int niInt = (size_.nx1>>(nlevel_-1-lvl)), njInt = (size_.nx2>>(nlevel_-1-lvl)),
+            nkInt = (size_.nx3>>(nlevel_-1-lvl));
+  // const int niInt = size_[lvl].nx1, njInt = size_[lvl].nx2, nkInt = size_[lvl].nx3;
+  const int ngh   = ngh_;
+
+  // if (niTot != niInt + 2*ngh || njTot != njInt + 2*ngh || nkTot != nkInt + 2*ngh) {
+  //   std::fprintf(stderr,
+  //     "LEVEL: lvl=%d  arrTot=(%d,%d,%d)  sizeInt=(%d,%d,%d) ngh=%d\n",
+  //     lvl, nkTot,njTot,niTot, nkInt,njInt,niInt, ngh);
+  //   __builtin_trap();
+  // }
+
+  int ni = arr.GetDim3();
+  int nj = arr.GetDim2();
+  int nk = arr.GetDim1();
+  int nn = arr.GetDim4();  // optional
+  if ((n < 0) || (n >= nn) ||
+    (ngh_ + i < 0) || (ngh_ + i >= ni) ||
+    (ngh_ + j < 0) || (ngh_ + j >= nj) ||
+    (ngh_ + k < 0) || (ngh_ + k >= nk)) {
+    std::fprintf(stderr,
+      "OOB in SetData(): n=%d i=%d j=%d k=%d (nn=%d ni=%d nj=%d nk=%d ngh=%d)\n",
+      n,i,j,k, nn,ni,nj,nk,ngh_);
+    __builtin_trap();  // or throw
+  }
   if (type == MGVariable::src)
     src_[current_level_](n, ngh_+k, ngh_+j, ngh_+i) = v;
   else if (type == MGVariable::u)

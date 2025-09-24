@@ -315,8 +315,8 @@ void MeshBlock::ProblemGenerator(ParameterInput *pin) {
 
   Real L = pmy_mesh->mesh_size.x1max - pmy_mesh->mesh_size.x1min;
   Real t_sc = L/max_vel;
-  Real t_lim_dim = pin->GetReal("problem", "t_lim");
-  Real t_lim = t_lim_dim / time_unit; // in s
+  Real t_lim_dim = pin->GetReal("problem", "t_lim_dim"); // in s
+  Real t_lim = t_lim_dim / time_unit;
   Real exp_cycle = t_lim / dt_exp;
   Real exp_cycle_sc = t_sc / dt_exp;
   if (gid == 0) {
@@ -434,6 +434,7 @@ void MeshBlock::UserWorkBeforeOutput(ParameterInput *pin) {
   int ju = je+NGHOST;
   int il = is-NGHOST;
   int iu = ie+NGHOST;
+  // std::cout << "In UserWorkBeforeOutput" << std::endl;
   for (int k=kl; k<=ku; k++) {
     for (int j=jl; j<=ju; j++) {
       for (int i=il; i<=iu; i++) {
@@ -445,6 +446,7 @@ void MeshBlock::UserWorkBeforeOutput(ParameterInput *pin) {
       }
     }
   }
+  // std::cout << "End of UserWorkBeforeOutput" << std::endl;
   return;
 }
 

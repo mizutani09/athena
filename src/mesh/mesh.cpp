@@ -1626,12 +1626,25 @@ void Mesh::Initialize(int res_flag, ParameterInput *pin) {
     }
 
     // initialize Opacity for MGFLD
-    if (MGFLD_ENABLED) {
-      for (int i=0; i<nblocal; ++i) {
-        MeshBlock *pmb = my_blocks(i);
-        pmb->prfld->UpdateOpacity(pmb, pmb->prfld->u, pmb->phydro->w);
-      }
-    }
+    // if (MGFLD_ENABLED) {
+    //   if (my_blocks(0)->prfld->pUserOpacityTable->use_tables) {
+    //     for (int i=0; i<nblocal; ++i) {
+    //       MeshBlock *pmb = my_blocks(i);
+    //       Hydro *ph = pmb->phydro;
+    //       Field *pf = pmb->pfield;
+    //       int il = pmb->is - NGHOST;
+    //       int iu = pmb->ie + NGHOST;
+    //       int jl = pmb->js - NGHOST;
+    //       int ju = pmb->je + NGHOST;
+    //       int kl = pmb->ks - NGHOST;
+    //       int ku = pmb->ke + NGHOST;
+    //       // pmb->peos->ConservedToPrimitive(ph->u, ph->w1, pf->b,
+    //       //                                 ph->w, pf->bcc, pmb->pcoord,
+    //       //                                 il, iu, jl, ju, kl, ku);
+    //       pmb->prfld->UpdateOpacity(pmb, pmb->prfld->u, pmb->phydro->w);
+    //     }
+    //   }
+    // }
 
     // Create send/recv MPI_Requests for all BoundaryData objects
 #pragma omp parallel for num_threads(nthreads)

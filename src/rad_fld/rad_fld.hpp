@@ -26,6 +26,7 @@ class Coordinates;
 class FLDBoundaryValues;
 class MGFLD;
 class MGFLDDriver;
+class UserOpacityTable;
 
 namespace RadFLD {
   constexpr int NTEMP=2, NMATRIX=15, NCOEFF=9, NOPACITY=2;
@@ -87,8 +88,10 @@ class FLD {
   void EnrollOpacityFunction(FLDOpacityFunc MyOpacityFunction);
   FLDOpacityFunc UpdateOpacity;
 
+  UserOpacityTable *pUserOpacityTable;
+
   void AddFluxDivergence(const Real wght, AthenaArray<Real> &u_out);
-  void CheckFLD(const AthenaArray<Real> &r);
+  // void CheckFLD(const AthenaArray<Real> &r);
 
  private:
   int refinement_idx_;
