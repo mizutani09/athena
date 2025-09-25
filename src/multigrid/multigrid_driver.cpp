@@ -507,10 +507,8 @@ void MultigridDriver::SetupMultigrid(bool ftrivial) {
   }
 
   if (!ftrivial) {
-    if (ncoeff_ > 0)
-      SetupCoefficients();
-    if (nmatrix_ > 0)
-      CalculateMatrixAll();
+    SetupCoefficients();
+    CalculateMatrixAll();
     if (mode_ == 0) { // FMG
 #pragma omp parallel for num_threads(nthreads_)
       for (auto itr = vmg_.begin(); itr < vmg_.end(); itr++) {
@@ -534,6 +532,8 @@ void MultigridDriver::SetupMultigrid(bool ftrivial) {
 //! \brief Setup coefficients
 
 void MultigridDriver::SetupCoefficients() {
+  if (ncoeff_ == 0)
+    return;
 #pragma omp parallel for num_threads(nthreads_)
   for (auto itr = vmg_.begin(); itr < vmg_.end(); itr++) {
     Multigrid *pmg = *itr;
@@ -649,15 +649,18 @@ void MultigridDriver::SetupCoefficients() {
 //! \brief Setup initial data
 
 void MultigridDriver::RestrictInitialData() {
+  if (current_level_ >= nrootlevel_ + nreflevel_ - 1) {
 #pragma omp parallel for num_threads(nthreads_)
-  for (auto itr = vmg_.begin(); itr < vmg_.end(); itr++) {
-    Multigrid *pmg = *itr;
-    pmg->RestrictInitialData();
+    for (auto itr = vmg_.begin(); itr < vmg_.end(); itr++) {
+      Multigrid *pmg = *itr;
+      pmg->RestrictInitialData();
+    }
+    TransferFromBlocksToRoot(false);
   }
-  TransferFromBlocksToRoot(false);
-  if (nreflevel_ > 0) {
+  if (current_level_ >= nrootlevel_ - 1 && nreflevel_ > 0) {
     const int &ngh = mgroot_->ngh_;
-    for (int l = nreflevel_ - 1; l >= 1; --l) {  // fine octets to coarse octets
+    for (int l = current_level_ - (nrootlevel_ - 1); l >= 1; --l) {
+      // fine octets to coarse octets
 #pragma omp parallel for num_threads(nthreads_)
       for (int o = 0; o < noctets_[l]; ++o) {
         MGOctet &foct = octets_[l][o];
@@ -1397,6 +1400,8 @@ void MultigridDriver::RestrictOctets() {
 //! \brief Calculate Matrix elements for levels higher than the current level
 
 void MultigridDriver::CalculateMatrixAll() {
+  if (nmatrix_ == 0)
+    return;
   RestrictInitialData();
   if (current_level_ >= nrootlevel_ + nreflevel_ - 1) {
 #pragma omp parallel for num_threads(nthreads_)
