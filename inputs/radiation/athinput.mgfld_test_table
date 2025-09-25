@@ -1,0 +1,72 @@
+<comment>
+problem         = test for reading opacity table with Multigrid
+reference       =
+configure       = --prob=mgfld_test_table -mgfld -hdf5 -mpi
+
+<job>
+problem_id      = MGFLD # problem ID: basename of output filenames
+
+
+<time>
+cfl_number      = 0.03        # The Courant, Friedrichs, & Lewy (CFL) Number
+nlim            = 0           # cycle limit
+tlim            = 1e60        # time limit
+integrator      = rk2         # time integration algorithm
+xorder          = 2           # order of spatial reconstruction
+ncycle_out      = 10          # interval for stdout summary info
+
+<mesh>
+nx1             = 4           # Number of zones in X1-direction
+x1min           = -0.1        # minimum value of X1
+x1max           =  0.1        # maximum value of X1
+ix1_bc          = periodic    # inner-X1 boundary flag
+ox1_bc          = periodic    # outer-X1 boundary flag
+
+nx2             = 4           # Number of zones in X2-direction
+x2min           = -0.1        # minimum value of X2
+x2max           =  0.1        # maximum value of X2
+ix2_bc          = periodic    # inner-X2 boundary flag
+ox2_bc          = periodic    # outer-X2 boundary flag
+
+nx3             = 4           # Number of zones in X3-direction
+x3min           = -0.1        # minimum value of X3
+x3max           =  0.1        # maximum value of X3
+ix3_bc          = periodic    # inner-X3 boundary flag
+ox3_bc          = periodic    # outer-X3 boundary flag
+
+<meshblock>
+nx1             = 4
+nx2             = 4
+nx3             = 4
+
+<hydro>
+gamma           = 1.666666666667 # gamma = C_p/C_v
+# iso_sound_speed = 0.4082482905   # equivalent to sqrt(gamma*p/d) for p=0.1, d=1
+rho_unit        = 1e-7           # in g cm^-3
+egas_unit       = 1e+10          # in erg cm^-3
+# leng_unit       = 1e-2           # in cm
+time_unit       = 1e-7           # in s
+mu              = 0.6            # mean molecular weight in g mol^-1
+
+<mgfld>
+mgmode          = FMG
+fas             = true
+smoother        = jacobi-rb
+npresmooth      = 2
+npostsmooth     = 2
+omega           = 1.0
+niteration      = 10
+# threshold       = 0.00001
+output_defect   = true
+ix1_bc          = periodic
+ox1_bc          = periodic
+ix2_bc          = periodic
+ox2_bc          = periodic
+ix3_bc          = periodic
+ox3_bc          = periodic
+
+use_opacity_table = true
+opacity_table_file = path/to/your/opacity_table.h5
+opacity_table_file_type = hdf5
+
+<problem>

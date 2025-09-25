@@ -156,7 +156,7 @@ MGFLD::MGFLD(MGFLDDriver *pmd, MeshBlock *pmb, ParameterInput *pin)
   Real c_ph_dim = 2.99792458e10; // speed of light in cm s^-1
   Real a_r_dim = 7.5657e-15; // radiation constant in erg cm^-3 K^-4
   Real R_gas = 8.3144621e7; // gas constant in erg K^-1 mol^-1
-  Real const_opacity_dim = pin->GetReal("mgfld", "const_opacity");//caution: in cm^2 g^-1
+  Real const_opacity_dim = pin->GetOrAddReal("mgfld", "const_opacity", 0.4);//caution: in cm^2 g^-1
 
   Real rho_unit = pin->GetReal("hydro", "rho_unit");
   Real egas_unit = pin->GetReal("hydro", "egas_unit");
@@ -269,6 +269,27 @@ void MGFLDDriver::Solve(int stage, Real dt) {
     pmg->LoadCoefficients(prfld->coeff, NGHOST);
     // pmg->AddFLDSource(prfld->source, NGHOST, dt_);
     // std::cout << "Finish LoadFinesData" << std::endl;
+
+    // 供給側の ghost 幅をはっきり観測
+const int ngh_src = NGHOST;  // prfld->u の仕様どおり
+const int ni_src = prfld->u.GetDim3();
+const int nj_src = prfld->u.GetDim2();
+const int nk_src = prfld->u.GetDim1();
+
+const int ni_int_src = ni_src - 2*ngh_src;
+const int nj_int_src = nj_src - 2*ngh_src;
+const int nk_int_src = nk_src - 2*ngh_src;
+
+// MG 側 finest の内部幅（size_ は MG の）
+const int ni_int_mg = pmg->size_.nx1;
+const int nj_int_mg = pmg->size_.nx2;
+const int nk_int_mg = pmg->size_.nx3;
+
+// fprintf(stderr,
+//   "src int=(%d,%d,%d)  mg int=(%d,%d,%d)  nvar(u)=%d  nvar(MG)=%d  ngh_src=%d ngh_mg=%d\n",
+//   nk_int_src,nj_int_src,ni_int_src,
+//       nk_int_mg,nj_int_mg,ni_int_mg,
+//       prfld->u.GetDim4(), pmg->nvar_, ngh_src, pmg->ngh_);
   }
 
   // if (dt_ > 0.0 || fsteady_) {
@@ -415,10 +436,11 @@ void MGFLD::Smooth(AthenaArray<Real> &u, const AthenaArray<Real> &src,
           }
         }
       }
+      // std::cout << "rlev " << rlev << " il " << il << " iu " << iu << " jl " << jl << " ju " << ju << " kl " << kl << " ku " << ku << std::endl;
       // std::cout << "CPRR " <<matrix(RadFLD::CPRR,1,1,1) << " CPRG " << matrix(RadFLD::CPRG,1,1,1) << " CPGR " <<matrix(RadFLD::CPGR,1,1,1) << " CPGG " << matrix(RadFLD::CPGG,1,1,1) << " CPGC " << matrix(RadFLD::CPGC,1,1,1) << " CPRC " << matrix(RadFLD::CPRC,1,1,1)<< std::endl;
       // std::cout << "RSRC " << src(RadFLD::RAD,1,1,1) << " MGSRC " << matrix(RadFLD::CPRG,1,1,1)/matrix(RadFLD::CPGG,1,1,1)*src(RadFLD::GAS,1,1,1) << " MGCG " << matrix(RadFLD::CPRG,1,1,1)/matrix(RadFLD::CPGG,1,1,1)*matrix(RadFLD::CPGC,1,1,1) << " CPRC " <<matrix(RadFLD::CPRC,1,1,1)<< " CPRCS " << matrix(RadFLD::CPRCS,1,1,1) << std::endl;
       // std::cout << src(RadFLD::RAD,1,1,1)-matrix(RadFLD::CPRG,1,1,1)/matrix(RadFLD::CPGG,1,1,1)*(src(RadFLD::GAS,1,1,1)-matrix(RadFLD::CPGC,1,1,1))-matrix(RadFLD::CPRC,1,1,1)<< std::endl;
-      // std::cout << "RAD " << u(RadFLD::RAD,1,1,1) << " GAS " << u(RadFLD::GAS,1,1,1) << " GSRC " <<src(RadFLD::GAS,1,1,1) << " DEGAS " << coeff(RadFLD::DEGAS,1,1,1) << std::endl;
+      // std::cout << "RAD " << u(RadFLD::RAD,1,1,1) << " GAS " << u(RadFLD::GAS,1,1,1) << " GSRC " <<src(RadFLD::GAS,1,1,1) << std::endl;
     }
   } else { // jacobi
     if (th == true && (ku-kl) >=  minth_) {
@@ -495,6 +517,7 @@ void MGFLD::CalculateDefect(AthenaArray<Real> &def, const AthenaArray<Real> &u,
                     const AthenaArray<Real> &src, const AthenaArray<Real> &coeff,
                     const AthenaArray<Real> &matrix, int rlev, int il, int iu,
                     int jl, int ju, int kl, int ku, bool th) {
+  // std::cout << "In MGFLD::CalculateDefect" << std::endl;
   Real dx;
   if (rlev <= 0) dx = rdx_*static_cast<Real>(1<<(-rlev));
   else           dx = rdx_/static_cast<Real>(1<<rlev);
@@ -510,7 +533,7 @@ void MGFLD::CalculateDefect(AthenaArray<Real> &def, const AthenaArray<Real> &u,
                + matrix(RadFLD::CCM,k,j,i)*u(RadFLD::RAD,k,j,i-1)+matrix(RadFLD::CCP,k,j,i)*u(RadFLD::RAD,k,j,i+1)
                + matrix(RadFLD::CMC,k,j,i)*u(RadFLD::RAD,k,j-1,i)+matrix(RadFLD::CPC,k,j,i)*u(RadFLD::RAD,k,j+1,i)
                + matrix(RadFLD::MCC,k,j,i)*u(RadFLD::RAD,k-1,j,i)+matrix(RadFLD::PCC,k,j,i)*u(RadFLD::RAD,k+1,j,i);
-        M += matrix(RadFLD::CPRG,k,j,i)*u(RadFLD::GAS,k,j,i-1);
+        M += matrix(RadFLD::CPRG,k,j,i)*u(RadFLD::GAS,k,j,i);
         M += matrix(RadFLD::CPRC,k,j,i);
         def(RadFLD::RAD,k,j,i) = src(RadFLD::RAD,k,j,i) - M;
 
@@ -538,6 +561,7 @@ void MGFLD::CalculateDefect(AthenaArray<Real> &def, const AthenaArray<Real> &u,
 void MGFLD::CalculateFASRHS(AthenaArray<Real> &src, const AthenaArray<Real> &u,
                     const AthenaArray<Real> &coeff, const AthenaArray<Real> &matrix,
                     int rlev, int il, int iu, int jl, int ju, int kl, int ku, bool th) {
+  // std::cout << "In MGFLD::CalculateFASRHS" << std::endl;
   Real dx;
   if (rlev <= 0) dx = rdx_*static_cast<Real>(1<<(-rlev));
   else           dx = rdx_/static_cast<Real>(1<<rlev);
@@ -552,7 +576,7 @@ void MGFLD::CalculateFASRHS(AthenaArray<Real> &src, const AthenaArray<Real> &u,
                + matrix(RadFLD::CCM,k,j,i)*u(RadFLD::RAD,k,j,i-1)+matrix(RadFLD::CCP,k,j,i)*u(RadFLD::RAD,k,j,i+1)
                + matrix(RadFLD::CMC,k,j,i)*u(RadFLD::RAD,k,j-1,i)+matrix(RadFLD::CPC,k,j,i)*u(RadFLD::RAD,k,j+1,i)
                + matrix(RadFLD::MCC,k,j,i)*u(RadFLD::RAD,k-1,j,i)+matrix(RadFLD::PCC,k,j,i)*u(RadFLD::RAD,k+1,j,i);
-        M += matrix(RadFLD::CPRG,k,j,i)*u(RadFLD::GAS,k,j,i-1);
+        M += matrix(RadFLD::CPRG,k,j,i)*u(RadFLD::GAS,k,j,i);
         M += matrix(RadFLD::CPRC,k,j,i);
         src(RadFLD::RAD,k,j,i) += M;
 
@@ -675,7 +699,8 @@ void MGFLD::CalculateMatrix(AthenaArray<Real> &matrix, const AthenaArray<Real> &
 
         // coupling
         Real Tg = coeff(RadFLD::DCOUPLE,k,j,i)*u(RadFLD::GAS,k,j,i); // latest energy
-        matrix(RadFLD::CPRR,k,j,i) = dt*c_ph*coeff(RadFLD::DSIGMAP,k,j,i);
+        matrix(RadFLD::CPRR,k,j,i) = dt*c_ph*coeff(RadFLD::DSIGMAP,k,j,i)
+                                   + dt*coeff(RadFLD::DPV,k,j,i); // for P: \nabla v
         matrix(RadFLD::CPRG,k,j,i) = -4.0*dt*c_ph*coeff(RadFLD::DSIGMAP,k,j,i)
                                      *a_r*std::pow(Tg, 3)*coeff(RadFLD::DCOUPLE,k,j,i);
         matrix(RadFLD::CPRC,k,j,i) =  3.0*dt*c_ph*coeff(RadFLD::DSIGMAP,k,j,i)

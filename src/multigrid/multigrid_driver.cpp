@@ -737,13 +737,26 @@ void MultigridDriver::TransferFromBlocksToRoot(bool initflag) {
     int i = static_cast<int>(loc.lx1);
     int j = static_cast<int>(loc.lx2);
     int k = static_cast<int>(loc.lx3);
+    std::cout << "In TransferFromBlocksToRoot: n = " << n << ", loc = " << loc.lx1 << ", " << loc.lx2 << ", " << loc.lx3
+              << ", level = " << loc.level << std::endl;
+    std::cout << "locrootlevel_ = " << locrootlevel_ << std::endl;
     if (loc.level == locrootlevel_) {
+    //   // std::cout << "In TransferFromBlocksToRoot: loclevel = rootlevel" << std::endl;
+    //   std::cout << "current_level_ = " << current_level_
+    //             << ", mgroot_->current_level_ = " << mgroot_->current_level_ << std::endl;
+    //   // if (current_level_ != mgroot_->current_level_) {
+    //     // std::cout << "n = " << n << ", loc = " << loc.lx1 << ", " << loc.lx2 << ", " << loc.lx3
+    //     //           << ", level = " << loc.level << std::endl;
+    //     // std::cout << "current_level_ = " << current_level_
+    //     //           << ", mgroot_->current_level_ = " << mgroot_->current_level_ << std::endl;
+    //   // }
       for (int v = 0; v < nvar_; ++v)
         mgroot_->SetData(MGVariable::src, v, k, j, i, rootbuf_[n*nv+v]);
       if (ffas_ && !initflag) {
         for (int v = 0; v < nvar_; ++v)
           mgroot_->SetData(MGVariable::u, v, k, j, i, rootbuf_[n*nv+nvar_+v]);
       }
+      // mgroot_->current_level_--;
     } else {
       LogicalLocation oloc;
       oloc.lx1 = (loc.lx1 >> 1);
@@ -780,6 +793,7 @@ void MultigridDriver::TransferFromRootToBlocks(bool folddata) {
   }
 #pragma omp parallel for num_threads(nthreads_)
   for (auto itr = vmg_.begin(); itr < vmg_.end(); itr++) {
+    // std::cout << "itr = " << (itr - vmg_.begin()) << std::endl;
     Multigrid *pmg = *itr;
     pmg->SetFromRootGrid(folddata);
   }
@@ -846,6 +860,11 @@ void MultigridDriver::TransferCoefficientFromBlocksToRoot() {
 //! \brief Prolongation for FMG Cycle
 
 void MultigridDriver::FMGProlongate() {
+  // std::cout << "In FMGProlongate: current_level " << current_level_ << std::endl;
+  // std::cout << "nrootlebel_: " << nrootlevel_ << std::endl;
+  // std::cout << "nreflevel_: " << nreflevel_ << std::endl;
+  // std::cout << "tmp: " << (nrootlevel_ + nreflevel_ - 1) << std::endl;
+
   int flag=0;
   if (current_level_ == nrootlevel_ + nreflevel_ - 1) {
     mgroot_->pmgbval->ApplyPhysicalBoundaries(0, false);
@@ -876,6 +895,7 @@ void MultigridDriver::FMGProlongate() {
 //! \brief prolongation and smoothing one level
 
 void MultigridDriver::OneStepToFiner(int nsmooth) {
+  // std::cout << "In OneStepToFiner: current_level " << current_level_ << std::endl;
   int ngh=mgroot_->ngh_;
   int flag=0;
   if (current_level_ == nrootlevel_ + nreflevel_ - 1) {
@@ -926,6 +946,7 @@ void MultigridDriver::OneStepToFiner(int nsmooth) {
 //! \brief smoothing and restriction one level
 
 void MultigridDriver::OneStepToCoarser(int nsmooth) {
+  // std::cout << "In OneStepToCoarser: current_level " << current_level_ << std::endl;
   int ngh=mgroot_->ngh_;
   if (current_level_ >= nrootlevel_ + nreflevel_) { // MeshBlocks
     mgtlist_->SetMGTaskListToCoarser(nsmooth, ngh);
@@ -986,12 +1007,18 @@ void MultigridDriver::OneStepToCoarser(int nsmooth) {
 
 void MultigridDriver::SolveVCycle(int npresmooth, int npostsmooth) {
   int startlevel=current_level_;
+  // std::cout << "In SolveVCycle: startlevel " << startlevel << std::endl;
   coffset_ ^= 1;
   while (current_level_ > 0)
     OneStepToCoarser(npresmooth);
   SolveCoarsestGrid();
-  while (current_level_ < startlevel)
+  while (current_level_ < startlevel) {
     OneStepToFiner(npostsmooth);
+    Real def = 0.0;
+    for (int v = 0; v < nvar_; ++v)
+      def += CalculateDefectNorm(MGNormType::l2, v);
+    // std::cout << "Multigrid defect after post smooth : " << def << std::endl;
+  }
   return;
 }
 
@@ -1001,6 +1028,12 @@ void MultigridDriver::SolveVCycle(int npresmooth, int npostsmooth) {
 //! \brief Solve the FMG Cycle using the V(1,1) or F(0,1) cycle
 
 void MultigridDriver::SolveFMGCycle() {
+  // std::cout << "ntotallevel_ " << ntotallevel_ << std::endl;
+  Real def = 0.0;
+  for (int v = 0; v < nvar_; ++v)
+    def += CalculateDefectNorm(MGNormType::l2, v);
+  std::cout << "Before FMG defect L2-norm : " << def << std::endl;
+
   for (fmglevel_ = 0; fmglevel_ < ntotallevel_; fmglevel_++) {
     SolveVCycle(npresmooth_, npostsmooth_);
     if (fmglevel_ != ntotallevel_-1) {
@@ -1009,6 +1042,11 @@ void MultigridDriver::SolveFMGCycle() {
     if (matrixmode_ == 1)
       CalculateMatrixAll();
   }
+  // std::cout << "fmglevel_ " << fmglevel_ << std::endl;
+  def = 0.0;
+  for (int v = 0; v < nvar_; ++v)
+    def += CalculateDefectNorm(MGNormType::l2, v);
+  std::cout << "After FMG defect L2-norm : " << def << std::endl;
   fmglevel_ = ntotallevel_ - 1;
   if (fsubtract_average_)
     SubtractAverage(MGVariable::u);
@@ -1043,10 +1081,10 @@ void MultigridDriver::SolveIterative() {
       def += CalculateDefectNorm(MGNormType::l2, v);
 //      defmax = std::max(defmax, CalculateDefectNorm(MGNormType::max, v));
     }
-//    if (Globals::my_rank == 0)
-//      std::cout << "[debug] niter " << n << " def " << def << " convergence factor "
-//                << def/olddef<< " defmax  "<< defmax << " cf "
-//                <<  defmax/oldmax << std::endl;
+   if (Globals::my_rank == 0)
+     std::cout << "[debug] niter " << n << " def " << def << " convergence factor "
+               << def/olddef<< " defmax  "<< defmax << " cf "
+               <<  defmax/oldmax << std::endl;
     if (def/olddef > 0.9) {
       if (eps_ == 0.0) break;
       if (Globals::my_rank == 0)
@@ -1057,15 +1095,16 @@ void MultigridDriver::SolveIterative() {
         if (Globals::my_rank == 0)
           std::cout << "### Warning in MultigridDriver::SolveIterative" << std::endl
                     << "Multigrid is diverging: defect norm = " << def
-                    << ", convergence factor = " << def/olddef << "." << std::endl;
+                    << ", convergence factor = " << def/olddef << ", and niter = " << n << "." << std::endl;
         break;
       }
     }
-    if (n > 100) {
+    // if (n > 100) {
+    if (n > 30) {
       if (Globals::my_rank == 0) {
         std::cout
             << "### Warning in MultigridDriver::SolveIterative" << std::endl
-            << "Aborting because the # iterations is too large, n > 100." << std::endl
+            << "Aborting because the # iterations is too large, n > 30." << std::endl
             << "Check the solution as it may not be accurate enough." << std::endl;
       }
       break;

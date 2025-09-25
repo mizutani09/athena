@@ -242,7 +242,7 @@ using CRSrcTermFunc = void (*)(
     const AthenaArray<Real> &prim, FaceField &b, AthenaArray<Real> &u_cr);
 using FLDAdvBoundaryFunc = void (*)(
      MeshBlock *pmb, Coordinates *pco, FLD *prfld,
-     const AthenaArray<Real> &w, FaceField &b, AthenaArray<Real> &u_fld,
+     const AthenaArray<Real> &w, FaceField &b, AthenaArray<Real> &r_fld,
      Real time, Real dt, int is, int ie, int js, int je, int ks, int ke, int ngh);
 using FLDOpacityFunc = void (*)(MeshBlock *pmb, AthenaArray<Real> &u_fld,
                       AthenaArray<Real> &prim);

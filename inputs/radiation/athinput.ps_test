@@ -1,7 +1,7 @@
 <comment>
-problem         = test for advection term of FLD with Multigrid
+problem         = test for advection term of passive scaler
 reference       =
-configure       = --prob=mgfld_adv -mgfld
+configure       = --prob=ps_test --nscalars=1
 
 <job>
 problem_id      = MGFLD # problem ID: basename of output filenames
@@ -22,7 +22,7 @@ dcycle          = 1       # time increment between outputs
 <output3>
 file_type       = hdf5
 id              = uov_x_slice
-variable        = uov
+variable        = r0
 dcycle          = 20
 # dt              = 0.1
 x2_slice        = 0.5
@@ -35,7 +35,7 @@ nlim            = -1          # cycle limit
 tlim            = 10.0        # time limit
 integrator      = rk2       # time integration algorithm
 xorder          = 2         # order of spatial reconstruction
-ncycle_out      = 10         # interval for stdout summary info
+ncycle_out      = 100         # interval for stdout summary info
 
 <mesh>
 nx1             = 16 # Number of zones in X1-direction
@@ -44,13 +44,13 @@ x1max           = 1.0        # maximum value of X1
 ix1_bc          = periodic    # inner-X1 boundary flag
 ox1_bc          = periodic    # outer-X1 boundary flag
 
-nx2             = 16 # Number of zones in X2-direction
+nx2             = 1 # Number of zones in X2-direction
 x2min           = 0.0       # minimum value of X2
 x2max           = 1.0        # maximum value of X2
 ix2_bc          = periodic    # inner-X2 boundary flag
 ox2_bc          = periodic    # outer-X2 boundary flag
 
-nx3             = 16 # Number of zones in X3-direction
+nx3             = 1 # Number of zones in X3-direction
 x3min           = 0.0       # minimum value of X3
 x3max           = 1.0        # maximum value of X3
 ix3_bc          = periodic    # inner-X3 boundary flag
@@ -69,30 +69,6 @@ egas_unit       = 1e+7           # in erg cm^-3
 # leng_unit       = 4e+10            # in cm
 time_unit       = 4e+2          # in s
 mu              = 1.0            # mean molecular weight in g mol^-1
-
-<mgfld>
-mgmode          = FMG
-fas             = true
-smoother        = jacobi-rb
-npresmooth      = 2
-npostsmooth     = 2
-omega           = 1.0
-niteration      = 10
-# threshold       = 0.0
-output_defect   = true
-ix1_bc          = periodic
-ox1_bc          = periodic
-ix2_bc          = periodic
-ox2_bc          = periodic
-ix3_bc          = periodic
-ox3_bc          = periodic
-
-# calc_in_temp    = false
-cut_diff        = true
-is_couple       = false
-only_rad        = true
-cut_Pnablav     = true
-const_opacity   = 0.4 # in cm^2 g^-1 caution!
 
 <problem>
 rho0            = 1.0

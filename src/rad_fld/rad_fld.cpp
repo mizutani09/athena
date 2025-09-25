@@ -48,6 +48,7 @@ inline void DefaultOpacity(MeshBlock *pmb, AthenaArray<Real> &u_fld,
     for(int j=jl; j<=ju; ++j) {
 #pragma omp simd
       for(int i=il; i<=iu; ++i) {
+        prfld->sigma_p(k,j,i) = prfld->pmg->const_opacity*prim(IDN,k,j,i); //temporary
         prfld->sigma_r(k,j,i) = prfld->pmg->const_opacity*prim(IDN,k,j,i); //temporary
       }
     }
@@ -58,32 +59,38 @@ inline void DefaultOpacity(MeshBlock *pmb, AthenaArray<Real> &u_fld,
 //! \fn FLD::FLD(MeshBlock *pmb, ParameterInput *pin)
 //! \brief FLD constructor
 FLD::FLD(MeshBlock *pmb, ParameterInput *pin) :
-    pmy_block(pmb), u(RadFLD::NTEMP, pmb->ncells3, pmb->ncells2, pmb->ncells1),
-    r1(RadFLD::NADV, pmb->ncells3, pmb->ncells2, pmb->ncells1),
-    r(RadFLD::NADV, pmb->ncells3, pmb->ncells2, pmb->ncells1),
+    pmy_block(pmb),
+    u(RadFLD::NTEMP, pmb->ncells3, pmb->ncells2, pmb->ncells1), // bad free?
+    r1(pmb->ncells3, pmb->ncells2, pmb->ncells1),
+    r(pmb->ncells3, pmb->ncells2, pmb->ncells1), // for advection of Erad
     source(RadFLD::NTEMP, pmb->ncells3, pmb->ncells2, pmb->ncells1),
     coeff(RadFLD::NCOEFF, pmb->ncells3, pmb->ncells2, pmb->ncells1),
     coarse_u(RadFLD::NTEMP, pmb->ncc3, pmb->ncc2, pmb->ncc1), //!
-    sigma_r(pmb->ncells3+1,pmb->ncells2+1,pmb->ncells1+1),
+    coarse_r(pmb->ncc3, pmb->ncc2, pmb->ncc1),
+    sigma_p(pmb->ncells3,pmb->ncells2,pmb->ncells1),
+    sigma_r(pmb->ncells3,pmb->ncells2,pmb->ncells1),
     empty_flux{AthenaArray<Real>(), AthenaArray<Real>(), AthenaArray<Real>()},
     output_defect(false), mgfldbvar(pmb, &u, &coarse_u, empty_flux, false), //!
-    u_flux{ {RadFLD::NADV, pmb->ncells3, pmb->ncells2, pmb->ncells1+1},
-            {RadFLD::NADV, pmb->ncells3, pmb->ncells2+1, pmb->ncells1,
+    r_flux{ {pmb->ncells3, pmb->ncells2, pmb->ncells1+1},
+            {pmb->ncells3, pmb->ncells2+1, pmb->ncells1,
              (pmb->pmy_mesh->f2 ? AthenaArray<Real>::DataStatus::allocated :
               AthenaArray<Real>::DataStatus::empty)},
-            {RadFLD::NADV, pmb->ncells3+1, pmb->ncells2, pmb->ncells1,
+            {pmb->ncells3+1, pmb->ncells2, pmb->ncells1,
              (pmb->pmy_mesh->f3 ? AthenaArray<Real>::DataStatus::allocated :
               AthenaArray<Real>::DataStatus::empty)}
     },
-    rfldbvar(pmb, &u, &coarse_u, u_flux, true),
+    rfldbvar(pmb, &r, &coarse_r, r_flux, true),
     // coarse_r_(RadFLD::NADV, pmb->ncc3, pmb->ncc2, pmb->ncc1,
     //           (pmb->pmy_mesh->multilevel ? AthenaArray<Real>::DataStatus::allocated :
     //            AthenaArray<Real>::DataStatus::empty)),
     refinement_idx_(), calc_in_temp(), is_couple(), only_rad() {
-  is_couple = pin->GetOrAddBoolean("mgfld", "is_couple", false);
+  is_couple = pin->GetOrAddBoolean("mgfld", "is_couple", true);
   output_defect = pin->GetOrAddBoolean("mgfld", "output_defect", false);
   calc_in_temp = pin->GetOrAddBoolean("mgfld", "calc_in_temp", false);
   only_rad = pin->GetOrAddBoolean("mgfld", "only_rad", false);
+  cut_diff = pin->GetOrAddBoolean("mgfld", "cut_diff", false);
+  cut_Pnablav = pin->GetOrAddBoolean("mgfld", "cut_Pnablav", false);
+  fixed_flux_limitter = pin->GetOrAddBoolean("mgfld", "fixed_flux_limitter", false);
   if (calc_in_temp) {
     // raise error
     std::stringstream msg;
@@ -99,20 +106,26 @@ FLD::FLD(MeshBlock *pmb, ParameterInput *pin) :
   std::string integrator = pin->GetOrAddString("time", "integrator", "vl2");
   if (integrator == "ssprk5_4" || STS_ENABLED)
     // future extension may add "int nregister" to Hydro class
-    r2.NewAthenaArray(RadFLD::NADV, pmb->ncells3, pmb->ncells2, pmb->ncells1);
+    r2.NewAthenaArray(pmb->ncells3, pmb->ncells2, pmb->ncells1);
 
   // If STS RKL2, allocate additional memory registers
   if (STS_ENABLED) {
     std::string sts_integrator = pin->GetOrAddString("time", "sts_integrator", "rkl2");
     if (sts_integrator == "rkl2") {
-      r0.NewAthenaArray(RadFLD::NADV, pmb->ncells3, pmb->ncells2, pmb->ncells1);
-      r_fl_div.NewAthenaArray(RadFLD::NADV, pmb->ncells3, pmb->ncells2, pmb->ncells1);
+      r0.NewAthenaArray(pmb->ncells3, pmb->ncells2, pmb->ncells1);
+      r_fl_div.NewAthenaArray(pmb->ncells3, pmb->ncells2, pmb->ncells1);
     }
   }
 
   // "Enroll" in S/AMR by adding to vector of tuples of pointers in MeshRefinement class
   if (pmb->pmy_mesh->multilevel)
     refinement_idx_ = pmy_block->pmr->AddToRefinement(&u, &coarse_u); //!
+
+  // caution!
+    // "Enroll" in SMR/AMR by adding to vector of pointers in MeshRefinement class
+  if (pmb->pmy_mesh->multilevel) {
+    refinement_idx = pmy_block->pmr->AddToRefinement(&r, &coarse_r);
+  }
 
   pmg = new MGFLD(pmb->pmy_mesh->pmfld, pmb, pin);
 
@@ -131,9 +144,9 @@ FLD::FLD(MeshBlock *pmb, ParameterInput *pin) :
   // std::cout << "tmp: " << tmp << std::endl;
 
   // Allocate memory for scratch arrays
-  rl_.NewAthenaArray(RadFLD::NADV, pmb->ncells1);
-  rr_.NewAthenaArray(RadFLD::NADV, pmb->ncells1);
-  rlb_.NewAthenaArray(RadFLD::NADV, pmb->ncells1);
+  rl_.NewAthenaArray(pmb->ncells1);
+  rr_.NewAthenaArray(pmb->ncells1);
+  rlb_.NewAthenaArray(pmb->ncells1);
   x1face_area_.NewAthenaArray(pmb->ncells1+1);
   Mesh *pm = pmy_block->pmy_mesh;
   if (pm->f2) {
@@ -145,7 +158,7 @@ FLD::FLD(MeshBlock *pmb, ParameterInput *pin) :
     x3face_area_p1_.NewAthenaArray(pmb->ncells1);
   }
   cell_volume_.NewAthenaArray(pmb->ncells1);
-  dflx_.NewAthenaArray(RadFLD::NADV, pmb->ncells1);
+  dflx_.NewAthenaArray(pmb->ncells1);
 
   // set a default opacity function
   UpdateOpacity = DefaultOpacity;
@@ -161,13 +174,6 @@ void FLD::EnrollOpacityFunction(FLDOpacityFunc MyOpacityFunction) {
 //! \brief FLD destructor
 FLD::~FLD() {
   delete pmg;
-  u_flux[X1DIR].DeleteAthenaArray();
-  if (pmy_block->pmy_mesh->f2) {
-    u_flux[X2DIR].DeleteAthenaArray();
-  }
-  if (pmy_block->pmy_mesh->f3) {
-    u_flux[X3DIR].DeleteAthenaArray();
-  }
 }
 
 
@@ -189,93 +195,156 @@ void FLD::CalculateCoefficients(const AthenaArray<Real> &w,
   for (int k = kl; k <= ku; ++k) {
     for (int j = jl; j <= ju; ++j) {
       for (int i = il; i <= iu; ++i) {
-        Real dEr1 = hidx*(u(RadFLD::RAD,k,j,i+1) - u(RadFLD::RAD,k,j,i-1));
-        Real dEr2 = hidx*(u(RadFLD::RAD,k,j+1,i) - u(RadFLD::RAD,k,j-1,i));
-        Real dEr3 = hidx*(u(RadFLD::RAD,k+1,j,i) - u(RadFLD::RAD,k-1,j,i));
-        Real grad = sqrt(SQR(dEr1) + SQR(dEr2) + SQR(dEr3))/u(RadFLD::RAD,k,j,i);
-
-        // Real sigma_rhere = sigma_r(k,j,i);
-        // sigma_r(RadFLD::DXM) = sigma_r(k,j,i-1);
-        // sigma_r(RadFLD::DXP) = sigma_r(k,j,i+1);
-        // sigma_r(RadFLD::DYM) = sigma_r(k,j-1,i);
-        // sigma_r(RadFLD::DYP) = sigma_r(k,j+1,i);
-        // sigma_r(RadFLD::DZM) = sigma_r(k-1,j,i);
-        // sigma_r(RadFLD::DZP) = sigma_r(k+1,j,i);
-
-        // for (int n = 0; n <= RadFLD::DZP; ++n) {
-        //   Real sigma_rface = std::min(0.5*(sigma_rhere + sigma_r(n)),
-        //         std::max(2.0*sigma_rhere*sigma_r(n)/(sigma_rhere + sigma_r(n)),
-        //         2.0*TWO_3RD*idx)); // Howell & Greenough 2002 (after eq. 15)
-        //   Real R = grad/sigma_rface;
-        //   Real lambda = (2.0+R)/(6.0+2.0*R+R*R);
-        //   coeff(n,k,j,i) = pmg->c_ph*lambda/sigma_rface;
-        // }
+        AthenaArray<Real> dEr;
+        dEr.NewAthenaArray(3);
+        for (int ii = 0; ii < 3; ++ii) {
+          int di = (ii == 0) ? 1 : 0;
+          int dj = (ii == 1) ? 1 : 0;
+          int dk = (ii == 2) ? 1 : 0;
+          dEr(ii) = hidx*(u(RadFLD::RAD,k+dk,j+dj,i+di) - u(RadFLD::RAD,k-dk,j-dj,i-di));
+        }
+        // Real dEr1 = hidx*(u(RadFLD::RAD,k,j,i+1) - u(RadFLD::RAD,k,j,i-1));
+        // Real dEr2 = hidx*(u(RadFLD::RAD,k,j+1,i) - u(RadFLD::RAD,k,j-1,i));
+        // Real dEr3 = hidx*(u(RadFLD::RAD,k+1,j,i) - u(RadFLD::RAD,k-1,j,i));
+        // Real gradE = std::sqrt(SQR(dEr1) + SQR(dEr2) + SQR(dEr3));
+        Real gradE = std::sqrt(SQR(dEr(0)) + SQR(dEr(1)) + SQR(dEr(2)));
 
         Real sigma_rface, R, lambda;
-        // for DXM
-        sigma_rface = std::min(0.5*(sigma_r(k,j,i) + sigma_r(k,j,i-1)),
-              std::max(2.0*sigma_r(k,j,i)*sigma_r(k,j,i-1)/(sigma_r(k,j,i) + sigma_r(k,j,i-1)),
-              2.0*TWO_3RD*idx)); // Howell & Greenough 2002 (after eq. 15)
-        R = grad/sigma_rface;
-        lambda = (2.0+R)/(6.0+2.0*R+R*R);
-        coeff(RadFLD::DXM,k,j,i) = pmg->c_ph*lambda/sigma_rface;
+        if (fixed_flux_limitter) lambda = ONE_3RD;
 
-        // for DXP
-        sigma_rface = std::min(0.5*(sigma_r(k,j,i) + sigma_r(k,j,i+1)),
-              std::max(2.0*sigma_r(k,j,i)*sigma_r(k,j,i+1)/(sigma_r(k,j,i) + sigma_r(k,j,i+1)),
-              2.0*TWO_3RD*idx)); // Howell & Greenough 2002 (after eq. 15)
-        R = grad/sigma_rface;
-        lambda = (2.0+R)/(6.0+2.0*R+R*R);
-        coeff(RadFLD::DXP,k,j,i) = pmg->c_ph*lambda/sigma_rface;
-
-        // for DYM
-        sigma_rface = std::min(0.5*(sigma_r(k,j,i) + sigma_r(k,j-1,i)),
-              std::max(2.0*sigma_r(k,j,i)*sigma_r(k,j-1,i)/(sigma_r(k,j,i) + sigma_r(k,j-1,i)),
-              2.0*TWO_3RD*idx)); // Howell & Greenough 2002 (after eq. 15)
-        R = grad/sigma_rface;
-        lambda = (2.0+R)/(6.0+2.0*R+R*R);
-        coeff(RadFLD::DYM,k,j,i) = pmg->c_ph*lambda/sigma_rface;
-
-        // for DYP
-        sigma_rface = std::min(0.5*(sigma_r(k,j,i) + sigma_r(k,j+1,i)),
-              std::max(2.0*sigma_r(k,j,i)*sigma_r(k,j+1,i)/(sigma_r(k,j,i) + sigma_r(k,j+1,i)),
-              2.0*TWO_3RD*idx)); // Howell & Greenough 2002 (after eq. 15)
-        R = grad/sigma_rface;
-        lambda = (2.0+R)/(6.0+2.0*R+R*R);
-        coeff(RadFLD::DYP,k,j,i) = pmg->c_ph*lambda/sigma_rface;
-
-        // for DZM
-        sigma_rface = std::min(0.5*(sigma_r(k,j,i) + sigma_r(k-1,j,i)),
-              std::max(2.0*sigma_r(k,j,i)*sigma_r(k-1,j,i)/(sigma_r(k,j,i) + sigma_r(k-1,j,i)),
-              2.0*TWO_3RD*idx)); // Howell & Greenough 2002 (after eq. 15)
-        R = grad/sigma_rface;
-        lambda = (2.0+R)/(6.0+2.0*R+R*R);
-        coeff(RadFLD::DZM,k,j,i) = pmg->c_ph*lambda/sigma_rface;
-
-        // for DZP
-        sigma_rface = std::min(0.5*(sigma_r(k,j,i) + sigma_r(k+1,j,i)),
-              std::max(2.0*sigma_r(k,j,i)*sigma_r(k+1,j,i)/(sigma_r(k,j,i) + sigma_r(k+1,j,i)),
-              2.0*TWO_3RD*idx)); // Howell & Greenough 2002 (after eq. 15)
-        R = grad/sigma_rface;
-        lambda = (2.0+R)/(6.0+2.0*R+R*R);
-        coeff(RadFLD::DZP,k,j,i) = pmg->c_ph*lambda/sigma_rface;
-
-        // for later calculation
-        if (is_couple) {
-          coeff(RadFLD::DSIGMAP,k,j,i) = sigma_r(k,j,i)*w(IDN,k,j,i);
-          coeff(RadFLD::DCOUPLE,k,j,i) = gm1/w(IDN,k,j,i);
-        } else {
-          coeff(RadFLD::DSIGMAP,k,j,i) = 0.0;
-          coeff(RadFLD::DCOUPLE,k,j,i) = 0.0;
+        for (int ii = 0; ii < 6; ++ii) {
+          int di = (ii == 0) ? -1 : (ii == 1) ? 1 : 0;
+          int dj = (ii == 2) ? -1 : (ii == 3) ? 1 : 0;
+          int dk = (ii == 4) ? -1 : (ii == 5) ? 1 : 0;
+          sigma_rface = std::min(0.5*(sigma_r(k,j,i) + sigma_r(k+dk,j+dj,i+di)),
+                std::max(2.0*sigma_r(k,j,i)*sigma_r(k+dk,j+dj,i+di)/(sigma_r(k,j,i) + sigma_r(k+dk,j+dj,i+di)),
+                2.0*TWO_3RD*idx)); // Howell & Greenough 2002 (after eq. 15)
+          R = gradE/(sigma_rface*u(RadFLD::RAD,k,j,i));
+          if (!fixed_flux_limitter) lambda = (2.0+R)/(6.0+2.0*R+R*R);
+          coeff(RadFLD::DXM+ii,k,j,i) = pmg->c_ph*lambda/sigma_rface;
         }
 
-        // // for test
-        // for (int n = 0; n <= RadFLD::DZP; ++n) {
-        //   coeff(n,k,j,i) = 0.0;
+        // // for DXM
+        // sigma_rface = std::min(0.5*(sigma_r(k,j,i) + sigma_r(k,j,i-1)),
+        //       std::max(2.0*sigma_r(k,j,i)*sigma_r(k,j,i-1)/(sigma_r(k,j,i) + sigma_r(k,j,i-1)),
+        //       2.0*TWO_3RD*idx)); // Howell & Greenough 2002 (after eq. 15)
+        // R = gradE/(sigma_rface*u(RadFLD::RAD,k,j,i));
+        // if (!fixed_flux_limitter) lambda = (2.0+R)/(6.0+2.0*R+R*R);
+        // coeff(RadFLD::DXM,k,j,i) = pmg->c_ph*lambda/sigma_rface;
+
+        // // for DXP
+        // sigma_rface = std::min(0.5*(sigma_r(k,j,i) + sigma_r(k,j,i+1)),
+        //       std::max(2.0*sigma_r(k,j,i)*sigma_r(k,j,i+1)/(sigma_r(k,j,i) + sigma_r(k,j,i+1)),
+        //       2.0*TWO_3RD*idx)); // Howell & Greenough 2002 (after eq. 15)
+        // R = gradE/(sigma_rface*u(RadFLD::RAD,k,j,i));
+        // if (!fixed_flux_limitter) lambda = (2.0+R)/(6.0+2.0*R+R*R);
+        // coeff(RadFLD::DXP,k,j,i) = pmg->c_ph*lambda/sigma_rface;
+
+        // // for DYM
+        // sigma_rface = std::min(0.5*(sigma_r(k,j,i) + sigma_r(k,j-1,i)),
+        //       std::max(2.0*sigma_r(k,j,i)*sigma_r(k,j-1,i)/(sigma_r(k,j,i) + sigma_r(k,j-1,i)),
+        //       2.0*TWO_3RD*idx)); // Howell & Greenough 2002 (after eq. 15)
+        // R = gradE/(sigma_rface*u(RadFLD::RAD,k,j,i));
+        // if (!fixed_flux_limitter) lambda = (2.0+R)/(6.0+2.0*R+R*R);
+        // coeff(RadFLD::DYM,k,j,i) = pmg->c_ph*lambda/sigma_rface;
+
+        // // for DYP
+        // sigma_rface = std::min(0.5*(sigma_r(k,j,i) + sigma_r(k,j+1,i)),
+        //       std::max(2.0*sigma_r(k,j,i)*sigma_r(k,j+1,i)/(sigma_r(k,j,i) + sigma_r(k,j+1,i)),
+        //       2.0*TWO_3RD*idx)); // Howell & Greenough 2002 (after eq. 15)
+        // R = gradE/(sigma_rface*u(RadFLD::RAD,k,j,i));
+        // if (!fixed_flux_limitter) lambda = (2.0+R)/(6.0+2.0*R+R*R);
+        // coeff(RadFLD::DYP,k,j,i) = pmg->c_ph*lambda/sigma_rface;
+
+        // // for DZM
+        // sigma_rface = std::min(0.5*(sigma_r(k,j,i) + sigma_r(k-1,j,i)),
+        //       std::max(2.0*sigma_r(k,j,i)*sigma_r(k-1,j,i)/(sigma_r(k,j,i) + sigma_r(k-1,j,i)),
+        //       2.0*TWO_3RD*idx)); // Howell & Greenough 2002 (after eq. 15)
+        // R = gradE/(sigma_rface*u(RadFLD::RAD,k,j,i));
+        // if (!fixed_flux_limitter) lambda = (2.0+R)/(6.0+2.0*R+R*R);
+        // coeff(RadFLD::DZM,k,j,i) = pmg->c_ph*lambda/sigma_rface;
+
+        // // for DZP
+        // sigma_rface = std::min(0.5*(sigma_r(k,j,i) + sigma_r(k+1,j,i)),
+        //       std::max(2.0*sigma_r(k,j,i)*sigma_r(k+1,j,i)/(sigma_r(k,j,i) + sigma_r(k+1,j,i)),
+        //       2.0*TWO_3RD*idx)); // Howell & Greenough 2002 (after eq. 15)
+        // R = gradE/(sigma_rface*u(RadFLD::RAD,k,j,i));
+        // if (!fixed_flux_limitter) lambda = (2.0+R)/(6.0+2.0*R+R*R);
+        // coeff(RadFLD::DZP,k,j,i) = pmg->c_ph*lambda/sigma_rface;
+
+        // for later calculation
+        // if (k == (kl+ku)/2 && j == (jl+ju)/2 && i == (il+iu)/2) {
+        //   std::cout << "sigma_p: " << sigma_p(k,j,i) << std::endl;
+        //   std::cout << "sigma_r: " << sigma_r(k,j,i) << std::endl;
         // }
+        coeff(RadFLD::DSIGMAP,k,j,i) = sigma_p(k,j,i)*w(IDN,k,j,i);
+        coeff(RadFLD::DCOUPLE,k,j,i) = gm1/w(IDN,k,j,i);
+
+        // for P:\nabla v
+        R = gradE/(sigma_r(k,j,i)*u(RadFLD::RAD,k,j,i)); // center
+        if (!fixed_flux_limitter) lambda = (2.0+R)/(6.0+2.0*R+R*R);
+        Real chi = lambda+std::pow(lambda*R,2);
+
+        AthenaArray<Real> ngrad;
+        ngrad.NewAthenaArray(3);
+        for (int ii = 0; ii < 3; ++ii) ngrad(ii) = dEr(ii)/(gradE+TINY_NUMBER);
+
+        coeff(RadFLD::DPV,k,j,i) = 0.0; // for P:\nabla v
+        for (int jj = 0; jj < 3; ++jj) {
+          for (int ii = 0; ii < 3; ++ii) {
+            Real D_edd = 0.0;
+            if (ii == jj) D_edd += .5*(1.-chi);
+            D_edd += .5*(3.*chi-1.)*ngrad(jj)*ngrad(ii); //caution
+
+            int di = ii == 0 ? 1 : 0;
+            int dj = ii == 1 ? 1 : 0;
+            int dk = ii == 2 ? 1 : 0;
+
+            Real dv_dx = hidx*(w(IVX+jj,k+dk,j+dj,i+di) - w(IVX+jj,k-dk,j-dj,i-di));
+            coeff(RadFLD::DPV,k,j,i) += D_edd * dv_dx;
+          }
+        }
+
+        ngrad.DeleteAthenaArray();
       }
     }
   }
+
+  // for test
+  if (cut_diff) {
+    for (int k = kl; k <= ku; ++k) {
+      for (int j = jl; j <= ju; ++j) {
+        for (int i = il; i <= iu; ++i) {
+          for (int n = 0; n <= RadFLD::DZP; ++n) {
+            coeff(n,k,j,i) = 0.0;
+          }
+        }
+      }
+    }
+  }
+
+  // for test
+  if (!is_couple) {
+    for (int k = kl; k <= ku; ++k) {
+      for (int j = jl; j <= ju; ++j) {
+        for (int i = il; i <= iu; ++i) {
+          coeff(RadFLD::DSIGMAP,k,j,i) = 0.0;
+          coeff(RadFLD::DCOUPLE,k,j,i) = 0.0;
+        }
+      }
+    }
+  }
+
+  if (cut_Pnablav) {
+    for (int k = kl; k <= ku; ++k) {
+      for (int j = jl; j <= ju; ++j) {
+        for (int i = il; i <= iu; ++i) {
+          coeff(RadFLD::DPV,k,j,i) = 0.0;
+        }
+      }
+    }
+  }
+
   return;
 }
 
@@ -336,3 +405,26 @@ void FLD::UpdateHydroVariables(AthenaArray<Real> &w, AthenaArray<Real> &hydro_u,
   }
   return;
 }
+
+
+//----------------------------------------------------------------------------------------
+//! \fn void FLD::UpdateRadiationEnergy(AthenaArray<Real> &u, const AthenaArray<Real> &r)
+//! \brief Update radiation energy using advected radiation energy
+void FLD::UpdateRadiationEnergy(AthenaArray<Real> &u, const AthenaArray<Real> &r) {
+  int il = pmy_block->is - NGHOST, iu = pmy_block->ie + NGHOST;
+  int jl = pmy_block->js, ju = pmy_block->je;
+  int kl = pmy_block->ks, ku = pmy_block->ke;
+  if (pmy_block->pmy_mesh->f2)
+    jl -= NGHOST, ju += NGHOST;
+  if (pmy_block->pmy_mesh->f3)
+    kl -= NGHOST, ku += NGHOST;
+  for (int k = kl; k <= ku; ++k) {
+    for (int j = jl; j <= ju; ++j) {
+      for (int i = il; i <= iu; ++i) {
+        u(RadFLD::RAD,k,j,i) = r(k,j,i);
+      }
+    }
+  }
+  return;
+}
+

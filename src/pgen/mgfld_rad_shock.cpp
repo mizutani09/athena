@@ -13,6 +13,11 @@
  * You should have received a copy of GNU GPL in the file LICENSE included in the code
  * distribution.  If not see <http://www.gnu.org/licenses/>.
  *====================================================================================*/
+//! \file mgfld_rad_shock.cpp
+//! \brief Problem generator for radiative shock test
+//! REFERENCE: B. Commerçon, et al., Astron. Astrophys. Suppl. Ser. 529, A35 (2011).
+//!            for section 4.4: 1D full RHD tests: radiative shocks
+//======================================================================================
 
 // C++ headers
 #include <algorithm>  // min
@@ -46,8 +51,9 @@
 namespace {
   // Real HistoryRtime(MeshBlock *pmb, int iout);
   Real rho_unit, egas_unit, leng_unit;
-  Real T_unit, time_unit;
+  Real T_unit, time_unit, vel_unit;
   Real a_r_dim, Rgas, mu;
+  Real a_r_sim;
   Real HistoryTg(MeshBlock *pmb, int iout);
   Real HistoryTr(MeshBlock *pmb, int iout);
   Real HistoryEg(MeshBlock *pmb, int iout);
@@ -55,107 +61,118 @@ namespace {
   Real HistoryaTg4(MeshBlock *pmb, int iout);
   Real HistoryRtime(MeshBlock *pmb, int iout);
   Real HistoryEall(MeshBlock *pmb, int iout);
-  Real HistoryL1norm(MeshBlock *pmb, int iout);
-  Real Er0_L, Er0_R, rho0, p0;
-  Real chi;
+  // Real HistoryL1norm(MeshBlock *pmb, int iout);
+  Real rho0, T0;
+  Real p0, egas0, Er0;
+  Real vel_piston;
 }
 
-void FLDFixedInnerX1(AthenaArray<Real> &dst, Real time, int nvar,
+void FLDInnerX1(AthenaArray<Real> &dst, Real time, int nvar,
                     int is, int ie, int js, int je, int ks, int ke, int ngh,
                     const MGCoordinates &coord) {
+  // for reflective boundary condition
   for (int k=ks; k<=ke; k++) {
     for (int j=js; j<=je; j++) {
       for (int i=1; i<=ngh; i++) {
-        dst(RadFLD::RAD,k,j,is-i) = coord.x1v(is-i) < 0.5? Er0_L : Er0_R;
+        dst(RadFLD::GAS,k,j,is-i) = dst(RadFLD::GAS,k,j,is+i-1);
+        dst(RadFLD::RAD,k,j,is-i) = dst(RadFLD::RAD,k,j,is+i-1);
       }
     }
   }
   return;
 }
 
-void FLDFixedOuterX1(AthenaArray<Real> &dst, Real time, int nvar,
+// void FLDOuterFixedX1(AthenaArray<Real> &dst, Real time, int nvar,
+//                     int is, int ie, int js, int je, int ks, int ke, int ngh,
+//                     const MGCoordinates &coord) {
+//   // for fixed boundary condition
+//   for (int k=ks; k<=ke; k++) {
+//     for (int j=js; j<=je; j++) {
+//       for (int i=1; i<=ngh; i++) {
+//         dst(RadFLD::GAS,k,j,ie+i) = egas0;
+//         dst(RadFLD::RAD,k,j,ie+i) = Er0;
+//       }
+//     }
+//   }
+//   return;
+// }
+
+void FLDOuterOutflowX1(AthenaArray<Real> &dst, Real time, int nvar,
                     int is, int ie, int js, int je, int ks, int ke, int ngh,
                     const MGCoordinates &coord) {
+  // for outflow boundary condition
   for (int k=ks; k<=ke; k++) {
     for (int j=js; j<=je; j++) {
       for (int i=1; i<=ngh; i++) {
-        dst(RadFLD::RAD,k,j,ie+i) = coord.x1v(ie+i) < 0.5? Er0_L : Er0_R;
+        dst(RadFLD::GAS,k,j,ie+i) = dst(RadFLD::GAS,k,j,ie);
+        dst(RadFLD::RAD,k,j,ie+i) = dst(RadFLD::RAD,k,j,ie);
       }
     }
   }
   return;
 }
 
-void FLDAdvFixedInnerX1(
-     MeshBlock *pmb, Coordinates *pco, FLD *prfld,
-     const AthenaArray<Real> &w, FaceField &b, AthenaArray<Real> &u_fld,
-     Real time, Real dt, int is, int ie, int js, int je, int ks, int ke, int ngh) {
-  Real x_L = pmb->pmy_mesh->mesh_size.x1min - pmb->pcoord->dx1f(0)/2.0;
-  Real x_R = pmb->pmy_mesh->mesh_size.x1max + pmb->pcoord->dx1f(0)/2.0;
-  Real slope = (Er0_R-Er0_L)/(x_R-x_L);
-  Real cons = Er0_L - slope*x_L;
-  for (int k=ks; k<=ke; k++) {
-    for (int j=js; j<=je; j++) {
-      for (int i=1; i<=ngh; i++) {
-        Real an = slope*pco->x1v(is-i) + cons;
-        prfld->u(RadFLD::RAD,k,j,is-i) = an;
-      }
-    }
-  }
-  return;
-}
+// void FLDAdvInnerX1(MeshBlock *pmb, Coordinates *pco, FLD *prfld,
+//     const AthenaArray<Real> &w, FaceField &b, AthenaArray<Real> &r_fld,
+//     Real time, Real dt, int is, int ie, int js, int je, int ks, int ke, int ngh) {
+//   // for reflective boundary condition
+//   for (int k=ks; k<=ke; k++) {
+//     for (int j=js; j<=je; j++) {
+//       for (int i=1; i<=ngh; i++) {
+//         r_fld(k,j,is-i) = r_fld(k,j,is+i-1);
+//       }
+//     }
+//   }
+//   return;
+// }
 
-void FLDAdvFixedOuterX1(
-     MeshBlock *pmb, Coordinates *pco, FLD *prfld,
-     const AthenaArray<Real> &w, FaceField &b, AthenaArray<Real> &u_fld,
-     Real time, Real dt, int is, int ie, int js, int je, int ks, int ke, int ngh) {
-  Real x_L = pmb->pmy_mesh->mesh_size.x1min - pmb->pcoord->dx1f(0)/2.0;
-  Real x_R = pmb->pmy_mesh->mesh_size.x1max + pmb->pcoord->dx1f(0)/2.0;
-  Real slope = (Er0_R-Er0_L)/(x_R-x_L);
-  Real cons = Er0_L - slope*x_L;
-  for (int k=ks; k<=ke; k++) {
-    for (int j=js; j<=je; j++) {
-      for (int i=1; i<=ngh; i++) {
-        Real an = slope*pco->x1v(ie+i) + cons;
-        prfld->u(RadFLD::RAD,k,j,ie+i) = an;
-      }
-    }
-  }
-  return;
-}
+// void FLDAdvOuterX1(MeshBlock *pmb, Coordinates *pco, FLD *prfld,
+//     const AthenaArray<Real> &w, FaceField &b, AthenaArray<Real> &r_fld,
+//     Real time, Real dt, int is, int ie, int js, int je, int ks, int ke, int ngh) {
+//   // for fixed boundary condition
+//   for (int k=ks; k<=ke; k++) {
+//     for (int j=js; j<=je; j++) {
+//       for (int i=1; i<=ngh; i++) {
+//         r_fld(k,j,ie+i) = Er0;
+//       }
+//     }
+//   }
+//   return;
+// }
 
-void HydroInnerX1(MeshBlock *pmb, Coordinates *pco, AthenaArray<Real> &prim, FaceField &b,
-    Real time, Real dt, int is, int ie, int js, int je, int ks, int ke, int ngh) {
-  for (int k=ks; k<=ke; k++) {
-    for (int j=js; j<=je; j++) {
-      for (int i=1; i<=ngh; i++) {
-        prim(IDN,k,j,is-i) = prim(IDN,k,j,is);
-        prim(IVX,k,j,is-i) = prim(IVX,k,j,is);
-        prim(IVY,k,j,is-i) = prim(IVY,k,j,is);
-        prim(IVZ,k,j,is-i) = prim(IVZ,k,j,is);
-        prim(IPR,k,j,is-i) = prim(IPR,k,j,is);
-      }
-    }
-  }
-  return;
-}
+// void HydroInnerX1(MeshBlock *pmb, Coordinates *pco, AthenaArray<Real> &prim, FaceField &b,
+//     Real time, Real dt, int is, int ie, int js, int je, int ks, int ke, int ngh) {
+//   // for reflective boundary condition
+//   for (int k=ks; k<=ke; k++) {
+//     for (int j=js; j<=je; j++) {
+//       for (int i=1; i<=ngh; i++) {
+//         prim(IDN,k,j,is-i) = prim(IDN,k,j,is+i-1);
+//         prim(IVX,k,j,is-i) = -prim(IVX,k,j,is+i-1);
+//         prim(IVY,k,j,is-i) = prim(IVY,k,j,is+i-1);
+//         prim(IVZ,k,j,is-i) = prim(IVZ,k,j,is+i-1);
+//         prim(IPR,k,j,is-i) = prim(IPR,k,j,is+i-1);
+//       }
+//     }
+//   }
+//   return;
+// }
 
-void HydroOuterX1(MeshBlock *pmb, Coordinates *pco, AthenaArray<Real> &prim, FaceField &b,
-    Real time, Real dt, int is, int ie, int js, int je, int ks, int ke, int ngh) {
-  for (int k=ks; k<=ke; k++) {
-    for (int j=js; j<=je; j++) {
-      for (int i=1; i<=ngh; i++) {
-        prim(IDN,k,j,ie+i) = prim(IDN,k,j,ie);
-        prim(IVX,k,j,ie+i) = prim(IVX,k,j,ie);
-        prim(IVY,k,j,ie+i) = prim(IVY,k,j,ie);
-        prim(IVZ,k,j,ie+i) = prim(IVZ,k,j,ie);
-        prim(IPR,k,j,ie+i) = prim(IPR,k,j,ie);
-      }
-    }
-  }
-  return;
-}
-
+// void HydroOuterX1(MeshBlock *pmb, Coordinates *pco, AthenaArray<Real> &prim, FaceField &b,
+//     Real time, Real dt, int is, int ie, int js, int je, int ks, int ke, int ngh) {
+//   // for fixed boundary condition
+//   for (int k=ks; k<=ke; k++) {
+//     for (int j=js; j<=je; j++) {
+//       for (int i=1; i<=ngh; i++) {
+//         prim(IDN,k,j,ie+i) = rho0;
+//         prim(IVX,k,j,ie+i) = -vel_piston;
+//         prim(IVY,k,j,ie+i) = 0.0;
+//         prim(IVZ,k,j,ie+i) = 0.0;
+//         prim(IPR,k,j,ie+i) = p0;
+//       }
+//     }
+//   }
+//   return;
+// }
 
 //========================================================================================
 //! \fn void Mesh::InitUserMeshData(ParameterInput *pin)
@@ -180,12 +197,13 @@ void Mesh::InitUserMeshData(ParameterInput *pin) {
   }
   Real pres_unit = egas_unit;
   // Rgas in cgs
-  Rgas = 8.31451e+7; // erg/(mol*K)
+  Rgas = 8.31451e+7; // erg mol^-1 K^-1
   mu = pin->GetReal("hydro", "mu");
   T_unit = pres_unit/rho_unit*mu/Rgas;
   a_r_dim = 7.5657e-15; // radiation constant in erg cm^-3 K^-4
+  a_r_sim = a_r_dim/(egas_unit/std::pow(T_unit, 4));
 
-  Real vel_unit = std::sqrt(pres_unit/rho_unit);
+  vel_unit = std::sqrt(pres_unit/rho_unit);
   if (time_unit < 0.0) time_unit = leng_unit/vel_unit;
   if (leng_unit < 0.0) leng_unit = vel_unit*time_unit;
 
@@ -193,27 +211,31 @@ void Mesh::InitUserMeshData(ParameterInput *pin) {
   Real c_ph_dim = 2.99792458e10; // speed of light in cm s^-1
   Real c_ph_sim = c_ph_dim/(leng_unit/time_unit);
   Real mfp_sim = 1.0/(const_opasity*rho_unit)/leng_unit;
-  chi = c_ph_sim*mfp_sim/3.0;
 
-  rho0 = pin->GetReal("problem", "rho0");
-  p0 = pin->GetReal("problem", "p0");
-  Er0_L = pin->GetReal("problem", "Er0_L");
-  Er0_R = pin->GetReal("problem", "Er0_R");
+  rho0 = pin->GetReal("problem", "rho0") / rho_unit;
+  T0 = pin->GetReal("problem", "T0") / T_unit;
+  vel_piston = pin->GetReal("problem", "vel_piston") * 1e5 / vel_unit; // from km s^-1 to cm s^-1
 
+  // std::string ix1_bc = pin->GetString("mgfld", "ix1_bc");
+  // std::string ox1_bc = pin->GetString("mgfld", "ox1_bc");
+  // if (ix1_bc == "user")
+    EnrollUserMGFLDBoundaryFunction(BoundaryFace::inner_x1, FLDInnerX1);
+  // if (ox1_bc == "user")
+    EnrollUserMGFLDBoundaryFunction(BoundaryFace::outer_x1, FLDOuterOutflowX1);
 
-  EnrollUserMGFLDBoundaryFunction(BoundaryFace::inner_x1, FLDFixedInnerX1);
-  EnrollUserMGFLDBoundaryFunction(BoundaryFace::outer_x1, FLDFixedOuterX1);
-  // EnrollUserMGFLDBoundaryFunction(BoundaryFace::inner_x2, FLDFixedInnerX2);
-  // EnrollUserMGFLDBoundaryFunction(BoundaryFace::outer_x2, FLDFixedOuterX2);
-  // EnrollUserMGFLDBoundaryFunction(BoundaryFace::inner_x3, FLDFixedInnerX3);
-  // EnrollUserMGFLDBoundaryFunction(BoundaryFace::outer_x3, FLDFixedOuterX3);
+  // ix1_bc = pin->GetString("mesh", "ix1_bc");
+  // ox1_bc = pin->GetString("mesh", "ox1_bc");
+  // if (ix1_bc == "user") {
+  //   EnrollUserBoundaryFunction(BoundaryFace::inner_x1, HydroInnerX1);
+  //   EnrollUserFLDAdvBoundaryFunction(BoundaryFace::inner_x1, FLDAdvInnerX1);
+  // }
+  // if (ox1_bc == "user"){
+  //   EnrollUserBoundaryFunction(BoundaryFace::outer_x1, HydroOuterX1);
+  //   EnrollUserFLDAdvBoundaryFunction(BoundaryFace::outer_x1, FLDAdvOuterX1);
+  //   EnrollUserMGFLDBoundaryFunction(BoundaryFace::outer_x1, FLDOuterFixedX1); // caution
+  // }
 
-  EnrollUserFLDAdvBoundaryFunction(BoundaryFace::inner_x1, FLDAdvFixedInnerX1);
-  EnrollUserFLDAdvBoundaryFunction(BoundaryFace::outer_x1, FLDAdvFixedOuterX1);
-
-  EnrollUserBoundaryFunction(BoundaryFace::inner_x1, HydroInnerX1);
-  EnrollUserBoundaryFunction(BoundaryFace::outer_x1, HydroOuterX1);
-  AllocateUserHistoryOutput(8);
+  AllocateUserHistoryOutput(7);
   EnrollUserHistoryOutput(0, HistoryTg, "T_gas", UserHistoryOperation::max);
   EnrollUserHistoryOutput(1, HistoryTr, "T_rad", UserHistoryOperation::max);
   EnrollUserHistoryOutput(2, HistoryEg, "e_gas", UserHistoryOperation::max);
@@ -221,7 +243,22 @@ void Mesh::InitUserMeshData(ParameterInput *pin) {
   EnrollUserHistoryOutput(4, HistoryaTg4, "aTgas^4", UserHistoryOperation::max);
   EnrollUserHistoryOutput(5, HistoryRtime, "Rtime", UserHistoryOperation::max);
   EnrollUserHistoryOutput(6, HistoryEall, "all-E", UserHistoryOperation::sum);
-  EnrollUserHistoryOutput(7, HistoryL1norm, "L1norm", UserHistoryOperation::sum);
+  // EnrollUserHistoryOutput(7, HistoryL1norm, "L1norm", UserHistoryOperation::sum);
+}
+
+
+void MeshBlock::InitUserMeshBlockData(ParameterInput *pin) {
+  Real igm1 = 1.0/(peos->GetGamma()-1.0);
+  p0 = rho0*T0;
+  Er0 = a_r_sim*std::pow(T0, 4);
+  egas0 = p0*igm1;
+
+  AllocateUserOutputVariables(4);
+  SetUserOutputVariableName(0, "e_gas");
+  SetUserOutputVariableName(1, "E_rad");
+  SetUserOutputVariableName(2, "T_gas");
+  SetUserOutputVariableName(3, "T_rad");
+  return;
 }
 
 
@@ -233,9 +270,10 @@ void Mesh::InitUserMeshData(ParameterInput *pin) {
 void MeshBlock::ProblemGenerator(ParameterInput *pin) {
   Real gamma = peos->GetGamma();
   Real igm1 = 1.0/(gamma-1.0);
-  Real dx1 = pcoord->dx1f(4);
+  Real dx1 = pcoord->dx1f(0);
   Real courant = pin->GetReal("time", "cfl_number");
-  Real dt_exp = courant*dx1*std::sqrt(rho0/(gamma*p0))*time_unit;
+  Real sound = std::sqrt(gamma*p0/rho0);
+  Real dt_exp = courant*dx1/(sound+vel_piston)*time_unit;
   Real const_opasity = pin->GetReal("mgfld", "const_opacity");
   Real const_opasity_sim = const_opasity*leng_unit*rho_unit;
   Real c_ph_dim = 2.99792458e10; // speed of light in cm s^-1
@@ -243,27 +281,24 @@ void MeshBlock::ProblemGenerator(ParameterInput *pin) {
   Real mfp_sim = 1.0/(const_opasity*rho_unit)/leng_unit;
 
   Real L = pmy_mesh->mesh_size.x1max - pmy_mesh->mesh_size.x1min;
-  // Real tau_diff = L*L/chi;
-  // Real tau_diff_dt = tau_diff/dt_exp;
-  Real Er_mean = 0.5*(Er0_L+Er0_R), Er_dif = std::abs(Er0_L-Er0_R);
-  Real tau_diff = 3.0*(L/c_ph_sim)*(L*const_opasity_sim)*(Er_mean/Er_dif);
-  tau_diff *= time_unit;
-  Real tau_diff_dt = tau_diff/dt_exp;
   if (gid == 0) {
-    std::cout << "rho_unit = " << rho_unit << " g cm^-3" << std::endl;
-    std::cout << "egas_unit = " << egas_unit << " erg cm^-3" << std::endl;
-    std::cout << "time_unit = " << time_unit << " s" << std::endl;
-    std::cout << "leng_unit = " << leng_unit << " cm" << std::endl;
-    std::cout << "vel_unit = " << leng_unit/time_unit << " cm s^-1" << std::endl;
-    std::cout << "T_unit = " << T_unit << " K" << std::endl;
-    std::cout << "c_ph_sim = " << c_ph_sim << " cm s^-1" << std::endl;
-    std::cout << "chi = " << chi*leng_unit*leng_unit/time_unit << " cm^2 s^-1" << std::endl;
-    std::cout << "dx = " << dx1*leng_unit << " cm" << std::endl;
-    std::cout << "dt = " << dt_exp << " s" << std::endl;
-    std::cout << "dt_sim = " << dt_exp/time_unit << std::endl;
-    std::cout << "tau_diff = " << tau_diff << " s" << std::endl;
-    std::cout << "tau_diff in sim = " << tau_diff/time_unit << std::endl;
-    std::cout << "tau_diff/dt = " << tau_diff/dt_exp << std::endl;
+    std::cout << "rho_unit       = " << rho_unit << " g cm^-3" << std::endl;
+    std::cout << "egas_unit      = " << egas_unit << " erg cm^-3" << std::endl;
+    std::cout << "time_unit      = " << time_unit << " s" << std::endl;
+    std::cout << "leng_unit      = " << leng_unit << " cm" << std::endl;
+    std::cout << "vel_unit       = " << leng_unit/time_unit << " cm s^-1" << std::endl;
+    std::cout << "T_unit         = " << T_unit << " K" << std::endl;
+    std::cout << "c_ph_sim       = " << c_ph_sim << std::endl;
+    std::cout << "dx_dim         = " << dx1*leng_unit << " cm" << std::endl;
+    std::cout << "dt_dim         = " << dt_exp << " s" << std::endl;
+    std::cout << "dt_sim         = " << dt_exp/time_unit << std::endl;
+    std::cout << "rho0_sim       = " << rho0 << std::endl;
+    std::cout << "T0_sim         = " << T0 << std::endl;
+    std::cout << "vel_piston_sim = " << vel_piston << std::endl;
+    std::cout << "p0_sim         = " << p0 << std::endl;
+    std::cout << "Er0_sim        = " << Er0 << std::endl;
+    Real tmp = p0/rho0*T_unit;
+    std::cout << "T0_dim         = " << tmp << std::endl;
   }
 
   int kl = ks-NGHOST;
@@ -272,62 +307,32 @@ void MeshBlock::ProblemGenerator(ParameterInput *pin) {
   int ju = je+NGHOST;
   int il = is-NGHOST;
   int iu = ie+NGHOST;
-  Real x_L = pmy_mesh->mesh_size.x1min - pcoord->dx1f(0)/2.0;
-  Real x_R = pmy_mesh->mesh_size.x1max + pcoord->dx1f(0)/2.0;
-  Real slope = (Er0_R-Er0_L)/(x_R-x_L);
-  Real cons = Er0_L - slope*x_L;
+
 
   for(int k=kl; k<=ku; ++k) {
-    Real x3 = pcoord->x3v(k);
     for (int j=jl; j<=ju; ++j) {
-      Real x2 = pcoord->x2v(j);
       for (int i=il; i<=iu; ++i) {
         Real x1 = pcoord->x1v(i);
         phydro->u(IDN,k,j,i) = rho0;
-        phydro->u(IM1,k,j,i) = 0.0;
+        phydro->u(IM1,k,j,i) = -rho0*vel_piston;
         phydro->u(IM2,k,j,i) = 0.0;
         phydro->u(IM3,k,j,i) = 0.0;
         if (NON_BAROTROPIC_EOS)
-          phydro->u(IEN,k,j,i) = p0*igm1;
+          phydro->u(IEN,k,j,i) = egas0 + 0.5*rho0*SQR(vel_piston);
+
+        // for FLD
+        prfld->u(RadFLD::GAS,k,j,i) = egas0;
+        prfld->u(RadFLD::RAD,k,j,i) = Er0;
       }
     }
   }
-  for (int k=kl; k<=ku; k++) {
-    for (int j=jl; j<=ju; j++) {
-      for (int i=il; i<=iu; i++) {
-        prfld->u(RadFLD::GAS,k,j,i) = p0*igm1;
-        if (pcoord->x1v(i) < 0.5) {
-        prfld->u(RadFLD::RAD,k,j,i) = Er0_L;
-        } else {
-        prfld->u(RadFLD::RAD,k,j,i) = Er0_R;
-        }
-
-        if (i == il || i == iu) {
-          Real an = slope*pcoord->x1v(i) + cons;
-          prfld->u(RadFLD::RAD,k,j,i) = an;
-        }
-      }
-    }
-  }
-
-  return;
-}
-
-
-
-
-void MeshBlock::InitUserMeshBlockData(ParameterInput *pin) {
-  AllocateUserOutputVariables(4);
-  SetUserOutputVariableName(0, "e_gas");
-  SetUserOutputVariableName(1, "E_rad");
-  SetUserOutputVariableName(2, "T_gas");
-  SetUserOutputVariableName(3, "T_rad");
   return;
 }
 
 void MeshBlock::UserWorkBeforeOutput(ParameterInput *pin) {
   Real gm1 = peos->GetGamma() - 1.0;
-  Real temp_coef = gm1*mu/Rgas*egas_unit/rho_unit;
+  Real igm1 = 1.0/gm1;
+//   Real temp_coef = gm1*mu/Rgas*egas_unit/rho_unit;
   int kl = ks-NGHOST;
   int ku = ke+NGHOST;
   int jl = js-NGHOST;
@@ -338,10 +343,19 @@ void MeshBlock::UserWorkBeforeOutput(ParameterInput *pin) {
     for (int j=jl; j<=ju; j++) {
       for (int i=il; i<=iu; i++) {
         // assume cal in E
-        user_out_var(0,k,j,i) = prfld->u(RadFLD::GAS,k,j,i)*egas_unit;
-        user_out_var(1,k,j,i) = prfld->u(RadFLD::RAD,k,j,i)*egas_unit;
-        user_out_var(2,k,j,i) = prfld->u(RadFLD::GAS,k,j,i)/phydro->w(IDN,k,j,i)*temp_coef;
-        user_out_var(3,k,j,i) = std::pow(prfld->u(RadFLD::RAD,k,j,i)*egas_unit/a_r_dim, 0.25);
+
+        // for egas
+        // user_out_var(0,k,j,i) = prfld->u(RadFLD::GAS,k,j,i);//*egas_unit;
+        user_out_var(0,k,j,i) = phydro->w(IPR,k,j,i)*igm1;//*egas_unit;
+
+        // for Erad
+        user_out_var(1,k,j,i) = prfld->u(RadFLD::RAD,k,j,i);//*egas_unit;
+
+        // for Tgas
+        user_out_var(2,k,j,i) = phydro->w(IPR,k,j,i)/phydro->w(IDN,k,j,i)*T_unit;
+
+        // for Trad
+        user_out_var(3,k,j,i) = std::pow(prfld->u(RadFLD::RAD,k,j,i)/a_r_sim, 0.25)*T_unit;
       }
     }
   }
@@ -465,26 +479,26 @@ Real HistoryEall(MeshBlock *pmb, int iout) {
   return E*egas_unit;
 }
 
-Real HistoryL1norm(MeshBlock *pmb, int iout) {
-  int is = pmb->is, ie = pmb->ie, js = pmb->js, je = pmb->je, ks = pmb->ks, ke = pmb->ke;
-  Real L1norm = 0;
-  Real x_L = pmb->pmy_mesh->mesh_size.x1min - pmb->pcoord->dx1f(0)/2.0;
-  Real x_R = pmb->pmy_mesh->mesh_size.x1max + pmb->pcoord->dx1f(0)/2.0;
-  Real slope = (Er0_R-Er0_L)/(x_R-x_L);
-  Real cons = Er0_L - slope*x_L;
-  for (int k=ks; k<=ke; k++) {
-    for (int j=js; j<=je; j++) {
-      for (int i=is; i<=ie; i++) {
-        Real x = pmb->pcoord->x1v(i);
-        Real an = slope*x + cons;
-        L1norm += std::abs(pmb->prfld->u(RadFLD::RAD,k,j,i) - an)/std::abs(an);
-      }
-    }
-  }
-  int nbtotal = pmb->pmy_mesh->nbtotal;
-  int ncells = (ie-is+1)*(je-js+1)*(ke-ks+1);
-  L1norm /= ncells*nbtotal;
-  return L1norm;
-}
+// Real HistoryL1norm(MeshBlock *pmb, int iout) {
+//   int is = pmb->is, ie = pmb->ie, js = pmb->js, je = pmb->je, ks = pmb->ks, ke = pmb->ke;
+//   Real L1norm = 0;
+//   Real x_L = pmb->pmy_mesh->mesh_size.x1min - pmb->pcoord->dx1f(0)/2.0;
+//   Real x_R = pmb->pmy_mesh->mesh_size.x1max + pmb->pcoord->dx1f(0)/2.0;
+//   Real slope = (Er0_R-Er0_L)/(x_R-x_L);
+//   Real cons = Er0_L - slope*x_L;
+//   for (int k=ks; k<=ke; k++) {
+//     for (int j=js; j<=je; j++) {
+//       for (int i=is; i<=ie; i++) {
+//         Real x = pmb->pcoord->x1v(i);
+//         Real an = slope*x + cons;
+//         L1norm += std::abs(pmb->prfld->u(RadFLD::RAD,k,j,i) - an)/std::abs(an);
+//       }
+//     }
+//   }
+//   int nbtotal = pmb->pmy_mesh->nbtotal;
+//   int ncells = (ie-is+1)*(je-js+1)*(ke-ks+1);
+//   L1norm /= ncells*nbtotal;
+//   return L1norm;
+// }
 
 } // namespace

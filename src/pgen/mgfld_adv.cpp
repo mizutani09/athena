@@ -55,8 +55,10 @@ namespace {
   Real HistoryaTg4(MeshBlock *pmb, int iout);
   Real HistoryRtime(MeshBlock *pmb, int iout);
   Real HistoryEall(MeshBlock *pmb, int iout);
-  // Real HistoryL1norm(MeshBlock *pmb, int iout);
+  Real HistoryL1norm(MeshBlock *pmb, int iout);
   Real Er0, rho0, p0, v0;
+  Real r0, r_sigma;
+  Real delta_ratio;
 }
 
 //========================================================================================
@@ -85,7 +87,6 @@ void Mesh::InitUserMeshData(ParameterInput *pin) {
   Rgas = 8.31451e+7; // erg/(mol*K)
   mu = pin->GetReal("hydro", "mu");
   T_unit = pres_unit/rho_unit*mu/Rgas;
-  std::cout << "T_unit = " << T_unit << " K" << std::endl;
   a_r_dim = 7.5657e-15; // radiation constant in erg cm^-3 K^-4
 
   Real vel_unit = std::sqrt(pres_unit/rho_unit);
@@ -101,8 +102,11 @@ void Mesh::InitUserMeshData(ParameterInput *pin) {
   p0 = pin->GetReal("problem", "p0");
   Er0 = pin->GetReal("problem", "Er0");
   v0 = pin->GetReal("problem", "v0");
+  r0 = pin->GetReal("problem", "r0");
+  r_sigma = pin->GetReal("problem", "r_sigma");
+  delta_ratio = pin->GetReal("problem", "delta_ratio");
 
-  AllocateUserHistoryOutput(7);
+  AllocateUserHistoryOutput(8);
   EnrollUserHistoryOutput(0, HistoryTg, "T_gas", UserHistoryOperation::max);
   EnrollUserHistoryOutput(1, HistoryTr, "T_rad", UserHistoryOperation::max);
   EnrollUserHistoryOutput(2, HistoryEg, "e_gas", UserHistoryOperation::max);
@@ -110,7 +114,7 @@ void Mesh::InitUserMeshData(ParameterInput *pin) {
   EnrollUserHistoryOutput(4, HistoryaTg4, "aTgas^4", UserHistoryOperation::max);
   EnrollUserHistoryOutput(5, HistoryRtime, "Rtime", UserHistoryOperation::max);
   EnrollUserHistoryOutput(6, HistoryEall, "all-E", UserHistoryOperation::sum);
-  // EnrollUserHistoryOutput(7, HistoryL1norm, "L1norm", UserHistoryOperation::sum);
+  EnrollUserHistoryOutput(7, HistoryL1norm, "L1norm", UserHistoryOperation::sum);
 }
 
 
@@ -138,6 +142,7 @@ void MeshBlock::ProblemGenerator(ParameterInput *pin) {
     std::cout << "time_unit = " << time_unit << " s" << std::endl;
     std::cout << "leng_unit = " << leng_unit << " cm" << std::endl;
     std::cout << "vel_unit = " << leng_unit/time_unit << " cm s^-1" << std::endl;
+    std::cout << "T_unit = " << T_unit << " K" << std::endl;
     std::cout << "c_ph_sim = " << c_ph_sim << " cm s^-1" << std::endl;
     std::cout << "dx = " << dx1*leng_unit << " cm" << std::endl;
     std::cout << "dt = " << dt_exp << " s" << std::endl;
@@ -152,6 +157,7 @@ void MeshBlock::ProblemGenerator(ParameterInput *pin) {
   int iu = ie+NGHOST;
 
 
+  Real r_sigma_sq = SQR(r_sigma);
   for(int k=kl; k<=ku; ++k) {
     Real x3 = pcoord->x3v(k);
     for (int j=jl; j<=ju; ++j) {
@@ -162,18 +168,12 @@ void MeshBlock::ProblemGenerator(ParameterInput *pin) {
         phydro->u(IM2,k,j,i) = 0.0;
         phydro->u(IM3,k,j,i) = 0.0;
         if (NON_BAROTROPIC_EOS)
-          phydro->u(IEN,k,j,i) = p0*igm1;
-      }
-    }
-  }
-  Real x0 = 0.5, x_sigma = 0.1;
-  Real x_sigma_sq = SQR(x_sigma);
-  for (int k=kl; k<=ku; k++) {
-    for (int j=jl; j<=ju; j++) {
-      for (int i=il; i<=iu; i++) {
-        Real r_sq = SQR(pcoord->x1v(i)-x0);
-        prfld->u(RadFLD::GAS,k,j,i) = phydro->u(IEN,k,j,i);
-        prfld->u(RadFLD::RAD,k,j,i) = Er0*(1.0+std::exp(-r_sq/x_sigma_sq));
+          phydro->u(IEN,k,j,i) = p0*igm1 + 0.5*rho0*v0*v0;
+
+        // for FLD
+        prfld->u(RadFLD::GAS,k,j,i) = p0*igm1;
+        Real r_sq = SQR(pcoord->x1v(i)-r0);
+        prfld->u(RadFLD::RAD,k,j,i) = Er0*(1.0+delta_ratio*std::exp(-r_sq/r_sigma_sq));
       }
     }
   }
@@ -181,7 +181,38 @@ void MeshBlock::ProblemGenerator(ParameterInput *pin) {
   return;
 }
 
+void MeshBlock::UserWorkInLoop() {
+  // to fix hydro variables
+  Real igm1 = 1.0/(peos->GetGamma()-1.0);
+  int kl = ks-NGHOST;
+  int ku = ke+NGHOST;
+  int jl = js-NGHOST;
+  int ju = je+NGHOST;
+  int il = is-NGHOST;
+  int iu = ie+NGHOST;
 
+  for(int k=kl; k<=ku; ++k) {
+    Real x3 = pcoord->x3v(k);
+    for (int j=jl; j<=ju; ++j) {
+      Real x2 = pcoord->x2v(j);
+      for (int i=il; i<=iu; ++i) {
+        phydro->u(IDN,k,j,i) = rho0;
+        phydro->u(IM1,k,j,i) = rho0*v0;
+        phydro->u(IM2,k,j,i) = 0.0;
+        phydro->u(IM3,k,j,i) = 0.0;
+        if (NON_BAROTROPIC_EOS)
+          phydro->u(IEN,k,j,i) = p0*igm1 + 0.5*rho0*v0*v0;
+
+        phydro->w(IDN,k,j,i) = rho0;
+        phydro->w(IVX,k,j,i) = v0;
+        phydro->w(IVY,k,j,i) = 0.0;
+        phydro->w(IVZ,k,j,i) = 0.0;
+        phydro->w(IPR,k,j,i) = p0;
+      }
+    }
+  }
+  return;
+}
 
 
 void MeshBlock::InitUserMeshBlockData(ParameterInput *pin) {
@@ -333,26 +364,32 @@ Real HistoryEall(MeshBlock *pmb, int iout) {
   return E*egas_unit;
 }
 
-// Real HistoryL1norm(MeshBlock *pmb, int iout) {
-//   int is = pmb->is, ie = pmb->ie, js = pmb->js, je = pmb->je, ks = pmb->ks, ke = pmb->ke;
-//   Real L1norm = 0;
-//   Real x_L = pmb->pmy_mesh->mesh_size.x1min - pmb->pcoord->dx1f(0)/2.0;
-//   Real x_R = pmb->pmy_mesh->mesh_size.x1max + pmb->pcoord->dx1f(0)/2.0;
-//   Real slope = (Er0_R-Er0_L)/(x_R-x_L);
-//   Real cons = Er0_L - slope*x_L;
-//   for (int k=ks; k<=ke; k++) {
-//     for (int j=js; j<=je; j++) {
-//       for (int i=is; i<=ie; i++) {
-//         Real x = pmb->pcoord->x1v(i);
-//         Real an = slope*x + cons;
-//         L1norm += std::abs(pmb->prfld->u(RadFLD::RAD,k,j,i) - an)/std::abs(an);
-//       }
-//     }
-//   }
-//   int nbtotal = pmb->pmy_mesh->nbtotal;
-//   int ncells = (ie-is+1)*(je-js+1)*(ke-ks+1);
-//   L1norm /= ncells*nbtotal;
-//   return L1norm;
-// }
+Real HistoryL1norm(MeshBlock *pmb, int iout) {
+  int is = pmb->is, ie = pmb->ie, js = pmb->js, je = pmb->je, ks = pmb->ks, ke = pmb->ke;
+  Real L1norm = 0;
+  Real r_sigma_sq = SQR(r_sigma);
+  Real l_sim = pmb->pmy_mesh->mesh_size.x1max - pmb->pmy_mesh->mesh_size.x1min;
+  for (int k=ks; k<=ke; k++) {
+    for (int j=js; j<=je; j++) {
+      for (int i=is; i<=ie; i++) {
+        Real ref_x = pmb->pcoord->x1v(i) - v0*pmb->pmy_mesh->time;
+        if (ref_x < 0) ref_x += l_sim*(1+std::floor(-ref_x/l_sim));
+        Real x = ref_x - r0;
+        Real r_sq = SQR(x);
+        Real an;
+        if (r_sigma < 0.0) {
+          an = Er0;
+        } else {
+          an = Er0*(1.0+std::exp(-r_sq/r_sigma_sq));
+        }
+        L1norm += std::abs(pmb->prfld->u(RadFLD::RAD,k,j,i) - an)/std::abs(an);
+      }
+    }
+  }
+  int nbtotal = pmb->pmy_mesh->nbtotal;
+  int ncells = (ie-is+1)*(je-js+1)*(ke-ks+1);
+  L1norm /= ncells*nbtotal;
+  return L1norm;
+}
 
 } // namespace
