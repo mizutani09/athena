@@ -102,6 +102,9 @@ FLD::FLD(MeshBlock *pmb, ParameterInput *pin) :
 
   pmb->RegisterMeshBlockData(u); //!
 
+  // r.NewAthenaArray(pmb->ncells3, pmb->ncells2, pmb->ncells1);
+  // r.InitWithShallowSlice(u, 4, RadFLD::RAD, 1);
+
   // If user-requested time integrator is type 3S*, allocate additional memory registers
   std::string integrator = pin->GetOrAddString("time", "integrator", "vl2");
   if (integrator == "ssprk5_4" || STS_ENABLED)
@@ -162,6 +165,8 @@ FLD::FLD(MeshBlock *pmb, ParameterInput *pin) :
 
   // set a default opacity function
   UpdateOpacity = DefaultOpacity;
+
+  pUserOpacityTable = new UserOpacityTable(pin);
 }
 
 void FLD::EnrollOpacityFunction(FLDOpacityFunc MyOpacityFunction) {
@@ -174,6 +179,7 @@ void FLD::EnrollOpacityFunction(FLDOpacityFunc MyOpacityFunction) {
 //! \brief FLD destructor
 FLD::~FLD() {
   delete pmg;
+  delete pUserOpacityTable;
 }
 
 

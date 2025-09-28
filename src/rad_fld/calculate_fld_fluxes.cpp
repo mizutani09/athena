@@ -221,11 +221,10 @@ void FLD::ComputeUpwindFlux(const int k, const int j, const int il,
 //! \brief Load Erad from u to r
 //!
 void FLD::LoadRadEnergyforFlux(AthenaArray<Real> &u, AthenaArray<Real> &r) {
-  // r.InitWithShallowSlice(u, 4, RadFLD::RAD, 1);
-  for (int k=0; k<u.GetDim4(); ++k)
-    for (int j=0; j<u.GetDim3(); ++j)
+  for (int k=0; k<u.GetDim3(); ++k)
+    for (int j=0; j<u.GetDim2(); ++j)
 #pragma omp simd
-      for (int i=0; i<u.GetDim2(); ++i)
-        r(k,j,i) = u(k,j,i,RadFLD::RAD);
+      for (int i=0; i<u.GetDim1(); ++i)
+        r(k,j,i) = u(RadFLD::RAD,k,j,i);
   return;
 }

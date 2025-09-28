@@ -269,27 +269,6 @@ void MGFLDDriver::Solve(int stage, Real dt) {
     pmg->LoadCoefficients(prfld->coeff, NGHOST);
     // pmg->AddFLDSource(prfld->source, NGHOST, dt_);
     // std::cout << "Finish LoadFinesData" << std::endl;
-
-    // 供給側の ghost 幅をはっきり観測
-const int ngh_src = NGHOST;  // prfld->u の仕様どおり
-const int ni_src = prfld->u.GetDim3();
-const int nj_src = prfld->u.GetDim2();
-const int nk_src = prfld->u.GetDim1();
-
-const int ni_int_src = ni_src - 2*ngh_src;
-const int nj_int_src = nj_src - 2*ngh_src;
-const int nk_int_src = nk_src - 2*ngh_src;
-
-// MG 側 finest の内部幅（size_ は MG の）
-const int ni_int_mg = pmg->size_.nx1;
-const int nj_int_mg = pmg->size_.nx2;
-const int nk_int_mg = pmg->size_.nx3;
-
-// fprintf(stderr,
-//   "src int=(%d,%d,%d)  mg int=(%d,%d,%d)  nvar(u)=%d  nvar(MG)=%d  ngh_src=%d ngh_mg=%d\n",
-//   nk_int_src,nj_int_src,ni_int_src,
-//       nk_int_mg,nj_int_mg,ni_int_mg,
-//       prfld->u.GetDim4(), pmg->nvar_, ngh_src, pmg->ngh_);
   }
 
   // if (dt_ > 0.0 || fsteady_) {
