@@ -55,6 +55,8 @@
 #include "../parameter_input.hpp"
 #include "../rad_fld/mg_rad_fld.hpp"
 #include "../rad_fld/rad_fld.hpp"
+#include "../rad_fld/Newton_Raphson.hpp"
+#include "../rad_fld/linear_multigrid.hpp"
 #include "../reconstruct/reconstruction.hpp"
 #include "../scalars/scalars.hpp"
 #include "../units/units.hpp"
@@ -131,6 +133,8 @@ Mesh::Mesh(ParameterInput *pin, int mesh_test) :
                                         nullptr, nullptr, nullptr},
     MGFLDBoundaryFunction_{nullptr, nullptr, nullptr, nullptr, nullptr, nullptr},
     MGFLDCoeffBoundaryFunction_{nullptr, nullptr, nullptr, nullptr, nullptr, nullptr},
+    LinearMGBoundaryFunction_{nullptr, nullptr, nullptr, nullptr, nullptr, nullptr},
+    LinearMGCoeffBoundaryFunction_{nullptr, nullptr, nullptr, nullptr, nullptr, nullptr},
     MGGravitySourceMaskFunction_{}, MGCRDiffusionSourceMaskFunction_{},
     MGCRDiffusionCoeffMaskFunction_{},
     MGFLDSourceMaskFunction_{}, MGFLDCoeffMaskFunction_{} {
@@ -556,6 +560,9 @@ Mesh::Mesh(ParameterInput *pin, int mesh_test) :
   if (MGFLD_ENABLED)
     pmfld = new MGFLDDriver(this, pin);
 
+  if (NRMGFLD_ENABLED)
+    plinmg = new linearMGDriver(this, pin);
+
   // create MeshBlock list for this process
   gids_ = nslist[Globals::my_rank];
   gide_ = gids_ + nblist[Globals::my_rank] - 1;
@@ -639,6 +646,8 @@ Mesh::Mesh(ParameterInput *pin, IOWrapper& resfile, int mesh_test) :
                                         nullptr, nullptr, nullptr},
     MGFLDBoundaryFunction_{nullptr, nullptr, nullptr, nullptr, nullptr, nullptr},
     MGFLDCoeffBoundaryFunction_{nullptr, nullptr, nullptr, nullptr, nullptr, nullptr},
+    LinearMGBoundaryFunction_{nullptr, nullptr, nullptr, nullptr, nullptr, nullptr},
+    LinearMGCoeffBoundaryFunction_{nullptr, nullptr, nullptr, nullptr, nullptr, nullptr},
     MGGravitySourceMaskFunction_{}, MGCRDiffusionSourceMaskFunction_{},
     MGCRDiffusionCoeffMaskFunction_{},
     MGFLDSourceMaskFunction_{}, MGFLDCoeffMaskFunction_{} {
@@ -895,6 +904,9 @@ Mesh::Mesh(ParameterInput *pin, IOWrapper& resfile, int mesh_test) :
 
   if (MGFLD_ENABLED)
     pmfld = new MGFLDDriver(this, pin);
+  
+  if (NRMGFLD_ENABLED)
+    plinmg = new linearMGDriver(this, pin);
 
   // allocate data buffer
   int nbmin = nblist[0];
@@ -976,6 +988,7 @@ Mesh::~Mesh() {
   if (IM_RADIATION_ENABLED) delete pimrad;
   if (CRDIFFUSION_ENABLED) delete pmcrd;
   if (MGFLD_ENABLED) delete pmfld;
+  if (NRMGFLD_ENABLED) delete plinmg;
   if (turb_flag > 0) delete ptrbd;
   if (adaptive) { // deallocate arrays for AMR
     delete [] nref;
@@ -1276,6 +1289,22 @@ void Mesh::EnrollUserMGFLDBoundaryFunction(BoundaryFace dir,
     ATHENA_ERROR(msg);
   }
   MGFLDBoundaryFunction_[static_cast<int>(dir)] = my_bc;
+  return;
+}
+
+//----------------------------------------------------------------------------------------
+//! \fn void Mesh::EnrollUserLinearMGBoundaryFunction(BoundaryFace dir,
+//!                                                   MGBoundaryFunc my_bc)
+//! \brief Enroll a user-defined Linear Multigrid boundary function
+
+void Mesh::EnrollUserLinearMGBoundaryFunction(BoundaryFace dir, MGBoundaryFunc my_bc) {
+  std::stringstream msg;
+  if (dir < 0 || dir > 5) {
+    msg << "### FATAL ERROR in EnrollUserLinearMGBoundaryFunction" << std::endl
+        << "dirName = " << dir << " not valid" << std::endl;
+    ATHENA_ERROR(msg);
+  }
+  LinearMGBoundaryFunction_[static_cast<int>(dir)] = my_bc;
   return;
 }
 
@@ -1665,6 +1694,8 @@ void Mesh::Initialize(int res_flag, ParameterInput *pin) {
         pmb->pcrdiff->crbvar.SetupPersistentMPI();
       if (MGFLD_ENABLED)
         pmb->prfld->mgfldbvar.SetupPersistentMPI();
+      if (NRMGFLD_ENABLED)
+        pmb->pnrmgfld->nrmgfldbvar.SetupPersistentMPI();
     }
 
     // solve gravity for the first time
@@ -1975,6 +2006,9 @@ void Mesh::Initialize(int res_flag, ParameterInput *pin) {
 
     if (MGFLD_ENABLED)  // MGFLD has to be processed after MHD boundaries (caution)
       pmfld->Solve(1, 0.0);
+
+    if (NRMGFLD_ENABLED)  // NRMGFLD has to be processed after MHD boundaries (caution)
+      plinmg->Solve(1, 0.0);
 
     if (!res_flag && adaptive) {
       iflag = false;
@@ -2317,6 +2351,9 @@ void Mesh::ReserveMeshBlockPhysIDs() {
     ReserveTagPhysIDs(1);
   }
   if (MGFLD_ENABLED) {
+    ReserveTagPhysIDs(1);
+  }
+  if (NRMGFLD_ENABLED) {
     ReserveTagPhysIDs(1);
   }
 

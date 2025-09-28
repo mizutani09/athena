@@ -740,26 +740,13 @@ void MultigridDriver::TransferFromBlocksToRoot(bool initflag) {
     int i = static_cast<int>(loc.lx1);
     int j = static_cast<int>(loc.lx2);
     int k = static_cast<int>(loc.lx3);
-    std::cout << "In TransferFromBlocksToRoot: n = " << n << ", loc = " << loc.lx1 << ", " << loc.lx2 << ", " << loc.lx3
-              << ", level = " << loc.level << std::endl;
-    std::cout << "locrootlevel_ = " << locrootlevel_ << std::endl;
     if (loc.level == locrootlevel_) {
-    //   // std::cout << "In TransferFromBlocksToRoot: loclevel = rootlevel" << std::endl;
-    //   std::cout << "current_level_ = " << current_level_
-    //             << ", mgroot_->current_level_ = " << mgroot_->current_level_ << std::endl;
-    //   // if (current_level_ != mgroot_->current_level_) {
-    //     // std::cout << "n = " << n << ", loc = " << loc.lx1 << ", " << loc.lx2 << ", " << loc.lx3
-    //     //           << ", level = " << loc.level << std::endl;
-    //     // std::cout << "current_level_ = " << current_level_
-    //     //           << ", mgroot_->current_level_ = " << mgroot_->current_level_ << std::endl;
-    //   // }
       for (int v = 0; v < nvar_; ++v)
         mgroot_->SetData(MGVariable::src, v, k, j, i, rootbuf_[n*nv+v]);
       if (ffas_ && !initflag) {
         for (int v = 0; v < nvar_; ++v)
           mgroot_->SetData(MGVariable::u, v, k, j, i, rootbuf_[n*nv+nvar_+v]);
       }
-      // mgroot_->current_level_--;
     } else {
       LogicalLocation oloc;
       oloc.lx1 = (loc.lx1 >> 1);
@@ -1035,7 +1022,8 @@ void MultigridDriver::SolveFMGCycle() {
   Real def = 0.0;
   for (int v = 0; v < nvar_; ++v)
     def += CalculateDefectNorm(MGNormType::l2, v);
-  std::cout << "Before FMG defect L2-norm : " << def << std::endl;
+  if (Globals::my_rank == 0 && fshowdef_)
+    std::cout << "Before FMG defect L2-norm : " << def << std::endl;
 
   for (fmglevel_ = 0; fmglevel_ < ntotallevel_; fmglevel_++) {
     SolveVCycle(npresmooth_, npostsmooth_);
@@ -1049,7 +1037,8 @@ void MultigridDriver::SolveFMGCycle() {
   def = 0.0;
   for (int v = 0; v < nvar_; ++v)
     def += CalculateDefectNorm(MGNormType::l2, v);
-  std::cout << "After FMG defect L2-norm : " << def << std::endl;
+  if (Globals::my_rank == 0 && fshowdef_)
+    std::cout << "After FMG defect L2-norm : " << def << std::endl;
   fmglevel_ = ntotallevel_ - 1;
   if (fsubtract_average_)
     SubtractAverage(MGVariable::u);

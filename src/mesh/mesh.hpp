@@ -52,6 +52,8 @@ class CRDiffusion;
 class MGCRDiffusionDriver;
 class FLD;
 class MGFLDDriver;
+class NewtonRaphson;
+class linearMGDriver;
 class EquationOfState;
 class Field;
 class Gravity;
@@ -132,6 +134,7 @@ class MeshBlock {
   CosmicRay *pcr;
   CRDiffusion *pcrdiff;
   FLD *prfld;
+  NewtonRaphson *pnrmgfld;
   Field *pfield;
   Gravity *pgrav;
   PassiveScalars *pscalars;
@@ -230,6 +233,7 @@ class Mesh {
   friend class MGGravityDriver;
   friend class MGCRDiffusionDriver;
   friend class MGFLDDriver;
+  friend class linearMGDriver;
   friend class Gravity;
   friend class HydroDiffusion;
   friend class FieldDiffusion;
@@ -279,6 +283,7 @@ class Mesh {
   MGGravityDriver *pmgrd;
   MGCRDiffusionDriver *pmcrd;
   MGFLDDriver *pmfld;
+  linearMGDriver *plinmg;
   Units *punit;
 
   // implicit radiation iteration
@@ -368,6 +373,8 @@ class Mesh {
   MGBoundaryFunc MGCRDiffusionCoeffBoundaryFunction_[6];
   MGBoundaryFunc MGFLDBoundaryFunction_[6];
   MGBoundaryFunc MGFLDCoeffBoundaryFunction_[6];
+  MGBoundaryFunc LinearMGBoundaryFunction_[6];
+  MGBoundaryFunc LinearMGCoeffBoundaryFunction_[6];
   MGMaskFunc MGGravitySourceMaskFunction_;
   MGMaskFunc MGCRDiffusionSourceMaskFunction_;
   MGMaskFunc MGCRDiffusionCoeffMaskFunction_;
@@ -422,6 +429,7 @@ class Mesh {
 
   void EnrollUserMGCRDiffusionBoundaryFunction(BoundaryFace dir, MGBoundaryFunc my_bc);
   void EnrollUserMGFLDBoundaryFunction(BoundaryFace dir, MGBoundaryFunc my_bc);
+  void EnrollUserLinearMGBoundaryFunction(BoundaryFace dir, MGBoundaryFunc my_bc);
 
   //! \deprecated (felker):
   //! * provide trivial overload for old-style BoundaryFace enum argument

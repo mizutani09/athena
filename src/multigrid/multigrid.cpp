@@ -132,9 +132,6 @@ Multigrid::Multigrid(MultigridDriver *pmd, MeshBlock *pmb, int nghost) :
     int ncx=(size_.nx1>>ll)+2*ngh_;
     int ncy=(size_.nx2>>ll)+2*ngh_;
     int ncz=(size_.nx3>>ll)+2*ngh_;
-    std::cout << "Multigrid level " << l << ": "
-              << "nx = " << ncx << ", ny = " << ncy << ", nz = " << ncz
-              << ", nghost = " << ngh_ << std::endl;
     u_[l].NewAthenaArray(nvar_,ncz,ncy,ncx);
     src_[l].NewAthenaArray(nvar_,ncz,ncy,ncx);
     def_[l].NewAthenaArray(nvar_,ncz,ncy,ncx);

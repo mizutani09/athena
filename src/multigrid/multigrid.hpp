@@ -168,6 +168,7 @@ class Multigrid {
   friend class MGGravityDriver;
   friend class MGCRDiffusionDriver;
   friend class MGFLDDriver;
+  friend class linearMGDriver;
 
  protected:
   MultigridDriver *pmy_driver_;
@@ -206,6 +207,7 @@ class MultigridDriver {
   friend class MGGravityBoundaryValues;
   friend class MGCRDiffusion;
   friend class MGFLD;
+  friend class linearMG;
 
  protected:
   void CheckBoundaryFunctions();
