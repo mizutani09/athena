@@ -16,7 +16,7 @@
 #include "../athena.hpp"
 #include "../athena_arrays.hpp"
 #include "../multigrid/multigrid.hpp"
-#include "rad_fld.hpp"
+#include "Newton_Raphson.hpp"
 
 class MeshBlock;
 class ParameterInput;
@@ -51,7 +51,8 @@ class linearMG : public Multigrid {
 
   friend class linearMGDriver;
 
-  MeshBlock* pmy_block;;
+  MeshBlock* pmy_block;
+
   AthenaArray<Real> u, A, B, C, D, RHS;
 
  private:

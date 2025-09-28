@@ -233,6 +233,7 @@ class Mesh {
   friend class MGGravityDriver;
   friend class MGCRDiffusionDriver;
   friend class MGFLDDriver;
+  friend class NewtonRaphson;
   friend class linearMGDriver;
   friend class Gravity;
   friend class HydroDiffusion;
@@ -283,7 +284,8 @@ class Mesh {
   MGGravityDriver *pmgrd;
   MGCRDiffusionDriver *pmcrd;
   MGFLDDriver *pmfld;
-  linearMGDriver *plinmg;
+  // linearMGDriver *plinmg;
+  NewtonRaphson *pmnr;
   Units *punit;
 
   // implicit radiation iteration

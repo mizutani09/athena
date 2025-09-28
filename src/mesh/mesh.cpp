@@ -561,7 +561,7 @@ Mesh::Mesh(ParameterInput *pin, int mesh_test) :
     pmfld = new MGFLDDriver(this, pin);
 
   if (NRMGFLD_ENABLED)
-    plinmg = new linearMGDriver(this, pin);
+    pmnr = new NewtonRaphson(this, pin);
 
   // create MeshBlock list for this process
   gids_ = nslist[Globals::my_rank];

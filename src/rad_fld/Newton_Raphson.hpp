@@ -23,6 +23,7 @@
 #include "../bvals/bvals_interfaces.hpp"
 #include "../bvals/cc/mg/bvals_mg.hpp"
 #include "../globals.hpp"
+#include "../hydro/hydro.hpp"
 #include "../mesh/mesh.hpp"
 // #include "../task_list/mg_task_list.hpp"
 
@@ -38,29 +39,42 @@ class linearMG;
 class linearMGDriver;
 
 namespace NewtonRaphsonFLD {
-  constexpr int NTEMP=2, NMATRIX=15, NCOEFF=9, NOPACITY=2;
-  enum TempIndex {GAS=0, RAD=1};
-  enum CoeffIndex {DXM=0, DXP=1, DYM=2, DYP=3, DZM=4, DZP=5};
-  enum MatrixIndex {CCC=0, CCM=1, CCP=2, CMC=3, CPC=4, MCC=5, PCC=6,
-                    CPRR=7, CPRRS=8, CPRG=9, CPRC=10, CPRCS=11, CPGR=12, CPGG=13, CPGC=14};
-                    // CMM=7, CMP=8, CPM=9,
-                    // CPP=10, MCM=11, MCP=12, PCM=13, PCP=14, MMC=15, MPC=16, PMC=17, PPC=18};
+  constexpr int NTEMP=2, NMATRIX=15, NCOEFF=8, NOPACITY=2;
+  // enum TempIndex {GAS=0, RAD=1};
+  enum TempIndex {RAD=0, GAS=1}; // caution!!
+  enum CoeffIndex {DCCF=0, DCCS=1, DXM=2, DXP=3, DYM=4, DYP=5, DZM=6, DZP=7};
+  enum MatrixIndex {CCC=0, CCM=1, CCP=2, CMC=3, CPC=4, MCC=5, PCC=6,};
   enum OpacityIndex {SIGMA_P=0, SIGMA_R=1};
 }
 
 class NewtonRaphson {
  public:
-  NewtonRaphson(MeshBlock *pmb, ParameterInput *pin);
+  // NewtonRaphson(MeshBlock *pmb, ParameterInput *pin);
+  NewtonRaphson(Mesh *pm, ParameterInput *pin);
   ~NewtonRaphson();
   void Solve(int stage, Real dt);
-  void CalculateCoefficients(AthenaArray<Real> &u, Real dt);
+  void CalculateCoefficients(const AthenaArray<Real> &u_work,
+                             const AthenaArray<Real> &u_pre,
+                             const AthenaArray<Real> &w_hydro, Real dt);
+  void UpdateHydroVariables(const AthenaArray<Real> &w, AthenaArray<Real> &u,
+                             const AthenaArray<Real> &u_fld);
+  void UpdateRadEnergy(AthenaArray<Real> &u_work, const AthenaArray<Real> &delta_u);
+
+  friend class linearMG;
+
   linearMG *plinmg;
+  linearMGDriver *plinmgdriver;
 
   CellCenteredBoundaryVariable nrmgfldbvar;
 
-  AthenaArray<Real> u; // radiation energy density
+  AthenaArray<Real> u_pre; // previous radiation energy density
+  AthenaArray<Real> u_work; // radiation energy density in work
+  AthenaArray<Real> delta_u; // correction of radiation energy density
   AthenaArray<Real> coeff; // coefficients
   AthenaArray<Real> rhs; // right-hand side
+  bool only_rad = false;
+
+  AthenaArray<Real> sigma_p, sigma_r;
 
  private:
   MeshBlock* pmy_block;

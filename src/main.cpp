@@ -47,6 +47,8 @@
 #include "outputs/outputs.hpp"
 #include "parameter_input.hpp"
 #include "rad_fld/mg_rad_fld.hpp"
+#include "rad_fld/Newton_Raphson.hpp"
+#include "rad_fld/linear_multigrid.hpp"
 #include "task_list/chem_rad_task_list.hpp"
 #include "utils/utils.hpp"
 
@@ -490,6 +492,10 @@ int main(int argc, char *argv[]) {
 
     if (MGFLD_ENABLED) {
       pmesh->pmfld->Solve(0, pmesh->dt);
+    }
+
+    if (NRMGFLD_ENABLED) {
+      pmesh->pmnr->Solve(0, pmesh->dt);
     }
 
     // chemistry with radiation

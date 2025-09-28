@@ -221,10 +221,9 @@ void linearMGDriver::Solve(int stage, Real dt) {
     // assume all the data are located on the same node
     NewtonRaphson *pnrmgfld = pmg->pmy_block_->pnrmgfld;
 //     prfld->CalculateCoefficients(phydro->w, prfld->u);
-//     pmg->LoadSource(prfld->u, 0, NGHOST, 1.0);
-    pmg->LoadFinestData(pnrmgfld->u, 0, NGHOST); // always load the initial guess
+    pmg->LoadSource(pnrmgfld->rhs, 0, NGHOST, 1.0);
+    pmg->LoadFinestData(pnrmgfld->u_work, 0, NGHOST); // always load the initial guess
     pmg->LoadCoefficients(pnrmgfld->coeff, NGHOST);
-//     // pmg->AddFLDSource(prfld->source, NGHOST, dt_);
   }
 
   SetupMultigrid(false);
@@ -242,14 +241,15 @@ void linearMGDriver::Solve(int stage, Real dt) {
   for (auto itr = vmg_.begin(); itr < vmg_.end(); itr++) {
     linearMG *pmg = static_cast<linearMG*>(*itr);
     NewtonRaphson *pnrmgfld = pmg->pmy_block_->pnrmgfld;
-    pmg->RetrieveResult(pnrmgfld->u, 0, NGHOST);
-    if (pnrmgfld->output_defect)
-      pmg->RetrieveDefect(pnrmgfld->def, 0, NGHOST);
+    pmg->RetrieveResult(pnrmgfld->u_work, 0, NGHOST);
+    // if (pnrmgfld->output_defect)
+    //   pmg->RetrieveDefect(pnrmgfld->def, 0, NGHOST);
   }
   fldtlist_->DoTaskListOneStage(pmy_mesh_, stage);
 // #pragma omp parallel for num_threads(nthreads_)
 //   for (auto itr = vmg_.begin(); itr < vmg_.end(); itr++) {
 //     linearMG *pmg = static_cast<linearMG*>(*itr);
+//     NewtonRaphson *pnrmgfld = pmg->pmy_block_->pnrmgfld;
 //     FLD *prfld = pmg->pmy_block_->prfld;
 //     Hydro *phydro = pmg->pmy_block_->phydro;
 //     if (!prfld->only_rad)
@@ -286,13 +286,10 @@ void linearMG::Smooth(AthenaArray<Real> &u, const AthenaArray<Real> &src,
             int c = (color + k + j) & 1;
 #pragma ivdep
             for (int i=il+c; i<=iu; i+=2) {
-              Real M = matrix(RadFLD::CCM,k,j,i)*u(RadFLD::RAD,k,j,i-1)+matrix(RadFLD::CCP,k,j,i)*u(RadFLD::RAD,k,j,i+1)
-                     + matrix(RadFLD::CMC,k,j,i)*u(RadFLD::RAD,k,j-1,i)+matrix(RadFLD::CPC,k,j,i)*u(RadFLD::RAD,k,j+1,i)
-                     + matrix(RadFLD::MCC,k,j,i)*u(RadFLD::RAD,k-1,j,i)+matrix(RadFLD::PCC,k,j,i)*u(RadFLD::RAD,k+1,j,i);
-              // Real egas_n = (src(RadFLD::GAS,k,j,i)-matrix(RadFLD::CPGR,k,j,i)*u(RadFLD::RAD,k,j,i)-matrix(RadFLD::CPGC,k,j,i))/matrix(RadFLD::CPGG,k,j,i);
-              // M += matrix(RadFLD::CPRG,k,j,i)*egas_n;
-              M += matrix(RadFLD::CPRC,k,j,i) + matrix(RadFLD::CPRCS,k,j,i);
-              work(k,j,i) = (src(RadFLD::RAD,k,j,i) - M) / (matrix(RadFLD::CCC,k,j,i) + matrix(RadFLD::CPRR,k,j,i) + matrix(RadFLD::CPRRS,k,j,i));
+              Real M = matrix(NewtonRaphsonFLD::CCM,k,j,i)*u(NewtonRaphsonFLD::RAD,k,j,i-1)+matrix(NewtonRaphsonFLD::CCP,k,j,i)*u(NewtonRaphsonFLD::RAD,k,j,i+1)
+                     + matrix(NewtonRaphsonFLD::CMC,k,j,i)*u(NewtonRaphsonFLD::RAD,k,j-1,i)+matrix(NewtonRaphsonFLD::CPC,k,j,i)*u(NewtonRaphsonFLD::RAD,k,j+1,i)
+                     + matrix(NewtonRaphsonFLD::MCC,k,j,i)*u(NewtonRaphsonFLD::RAD,k-1,j,i)+matrix(NewtonRaphsonFLD::PCC,k,j,i)*u(NewtonRaphsonFLD::RAD,k+1,j,i);
+              work(k,j,i) = (src(NewtonRaphsonFLD::RAD,k,j,i) - M) / matrix(NewtonRaphsonFLD::CCC,k,j,i);
             }
           }
         }
@@ -302,8 +299,7 @@ void linearMG::Smooth(AthenaArray<Real> &u, const AthenaArray<Real> &src,
             int c = (color + k + j) & 1;
 #pragma ivdep
             for (int i=il+c; i<=iu; i+=2) {
-              u(RadFLD::RAD,k,j,i) += omega_ * (work(k,j,i) - u(RadFLD::RAD,k,j,i));
-              u(RadFLD::GAS,k,j,i) = (src(RadFLD::GAS,k,j,i)-matrix(RadFLD::CPGR,k,j,i)*u(RadFLD::RAD,k,j,i)-matrix(RadFLD::CPGC,k,j,i))/matrix(RadFLD::CPGG,k,j,i);
+              u(NewtonRaphsonFLD::RAD,k,j,i) += omega_ * (work(k,j,i) - u(NewtonRaphsonFLD::RAD,k,j,i));
             }
           }
         }
@@ -319,13 +315,10 @@ void linearMG::Smooth(AthenaArray<Real> &u, const AthenaArray<Real> &src,
           int c = (color + k + j) & 1;
 #pragma ivdep
           for (int i=il+c; i<=iu; i+=2) {
-            Real M = matrix(RadFLD::CCM,k,j,i)*u(RadFLD::RAD,k,j,i-1)+matrix(RadFLD::CCP,k,j,i)*u(RadFLD::RAD,k,j,i+1)
-                    + matrix(RadFLD::CMC,k,j,i)*u(RadFLD::RAD,k,j-1,i)+matrix(RadFLD::CPC,k,j,i)*u(RadFLD::RAD,k,j+1,i)
-                    + matrix(RadFLD::MCC,k,j,i)*u(RadFLD::RAD,k-1,j,i)+matrix(RadFLD::PCC,k,j,i)*u(RadFLD::RAD,k+1,j,i);
-            // Real egas_n = (src(RadFLD::GAS,k,j,i)-matrix(RadFLD::CPGR,k,j,i)*u(RadFLD::RAD,k,j,i)-matrix(RadFLD::CPGC,k,j,i))/matrix(RadFLD::CPGG,k,j,i);
-            // M += matrix(RadFLD::CPRG,k,j,i)*egas_n;
-            M += matrix(RadFLD::CPRC,k,j,i) + matrix(RadFLD::CPRCS,k,j,i);
-            work(k,j,i) = (src(RadFLD::RAD,k,j,i) - M) / (matrix(RadFLD::CCC,k,j,i) + matrix(RadFLD::CPRR,k,j,i) + matrix(RadFLD::CPRRS,k,j,i));
+            Real M = matrix(NewtonRaphsonFLD::CCM,k,j,i)*u(NewtonRaphsonFLD::RAD,k,j,i-1)+matrix(NewtonRaphsonFLD::CCP,k,j,i)*u(NewtonRaphsonFLD::RAD,k,j,i+1)
+                    + matrix(NewtonRaphsonFLD::CMC,k,j,i)*u(NewtonRaphsonFLD::RAD,k,j-1,i)+matrix(NewtonRaphsonFLD::CPC,k,j,i)*u(NewtonRaphsonFLD::RAD,k,j+1,i)
+                    + matrix(NewtonRaphsonFLD::MCC,k,j,i)*u(NewtonRaphsonFLD::RAD,k-1,j,i)+matrix(NewtonRaphsonFLD::PCC,k,j,i)*u(NewtonRaphsonFLD::RAD,k+1,j,i);
+            work(k,j,i) = (src(NewtonRaphsonFLD::RAD,k,j,i) - M) / matrix(NewtonRaphsonFLD::CCC,k,j,i);
           }
         }
       }
@@ -334,16 +327,10 @@ void linearMG::Smooth(AthenaArray<Real> &u, const AthenaArray<Real> &src,
           int c = (color + k + j) & 1;
 #pragma ivdep
           for (int i=il+c; i<=iu; i+=2) {
-            u(RadFLD::RAD,k,j,i) += omega_ * (work(k,j,i) - u(RadFLD::RAD,k,j,i));
-            u(RadFLD::GAS,k,j,i) = (src(RadFLD::GAS,k,j,i)-matrix(RadFLD::CPGR,k,j,i)*u(RadFLD::RAD,k,j,i)-matrix(RadFLD::CPGC,k,j,i))/matrix(RadFLD::CPGG,k,j,i);
+            u(NewtonRaphsonFLD::RAD,k,j,i) += omega_ * (work(k,j,i) - u(NewtonRaphsonFLD::RAD,k,j,i));
           }
         }
       }
-      // std::cout << "rlev " << rlev << " il " << il << " iu " << iu << " jl " << jl << " ju " << ju << " kl " << kl << " ku " << ku << std::endl;
-      // std::cout << "CPRR " <<matrix(RadFLD::CPRR,1,1,1) << " CPRG " << matrix(RadFLD::CPRG,1,1,1) << " CPGR " <<matrix(RadFLD::CPGR,1,1,1) << " CPGG " << matrix(RadFLD::CPGG,1,1,1) << " CPGC " << matrix(RadFLD::CPGC,1,1,1) << " CPRC " << matrix(RadFLD::CPRC,1,1,1)<< std::endl;
-      // std::cout << "RSRC " << src(RadFLD::RAD,1,1,1) << " MGSRC " << matrix(RadFLD::CPRG,1,1,1)/matrix(RadFLD::CPGG,1,1,1)*src(RadFLD::GAS,1,1,1) << " MGCG " << matrix(RadFLD::CPRG,1,1,1)/matrix(RadFLD::CPGG,1,1,1)*matrix(RadFLD::CPGC,1,1,1) << " CPRC " <<matrix(RadFLD::CPRC,1,1,1)<< " CPRCS " << matrix(RadFLD::CPRCS,1,1,1) << std::endl;
-      // std::cout << src(RadFLD::RAD,1,1,1)-matrix(RadFLD::CPRG,1,1,1)/matrix(RadFLD::CPGG,1,1,1)*(src(RadFLD::GAS,1,1,1)-matrix(RadFLD::CPGC,1,1,1))-matrix(RadFLD::CPRC,1,1,1)<< std::endl;
-      // std::cout << "RAD " << u(RadFLD::RAD,1,1,1) << " GAS " << u(RadFLD::GAS,1,1,1) << " GSRC " <<src(RadFLD::GAS,1,1,1) << std::endl;
     }
   } else { // jacobi
     if (th == true && (ku-kl) >=  minth_) {
@@ -355,16 +342,16 @@ void linearMG::Smooth(AthenaArray<Real> &u, const AthenaArray<Real> &src,
           for (int j=jl; j<=ju; j++) {
 #pragma ivdep
             for (int i=il; i<=iu; i++) {
-              // Real M = matrix(RadFLD::CCM,k,j,i)*u(k,j,i-1)   + matrix(RadFLD::CCP,k,j,i)*u(k,j,i+1)
-              //        + matrix(RadFLD::CMC,k,j,i)*u(k,j-1,i)   + matrix(RadFLD::CPC,k,j,i)*u(k,j+1,i)
-              //        + matrix(RadFLD::MCC,k,j,i)*u(k-1,j,i)   + matrix(RadFLD::PCC,k,j,i)*u(k+1,j,i)
-              //        + matrix(RadFLD::CMM,k,j,i)*u(k,j-1,i-1) + matrix(RadFLD::CMP,k,j,i)*u(k,j-1,i+1)
-              //        + matrix(RadFLD::CPM,k,j,i)*u(k,j+1,i-1) + matrix(RadFLD::CPP,k,j,i)*u(k,j+1,i+1)
-              //        + matrix(RadFLD::MCM,k,j,i)*u(k-1,j,i-1) + matrix(RadFLD::MCP,k,j,i)*u(k-1,j,i+1)
-              //        + matrix(RadFLD::PCM,k,j,i)*u(k+1,j,i-1) + matrix(RadFLD::PCP,k,j,i)*u(k+1,j,i+1)
-              //        + matrix(RadFLD::MMC,k,j,i)*u(k-1,j-1,i) + matrix(RadFLD::MPC,k,j,i)*u(k-1,j+1,i)
-              //        + matrix(RadFLD::PMC,k,j,i)*u(k+1,j-1,i) + matrix(RadFLD::PPC,k,j,i)*u(k+1,j+1,i);
-              //   work(k,j,i) = (src(k,j,i) - M) / matrix(RadFLD::CCC,k,j,i);
+              // Real M = matrix(NewtonRaphsonFLD::CCM,k,j,i)*u(k,j,i-1)   + matrix(NewtonRaphsonFLD::CCP,k,j,i)*u(k,j,i+1)
+              //        + matrix(NewtonRaphsonFLD::CMC,k,j,i)*u(k,j-1,i)   + matrix(NewtonRaphsonFLD::CPC,k,j,i)*u(k,j+1,i)
+              //        + matrix(NewtonRaphsonFLD::MCC,k,j,i)*u(k-1,j,i)   + matrix(NewtonRaphsonFLD::PCC,k,j,i)*u(k+1,j,i)
+              //        + matrix(NewtonRaphsonFLD::CMM,k,j,i)*u(k,j-1,i-1) + matrix(NewtonRaphsonFLD::CMP,k,j,i)*u(k,j-1,i+1)
+              //        + matrix(NewtonRaphsonFLD::CPM,k,j,i)*u(k,j+1,i-1) + matrix(NewtonRaphsonFLD::CPP,k,j,i)*u(k,j+1,i+1)
+              //        + matrix(NewtonRaphsonFLD::MCM,k,j,i)*u(k-1,j,i-1) + matrix(NewtonRaphsonFLD::MCP,k,j,i)*u(k-1,j,i+1)
+              //        + matrix(NewtonRaphsonFLD::PCM,k,j,i)*u(k+1,j,i-1) + matrix(NewtonRaphsonFLD::PCP,k,j,i)*u(k+1,j,i+1)
+              //        + matrix(NewtonRaphsonFLD::MMC,k,j,i)*u(k-1,j-1,i) + matrix(NewtonRaphsonFLD::MPC,k,j,i)*u(k-1,j+1,i)
+              //        + matrix(NewtonRaphsonFLD::PMC,k,j,i)*u(k+1,j-1,i) + matrix(NewtonRaphsonFLD::PPC,k,j,i)*u(k+1,j+1,i);
+              //   work(k,j,i) = (src(k,j,i) - M) / matrix(NewtonRaphsonFLD::CCC,k,j,i);
             }
           }
         }
@@ -387,10 +374,10 @@ void linearMG::Smooth(AthenaArray<Real> &u, const AthenaArray<Real> &src,
         for (int j=jl; j<=ju; j++) {
 #pragma ivdep
           for (int i=il; i<=iu; i++) {
-            Real M = matrix(RadFLD::CCM,k,j,i)*u(RadFLD::RAD,k,j,i-1)+matrix(RadFLD::CCP,k,j,i)*u(RadFLD::RAD,k,j,i+1)
-                   + matrix(RadFLD::CMC,k,j,i)*u(RadFLD::RAD,k,j-1,i)+matrix(RadFLD::CPC,k,j,i)*u(RadFLD::RAD,k,j+1,i)
-                   + matrix(RadFLD::MCC,k,j,i)*u(RadFLD::RAD,k-1,j,i)+matrix(RadFLD::PCC,k,j,i)*u(RadFLD::RAD,k+1,j,i);
-            work(RadFLD::RAD,k,j,i) = (src(RadFLD::RAD,k,j,i) - M) / matrix(RadFLD::CCC,k,j,i);
+            Real M = matrix(NewtonRaphsonFLD::CCM,k,j,i)*u(NewtonRaphsonFLD::RAD,k,j,i-1)+matrix(NewtonRaphsonFLD::CCP,k,j,i)*u(NewtonRaphsonFLD::RAD,k,j,i+1)
+                   + matrix(NewtonRaphsonFLD::CMC,k,j,i)*u(NewtonRaphsonFLD::RAD,k,j-1,i)+matrix(NewtonRaphsonFLD::CPC,k,j,i)*u(NewtonRaphsonFLD::RAD,k,j+1,i)
+                   + matrix(NewtonRaphsonFLD::MCC,k,j,i)*u(NewtonRaphsonFLD::RAD,k-1,j,i)+matrix(NewtonRaphsonFLD::PCC,k,j,i)*u(NewtonRaphsonFLD::RAD,k+1,j,i);
+            work(NewtonRaphsonFLD::RAD,k,j,i) = (src(NewtonRaphsonFLD::RAD,k,j,i) - M) / matrix(NewtonRaphsonFLD::CCC,k,j,i);
           }
         }
       }
@@ -398,7 +385,7 @@ void linearMG::Smooth(AthenaArray<Real> &u, const AthenaArray<Real> &src,
         for (int j=jl; j<=ju; j++) {
 #pragma ivdep
           for (int i=il; i<=iu; i++)
-            u(RadFLD::RAD,k,j,i) += omega_ * (work(RadFLD::RAD,k,j,i) - u(RadFLD::RAD,k,j,i));
+            u(NewtonRaphsonFLD::RAD,k,j,i) += omega_ * (work(NewtonRaphsonFLD::RAD,k,j,i) - u(NewtonRaphsonFLD::RAD,k,j,i));
         }
       }
     }
@@ -432,19 +419,11 @@ void linearMG::CalculateDefect(AthenaArray<Real> &def, const AthenaArray<Real> &
 #pragma omp simd
       for (int i=il; i<=iu; i++) {
         // for RAD
-        Real M =(matrix(RadFLD::CCC,k,j,i)+matrix(RadFLD::CPRR,k,j,i))*u(RadFLD::RAD,k,j,i)
-               + matrix(RadFLD::CCM,k,j,i)*u(RadFLD::RAD,k,j,i-1)+matrix(RadFLD::CCP,k,j,i)*u(RadFLD::RAD,k,j,i+1)
-               + matrix(RadFLD::CMC,k,j,i)*u(RadFLD::RAD,k,j-1,i)+matrix(RadFLD::CPC,k,j,i)*u(RadFLD::RAD,k,j+1,i)
-               + matrix(RadFLD::MCC,k,j,i)*u(RadFLD::RAD,k-1,j,i)+matrix(RadFLD::PCC,k,j,i)*u(RadFLD::RAD,k+1,j,i);
-        M += matrix(RadFLD::CPRG,k,j,i)*u(RadFLD::GAS,k,j,i);
-        M += matrix(RadFLD::CPRC,k,j,i);
-        def(RadFLD::RAD,k,j,i) = src(RadFLD::RAD,k,j,i) - M;
-
-        // for GAS
-        M = matrix(RadFLD::CPGG,k,j,i)*u(RadFLD::GAS,k,j,i);
-        M += matrix(RadFLD::CPGR,k,j,i)*u(RadFLD::RAD,k,j,i);
-        M += matrix(RadFLD::CPGC,k,j,i);
-        def(RadFLD::GAS,k,j,i) = src(RadFLD::GAS,k,j,i) - M;
+        Real M = matrix(NewtonRaphsonFLD::CCC,k,j,i)*u(NewtonRaphsonFLD::RAD,k,j,i)
+               + matrix(NewtonRaphsonFLD::CCM,k,j,i)*u(NewtonRaphsonFLD::RAD,k,j,i-1)+matrix(NewtonRaphsonFLD::CCP,k,j,i)*u(NewtonRaphsonFLD::RAD,k,j,i+1)
+               + matrix(NewtonRaphsonFLD::CMC,k,j,i)*u(NewtonRaphsonFLD::RAD,k,j-1,i)+matrix(NewtonRaphsonFLD::CPC,k,j,i)*u(NewtonRaphsonFLD::RAD,k,j+1,i)
+               + matrix(NewtonRaphsonFLD::MCC,k,j,i)*u(NewtonRaphsonFLD::RAD,k-1,j,i)+matrix(NewtonRaphsonFLD::PCC,k,j,i)*u(NewtonRaphsonFLD::RAD,k+1,j,i);
+        def(NewtonRaphsonFLD::RAD,k,j,i) = src(NewtonRaphsonFLD::RAD,k,j,i) - M;
       }
     }
   }
@@ -475,19 +454,19 @@ void linearMG::CalculateFASRHS(AthenaArray<Real> &src, const AthenaArray<Real> &
 #pragma omp simd
       for (int i=il; i<=iu; i++) {
         // for RAD
-        Real M = (matrix(RadFLD::CCC,k,j,i)+matrix(RadFLD::CPRR,k,j,i))*u(RadFLD::RAD,k,j,i)
-               + matrix(RadFLD::CCM,k,j,i)*u(RadFLD::RAD,k,j,i-1)+matrix(RadFLD::CCP,k,j,i)*u(RadFLD::RAD,k,j,i+1)
-               + matrix(RadFLD::CMC,k,j,i)*u(RadFLD::RAD,k,j-1,i)+matrix(RadFLD::CPC,k,j,i)*u(RadFLD::RAD,k,j+1,i)
-               + matrix(RadFLD::MCC,k,j,i)*u(RadFLD::RAD,k-1,j,i)+matrix(RadFLD::PCC,k,j,i)*u(RadFLD::RAD,k+1,j,i);
-        M += matrix(RadFLD::CPRG,k,j,i)*u(RadFLD::GAS,k,j,i);
-        M += matrix(RadFLD::CPRC,k,j,i);
-        src(RadFLD::RAD,k,j,i) += M;
+        Real M = (matrix(NewtonRaphsonFLD::CCC,k,j,i)+matrix(NewtonRaphsonFLD::CPRR,k,j,i))*u(NewtonRaphsonFLD::RAD,k,j,i)
+               + matrix(NewtonRaphsonFLD::CCM,k,j,i)*u(NewtonRaphsonFLD::RAD,k,j,i-1)+matrix(NewtonRaphsonFLD::CCP,k,j,i)*u(NewtonRaphsonFLD::RAD,k,j,i+1)
+               + matrix(NewtonRaphsonFLD::CMC,k,j,i)*u(NewtonRaphsonFLD::RAD,k,j-1,i)+matrix(NewtonRaphsonFLD::CPC,k,j,i)*u(NewtonRaphsonFLD::RAD,k,j+1,i)
+               + matrix(NewtonRaphsonFLD::MCC,k,j,i)*u(NewtonRaphsonFLD::RAD,k-1,j,i)+matrix(NewtonRaphsonFLD::PCC,k,j,i)*u(NewtonRaphsonFLD::RAD,k+1,j,i);
+        M += matrix(NewtonRaphsonFLD::CPRG,k,j,i)*u(NewtonRaphsonFLD::GAS,k,j,i);
+        M += matrix(NewtonRaphsonFLD::CPRC,k,j,i);
+        src(NewtonRaphsonFLD::RAD,k,j,i) += M;
 
         // for GAS
-        M = matrix(RadFLD::CPGG,k,j,i)*u(RadFLD::GAS,k,j,i);
-        M += matrix(RadFLD::CPGR,k,j,i)*u(RadFLD::RAD,k,j,i);
-        M += matrix(RadFLD::CPGC,k,j,i);
-        src(RadFLD::GAS,k,j,i) += M;
+        M = matrix(NewtonRaphsonFLD::CPGG,k,j,i)*u(NewtonRaphsonFLD::GAS,k,j,i);
+        M += matrix(NewtonRaphsonFLD::CPGR,k,j,i)*u(NewtonRaphsonFLD::RAD,k,j,i);
+        M += matrix(NewtonRaphsonFLD::CPGC,k,j,i);
+        src(NewtonRaphsonFLD::GAS,k,j,i) += M;
       }
     }
   }
@@ -565,7 +544,7 @@ void linearMGDriver::ProlongateOctetBoundariesFluxCons(AthenaArray<Real> &dst,
 
 //----------------------------------------------------------------------------------------
 //! \fn void linearMG::CalculateMatrix(AthenaArray<Real> &matrix, const AthenaArray<Real> &u,
-//!                 const AthenaArray<Real> &src, const AthenaArray<Real> &coeff, 
+//!                 const AthenaArray<Real> &src, const AthenaArray<Real> &coeff,
 //!                 int rlev, int il, int iu, int jl, int ju, int kl, int ku, bool th)
 //! \brief calculate Matrix element for FLD
 //!        rlev = relative level from the finest level of this Multigrid block
@@ -584,43 +563,16 @@ void linearMG::CalculateMatrix(AthenaArray<Real> &matrix, const AthenaArray<Real
 #pragma omp simd
       for (int i=il; i<=iu; i++) {
         // center
-        matrix(RadFLD::CCC,k,j,i) = 1.0
-                                  + fac * (coeff(RadFLD::DXM,k,j,i)
-                                         + coeff(RadFLD::DXP,k,j,i)
-                                         + coeff(RadFLD::DYM,k,j,i)
-                                         + coeff(RadFLD::DYP,k,j,i)
-                                         + coeff(RadFLD::DZM,k,j,i)
-                                         + coeff(RadFLD::DZP,k,j,i));
+        matrix(NewtonRaphsonFLD::CCC,k,j,i) = fac*coeff(NewtonRaphsonFLD::DCCF,k,j,i)
+                                            + coeff(NewtonRaphsonFLD::DCCS,k,j,i);
 
         // face
-        matrix(RadFLD::CCM,k,j,i) = -fac*coeff(RadFLD::DXM,k,j,i);
-        matrix(RadFLD::CCP,k,j,i) = -fac*coeff(RadFLD::DXP,k,j,i);
-        matrix(RadFLD::CMC,k,j,i) = -fac*coeff(RadFLD::DYM,k,j,i);
-        matrix(RadFLD::CPC,k,j,i) = -fac*coeff(RadFLD::DYP,k,j,i);
-        matrix(RadFLD::MCC,k,j,i) = -fac*coeff(RadFLD::DZM,k,j,i);
-        matrix(RadFLD::PCC,k,j,i) = -fac*coeff(RadFLD::DZP,k,j,i);
-
-        // coupling
-        Real Tg = coeff(RadFLD::DCOUPLE,k,j,i)*u(RadFLD::GAS,k,j,i); // latest energy
-        matrix(RadFLD::CPRR,k,j,i) = dt*c_ph*coeff(RadFLD::DSIGMAP,k,j,i)
-                                   + dt*coeff(RadFLD::DPV,k,j,i); // for P: \nabla v
-        matrix(RadFLD::CPRG,k,j,i) = -4.0*dt*c_ph*coeff(RadFLD::DSIGMAP,k,j,i)
-                                     *a_r*std::pow(Tg, 3)*coeff(RadFLD::DCOUPLE,k,j,i);
-        matrix(RadFLD::CPRC,k,j,i) =  3.0*dt*c_ph*coeff(RadFLD::DSIGMAP,k,j,i)
-                                     *a_r*std::pow(Tg, 4);
-        matrix(RadFLD::CPGR,k,j,i) = -dt*c_ph*coeff(RadFLD::DSIGMAP,k,j,i);
-        matrix(RadFLD::CPGG,k,j,i) = 1.0+4.0*dt*c_ph*coeff(RadFLD::DSIGMAP,k,j,i)
-                                     *a_r*std::pow(Tg, 3)*coeff(RadFLD::DCOUPLE,k,j,i);
-        matrix(RadFLD::CPGC,k,j,i) = -3.0*dt*c_ph*coeff(RadFLD::DSIGMAP,k,j,i)
-                                     *a_r*std::pow(Tg, 4);
-
-        // additional term from egas
-        matrix(RadFLD::CPRRS,k,j,i) = -matrix(RadFLD::CPRG,k,j,i)
-                                      *matrix(RadFLD::CPGR,k,j,i)
-                                      /matrix(RadFLD::CPGG,k,j,i);
-        matrix(RadFLD::CPRCS,k,j,i) = matrix(RadFLD::CPRG,k,j,i)
-                                     /matrix(RadFLD::CPGG,k,j,i)
-                                     *(u(RadFLD::GAS,k,j,i)-matrix(RadFLD::CPGC,k,j,i));
+        matrix(NewtonRaphsonFLD::CCM,k,j,i) = fac*coeff(NewtonRaphsonFLD::DXM,k,j,i);
+        matrix(NewtonRaphsonFLD::CCP,k,j,i) = fac*coeff(NewtonRaphsonFLD::DXP,k,j,i);
+        matrix(NewtonRaphsonFLD::CMC,k,j,i) = fac*coeff(NewtonRaphsonFLD::DYM,k,j,i);
+        matrix(NewtonRaphsonFLD::CPC,k,j,i) = fac*coeff(NewtonRaphsonFLD::DYP,k,j,i);
+        matrix(NewtonRaphsonFLD::MCC,k,j,i) = fac*coeff(NewtonRaphsonFLD::DZM,k,j,i);
+        matrix(NewtonRaphsonFLD::PCC,k,j,i) = fac*coeff(NewtonRaphsonFLD::DZP,k,j,i);
       }
     }
   }
