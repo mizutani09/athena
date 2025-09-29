@@ -27,10 +27,20 @@
 #include "Newton_Raphson.hpp"
 #include "linear_multigrid.hpp"
 
-NewtonRaphson::NewtonRaphson(Mesh *pm, ParameterInput *pin)
- : pmy_mesh(pm) {
+NewtonRaphson::NewtonRaphson(Mesh *pm, ParameterInput *pin) :
+    pmy_mesh(pm),
+    coarse_u_(1, pmb->ncc3, pmb->ncc2, pmb->ncc1,
+                 (pmb->pmy_mesh->multilevel ? AthenaArray<Real>::DataStatus::allocated :
+                  AthenaArray<Real>::DataStatus::empty)), // ? caution!
+ {
   max_iter_ = pin->GetOrAddInteger("rad_fld", "nr_maxiter", 100);
   plinmg = new linearMG(pmb->pmy_mesh->pmnr, pmb, pin);
+
+
+  // enroll NRBoundaryVariable object
+  nrbvar.bvar_index = pmb->pbval->bvars.size();
+  pmb->pbval->bvars.push_back(&nrbvar);
+  pmb->pbval->bvars_main_int.push_back(&nrbvar);
 }
 
 NewtonRaphson::~NewtonRaphson() {
@@ -174,6 +184,13 @@ void NewtonRaphson::CalculateCoefficients(const AthenaArray<Real> &work,
     }
   }
 }
+
+
+Real NewtonRaphson::CalculateDefectNorm(NRNormType nrm, int n) {
+  Real norm=0.0;
+  return norm;
+}
+
 
 void NewtonRaphson::UpdateRadEnergy(AthenaArray<Real> &work, const AthenaArray<Real> &delta) {
   int is = pmy_block->is, ie = pmy_block->ie;

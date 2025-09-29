@@ -134,7 +134,7 @@ class MeshBlock {
   CosmicRay *pcr;
   CRDiffusion *pcrdiff;
   FLD *prfld;
-  NewtonRaphson *pnrmgfld;
+  NewtonRaphson *pnr;
   Field *pfield;
   Gravity *pgrav;
   PassiveScalars *pscalars;
