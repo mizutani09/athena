@@ -411,6 +411,8 @@ void BoundaryValues::StartReceivingSubset(BoundaryCommSubset phase,
         break;
       case BoundaryCommSubset::radiation:
         break;
+      case BoundaryCommSubset::newton_raphson:
+        break;
       case BoundaryCommSubset::radhydro:
       case BoundaryCommSubset::all:
       case BoundaryCommSubset::orbital:

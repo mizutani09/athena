@@ -1,39 +1,45 @@
-#ifndef RAD_FLD_LINEAR_MULTIGRID_HPP
-#define RAD_FLD_LINEAR_MULTIGRID_HPP
+#ifndef LINEAR_SOLVER_LINEARMG_LINEARMG_HPP_
+#define LINEAR_SOLVER_LINEARMG_LINEARMG_HPP_
 //========================================================================================
 // Athena++ astrophysical MHD code
 // Copyright(C) 2014 James M. Stone <jmstone@princeton.edu> and other code contributors
 // Licensed under the 3-clause BSD License, see LICENSE file for details
 //========================================================================================
-//! \file linear_multigrid.hpp
-//! \brief defines linearMG and linearMGDriver classes
+//! \file linearMG.hpp
+//  \brief defines the linear Multigrid base class
 
 // C headers
 
 // C++ headers
+#include <cstdint>  // std::int64_t
+#include <cstdio> // std::size_t
+#include <iostream>
+#include <unordered_map>
+#include <vector>
 
 // Athena++ headers
-#include "../athena.hpp"
-#include "../athena_arrays.hpp"
-#include "../multigrid/multigrid.hpp"
-#include "Newton_Raphson.hpp"
+#include "../../athena.hpp"
+#include "../../athena_arrays.hpp"
+#include "../../bvals/bvals_interfaces.hpp"
+#include "../../globals.hpp"
+#include "../../mesh/mesh.hpp"
+#include "../linear_solver.hpp"
+#include "../../multigrid/multigrid.hpp"
+
+#ifdef MPI_PARALLEL
+#include <mpi.h>
+#endif
 
 class MeshBlock;
 class ParameterInput;
 class Coordinates;
 class Multigrid;
-class FLDBoundaryTaskList;
+class LinearMGBoundaryTaskList;
 
-
-//! \class linearMG
-//! \brief Multigrid FLD solver for each block
-
-class linearMG : public Multigrid {
+class linearMG: public Multigrid {
  public:
   linearMG(linearMGDriver *pmd, MeshBlock *pmb, ParameterInput *pin);
   ~linearMG();
-
-  // void AddFLDSource(const AthenaArray<Real> &src, int ngh, Real dt);
 
   void Smooth(AthenaArray<Real> &dst, const AthenaArray<Real> &src,
               const AthenaArray<Real> &coeff, const AthenaArray<Real> &matrix, int rlev,
@@ -51,20 +57,13 @@ class linearMG : public Multigrid {
 
   friend class linearMGDriver;
 
-  MeshBlock* pmy_block;
-
-  AthenaArray<Real> u, A, B, C, D, RHS;
-
  private:
   Real omega_;
   int fsmoother_;
+
 };
 
-
-//! \class linearMGDriver
-//! \brief linear Multigrid solver
-
-class linearMGDriver : public MultigridDriver {
+class linearMGDriver: public MultigridDriver {
  public:
   linearMGDriver(Mesh *pm, ParameterInput *pin);
   ~linearMGDriver();
@@ -73,11 +72,13 @@ class linearMGDriver : public MultigridDriver {
                  AthenaArray<Real> &cbuf, const AthenaArray<bool> &ncoarse) final;
   friend class linearMG;
 
+  LinearSolver *plinsolver = nullptr;
+
  private:
-  FLDBoundaryTaskList *fldtlist_;
+  LinearMGBoundaryTaskList *linmgtlist_;
   Real omega_;
   int fsmoother_;
   bool fsteady_;
 };
 
-#endif // RAD_FLD_LINEAR_MULTIGRID_HPP
+#endif // LINEAR_SOLVER_LINEARMG_LINEARMG_HPP_

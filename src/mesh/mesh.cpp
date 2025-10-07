@@ -48,6 +48,8 @@
 #include "../hydro/hydro.hpp"
 #include "../hydro/hydro_diffusion/hydro_diffusion.hpp"
 #include "../multigrid/multigrid.hpp"
+#include "../newton_raphson/Newton_Raphson.hpp"
+#include "../nr_multigrid/NRFLD.hpp"
 #include "../nr_radiation/implicit/radiation_implicit.hpp"
 #include "../nr_radiation/radiation.hpp"
 #include "../orbital_advection/orbital_advection.hpp"
@@ -55,8 +57,6 @@
 #include "../parameter_input.hpp"
 #include "../rad_fld/mg_rad_fld.hpp"
 #include "../rad_fld/rad_fld.hpp"
-#include "../rad_fld/Newton_Raphson.hpp"
-#include "../rad_fld/linear_multigrid.hpp"
 #include "../reconstruct/reconstruction.hpp"
 #include "../scalars/scalars.hpp"
 #include "../units/units.hpp"
@@ -561,7 +561,7 @@ Mesh::Mesh(ParameterInput *pin, int mesh_test) :
     pmfld = new MGFLDDriver(this, pin);
 
   if (NRMGFLD_ENABLED)
-    pmnr = new NewtonRaphson(this, pin);
+    pmnr = new NRFLDDriver(this, pin);
 
   // create MeshBlock list for this process
   gids_ = nslist[Globals::my_rank];
@@ -904,9 +904,9 @@ Mesh::Mesh(ParameterInput *pin, IOWrapper& resfile, int mesh_test) :
 
   if (MGFLD_ENABLED)
     pmfld = new MGFLDDriver(this, pin);
-  
+
   if (NRMGFLD_ENABLED)
-    plinmg = new linearMGDriver(this, pin);
+    pmnr = new NRFLDDriver(this, pin);
 
   // allocate data buffer
   int nbmin = nblist[0];
@@ -988,7 +988,7 @@ Mesh::~Mesh() {
   if (IM_RADIATION_ENABLED) delete pimrad;
   if (CRDIFFUSION_ENABLED) delete pmcrd;
   if (MGFLD_ENABLED) delete pmfld;
-  if (NRMGFLD_ENABLED) delete plinmg;
+  if (NRMGFLD_ENABLED) delete pmnr;
   if (turb_flag > 0) delete ptrbd;
   if (adaptive) { // deallocate arrays for AMR
     delete [] nref;
@@ -1695,7 +1695,7 @@ void Mesh::Initialize(int res_flag, ParameterInput *pin) {
       if (MGFLD_ENABLED)
         pmb->prfld->mgfldbvar.SetupPersistentMPI();
       if (NRMGFLD_ENABLED)
-        pmb->pnrmgfld->nrmgfldbvar.SetupPersistentMPI();
+        pmb->prfld2->u_rad_fldbvar.SetupPersistentMPI(); // caution!
     }
 
     // solve gravity for the first time
@@ -2008,7 +2008,7 @@ void Mesh::Initialize(int res_flag, ParameterInput *pin) {
       pmfld->Solve(1, 0.0);
 
     if (NRMGFLD_ENABLED)  // NRMGFLD has to be processed after MHD boundaries (caution)
-      plinmg->Solve(1, 0.0);
+      pmnr->Solve_general(1, 0.0);
 
     if (!res_flag && adaptive) {
       iflag = false;

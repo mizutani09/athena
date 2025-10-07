@@ -4,7 +4,7 @@
 // Licensed under the 3-clause BSD License, see LICENSE file for details
 //========================================================================================
 //! \file Newton_Raphson.cpp
-//! \brief implementation of the functions commonly used in Newton-Raphson
+//! \brief implementation of the functions commonly used in NewtonRaphson
 
 // C headers
 
@@ -21,21 +21,79 @@
 #include "../athena.hpp"
 #include "../athena_arrays.hpp"
 #include "../coordinates/coordinates.hpp"
-
 #include "../mesh/mesh.hpp"
 #include "../parameter_input.hpp"
 #include "Newton_Raphson.hpp"
-#include "linear_multigrid.hpp"
 
-NewtonRaphson::NewtonRaphson(Mesh *pm, ParameterInput *pin) :
-    pmy_mesh(pm),
-    coarse_u_(1, pmb->ncc3, pmb->ncc2, pmb->ncc1,
-                 (pmb->pmy_mesh->multilevel ? AthenaArray<Real>::DataStatus::allocated :
-                  AthenaArray<Real>::DataStatus::empty)), // ? caution!
- {
-  max_iter_ = pin->GetOrAddInteger("rad_fld", "nr_maxiter", 100);
-  plinmg = new linearMG(pmb->pmy_mesh->pmnr, pmb, pin);
+//----------------------------------------------------------------------------------------
+//! \fn NewtonRaphson::NewtonRaphson(NewtonRaphsonDriver *pmd, MeshBlock *pmb, int nghost)
+//  \brief NewtonRaphson constructor
 
+NewtonRaphson::NewtonRaphson(NewtonRaphsonDriver *pmd, MeshBlock *pmb, int nghost) :
+  pmy_driver_(pmd), pmy_block_(pmb),
+  ngh_(nghost), nvar_(pmd->nvar_),
+  u_(nvar_, pmb->ncells3, pmb->ncells2, pmb->ncells1),
+  flux{ {nvar_, pmb->ncells3, pmb->ncells2, pmb->ncells1+1},
+        {nvar_, pmb->ncells3, pmb->ncells2+1, pmb->ncells1,
+          (pmb->pmy_mesh->f2 ? AthenaArray<Real>::DataStatus::allocated :
+          AthenaArray<Real>::DataStatus::empty)},
+        {nvar_, pmb->ncells3+1, pmb->ncells2, pmb->ncells1,
+          (pmb->pmy_mesh->f3 ? AthenaArray<Real>::DataStatus::allocated :
+          AthenaArray<Real>::DataStatus::empty)}
+  },
+  coarse_u_(nvar_, pmb->ncc3, pmb->ncc2, pmb->ncc1,
+                (pmb->pmy_mesh->multilevel ? AthenaArray<Real>::DataStatus::allocated :
+                AthenaArray<Real>::DataStatus::empty)),
+  nrbvar(pmb, &u_, &coarse_u_, flux),
+  ncoeff_(pmd->ncoeff_), nmatrix_(pmd->nmatrix_), defscale_(1.0) {
+  if (pmy_block_ != nullptr) {
+    loc_ = pmy_block_->loc;
+    size_ = pmy_block_->block_size;
+    if (size_.nx1 != size_.nx2 || size_.nx1 != size_.nx3) {
+      std::stringstream msg;
+      msg << "### FATAL ERROR in NewtonRaphson::NewtonRaphson" << std::endl
+          << "The NewtonRaphson solver requires logically cubic MeshBlock." << std::endl;
+      ATHENA_ERROR(msg);
+      return;
+    }
+    for (int i = 0; i < 6; ++i) {
+      if (pmy_block_->pbval->block_bcs[i] == BoundaryFlag::block)
+        nr_block_bcs_[i] = BoundaryFlag::block;
+      else
+        nr_block_bcs_[i] = pmy_driver_->nr_mesh_bcs_[i];
+    }
+  } else {
+    loc_.lx1 = loc_.lx2 = loc_.lx3 = 0;
+    loc_.level = 0;
+    size_ = pmy_driver_->pmy_mesh_->mesh_size;
+    size_.nx1 = pmy_driver_->nrbx1_;
+    size_.nx2 = pmy_driver_->nrbx2_;
+    size_.nx3 = pmy_driver_->nrbx3_;
+    for (int i = 0; i < 6; ++i)
+      nr_block_bcs_[i] = pmy_driver_->nr_mesh_bcs_[i];
+  }
+  rdx_ = (size_.x1max-size_.x1min)/static_cast<Real>(size_.nx1);
+  rdy_ = (size_.x2max-size_.x2min)/static_cast<Real>(size_.nx2);
+  rdz_ = (size_.x3max-size_.x3min)/static_cast<Real>(size_.nx3);
+
+  src_.NewAthenaArray(nvar_,pmb->ncells3,pmb->ncells2,pmb->ncells1);
+  def_.NewAthenaArray(nvar_,pmb->ncells3,pmb->ncells2,pmb->ncells1);
+  if (pmy_block_ == nullptr)
+    uold_.NewAthenaArray(nvar_,pmb->ncells3,pmb->ncells2,pmb->ncells1);
+  else
+    uold_.NewAthenaArray(nvar_,pmb->ncells3,pmb->ncells2,pmb->ncells1);
+  coeff_.NewAthenaArray(ncoeff_,pmb->ncells3,pmb->ncells2,pmb->ncells1);
+  matrix_.NewAthenaArray(nmatrix_,pmb->ncells3,pmb->ncells2,pmb->ncells1);
+
+  int nc1 = pmb->ncells1, nc2 = pmb->ncells2, nc3 = pmb->ncells3;
+  Mesh *pm = pmy_block_->pmy_mesh;
+
+  pmb->RegisterMeshBlockData(u_);
+
+  // "Enroll" in S/AMR by adding to vector of tuples of pointers in MeshRefinement class
+  if (pm->multilevel) {
+    refinement_idx = pmy_block_->pmr->AddToRefinement(&u_, &coarse_u_);
+  }
 
   // enroll NRBoundaryVariable object
   nrbvar.bvar_index = pmb->pbval->bvars.size();
@@ -43,167 +101,371 @@ NewtonRaphson::NewtonRaphson(Mesh *pm, ParameterInput *pin) :
   pmb->pbval->bvars_main_int.push_back(&nrbvar);
 }
 
+
+//----------------------------------------------------------------------------------------
+//! \fn NewtonRaphson::~NewtonRaphson
+//! \brief NewtonRaphson destroctor
+
 NewtonRaphson::~NewtonRaphson() {
-  delete plinmg;
 }
 
-void NewtonRaphson::Solve(int stage, Real dt) {
-  Hydro *phydro = pmy_block->phydro;
-  for (int iter = 0; iter < max_iter_; iter++) {
-    // make linear eq. to be solved with linear multigrid
-    CalculateCoefficients(u_work, u_pre, phydro->w, dt);
-    // solve linear eq. with linear multigrid
-    plinmgdriver->Solve(stage, dt);
-    UpdateRadEnergy(u_work, delta_u);
-  }
-  Hydro *phydro = pmy_block->phydro;
-  if (!only_rad)
-    UpdateHydroVariables(phydro->w, phydro->u, u_work);
-}
 
-void NewtonRaphson::UpdateHydroVariables(const AthenaArray<Real> &w, AthenaArray<Real> &u,
-                             const AthenaArray<Real> &u_fld) {
-  // int is = pmy_block->is, ie = pmy_block->ie;
-  // int js = pmy_block->js, je = pmy_block->je;
-  // int ks = pmy_block->ks, ke = pmy_block->ke;
-  // for (int k=ks; k<=ke; k++) {
-  //   for (int j=js; j<=je; j++) {
-  //     for (int i=is; i<=ie; i++) {
-  //       Real rho = w(IDN,k,j,i);
-  //       Real egas = w(IEN,k,j,i) - 0.5*rho*(SQR(w(IVX,k,j,i))
-  //                   + SQR(w(IVY,k,j,i)) + SQR(w(IVZ,k,j,i)));
-  //       Real erad_old = u_fld(k,j,i);
-  //       Real erad_new = u(k,j,i);
-  //       Real dedt = (erad_new - erad_old)/dt;
-  //       Real egas_new = egas - dedt;
-  //       if (egas_new < 0.0) {
-  //         std::stringstream msg;
-  //         msg << "### FATAL ERROR in NewtonRaphson::UpdateHydroVariables" << std::endl
-  //             << "Negative gas energy density is found at "
-  //             << "k=" << k << " j=" << j << " i=" << i << std::endl
-  //             << "egas=" << egas << " erad_old=" << erad_old
-  //             << " erad_new=" << erad_new << " dt=" << dt << std::endl;
-  //         ATHENA_ERROR(msg);
-  //       }
-  //       u(IDN,k,j,i) = rho;
-  //       u(IEN,k,j,i) = egas_new + 0.5*rho*(SQR(w(IVX,k,j,i))
-  //                     + SQR(w(IVY,k,j,i)) + SQR(w(IVZ,k,j,i)));
-  //       // u(IEN,k,j,i) -= dedt;
-  //     }
-  //   }
-  // }
-}
+// //----------------------------------------------------------------------------------------
+// //! \fn void NewtonRaphson::LoadFinestData(const AthenaArray<Real> &src, int ns, int ngh)
+// //! \brief Fill the inital guess in the active zone of the finest level
 
-void NewtonRaphson::CalculateCoefficients(const AthenaArray<Real> &work,
-                                          const AthenaArray<Real> &pre,
-                                          const AthenaArray<Real> &w, Real dt) {
-  int is = pmy_block->is, ie = pmy_block->ie;
-  int js = pmy_block->js, je = pmy_block->je;
-  int ks = pmy_block->ks, ke = pmy_block->ke;
-  AthenaArray<Real> dcp;
-  dcp.NewAthenaArray(6);
-  for (int k=ks; k<=ke; k++) {
-    for (int j=js; j<=je; j++) {
-      for (int i=is; i<=ie; i++) {
-        delta_u(k,j,i) = 0.0; // reset correction
-        Real erad = work(k,j,i);
-        Real erad_pre = pre(k,j,i);
+// void NewtonRaphson::LoadFinestData(const AthenaArray<Real> &src, int ns, int ngh) {
+//   AthenaArray<Real> &dst=u_;
+//   int is = pmy_block_->is;
+//   int ie = pmy_block_->ie;
+//   int js = pmy_block_->js;
+//   int je = pmy_block_->je;
+//   int ks = pmy_block_->ks;
+//   int ke = pmy_block_->ke;
+//   for (int v=0; v<nvar_; ++v) {
+//     int nsrc=ns+v;
+//     for (int k=ks; k<=ke; ++k) {
+//       for (int j=js; j<=je; ++j) {
+// #pragma omp simd
+//         for (int i=is; i<=ie; ++i) {
+//           dst(v,k,j,i)=src(nsrc,k,j,i);
+//         }
+//       }
+//     }
+//   }
+//   return;
+// }
 
-        Real Fg = 1.0;
-        Real Fr = 1.0;
-        Real dFg_deg = 0.0;
-        Real dFg_dEr = 0.0;
-        Real dFr_deg = 0.0;
-        Real dFr_dEr = 0.0;
-        AthenaArray<Real> dEr;
-        dEr.NewAthenaArray(3);
-        for (int ii = 0; ii < 3; ++ii) {
-          int di = (ii == 0) ? 1 : 0;
-          int dj = (ii == 1) ? 1 : 0;
-          int dk = (ii == 2) ? 1 : 0;
-          dEr(ii) = hidx*(u(RadFLD::RAD,k+dk,j+dj,i+di) - u(RadFLD::RAD,k-dk,j-dj,i-di));
+
+// //----------------------------------------------------------------------------------------
+// //! \fn void NewtonRaphson::LoadSource(const AthenaArray<Real> &src, int ns, int ngh,
+// //!                                Real fac)
+// //! \brief Fill the source in the active zone of the finest level
+
+// void NewtonRaphson::LoadSource(const AthenaArray<Real> &src, int ns, int ngh, Real fac) {
+//   AthenaArray<Real> &dst=src_;
+//   int is = pmy_block_->is;
+//   int ie = pmy_block_->ie;
+//   int js = pmy_block_->js;
+//   int je = pmy_block_->je;
+//   int ks = pmy_block_->ks;
+//   int ke = pmy_block_->ke;
+//   if (fac == 1.0) {
+//     for (int v=0; v<nvar_; ++v) {
+//       int nsrc=ns+v;
+//       for (int k=ks; k<=ke; ++k) {
+//         for (int j=js; j<=je; ++j) {
+// #pragma omp simd
+//           for (int i=is; i<=ie; ++i) {
+//             dst(v,k,j,i)=src(nsrc,k,j,i);
+//           }
+//         }
+//       }
+//     }
+//   } else {
+//     for (int v=0; v<nvar_; ++v) {
+//       int nsrc=ns+v;
+//       for (int k=ks; k<=ke; ++k) {
+//         for (int j=js; j<=je; ++j) {
+// #pragma omp simd
+//           for (int i=is; i<=ie; ++i) {
+//             dst(v,k,j,i)=src(nsrc,k,j,i)*fac;
+//           }
+//         }
+//       }
+//     }
+//   }
+//   return;
+// }
+
+
+// //----------------------------------------------------------------------------------------
+// //! \fn void NewtonRaphson::LoadCoefficients(const AthenaArray<Real> &coeff, int ngh)
+// //! \brief Load coefficients of the diffusion and source terms
+
+// void NewtonRaphson::LoadCoefficients(const AthenaArray<Real> &coeff, int ngh) {
+//   AthenaArray<Real> &cm=coeff_;
+//   int is = pmy_block_->is;
+//   int ie = pmy_block_->ie;
+//   int js = pmy_block_->js;
+//   int je = pmy_block_->je;
+//   int ks = pmy_block_->ks;
+//   int ke = pmy_block_->ke;
+//   for (int v = 0; v < ncoeff_; ++v) {
+//     for (int k=ks; k<=ke; ++k) {
+//       for (int j=js; j<=je; ++j) {
+// #pragma omp simd
+//         for (int i=is; i<=ie; ++i) {
+//           cm(v,k,j,i) = coeff(v,k,j,i);
+//         }
+//       }
+//     }
+//   }
+//   return;
+// }
+
+
+//----------------------------------------------------------------------------------------
+//! \fn void NewtonRaphson::RetrieveResult(AthenaArray<Real> &dst, int ns, int ngh)
+//! \brief Set the result, including the ghost zone
+
+void NewtonRaphson::RetrieveResult(AthenaArray<Real> &dst, int ns, int ngh) {
+  const AthenaArray<Real> &src=u_;
+  int is = pmy_block_->is;
+  int ie = pmy_block_->ie;
+  int js = pmy_block_->js;
+  int je = pmy_block_->je;
+  int ks = pmy_block_->ks;
+  int ke = pmy_block_->ke;
+  for (int v=0; v<nvar_; ++v) {
+    int ndst=ns+v;
+    for (int k=ks; k<=ke; ++k) {
+      for (int j=js; j<=je; ++j) {
+#pragma omp simd
+        for (int i=is; i<=ie; ++i) {
+          dst(ndst,k,j,i)=src(v,k,j,i);
         }
-        // Real dEr1 = hidx*(u(RadFLD::RAD,k,j,i+1) - u(RadFLD::RAD,k,j,i-1));
-        // Real dEr2 = hidx*(u(RadFLD::RAD,k,j+1,i) - u(RadFLD::RAD,k,j-1,i));
-        // Real dEr3 = hidx*(u(RadFLD::RAD,k+1,j,i) - u(RadFLD::RAD,k-1,j,i));
-        // Real gradE = std::sqrt(SQR(dEr1) + SQR(dEr2) + SQR(dEr3));
-        Real gradE = std::sqrt(SQR(dEr(0)) + SQR(dEr(1)) + SQR(dEr(2)));
-
-        Real sigma_rface, R, lambda;
-        if (fixed_flux_limitter) lambda = ONE_3RD;
-
-        for (int ii = 0; ii < 6; ++ii) {
-          int di = (ii == 0) ? -1 : (ii == 1) ? 1 : 0;
-          int dj = (ii == 2) ? -1 : (ii == 3) ? 1 : 0;
-          int dk = (ii == 4) ? -1 : (ii == 5) ? 1 : 0;
-          sigma_rface = std::min(0.5*(sigma_r(k,j,i) + sigma_r(k+dk,j+dj,i+di)),
-                std::max(2.0*sigma_r(k,j,i)*sigma_r(k+dk,j+dj,i+di)/(sigma_r(k,j,i) + sigma_r(k+dk,j+dj,i+di)),
-                2.0*TWO_3RD*idx)); // Howell & Greenough 2002 (after eq. 15)
-          R = gradE/(sigma_rface*u(RadFLD::RAD,k,j,i));
-          if (!fixed_flux_limitter) lambda = (2.0+R)/(6.0+2.0*R+R*R);
-          coeff(RadFLD::DXM+ii,k,j,i) = pmg->c_ph*lambda/sigma_rface;
-        }
-        Real sum_dcp = 0.0;
-        for (int n = 0; n < 6; n++) {
-          dcp(n) = 0.0;
-          sum_dcp += dcp(n);
-        }
-
-        // for P:\nabla v
-        R = gradE/(sigma_r(k,j,i)*u(RadFLD::RAD,k,j,i)); // center
-        if (!fixed_flux_limitter) lambda = (2.0+R)/(6.0+2.0*R+R*R);
-        Real chi = lambda+std::pow(lambda*R,2);
-
-        AthenaArray<Real> ngrad;
-        ngrad.NewAthenaArray(3);
-        for (int ii = 0; ii < 3; ++ii) ngrad(ii) = dEr(ii)/(gradE+TINY_NUMBER);
-
-        Real Dnablav = 0.0;
-        for (int jj = 0; jj < 3; ++jj) {
-          for (int ii = 0; ii < 3; ++ii) {
-            Real D_edd = 0.0;
-            if (ii == jj) D_edd += .5*(1.-chi);
-            D_edd += .5*(3.*chi-1.)*ngrad(jj)*ngrad(ii); //caution
-
-            int di = ii == 0 ? 1 : 0;
-            int dj = ii == 1 ? 1 : 0;
-            int dk = ii == 2 ? 1 : 0;
-
-            Real dv_dx = hidx*(w(IVX+jj,k+dk,j+dj,i+di) - w(IVX+jj,k-dk,j-dj,i-di));
-            Dnablav += D_edd * dv_dx;
-          }
-        }
-
-        coeff(NewtonRaphsonFLD::DCCF,k,j,i) = sum_dcp;
-        coeff(NewtonRaphsonFLD::DCCS,k,j,i) = 1.0 + dt*(c_ph_sim*sigma_p(k,j,i)+Dnablav); // from dFr_dEr
-        coeff(NewtonRaphsonFLD::DCCS,k,j,i) += -(dFr_deg/dFg_deg)*dFg_dEr;
-        for (int n = 0; n < 6; n++) coeff(NewtonRaphsonFLD::DXM+n,k,j,i) = dcp(n);
-
-        rhs(k,j,i) = -Fr + (dFr_deg/dFg_deg)*Fg;
       }
     }
   }
+  return;
 }
 
+
+//----------------------------------------------------------------------------------------
+//! \fn void NewtonRaphson::RetrieveDefect(AthenaArray<Real> &dst, int ns, int ngh)
+//! \brief Set the defect, including the ghost zone
+
+void NewtonRaphson::RetrieveDefect(AthenaArray<Real> &dst, int ns, int ngh) {
+  const AthenaArray<Real> &src=def_;
+  int is = pmy_block_->is;
+  int ie = pmy_block_->ie;
+  int js = pmy_block_->js;
+  int je = pmy_block_->je;
+  int ks = pmy_block_->ks;
+  int ke = pmy_block_->ke;
+  for (int v=0; v<nvar_; ++v) {
+    int ndst=ns+v;
+    for (int k=ks; k<=ke; ++k) {
+      for (int j=js; j<=je; ++j) {
+#pragma omp simd
+        for (int i=is; i<=ie; ++i) {
+          dst(ndst,k,j,i)=src(v,k,j,i)*defscale_;
+        }
+      }
+    }
+  }
+  return;
+}
+
+
+//----------------------------------------------------------------------------------------
+//! \fn void NewtonRaphson::ZeroClearData()
+//! \brief Clear the data array with zero
+
+void NewtonRaphson::ZeroClearData() {
+  u_.ZeroClear();
+  return;
+}
+
+
+//----------------------------------------------------------------------------------------
+//! \fn void NewtonRaphson::CalculateDefectBlock()
+//! \brief calculate the residual
+
+void NewtonRaphson::CalculateDefectBlock() {
+  int th = false;
+#ifdef OPENMP_PARALLEL
+  if (pmy_block_ == nullptr)
+    th = true;
+#endif
+  int is = pmy_block_->is;
+  int ie = pmy_block_->ie;
+  int js = pmy_block_->js;
+  int je = pmy_block_->je;
+  int ks = pmy_block_->ks;
+  int ke = pmy_block_->ke;
+
+  CalculateDefect(def_, u_, src_,
+                  coeff_, matrix_,
+                  is, ie, js, je, ks, ke, th);
+
+  return;
+}
+
+
+//----------------------------------------------------------------------------------------
+//! \fn void NewtonRaphson::CalculateMatrixBlock()
+//  \brief calculate matrix elements
+
+void NewtonRaphson::CalculateMatrixBlock() {
+  int is = pmy_block_->is;
+  int ie = pmy_block_->ie;
+  int js = pmy_block_->js;
+  int je = pmy_block_->je;
+  int ks = pmy_block_->ks;
+  int ke = pmy_block_->ke;
+
+  CalculateMatrix(matrix_, u_, src_, coeff_,
+                  is, ie, js, je, ks, ke, false);
+
+  return;
+}
+
+
+//----------------------------------------------------------------------------------------
+//! \fn Real NewtonRaphson::CalculateDefectNorm(MGNormType nrm, int n)
+//! \brief calculate the residual norm
 
 Real NewtonRaphson::CalculateDefectNorm(NRNormType nrm, int n) {
+  AthenaArray<Real> &def=def_;
+  int is = pmy_block_->is;
+  int ie = pmy_block_->ie;
+  int js = pmy_block_->js;
+  int je = pmy_block_->je;
+  int ks = pmy_block_->ks;
+  int ke = pmy_block_->ke;
+  Real dx=rdx_, dy=rdy_, dz=rdz_; //??
+
+  CalculateDefect(def_, u_, src_,
+                  coeff_, matrix_,
+                  is, ie, js, je, ks, ke, false);
+
   Real norm=0.0;
-  return norm;
-}
-
-
-void NewtonRaphson::UpdateRadEnergy(AthenaArray<Real> &work, const AthenaArray<Real> &delta) {
-  int is = pmy_block->is, ie = pmy_block->ie;
-  int js = pmy_block->js, je = pmy_block->je;
-  int ks = pmy_block->ks, ke = pmy_block->ke;
-  for (int k=ks; k<=ke; k++) {
-    for (int j=js; j<=je; j++) {
-      for (int i=is; i<=ie; i++) {
-        work(k,j,i) += delta(k,j,i);
+  if (nrm == NRNormType::max) {
+    for (int k=ks; k<=ke; ++k) {
+      for (int j=js; j<=je; ++j) {
+#pragma omp simd reduction(max: norm)
+        for (int i=is; i<=ie; ++i)
+          norm = std::max(norm, std::abs(def(n,k,j,i)));
+      }
+    }
+    return norm;
+  } else if (nrm == NRNormType::l1) {
+    for (int k=ks; k<=ke; ++k) {
+      for (int j=js; j<=je; ++j) {
+#pragma omp simd reduction(+: norm)
+        for (int i=is; i<=ie; ++i)
+          norm += std::abs(def(n,k,j,i));
+      }
+    }
+  } else { // L2 norm
+    for (int k=ks; k<=ke; ++k) {
+      for (int j=js; j<=je; ++j) {
+#pragma omp simd reduction(+: norm)
+        for (int i=is; i<=ie; ++i)
+          norm += SQR(def(n,k,j,i));
       }
     }
   }
+  return norm*dx*dy*dz*defscale_;
 }
 
 
+// //----------------------------------------------------------------------------------------
+// //! \fn Real NewtonRaphson::CalculateTotal(NRVariable type, int n)
+// //! \brief calculate the sum of the array (type: 0=src, 1=u)
 
+// Real NewtonRaphson::CalculateTotal(NRVariable type, int n) {
+//   AthenaArray<Real> &src =
+//                     (type == NRVariable::src) ? src_ : u_;
+//   Real s=0.0;
+//   int is = pmy_block_->is;
+//   int ie = pmy_block_->ie;
+//   int js = pmy_block_->js;
+//   int je = pmy_block_->je;
+//   int ks = pmy_block_->ks;
+//   int ke = pmy_block_->ke;
+//   int is, ie, js, je, ks, ke;
+//   Real dx=rdx_, dy=rdy_, dz=rdz_;
+//   for (int k=ks; k<=ke; ++k) {
+//     for (int j=js; j<=je; ++j) {
+// #pragma omp simd reduction(+: s)
+//       for (int i=is; i<=ie; ++i)
+//         s+=src(n,k,j,i);
+//     }
+//   }
+//   return s*dx*dy*dz;
+// }
+
+
+// //----------------------------------------------------------------------------------------
+// //! \fn Real NewtonRaphson::SubtractAverage(MGVariable type, int v, Real ave)
+// //! \brief subtract the average value (type: 0=src, 1=u)
+
+// void NewtonRaphson::SubtractAverage(MGVariable type, int n, Real ave) {
+//   AthenaArray<Real> &dst = (type == MGVariable::src) ? src_[nlevel_-1] : u_[nlevel_-1];
+//   int is, ie, js, je, ks, ke;
+//   is=js=ks=0;
+//   ie=is+size_.nx1+1, je=js+size_.nx2+1, ke=ks+size_.nx3+1;
+//   for (int k=ks; k<=ke; ++k) {
+//     for (int j=js; j<=je; ++j) {
+// #pragma omp simd
+//       for (int i=is; i<=ie; ++i)
+//         dst(n,k,j,i)-=ave;
+//     }
+//   }
+
+//   return;
+// }
+
+
+//----------------------------------------------------------------------------------------
+//! \fn void NewtonRaphson::StoreOldData()
+//! \brief store the old u data in the uold array
+
+void NewtonRaphson::StoreOldData() {
+  memcpy(uold_.data(), u_.data(),
+         u_.GetSizeInBytes());
+  return;
+}
+
+
+// //----------------------------------------------------------------------------------------
+// //! \fn void NewtonRaphson::SetData(MGVariable type, int n, int k, int j, int i, Real v)
+// //! \brief set a value to a cell on the current level
+
+// void NewtonRaphson::SetData(NRVariable type, int n, int k, int j, int i, Real v) {
+//   auto& arr = (type == NRVariable::src) ? src_:
+//               (type == NRVariable::u  ) ? u_ : coeff_;
+
+//   const int niTot = arr.GetDim3(), njTot = arr.GetDim2(), nkTot = arr.GetDim1();
+//   const int niInt = size_.nx1, njInt = size_.nx2, nkInt = size_.nx3;
+//   const int ngh   = ngh_;
+
+//   int ni = arr.GetDim3();
+//   int nj = arr.GetDim2();
+//   int nk = arr.GetDim1();
+//   int nn = arr.GetDim4();  // optional
+//   if ((n < 0) || (n >= nn) ||
+//     (ngh_ + i < 0) || (ngh_ + i >= ni) ||
+//     (ngh_ + j < 0) || (ngh_ + j >= nj) ||
+//     (ngh_ + k < 0) || (ngh_ + k >= nk)) {
+//     std::fprintf(stderr,
+//       "OOB in SetData(): n=%d i=%d j=%d k=%d (nn=%d ni=%d nj=%d nk=%d ngh=%d)\n",
+//       n,i,j,k, nn,ni,nj,nk,ngh_);
+//     __builtin_trap();  // or throw
+//   }
+//   if (type == MGVariable::src)
+//     src_[current_level_](n, ngh_+k, ngh_+j, ngh_+i) = v;
+//   else if (type == MGVariable::u)
+//     u_[current_level_](n, ngh_+k, ngh_+j, ngh_+i) = v;
+//   else
+//     coeff_[current_level_](n, ngh_+k, ngh_+j, ngh_+i) = v;
+//   return;
+// }
+
+void NewtonRaphson::AddDifference(AthenaArray<Real> &dst, const AthenaArray<Real> &src,
+                   int is, int ie, int js, int je, int ks, int ke) {
+  for (int v=0; v<nvar_; ++v) {
+    for (int k=ks; k<=ke; ++k) {
+      for (int j=js; j<=je; ++j) {
+#pragma omp simd
+        for (int i=is; i<=ie; ++i) {
+          dst(v,k,j,i) += (dst(v,k,j,i) - src(v,k,j,i));
+        }
+      }
+    }
+  }
+  return;
+}

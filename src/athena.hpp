@@ -170,7 +170,8 @@ enum CoordinateDirection {X1DIR=0, X2DIR=1, X3DIR=2};
 enum class BoundaryQuantity {cc, fc, cc_flcor, fc_flcor, mg, mg_faceonly, mg_coeff,
                              orbital_cc, orbital_fc};
 enum class HydroBoundaryQuantity {cons, prim};
-enum class BoundaryCommSubset {mesh_init, gr_amr, all, orbital, radiation, radhydro};
+enum class BoundaryCommSubset {mesh_init, gr_amr, all, orbital, radiation, radhydro,
+                               newton_raphson};
 // TODO(felker): consider generalizing/renaming to QuantityFormulation
 // TODO(Gong): currently disabled=background (with passive scalar advection),
 // and fixed is without passive scalar advection.
