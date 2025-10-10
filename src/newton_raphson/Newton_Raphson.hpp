@@ -74,37 +74,43 @@ class NewtonRaphson {
   void RetrieveResult(AthenaArray<Real> &dst, int ns, int ngh);
   void RetrieveDefect(AthenaArray<Real> &dst, int ns, int ngh);
   void ZeroClearData();
-  void SmoothBlock(int color);
+  // void SmoothBlock(int color);
   void CalculateDefectBlock();
-  void CalculateMatrixBlock();
+  // void CalculateMatrixBlock();
   Real CalculateDefectNorm(NRNormType nrm, int n);
   // Real CalculateTotal(NRVariable type, int n);
 //   void SubtractAverage(NRVariable type, int n, Real ave);
   void StoreOldData();
   // void SetData(NRVariable type, int n, int k, int j, int i, Real v);
-  void AddDifference(AthenaArray<Real> &dst, const AthenaArray<Real> &src,
-                   int is, int ie, int js, int je, int ks, int ke);
+  virtual void AddDifference(AthenaArray<Real> &dst, const AthenaArray<Real> &delta) = 0;
 
   // physics-dependent virtual functions
   virtual void LoadHydroVariables() = 0;
   virtual void UpdateHydroVariables() = 0;
-  virtual void CalculateCoefficients(const AthenaArray<Real> &work,
-                                     const AthenaArray<Real> &pre,
-                                     const AthenaArray<Real> &w, Real dt) = 0;
-  virtual void CalculateDefect(AthenaArray<Real> &def, const AthenaArray<Real> &u,
-               const AthenaArray<Real> &src, const AthenaArray<Real> &coeff,
-               const AthenaArray<Real> &matrix, int il, int iu, int jl, int ju,
-               int kl, int ku, bool th) = 0;
-  virtual void CalculateMatrix(AthenaArray<Real> &matrix, const AthenaArray<Real> &u,
-               const AthenaArray<Real> &src, const AthenaArray<Real> &coeff,
-              //  int rlev, int il, int iu, int jl, int ju, int kl, int ku, bool th) {}
-               int il, int iu, int jl, int ju, int kl, int ku, bool th) = 0;
+  virtual void CalculateCoefficientsOnce(const AthenaArray<Real> &u_pre,
+                                         const AthenaArray<Real> &w) = 0;
+  virtual void CalculateCoefficients(const AthenaArray<Real> &u_rad_old,
+                                     const AthenaArray<Real> &u_rad_new,
+                                    //  const AthenaArray<Real> &u_gas_old,
+                                    //  const AthenaArray<Real> &u_gas_new,
+                                     Real dt) = 0;
+  virtual void CalculateDefect(AthenaArray<Real> &def,
+                               const AthenaArray<Real> &u,
+                               const AthenaArray<Real> &u_old,
+                               const AthenaArray<Real> &coeff,
+                               bool th) = 0;
+  // virtual void CalculateMatrix(AthenaArray<Real> &matrix, const AthenaArray<Real> &u,
+  //              const AthenaArray<Real> &src, const AthenaArray<Real> &coeff,
+  //             //  int rlev, int il, int iu, int jl, int ju, int kl, int ku, bool th) {}
+  //              int il, int iu, int jl, int ju, int kl, int ku, bool th) = 0;
 
   friend class NewtonRaphsonDriver;
   friend class NewtonRaphsonTaskList;
   friend class NRBoundaryValues;
   friend class NRFLDDriver;
   friend class linearNRDriver;
+
+  bool output_defect;
 
   AthenaArray<Real> u_, def_, src_, uold_, coeff_, matrix_;
   AthenaArray<Real> flux[3];  // face-averaged flux vector
@@ -113,7 +119,12 @@ class NewtonRaphson {
   AthenaArray<Real> coarse_u_;
   int refinement_idx{-1};
 
+  AthenaArray<Real> delta_u_; // for temporary storage of updates
+  AthenaArray<Real> coarse_delta_u_;
+  AthenaArray<Real> empty_flux[3];
+
   NRBoundaryVariable nrbvar;
+  CellCenteredBoundaryVariable delta_bvar;
 
  protected:
   NewtonRaphsonDriver *pmy_driver_;
@@ -125,6 +136,8 @@ class NewtonRaphson {
   Real rdx_, rdy_, rdz_;
   Real defscale_;
 //   AthenaArray<Real> *u_, *def_, *src_, *uold_, *coeff_, *matrix_;
+
+  linearMG *plmg_; // to be set in derived class constructors
 
  private:
   TaskStates ts_;
@@ -142,8 +155,8 @@ class NewtonRaphsonDriver {
 
   // pure virtual function
   // virtual void Solve(int step, Real dt = 0.0) = 0;
-  virtual void Solve_general(int step, Real dt = 0.0);
-  virtual void SetLinearSolver() = 0;
+
+  void Solve_general(int step, Real dt = 0.0);
 
   friend class NewtonRaphson;
   friend class NewtonRaphsonTaskList;
@@ -151,16 +164,16 @@ class NewtonRaphsonDriver {
   friend class NRFLD;
   friend class linearMG;
 
- protected:
+  protected:
   // void CheckBoundaryFunctions();
   // void SetupNewtonRaphson();
   // void SetupCoefficients();
   void SolveOneCycle();
-  void SolveIterative();
-  void SolveIterativeFixedTimes();
+  // void SolveIterative();
+  // void SolveIterativeFixedTimes();
 
   Real CalculateDefectNorm(NRNormType nrm, int n);
-  void CalculateMatrix();
+  // void CalculateMatrix();
 
   // // small functions
   // int GetNumNewtonRaphsons() { return nblist_[Globals::my_rank]; }
@@ -173,11 +186,12 @@ class NewtonRaphsonDriver {
   // NRBoundaryFunc NRBoundaryFunction_[6];
   // NRBoundaryFunc NRCoeffBoundaryFunction_[6];
   Mesh *pmy_mesh_;
-  LinearSolver *plinsolver_;
+  linearMGDriver *plmgd_; // to be set in derived class constructors
 
   std::vector<NewtonRaphson*> vnr_;
   bool needinit_, fshowdef_;
   Real eps_, dt_;
+  int stage_;
   int niter_;
   int os_, oe_;
 

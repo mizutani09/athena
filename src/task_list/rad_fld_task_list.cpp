@@ -19,7 +19,7 @@
 #include "../hydro/hydro.hpp"
 #include "../mesh/mesh.hpp"
 #include "../parameter_input.hpp"
-#include "../rad_fld/rad_fld.hpp"
+#include "../mg_fld/rad_fld.hpp"
 #include "rad_fld_task_list.hpp"
 #include "task_list.hpp"
 

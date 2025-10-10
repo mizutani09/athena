@@ -32,7 +32,7 @@
 #include "../mesh/mesh.hpp"
 #include "../nr_radiation/radiation.hpp"
 #include "../parameter_input.hpp"
-#include "../rad_fld/rad_fld.hpp"
+#include "../mg_fld/rad_fld.hpp"
 #include "outputs.hpp"
 
 // Only proceed if HDF5 output enabled

@@ -27,7 +27,7 @@
 #endif
 
 //----------------------------------------------------------------------------------------
-//! \fn  void FLD::CalculateFluxes
+//! \fn  void FLD2::CalculateFluxes
 //! \brief Calculate FLD fluxes using reconstruction + weighted upwinding rule
 //!
 //! \note

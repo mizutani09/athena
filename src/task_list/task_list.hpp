@@ -235,13 +235,13 @@ class TimeIntegratorTaskList : public TaskList {
   TaskStatus SetBoundariesCRTC(MeshBlock *pmb, int stage);
   TaskStatus CRTCOpacity(MeshBlock *pmb, int stage);
 
-  TaskStatus CalculateMGFLDFlux(MeshBlock *pmb, int stage);
-  TaskStatus SendMGFLDFlux(MeshBlock *pmb, int stage);
-  TaskStatus ReceiveMGFLDFlux(MeshBlock *pmb, int stage);
-  TaskStatus IntegrateMGFLD(MeshBlock *pmb, int stage);
-  TaskStatus SendMGFLD(MeshBlock *pmb, int stage);
-  TaskStatus ReceiveMGFLD(MeshBlock *pmb, int stage);
-  TaskStatus SetBoundariesMGFLD(MeshBlock *pmb, int stage);
+  TaskStatus CalculateRADFLDFlux(MeshBlock *pmb, int stage);
+  TaskStatus SendRADFLDFlux(MeshBlock *pmb, int stage);
+  TaskStatus ReceiveRADFLDFlux(MeshBlock *pmb, int stage);
+  TaskStatus IntegrateRADFLD(MeshBlock *pmb, int stage);
+  TaskStatus SendRADFLD(MeshBlock *pmb, int stage);
+  TaskStatus ReceiveRADFLD(MeshBlock *pmb, int stage);
+  TaskStatus SetBoundariesRADFLD(MeshBlock *pmb, int stage);
 
   bool CheckNextMainStage(int stage) const {return stage_wghts[stage%nstages].main_stage;}
 
@@ -395,13 +395,13 @@ const TaskID RECV_RADSH(73);
 
 const TaskID SRCTERM_IMRAD(74);
 
-const TaskID CALC_MGFLDFLX(75);
-const TaskID SEND_MGFLDFLX(76);
-const TaskID RECV_MGFLDFLX(77);
-const TaskID SEND_MGFLD(78);
-const TaskID RECV_MGFLD(79);
-const TaskID SETB_MGFLD(80);
-const TaskID INT_MGFLD(81);
+const TaskID CALC_RADFLDFLX(75);
+const TaskID SEND_RADFLDFLX(76);
+const TaskID RECV_RADFLDFLX(77);
+const TaskID SEND_RADFLD(78);
+const TaskID RECV_RADFLD(79);
+const TaskID SETB_RADFLD(80);
+const TaskID INT_RADFLD(81);
 
 }  // namespace HydroIntegratorTaskNames
 #endif  // TASK_LIST_TASK_LIST_HPP_

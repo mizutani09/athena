@@ -39,15 +39,16 @@ namespace {
 }
 
 //----------------------------------------------------------------------------------------
-//! \fn linearMGDriver::linearMGFLDDriver(Mesh *pm, ParameterInput *pin)
+//! \fn linearMGDriver::linearMGFLDDriver(Mesh *pm, ParameterInput *pin, NewtonRaphsonDriver *pnrd)
 //! \brief linearMGDriver constructor
 
-linearMGDriver::linearMGDriver(Mesh *pm, ParameterInput *pin)
+linearMGDriver::linearMGDriver(Mesh *pm, ParameterInput *pin, NewtonRaphsonDriver *pnrd)
     : MultigridDriver(pm, pm->LinearMGBoundaryFunction_,
                           pm->LinearMGCoeffBoundaryFunction_,
                           nullptr,
                           nullptr,
-                          1, linearSolver::NCOEFF, linearSolver::NMATRIX) {
+                          1, linearSolver::NCOEFF, linearSolver::NMATRIX),
+      pnrd_(pnrd) {
   eps_ = pin->GetOrAddReal("mgfld", "threshold", -1.0);
   niter_ = pin->GetOrAddInteger("mgfld", "niteration", -1);
   ffas_ = pin->GetOrAddBoolean("mgfld", "fas", ffas_);
@@ -108,7 +109,7 @@ linearMGDriver::linearMGDriver(Mesh *pm, ParameterInput *pin)
   mgtlist_ = new MultigridTaskList(this);
 
   // Allocate the root multigrid
-  mgroot_ = new linearMG(this, nullptr, pin);
+  mgroot_ = new linearMG(this, nullptr, pin, nullptr);
 
   linmgtlist_ = new LinearMGBoundaryTaskList(pin, pm);
 
@@ -138,11 +139,14 @@ linearMGDriver::~linearMGDriver() {
 
 
 //----------------------------------------------------------------------------------------
-//! \fn linearMG::linearMG(linearMGDriver *pmd, MeshBlock *pmb, ParameterInput *pin)
+//! \fn linearMG::linearMG(linearMGDriver *pmd, MeshBlock *pmb, ParameterInput *pin, NewtonRaphson *pnr)
 //! \brief linearMG constructor
 
-linearMG::linearMG(linearMGDriver *pmd, MeshBlock *pmb, ParameterInput *pin)
-  : Multigrid(pmd, pmb, 1), omega_(pmd->omega_), fsmoother_(pmd->fsmoother_) {
+linearMG::linearMG(linearMGDriver *pmd, MeshBlock *pmb, ParameterInput *pin, NewtonRaphson *pnr)
+  : Multigrid(pmb->pmy_mesh->pmlmd, pmb, 1),
+  pmd_(pmb->pmy_mesh->pmlmd),
+  omega_(pmd_->omega_), fsmoother_(pmd_->fsmoother_),
+  pnr_(pnr) {
   btype = btypef = BoundaryQuantity::mg;
   pmgbval = new MGBoundaryValues(this, mg_block_bcs_);
 }
@@ -163,57 +167,54 @@ linearMG::~linearMG() {
 
 void linearMGDriver::Solve(int stage, Real dt) {
   dt_ = dt;
-  // Construct the Multigrid array
+  // Construct the linearMG array
   vmg_.clear();
   for (int i = 0; i < pmy_mesh_->nblocal; ++i)
-    vmg_.push_back(pmy_mesh_->my_blocks(i)->plinsolver->pmg);
+    vmg_.push_back(pmy_mesh_->my_blocks(i)->plmg);
 
   // load the source
 #pragma omp parallel for num_threads(nthreads_)
   for (auto itr = vmg_.begin(); itr < vmg_.end(); itr++) {
     linearMG *pmg = static_cast<linearMG*>(*itr);
     // assume all the data are located on the same node
-    FLD2 *prfld = pmg->pmy_block_->prfld2;
-    // Hydro *phydro = pmg->pmy_block_->phydro;
-    // if (!prfld->only_rad)
-    //   prfld->LoadHydroVariables(phydro->w, prfld->u);
-    // prfld->CalculateCoefficients(phydro->w, prfld->u);
-    // pmg->LoadSource(prfld->u, 0, NGHOST, 1.0);
-    // pmg->LoadFinestData(prfld->u, 0, NGHOST); // always load the initial guess
-    // pmg->LoadCoefficients(prfld->coeff, NGHOST);
+    // FLD2 *prfld = pmg->pmy_block_->prfld2;
+    NewtonRaphson *pnr = pmg->pnr_;
+    pmg->LoadSource(pnr->src_, 0, NGHOST, 1.0);
+    pmg->LoadFinestData(pnr->delta_u_, 0, NGHOST); // caution! should be zero
+    pmg->LoadCoefficients(pnr->coeff_, NGHOST);
     // pmg->AddFLDSource(prfld->source, NGHOST, dt_);
   }
 
-  // if (dt_ > 0.0 || fsteady_) {
-    SetupMultigrid(false);
-    if (mode_ == 0) {
-      SolveFMGCycle();
-    } else {
-      if (eps_ >= 0.0)
-        SolveIterative();
-      else
-        SolveIterativeFixedTimes();
-    }
+  SetupMultigrid(false);
+  if (mode_ == 0) {
+    SolveFMGCycle();
+  } else {
+    if (eps_ >= 0.0)
+      SolveIterative();
+    else
+      SolveIterativeFixedTimes();
+  }
 
   // Return the result
 #pragma omp parallel for num_threads(nthreads_)
   for (auto itr = vmg_.begin(); itr < vmg_.end(); itr++) {
     linearMG *pmg = static_cast<linearMG*>(*itr);
-    FLD2 *prfld = pmg->pmy_block_->prfld2;
+    // FLD2 *prfld = pmg->pmy_block_->prfld2;
+    NewtonRaphson *pnr = pmg->pnr_;
     Hydro *phydro = pmg->pmy_block_->phydro;
-  //   pmg->RetrieveResult(prfld->u, 0, NGHOST);
-  //   if (prfld->output_defect)
-  //     pmg->RetrieveDefect(prfld->def, 0, NGHOST);
-  // }
-  linmgtlist_->DoTaskListOneStage(pmy_mesh_, stage);
-#pragma omp parallel for num_threads(nthreads_)
-  for (auto itr = vmg_.begin(); itr < vmg_.end(); itr++) {
-    linearMG *pmg = static_cast<linearMG*>(*itr);
-    FLD2 *prfld = pmg->pmy_block_->prfld2;
-    Hydro *phydro = pmg->pmy_block_->phydro;
-    // if (!prfld->only_rad)
-    //   prfld->UpdateHydroVariables(phydro->w, phydro->u, prfld->u);
+    pmg->RetrieveResult(pnr->delta_u_, 0, NGHOST);
+    // if (pnr->output_defect)
+    //   pmg->RetrieveDefect(pnr->def_, 0, NGHOST);
   }
+  linmgtlist_->DoTaskListOneStage(pmy_mesh_, stage);
+// #pragma omp parallel for num_threads(nthreads_)
+//   for (auto itr = vmg_.begin(); itr < vmg_.end(); itr++) {
+//     linearMG *pmg = static_cast<linearMG*>(*itr);
+//     FLD2 *prfld = pmg->pmy_block_->prfld2;
+//     Hydro *phydro = pmg->pmy_block_->phydro;
+//     // if (!prfld->only_rad)
+//     //   prfld->UpdateHydroVariables(phydro->w, phydro->u, prfld->u);
+//   }
   return;
 }
 
@@ -339,10 +340,10 @@ void linearMG::Smooth(AthenaArray<Real> &u, const AthenaArray<Real> &src,
         for (int j=jl; j<=ju; j++) {
 #pragma ivdep
           for (int i=il; i<=iu; i++) {
-            Real M = matrix(linearSolver::CCM,k,j,i)*u(linearSolver::RAD,k,j,i-1)+matrix(linearSolver::CCP,k,j,i)*u(linearSolver::RAD,k,j,i+1)
-                   + matrix(linearSolver::CMC,k,j,i)*u(linearSolver::RAD,k,j-1,i)+matrix(linearSolver::CPC,k,j,i)*u(linearSolver::RAD,k,j+1,i)
-                   + matrix(linearSolver::MCC,k,j,i)*u(linearSolver::RAD,k-1,j,i)+matrix(linearSolver::PCC,k,j,i)*u(linearSolver::RAD,k+1,j,i);
-            work(linearSolver::RAD,k,j,i) = (src(linearSolver::RAD,k,j,i) - M) / matrix(linearSolver::CCC,k,j,i);
+            Real M = matrix(linearSolver::CCM,k,j,i)*u(k,j,i-1)+matrix(linearSolver::CCP,k,j,i)*u(k,j,i+1)
+                   + matrix(linearSolver::CMC,k,j,i)*u(k,j-1,i)+matrix(linearSolver::CPC,k,j,i)*u(k,j+1,i)
+                   + matrix(linearSolver::MCC,k,j,i)*u(k-1,j,i)+matrix(linearSolver::PCC,k,j,i)*u(k+1,j,i);
+            work(k,j,i) = (src(k,j,i) - M) / matrix(linearSolver::CCC,k,j,i);
           }
         }
       }
@@ -350,25 +351,24 @@ void linearMG::Smooth(AthenaArray<Real> &u, const AthenaArray<Real> &src,
         for (int j=jl; j<=ju; j++) {
 #pragma ivdep
           for (int i=il; i<=iu; i++)
-            u(linearSolver::RAD,k,j,i) += omega_ * (work(linearSolver::RAD,k,j,i) - u(linearSolver::RAD,k,j,i));
+            u(k,j,i) += omega_ * (work(k,j,i) - u(k,j,i));
         }
       }
     }
   }
-  // std::cout << "End linearMGFLD::Smooth" << std::endl;
   return;
 }
 
 
 //----------------------------------------------------------------------------------------
-//! \fn void linearMGFLD::CalculateDefect(AthenaArray<Real> &def,
+//! \fn void linearMG::CalculateDefect(AthenaArray<Real> &def,
 //!            const AthenaArray<Real> &u, const AthenaArray<Real> &src,
 //!            const AthenaArray<Real> &coeff, const AthenaArray<Real> &matrix,
 //!            int rlev, int il, int iu, int jl, int ju, int kl, int ku, bool th)
 //! \brief Implementation of the Defect calculation
 //!        rlev = relative level from the finest level of this Multigrid block
 
-void linearMGFLD::CalculateDefect(AthenaArray<Real> &def, const AthenaArray<Real> &u,
+void linearMG::CalculateDefect(AthenaArray<Real> &def, const AthenaArray<Real> &u,
                     const AthenaArray<Real> &src, const AthenaArray<Real> &coeff,
                     const AthenaArray<Real> &matrix, int rlev, int il, int iu,
                     int jl, int ju, int kl, int ku, bool th) {
@@ -397,14 +397,14 @@ void linearMGFLD::CalculateDefect(AthenaArray<Real> &def, const AthenaArray<Real
 
 
 //----------------------------------------------------------------------------------------
-//! \fn void linearMGFLD::CalculateFASRHS(AthenaArray<Real> &src,
+//! \fn void linearMG::CalculateFASRHS(AthenaArray<Real> &src,
 //!            const AthenaArray<Real> &u, const AthenaArray<Real> &coeff,
 //!            const AthenaArray<Real> &matrix, int rlev, int il, int iu, int jl, int ju,
 //!            int kl, int ku, bool th)
 //! \brief Implementation of the RHS calculation for FAS
 //!        rlev = relative level from the finest level of this Multigrid block
 
-void linearMGFLD::CalculateFASRHS(AthenaArray<Real> &src, const AthenaArray<Real> &u,
+void linearMG::CalculateFASRHS(AthenaArray<Real> &src, const AthenaArray<Real> &u,
                     const AthenaArray<Real> &coeff, const AthenaArray<Real> &matrix,
                     int rlev, int il, int iu, int jl, int ju, int kl, int ku, bool th) {
   // std::cout << "In linearMGFLD::CalculateFASRHS" << std::endl;
@@ -431,11 +431,11 @@ void linearMGFLD::CalculateFASRHS(AthenaArray<Real> &src, const AthenaArray<Real
 
 //caution, just copied from mg_gravity.cpp
 //----------------------------------------------------------------------------------------
-//! \fn void linearMGFLDDriver::ProlongateOctetBoundariesFluxCons(AthenaArray<Real> &dst,
+//! \fn void linearMGDriver::ProlongateOctetBoundariesFluxCons(AthenaArray<Real> &dst,
 //!                           AthenaArray<Real> &cbuf, const AthenaArray<bool> &ncoarse)
 //! \brief prolongate octet boundaries using the flux conservation formula
 
-void linearMGFLDDriver::ProlongateOctetBoundariesFluxCons(AthenaArray<Real> &dst,
+void linearMGDriver::ProlongateOctetBoundariesFluxCons(AthenaArray<Real> &dst,
                       AthenaArray<Real> &cbuf, const AthenaArray<bool> &ncoarse) {
   // std::cout << "In linearMGFLDDriver::ProlongateOctetBoundariesFluxCons" << std::endl;
   constexpr Real ot = 1.0/3.0;
@@ -498,13 +498,13 @@ void linearMGFLDDriver::ProlongateOctetBoundariesFluxCons(AthenaArray<Real> &dst
 
 
 //----------------------------------------------------------------------------------------
-//! \fn void linearMGFLD::CalculateMatrix(AthenaArray<Real> &matrix, const AthenaArray<Real> &u,
+//! \fn void linearMG::CalculateMatrix(AthenaArray<Real> &matrix, const AthenaArray<Real> &u,
 //!                 const AthenaArray<Real> &src, const AthenaArray<Real> &coeff,
 //!                 int rlev, int il, int iu, int jl, int ju, int kl, int ku, bool th)
 //! \brief calculate Matrix element for FLD
 //!        rlev = relative level from the finest level of this Multigrid block
 
-void linearMGFLD::CalculateMatrix(AthenaArray<Real> &matrix, const AthenaArray<Real> &u,
+void linearMG::CalculateMatrix(AthenaArray<Real> &matrix, const AthenaArray<Real> &u,
                      const AthenaArray<Real> &src, const AthenaArray<Real> &coeff,
                      int rlev, int il, int iu, int jl, int ju, int kl, int ku, bool th) {
   Real dx, dt = pmy_driver_->dt_;
@@ -520,7 +520,6 @@ void linearMGFLD::CalculateMatrix(AthenaArray<Real> &matrix, const AthenaArray<R
         // center
         matrix(linearSolver::CCC,k,j,i) = fac*coeff(linearSolver::DCCF,k,j,i)
                                             + coeff(linearSolver::DCCS,k,j,i);
-
         // face
         matrix(linearSolver::CCM,k,j,i) = fac*coeff(linearSolver::DXMF,k,j,i)
                                             + coeff(linearSolver::DXMS,k,j,i);

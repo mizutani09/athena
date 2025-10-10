@@ -79,3 +79,25 @@ void NRBoundaryVariable::SetBoundarySameLevel(Real *buf,
   BufferUtility::UnpackData(buf, var, nl_, nu_, si, ei, sj, ej, sk, ek, p);
   return;
 }
+
+// //----------------------------------------------------------------------------------------
+// //! \fn int NRBoundaryVariable::LoadBoundaryBufferSameLevel(Real *buf,
+// //                                                                const NeighborBlock& nb)
+// //  \brief Set cell-centered boundary buffers for sending to a block on the same level
+
+// int NRBoundaryVariable::LoadBoundaryBufferSameLevel(Real *buf, const NeighborBlock& nb) {
+//   MeshBlock *pmb = pmy_block_;
+//   int si, sj, sk, ei, ej, ek;
+
+//   si = (nb.ni.ox1 > 0) ? (pmb->ie - NGHOST + 1) : pmb->is;
+//   ei = (nb.ni.ox1 < 0) ? (pmb->is + NGHOST - 1) : pmb->ie;
+//   sj = (nb.ni.ox2 > 0) ? (pmb->je - NGHOST + 1) : pmb->js;
+//   ej = (nb.ni.ox2 < 0) ? (pmb->js + NGHOST - 1) : pmb->je;
+//   sk = (nb.ni.ox3 > 0) ? (pmb->ke - NGHOST + 1) : pmb->ks;
+//   ek = (nb.ni.ox3 < 0) ? (pmb->ks + NGHOST - 1) : pmb->ke;
+//   int p = 0;
+//   AthenaArray<Real> &var = *var_cc;
+//   BufferUtility::PackData(var, buf, sk, ek, nl_, nu_, si, ei, sj, ej, p);
+
+//   return p;
+// }

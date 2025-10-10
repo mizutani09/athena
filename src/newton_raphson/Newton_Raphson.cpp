@@ -45,6 +45,13 @@ NewtonRaphson::NewtonRaphson(NewtonRaphsonDriver *pmd, MeshBlock *pmb, int nghos
                 (pmb->pmy_mesh->multilevel ? AthenaArray<Real>::DataStatus::allocated :
                 AthenaArray<Real>::DataStatus::empty)),
   nrbvar(pmb, &u_, &coarse_u_, flux),
+  delta_u_(nvar_, pmb->ncells3, pmb->ncells2, pmb->ncells1),
+  coarse_delta_u_(nvar_, pmb->ncc3, pmb->ncc2, pmb->ncc1,
+                (pmb->pmy_mesh->multilevel ? AthenaArray<Real>::DataStatus::allocated :
+                AthenaArray<Real>::DataStatus::empty)),
+  empty_flux{AthenaArray<Real>(), AthenaArray<Real>(), AthenaArray<Real>()},
+  delta_bvar(pmb, &delta_u_, &coarse_delta_u_, empty_flux, false), //!
+  output_defect(true), // caution!
   ncoeff_(pmd->ncoeff_), nmatrix_(pmd->nmatrix_), defscale_(1.0) {
   if (pmy_block_ != nullptr) {
     loc_ = pmy_block_->loc;
@@ -95,10 +102,21 @@ NewtonRaphson::NewtonRaphson(NewtonRaphsonDriver *pmd, MeshBlock *pmb, int nghos
     refinement_idx = pmy_block_->pmr->AddToRefinement(&u_, &coarse_u_);
   }
 
+  // "Enroll" in SMR/AMR by adding to vector of pointers in MeshRefinement class
+  if (pmb->pmy_mesh->multilevel) {
+    refinement_idx = pmy_block_->pmr->AddToRefinement(&delta_u_, &coarse_delta_u_);
+  }
+
+
   // enroll NRBoundaryVariable object
   nrbvar.bvar_index = pmb->pbval->bvars.size();
   pmb->pbval->bvars.push_back(&nrbvar);
   pmb->pbval->bvars_main_int.push_back(&nrbvar);
+
+  // Enroll CellCenteredBoundaryVariable object for linear solver
+  delta_bvar.bvar_index = pmb->pbval->bvars.size();
+  pmb->pbval->bvars.push_back(&delta_bvar);
+  pmb->pbval->prfldbvar = &delta_bvar;
 }
 
 
@@ -286,31 +304,30 @@ void NewtonRaphson::CalculateDefectBlock() {
   int ks = pmy_block_->ks;
   int ke = pmy_block_->ke;
 
-  CalculateDefect(def_, u_, src_,
-                  coeff_, matrix_,
-                  is, ie, js, je, ks, ke, th);
+  CalculateDefect(def_, u_, uold_,
+                  coeff_, th);
 
   return;
 }
 
 
-//----------------------------------------------------------------------------------------
-//! \fn void NewtonRaphson::CalculateMatrixBlock()
-//  \brief calculate matrix elements
+// //----------------------------------------------------------------------------------------
+// //! \fn void NewtonRaphson::CalculateMatrixBlock()
+// //  \brief calculate matrix elements
 
-void NewtonRaphson::CalculateMatrixBlock() {
-  int is = pmy_block_->is;
-  int ie = pmy_block_->ie;
-  int js = pmy_block_->js;
-  int je = pmy_block_->je;
-  int ks = pmy_block_->ks;
-  int ke = pmy_block_->ke;
+// void NewtonRaphson::CalculateMatrixBlock() {
+//   int is = pmy_block_->is;
+//   int ie = pmy_block_->ie;
+//   int js = pmy_block_->js;
+//   int je = pmy_block_->je;
+//   int ks = pmy_block_->ks;
+//   int ke = pmy_block_->ke;
 
-  CalculateMatrix(matrix_, u_, src_, coeff_,
-                  is, ie, js, je, ks, ke, false);
+//   CalculateMatrix(matrix_, u_, src_, coeff_,
+//                   is, ie, js, je, ks, ke, false);
 
-  return;
-}
+//   return;
+// }
 
 
 //----------------------------------------------------------------------------------------
@@ -325,11 +342,10 @@ Real NewtonRaphson::CalculateDefectNorm(NRNormType nrm, int n) {
   int je = pmy_block_->je;
   int ks = pmy_block_->ks;
   int ke = pmy_block_->ke;
-  Real dx=rdx_, dy=rdy_, dz=rdz_; //??
+  Real dx=rdx_, dy=rdy_, dz=rdz_;
 
-  CalculateDefect(def_, u_, src_,
-                  coeff_, matrix_,
-                  is, ie, js, je, ks, ke, false);
+  CalculateDefect(def_, u_, uold_,
+                  coeff_, false);
 
   Real norm=0.0;
   if (nrm == NRNormType::max) {
@@ -454,18 +470,3 @@ void NewtonRaphson::StoreOldData() {
 //     coeff_[current_level_](n, ngh_+k, ngh_+j, ngh_+i) = v;
 //   return;
 // }
-
-void NewtonRaphson::AddDifference(AthenaArray<Real> &dst, const AthenaArray<Real> &src,
-                   int is, int ie, int js, int je, int ks, int ke) {
-  for (int v=0; v<nvar_; ++v) {
-    for (int k=ks; k<=ke; ++k) {
-      for (int j=js; j<=je; ++j) {
-#pragma omp simd
-        for (int i=is; i<=ie; ++i) {
-          dst(v,k,j,i) += (dst(v,k,j,i) - src(v,k,j,i));
-        }
-      }
-    }
-  }
-  return;
-}

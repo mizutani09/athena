@@ -172,7 +172,7 @@ FLD2::FLD2(MeshBlock *pmb, ParameterInput *pin) :
   Real leng_unit = pin->GetOrAddReal("hydro", "leng_unit", -1.0);
   if (time_unit < 0.0 && leng_unit < 0.0) {
     std::stringstream msg;
-    msg << "### FATAL ERROR in function [FLD::InitFLDConstants]" << std::endl;
+    msg << "### FATAL ERROR in function [FLD2::FLD2]" << std::endl;
     msg << "time_unit or leng_unit must be specified in block 'hydro'.";
     ATHENA_ERROR(msg);
   } else if (time_unit > 0.0 && leng_unit > 0.0) {
@@ -219,7 +219,7 @@ FLD2::~FLD2() {
 //----------------------------------------------------------------------------------------
 //! \fn void FLD2::LoadHydroVariables(const AthenaArray<Real> &w, AthenaArray<Real> &u)
 //! \brief Load hydro variables from conserved variables
-void FLD2::LoadHydroVariables(const AthenaArray<Real> &w, AthenaArray<Real> &u) {
+void FLD2::LoadHydroVariables(const AthenaArray<Real> &w, AthenaArray<Real> &fld_u_gas) {
   int il = pmy_block->is - NGHOST, iu = pmy_block->ie + NGHOST;
   int jl = pmy_block->js, ju = pmy_block->je;
   int kl = pmy_block->ks, ku = pmy_block->ke;
@@ -231,7 +231,7 @@ void FLD2::LoadHydroVariables(const AthenaArray<Real> &w, AthenaArray<Real> &u) 
   for (int k = kl; k <= ku; ++k) {
     for (int j = jl; j <= ju; ++j) {
       for (int i = il; i <= iu; ++i) {
-        u_gas(k,j,i) = igm1*w(IPR,k,j,i);
+        fld_u_gas(k,j,i) = igm1*w(IPR,k,j,i);
       }
     }
   }
@@ -244,7 +244,7 @@ void FLD2::LoadHydroVariables(const AthenaArray<Real> &w, AthenaArray<Real> &u) 
 //!               AthenaArray<Real> &hydro_u, const AthenaArray<Real> &fld_u)
 //! \brief Update conserved variables from hydro variables
 void FLD2::UpdateHydroVariables(AthenaArray<Real> &w, AthenaArray<Real> &hydro_u,
-                               const AthenaArray<Real> &u_gas) {
+                               const AthenaArray<Real> &fld_u_gas) {
   int il = pmy_block->is - NGHOST, iu = pmy_block->ie + NGHOST;
   int jl = pmy_block->js, ju = pmy_block->je;
   int kl = pmy_block->ks, ku = pmy_block->ke;
@@ -257,8 +257,8 @@ void FLD2::UpdateHydroVariables(AthenaArray<Real> &w, AthenaArray<Real> &hydro_u
   for (int k = kl; k <= ku; ++k) {
     for (int j = jl; j <= ju; ++j) {
       for (int i = il; i <= iu; ++i) {
-        hydro_u(IEN,k,j,i) += (u_gas(k,j,i) - igm1*w(IPR,k,j,i));
-        w(IPR,k,j,i) = gm1*u_gas(k,j,i);
+        hydro_u(IEN,k,j,i) += (fld_u_gas(k,j,i) - igm1*w(IPR,k,j,i));
+        w(IPR,k,j,i) = gm1*fld_u_gas(k,j,i);
       }
     }
   }

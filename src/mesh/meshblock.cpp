@@ -41,7 +41,7 @@
 #include "../nr_radiation/radiation.hpp"
 #include "../orbital_advection/orbital_advection.hpp"
 #include "../parameter_input.hpp"
-#include "../rad_fld/rad_fld.hpp"
+#include "../mg_fld/rad_fld.hpp"
 #include "../fld/fld.hpp"
 #include "../reconstruct/reconstruction.hpp"
 #include "../scalars/scalars.hpp"

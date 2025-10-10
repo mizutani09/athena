@@ -29,7 +29,7 @@ class NRBoundaryVariable : public CellCenteredBoundaryVariable {
   virtual ~NRBoundaryVariable() = default;
 
   // switch between NR class members "u" and "w" (or "u" and "u1", ...)
-  void SwapNRQuantity(AthenaArray<Real> &var_nr);
+  // void SwapNRQuantity(AthenaArray<Real> &var_nr);
   void SelectCoarseBuffer();
 
   // //!@{
@@ -54,7 +54,7 @@ class NRBoundaryVariable : public CellCenteredBoundaryVariable {
   //! ???
   //! NR is a unique cell-centered variable because of the relationship between
   //! NRBoundaryQuantity::cons u and NRBoundaryQuantity::prim w.
-  int LoadFluxBoundaryBufferSameLevel(Real *buf, const NeighborBlock& nb) final;
+  // int LoadFluxBoundaryBufferSameLevel(Real *buf, const NeighborBlock& nb) final;
 };
 
 #endif // BVALS_CC_NR_BVALS_NR_HPP_

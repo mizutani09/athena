@@ -36,7 +36,8 @@ class UserOpacityTable;
 
 
 namespace RadFLD2 {
-  constexpr int NTEMP=2, NMATRIX=15, NCOEFF=8, NOPACITY=2;
+  // constexpr int NTEMP=2, NMATRIX=15, NCOEFF=8, NOPACITY=2;
+  constexpr int NOPACITY=2;
 //   enum VarIndex {GAS=0, RAD=1};
   enum OpacityIndex {SIGMA_P=0, SIGMA_R=1};
 }
@@ -66,9 +67,9 @@ class FLD2 {
   bool fixed_flux_limitter;
 
   // for interaction with Hydro
-  void LoadHydroVariables(const AthenaArray<Real> &w, AthenaArray<Real> &u);
+  void LoadHydroVariables(const AthenaArray<Real> &w, AthenaArray<Real> &fld_u_gas);
   void UpdateHydroVariables(AthenaArray<Real> &w,
-       AthenaArray<Real> &hydro_u, const AthenaArray<Real> &fld_u);
+       AthenaArray<Real> &hydro_u, const AthenaArray<Real> &fld_u_gas);
 
   // for advection of radiation energy
   CellCenteredBoundaryVariable u_rad_fldbvar;
@@ -79,6 +80,11 @@ class FLD2 {
   void EnrollOpacityFunction(FLDOpacityFunc MyOpacityFunction);
   FLDOpacityFunc UpdateOpacity;
   UserOpacityTable *pUserOpacityTable;
+
+  // Function for Newton Raphson solver
+  void CalculateDefect(AthenaArray<Real> &def, const AthenaArray<Real> &u,
+                       const AthenaArray<Real> &u_old, const AthenaArray<Real> &coeff,
+                       Real dt, bool th);
 
   // constants
   Real a_r, c_ph, const_opacity;

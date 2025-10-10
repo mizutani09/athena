@@ -19,6 +19,7 @@
 #include "../gravity/gravity.hpp"
 #include "../mesh/mesh.hpp"
 #include "../parameter_input.hpp"
+#include "../newton_raphson/Newton_Raphson.hpp"
 #include "linmg_task_list.hpp"
 #include "task_list.hpp"
 
@@ -85,46 +86,40 @@ void LinearMGBoundaryTaskList::AddTask(const TaskID& id, const TaskID& dep) {
 }
 
 void LinearMGBoundaryTaskList::StartupTaskList(MeshBlock *pmb, int stage) {
-  // pmb->pgrav->gbvar.StartReceiving(BoundaryCommSubset::all);
-  pmb->plinsolver->linbvar.StartReceiving(BoundaryCommSubset::all);
+  pmb->pnr->delta_bvar.StartReceiving(BoundaryCommSubset::all);
   return;
 }
 
 TaskStatus LinearMGBoundaryTaskList::ClearLinearMGBoundary(MeshBlock *pmb, int stage) {
-  pmb->plinsolver->linbvar.ClearBoundary(BoundaryCommSubset::all);
+  pmb->pnr->delta_bvar.ClearBoundary(BoundaryCommSubset::all);
   return TaskStatus::success;
 }
 
 TaskStatus LinearMGBoundaryTaskList::SendLinearMGBoundary(MeshBlock *pmb, int stage) {
-  if (pmb->pgrav->fill_ghost)
-    pmb->pgrav->SaveFaceBoundaries();
-  pmb->pgrav->gbvar.SendBoundaryBuffers();
+  pmb->pnr->delta_bvar.SendBoundaryBuffers();
   return TaskStatus::success;
 }
 
 TaskStatus LinearMGBoundaryTaskList::ReceiveLinearMGBoundary(MeshBlock *pmb,
                                                                int stage) {
-  bool ret = pmb->pgrav->gbvar.ReceiveBoundaryBuffers();
+  bool ret = pmb->pnr->delta_bvar.ReceiveBoundaryBuffers();
   if (!ret)
     return TaskStatus::fail;
   return TaskStatus::success;
 }
 
 TaskStatus LinearMGBoundaryTaskList::SetLinearMGBoundary(MeshBlock *pmb, int stage) {
-  pmb->pgrav->gbvar.SetBoundaries();
+  pmb->pnr->delta_bvar.SetBoundaries();
   return TaskStatus::success;
 }
 
 TaskStatus LinearMGBoundaryTaskList::ProlongateLinearMGBoundary(MeshBlock *pmb,
                                                               int stage) {
-  pmb->pbval->ProlongateBoundariesPostMG(&(pmb->pgrav->gbvar));
+  pmb->pbval->ProlongateBoundariesPostMG(&(pmb->pnr->delta_bvar));
   return TaskStatus::success;
 }
 
 TaskStatus LinearMGBoundaryTaskList::PhysicalBoundary(MeshBlock *pmb, int stage) {
-  if (pmb->pgrav->fill_ghost) {
-    pmb->pgrav->RestoreFaceBoundaries();
-    pmb->pgrav->gbvar.ExpandPhysicalBoundaries();
-  }
+  pmb->pnr->delta_bvar.ExpandPhysicalBoundaries();
   return TaskStatus::next;
 }

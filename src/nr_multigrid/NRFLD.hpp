@@ -27,6 +27,7 @@
 #include "../mesh/mesh.hpp"
 #include "../newton_raphson/Newton_Raphson.hpp"
 #include "../fld/fld.hpp"
+#include "../linear_solver/linearMG/linearMG.hpp"
 // #include "../task_list/nr_task_list.hpp"
 
 #ifdef MPI_PARALLEL
@@ -43,14 +44,24 @@ class FLD2;
 
 // enum class NRNormType {max, l1, l2};
 
-// namespace NewtonRaphsonFLD {
-//   constexpr int NTEMP=2, NMATRIX=15, NCOEFF=8, NOPACITY=2;
-//   // enum TempIndex {GAS=0, RAD=1};
-//   enum TempIndex {RAD=0, GAS=1}; // caution!!
-//   enum CoeffIndex {DCCF=0, DCCS=1, DXM=2, DXP=3, DYM=4, DYP=5, DZM=6, DZP=7};
-//   enum MatrixIndex {CCC=0, CCM=1, CCP=2, CMC=3, CPC=4, MCC=5, PCC=6,};
-//   enum OpacityIndex {SIGMA_P=0, SIGMA_R=1};
-// }
+namespace NewtonRaphsonFLD {
+  constexpr int NNRDIV = 12, NDCOEFF = 2;
+  enum DerivativeIndex {
+    Fg=0,
+    Fr=1,
+    dFg_deg=2,
+    dFg_dEr=3,
+    dFr_deg=4,
+    dFr_dEr=5,
+    dFr_dEr_xm=6,
+    dFr_dEr_xp=7,
+    dFr_dEr_ym=8,
+    dFr_dEr_yp=9,
+    dFr_dEr_zm=10,
+    dFr_dEr_zp=11,
+  };
+  enum CoeffIndex {DCOUPLE=0, DDV=1};
+}
 
 // class NewtonRaphson {
 //  public:
@@ -102,26 +113,30 @@ class NRFLD : public NewtonRaphson {
 
   void LoadHydroVariables() final;
   void UpdateHydroVariables() final;
-  void CalculateCoefficients(const AthenaArray<Real> &work,
-                             const AthenaArray<Real> &pre,
-                             const AthenaArray<Real> &w, Real dt) final;
+  void CalculateCoefficientsOnce(const AthenaArray<Real> &u_pre,
+                                 const AthenaArray<Real> &w) final;
+  void CalculateCoefficients(const AthenaArray<Real> &u_rad_old,
+                             const AthenaArray<Real> &u_rad_new,
+                            //  const AthenaArray<Real> &u_gas_old,
+                            //  const AthenaArray<Real> &u_gas_new,
+                             Real dt) final;
 
-  void LoadSource(const AthenaArray<Real> &src, int ns, int ngh, Real fac);
-  void LoadCoefficients(const AthenaArray<Real> &coeff, int ngh);
-  void RetrieveResult(AthenaArray<Real> &dst, int ns, int ngh);
-  void RetrieveDefect(AthenaArray<Real> &dst, int ns, int ngh);
-  void ZeroClearData();
-  void SmoothBlock(int color);
-  void CalculateDefectBlock();
-  void CalculateFASRHSBlock();
-  void CalculateMatrixBlockCurrent();
-  void CalculateMatrixBlockAll();
-  Real CalculateDefectNorm(MGNormType nrm, int n);
-  Real CalculateTotal(MGVariable type, int n);
+  // void LoadSource(const AthenaArray<Real> &src, int ns, int ngh, Real fac);
+  // void LoadCoefficients(const AthenaArray<Real> &coeff, int ngh);
+  // void RetrieveResult(AthenaArray<Real> &dst, int ns, int ngh);
+  // void RetrieveDefect(AthenaArray<Real> &dst, int ns, int ngh);
+  // void ZeroClearData();
+  // void SmoothBlock(int color);
+  // void CalculateDefectBlock();
+  // void CalculateFASRHSBlock();
+  // void CalculateMatrixBlockCurrent();
+  // void CalculateMatrixBlockAll();
+  // Real CalculateDefectNorm(MGNormType nrm, int n);
+  // Real CalculateTotal(MGVariable type, int n);
   // void SubtractAverage(MGVariable type, int n, Real ave);
-  void StoreOldData();
+  // void StoreOldData();
   // Real GetCoarsestData(MGVariable type, int n);
-  void SetData(MGVariable type, int n, int k, int j, int i, Real v);
+  // void SetData(MGVariable type, int n, int k, int j, int i, Real v);
 
   // physics-dependent virtual functions
   // void Smooth(AthenaArray<Real> &dst, const AthenaArray<Real> &src,
@@ -129,15 +144,16 @@ class NRFLD : public NewtonRaphson {
   //                     int rlev, int il, int iu, int jl, int ju, int kl, int ku,
   //                     int color, bool th) final;
   void CalculateDefect(AthenaArray<Real> &def, const AthenaArray<Real> &u,
-               const AthenaArray<Real> &src, const AthenaArray<Real> &coeff,
-               const AthenaArray<Real> &matrix, int il, int iu, int jl, int ju,
-               int kl, int ku, bool th) final;
+                       const AthenaArray<Real> &u_old, const AthenaArray<Real> &coeff,
+                       bool th) final;
   // void CalculateFASRHS(AthenaArray<Real> &def, const AthenaArray<Real> &src,
   //                const AthenaArray<Real> &coeff, const AthenaArray<Real> &matrix,
   //                int rlev, int il, int iu, int jl, int ju, int kl, int ku, bool th) final;
-  void CalculateMatrix(AthenaArray<Real> &matrix, const AthenaArray<Real> &u,
-               const AthenaArray<Real> &src, const AthenaArray<Real> &coeff,
-               int il, int iu, int jl, int ju, int kl, int ku, bool th) final;
+  // void CalculateMatrix(AthenaArray<Real> &matrix, const AthenaArray<Real> &u,
+  //              const AthenaArray<Real> &src, const AthenaArray<Real> &coeff,
+  //              int il, int iu, int jl, int ju, int kl, int ku, bool th) final;
+
+  void AddDifference(AthenaArray<Real> &dst, const AthenaArray<Real> &delta) final;
 
   friend class NewtonRaphsonDriver;
   friend class NewtonRaphsonTaskList;
@@ -160,11 +176,15 @@ class NRFLD : public NewtonRaphson {
   Real defscale_;
   // AthenaArray<Real> *u_, *def_, *src_, *uold_, *coeff_, *matrix_;
   AthenaArray<Real> delta_u_;
+  AthenaArray<Real> u_gas_;
   // MGCoordinates *coord_, *ccoord_;
+  AthenaArray<Real> derivetive_;
+  AthenaArray<Real> def_coeff_;
 
 
  private:
   TaskStates ts_;
+  // linearMG *plmg_;
 };
 
 
@@ -182,13 +202,15 @@ class NRFLDDriver : public NewtonRaphsonDriver {
   ~NRFLDDriver();
 
   // void Solve(int step, Real dt = 0.0) final;
-  void SetLinearSolver() final;
 
   friend class NewtonRaphson;
   friend class NewtonRaphsonTaskList;
   friend class NRBoundaryValues;
   friend class NRFLD;
+  friend class linearMGDriver;
   friend class linearMG;
+
+  // linearMGDriver *plmgd;
 
  protected:
 };

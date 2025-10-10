@@ -27,6 +27,8 @@
 #include "../mesh/mesh.hpp"
 #include "../parameter_input.hpp"
 #include "Newton_Raphson.hpp"
+#include "../linear_solver/linearMG/linearMG.hpp"
+#include "../linear_solver/linear_solver.hpp"
 
 #ifdef MPI_PARALLEL
 #include <mpi.h>
@@ -68,8 +70,6 @@ NewtonRaphsonDriver::NewtonRaphsonDriver(Mesh *pm,
         << "Non-uniform mesh spacing is not supported." << std::endl;
     ATHENA_ERROR(msg);
     return;
-
-    plinsolver_ = new LinearSolver();
   }
 
 
@@ -117,6 +117,15 @@ NewtonRaphsonDriver::NewtonRaphsonDriver(Mesh *pm,
 //       ncoarse_[n].NewAthenaArray(3,3,3);
 //     }
 //   }
+
+  // if (NRMGFLD_ENABLED) {
+  //   plmgd_ = new linearMGDriver(pm, pin);
+  // } else {
+  //   std::stringstream msg;
+  //   msg << "### FATAL ERROR in NewtonRaphsonDriver::NewtonRaphsonDriver" << std::endl
+  //       << "Failed to allocate linear solver" << std::endl;
+  //   ATHENA_ERROR(msg);
+  // }
 }
 
 //! destructor
@@ -141,102 +150,29 @@ NewtonRaphsonDriver::~NewtonRaphsonDriver() {
 
 
 void NewtonRaphsonDriver::Solve_general(int stage, Real dt) {
+  stage_ = stage;
+  dt_ = dt;
+  // Construct the NewtonRaphson array
+  vnr_.clear();
+  for (int i = 0; i < pmy_mesh_->nblocal; ++i)
+    vnr_.push_back(pmy_mesh_->my_blocks(i)->pnr);
+
+
   // data load
   for (auto itr = vnr_.begin(); itr < vnr_.end(); itr++) {
     NewtonRaphson *pnr = *itr;
+    MeshBlock *pmb = pnr->pmy_block_;
     pnr->LoadHydroVariables();
   }
 
-  // calc coefficients
+  // calc coefficients for initial setup
   for (auto itr = vnr_.begin(); itr < vnr_.end(); itr++) {
     NewtonRaphson *pnr = *itr;
     MeshBlock *pmb = pnr->pmy_block_;
-    pnr->CalculateCoefficients(pnr->u_, pnr->u_, pmb->phydro->w, dt);
+    pnr->CalculateCoefficientsOnce(pnr->u_, pmb->phydro->w);
+    pnr->CalculateCoefficients(pnr->uold_, pnr->u_, dt_);
   }
 
-  // call linear solver
-  plinsolver_->Solve(stage, dt);
-
-  // for boundary values
-  for (auto itr = vnr_.begin(); itr < vnr_.end(); itr++) {
-    NewtonRaphson *pnr = *itr;
-    pnr->nrbvar.StartReceiving(BoundaryCommSubset::newton_raphson);
-    pnr->nrbvar.SendBoundaryBuffers();
-  }
-
-  for (auto itr = vnr_.begin(); itr < vnr_.end(); itr++) {
-    NewtonRaphson *pnr = *itr;
-    pnr->nrbvar.SetBoundaries();
-  }
-
-  if (pmy_mesh_->multilevel) {
-    for (auto itr = vnr_.begin(); itr < vnr_.end(); itr++) {
-      NewtonRaphson *pnr = *itr;
-      MeshBlock *pmb = pnr->pmy_block_;
-      pmb->pbval->ProlongateBoundaries(pmy_mesh_->time, dt, pmb->pbval->bvars_main_int);
-    }
-  }
-
-  for (auto itr = vnr_.begin(); itr < vnr_.end(); itr++) {
-    NewtonRaphson *pnr = *itr;
-    MeshBlock *pmb = pnr->pmy_block_;
-    pnr->nrbvar.var_cc = &(pnr->u_);
-    pmb->pbval->ApplyPhysicalBoundaries(pmy_mesh_->time, dt, pmb->pbval->bvars_main_int);
-  }
-
-  for (auto itr = vnr_.begin(); itr < vnr_.end(); itr++) {
-    NewtonRaphson *pnr = *itr;
-    pnr->nrbvar.ClearBoundary(BoundaryCommSubset::newton_raphson);
-  }
-
-  for (auto itr = vnr_.begin(); itr < vnr_.end(); itr++) {
-    NewtonRaphson *pnr = *itr;
-    MeshBlock *pmb = pnr->pmy_block_;
-    int is = pmb->is;// - pnr->ngh_;
-    int ie = pmb->ie;// + pnr->ngh_;
-    int js = pmb->js;// - pnr->ngh_;
-    int je = pmb->je;// + pnr->ngh_;
-    int ks = pmb->ks;// - pnr->ngh_;
-    int ke = pmb->ke;// + pnr->ngh_;
-    pnr->AddDifference(pnr->u_, pnr->uold_, is, ie, js, je, ks, ke);
-  }
-
-  // calc defect norm
-  Real def = 0.0;
-  for (int v = 0; v < nvar_; ++v)
-    def += CalculateDefectNorm(NRNormType::l2, v);
-  if (Globals::my_rank == 0)
-    std::cout << "NewtonRaphsonDriver::Solve_general : defect norm = " << def << std::endl;
-
-
-  // return the results to hydro variables
-  for (auto itr = vnr_.begin(); itr < vnr_.end(); itr++) {
-    NewtonRaphson *pnr = *itr;
-    pnr->UpdateHydroVariables();
-  }
-}
-
-
-//----------------------------------------------------------------------------------------
-//! \fn void NewtonRaphsonDriver::SolveOneCycle()
-//! \brief Solve one cycle of NewtonRaphson
-
-void NewtonRaphsonDriver::SolveOneCycle() {
-  for (auto itr = vnr_.begin(); itr < vnr_.end(); itr++) {
-    NewtonRaphson *pnr = *itr;
-    pnr->CalculateMatrixBlock();
-  }
-  Real def = 0.0;
-  for (int v = 0; v < nvar_; ++v)
-    def += CalculateDefectNorm(NRNormType::l2, v);
-  return;
-}
-
-//----------------------------------------------------------------------------------------
-//! \fn void NewtonRaphsonDriver::SolveIterative()
-//  \brief Solve iteratively until the convergence is achieved
-
-void NewtonRaphsonDriver::SolveIterative() {
   int n = 0;
   Real def = 0.0, defmax = 0.0;
   for (int v = 0; v < nvar_; ++v) {
@@ -247,8 +183,8 @@ void NewtonRaphsonDriver::SolveIterative() {
 //    std::cout << "initial defect " << def << " max " << defmax << std::endl;
   while (def > eps_) {
     SolveOneCycle();
-    if (matrixmode_ == 1)
-      CalculateMatrix();
+    // if (matrixmode_ == 1)
+    //   CalculateMatrix();
     Real olddef = def, oldmax = defmax;
     def = 0.0, defmax = 0.0;
     for (int v = 0; v < nvar_; ++v) {
@@ -263,7 +199,7 @@ void NewtonRaphsonDriver::SolveIterative() {
       if (eps_ == 0.0) break;
       if (Globals::my_rank == 0)
         std::cout << "### Warning in NewtonRaphsonDriver::SolveIterative" << std::endl
-                  << "Slow multigrid convergence : defect norm = " << def
+                  << "Slow Newton-Raphson convergence : defect norm = " << def
                   << ", convergence factor = " << def/olddef << "." << std::endl;
       if (def/olddef > 1.0) {
         if (Globals::my_rank == 0)
@@ -285,32 +221,148 @@ void NewtonRaphsonDriver::SolveIterative() {
     }
     n++;
   }
-  // if (fsubtract_average_)
-  //   SubtractAverage(NRVariable::u);
-  return;
+
+  // return the results to hydro variables
+  for (auto itr = vnr_.begin(); itr < vnr_.end(); itr++) {
+    NewtonRaphson *pnr = *itr;
+    pnr->UpdateHydroVariables();
+  }
 }
 
 
 //----------------------------------------------------------------------------------------
-//! \fn void NewtonRaphsonDriver::SolveIterativeFixedTimes()
-//  \brief Solve iteratively niter_ times
+//! \fn void NewtonRaphsonDriver::SolveOneCycle()
+//! \brief Solve one cycle of NewtonRaphson
 
-void NewtonRaphsonDriver::SolveIterativeFixedTimes() {
-  for (int n = 0; n < niter_; ++n) {
-    SolveOneCycle();
-    if (matrixmode_ == 1)
-      CalculateMatrix();
+void NewtonRaphsonDriver::SolveOneCycle() {
+  // calc coefficients
+  for (auto itr = vnr_.begin(); itr < vnr_.end(); itr++) {
+    NewtonRaphson *pnr = *itr;
+    pnr->CalculateCoefficients(pnr->uold_, pnr->u_, dt_);
   }
-  // if (fsubtract_average_)
-  //   SubtractAverage(NRVariable::u);
-  Real def = 0.0;
-  for (int v = 0; v < nvar_; ++v)
-    def += CalculateDefectNorm(NRNormType::l2, v);
-  if (fshowdef_ && Globals::my_rank == 0)
-    std::cout << "NewtonRaphson defect L2-norm : " << def << std::endl;
+
+  // call linear solver (should be replaced general solver)
+  plmgd_->Solve(stage_, dt_);
+
+  for (auto itr = vnr_.begin(); itr < vnr_.end(); itr++) {
+    NewtonRaphson *pnr = *itr;
+    pnr->AddDifference(pnr->u_, pnr->delta_u_);
+  }
+
+  // for boundary values
+  for (auto itr = vnr_.begin(); itr < vnr_.end(); itr++) {
+    NewtonRaphson *pnr = *itr;
+    pnr->nrbvar.StartReceiving(BoundaryCommSubset::newton_raphson);
+    pnr->nrbvar.SendBoundaryBuffers();
+  }
+
+  for (auto itr = vnr_.begin(); itr < vnr_.end(); itr++) {
+    NewtonRaphson *pnr = *itr;
+    pnr->nrbvar.SetBoundaries();
+  }
+
+  if (pmy_mesh_->multilevel) {
+    for (auto itr = vnr_.begin(); itr < vnr_.end(); itr++) {
+      NewtonRaphson *pnr = *itr;
+      MeshBlock *pmb = pnr->pmy_block_;
+      pmb->pbval->ProlongateBoundaries(pmy_mesh_->time, dt_, pmb->pbval->bvars_main_int);
+    }
+  }
+
+  for (auto itr = vnr_.begin(); itr < vnr_.end(); itr++) {
+    NewtonRaphson *pnr = *itr;
+    MeshBlock *pmb = pnr->pmy_block_;
+    pnr->nrbvar.var_cc = &(pnr->u_);
+    pmb->pbval->ApplyPhysicalBoundaries(pmy_mesh_->time, dt_, pmb->pbval->bvars_main_int);
+  }
+
+  for (auto itr = vnr_.begin(); itr < vnr_.end(); itr++) {
+    NewtonRaphson *pnr = *itr;
+    pnr->nrbvar.ClearBoundary(BoundaryCommSubset::newton_raphson);
+  }
 
   return;
 }
+
+// //----------------------------------------------------------------------------------------
+// //! \fn void NewtonRaphsonDriver::SolveIterative()
+// //  \brief Solve iteratively until the convergence is achieved
+
+// void NewtonRaphsonDriver::SolveIterative() {
+//   int n = 0;
+//   Real def = 0.0, defmax = 0.0;
+//   for (int v = 0; v < nvar_; ++v) {
+//     def += CalculateDefectNorm(NRNormType::l2, v);
+// //    defmax = std::max(defmax, CalculateDefectNorm(NRNormType::max, v));
+//   }
+// //  if (Globals::my_rank == 0)
+// //    std::cout << "initial defect " << def << " max " << defmax << std::endl;
+//   while (def > eps_) {
+//     SolveOneCycle();
+//     if (matrixmode_ == 1)
+//       CalculateMatrix();
+//     Real olddef = def, oldmax = defmax;
+//     def = 0.0, defmax = 0.0;
+//     for (int v = 0; v < nvar_; ++v) {
+//       def += CalculateDefectNorm(NRNormType::l2, v);
+// //      defmax = std::max(defmax, CalculateDefectNorm(NRNormType::max, v));
+//     }
+//    if (Globals::my_rank == 0)
+//      std::cout << "[debug] niter " << n << " def " << def << " convergence factor "
+//                << def/olddef<< " defmax  "<< defmax << " cf "
+//                <<  defmax/oldmax << std::endl;
+//     if (def/olddef > 0.9) {
+//       if (eps_ == 0.0) break;
+//       if (Globals::my_rank == 0)
+//         std::cout << "### Warning in NewtonRaphsonDriver::SolveIterative" << std::endl
+//                   << "Slow multigrid convergence : defect norm = " << def
+//                   << ", convergence factor = " << def/olddef << "." << std::endl;
+//       if (def/olddef > 1.0) {
+//         if (Globals::my_rank == 0)
+//           std::cout << "### Warning in NewtonRaphsonDriver::SolveIterative" << std::endl
+//                     << "NewtonRaphson is diverging: defect norm = " << def
+//                     << ", convergence factor = " << def/olddef << ", and niter = " << n << "." << std::endl;
+//         break;
+//       }
+//     }
+//     // if (n > 100) {
+//     if (n > 30) {
+//       if (Globals::my_rank == 0) {
+//         std::cout
+//             << "### Warning in NewtonRaphsonDriver::SolveIterative" << std::endl
+//             << "Aborting because the # iterations is too large, n > 30." << std::endl
+//             << "Check the solution as it may not be accurate enough." << std::endl;
+//       }
+//       break;
+//     }
+//     n++;
+//   }
+//   // if (fsubtract_average_)
+//   //   SubtractAverage(NRVariable::u);
+//   return;
+// }
+
+
+// //----------------------------------------------------------------------------------------
+// //! \fn void NewtonRaphsonDriver::SolveIterativeFixedTimes()
+// //  \brief Solve iteratively niter_ times
+
+// void NewtonRaphsonDriver::SolveIterativeFixedTimes() {
+//   for (int n = 0; n < niter_; ++n) {
+//     SolveOneCycle();
+//     if (matrixmode_ == 1)
+//       CalculateMatrix();
+//   }
+//   // if (fsubtract_average_)
+//   //   SubtractAverage(NRVariable::u);
+//   Real def = 0.0;
+//   for (int v = 0; v < nvar_; ++v)
+//     def += CalculateDefectNorm(NRNormType::l2, v);
+//   if (fshowdef_ && Globals::my_rank == 0)
+//     std::cout << "NewtonRaphson defect L2-norm : " << def << std::endl;
+
+//   return;
+// }
 
 
 //----------------------------------------------------------------------------------------
@@ -351,20 +403,20 @@ Real NewtonRaphsonDriver::CalculateDefectNorm(NRNormType nrm, int n) {
   return norm;
 }
 
-//----------------------------------------------------------------------------------------
-//! \fn void NewtonRaphsonDriver::CalculateMatrix()
-//! \brief Calculate Matrix elements
+// //----------------------------------------------------------------------------------------
+// //! \fn void NewtonRaphsonDriver::CalculateMatrix()
+// //! \brief Calculate Matrix elements
 
-void NewtonRaphsonDriver::CalculateMatrix() {
-  if (nmatrix_ == 0)
-    return;
-  // RestrictInitialData();
-  // if (current_level_ >= nrootlevel_ + nreflevel_ - 1) {
-#pragma omp parallel for num_threads(nthreads_)
-    for (auto itr = vnr_.begin(); itr < vnr_.end(); itr++) {
-      NewtonRaphson *pnr = *itr;
-      pnr->CalculateMatrixBlock();
-    }
-  // }
-  return;
-}
+// void NewtonRaphsonDriver::CalculateMatrix() {
+//   if (nmatrix_ == 0)
+//     return;
+//   // RestrictInitialData();
+//   // if (current_level_ >= nrootlevel_ + nreflevel_ - 1) {
+// #pragma omp parallel for num_threads(nthreads_)
+//     for (auto itr = vnr_.begin(); itr < vnr_.end(); itr++) {
+//       NewtonRaphson *pnr = *itr;
+//       pnr->CalculateMatrixBlock();
+//     }
+//   // }
+//   return;
+// }

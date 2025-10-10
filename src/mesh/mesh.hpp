@@ -52,10 +52,12 @@ class CRDiffusion;
 class MGCRDiffusionDriver;
 class FLD;
 class FLD2;
-class LinearSolver;
+// class LinearSolver;
+// class LinearSolverDriver;
 class MGFLDDriver;
 class NewtonRaphson;
 class NewtonRaphsonDriver;
+class linearMG;
 class linearMGDriver;
 class EquationOfState;
 class Field;
@@ -139,9 +141,10 @@ class MeshBlock {
   FLD *prfld;
   FLD2 *prfld2;
   NewtonRaphson *pnr;
+  linearMG *plmg;
   Field *pfield;
   Gravity *pgrav;
-  LinearSolver *plinsolver;
+  // LinearSolver *plinsolver;
   PassiveScalars *pscalars;
   EquationOfState *peos;
   ChemRadiation *pchemrad;
@@ -239,9 +242,10 @@ class Mesh {
   friend class MGCRDiffusionDriver;
   friend class MGFLDDriver;
   friend class NewtonRaphsonDriver;
+  // friend class LinearSolverDriver;
   friend class linearMGDriver;
   friend class Gravity;
-  friend class LinearSolver;
+  // friend class LinearSolver;
   friend class HydroDiffusion;
   friend class FieldDiffusion;
   friend class OrbitalAdvection;
@@ -290,8 +294,9 @@ class Mesh {
   MGGravityDriver *pmgrd;
   MGCRDiffusionDriver *pmcrd;
   MGFLDDriver *pmfld;
-  // linearMGDriver *plinmg;
+  // LinearSolverDriver *pmlinsolver;
   NewtonRaphsonDriver *pmnr;
+  linearMGDriver *pmlmd;
   Units *punit;
 
   // implicit radiation iteration

@@ -24,7 +24,7 @@
 #endif
 
 //----------------------------------------------------------------------------------------
-//! \fn  void FLD::AddFluxDivergence
+//! \fn  void FLD2::AddFluxDivergence
 //! \brief Adds flux divergence to weighted average of conservative variables from
 //!  previous step(s) of time integrator algorithm
 //!

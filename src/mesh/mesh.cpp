@@ -55,8 +55,8 @@
 #include "../orbital_advection/orbital_advection.hpp"
 #include "../outputs/io_wrapper.hpp"
 #include "../parameter_input.hpp"
-#include "../rad_fld/mg_rad_fld.hpp"
-#include "../rad_fld/rad_fld.hpp"
+#include "../mg_fld/mg_rad_fld.hpp"
+#include "../mg_fld/rad_fld.hpp"
 #include "../reconstruct/reconstruction.hpp"
 #include "../scalars/scalars.hpp"
 #include "../units/units.hpp"
@@ -560,8 +560,9 @@ Mesh::Mesh(ParameterInput *pin, int mesh_test) :
   if (MGFLD_ENABLED)
     pmfld = new MGFLDDriver(this, pin);
 
-  if (NRMGFLD_ENABLED)
+  if (NRMGFLD_ENABLED) {
     pmnr = new NRFLDDriver(this, pin);
+  }
 
   // create MeshBlock list for this process
   gids_ = nslist[Globals::my_rank];
@@ -905,8 +906,9 @@ Mesh::Mesh(ParameterInput *pin, IOWrapper& resfile, int mesh_test) :
   if (MGFLD_ENABLED)
     pmfld = new MGFLDDriver(this, pin);
 
-  if (NRMGFLD_ENABLED)
+  if (NRMGFLD_ENABLED) {
     pmnr = new NRFLDDriver(this, pin);
+  }
 
   // allocate data buffer
   int nbmin = nblist[0];
@@ -988,7 +990,10 @@ Mesh::~Mesh() {
   if (IM_RADIATION_ENABLED) delete pimrad;
   if (CRDIFFUSION_ENABLED) delete pmcrd;
   if (MGFLD_ENABLED) delete pmfld;
-  if (NRMGFLD_ENABLED) delete pmnr;
+  if (NRMGFLD_ENABLED){
+    delete pmnr;
+    // delete pmlinsolver;
+  }
   if (turb_flag > 0) delete ptrbd;
   if (adaptive) { // deallocate arrays for AMR
     delete [] nref;
@@ -1694,8 +1699,11 @@ void Mesh::Initialize(int res_flag, ParameterInput *pin) {
         pmb->pcrdiff->crbvar.SetupPersistentMPI();
       if (MGFLD_ENABLED)
         pmb->prfld->mgfldbvar.SetupPersistentMPI();
-      if (NRMGFLD_ENABLED)
-        pmb->prfld2->u_rad_fldbvar.SetupPersistentMPI(); // caution!
+      if (NRMGFLD_ENABLED) {
+        // pmb->prfld2->u_rad_fldbvar.SetupPersistentMPI(); // caution!
+        pmb->pnr->nrbvar.SetupPersistentMPI();
+        pmb->pnr->delta_bvar.SetupPersistentMPI();
+      }
     }
 
     // solve gravity for the first time
