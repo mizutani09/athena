@@ -168,10 +168,10 @@ class NRFLD : public NewtonRaphson {
  protected:
   NewtonRaphsonDriver *pmy_driver_;
   MeshBlock *pmy_block_;
+  int ngh_, nvar_, ncoeff_, nmatrix_;
   LogicalLocation loc_;
   RegionSize size_;
   BoundaryFlag nr_block_bcs_[6];
-  int ngh_, nvar_, ncoeff_, nmatrix_;
   Real rdx_, rdy_, rdz_;
   Real defscale_;
   // AthenaArray<Real> *u_, *def_, *src_, *uold_, *coeff_, *matrix_;

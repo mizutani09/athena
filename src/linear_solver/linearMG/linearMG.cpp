@@ -49,15 +49,15 @@ linearMGDriver::linearMGDriver(Mesh *pm, ParameterInput *pin, NewtonRaphsonDrive
                           nullptr,
                           1, linearSolver::NCOEFF, linearSolver::NMATRIX),
       pnrd_(pnrd) {
-  eps_ = pin->GetOrAddReal("mgfld", "threshold", -1.0);
-  niter_ = pin->GetOrAddInteger("mgfld", "niteration", -1);
-  ffas_ = pin->GetOrAddBoolean("mgfld", "fas", ffas_);
-  omega_ = pin->GetOrAddReal("mgfld", "omega", 1.0);
-  fsteady_ = pin->GetOrAddBoolean("mgfld", "steady", false);
-  npresmooth_ = pin->GetOrAddReal("mgfld", "npresmooth", 2);
-  npostsmooth_ = pin->GetOrAddReal("mgfld", "npostsmooth", 2);
-  fshowdef_ = pin->GetOrAddBoolean("mgfld", "show_defect", fshowdef_);
-  std::string smoother = pin->GetOrAddString("mgfld", "smoother", "jacobi-rb");
+  eps_ = pin->GetOrAddReal("nrfld", "threshold", -1.0);
+  niter_ = pin->GetOrAddInteger("nrfld", "niteration", -1);
+  ffas_ = pin->GetOrAddBoolean("nrfld", "fas", ffas_);
+  omega_ = pin->GetOrAddReal("nrfld", "omega", 1.0);
+  fsteady_ = pin->GetOrAddBoolean("nrfld", "steady", false);
+  npresmooth_ = pin->GetOrAddReal("nrfld", "npresmooth", 2);
+  npostsmooth_ = pin->GetOrAddReal("nrfld", "npostsmooth", 2);
+  fshowdef_ = pin->GetOrAddBoolean("nrfld", "show_defect", fshowdef_);
+  std::string smoother = pin->GetOrAddString("nrfld", "smoother", "jacobi-rb");
 //   matrixmode_ = 1;
   matrixmode_ = 0; // caution!
   if (smoother == "jacobi-rb") {
@@ -70,11 +70,11 @@ linearMGDriver::linearMGDriver(Mesh *pm, ParameterInput *pin, NewtonRaphsonDrive
     fsmoother_ = 0;
     redblack_ = false;
   }
-  std::string prol = pin->GetOrAddString("mgfld", "prolongation", "trilinear");
+  std::string prol = pin->GetOrAddString("nrfld", "prolongation", "trilinear");
   if (prol == "tricubic")
     fprolongation_ = 1;
 
-  std::string m = pin->GetOrAddString("mgfld", "mgmode", "none");
+  std::string m = pin->GetOrAddString("nrfld", "mgmode", "none");
   std::transform(m.begin(), m.end(), m.begin(), ::tolower);
   if (m == "fmg") {
     mode_ = 0;
@@ -83,7 +83,7 @@ linearMGDriver::linearMGDriver(Mesh *pm, ParameterInput *pin, NewtonRaphsonDrive
   } else {
     std::stringstream msg;
     msg << "### FATAL ERROR in linearMGFLDDriver::linearMGFLDDriver" << std::endl
-        << "The \"mgmode\" parameter in the <mgfld> block is invalid." << std::endl
+        << "The \"mgmode\" parameter in the <nrfld> block is invalid." << std::endl
         << "FMG: Full Multigrid + Multigrid iteration (default)" << std::endl
         << "MGI: Multigrid Iteration" << std::endl;
     ATHENA_ERROR(msg);
@@ -92,17 +92,17 @@ linearMGDriver::linearMGDriver(Mesh *pm, ParameterInput *pin, NewtonRaphsonDrive
     std::stringstream msg;
     msg << "### FATAL ERROR in linearMGFLDDriver::linearMGFLDDriver" << std::endl
         << "Either \"threshold\" or \"niteration\" parameter must be set "
-        << "in the <mgfld> block." << std::endl
+        << "in the <nrfld> block." << std::endl
         << "When both parameters are specified, \"niteration\" is ignored." << std::endl
         << "Set \"threshold = 0.0\" for automatic convergence control." << std::endl;
     ATHENA_ERROR(msg);
   }
-  mg_mesh_bcs_[inner_x1] = GetMGBoundaryFlag("zero-fixed");
-  mg_mesh_bcs_[outer_x1] = GetMGBoundaryFlag("zero-fixed");
-  mg_mesh_bcs_[inner_x2] = GetMGBoundaryFlag("zero-fixed");
-  mg_mesh_bcs_[outer_x2] = GetMGBoundaryFlag("zero-fixed");
-  mg_mesh_bcs_[inner_x3] = GetMGBoundaryFlag("zero-fixed");
-  mg_mesh_bcs_[outer_x3] = GetMGBoundaryFlag("zero-fixed");
+  mg_mesh_bcs_[inner_x1] = GetMGBoundaryFlag("zerofixed");
+  mg_mesh_bcs_[outer_x1] = GetMGBoundaryFlag("zerofixed");
+  mg_mesh_bcs_[inner_x2] = GetMGBoundaryFlag("zerofixed");
+  mg_mesh_bcs_[outer_x2] = GetMGBoundaryFlag("zerofixed");
+  mg_mesh_bcs_[inner_x3] = GetMGBoundaryFlag("zerofixed");
+  mg_mesh_bcs_[outer_x3] = GetMGBoundaryFlag("zerofixed");
   CheckBoundaryFunctions();
   fsubtract_average_ = false; // override the subtract average flag
 
@@ -143,8 +143,8 @@ linearMGDriver::~linearMGDriver() {
 //! \brief linearMG constructor
 
 linearMG::linearMG(linearMGDriver *pmd, MeshBlock *pmb, ParameterInput *pin, NewtonRaphson *pnr)
-  : Multigrid(pmb->pmy_mesh->pmlmd, pmb, 1),
-  pmd_(pmb->pmy_mesh->pmlmd),
+  : Multigrid(pmd, pmb, 1),
+  pmd_(pmd),
   omega_(pmd_->omega_), fsmoother_(pmd_->fsmoother_),
   pnr_(pnr) {
   btype = btypef = BoundaryQuantity::mg;

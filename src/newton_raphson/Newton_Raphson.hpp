@@ -112,27 +112,27 @@ class NewtonRaphson {
 
   bool output_defect;
 
-  AthenaArray<Real> u_, def_, src_, uold_, coeff_, matrix_;
-  AthenaArray<Real> flux[3];  // face-averaged flux vector
-
-  // storage for SMR/AMR
-  AthenaArray<Real> coarse_u_;
-  int refinement_idx{-1};
-
-  AthenaArray<Real> delta_u_; // for temporary storage of updates
-  AthenaArray<Real> coarse_delta_u_;
-  AthenaArray<Real> empty_flux[3];
-
-  NRBoundaryVariable nrbvar;
-  CellCenteredBoundaryVariable delta_bvar;
-
- protected:
   NewtonRaphsonDriver *pmy_driver_;
   MeshBlock *pmy_block_;
   LogicalLocation loc_;
   RegionSize size_;
-  BoundaryFlag nr_block_bcs_[6];
   int ngh_, nvar_, ncoeff_, nmatrix_;
+  
+  AthenaArray<Real> u_, def_, src_, uold_, coeff_, matrix_;
+  AthenaArray<Real> flux[3];  // face-averaged flux vector
+  
+  // storage for SMR/AMR
+  AthenaArray<Real> coarse_u_;
+  int refinement_idx{-1};
+  
+  AthenaArray<Real> delta_u_; // for temporary storage of updates
+  AthenaArray<Real> coarse_delta_u_;
+  AthenaArray<Real> empty_flux[3];
+  
+  NRBoundaryVariable nrbvar;
+  CellCenteredBoundaryVariable delta_bvar;
+  BoundaryFlag nr_block_bcs_[6];
+protected:
   Real rdx_, rdy_, rdz_;
   Real defscale_;
 //   AthenaArray<Real> *u_, *def_, *src_, *uold_, *coeff_, *matrix_;

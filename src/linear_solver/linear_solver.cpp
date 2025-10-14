@@ -94,12 +94,12 @@ class MeshBlock;
 //         << "Set \"threshold = 0.0\" for automatic convergence control." << std::endl;
 //     ATHENA_ERROR(msg);
 //   }
-//   mg_mesh_bcs_[inner_x1] = GetMGBoundaryFlag("zero-fixed");
-//   mg_mesh_bcs_[outer_x1] = GetMGBoundaryFlag("zero-fixed");
-//   mg_mesh_bcs_[inner_x2] = GetMGBoundaryFlag("zero-fixed");
-//   mg_mesh_bcs_[outer_x2] = GetMGBoundaryFlag("zero-fixed");
-//   mg_mesh_bcs_[inner_x3] = GetMGBoundaryFlag("zero-fixed");
-//   mg_mesh_bcs_[outer_x3] = GetMGBoundaryFlag("zero-fixed");
+//   mg_mesh_bcs_[inner_x1] = GetMGBoundaryFlag("zerofixed");
+//   mg_mesh_bcs_[outer_x1] = GetMGBoundaryFlag("zerofixed");
+//   mg_mesh_bcs_[inner_x2] = GetMGBoundaryFlag("zerofixed");
+//   mg_mesh_bcs_[outer_x2] = GetMGBoundaryFlag("zerofixed");
+//   mg_mesh_bcs_[inner_x3] = GetMGBoundaryFlag("zerofixed");
+//   mg_mesh_bcs_[outer_x3] = GetMGBoundaryFlag("zerofixed");
 //   CheckBoundaryFunctions();
 //   fsubtract_average_ = false; // override the subtract average flag
 
