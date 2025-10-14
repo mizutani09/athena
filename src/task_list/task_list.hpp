@@ -395,13 +395,13 @@ const TaskID RECV_RADSH(73);
 
 const TaskID SRCTERM_IMRAD(74);
 
-const TaskID CALC_RADFLDFLX(75);
-const TaskID SEND_RADFLDFLX(76);
-const TaskID RECV_RADFLDFLX(77);
-const TaskID SEND_RADFLD(78);
-const TaskID RECV_RADFLD(79);
-const TaskID SETB_RADFLD(80);
-const TaskID INT_RADFLD(81);
+const TaskID CALC_FLDADVFLX(75);
+const TaskID SEND_FLDADVFLX(76);
+const TaskID RECV_FLDADVFLX(77);
+const TaskID SEND_FLDADV(78);
+const TaskID RECV_FLDADV(79);
+const TaskID SETB_FLDADV(80);
+const TaskID INT_FLDADV(81);
 
 }  // namespace HydroIntegratorTaskNames
 #endif  // TASK_LIST_TASK_LIST_HPP_

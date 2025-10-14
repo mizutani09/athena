@@ -63,11 +63,12 @@
 #include "../athena_arrays.hpp"
 #include "../cr/cr.hpp"
 #include "../eos/eos.hpp"
+#include "../fld/fld.hpp"
 #include "../field/field.hpp"
 #include "../hydro/hydro.hpp"
 #include "../mesh/mesh.hpp"
+#include "../newton_raphson/Newton_Raphson.hpp"
 #include "../nr_radiation/radiation.hpp"
-#include "../rad_fld/rad_fld.hpp"
 #include "../scalars/scalars.hpp"
 #include "./bvals.hpp"
 #include "cc/hydro/bvals_hydro.hpp"
@@ -147,11 +148,18 @@ void BoundaryValues::ProlongateBoundaries(const Real time, const Real dt,
     pcrbvar = &(pcr->cr_bvar);
   }
 
-  FLD *prfld=nullptr;
+  FLD2 *prfld=nullptr;
   CellCenteredBoundaryVariable *pfldbvar = nullptr;
-  if (MGFLD_ENABLED) {
-    prfld = pmb->prfld;
-    pfldbvar = &(prfld->rfldbvar);
+  if (MGFLD_ENABLED || NRMGFLD_ENABLED) {
+    prfld = pmb->prfld2;
+    pfldbvar = &(prfld->u_rad_fldbvar);
+  }
+
+  NewtonRaphson *pnr=nullptr;
+  CellCenteredBoundaryVariable *pnr_bvar = nullptr;
+  if (NRMGFLD_ENABLED) {
+    pnr = pmb->pnr;
+    pnr_bvar = &(pnr->nrbvar);
   }
 
   // For each finer neighbor, to prolongate a boundary we need to fill one more cell
@@ -239,8 +247,12 @@ void BoundaryValues::ProlongateBoundaries(const Real time, const Real dt,
     if (CR_ENABLED)
       pcrbvar->var_cc = &(pcr->coarse_cr_);
 
-    if (MGFLD_ENABLED)
-      pfldbvar->var_cc = &(prfld->coarse_r);
+    if (MGFLD_ENABLED || NRMGFLD_ENABLED)
+      pfldbvar->var_cc = &(prfld->coarse_u_rad);
+
+    if (NRMGFLD_ENABLED) {
+      pnr_bvar->var_cc = &(pnr->coarse_u_);
+    }
 
     // Step 2. Re-apply physical boundaries on the coarse boundary:
     ApplyPhysicalBoundariesOnCoarseLevel(nb, time, dt, si, ei, sj, ej, sk, ek,
@@ -262,8 +274,12 @@ void BoundaryValues::ProlongateBoundaries(const Real time, const Real dt,
     if (CR_ENABLED)
       pcrbvar->var_cc = &(pcr->u_cr);
 
-    if (MGFLD_ENABLED)
-      pfldbvar->var_cc = &(prfld->r);
+    if (MGFLD_ENABLED || NRMGFLD_ENABLED)
+      pfldbvar->var_cc = &(prfld->u_rad);
+
+    if (NRMGFLD_ENABLED) {
+      pnr_bvar->var_cc = &(pnr->u_);
+    }
 
     // Step 3. Finally, the ghost-ghost zones are ready for prolongation:
     ProlongateGhostCells(nb, si, ei, sj, ej, sk, ek);
@@ -411,9 +427,13 @@ void BoundaryValues::ApplyPhysicalBoundariesOnCoarseLevel(
   if (CR_ENABLED)
     pcr = pmb->pcr;
 
-  FLD *prfld = nullptr;
-  if (MGFLD_ENABLED)
-    prfld = pmb->prfld;
+  FLD2 *prfld = nullptr;
+  if (MGFLD_ENABLED || NRMGFLD_ENABLED)
+    prfld = pmb->prfld2;
+
+  NewtonRaphson *pnr=nullptr;
+  if (NRMGFLD_ENABLED)
+    pnr = pmb->pnr;
 
   // convert the ghost zone and ghost-ghost zones into primitive variables
   // this includes cell-centered field calculation
@@ -471,7 +491,7 @@ void BoundaryValues::ApplyPhysicalBoundariesOnCoarseLevel(
                                 pmb->cis, pmb->cie, sj, ej, sk, ek, 1,
                                 ph->coarse_prim_, pf->coarse_b_,
                                 pnrrad->coarse_ir_, pcr->coarse_cr_,
-                                prfld->coarse_r,
+                                prfld->coarse_u_rad,
                                 BoundaryFace::inner_x1,
                                 bvars_subset);
     }
@@ -480,7 +500,7 @@ void BoundaryValues::ApplyPhysicalBoundariesOnCoarseLevel(
                                 pmb->cis, pmb->cie, sj, ej, sk, ek, 1,
                                 ph->coarse_prim_, pf->coarse_b_,
                                 pnrrad->coarse_ir_, pcr->coarse_cr_,
-                                prfld->coarse_r,
+                                prfld->coarse_u_rad,
                                 BoundaryFace::outer_x1,
                                 bvars_subset);
     }
@@ -491,7 +511,7 @@ void BoundaryValues::ApplyPhysicalBoundariesOnCoarseLevel(
                                 si, ei, pmb->cjs, pmb->cje, sk, ek, 1,
                                 ph->coarse_prim_, pf->coarse_b_,
                                 pnrrad->coarse_ir_, pcr->coarse_cr_,
-                                prfld->coarse_r,
+                                prfld->coarse_u_rad,
                                 BoundaryFace::inner_x2,
                                 bvars_subset);
     }
@@ -507,7 +527,7 @@ void BoundaryValues::ApplyPhysicalBoundariesOnCoarseLevel(
                                 si, ei, pmb->cjs, pmb->cje, sk, ek, 1,
                                 ph->coarse_prim_, pf->coarse_b_,
                                 pnrrad->coarse_ir_, pcr->coarse_cr_,
-                                prfld->coarse_r,
+                                prfld->coarse_u_rad,
                                 BoundaryFace::outer_x2,
                                 bvars_subset);
     }
@@ -524,7 +544,7 @@ void BoundaryValues::ApplyPhysicalBoundariesOnCoarseLevel(
                                 si, ei, sj, ej, pmb->cks, pmb->cke, 1,
                                 ph->coarse_prim_, pf->coarse_b_,
                                 pnrrad->coarse_ir_, pcr->coarse_cr_,
-                                prfld->coarse_r,
+                                prfld->coarse_u_rad,
                                 BoundaryFace::inner_x3,
                                 bvars_subset);
     }
@@ -542,7 +562,7 @@ void BoundaryValues::ApplyPhysicalBoundariesOnCoarseLevel(
                                 si, ei, sj, ej, pmb->cks, pmb->cke, 1,
                                 ph->coarse_prim_, pf->coarse_b_,
                                 pnrrad->coarse_ir_, pcr->coarse_cr_,
-                                prfld->coarse_r,
+                                prfld->coarse_u_rad,
                                 BoundaryFace::outer_x3,
                                 bvars_subset);
     }
@@ -579,9 +599,9 @@ void BoundaryValues::ProlongateGhostCells(const NeighborBlock& nb,
     pmr->pvars_cc_[ps->refinement_idx] = std::make_tuple(&ps->r, &ps->coarse_r_);
   }
 
-  if (MGFLD_ENABLED) {
-    FLD *prfld = pmb->prfld;
-    pmr->pvars_cc_[prfld->refinement_idx] = std::make_tuple(&prfld->r, &prfld->coarse_r);
+  if (MGFLD_ENABLED || NRMGFLD_ENABLED) {
+    FLD2 *prfld = pmb->prfld2;
+    pmr->pvars_cc_[prfld->refinement_idx] = std::make_tuple(&prfld->u_rad, &prfld->coarse_u_rad);
   }
 
   for (auto cc_pair : pmr->pvars_cc_) {
@@ -608,9 +628,9 @@ void BoundaryValues::ProlongateGhostCells(const NeighborBlock& nb,
     PassiveScalars *ps = pmb->pscalars;
     pmr->pvars_cc_[ps->refinement_idx] = std::make_tuple(&ps->s, &ps->coarse_s_);
   }
-  if (MGFLD_ENABLED) {
-    FLD *prfld = pmb->prfld;
-    pmr->pvars_cc_[prfld->refinement_idx] = std::make_tuple(&prfld->r, &prfld->coarse_r);
+  if (MGFLD_ENABLED || NRMGFLD_ENABLED) {
+    FLD2 *prfld = pmb->prfld2;
+    pmr->pvars_cc_[prfld->refinement_idx] = std::make_tuple(&prfld->u_rad, &prfld->coarse_u_rad);
   }
 
   // prolongate face-centered S/AMR-enrolled quantities (magnetic fields)
