@@ -178,7 +178,7 @@ void Hydro::RiemannSolver(const int k, const int j, const int il, const int iu,
     flx(ivz,k,j,i) = flxi[IVZ];
     flx(IEN,k,j,i) = flxi[IEN];
 
-    if (MGFLD_ENABLED) pmy_block->phydro->vf[ivx-IVX](k,j,i) = vf;
+    if (MGFLD_ENABLED || NRMGFLD_ENABLED) pmy_block->phydro->vf[ivx-IVX](k,j,i) = vf;
   }
   return;
 }

@@ -39,6 +39,7 @@
 #include "../eos/eos.hpp"
 #include "../fft/athena_fft.hpp"
 #include "../fft/turbulence.hpp"
+#include "../fld/fld.hpp"
 #include "../field/field.hpp"
 #include "../field/field_diffusion/field_diffusion.hpp"
 #include "../globals.hpp"
@@ -1747,12 +1748,12 @@ void Mesh::Initialize(int res_flag, ParameterInput *pin) {
           }
           pmb->pscalars->sbvar.SendBoundaryBuffers();
         }
-        if (MGFLD_ENABLED) {
-          pmb->prfld->rfldbvar.var_cc = &(pmb->prfld->r);
+        if (MGFLD_ENABLED || NRMGFLD_ENABLED) {
+          pmb->prfld2->u_rad_fldbvar.var_cc = &(pmb->prfld2->u_rad);
           if (pmb->pmy_mesh->multilevel) {
-            pmb->prfld->rfldbvar.coarse_buf = &(pmb->prfld->coarse_r);
+            pmb->prfld2->u_rad_fldbvar.coarse_buf = &(pmb->prfld2->coarse_u_rad);
           }
-          pmb->prfld->rfldbvar.SendBoundaryBuffers();
+          pmb->prfld2->u_rad_fldbvar.SendBoundaryBuffers();
         }
 
 
@@ -1773,8 +1774,8 @@ void Mesh::Initialize(int res_flag, ParameterInput *pin) {
         if (NSCALARS > 0)
           pmb->pscalars->sbvar.ReceiveAndSetBoundariesWithWait();
 
-        if (MGFLD_ENABLED)
-          pmb->prfld->rfldbvar.ReceiveAndSetBoundariesWithWait();
+        if (MGFLD_ENABLED || NRMGFLD_ENABLED)
+          pmb->prfld2->u_rad_fldbvar.ReceiveAndSetBoundariesWithWait();
 
         if (NR_RADIATION_ENABLED || IM_RADIATION_ENABLED)
           pmb->pnrrad->rad_bvar.ReceiveAndSetBoundariesWithWait();
@@ -1827,8 +1828,8 @@ void Mesh::Initialize(int res_flag, ParameterInput *pin) {
           if (NSCALARS > 0) {
             pmb->pscalars->sbvar.ReceiveAndSetBoundariesWithWait();
           }
-          if (MGFLD_ENABLED) {
-            pmb->prfld->rfldbvar.ReceiveAndSetBoundariesWithWait();
+          if (MGFLD_ENABLED || NRMGFLD_ENABLED) {
+            pmb->prfld2->u_rad_fldbvar.ReceiveAndSetBoundariesWithWait();
           }
           pbval->ClearBoundarySubset(BoundaryCommSubset::gr_amr,
                                      pbval->bvars_main_int);
@@ -1840,10 +1841,10 @@ void Mesh::Initialize(int res_flag, ParameterInput *pin) {
               pmb->pscalars->sbvar.coarse_buf = &(pmb->pscalars->coarse_s_);
             }
           }
-          if (MGFLD_ENABLED) {
-            pmb->prfld->rfldbvar.var_cc = &(pmb->prfld->r);
+          if (MGFLD_ENABLED || NRMGFLD_ENABLED) {
+            pmb->prfld2->u_rad_fldbvar.var_cc = &(pmb->prfld2->u_rad);
             if (pmb->pmy_mesh->multilevel) {
-              pmb->prfld->rfldbvar.coarse_buf = &(pmb->prfld->coarse_r);
+              pmb->prfld2->u_rad_fldbvar.coarse_buf = &(pmb->prfld2->coarse_u_rad);
             }
           }
         }
@@ -1870,12 +1871,12 @@ void Mesh::Initialize(int res_flag, ParameterInput *pin) {
       Hydro *ph;
       Field *pf;
       PassiveScalars *ps;
-      FLD *prfld;
+      FLD2 *prfld;
 #pragma omp for private(pmb,pbval,ph,pf,ps)
       for (int i=0; i<nblocal; ++i) {
         pmb = my_blocks(i);
         pbval = pmb->pbval, ph = pmb->phydro, pf = pmb->pfield, ps = pmb->pscalars;
-        prfld = pmb->prfld;
+        prfld = pmb->prfld2;
         if (multilevel)
           pbval->ProlongateBoundaries(time, 0.0, pbval->bvars_main_int);
 
@@ -1923,10 +1924,10 @@ void Mesh::Initialize(int res_flag, ParameterInput *pin) {
               ps->sbvar.coarse_buf = &(ps->coarse_r_);
             }
           }
-          if (MGFLD_ENABLED) {
-            prfld->rfldbvar.var_cc = &(prfld->r);
+          if (MGFLD_ENABLED || NRMGFLD_ENABLED) {
+            prfld->u_rad_fldbvar.var_cc = &(prfld->u_rad);
             if (pmb->pmy_mesh->multilevel) {
-              prfld->rfldbvar.coarse_buf = &(prfld->coarse_r);
+              prfld->u_rad_fldbvar.coarse_buf = &(prfld->coarse_u_rad);
             }
           }
           pbval->ApplyPhysicalBoundaries(time, 0.0, pbval->bvars_main_int);
@@ -1951,10 +1952,10 @@ void Mesh::Initialize(int res_flag, ParameterInput *pin) {
             ps->sbvar.coarse_buf = &(ps->coarse_r_);
           }
         }
-        if (MGFLD_ENABLED) {
-          prfld->rfldbvar.var_cc = &(prfld->r);
+        if (MGFLD_ENABLED || NRMGFLD_ENABLED) {
+          prfld->u_rad_fldbvar.var_cc = &(prfld->u_rad);
           if (pmb->pmy_mesh->multilevel) {
-            prfld->rfldbvar.coarse_buf = &(prfld->coarse_r);
+            prfld->u_rad_fldbvar.coarse_buf = &(prfld->coarse_u_rad);
           }
         }
 
@@ -1981,11 +1982,11 @@ void Mesh::Initialize(int res_flag, ParameterInput *pin) {
       }
 
       // calculate opacity for MGFLD
-      if (MGFLD_ENABLED) {
+      if (MGFLD_ENABLED || NRMGFLD_ENABLED) {
         for (int i=0; i<nblocal; ++i) {
           pmb = my_blocks(i); ph = pmb->phydro;
-          FLD *prfld = pmb->prfld;
-          prfld->UpdateOpacity(pmb, prfld->u, ph->w);
+          FLD2 *prfld = pmb->prfld2;
+          prfld->UpdateOpacity(pmb, prfld->u_rad, ph->w);
         }
       }
 
