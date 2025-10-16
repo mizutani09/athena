@@ -271,7 +271,7 @@ MeshBlock::MeshBlock(int igid, int ilid, LogicalLocation iloc, RegionSize input_
     pbval->AdvanceCounterPhysID(CellCenteredBoundaryVariable::max_phys_id);
   }
 
-  if (NRMGFLD_ENABLED) {
+  if (NRMGFLD_ENABLED) { // caution! NRFLD should be constructed after FLD2
     prfld2 = new FLD2(this, pin);
     pbval->AdvanceCounterPhysID(CellCenteredBoundaryVariable::max_phys_id);
     pnr = new NRFLD(this, pin);

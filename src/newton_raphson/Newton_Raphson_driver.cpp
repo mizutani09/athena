@@ -150,6 +150,7 @@ NewtonRaphsonDriver::~NewtonRaphsonDriver() {
 
 
 void NewtonRaphsonDriver::Solve_general(int stage, Real dt) {
+  std::cout << "In NewtonRaphsonDriver::Solve_general" << std::endl;
   stage_ = stage;
   dt_ = dt;
   // Construct the NewtonRaphson array
@@ -162,7 +163,7 @@ void NewtonRaphsonDriver::Solve_general(int stage, Real dt) {
   for (auto itr = vnr_.begin(); itr < vnr_.end(); itr++) {
     NewtonRaphson *pnr = *itr;
     MeshBlock *pmb = pnr->pmy_block_;
-    pnr->LoadHydroVariables();
+    pnr->LoadVariables();
   }
 
   // calc coefficients for initial setup
@@ -177,10 +178,10 @@ void NewtonRaphsonDriver::Solve_general(int stage, Real dt) {
   Real def = 0.0, defmax = 0.0;
   for (int v = 0; v < nvar_; ++v) {
     def += CalculateDefectNorm(NRNormType::l2, v);
-//    defmax = std::max(defmax, CalculateDefectNorm(NRNormType::max, v));
+  //  defmax = std::max(defmax, CalculateDefectNorm(NRNormType::max, v));
   }
-//  if (Globals::my_rank == 0)
-//    std::cout << "initial defect " << def << " max " << defmax << std::endl;
+ if (Globals::my_rank == 0)
+   std::cout << "initial defect " << def << " max " << defmax << std::endl;
   while (def > eps_) {
     SolveOneCycle();
     // if (matrixmode_ == 1)
@@ -192,7 +193,7 @@ void NewtonRaphsonDriver::Solve_general(int stage, Real dt) {
 //      defmax = std::max(defmax, CalculateDefectNorm(NRNormType::max, v));
     }
    if (Globals::my_rank == 0)
-     std::cout << "[debug] niter " << n << " def " << def << " convergence factor "
+     std::cout << "[debug in NR] niter " << n << " def " << def << " convergence factor "
                << def/olddef<< " defmax  "<< defmax << " cf "
                <<  defmax/oldmax << std::endl;
     if (def/olddef > 0.9) {
@@ -210,7 +211,7 @@ void NewtonRaphsonDriver::Solve_general(int stage, Real dt) {
       }
     }
     // if (n > 100) {
-    if (n > 30) {
+    if (n > 2) {
       if (Globals::my_rank == 0) {
         std::cout
             << "### Warning in NewtonRaphsonDriver::SolveIterative" << std::endl
@@ -241,8 +242,42 @@ void NewtonRaphsonDriver::SolveOneCycle() {
     pnr->CalculateCoefficients(pnr->uold_, pnr->u_, dt_);
   }
 
+  // print for debug
+  {
+    NewtonRaphson *pnr = *(vnr_.begin());
+    MeshBlock *pmb = pnr->pmy_block_;
+    int is = pmb->is, ie = pmb->ie;
+    int js = pmb->js, je = pmb->je;
+    int ks = pmb->ks, ke = pmb->ke;
+    int i = (is + ie) / 2;
+    int j = (js + je) / 2;
+    int k = (ks + ke) / 2;
+    std::cout << "At (" << k << "," << j << "," << i << "):" << std::endl;
+    std::cout <<"delta_u_ before MG: ";
+    for (int n = 0; n < nvar_; n++)
+      std::cout << pnr->delta_u_(n,k,j,i) << " ";
+    std::cout << std::endl;
+  }
+
   // call linear solver (should be replaced general solver)
   plmgd_->Solve(stage_, dt_);
+
+  // print for debug
+  {
+    NewtonRaphson *pnr = *(vnr_.begin());
+    MeshBlock *pmb = pnr->pmy_block_;
+    int is = pmb->is, ie = pmb->ie;
+    int js = pmb->js, je = pmb->je;
+    int ks = pmb->ks, ke = pmb->ke;
+    int i = (is + ie) / 2;
+    int j = (js + je) / 2;
+    int k = (ks + ke) / 2;
+    std::cout << "At (" << k << "," << j << "," << i << "):" << std::endl;
+    std::cout <<"delta_u_ after MG: ";
+    for (int n = 0; n < nvar_; n++)
+      std::cout << pnr->delta_u_(n,k,j,i) << " ";
+    std::cout << std::endl;
+  }
 
   for (auto itr = vnr_.begin(); itr < vnr_.end(); itr++) {
     NewtonRaphson *pnr = *itr;

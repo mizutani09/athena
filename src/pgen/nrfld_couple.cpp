@@ -340,7 +340,7 @@ void MeshBlock::ProblemGenerator(ParameterInput *pin) {
       }
     }
   }
-
+  std::cout << "ProblemGenerator finished" << std::endl;
   return;
 }
 

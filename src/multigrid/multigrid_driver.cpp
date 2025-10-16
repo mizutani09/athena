@@ -1007,7 +1007,7 @@ void MultigridDriver::SolveVCycle(int npresmooth, int npostsmooth) {
     Real def = 0.0;
     for (int v = 0; v < nvar_; ++v)
       def += CalculateDefectNorm(MGNormType::l2, v);
-    // std::cout << "Multigrid defect after post smooth : " << def << std::endl;
+    std::cout << "Multigrid defect after post smooth : " << def << std::endl;
   }
   return;
 }
@@ -1061,8 +1061,8 @@ void MultigridDriver::SolveIterative() {
     def += CalculateDefectNorm(MGNormType::l2, v);
 //    defmax = std::max(defmax, CalculateDefectNorm(MGNormType::max, v));
   }
-//  if (Globals::my_rank == 0)
-//    std::cout << "initial defect " << def << " max " << defmax << std::endl;
+ if (Globals::my_rank == 0)
+  //  std::cout << "initial defect " << def << " max " << defmax << std::endl;
   while (def > eps_) {
     SolveVCycle(npresmooth_, npostsmooth_);
     if (matrixmode_ == 1)
@@ -1114,6 +1114,7 @@ void MultigridDriver::SolveIterative() {
 //  \brief Solve iteratively niter_ times
 
 void MultigridDriver::SolveIterativeFixedTimes() {
+  std::cout << "In SolveIterativeFixedTimes: niter_ " << niter_ << std::endl;
   for (int n = 0; n < niter_; ++n) {
     SolveVCycle(npresmooth_, npostsmooth_);
     if (matrixmode_ == 1)
@@ -1124,8 +1125,10 @@ void MultigridDriver::SolveIterativeFixedTimes() {
   Real def = 0.0;
   for (int v = 0; v < nvar_; ++v)
     def += CalculateDefectNorm(MGNormType::l2, v);
-  if (fshowdef_ && Globals::my_rank == 0)
-    std::cout << "Multigrid defect L2-norm : " << def << std::endl;
+  // if (fshowdef_ && Globals::my_rank == 0)
+  // if (Globals::my_rank == 0)
+  std::cout << "Multigrid defect L2-norm : " << def << std::endl;
+  std::cout << "End of SolveIterativeFixedTimes" << std::endl;
 
   return;
 }

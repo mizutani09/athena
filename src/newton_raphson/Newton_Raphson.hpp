@@ -85,7 +85,7 @@ class NewtonRaphson {
   virtual void AddDifference(AthenaArray<Real> &dst, const AthenaArray<Real> &delta) = 0;
 
   // physics-dependent virtual functions
-  virtual void LoadHydroVariables() = 0;
+  virtual void LoadVariables() = 0;
   virtual void UpdateHydroVariables() = 0;
   virtual void CalculateCoefficientsOnce(const AthenaArray<Real> &u_pre,
                                          const AthenaArray<Real> &w) = 0;

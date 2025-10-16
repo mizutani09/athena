@@ -111,7 +111,7 @@ class NRFLD : public NewtonRaphson {
   // NRBoundaryValues *pnrbval;
   BoundaryQuantity btype, btypef;
 
-  void LoadHydroVariables() final;
+  void LoadVariables() final;
   void UpdateHydroVariables() final;
   void CalculateCoefficientsOnce(const AthenaArray<Real> &u_pre,
                                  const AthenaArray<Real> &w) final;

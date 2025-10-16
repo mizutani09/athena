@@ -56,4 +56,18 @@ class EosTable {
   AthenaArray<Real> EosRatios;
 };
 
+class UserTable {
+ public:
+  explicit UserTable(ParameterInput *pin, std::string tag);
+  ~UserTable();
+  InterpTable2D table;
+  //Real GetRawUserTableData(int kOut, Real var2, Real var1, Real var2Unit, Real var1Unit);
+  Real GetRawUserTableData(int kOut, Real x2, Real x1);
+  Real X1Min, X1Max;
+  Real X2Min, X2Max;
+  //Real X1Unit, X2Unit, X3Unit;
+  int nX1, nX2, nVar;
+  AthenaArray<Real> UserRatios;
+};
+
 #endif //UTILS_INTERP_TABLE_HPP_

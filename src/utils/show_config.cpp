@@ -66,6 +66,11 @@ void ShowConfig() {
   } else {
     std::cout<<"  FLD with Multigrid:         OFF" << std::endl;
   }
+  if (NRMGFLD_ENABLED) {
+    std::cout<<"  FLD with Newton-Raphson:    ON" << std::endl;
+  } else {
+    std::cout<<"  FLD with Newton-Raphson:    OFF" << std::endl;
+  }
 
   // configure.py output: "Frame transformations"
   if (SELF_GRAVITY_ENABLED == 1) {
