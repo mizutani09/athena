@@ -114,11 +114,17 @@ class NRFLD : public NewtonRaphson {
   void LoadVariables() final;
   void UpdateHydroVariables() final;
   void CalculateCoefficientsOnce(const AthenaArray<Real> &u_pre,
-                                 const AthenaArray<Real> &w) final;
+                                 const AthenaArray<Real> &w,
+                                 AthenaArray<Real> &def_coeff,
+                                 AthenaArray<Real> &derivetive) final;
   void CalculateCoefficients(const AthenaArray<Real> &u_rad_old,
                              const AthenaArray<Real> &u_rad_new,
                             //  const AthenaArray<Real> &u_gas_old,
                             //  const AthenaArray<Real> &u_gas_new,
+                             const AthenaArray<Real> &def_coeff,
+                             AthenaArray<Real> &coeff,
+                             AthenaArray<Real> &derivetive,
+                             AthenaArray<Real> &src,
                              Real dt) final;
 
   // void LoadSource(const AthenaArray<Real> &src, int ns, int ngh, Real fac);
@@ -145,6 +151,7 @@ class NRFLD : public NewtonRaphson {
   //                     int color, bool th) final;
   void CalculateDefect(AthenaArray<Real> &def, const AthenaArray<Real> &u,
                        const AthenaArray<Real> &u_old, const AthenaArray<Real> &coeff,
+                       const AthenaArray<Real> &def_coeff,
                        bool th) final;
   // void CalculateFASRHS(AthenaArray<Real> &def, const AthenaArray<Real> &src,
   //                const AthenaArray<Real> &coeff, const AthenaArray<Real> &matrix,
@@ -153,7 +160,9 @@ class NRFLD : public NewtonRaphson {
   //              const AthenaArray<Real> &src, const AthenaArray<Real> &coeff,
   //              int il, int iu, int jl, int ju, int kl, int ku, bool th) final;
 
-  void AddDifference(AthenaArray<Real> &dst, const AthenaArray<Real> &delta) final;
+  void AddDifference(AthenaArray<Real> &dst,
+                     const AthenaArray<Real> &delta,
+                     const AthenaArray<Real> &derivetive) final;
 
   friend class NewtonRaphsonDriver;
   friend class NewtonRaphsonTaskList;
@@ -175,11 +184,9 @@ class NRFLD : public NewtonRaphson {
   Real rdx_, rdy_, rdz_;
   Real defscale_;
   // AthenaArray<Real> *u_, *def_, *src_, *uold_, *coeff_, *matrix_;
-  AthenaArray<Real> delta_u_;
+  // AthenaArray<Real> delta_u_;
   AthenaArray<Real> u_gas_;
   // MGCoordinates *coord_, *ccoord_;
-  AthenaArray<Real> derivetive_;
-  AthenaArray<Real> def_coeff_;
 
 
  private:

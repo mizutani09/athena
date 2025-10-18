@@ -29,7 +29,8 @@
 //! \fn NewtonRaphson::NewtonRaphson(NewtonRaphsonDriver *pmd, MeshBlock *pmb, int nghost)
 //  \brief NewtonRaphson constructor
 
-NewtonRaphson::NewtonRaphson(NewtonRaphsonDriver *pmd, MeshBlock *pmb, int nghost) :
+NewtonRaphson::NewtonRaphson(NewtonRaphsonDriver *pmd, MeshBlock *pmb, int nghost,
+                             int nderivetive, int ndef_coeff) :
   pmy_driver_(pmd), pmy_block_(pmb),
   ngh_(nghost), nvar_(pmd->nvar_),
   u_(nvar_, pmb->ncells3, pmb->ncells2, pmb->ncells1),
@@ -51,6 +52,8 @@ NewtonRaphson::NewtonRaphson(NewtonRaphsonDriver *pmd, MeshBlock *pmb, int nghos
                 AthenaArray<Real>::DataStatus::empty)),
   empty_flux{AthenaArray<Real>(), AthenaArray<Real>(), AthenaArray<Real>()},
   delta_bvar(pmb, &delta_u_, &coarse_delta_u_, empty_flux, false), //!
+  derivetive_(nderivetive, pmb->ncells3, pmb->ncells2, pmb->ncells1),
+  def_coeff_(ndef_coeff, pmb->ncells3, pmb->ncells2, pmb->ncells1),
   output_defect(true), // caution!
   ncoeff_(pmd->ncoeff_), nmatrix_(pmd->nmatrix_), defscale_(1.0) {
   if (pmy_block_ != nullptr) {
@@ -126,101 +129,6 @@ NewtonRaphson::NewtonRaphson(NewtonRaphsonDriver *pmd, MeshBlock *pmb, int nghos
 
 NewtonRaphson::~NewtonRaphson() {
 }
-
-
-// //----------------------------------------------------------------------------------------
-// //! \fn void NewtonRaphson::LoadFinestData(const AthenaArray<Real> &src, int ns, int ngh)
-// //! \brief Fill the inital guess in the active zone of the finest level
-
-// void NewtonRaphson::LoadFinestData(const AthenaArray<Real> &src, int ns, int ngh) {
-//   AthenaArray<Real> &dst=u_;
-//   int is = pmy_block_->is;
-//   int ie = pmy_block_->ie;
-//   int js = pmy_block_->js;
-//   int je = pmy_block_->je;
-//   int ks = pmy_block_->ks;
-//   int ke = pmy_block_->ke;
-//   for (int v=0; v<nvar_; ++v) {
-//     int nsrc=ns+v;
-//     for (int k=ks; k<=ke; ++k) {
-//       for (int j=js; j<=je; ++j) {
-// #pragma omp simd
-//         for (int i=is; i<=ie; ++i) {
-//           dst(v,k,j,i)=src(nsrc,k,j,i);
-//         }
-//       }
-//     }
-//   }
-//   return;
-// }
-
-
-// //----------------------------------------------------------------------------------------
-// //! \fn void NewtonRaphson::LoadSource(const AthenaArray<Real> &src, int ns, int ngh,
-// //!                                Real fac)
-// //! \brief Fill the source in the active zone of the finest level
-
-// void NewtonRaphson::LoadSource(const AthenaArray<Real> &src, int ns, int ngh, Real fac) {
-//   AthenaArray<Real> &dst=src_;
-//   int is = pmy_block_->is;
-//   int ie = pmy_block_->ie;
-//   int js = pmy_block_->js;
-//   int je = pmy_block_->je;
-//   int ks = pmy_block_->ks;
-//   int ke = pmy_block_->ke;
-//   if (fac == 1.0) {
-//     for (int v=0; v<nvar_; ++v) {
-//       int nsrc=ns+v;
-//       for (int k=ks; k<=ke; ++k) {
-//         for (int j=js; j<=je; ++j) {
-// #pragma omp simd
-//           for (int i=is; i<=ie; ++i) {
-//             dst(v,k,j,i)=src(nsrc,k,j,i);
-//           }
-//         }
-//       }
-//     }
-//   } else {
-//     for (int v=0; v<nvar_; ++v) {
-//       int nsrc=ns+v;
-//       for (int k=ks; k<=ke; ++k) {
-//         for (int j=js; j<=je; ++j) {
-// #pragma omp simd
-//           for (int i=is; i<=ie; ++i) {
-//             dst(v,k,j,i)=src(nsrc,k,j,i)*fac;
-//           }
-//         }
-//       }
-//     }
-//   }
-//   return;
-// }
-
-
-// //----------------------------------------------------------------------------------------
-// //! \fn void NewtonRaphson::LoadCoefficients(const AthenaArray<Real> &coeff, int ngh)
-// //! \brief Load coefficients of the diffusion and source terms
-
-// void NewtonRaphson::LoadCoefficients(const AthenaArray<Real> &coeff, int ngh) {
-//   AthenaArray<Real> &cm=coeff_;
-//   int is = pmy_block_->is;
-//   int ie = pmy_block_->ie;
-//   int js = pmy_block_->js;
-//   int je = pmy_block_->je;
-//   int ks = pmy_block_->ks;
-//   int ke = pmy_block_->ke;
-//   for (int v = 0; v < ncoeff_; ++v) {
-//     for (int k=ks; k<=ke; ++k) {
-//       for (int j=js; j<=je; ++j) {
-// #pragma omp simd
-//         for (int i=is; i<=ie; ++i) {
-//           cm(v,k,j,i) = coeff(v,k,j,i);
-//         }
-//       }
-//     }
-//   }
-//   return;
-// }
 
 
 //----------------------------------------------------------------------------------------
@@ -305,29 +213,11 @@ void NewtonRaphson::CalculateDefectBlock() {
   int ke = pmy_block_->ke;
 
   CalculateDefect(def_, u_, uold_,
-                  coeff_, th);
+                  coeff_, def_coeff_,
+                  th);
 
   return;
 }
-
-
-// //----------------------------------------------------------------------------------------
-// //! \fn void NewtonRaphson::CalculateMatrixBlock()
-// //  \brief calculate matrix elements
-
-// void NewtonRaphson::CalculateMatrixBlock() {
-//   int is = pmy_block_->is;
-//   int ie = pmy_block_->ie;
-//   int js = pmy_block_->js;
-//   int je = pmy_block_->je;
-//   int ks = pmy_block_->ks;
-//   int ke = pmy_block_->ke;
-
-//   CalculateMatrix(matrix_, u_, src_, coeff_,
-//                   is, ie, js, je, ks, ke, false);
-
-//   return;
-// }
 
 
 //----------------------------------------------------------------------------------------
@@ -345,7 +235,8 @@ Real NewtonRaphson::CalculateDefectNorm(NRNormType nrm, int n) {
   Real dx=rdx_, dy=rdy_, dz=rdz_;
 
   CalculateDefect(def_, u_, uold_,
-                  coeff_, false);
+                  coeff_, def_coeff_,
+                  false);
 
   Real norm=0.0;
   if (nrm == NRNormType::max) {
@@ -435,38 +326,3 @@ void NewtonRaphson::StoreOldData() {
          u_.GetSizeInBytes());
   return;
 }
-
-
-// //----------------------------------------------------------------------------------------
-// //! \fn void NewtonRaphson::SetData(MGVariable type, int n, int k, int j, int i, Real v)
-// //! \brief set a value to a cell on the current level
-
-// void NewtonRaphson::SetData(NRVariable type, int n, int k, int j, int i, Real v) {
-//   auto& arr = (type == NRVariable::src) ? src_:
-//               (type == NRVariable::u  ) ? u_ : coeff_;
-
-//   const int niTot = arr.GetDim3(), njTot = arr.GetDim2(), nkTot = arr.GetDim1();
-//   const int niInt = size_.nx1, njInt = size_.nx2, nkInt = size_.nx3;
-//   const int ngh   = ngh_;
-
-//   int ni = arr.GetDim3();
-//   int nj = arr.GetDim2();
-//   int nk = arr.GetDim1();
-//   int nn = arr.GetDim4();  // optional
-//   if ((n < 0) || (n >= nn) ||
-//     (ngh_ + i < 0) || (ngh_ + i >= ni) ||
-//     (ngh_ + j < 0) || (ngh_ + j >= nj) ||
-//     (ngh_ + k < 0) || (ngh_ + k >= nk)) {
-//     std::fprintf(stderr,
-//       "OOB in SetData(): n=%d i=%d j=%d k=%d (nn=%d ni=%d nj=%d nk=%d ngh=%d)\n",
-//       n,i,j,k, nn,ni,nj,nk,ngh_);
-//     __builtin_trap();  // or throw
-//   }
-//   if (type == MGVariable::src)
-//     src_[current_level_](n, ngh_+k, ngh_+j, ngh_+i) = v;
-//   else if (type == MGVariable::u)
-//     u_[current_level_](n, ngh_+k, ngh_+j, ngh_+i) = v;
-//   else
-//     coeff_[current_level_](n, ngh_+k, ngh_+j, ngh_+i) = v;
-//   return;
-// }

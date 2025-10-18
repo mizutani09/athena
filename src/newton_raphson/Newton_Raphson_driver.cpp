@@ -167,11 +167,32 @@ void NewtonRaphsonDriver::Solve_general(int stage, Real dt) {
   }
 
   // calc coefficients for initial setup
+  std::cout << "Number of NewtonRaphson objects: " << vnr_.size() << std::endl;
   for (auto itr = vnr_.begin(); itr < vnr_.end(); itr++) {
     NewtonRaphson *pnr = *itr;
     MeshBlock *pmb = pnr->pmy_block_;
-    pnr->CalculateCoefficientsOnce(pnr->u_, pmb->phydro->w);
-    pnr->CalculateCoefficients(pnr->uold_, pnr->u_, dt_);
+    pnr->CalculateCoefficientsOnce(pnr->u_, pmb->phydro->w,
+                                  pnr->def_coeff_, pnr->derivetive_);
+    pnr->CalculateCoefficients(pnr->uold_, pnr->u_,
+      pnr->def_coeff_, pnr->coeff_, pnr->derivetive_, pnr->src_,
+      dt_);
+  }
+
+  // print for debug
+  {
+    NewtonRaphson *pnr = *(vnr_.begin());
+    MeshBlock *pmb = pnr->pmy_block_;
+    int is = pmb->is, ie = pmb->ie;
+    int js = pmb->js, je = pmb->je;
+    int ks = pmb->ks, ke = pmb->ke;
+    int i = (is + ie) / 2;
+    int j = (js + je) / 2;
+    int k = (ks + ke) / 2;
+    std::cout << "At (" << k << "," << j << "," << i << "):" << std::endl;
+    std::cout <<"delta_u_ before linear solver: ";
+    for (int n = 0; n < nvar_; n++)
+      std::cout << pnr->delta_u_(n,k,j,i) << " ";
+    std::cout << std::endl;
   }
 
   int n = 0;
@@ -202,7 +223,7 @@ void NewtonRaphsonDriver::Solve_general(int stage, Real dt) {
         std::cout << "### Warning in NewtonRaphsonDriver::SolveIterative" << std::endl
                   << "Slow Newton-Raphson convergence : defect norm = " << def
                   << ", convergence factor = " << def/olddef << "." << std::endl;
-      if (def/olddef > 1.0) {
+      if (n > 1 && def/olddef > 1.0) {
         if (Globals::my_rank == 0)
           std::cout << "### Warning in NewtonRaphsonDriver::SolveIterative" << std::endl
                     << "NewtonRaphson is diverging: defect norm = " << def
@@ -211,7 +232,7 @@ void NewtonRaphsonDriver::Solve_general(int stage, Real dt) {
       }
     }
     // if (n > 100) {
-    if (n > 2) {
+    if (n > 100) {
       if (Globals::my_rank == 0) {
         std::cout
             << "### Warning in NewtonRaphsonDriver::SolveIterative" << std::endl
@@ -239,7 +260,9 @@ void NewtonRaphsonDriver::SolveOneCycle() {
   // calc coefficients
   for (auto itr = vnr_.begin(); itr < vnr_.end(); itr++) {
     NewtonRaphson *pnr = *itr;
-    pnr->CalculateCoefficients(pnr->uold_, pnr->u_, dt_);
+    pnr->CalculateCoefficients(pnr->uold_, pnr->u_,
+      pnr->def_coeff_, pnr->coeff_,
+      pnr->derivetive_, pnr->src_, dt_);
   }
 
   // print for debug
@@ -274,14 +297,15 @@ void NewtonRaphsonDriver::SolveOneCycle() {
     int k = (ks + ke) / 2;
     std::cout << "At (" << k << "," << j << "," << i << "):" << std::endl;
     std::cout <<"delta_u_ after MG: ";
-    for (int n = 0; n < nvar_; n++)
-      std::cout << pnr->delta_u_(n,k,j,i) << " ";
+    std::cout << pnr->delta_u_(k,j,i) << " ";
     std::cout << std::endl;
   }
 
   for (auto itr = vnr_.begin(); itr < vnr_.end(); itr++) {
     NewtonRaphson *pnr = *itr;
-    pnr->AddDifference(pnr->u_, pnr->delta_u_);
+    pnr->AddDifference(pnr->u_,
+                       pnr->delta_u_,
+                       pnr->derivetive_);
   }
 
   // for boundary values

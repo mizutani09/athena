@@ -31,6 +31,7 @@
 
 inline void DefaultOpacity(MeshBlock *pmb, AthenaArray<Real> &u_fld,
               AthenaArray<Real> &prim) {
+  std::cout << "DefaultOpacity is called!" << std::endl;
   FLD2 *prfld = pmb->prfld2;
   int kl=pmb->ks, ku=pmb->ke;
   int jl=pmb->js, ju=pmb->je;
@@ -47,10 +48,8 @@ inline void DefaultOpacity(MeshBlock *pmb, AthenaArray<Real> &u_fld,
     for(int j=jl; j<=ju; ++j) {
 #pragma omp simd
       for(int i=il; i<=iu; ++i) {
-        // prfld->sigma_p(k,j,i) = prfld->pmg->const_opacity*prim(IDN,k,j,i); //temporary
-        // prfld->sigma_r(k,j,i) = prfld->pmg->const_opacity*prim(IDN,k,j,i); //temporary
-        prfld->sigma_p(k,j,i) = 1.0;
-        prfld->sigma_r(k,j,i) = 1.0;
+        prfld->sigma_p(k,j,i) = prfld->const_opacity*prim(IDN,k,j,i);
+        prfld->sigma_r(k,j,i) = prfld->const_opacity*prim(IDN,k,j,i);
       }
     }
   }
@@ -161,7 +160,7 @@ FLD2::FLD2(MeshBlock *pmb, ParameterInput *pin) :
   Real c_ph_dim = 2.99792458e10; // speed of light in cm s^-1
   Real a_r_dim = 7.5657e-15; // radiation constant in erg cm^-3 K^-4
   Real R_gas = 8.3144621e7; // gas constant in erg K^-1 mol^-1
-  Real const_opacity_dim = pin->GetOrAddReal("mgfld", "const_opacity", 0.4);//caution: in cm^2 g^-1
+  Real const_opacity_dim = pin->GetOrAddReal("nrfld", "const_opacity", 0.4); //caution: in cm^2 g^-1
 
   Real rho_unit = pin->GetReal("hydro", "rho_unit");
   Real egas_unit = pin->GetReal("hydro", "egas_unit");
@@ -189,9 +188,9 @@ FLD2::FLD2(MeshBlock *pmb, ParameterInput *pin) :
   a_r = a_r_dim/(egas_unit/std::pow(T_unit, 4));
   const_opacity = const_opacity_dim*leng_unit*rho_unit; // to be multiplied by rho
 
-  // std::cout << "c_ph in sim: " << c_ph << std::endl;
-  // std::cout << "a_r in sim: " << a_r << std::endl;
-  // std::cout << "const_opacity in sim: " << const_opacity << std::endl;
+  std::cout << "c_ph in sim: " << c_ph << std::endl;
+  std::cout << "a_r in sim: " << a_r << std::endl;
+  std::cout << "const_opacity in sim: " << const_opacity << std::endl;
 }
 
 void FLD2::EnrollOpacityFunction(FLDOpacityFunc MyOpacityFunction) {

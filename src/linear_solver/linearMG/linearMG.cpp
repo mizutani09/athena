@@ -202,7 +202,7 @@ void linearMGDriver::Solve(int stage, Real dt) {
     linearMG *pmg = static_cast<linearMG*>(*itr);
     // FLD2 *prfld = pmg->pmy_block_->prfld2;
     NewtonRaphson *pnr = pmg->pnr_;
-    Hydro *phydro = pmg->pmy_block_->phydro;
+    // Hydro *phydro = pmg->pmy_block_->phydro;
     pmg->RetrieveResult(pnr->delta_u_, 0, NGHOST);
     // if (pnr->output_defect)
     //   pmg->RetrieveDefect(pnr->def_, 0, NGHOST);
@@ -294,10 +294,17 @@ void linearMG::Smooth(AthenaArray<Real> &u, const AthenaArray<Real> &src,
         }
       }
       // std::cout << "rlev " << rlev << " il " << il << " iu " << iu << " jl " << jl << " ju " << ju << " kl " << kl << " ku " << ku << std::endl;
-      // std::cout << "CPRR " <<matrix(linearSolver::CPRR,1,1,1) << " CPRG " << matrix(linearSolver::CPRG,1,1,1) << " CPGR " <<matrix(linearSolver::CPGR,1,1,1) << " CPGG " << matrix(linearSolver::CPGG,1,1,1) << " CPGC " << matrix(linearSolver::CPGC,1,1,1) << " CPRC " << matrix(linearSolver::CPRC,1,1,1)<< std::endl;
-      // std::cout << "RSRC " << src(linearSolver::RAD,1,1,1) << " MGSRC " << matrix(linearSolver::CPRG,1,1,1)/matrix(linearSolver::CPGG,1,1,1)*src(linearSolver::GAS,1,1,1) << " MGCG " << matrix(linearSolver::CPRG,1,1,1)/matrix(linearSolver::CPGG,1,1,1)*matrix(linearSolver::CPGC,1,1,1) << " CPRC " <<matrix(linearSolver::CPRC,1,1,1)<< " CPRCS " << matrix(linearSolver::CPRCS,1,1,1) << std::endl;
-      // std::cout << src(linearSolver::RAD,1,1,1)-matrix(linearSolver::CPRG,1,1,1)/matrix(linearSolver::CPGG,1,1,1)*(src(linearSolver::GAS,1,1,1)-matrix(linearSolver::CPGC,1,1,1))-matrix(linearSolver::CPRC,1,1,1)<< std::endl;
-      // std::cout << "RAD " << u(linearSolver::RAD,1,1,1) << " GAS " << u(linearSolver::GAS,1,1,1) << " GSRC " <<src(linearSolver::GAS,1,1,1) << std::endl;
+      // // std::cout << "CPRR " <<matrix(linearSolver::CPRR,1,1,1) << " CPRG " << matrix(linearSolver::CPRG,1,1,1) << " CPGR " <<matrix(linearSolver::CPGR,1,1,1) << " CPGG " << matrix(linearSolver::CPGG,1,1,1) << " CPGC " << matrix(linearSolver::CPGC,1,1,1) << " CPRC " << matrix(linearSolver::CPRC,1,1,1)<< std::endl;
+      // // std::cout << "RSRC " << src(linearSolver::RAD,1,1,1) << " MGSRC " << matrix(linearSolver::CPRG,1,1,1)/matrix(linearSolver::CPGG,1,1,1)*src(linearSolver::GAS,1,1,1) << " MGCG " << matrix(linearSolver::CPRG,1,1,1)/matrix(linearSolver::CPGG,1,1,1)*matrix(linearSolver::CPGC,1,1,1) << " CPRC " <<matrix(linearSolver::CPRC,1,1,1)<< " CPRCS " << matrix(linearSolver::CPRCS,1,1,1) << std::endl;
+      // // std::cout << src(linearSolver::RAD,1,1,1)-matrix(linearSolver::CPRG,1,1,1)/matrix(linearSolver::CPGG,1,1,1)*(src(linearSolver::GAS,1,1,1)-matrix(linearSolver::CPGC,1,1,1))-matrix(linearSolver::CPRC,1,1,1)<< std::endl;
+      // // std::cout << "RAD " << u(linearSolver::RAD,1,1,1) << " GAS " << u(linearSolver::GAS,1,1,1) << " GSRC " <<src(linearSolver::GAS,1,1,1) << std::endl;
+      // std::cout << "CCM = " << matrix(linearSolver::CCM,1,1,1) << ", CCP = " << matrix(linearSolver::CCP,1,1,1)
+      //           << ", CMC = " << matrix(linearSolver::CMC,1,1,1) << ", CPC = " << matrix(linearSolver::CPC,1,1,1)
+      //           << ", MCC = " << matrix(linearSolver::MCC,1,1,1) << ", PCC = " << matrix(linearSolver::PCC,1,1,1)
+      //           << ", CCC = " << matrix(linearSolver::CCC,1,1,1) << std::endl;
+      // std::cout << "src_ = " << src(1,1,1) << std::endl;
+      // std::cout << "work_ = " << work(1,1,1) << std::endl;
+      // std::cout << "u_ = " << u(1,1,1) << std::endl;
     }
   } else { // jacobi
     if (th == true && (ku-kl) >=  minth_) {
@@ -537,5 +544,14 @@ void linearMG::CalculateMatrix(AthenaArray<Real> &matrix, const AthenaArray<Real
       }
     }
   }
+
+  // // output for 1,1,1
+  // std::cout << "matrix CCC = " << matrix(linearSolver::CCC,1,1,1) << std::endl
+  //           << "       CCM = " << matrix(linearSolver::CCM,1,1,1)
+  //           << ", CCP = " << matrix(linearSolver::CCP,1,1,1) << std::endl
+  //           << "       CMC = " << matrix(linearSolver::CMC,1,1,1)
+  //           << ", CPC = " << matrix(linearSolver::CPC,1,1,1) << std::endl
+  //           << "       MCC = " << matrix(linearSolver::MCC,1,1,1)
+  //           << ", PCC = " << matrix(linearSolver::PCC,1,1,1) << std::endl;
   return;
 }

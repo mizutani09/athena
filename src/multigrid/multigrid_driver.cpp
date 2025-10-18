@@ -997,17 +997,12 @@ void MultigridDriver::OneStepToCoarser(int nsmooth) {
 
 void MultigridDriver::SolveVCycle(int npresmooth, int npostsmooth) {
   int startlevel=current_level_;
-  // std::cout << "In SolveVCycle: startlevel " << startlevel << std::endl;
   coffset_ ^= 1;
   while (current_level_ > 0)
     OneStepToCoarser(npresmooth);
   SolveCoarsestGrid();
   while (current_level_ < startlevel) {
     OneStepToFiner(npostsmooth);
-    Real def = 0.0;
-    for (int v = 0; v < nvar_; ++v)
-      def += CalculateDefectNorm(MGNormType::l2, v);
-    std::cout << "Multigrid defect after post smooth : " << def << std::endl;
   }
   return;
 }
@@ -1117,6 +1112,11 @@ void MultigridDriver::SolveIterativeFixedTimes() {
   std::cout << "In SolveIterativeFixedTimes: niter_ " << niter_ << std::endl;
   for (int n = 0; n < niter_; ++n) {
     SolveVCycle(npresmooth_, npostsmooth_);
+    Real def = 0.0;
+    for (int v = 0; v < nvar_; ++v)
+      def += CalculateDefectNorm(MGNormType::l2, v);
+    std::cout << "Multigrid defect after post smooth : " << def << std::endl;
+
     if (matrixmode_ == 1)
       CalculateMatrixAll();
   }

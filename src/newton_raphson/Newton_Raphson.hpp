@@ -65,44 +65,44 @@ enum class NRNormType {max, l1, l2};
 
 class NewtonRaphson {
  public:
-  NewtonRaphson(NewtonRaphsonDriver *pmd, MeshBlock *pmb, int nghost);
+  NewtonRaphson(NewtonRaphsonDriver *pmd, MeshBlock *pmb, int nghost,
+                int nderivetive, int ndef_coeff);
   virtual ~NewtonRaphson();
 
-  // void LoadFinestData(const AthenaArray<Real> &src, int ns, int ngh);
-  // void LoadSource(const AthenaArray<Real> &src, int ns, int ngh, Real fac);
-  // void LoadCoefficients(const AthenaArray<Real> &coeff, int ngh);
   void RetrieveResult(AthenaArray<Real> &dst, int ns, int ngh);
   void RetrieveDefect(AthenaArray<Real> &dst, int ns, int ngh);
   void ZeroClearData();
-  // void SmoothBlock(int color);
   void CalculateDefectBlock();
-  // void CalculateMatrixBlock();
   Real CalculateDefectNorm(NRNormType nrm, int n);
   // Real CalculateTotal(NRVariable type, int n);
 //   void SubtractAverage(NRVariable type, int n, Real ave);
   void StoreOldData();
-  // void SetData(NRVariable type, int n, int k, int j, int i, Real v);
-  virtual void AddDifference(AthenaArray<Real> &dst, const AthenaArray<Real> &delta) = 0;
+  virtual void AddDifference(AthenaArray<Real> &dst,
+                             const AthenaArray<Real> &delta,
+                             const AthenaArray<Real> &derivetive) = 0;
 
   // physics-dependent virtual functions
   virtual void LoadVariables() = 0;
   virtual void UpdateHydroVariables() = 0;
   virtual void CalculateCoefficientsOnce(const AthenaArray<Real> &u_pre,
-                                         const AthenaArray<Real> &w) = 0;
+                                         const AthenaArray<Real> &w,
+                                         AthenaArray<Real> &def_coeff,
+                                         AthenaArray<Real> &derivetive) = 0;
   virtual void CalculateCoefficients(const AthenaArray<Real> &u_rad_old,
                                      const AthenaArray<Real> &u_rad_new,
                                     //  const AthenaArray<Real> &u_gas_old,
                                     //  const AthenaArray<Real> &u_gas_new,
+                                     const AthenaArray<Real> &def_coeff,
+                                     AthenaArray<Real> &coeff,
+                                     AthenaArray<Real> &derivetive,
+                                     AthenaArray<Real> &src,
                                      Real dt) = 0;
   virtual void CalculateDefect(AthenaArray<Real> &def,
                                const AthenaArray<Real> &u,
                                const AthenaArray<Real> &u_old,
                                const AthenaArray<Real> &coeff,
+                               const AthenaArray<Real> &def_coeff,
                                bool th) = 0;
-  // virtual void CalculateMatrix(AthenaArray<Real> &matrix, const AthenaArray<Real> &u,
-  //              const AthenaArray<Real> &src, const AthenaArray<Real> &coeff,
-  //             //  int rlev, int il, int iu, int jl, int ju, int kl, int ku, bool th) {}
-  //              int il, int iu, int jl, int ju, int kl, int ku, bool th) = 0;
 
   friend class NewtonRaphsonDriver;
   friend class NewtonRaphsonTaskList;
@@ -121,6 +121,8 @@ class NewtonRaphson {
   AthenaArray<Real> u_, def_, src_, uold_, coeff_, matrix_;
   AthenaArray<Real> flux[3];  // face-averaged flux vector
   
+  AthenaArray<Real> derivetive_, def_coeff_; // caution! have to be initialized in derived class constructors!!
+  
   // storage for SMR/AMR
   AthenaArray<Real> coarse_u_;
   int refinement_idx{-1};
@@ -135,7 +137,6 @@ class NewtonRaphson {
 protected:
   Real rdx_, rdy_, rdz_;
   Real defscale_;
-//   AthenaArray<Real> *u_, *def_, *src_, *uold_, *coeff_, *matrix_;
 
   linearMG *plmg_; // to be set in derived class constructors
 

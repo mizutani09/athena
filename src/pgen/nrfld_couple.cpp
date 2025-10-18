@@ -261,13 +261,13 @@ void Mesh::InitUserMeshData(ParameterInput *pin) {
     ATHENA_ERROR(msg);
   }
 
-  // EnrollUserRefinementCondition(AMRCondition);
-//   EnrollUserMGFLDBoundaryFunction(BoundaryFace::inner_x1, FLDFixedInnerX1);
-//   EnrollUserMGFLDBoundaryFunction(BoundaryFace::outer_x1, FLDFixedOuterX1);
-//   EnrollUserMGFLDBoundaryFunction(BoundaryFace::inner_x2, FLDFixedInnerX2);
-//   EnrollUserMGFLDBoundaryFunction(BoundaryFace::outer_x2, FLDFixedOuterX2);
-//   EnrollUserMGFLDBoundaryFunction(BoundaryFace::inner_x3, FLDFixedInnerX3);
-//   EnrollUserMGFLDBoundaryFunction(BoundaryFace::outer_x3, FLDFixedOuterX3);
+  // EnrollUserNRBoundaryFunction(BoundaryFace::inner_x1, FLDFixedInnerX1);
+  // EnrollUserNRBoundaryFunction(BoundaryFace::outer_x1, FLDFixedOuterX1);
+  // EnrollUserNRBoundaryFunction(BoundaryFace::inner_x2, FLDFixedInnerX2);
+  // EnrollUserNRBoundaryFunction(BoundaryFace::outer_x2, FLDFixedOuterX2);
+  // EnrollUserNRBoundaryFunction(BoundaryFace::inner_x3, FLDFixedInnerX3);
+  // EnrollUserNRBoundaryFunction(BoundaryFace::outer_x3, FLDFixedOuterX3);
+
   AllocateUserHistoryOutput(7);
   EnrollUserHistoryOutput(0, HistoryTg, "T_gas", UserHistoryOperation::max);
   EnrollUserHistoryOutput(1, HistoryTr, "T_rad", UserHistoryOperation::max);
