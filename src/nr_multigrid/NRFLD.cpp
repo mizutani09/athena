@@ -140,7 +140,6 @@ void NRFLD::LoadVariables() {
       for (int i = il; i <= iu; ++i) {
         u_gas_(k,j,i) = pfld->u_gas(k,j,i);
         u_(k,j,i) = pfld->u_rad(k,j,i);
-        // u_(k,j,i) = TINY_NUMBER;
         uold_(k,j,i) = pfld->u_rad(k,j,i);
 
       }

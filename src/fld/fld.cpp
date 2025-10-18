@@ -86,7 +86,7 @@ FLD2::FLD2(MeshBlock *pmb, ParameterInput *pin) :
 //   is_couple = pin->GetOrAddBoolean("mgfld", "is_couple", true);
 //   output_defect = pin->GetOrAddBoolean("mgfld", "output_defect", false);
 //   calc_in_temp = pin->GetOrAddBoolean("mgfld", "calc_in_temp", false);
-//   only_rad = pin->GetOrAddBoolean("mgfld", "only_rad", false);
+  only_rad = pin->GetOrAddBoolean("nrfld", "only_rad", false);
 //   cut_diff = pin->GetOrAddBoolean("mgfld", "cut_diff", false);
 //   cut_Pnablav = pin->GetOrAddBoolean("mgfld", "cut_Pnablav", false);
 //   fixed_flux_limitter = pin->GetOrAddBoolean("mgfld", "fixed_flux_limitter", false);
@@ -219,6 +219,7 @@ FLD2::~FLD2() {
 //! \fn void FLD2::LoadHydroVariables(const AthenaArray<Real> &w, AthenaArray<Real> &u)
 //! \brief Load hydro variables from conserved variables
 void FLD2::LoadHydroVariables(const AthenaArray<Real> &w, AthenaArray<Real> &fld_u_gas) {
+  if(only_rad && pmy_block->pmy_mesh->dt > 0.0) return;
   int il = pmy_block->is - NGHOST, iu = pmy_block->ie + NGHOST;
   int jl = pmy_block->js, ju = pmy_block->je;
   int kl = pmy_block->ks, ku = pmy_block->ke;
@@ -256,8 +257,11 @@ void FLD2::UpdateHydroVariables(AthenaArray<Real> &w, AthenaArray<Real> &hydro_u
   for (int k = kl; k <= ku; ++k) {
     for (int j = jl; j <= ju; ++j) {
       for (int i = il; i <= iu; ++i) {
-        hydro_u(IEN,k,j,i) += (fld_u_gas(k,j,i) - igm1*w(IPR,k,j,i));
-        w(IPR,k,j,i) = gm1*fld_u_gas(k,j,i);
+        u_gas(k,j,i) = fld_u_gas(k,j,i);
+        if (!only_rad) {
+          hydro_u(IEN,k,j,i) += (fld_u_gas(k,j,i) - igm1*w(IPR,k,j,i));
+          w(IPR,k,j,i) = gm1*fld_u_gas(k,j,i);
+        }
       }
     }
   }
