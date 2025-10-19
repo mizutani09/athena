@@ -70,13 +70,15 @@ mu              = 0.6            # mean molecular weight in g mol^-1
 
 <nrfld>
 mgmode          = MGI
-fas             = true
+fas             = false
 smoother        = jacobi-rb
 npresmooth      = 2
 npostsmooth     = 2
 omega           = 1.0
-niteration      = 100
-# threshold       = 0.00001
+# niteration      = 10
+threshold       = 1e-10
+# nr_niteration   = 1
+nr_threshold   = 1e-10
 output_defect   = true
 ix1_bc          = outflow
 ox1_bc          = outflow

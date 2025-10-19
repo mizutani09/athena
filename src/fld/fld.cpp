@@ -91,8 +91,8 @@ FLD2::FLD2(MeshBlock *pmb, ParameterInput *pin) :
     //           (pmb->pmy_mesh->multilevel ? AthenaArray<Real>::DataStatus::allocated :
     //            AthenaArray<Real>::DataStatus::empty)),
     refinement_idx_(),
-    is_couple(), only_rad(), fixed_u_rad(),
-    is_adv(false)
+    is_couple(), only_rad(), fixed_u_rad()
+    // is_adv(false)
     {
   is_couple = pin->GetOrAddBoolean("nrfld", "is_couple", true);
 //   output_defect = pin->GetOrAddBoolean("nrfld", "output_defect", false);

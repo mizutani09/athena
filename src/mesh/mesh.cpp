@@ -1415,29 +1415,50 @@ void Mesh::EnrollUserCRBoundaryFunction(int dir, CRBoundaryFunc my_bc) {
 }
 
 
-void Mesh::EnrollUserFLDAdvBoundaryFunction(BoundaryFace dir, FLDAdvBoundaryFunc my_bc) {
+void Mesh::EnrollUserFLDBoundaryFunction(BoundaryFace dir, FLDBoundaryFunc my_bc) {
   std::stringstream msg;
   if (dir < 0 || dir > 5) {
-    msg << "### FATAL ERROR in EnrollUserFLDAdvBoundaryCondition function" << std::endl
+    msg << "### FATAL ERROR in EnrollUserFLDBoundaryCondition function" << std::endl
         << "dirName = " << dir << " not valid" << std::endl;
     ATHENA_ERROR(msg);
   }
   if (mesh_bcs[dir] != BoundaryFlag::user) {
-    msg << "### FATAL ERROR in EnrollUserFLDAdvBoundaryFunction" << std::endl
+    msg << "### FATAL ERROR in EnrollUserFLDBoundaryFunction" << std::endl
         << "The boundary condition flag must be set to the string 'user' in the "
         << " <mesh> block in the input file to use user-enrolled BCs" << std::endl;
     ATHENA_ERROR(msg);
   }
-  FLDAdvBoundaryFunc_[static_cast<int>(dir)]=my_bc;
+  FLDBoundaryFunc_[static_cast<int>(dir)]=my_bc;
   return;
 }
 
-void Mesh::EnrollUserFLDAdvBoundaryFunction(int dir, FLDAdvBoundaryFunc my_bc) {
-  EnrollUserFLDAdvBoundaryFunction(static_cast<BoundaryFace>(dir), my_bc);
+void Mesh::EnrollUserFLDBoundaryFunction(int dir, FLDBoundaryFunc my_bc) {
+  EnrollUserFLDBoundaryFunction(static_cast<BoundaryFace>(dir), my_bc);
   return;
 }
 
 
+// void Mesh::EnrollUserFLDAdvBoundaryFunction(BoundaryFace dir, FLDAdvBoundaryFunc my_bc) {
+//   std::stringstream msg;
+//   if (dir < 0 || dir > 5) {
+//     msg << "### FATAL ERROR in EnrollUserFLDAdvBoundaryCondition function" << std::endl
+//         << "dirName = " << dir << " not valid" << std::endl;
+//     ATHENA_ERROR(msg);
+//   }
+//   if (mesh_bcs[dir] != BoundaryFlag::user) {
+//     msg << "### FATAL ERROR in EnrollUserFLDAdvBoundaryFunction" << std::endl
+//         << "The boundary condition flag must be set to the string 'user' in the "
+//         << " <mesh> block in the input file to use user-enrolled BCs" << std::endl;
+//     ATHENA_ERROR(msg);
+//   }
+//   FLDAdvBoundaryFunc_[static_cast<int>(dir)]=my_bc;
+//   return;
+// }
+
+// void Mesh::EnrollUserFLDAdvBoundaryFunction(int dir, FLDAdvBoundaryFunc my_bc) {
+//   EnrollUserFLDAdvBoundaryFunction(static_cast<BoundaryFace>(dir), my_bc);
+//   return;
+// }
 
 
 //----------------------------------------------------------------------------------------
