@@ -343,6 +343,7 @@ void MultigridDriver::CheckBoundaryFunctions() {
 
   // check periodic boundary conditions
   for (int i = 0; i < 6; ++i) {
+    if (NRMGFLD_ENABLED) continue; // caution! Multigrid in NewtonRaphson uses zerofixed internally
     if (pmy_mesh_->mesh_bcs[i] == BoundaryFlag::periodic
      || mg_mesh_bcs_[i] == BoundaryFlag::periodic) {
       if (pmy_mesh_->mesh_bcs[i] != mg_mesh_bcs_[i]) {
