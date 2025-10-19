@@ -197,12 +197,13 @@ void NRFLD::CalculateCoefficientsOnce(const AthenaArray<Real> &u_pre,
                 std::max(2.0*pfld->sigma_r(k,j,i)*pfld->sigma_r(k+dk,j+dj,i+di)/(pfld->sigma_r(k,j,i) + pfld->sigma_r(k+dk,j+dj,i+di)),
                 2.0*TWO_3RD*idx)); // Howell & Greenough 2002 (after eq. 15)
           R = gradE/(sigma_rface*u_pre(k,j,i));
+          if (!pfld->fixed_flux_limitter) lambda = (2.0+R)/(6.0+2.0*R+R*R);
+          derivetive(NewtonRaphsonFLD::dFr_dEr_xm+ii,k,j,i) = pfld->c_ph*lambda/sigma_rface;
           if (pmy_driver_->fshowdef_ && k == (ks+ke) / 2 && j == (js+je) / 2 && i == (is+ie) / 2) {
             std::cout << "sigma_rface = " << sigma_rface << ", R = " << R << std::endl;
             std::cout << "u_pre = " << u_pre(k,j,i) << ", gradE = " << gradE << std::endl;
+            std::cout << "pfld->c_ph = " << pfld->c_ph << ", lambda = " << lambda << std::endl;
           }
-          if (!pfld->fixed_flux_limitter) lambda = (2.0+R)/(6.0+2.0*R+R*R);
-          derivetive(NewtonRaphsonFLD::dFr_dEr_xm+ii,k,j,i) = pfld->c_ph*lambda/sigma_rface;
         }
 
         // for P:\nabla v
@@ -234,6 +235,7 @@ void NRFLD::CalculateCoefficientsOnce(const AthenaArray<Real> &u_pre,
   }
 
   if (pfld->cut_diff) {
+    if (pmy_driver_->fshowdef_) std::cout << "Cutting diffusion term coefficients to zero." << std::endl;
     for (int k=ks; k<=ke; k++) {
       for (int j=js; j<=je; j++) {
         for (int i=is; i<=ie; i++) {
@@ -246,6 +248,7 @@ void NRFLD::CalculateCoefficientsOnce(const AthenaArray<Real> &u_pre,
   }
 
   if (pfld->cut_Pnablav) {
+    if (pmy_driver_->fshowdef_) std::cout << "Cutting P:nabla v term coefficients to zero." << std::endl;
     for (int k=ks; k<=ke; k++) {
       for (int j=js; j<=je; j++) {
         for (int i=is; i<=ie; i++) {
@@ -257,12 +260,15 @@ void NRFLD::CalculateCoefficientsOnce(const AthenaArray<Real> &u_pre,
 
   if(pmy_driver_->fshowdef_) {
     // print everything
-    std::cout << "At (1,1,1):" << std::endl;
-    std::cout << "  sigma_p = " << pfld->sigma_p(1,1,1) << ", sigma_r = " << pfld->sigma_r(1,1,1) << std::endl;
-    std::cout << "  def_coeff.DCOUPLE = " << def_coeff(NewtonRaphsonFLD::DCOUPLE,1,1,1)
-              << ", def_coeff.DDV = " << def_coeff(NewtonRaphsonFLD::DDV,1,1,1) << std::endl;
+    int i = (is + ie) / 2;
+    int j = (js + je) / 2;
+    int k = (ks + ke) / 2;
+    std::cout << "At (k,j,i) = (" << k << "," << j << "," << i << "):" << std::endl;
+    std::cout << "  sigma_p = " << pfld->sigma_p(k,j,i) << ", sigma_r = " << pfld->sigma_r(k,j,i) << std::endl;
+    std::cout << "  def_coeff.DCOUPLE = " << def_coeff(NewtonRaphsonFLD::DCOUPLE,k,j,i)
+              << ", def_coeff.DDV = " << def_coeff(NewtonRaphsonFLD::DDV,k,j,i) << std::endl;
     for (int ii = 0; ii < 6; ++ii)
-      std::cout << "  derivetive.dFr_dEr_xm+"<< ii <<" = " << derivetive(NewtonRaphsonFLD::dFr_dEr_xm+ii,1,1,1) << std::endl;
+      std::cout << "  derivetive.dFr_dEr_xm+"<< ii <<" = " << derivetive(NewtonRaphsonFLD::dFr_dEr_xm+ii,k,j,i) << std::endl;
   }
 }
 
@@ -388,7 +394,7 @@ void NRFLD::CalculateDefect(AthenaArray<Real> &def, const AthenaArray<Real> &u,
           int di = (n == 0) ? -1 : (n == 1) ? 1 : 0;
           int dj = (n == 2) ? -1 : (n == 3) ? 1 : 0;
           int dk = (n == 4) ? -1 : (n == 5) ? 1 : 0;
-          diff_term += coeff(linearSolver::DXMF+n,k,j,i)*(u(k+dk,j+dj,i+di) - u(k,j,i));
+          diff_term += -coeff(linearSolver::DXMF+n,k,j,i)*(u(k+dk,j+dj,i+di) - u(k,j,i)); // caution! about sign of coeff
         }
         diff_term *= idx2;
 
@@ -437,12 +443,16 @@ void NRFLD::AddDifference(AthenaArray<Real> &u_rad,
     }
   }
   if(pmy_driver_->fshowdef_)  {
-    Real u_gas_delta = -(derivetive(NewtonRaphsonFLD::Fg,3,3,3) + derivetive(NewtonRaphsonFLD::dFg_dEr,3,3,3)*delta_u(3,3,3)) / derivetive(NewtonRaphsonFLD::dFg_deg,3,3,3);
-    std::cout << "u_rad_delta = " << delta_u(3,3,3) << std::endl;
+    int k = (ks + ke) / 2;
+    int j = (js + je) / 2;
+    int i = (is + ie) / 2;
+    Real u_gas_delta = -(derivetive(NewtonRaphsonFLD::Fg,k,j,i) + derivetive(NewtonRaphsonFLD::dFg_dEr,k,j,i)*delta_u(k,j,i)) / derivetive(NewtonRaphsonFLD::dFg_deg,k,j,i);
+    std::cout << "At (" << k << "," << j << "," << i << "):" << std::endl;
+    std::cout << "u_rad_delta = " << delta_u(k,j,i) << std::endl;
     std::cout << "u_gas_delta = " << u_gas_delta << std::endl;
-    std::cout << "derivetive.Fg = " << derivetive(NewtonRaphsonFLD::Fg,3,3,3)
-              << ", derivetive.dFg_dEr = " << derivetive(NewtonRaphsonFLD::dFg_dEr,3,3,3)
-              << ", derivetive.dFg_deg = " << derivetive(NewtonRaphsonFLD::dFg_deg,3,3,3) << std::endl;
+    std::cout << "derivetive.Fg = " << derivetive(NewtonRaphsonFLD::Fg,k,j,i)
+              << ", derivetive.dFg_dEr = " << derivetive(NewtonRaphsonFLD::dFg_dEr,k,j,i)
+              << ", derivetive.dFg_deg = " << derivetive(NewtonRaphsonFLD::dFg_deg,k,j,i) << std::endl;
   }
   return;
 }

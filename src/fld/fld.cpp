@@ -91,15 +91,15 @@ FLD2::FLD2(MeshBlock *pmb, ParameterInput *pin) :
     //           (pmb->pmy_mesh->multilevel ? AthenaArray<Real>::DataStatus::allocated :
     //            AthenaArray<Real>::DataStatus::empty)),
     refinement_idx_(),
-    is_couple(), only_rad(), fixed_u_rad()
+    is_couple(), only_rad(), cut_diff(), cut_Pnablav(), fixed_u_rad()
     // is_adv(false)
     {
   is_couple = pin->GetOrAddBoolean("nrfld", "is_couple", true);
 //   output_defect = pin->GetOrAddBoolean("nrfld", "output_defect", false);
 //   calc_in_temp = pin->GetOrAddBoolean("nrfld", "calc_in_temp", false);
   only_rad = pin->GetOrAddBoolean("nrfld", "only_rad", false);
-//   cut_diff = pin->GetOrAddBoolean("nrfld", "cut_diff", false);
-//   cut_Pnablav = pin->GetOrAddBoolean("nrfld", "cut_Pnablav", false);
+  cut_diff = pin->GetOrAddBoolean("nrfld", "cut_diff", false);
+  cut_Pnablav = pin->GetOrAddBoolean("nrfld", "cut_Pnablav", false);
   fixed_flux_limitter = pin->GetOrAddBoolean("nrfld", "fixed_flux_limitter", false);
   fixed_u_rad = pin->GetOrAddBoolean("nrfld", "fixed_u_rad", false);
 //   if (calc_in_temp) {
