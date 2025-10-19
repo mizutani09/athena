@@ -94,7 +94,7 @@ NRFLD::NRFLD(MeshBlock *pmb, ParameterInput *pin) :
     u_gas_(pmb->ncells3, pmb->ncells2, pmb->ncells1),
     ngh_(NGHOST)
     {
-      std::cout << ngh_ << std::endl;
+    if (pmy_driver_->fshowdef_) std::cout << ngh_ << std::endl;
 
     // check pointer
     if (pmy_driver_ == nullptr) {
@@ -197,7 +197,7 @@ void NRFLD::CalculateCoefficientsOnce(const AthenaArray<Real> &u_pre,
                 std::max(2.0*pfld->sigma_r(k,j,i)*pfld->sigma_r(k+dk,j+dj,i+di)/(pfld->sigma_r(k,j,i) + pfld->sigma_r(k+dk,j+dj,i+di)),
                 2.0*TWO_3RD*idx)); // Howell & Greenough 2002 (after eq. 15)
           R = gradE/(sigma_rface*u_pre(k,j,i));
-          if (k == (ks+ke) / 2 && j == (js+je) / 2 && i == (is+ie) / 2) {
+          if (pmy_driver_->fshowdef_ && k == (ks+ke) / 2 && j == (js+je) / 2 && i == (is+ie) / 2) {
             std::cout << "sigma_rface = " << sigma_rface << ", R = " << R << std::endl;
             std::cout << "u_pre = " << u_pre(k,j,i) << ", gradE = " << gradE << std::endl;
           }
@@ -255,13 +255,15 @@ void NRFLD::CalculateCoefficientsOnce(const AthenaArray<Real> &u_pre,
     }
   }
 
-  // print everything
-  std::cout << "At (1,1,1):" << std::endl;
-  std::cout << "  sigma_p = " << pfld->sigma_p(1,1,1) << ", sigma_r = " << pfld->sigma_r(1,1,1) << std::endl;
-  std::cout << "  def_coeff.DCOUPLE = " << def_coeff(NewtonRaphsonFLD::DCOUPLE,1,1,1)
-            << ", def_coeff.DDV = " << def_coeff(NewtonRaphsonFLD::DDV,1,1,1) << std::endl;
-  for (int ii = 0; ii < 6; ++ii)
-    std::cout << "  derivetive.dFr_dEr_xm+"<< ii <<" = " << derivetive(NewtonRaphsonFLD::dFr_dEr_xm+ii,1,1,1) << std::endl;
+  if(pmy_driver_->fshowdef_) {
+    // print everything
+    std::cout << "At (1,1,1):" << std::endl;
+    std::cout << "  sigma_p = " << pfld->sigma_p(1,1,1) << ", sigma_r = " << pfld->sigma_r(1,1,1) << std::endl;
+    std::cout << "  def_coeff.DCOUPLE = " << def_coeff(NewtonRaphsonFLD::DCOUPLE,1,1,1)
+              << ", def_coeff.DDV = " << def_coeff(NewtonRaphsonFLD::DDV,1,1,1) << std::endl;
+    for (int ii = 0; ii < 6; ++ii)
+      std::cout << "  derivetive.dFr_dEr_xm+"<< ii <<" = " << derivetive(NewtonRaphsonFLD::dFr_dEr_xm+ii,1,1,1) << std::endl;
+  }
 }
 
 void NRFLD::CalculateCoefficients(const AthenaArray<Real> &u_rad_old,
@@ -326,7 +328,7 @@ void NRFLD::CalculateCoefficients(const AthenaArray<Real> &u_rad_old,
         src(k,j,i) = -derivetive(NewtonRaphsonFLD::Fr,k,j,i) + (derivetive(NewtonRaphsonFLD::dFr_deg,k,j,i)/derivetive(NewtonRaphsonFLD::dFg_deg,k,j,i))*derivetive(NewtonRaphsonFLD::Fg,k,j,i);
 
         // output
-        if (k == (ks+ke) / 2 && j == (js+je) / 2 && i == (is+ie) / 2) {
+        if (pmy_driver_->fshowdef_ && k == (ks+ke) / 2 && j == (js+je) / 2 && i == (is+ie) / 2) {
           Real T_gas_old = def_coeff(NewtonRaphsonFLD::DCOUPLE,k,j,i)*u_gas_old(k,j,i);
           Real T_rad_new = std::pow(u_rad_new(k,j,i)/pfld->a_r, 0.25);
           Real T_rad_old = std::pow(u_rad_old(k,j,i)/pfld->a_r, 0.25);
@@ -395,7 +397,7 @@ void NRFLD::CalculateDefect(AthenaArray<Real> &def, const AthenaArray<Real> &u,
         // def(k,j,i) = std::abs(Fg) + std::abs(Fr);
         def(k,j,i) = Fr;
 
-        if (k==(kl+ku)/2 && j==(jl+ju)/2 && i==(il+iu)/2) {
+        if (pmy_driver_->fshowdef_ && k==(kl+ku)/2 && j==(jl+ju)/2 && i==(il+iu)/2) {
           Real T_rad = std::pow(u(k,j,i)/pfld->a_r, 0.25);
           std::cout << "At (" << k << "," << j << "," << i << "):" << std::endl;
           std::cout << "  u_gas = " << u_gas(k,j,i) << ", pfld->u_gas = " << pfld->u_gas(k,j,i) << std::endl;
@@ -434,11 +436,13 @@ void NRFLD::AddDifference(AthenaArray<Real> &u_rad,
       }
     }
   }
-  Real u_gas_delta = -(derivetive(NewtonRaphsonFLD::Fg,3,3,3) + derivetive(NewtonRaphsonFLD::dFg_dEr,3,3,3)*delta_u(3,3,3)) / derivetive(NewtonRaphsonFLD::dFg_deg,3,3,3);
-  std::cout << "u_rad_delta = " << delta_u(3,3,3) << std::endl;
-  std::cout << "u_gas_delta = " << u_gas_delta << std::endl;
-  std::cout << "derivetive.Fg = " << derivetive(NewtonRaphsonFLD::Fg,3,3,3)
-            << ", derivetive.dFg_dEr = " << derivetive(NewtonRaphsonFLD::dFg_dEr,3,3,3)
-            << ", derivetive.dFg_deg = " << derivetive(NewtonRaphsonFLD::dFg_deg,3,3,3) << std::endl;
+  if(pmy_driver_->fshowdef_)  {
+    Real u_gas_delta = -(derivetive(NewtonRaphsonFLD::Fg,3,3,3) + derivetive(NewtonRaphsonFLD::dFg_dEr,3,3,3)*delta_u(3,3,3)) / derivetive(NewtonRaphsonFLD::dFg_deg,3,3,3);
+    std::cout << "u_rad_delta = " << delta_u(3,3,3) << std::endl;
+    std::cout << "u_gas_delta = " << u_gas_delta << std::endl;
+    std::cout << "derivetive.Fg = " << derivetive(NewtonRaphsonFLD::Fg,3,3,3)
+              << ", derivetive.dFg_dEr = " << derivetive(NewtonRaphsonFLD::dFg_dEr,3,3,3)
+              << ", derivetive.dFg_deg = " << derivetive(NewtonRaphsonFLD::dFg_deg,3,3,3) << std::endl;
+  }
   return;
 }

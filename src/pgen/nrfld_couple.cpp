@@ -264,6 +264,42 @@ void HydroFixedOuterX3(MeshBlock *pmb, Coordinates *pco, AthenaArray<Real> &prim
 //========================================================================================
 
 void Mesh::InitUserMeshData(ParameterInput *pin) {
+  /*
+  is_couple       = true
+  only_rad        = true
+  cut_diff        = true
+  cut_Pnablav     = true
+  */
+  // check input
+  if (!pin->GetBoolean("nrfld", "is_couple")) {
+    std::stringstream msg;
+    msg << "### FATAL ERROR in function [Mesh::InitUserMeshData]" << std::endl;
+    msg << "is_couple must be true for this problem.";
+    ATHENA_ERROR(msg);
+  }
+
+  if (!pin->GetBoolean("nrfld", "only_rad")) {
+    std::stringstream msg;
+    msg << "### FATAL ERROR in function [Mesh::InitUserMeshData]" << std::endl;
+    msg << "only_rad must be true for this problem.";
+    ATHENA_ERROR(msg);
+  }
+
+  if (!pin->GetBoolean("nrfld", "cut_diff")) {
+    std::stringstream msg;
+    msg << "### FATAL ERROR in function [Mesh::InitUserMeshData]" << std::endl;
+    msg << "cut_diff must be true for this problem.";
+    ATHENA_ERROR(msg);
+  }
+
+  if (!pin->GetBoolean("nrfld", "cut_Pnablav")) {
+    std::stringstream msg;
+    msg << "### FATAL ERROR in function [Mesh::InitUserMeshData]" << std::endl;
+    msg << "cut_Pnablav must be true for this problem.";
+    ATHENA_ERROR(msg);
+  }
+
+
   rho_unit = pin->GetReal("hydro", "rho_unit");
   egas_unit = pin->GetReal("hydro", "egas_unit");
   time_unit = pin->GetOrAddReal("hydro", "time_unit", -1.0);

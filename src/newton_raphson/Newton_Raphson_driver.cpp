@@ -178,23 +178,6 @@ void NewtonRaphsonDriver::Solve_general(int stage, Real dt) {
       dt_);
   }
 
-  // print for debug
-  {
-    NewtonRaphson *pnr = *(vnr_.begin());
-    MeshBlock *pmb = pnr->pmy_block_;
-    int is = pmb->is, ie = pmb->ie;
-    int js = pmb->js, je = pmb->je;
-    int ks = pmb->ks, ke = pmb->ke;
-    int i = (is + ie) / 2;
-    int j = (js + je) / 2;
-    int k = (ks + ke) / 2;
-    std::cout << "At (" << k << "," << j << "," << i << "):" << std::endl;
-    std::cout <<"delta_u_ before linear solver: ";
-    for (int n = 0; n < nvar_; n++)
-      std::cout << pnr->delta_u_(n,k,j,i) << " ";
-    std::cout << std::endl;
-  }
-
   int n = 0;
   Real def = 0.0, defmax = 0.0;
   for (int v = 0; v < nvar_; ++v) {
@@ -266,6 +249,7 @@ void NewtonRaphsonDriver::SolveOneCycle() {
   }
 
   // print for debug
+  // if (fshowdef_) {
   {
     NewtonRaphson *pnr = *(vnr_.begin());
     MeshBlock *pmb = pnr->pmy_block_;
@@ -286,6 +270,7 @@ void NewtonRaphsonDriver::SolveOneCycle() {
   plmgd_->Solve(stage_, dt_);
 
   // print for debug
+  // if (fshowdef_) {
   {
     NewtonRaphson *pnr = *(vnr_.begin());
     MeshBlock *pmb = pnr->pmy_block_;

@@ -166,7 +166,7 @@ linearMG::~linearMG() {
 //! \brief load the data and solve
 
 void linearMGDriver::Solve(int stage, Real dt) {
-  std::cout << "In linearMGDriver::Solve()" << std::endl;
+  // std::cout << "In linearMGDriver::Solve()" << std::endl;
   dt_ = dt;
   // Construct the linearMG array
   vmg_.clear();
