@@ -151,7 +151,8 @@ void NRFLD::LoadVariables() {
 void NRFLD::UpdateHydroVariables() {
   FLD2 *pfld = pmy_block_->prfld2;
   pfld->UpdateHydroVariables(pmy_block_->phydro->w,
-                               pmy_block_->phydro->u, u_gas_);
+                             pmy_block_->phydro->u,
+                             u_, u_gas_);
   return;
 }
 
@@ -227,24 +228,40 @@ void NRFLD::CalculateCoefficientsOnce(const AthenaArray<Real> &u_pre,
             Real dv_dx = hidx*(w(IVX+jj,k+dk,j+dj,i+di) - w(IVX+jj,k-dk,j-dj,i-di));
             def_coeff(NewtonRaphsonFLD::DDV,k,j,i) += D_edd * dv_dx;
           }
+        }
+      }
+    }
+  }
 
-          // print everything
-          if (k == (ks+ke) / 2 && j == (js+je) / 2 && i == (is+ie) / 2) {
-            std::cout << "At (" << k << "," << j << "," << i << "):" << std::endl;
-            // std::cout << "  rho = " << w(IDN,k,j,i) << ", P = " << w(IPR,k,j,i) << ", T = " << pfld->GetTemperature(w(IDN,k,j,i), w(IPR,k,j,i)) << std::endl;
-            std::cout << "  sigma_p = " << pfld->sigma_p(k,j,i) << ", sigma_r = " << pfld->sigma_r(k,j,i) << std::endl;
-            std::cout << "  gradE = " << gradE << ", R = " << R << ", lambda = " << lambda << ", chi = " << chi << std::endl;
-            std::cout << "  dEr = (" << dEr(0) << "," << dEr(1) << "," << dEr(2) << ")" << std::endl;
-            std::cout << "  ngrad = (" << ngrad(0) << "," << ngrad(1) << "," << ngrad(2) << ")" << std::endl;
-            std::cout << "  def_coeff.DCOUPLE = " << def_coeff(NewtonRaphsonFLD::DCOUPLE,k,j,i)
-                      << ", def_coeff.DDV = " << def_coeff(NewtonRaphsonFLD::DDV,k,j,i) << std::endl;
-            for (int ii = 0; ii < 6; ++ii)
-              std::cout << "  derivetive.dFr_dEr_xm+"<< ii <<" = " << derivetive(NewtonRaphsonFLD::dFr_dEr_xm+ii,k,j,i) << std::endl;
+  if (pfld->cut_diff) {
+    for (int k=ks; k<=ke; k++) {
+      for (int j=js; j<=je; j++) {
+        for (int i=is; i<=ie; i++) {
+          for (int n = 0; n < 6; n++) {
+            derivetive(NewtonRaphsonFLD::dFr_dEr_xm+n,k,j,i) = 0.0;
           }
         }
       }
     }
   }
+
+  if (pfld->cut_Pnablav) {
+    for (int k=ks; k<=ke; k++) {
+      for (int j=js; j<=je; j++) {
+        for (int i=is; i<=ie; i++) {
+          def_coeff(NewtonRaphsonFLD::DDV,k,j,i) = 0.0;
+        }
+      }
+    }
+  }
+
+  // print everything
+  std::cout << "At (1,1,1):" << std::endl;
+  std::cout << "  sigma_p = " << pfld->sigma_p(1,1,1) << ", sigma_r = " << pfld->sigma_r(1,1,1) << std::endl;
+  std::cout << "  def_coeff.DCOUPLE = " << def_coeff(NewtonRaphsonFLD::DCOUPLE,1,1,1)
+            << ", def_coeff.DDV = " << def_coeff(NewtonRaphsonFLD::DDV,1,1,1) << std::endl;
+  for (int ii = 0; ii < 6; ++ii)
+    std::cout << "  derivetive.dFr_dEr_xm+"<< ii <<" = " << derivetive(NewtonRaphsonFLD::dFr_dEr_xm+ii,1,1,1) << std::endl;
 }
 
 void NRFLD::CalculateCoefficients(const AthenaArray<Real> &u_rad_old,
@@ -405,14 +422,14 @@ void NRFLD::AddDifference(AthenaArray<Real> &u_rad,
   int je = pmy_block_->je;
   int ks = pmy_block_->ks;
   int ke = pmy_block_->ke;
-  // FLD2 *pfld = pmy_block_->prfld2;
+  FLD2 *pfld = pmy_block_->prfld2;
 
   for (int k=ks; k<=ke; ++k) {
     for (int j=js; j<=je; ++j) {
 #pragma omp simd
       for (int i=is; i<=ie; ++i) {
-        // u_rad(k,j,i) += delta_u(k,j,i);
-        // pfld->u_gas(k,j,i) += -(derivetive_(NewtonRaphsonFLD::Fg,k,j,i) + derivetive_(NewtonRaphsonFLD::dFg_dEr,k,j,i)*delta_u(k,j,i)) / derivetive_(NewtonRaphsonFLD::dFg_deg,k,j,i);
+        if (!pfld->fixed_u_rad)
+          u_rad(k,j,i) += delta_u(k,j,i);
         u_gas_(k,j,i) += -(derivetive(NewtonRaphsonFLD::Fg,k,j,i) + derivetive(NewtonRaphsonFLD::dFg_dEr,k,j,i)*delta_u(k,j,i)) / derivetive(NewtonRaphsonFLD::dFg_deg,k,j,i);
       }
     }

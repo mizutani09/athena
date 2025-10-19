@@ -65,11 +65,14 @@ class FLD2 {
   bool cut_diff;
   bool cut_Pnablav;
   bool fixed_flux_limitter;
+  bool fixed_u_rad;
 
   // for interaction with Hydro
   void LoadHydroVariables(const AthenaArray<Real> &w, AthenaArray<Real> &fld_u_gas);
   void UpdateHydroVariables(AthenaArray<Real> &w,
-       AthenaArray<Real> &hydro_u, const AthenaArray<Real> &fld_u_gas);
+                            AthenaArray<Real> &hydro_u,
+                            const AthenaArray<Real> &fld_u_rad,
+                            const AthenaArray<Real> &fld_u_gas);
 
   // for advection of radiation energy
   CellCenteredBoundaryVariable u_rad_fldbvar;
