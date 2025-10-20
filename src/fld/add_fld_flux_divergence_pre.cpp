@@ -39,7 +39,7 @@
 //! \todo (felker): remove the following unnecessary private class member?
 //! field_diffusion.cpp:66:    cell_volume_.NewAthenaArray(nc1);
 
-void FLD2::AddFluxDivergence(const Real wght, AthenaArray<Real> &r_out) {
+void FLD2::AddFluxDivergence(const Real wght, AthenaArray<Real> &u_rad_out) {
   MeshBlock *pmb = pmy_block;
   AthenaArray<Real> &x1flux = u_rad_flux[X1DIR];
   AthenaArray<Real> &x2flux = u_rad_flux[X2DIR];
@@ -83,7 +83,7 @@ void FLD2::AddFluxDivergence(const Real wght, AthenaArray<Real> &r_out) {
       pmb->pcoord->CellVolume(k, j, is, ie, vol);
 #pragma omp simd
       for (int i=is; i<=ie; ++i) {
-        r_out(k,j,i) -= wght*dflx(i)/vol(i); // caution
+        u_rad_out(k,j,i) -= wght*dflx(i)/vol(i); // caution
       }
     }
   }

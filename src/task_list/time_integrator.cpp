@@ -1702,6 +1702,8 @@ void TimeIntegratorTaskList::StartupTaskList(MeshBlock *pmb, int stage) {
     if (MGFLD_ENABLED || NRMGFLD_ENABLED) {
       FLD2 *prfld = pmb->prfld2;
       prfld->u_rad1.ZeroClear();
+      if (integrator == "ssprk5_4")
+        prfld->u_rad2 = prfld->u_rad;
     }
 
     if (radiation_flag) {

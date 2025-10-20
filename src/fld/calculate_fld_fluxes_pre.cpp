@@ -208,9 +208,9 @@ void FLD2::ComputeUpwindFlux(const int k, const int j, const int il,
   for (int i=il; i<=iu; i++) {
     Real fluid_flx = vf(k,j,i);
     if (fluid_flx >= 0.0)
-      flx_out(k,j,i) = fluid_flx*u_radl_(i);
+      flx_out(k,j,i) = fluid_flx*rl(i);
     else
-      flx_out(k,j,i) = fluid_flx*u_radr_(i);
+      flx_out(k,j,i) = fluid_flx*rr(i);
   }
   return;
 }
