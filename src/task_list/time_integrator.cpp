@@ -3255,10 +3255,10 @@ TaskStatus TimeIntegratorTaskList::SetBoundariesRADFLD(MeshBlock *pmb, int stage
       pmb->prfld2->u_rad_fldbvar.coarse_buf = &(pmb->prfld2->coarse_u_rad);
     }
     pmb->prfld2->u_rad_fldbvar.SetBoundaries();
-    if (stage == nstages) {
-      // pmb->prfld2->UpdateRadiationEnergy(pmb->prfld2->u, pmb->prfld2->u_rad);
-      pmb->prfld2->u_rad.SwapAthenaArray(pmb->prfld2->u_rad1);
-    }
+    // if (stage == nstages) {
+    //   pmb->prfld2->UpdateRadiationEnergy(pmb->prfld2->u, pmb->prfld2->u_rad);
+    //   pmb->prfld2->u_rad.SwapAthenaArray(pmb->prfld2->u_rad1);
+    // }
     return TaskStatus::success;
   }
   return TaskStatus::fail;
