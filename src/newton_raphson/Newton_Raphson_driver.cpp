@@ -150,7 +150,7 @@ NewtonRaphsonDriver::~NewtonRaphsonDriver() {
 
 
 void NewtonRaphsonDriver::Solve_general(int stage, Real dt) {
-  std::cout << "In NewtonRaphsonDriver::Solve_general" << std::endl;
+  // std::cout << "In NewtonRaphsonDriver::Solve_general" << std::endl;
   stage_ = stage;
   dt_ = dt;
   // Construct the NewtonRaphson array
@@ -167,7 +167,7 @@ void NewtonRaphsonDriver::Solve_general(int stage, Real dt) {
   }
 
   // calc coefficients for initial setup
-  std::cout << "Number of NewtonRaphson objects: " << vnr_.size() << std::endl;
+  // std::cout << "Number of NewtonRaphson objects: " << vnr_.size() << std::endl;
   for (auto itr = vnr_.begin(); itr < vnr_.end(); itr++) {
     NewtonRaphson *pnr = *itr;
     MeshBlock *pmb = pnr->pmy_block_;
@@ -184,8 +184,8 @@ void NewtonRaphsonDriver::Solve_general(int stage, Real dt) {
     def += CalculateDefectNorm(NRNormType::l2, v);
   //  defmax = std::max(defmax, CalculateDefectNorm(NRNormType::max, v));
   }
- if (Globals::my_rank == 0)
-   std::cout << "initial defect " << def << " max " << defmax << std::endl;
+//  if (Globals::my_rank == 0)
+//    std::cout << "initial defect " << def << " max " << defmax << std::endl;
   while (def > eps_) {
     SolveOneCycle();
     // if (matrixmode_ == 1)
@@ -196,12 +196,12 @@ void NewtonRaphsonDriver::Solve_general(int stage, Real dt) {
       def += CalculateDefectNorm(NRNormType::l2, v);
 //      defmax = std::max(defmax, CalculateDefectNorm(NRNormType::max, v));
     }
-   if (Globals::my_rank == 0)
-     std::cout << "[debug in NR] niter " << n << " def " << def << " convergence factor "
-               << def/olddef<< " defmax  "<< defmax << " cf "
-               <<  defmax/oldmax << std::endl;
+    // if (Globals::my_rank == 0)
+    // std::cout << "[debug in NR] niter " << n << " def " << def << " convergence factor "
+    //           << def/olddef<< " defmax  "<< defmax << " cf "
+    //           <<  defmax/oldmax << std::endl;
     if (def/olddef > 0.9) {
-      if (eps_ == 0.0) break;
+      if (n > 1 && eps_ == 0.0) break;
       if (Globals::my_rank == 0)
         std::cout << "### Warning in NewtonRaphsonDriver::SolveIterative" << std::endl
                   << "Slow Newton-Raphson convergence : defect norm = " << def
@@ -216,12 +216,12 @@ void NewtonRaphsonDriver::Solve_general(int stage, Real dt) {
     }
     // if (n > 100) {
     if (n > 100) {
-      if (Globals::my_rank == 0) {
-        std::cout
-            << "### Warning in NewtonRaphsonDriver::SolveIterative" << std::endl
-            << "Aborting because the # iterations is too large, n > 30." << std::endl
-            << "Check the solution as it may not be accurate enough." << std::endl;
-      }
+      // if (Globals::my_rank == 0) {
+      //   std::cout
+      //       << "### Warning in NewtonRaphsonDriver::SolveIterative" << std::endl
+      //       << "Aborting because the # iterations is too large, n > 30." << std::endl
+      //       << "Check the solution as it may not be accurate enough." << std::endl;
+      // }
       break;
     }
     n++;
@@ -249,8 +249,7 @@ void NewtonRaphsonDriver::SolveOneCycle() {
   }
 
   // print for debug
-  // if (fshowdef_) {
-  {
+  if (fshowdef_) {
     NewtonRaphson *pnr = *(vnr_.begin());
     MeshBlock *pmb = pnr->pmy_block_;
     int is = pmb->is, ie = pmb->ie;
@@ -270,8 +269,7 @@ void NewtonRaphsonDriver::SolveOneCycle() {
   plmgd_->Solve(stage_, dt_);
 
   // print for debug
-  // if (fshowdef_) {
-  {
+  if (fshowdef_) {
     NewtonRaphson *pnr = *(vnr_.begin());
     MeshBlock *pmb = pnr->pmy_block_;
     int is = pmb->is, ie = pmb->ie;
