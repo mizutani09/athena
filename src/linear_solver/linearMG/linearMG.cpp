@@ -97,12 +97,25 @@ linearMGDriver::linearMGDriver(Mesh *pm, ParameterInput *pin, NewtonRaphsonDrive
         << "Set \"threshold = 0.0\" for automatic convergence control." << std::endl;
     ATHENA_ERROR(msg);
   }
-  mg_mesh_bcs_[inner_x1] = GetMGBoundaryFlag("zerofixed");
-  mg_mesh_bcs_[outer_x1] = GetMGBoundaryFlag("zerofixed");
-  mg_mesh_bcs_[inner_x2] = GetMGBoundaryFlag("zerofixed");
-  mg_mesh_bcs_[outer_x2] = GetMGBoundaryFlag("zerofixed");
-  mg_mesh_bcs_[inner_x3] = GetMGBoundaryFlag("zerofixed");
-  mg_mesh_bcs_[outer_x3] = GetMGBoundaryFlag("zerofixed");
+  mg_mesh_bcs_[inner_x1] = GetMGBoundaryFlag(pin->GetString("mesh", "ix1_bc") == "periodic" ?
+                                              "periodic" : "zerofixed");
+  mg_mesh_bcs_[outer_x1] = GetMGBoundaryFlag(pin->GetString("mesh", "ox1_bc") == "periodic" ?
+                                              "periodic" : "zerofixed");
+  mg_mesh_bcs_[inner_x2] = GetMGBoundaryFlag(pin->GetString("mesh", "ix2_bc") == "periodic" ?
+                                              "periodic" : "zerofixed");
+  mg_mesh_bcs_[outer_x2] = GetMGBoundaryFlag(pin->GetString("mesh", "ox2_bc") == "periodic" ?
+                                              "periodic" : "zerofixed");
+  mg_mesh_bcs_[inner_x3] = GetMGBoundaryFlag(pin->GetString("mesh", "ix3_bc") == "periodic" ?
+                                              "periodic" : "zerofixed");
+  mg_mesh_bcs_[outer_x3] = GetMGBoundaryFlag(pin->GetString("mesh", "ox3_bc") == "periodic" ?
+                                              "periodic" : "zerofixed");
+
+  // mg_mesh_bcs_[inner_x1] = GetMGBoundaryFlag("zerofixed");
+  // mg_mesh_bcs_[outer_x1] = GetMGBoundaryFlag("zerofixed");
+  // mg_mesh_bcs_[inner_x2] = GetMGBoundaryFlag("zerofixed");
+  // mg_mesh_bcs_[outer_x2] = GetMGBoundaryFlag("zerofixed");
+  // mg_mesh_bcs_[inner_x3] = GetMGBoundaryFlag("zerofixed");
+  // mg_mesh_bcs_[outer_x3] = GetMGBoundaryFlag("zerofixed");
   CheckBoundaryFunctions();
   fsubtract_average_ = false; // override the subtract average flag
 
@@ -144,8 +157,8 @@ linearMGDriver::~linearMGDriver() {
 
 linearMG::linearMG(linearMGDriver *pmd, MeshBlock *pmb, ParameterInput *pin, NewtonRaphson *pnr)
   : Multigrid(pmd, pmb, 1),
-  pmd_(pmd),
-  omega_(pmd_->omega_), fsmoother_(pmd_->fsmoother_),
+  // pmd_(pmd),
+  omega_(pmd->omega_), fsmoother_(pmd->fsmoother_),
   pnr_(pnr) {
   btype = btypef = BoundaryQuantity::mg;
   pmgbval = new MGBoundaryValues(this, mg_block_bcs_);
@@ -171,7 +184,7 @@ void linearMGDriver::Solve(int stage, Real dt) {
   // Construct the linearMG array
   vmg_.clear();
   for (int i = 0; i < pmy_mesh_->nblocal; ++i)
-    vmg_.push_back(pmy_mesh_->my_blocks(i)->plmg);
+    vmg_.push_back(pmy_mesh_->my_blocks(i)->pnr->plmg_);
 
   // load the source
 #pragma omp parallel for num_threads(nthreads_)
@@ -179,7 +192,7 @@ void linearMGDriver::Solve(int stage, Real dt) {
     linearMG *pmg = static_cast<linearMG*>(*itr);
     // assume all the data are located on the same node
     // FLD2 *prfld = pmg->pmy_block_->prfld2;
-    NewtonRaphson *pnr = pmg->pnr_;
+    NewtonRaphson *pnr = pmg->pmy_block_->pnr;
     pmg->LoadSource(pnr->src_, 0, NGHOST, 1.0);
     pmg->LoadFinestData(pnr->delta_u_, 0, NGHOST); // caution! should be zero
     pmg->LoadCoefficients(pnr->coeff_, NGHOST);

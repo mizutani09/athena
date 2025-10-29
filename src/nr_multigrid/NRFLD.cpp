@@ -122,7 +122,9 @@ NRFLD::NRFLD(MeshBlock *pmb, ParameterInput *pin) :
  }
 
 NRFLD::~NRFLD() {
-
+  if (NRMGFLD_ENABLED) {
+    delete plmg_;
+  }
 }
 
 void NRFLD::LoadVariables() {

@@ -157,9 +157,11 @@ void BoundaryValues::ProlongateBoundaries(const Real time, const Real dt,
 
   NewtonRaphson *pnr=nullptr;
   CellCenteredBoundaryVariable *pnr_bvar = nullptr;
+  CellCenteredBoundaryVariable *pdeltabvar = nullptr;
   if (NRMGFLD_ENABLED) {
     pnr = pmb->pnr;
     pnr_bvar = &(pnr->nrbvar);
+    pdeltabvar = &(pnr->delta_bvar);
   }
 
   // For each finer neighbor, to prolongate a boundary we need to fill one more cell
@@ -252,6 +254,7 @@ void BoundaryValues::ProlongateBoundaries(const Real time, const Real dt,
 
     if (NRMGFLD_ENABLED) {
       pnr_bvar->var_cc = &(pnr->coarse_u_);
+      pdeltabvar->var_cc = &(pnr->coarse_delta_u_);
     }
 
     // Step 2. Re-apply physical boundaries on the coarse boundary:
@@ -279,6 +282,7 @@ void BoundaryValues::ProlongateBoundaries(const Real time, const Real dt,
 
     if (NRMGFLD_ENABLED) {
       pnr_bvar->var_cc = &(pnr->u_);
+      pdeltabvar->var_cc = &(pnr->delta_u_);
     }
 
     // Step 3. Finally, the ghost-ghost zones are ready for prolongation:

@@ -62,7 +62,7 @@ class linearMG: public Multigrid {
   friend class NewtonRaphson;
 
  private:
-  linearMGDriver *pmd_;
+  // linearMGDriver *pmd_;
   NewtonRaphson *pnr_;
   Real omega_;
   int fsmoother_;

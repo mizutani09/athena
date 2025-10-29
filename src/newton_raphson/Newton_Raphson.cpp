@@ -99,6 +99,7 @@ NewtonRaphson::NewtonRaphson(NewtonRaphsonDriver *pmd, MeshBlock *pmb, int nghos
   Mesh *pm = pmy_block_->pmy_mesh;
 
   pmb->RegisterMeshBlockData(u_);
+  pmb->RegisterMeshBlockData(delta_u_);
 
   // "Enroll" in S/AMR by adding to vector of tuples of pointers in MeshRefinement class
   if (pm->multilevel) {
@@ -107,7 +108,7 @@ NewtonRaphson::NewtonRaphson(NewtonRaphsonDriver *pmd, MeshBlock *pmb, int nghos
 
   // "Enroll" in SMR/AMR by adding to vector of pointers in MeshRefinement class
   if (pmb->pmy_mesh->multilevel) {
-    refinement_idx = pmy_block_->pmr->AddToRefinement(&delta_u_, &coarse_delta_u_);
+    refinement_idx_ = pmy_block_->pmr->AddToRefinement(&delta_u_, &coarse_delta_u_);
   }
 
 
@@ -119,7 +120,7 @@ NewtonRaphson::NewtonRaphson(NewtonRaphsonDriver *pmd, MeshBlock *pmb, int nghos
   // Enroll CellCenteredBoundaryVariable object for linear solver
   delta_bvar.bvar_index = pmb->pbval->bvars.size();
   pmb->pbval->bvars.push_back(&delta_bvar);
-  pmb->pbval->prfldbvar = &delta_bvar;
+  pmb->pbval->pdeltabvar = &delta_bvar;
 }
 
 

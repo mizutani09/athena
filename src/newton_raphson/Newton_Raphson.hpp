@@ -134,13 +134,14 @@ class NewtonRaphson {
   NRBoundaryVariable nrbvar;
   CellCenteredBoundaryVariable delta_bvar;
   BoundaryFlag nr_block_bcs_[6];
+  linearMG *plmg_; // to be set in derived class constructors
 protected:
   Real rdx_, rdy_, rdz_;
   Real defscale_;
 
-  linearMG *plmg_; // to be set in derived class constructors
 
  private:
+  int refinement_idx_; // for delta_u_
   TaskStates ts_;
 };
 

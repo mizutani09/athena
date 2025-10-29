@@ -483,6 +483,8 @@ MeshBlock::MeshBlock(int igid, int ilid, Mesh *pm, ParameterInput *pin,
   }
 
   if (NRMGFLD_ENABLED) {
+    prfld2 = new FLD2(this, pin);
+    pbval->AdvanceCounterPhysID(CellCenteredBoundaryVariable::max_phys_id);
     pnr = new NRFLD(this, pin);
     pbval->AdvanceCounterPhysID(CellCenteredBoundaryVariable::max_phys_id);
   }
@@ -575,6 +577,8 @@ MeshBlock::MeshBlock(int igid, int ilid, Mesh *pm, ParameterInput *pin,
   if (NRMGFLD_ENABLED) {
     std::memcpy(pnr->u_.data(), &(mbdata[os]), pnr->u_.GetSizeInBytes());
     os += pnr->u_.GetSizeInBytes();
+    std::memcpy(pnr->delta_u_.data(), &(mbdata[os]), pnr->delta_u_.GetSizeInBytes());
+    os += pnr->delta_u_.GetSizeInBytes();
   }
 
   // (conserved variable) Passive scalars:
@@ -627,7 +631,10 @@ MeshBlock::~MeshBlock() {
   if (CR_ENABLED) delete pcr;
   if (CRDIFFUSION_ENABLED) delete pcrdiff;
   if (MGFLD_ENABLED) delete prfld;
-  if (NRMGFLD_ENABLED) delete pnr;
+  if (NRMGFLD_ENABLED) {
+    delete prfld2;
+    delete pnr;
+  }
 
   // BoundaryValues should be destructed AFTER all BoundaryVariable objects are destroyed
   delete pbval;
@@ -742,8 +749,10 @@ std::size_t MeshBlock::GetBlockSizeInBytes() {
     size += pcrdiff->ecr.GetSizeInBytes();
   if (MGFLD_ENABLED)
     size += prfld->u.GetSizeInBytes();
-  if (NRMGFLD_ENABLED)
+  if (NRMGFLD_ENABLED) {
     size += pnr->u_.GetSizeInBytes();
+    size += pnr->delta_u_.GetSizeInBytes();
+  }
 
   // calculate user MeshBlock data size
   for (int n=0; n<nint_user_meshblock_data_; n++)
@@ -782,8 +791,10 @@ std::size_t MeshBlock::GetBlockSizeInBytesGray() {
     size += pcrdiff->ecr.GetSizeInBytes();
   if (MGFLD_ENABLED)
     size += prfld->u.GetSizeInBytes();
-  if (NRMGFLD_ENABLED)
+  if (NRMGFLD_ENABLED) {
     size += pnr->u_.GetSizeInBytes();
+    size += pnr->delta_u_.GetSizeInBytes();
+  }
 
 
   // calculate user MeshBlock data size
