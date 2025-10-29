@@ -1057,8 +1057,8 @@ void MultigridDriver::SolveIterative() {
     def += CalculateDefectNorm(MGNormType::l2, v);
 //    defmax = std::max(defmax, CalculateDefectNorm(MGNormType::max, v));
   }
- if (Globals::my_rank == 0)
-  //  std::cout << "initial defect " << def << " max " << defmax << std::endl;
+//  if (Globals::my_rank == 0)
+//    std::cout << "initial defect " << def << " max " << defmax << std::endl;
   while (def > eps_) {
     SolveVCycle(npresmooth_, npostsmooth_);
     if (matrixmode_ == 1)
