@@ -1086,6 +1086,8 @@ int BoundaryValues::AdvanceCounterPhysID(int num_phys) {
   //! * add safety checks? input, output are positive, obey <= 31= MAX_NUM_PHYS
   int start_id = bvars_next_phys_id_;
   bvars_next_phys_id_ += num_phys;
+  if (Globals::my_rank == 0) std::cout << "bvars_next_phys_id_ advanced to "
+                                      << bvars_next_phys_id_ << std::endl;
   return start_id;
 #else
   return 0;

@@ -259,7 +259,7 @@ void NewtonRaphsonDriver::SolveOneCycle() {
     int j = (js + je) / 2;
     int k = (ks + ke) / 2;
     std::cout << "At (" << k << "," << j << "," << i << "):" << std::endl;
-    std::cout <<"delta_u_ before MG: ";
+    std::cout <<"delta_u_ before MG at " << Globals::my_rank << ": ";
     for (int n = 0; n < nvar_; n++)
       std::cout << pnr->delta_u_(n,k,j,i) << " ";
     std::cout << std::endl;
@@ -284,6 +284,9 @@ void NewtonRaphsonDriver::SolveOneCycle() {
     std::cout << std::endl;
   }
 
+  std::cout << "NewtonRaphson correction retrieved from linear solver at "
+            << Globals::my_rank << std::endl;
+
   for (auto itr = vnr_.begin(); itr < vnr_.end(); itr++) {
     NewtonRaphson *pnr = *itr;
     pnr->AddDifference(pnr->u_,
@@ -291,17 +294,26 @@ void NewtonRaphsonDriver::SolveOneCycle() {
                        pnr->derivetive_);
   }
 
+  std::cout << "NewtonRaphson update applied at " << Globals::my_rank << std::endl;
+
   // for boundary values
   for (auto itr = vnr_.begin(); itr < vnr_.end(); itr++) {
     NewtonRaphson *pnr = *itr;
-    pnr->nrbvar.StartReceiving(BoundaryCommSubset::newton_raphson);
+    std::cout << (itr - vnr_.begin()) << std::endl;
+    // pnr->nrbvar.StartReceiving(BoundaryCommSubset::newton_raphson);
+    pnr->nrbvar.StartReceiving(BoundaryCommSubset::all);
+    std::cout << "NewtonRaphson boundary buffers sent at " << Globals::my_rank << std::endl;
     pnr->nrbvar.SendBoundaryBuffers();
   }
+
+  std::cout << "NewtonRaphson boundary buffers sent at " << Globals::my_rank << std::endl;
 
   for (auto itr = vnr_.begin(); itr < vnr_.end(); itr++) {
     NewtonRaphson *pnr = *itr;
     pnr->nrbvar.SetBoundaries();
   }
+
+  std::cout << "NewtonRaphson boundary values set at " << Globals::my_rank << std::endl;
 
   if (pmy_mesh_->multilevel) {
     for (auto itr = vnr_.begin(); itr < vnr_.end(); itr++) {
@@ -311,17 +323,24 @@ void NewtonRaphsonDriver::SolveOneCycle() {
     }
   }
 
+  std::cout << "NewtonRaphson prolongation done at " << Globals::my_rank << std::endl;
+
   for (auto itr = vnr_.begin(); itr < vnr_.end(); itr++) {
     NewtonRaphson *pnr = *itr;
     MeshBlock *pmb = pnr->pmy_block_;
     pnr->nrbvar.var_cc = &(pnr->u_);
     pmb->pbval->ApplyPhysicalBoundaries(pmy_mesh_->time, dt_, pmb->pbval->bvars_main_int);
   }
+  
+  std::cout << "NewtonRaphson physical boundaries applied at " << Globals::my_rank << std::endl;
 
   for (auto itr = vnr_.begin(); itr < vnr_.end(); itr++) {
     NewtonRaphson *pnr = *itr;
-    pnr->nrbvar.ClearBoundary(BoundaryCommSubset::newton_raphson);
+    // pnr->nrbvar.ClearBoundary(BoundaryCommSubset::newton_raphson);
+    pnr->nrbvar.ClearBoundary(BoundaryCommSubset::all);
   }
+
+  std::cout << "NewtonRaphson boundary buffers cleared at " << Globals::my_rank << std::endl;
 
   return;
 }

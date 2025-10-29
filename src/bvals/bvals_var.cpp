@@ -214,6 +214,11 @@ void BoundaryVariable::SendBoundaryBuffers() {
   int mylevel = pmb->loc.level;
   for (int n=0; n<pbval_->nneighbor; n++) {
     NeighborBlock& nb = pbval_->neighbor[n];
+    if (Globals::my_rank == 0) {
+      std::cout << "Sending boundary buffer " << n << " of "
+                << pbval_->nneighbor << " Status=" << static_cast<int>(bd_var_.sflag[nb.bufid])
+                << " Rank=" << nb.snb.rank << " gid=" << nb.snb.gid << std::endl;
+    }
     if (bd_var_.sflag[nb.bufid] == BoundaryStatus::completed) continue;
     int ssize;
     if (nb.snb.level == mylevel)
@@ -226,8 +231,17 @@ void BoundaryVariable::SendBoundaryBuffers() {
       CopyVariableBufferSameProcess(nb, ssize);
     }
 #ifdef MPI_PARALLEL
-    else  // MPI
+    else {  // MPI
+      if (Globals::my_rank == 0) {
+        std::cout << "  MPI_Send to rank " << nb.snb.rank << " bufid=" << nb.bufid
+                  << " ssize=" << ssize << std::endl;
+      }
       MPI_Start(&(bd_var_.req_send[nb.bufid]));
+      if (Globals::my_rank == 0) {
+        std::cout << "  MPI_Send started to rank " << nb.snb.rank << " bufid=" << nb.bufid
+                  << std::endl;
+      }
+    }
 #endif
     bd_var_.sflag[nb.bufid] = BoundaryStatus::completed;
   }
@@ -244,6 +258,18 @@ bool BoundaryVariable::ReceiveBoundaryBuffers() {
 
   for (int n=0; n<pbval_->nneighbor; n++) {
     NeighborBlock& nb = pbval_->neighbor[n];
+    // // if (Globals::my_rank == 0) {
+    //   std::cout << "Receiving boundary buffer " << n << " of "
+    //             << pbval_->nneighbor << " Status=" << static_cast<int>(bd_var_.flag[nb.bufid])
+    //             << " Rank=" << nb.snb.rank << std::endl;
+    // // }
+    // check size
+    // if (Globals::my_rank == 0) {
+    //   std::cout << "Receiving boundary buffer " << n << " of "
+    //             << pbval_->nneighbor << " Status=" << static_cast<int>(bd_var_.flag[nb.bufid])
+    //             << " Rank=" << nb.snb.rank << " gid=" << nb.snb.gid << " size="
+    //             << ComputeVariableBufferSize(nb.ni, pmy_block_->cnghost()) << std::endl;
+    // }
     if (bd_var_.flag[nb.bufid] == BoundaryStatus::arrived) continue;
     if (bd_var_.flag[nb.bufid] == BoundaryStatus::waiting) {
       if (nb.snb.rank == Globals::my_rank) {  // on the same process

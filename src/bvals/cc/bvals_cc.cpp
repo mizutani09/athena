@@ -623,6 +623,7 @@ void CellCenteredBoundaryVariable::SetupPersistentMPI() {
   cng3 = cng*f3;
   int ssize, rsize;
   int tag;
+  std::cout << "In SetupPersistentMPI nneighbor = " << pbval_->nneighbor << std::endl;
   // Initialize non-polar neighbor communications to other ranks
   for (int n=0; n<pbval_->nneighbor; n++) {
     NeighborBlock& nb = pbval_->neighbor[n];
@@ -720,6 +721,7 @@ void CellCenteredBoundaryVariable::SetupPersistentMPI() {
 
 void CellCenteredBoundaryVariable::StartReceiving(BoundaryCommSubset phase) {
   MeshBlock *pmb = pmy_block_;
+  std::cout << "In StartReceiving nneighbor = " << pbval_->nneighbor << std::endl;
 #ifdef MPI_PARALLEL
   int mylevel = pmb->loc.level;
   for (int n=0; n<pbval_->nneighbor; n++) {

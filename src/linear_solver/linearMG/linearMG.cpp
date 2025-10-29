@@ -199,15 +199,22 @@ void linearMGDriver::Solve(int stage, Real dt) {
     // pmg->AddFLDSource(prfld->source, NGHOST, dt_);
   }
 
+  std::cout << "Source loaded to linearMG. Start to solve... at " << Globals::my_rank << std::endl;
+
   SetupMultigrid(false);
+  std::cout << "setup done at " << Globals::my_rank << std::endl;
   if (mode_ == 0) {
     SolveFMGCycle();
   } else {
-    if (eps_ >= 0.0)
+    if (eps_ >= 0.0) {
+      std::cout << "linearMG solve with threshold " << eps_ << " at " << Globals::my_rank << std::endl;
       SolveIterative();
+      std::cout << "linearMG solve with threshold " << eps_ << " finished at " << Globals::my_rank << std::endl;
+    }
     else
       SolveIterativeFixedTimes();
   }
+  std::cout << "linearMG solve finished at " << Globals::my_rank << std::endl;
 
   // Return the result
 #pragma omp parallel for num_threads(nthreads_)
@@ -220,7 +227,10 @@ void linearMGDriver::Solve(int stage, Real dt) {
     // if (pnr->output_defect)
     //   pmg->RetrieveDefect(pnr->def_, 0, NGHOST);
   }
+
+  std::cout << "Result retrieved from linearMG at " << Globals::my_rank << std::endl;
   linmgtlist_->DoTaskListOneStage(pmy_mesh_, stage);
+  std::cout << "linearMG boundary conditions applied." << std::endl;
 // #pragma omp parallel for num_threads(nthreads_)
 //   for (auto itr = vmg_.begin(); itr < vmg_.end(); itr++) {
 //     linearMG *pmg = static_cast<linearMG*>(*itr);

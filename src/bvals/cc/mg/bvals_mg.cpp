@@ -446,6 +446,8 @@ void MGBoundaryValues::StartReceivingMultigrid(BoundaryQuantity type, bool foldd
 
   for (int n = 0; n < nneighbor; ++n) {
     NeighborBlock& nb = neighbor[n];
+    // std::cout << Globals::my_rank << " recv mg bvals from nb rank " << nb.snb.rank
+    //           << " bufid " << nb.bufid << " level " << nb.snb.level << std::endl;
     if (nb.snb.rank!=Globals::my_rank) {
       if (type == BoundaryQuantity::mg_faceonly && nb.snb.level > loc.level
         && nb.ni.type != NeighborConnect::face) continue;
@@ -724,6 +726,9 @@ bool MGBoundaryValues::SendMultigridBoundaryBuffers(BoundaryQuantity type,
   Multigrid *pmg = nullptr;
   for (int n = 0; n < nneighbor; ++n) {
     NeighborBlock& nb = neighbor[n];
+    // std::cout << Globals::my_rank << " Sending MG bndry to block GID " << nb.snb.gid
+    //           << " from block GID " << pmy_mg_->pmy_block_->gid
+    //           << " bufid " << nb.bufid << " targetid " << nb.targetid << std::endl;
     if (bdata_[bcolor_].sflag[nb.bufid] == BoundaryStatus::completed) continue;
     if (type == BoundaryQuantity::mg_faceonly && nb.snb.level < loc.level
       && nb.ni.type != NeighborConnect::face) continue;
@@ -968,12 +973,27 @@ void MGBoundaryValues::SetMultigridBoundaryFromFiner(const Real *buf,
 bool MGBoundaryValues::ReceiveMultigridBoundaryBuffers(BoundaryQuantity type,
                                                        bool folddata) {
   bool bflag = true;
+  int r; MPI_Comm_rank(MPI_COMM_WORLD, &r);
+  auto log_comm = [&](const char* where, int e, int peer, int tag, int cnt, MPI_Request req){
+    fprintf(stderr,"[r%02d] %s e=%d peer=%d tag=%d cnt=%d req=%p t=%.6f\n",
+            r, where, e, peer, tag, cnt, (void*)req, MPI_Wtime());
+  };
+
+  // log_comm("ReceiveMultigridBoundaryBuffers", 1, 0, 0, 0, MPI_REQUEST_NULL);
 
   for (int n = 0; n < nneighbor; ++n) {
     NeighborBlock& nb = neighbor[n];
+    // if (Globals::my_rank == 0) std::cout << "neighbor " << n << " bufid " << nb.bufid
+    //                                     << " flag " << static_cast<int>(bdata_[bcolor_].flag[nb.bufid]) << std::endl;
     if (bdata_[bcolor_].flag[nb.bufid] == BoundaryStatus::completed) continue;
+    // if (Globals::my_rank == 0) std::cout << "type " << static_cast<int>(type) << " nb.snb.level "
+    //                                     << nb.snb.level << " loc.level " << loc.level
+    //                                     << " ni.type " << static_cast<int>(nb.ni.type) << std::endl;
     if (type == BoundaryQuantity::mg_faceonly && nb.snb.level > loc.level
       && nb.ni.type != NeighborConnect::face) continue;
+    // if (Globals::my_rank == 0)
+    // std::cout << "nb.snb.rank " << nb.snb.rank << " my_rank "
+    //                                     << Globals::my_rank << std::endl;
     if (bdata_[bcolor_].flag[nb.bufid] == BoundaryStatus::waiting) {
       if (nb.snb.rank == Globals::my_rank) {// on the same process
         bflag = false;
@@ -1009,6 +1029,7 @@ bool MGBoundaryValues::ReceiveMultigridBoundaryBuffers(BoundaryQuantity type,
     }
     bdata_[bcolor_].flag[nb.bufid] = BoundaryStatus::completed; // completed
   }
+  // log_comm("ReceiveMultigridBoundaryBuffers", 0, 0, 0, 0, MPI_REQUEST_NULL);
 
   return bflag;
 }
