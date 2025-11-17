@@ -233,7 +233,7 @@ CosmicRay::CosmicRay(MeshBlock *pmb, ParameterInput *pin):
        (pmb->pmy_mesh->f3 ? AthenaArray<Real>::DataStatus::allocated :
         AthenaArray<Real>::DataStatus::empty)}
     },
-    cr_bvar(pmb, &u_cr, &coarse_cr_, flux, true),
+    cr_bvar(pmb, &u_cr, &coarse_cr_, flux, CellCenteredBoundaryVariable::max_phys_id, true),
     UserSourceTerm_{} {
   Mesh *pm = pmy_block->pmy_mesh;
   pmb->RegisterMeshBlockData(u_cr);

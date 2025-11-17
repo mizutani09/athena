@@ -40,7 +40,7 @@ CRDiffusion::CRDiffusion(MeshBlock *pmb, ParameterInput *pin) :
               (pmb->pmy_mesh->multilevel ? AthenaArray<Real>::DataStatus::allocated :
                AthenaArray<Real>::DataStatus::empty)),
     empty_flux{AthenaArray<Real>(), AthenaArray<Real>(), AthenaArray<Real>()},
-    output_defect(false), crbvar(pmb, &ecr, &coarse_ecr, empty_flux, false),
+    output_defect(false), crbvar(pmb, &ecr, &coarse_ecr, empty_flux, CellCenteredBoundaryVariable::max_phys_id, false),
     refinement_idx_(), Dpara_(), Dperp_(), Lambda_() {
   Dpara_ = pin->GetReal("crdiffusion", "Dpara");
   Dperp_ = pin->GetReal("crdiffusion", "Dperp");

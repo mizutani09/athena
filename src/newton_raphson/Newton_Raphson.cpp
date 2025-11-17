@@ -45,13 +45,13 @@ NewtonRaphson::NewtonRaphson(NewtonRaphsonDriver *pmd, MeshBlock *pmb, int nghos
   coarse_u_(nvar_, pmb->ncc3, pmb->ncc2, pmb->ncc1,
                 (pmb->pmy_mesh->multilevel ? AthenaArray<Real>::DataStatus::allocated :
                 AthenaArray<Real>::DataStatus::empty)),
-  nrbvar(pmb, &u_, &coarse_u_, flux),
+  nrbvar(pmb, &u_, &coarse_u_, flux, 1),
   delta_u_(nvar_, pmb->ncells3, pmb->ncells2, pmb->ncells1),
   coarse_delta_u_(nvar_, pmb->ncc3, pmb->ncc2, pmb->ncc1,
                 (pmb->pmy_mesh->multilevel ? AthenaArray<Real>::DataStatus::allocated :
                 AthenaArray<Real>::DataStatus::empty)),
   empty_flux{AthenaArray<Real>(), AthenaArray<Real>(), AthenaArray<Real>()},
-  delta_bvar(pmb, &delta_u_, &coarse_delta_u_, empty_flux, false), //!
+  delta_bvar(pmb, &delta_u_, &coarse_delta_u_, empty_flux, 1, false), //!
   derivetive_(nderivetive, pmb->ncells3, pmb->ncells2, pmb->ncells1),
   def_coeff_(ndef_coeff, pmb->ncells3, pmb->ncells2, pmb->ncells1),
   output_defect(true), // caution!
@@ -115,7 +115,7 @@ NewtonRaphson::NewtonRaphson(NewtonRaphsonDriver *pmd, MeshBlock *pmb, int nghos
   // enroll NRBoundaryVariable object
   nrbvar.bvar_index = pmb->pbval->bvars.size();
   pmb->pbval->bvars.push_back(&nrbvar);
-  pmb->pbval->bvars_main_int.push_back(&nrbvar);
+  // pmb->pbval->bvars_main_int.push_back(&nrbvar); // now NewtonRaphson's boundary is manually handled in NewtonRaphsonDriver::SolveOneCycle()
 
   // Enroll CellCenteredBoundaryVariable object for linear solver
   delta_bvar.bvar_index = pmb->pbval->bvars.size();

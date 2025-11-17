@@ -86,7 +86,7 @@ FLD2::FLD2(MeshBlock *pmb, ParameterInput *pin) :
              (pmb->pmy_mesh->f3 ? AthenaArray<Real>::DataStatus::allocated :
               AthenaArray<Real>::DataStatus::empty)}
     },
-    u_rad_fldbvar(pmb, &u_rad, &coarse_u_rad, u_rad_flux, true),
+    u_rad_fldbvar(pmb, &u_rad, &coarse_u_rad, u_rad_flux, 1, true),
     // coarse_r_(RadFLD::NADV, pmb->ncc3, pmb->ncc2, pmb->ncc1,
     //           (pmb->pmy_mesh->multilevel ? AthenaArray<Real>::DataStatus::allocated :
     //            AthenaArray<Real>::DataStatus::empty)),

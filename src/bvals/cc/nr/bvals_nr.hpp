@@ -24,8 +24,8 @@
 class NRBoundaryVariable : public CellCenteredBoundaryVariable {
  public:
   NRBoundaryVariable(MeshBlock *pmb,
-                        AthenaArray<Real> *var_nr, AthenaArray<Real> *coarse_var,
-                        AthenaArray<Real> *var_flux);
+                     AthenaArray<Real> *var_nr, AthenaArray<Real> *coarse_var,
+                     AthenaArray<Real> *var_flux, int num_phys);
   virtual ~NRBoundaryVariable() = default;
 
   // switch between NR class members "u" and "w" (or "u" and "u1", ...)

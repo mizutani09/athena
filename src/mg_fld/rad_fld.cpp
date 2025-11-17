@@ -70,7 +70,7 @@ FLD::FLD(MeshBlock *pmb, ParameterInput *pin) :
     sigma_p(pmb->ncells3,pmb->ncells2,pmb->ncells1),
     sigma_r(pmb->ncells3,pmb->ncells2,pmb->ncells1),
     empty_flux{AthenaArray<Real>(), AthenaArray<Real>(), AthenaArray<Real>()},
-    output_defect(false), mgfldbvar(pmb, &u, &coarse_u, empty_flux, false), //!
+    output_defect(false), mgfldbvar(pmb, &u, &coarse_u, empty_flux, 1, false), //!
     r_flux{ {pmb->ncells3, pmb->ncells2, pmb->ncells1+1},
             {pmb->ncells3, pmb->ncells2+1, pmb->ncells1,
              (pmb->pmy_mesh->f2 ? AthenaArray<Real>::DataStatus::allocated :
@@ -79,7 +79,7 @@ FLD::FLD(MeshBlock *pmb, ParameterInput *pin) :
              (pmb->pmy_mesh->f3 ? AthenaArray<Real>::DataStatus::allocated :
               AthenaArray<Real>::DataStatus::empty)}
     },
-    rfldbvar(pmb, &r, &coarse_r, r_flux, true),
+    rfldbvar(pmb, &r, &coarse_r, r_flux, 1, true),
     // coarse_r_(RadFLD::NADV, pmb->ncc3, pmb->ncc2, pmb->ncc1,
     //           (pmb->pmy_mesh->multilevel ? AthenaArray<Real>::DataStatus::allocated :
     //            AthenaArray<Real>::DataStatus::empty)),

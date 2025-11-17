@@ -213,7 +213,7 @@ MeshBlock::MeshBlock(int igid, int ilid, LogicalLocation iloc, RegionSize input_
     // }
     // Regardless, advance MeshBlock's local counter (initialized to bvars_next_phys_id=1)
     // Greedy reservation of phys IDs (only 1 of 2 needed for Hydro if multilevel==false)
-    pbval->AdvanceCounterPhysID(HydroBoundaryVariable::max_phys_id);
+    // pbval->AdvanceCounterPhysID(HydroBoundaryVariable::max_phys_id); // this is called in HydroBoundaryVaribles constructor
     //  }
   if (MAGNETIC_FIELDS_ENABLED) {
     // if (this->field_block)
@@ -223,12 +223,12 @@ MeshBlock::MeshBlock(int igid, int ilid, LogicalLocation iloc, RegionSize input_
   if (SELF_GRAVITY_ENABLED) {
     // if (this->grav_block)
     pgrav = new Gravity(this, pin);
-    pbval->AdvanceCounterPhysID(CellCenteredBoundaryVariable::max_phys_id);
+    // pbval->AdvanceCounterPhysID(CellCenteredBoundaryVariable::max_phys_id);
   }
   if (NSCALARS > 0) {
     // if (this->scalars_block)
     pscalars = new PassiveScalars(this, pin);
-    pbval->AdvanceCounterPhysID(CellCenteredBoundaryVariable::max_phys_id);
+    // pbval->AdvanceCounterPhysID(CellCenteredBoundaryVariable::max_phys_id);
   }
   // KGF: suboptimal solution, since developer must copy/paste BoundaryVariable derived
   // class type that is used in each PassiveScalars, Gravity, Field, Hydro, ... etc. class
@@ -258,24 +258,24 @@ MeshBlock::MeshBlock(int igid, int ilid, LogicalLocation iloc, RegionSize input_
 
   if (CR_ENABLED) {
     pcr = new CosmicRay(this, pin);
-    pbval->AdvanceCounterPhysID(CellCenteredBoundaryVariable::max_phys_id);
+    // pbval->AdvanceCounterPhysID(CellCenteredBoundaryVariable::max_phys_id);
   }
 
   if (CRDIFFUSION_ENABLED) {
     pcrdiff = new CRDiffusion(this, pin);
-    pbval->AdvanceCounterPhysID(CellCenteredBoundaryVariable::max_phys_id);
+    // pbval->AdvanceCounterPhysID(CellCenteredBoundaryVariable::max_phys_id);
   }
 
   if (MGFLD_ENABLED) {
     prfld = new FLD(this, pin);
-    pbval->AdvanceCounterPhysID(CellCenteredBoundaryVariable::max_phys_id);
+    // pbval->AdvanceCounterPhysID(CellCenteredBoundaryVariable::max_phys_id);
   }
 
   if (NRMGFLD_ENABLED) { // caution! NRFLD should be constructed after FLD2
     prfld2 = new FLD2(this, pin);
-    pbval->AdvanceCounterPhysID(CellCenteredBoundaryVariable::max_phys_id);
+    // pbval->AdvanceCounterPhysID(1); // for advection // caution! this is called in NRFLD constructor
     pnr = new NRFLD(this, pin);
-    pbval->AdvanceCounterPhysID(CellCenteredBoundaryVariable::max_phys_id);
+    // pbval->AdvanceCounterPhysID(1); // for NewtonRaphson // caution! this is called in NRFLD constructor
   }
 
   // OrbitalAdvection: constructor depends on Coordinates, Hydro, Field, PassiveScalars.
@@ -434,7 +434,7 @@ MeshBlock::MeshBlock(int igid, int ilid, Mesh *pm, ParameterInput *pin,
   // }
   // Regardless, advance MeshBlock's local counter (initialized to bvars_next_phys_id=1)
   // Greedy reservation of phys IDs (only 1 of 2 needed for Hydro if multilevel==false)
-  pbval->AdvanceCounterPhysID(HydroBoundaryVariable::max_phys_id);
+  // pbval->AdvanceCounterPhysID(HydroBoundaryVariable::max_phys_id);
   //  }
   if (MAGNETIC_FIELDS_ENABLED) {
     // if (this->field_block)
@@ -444,13 +444,13 @@ MeshBlock::MeshBlock(int igid, int ilid, Mesh *pm, ParameterInput *pin,
   if (SELF_GRAVITY_ENABLED) {
     // if (this->grav_block)
     pgrav = new Gravity(this, pin);
-    pbval->AdvanceCounterPhysID(CellCenteredBoundaryVariable::max_phys_id);
+    // pbval->AdvanceCounterPhysID(CellCenteredBoundaryVariable::max_phys_id);
   }
 
   if (NSCALARS > 0) {
     // if (this->scalars_block)
     pscalars = new PassiveScalars(this, pin);
-    pbval->AdvanceCounterPhysID(CellCenteredBoundaryVariable::max_phys_id);
+    // pbval->AdvanceCounterPhysID(CellCenteredBoundaryVariable::max_phys_id);
   }
 
   peos = new EquationOfState(this, pin);
@@ -469,24 +469,24 @@ MeshBlock::MeshBlock(int igid, int ilid, Mesh *pm, ParameterInput *pin,
 
   if (CR_ENABLED) {
     pcr = new CosmicRay(this, pin);
-    pbval->AdvanceCounterPhysID(CellCenteredBoundaryVariable::max_phys_id);
+    // pbval->AdvanceCounterPhysID(CellCenteredBoundaryVariable::max_phys_id);
   }
 
   if (CRDIFFUSION_ENABLED) {
     pcrdiff = new CRDiffusion(this, pin);
-    pbval->AdvanceCounterPhysID(CellCenteredBoundaryVariable::max_phys_id);
+    // pbval->AdvanceCounterPhysID(CellCenteredBoundaryVariable::max_phys_id);
   }
 
   if (MGFLD_ENABLED) {
     prfld = new FLD(this, pin);
-    pbval->AdvanceCounterPhysID(CellCenteredBoundaryVariable::max_phys_id);
+    // pbval->AdvanceCounterPhysID(CellCenteredBoundaryVariable::max_phys_id);
   }
 
   if (NRMGFLD_ENABLED) {
     prfld2 = new FLD2(this, pin);
-    pbval->AdvanceCounterPhysID(CellCenteredBoundaryVariable::max_phys_id);
+    // pbval->AdvanceCounterPhysID(CellCenteredBoundaryVariable::max_phys_id);
     pnr = new NRFLD(this, pin);
-    pbval->AdvanceCounterPhysID(CellCenteredBoundaryVariable::max_phys_id);
+    // pbval->AdvanceCounterPhysID(CellCenteredBoundaryVariable::max_phys_id);
   }
 
   // OrbitalAdvection: constructor depends on Coordinates, Hydro, Field, PassiveScalars.

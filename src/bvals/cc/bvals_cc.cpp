@@ -40,7 +40,7 @@
 
 CellCenteredBoundaryVariable::CellCenteredBoundaryVariable(
     MeshBlock *pmb, AthenaArray<Real> *var, AthenaArray<Real> *coarse_var,
-    AthenaArray<Real> *var_flux, bool fflux)
+    AthenaArray<Real> *var_flux, int num_phys, bool fflux)
     : BoundaryVariable(pmb, fflux), var_cc(var), coarse_buf(coarse_var),
       x1flux(var_flux[X1DIR]), x2flux(var_flux[X2DIR]), x3flux(var_flux[X3DIR]),
       nl_(0), nu_(var->GetDim4() -1), flip_across_pole_(nullptr) {
@@ -65,7 +65,9 @@ CellCenteredBoundaryVariable::CellCenteredBoundaryVariable(
 #ifdef MPI_PARALLEL
   // KGF: dead code, leaving for now:
   // cc_phys_id_ = pbval_->ReserveTagVariableIDs(1);
-  cc_phys_id_ = pbval_->bvars_next_phys_id_;
+  // cc_phys_id_ = pbval_->bvars_next_phys_id_;
+  // Advance the global physical ID counter in BoundaryValues and get start idx
+  cc_phys_id_ = pbval_->AdvanceCounterPhysID(num_phys);
 #endif
   if (fflux_ && ((pmy_mesh_->multilevel)
       || (pbval_->shearing_box != 0))) { // SMR or AMR or SHEARING_BOX
@@ -176,6 +178,7 @@ CellCenteredBoundaryVariable::CellCenteredBoundaryVariable(
   // KGF: dead code, leaving for now:
   // cc_phys_id_ = pbval_->ReserveTagVariableIDs(1);
   cc_phys_id_ = pbval_->bvars_next_phys_id_;
+  // cc_phys_id_ = pbval_->AdvanceCounterPhysID(num_phys); // to be modified
 #endif
   if (fflux_ && ((pmy_mesh_->multilevel)
       || (pbval_->shearing_box != 0))) { // SMR or AMR or SHEARING_BOX
