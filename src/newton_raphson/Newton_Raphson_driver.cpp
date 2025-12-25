@@ -184,6 +184,9 @@ void NewtonRaphsonDriver::Solve_general(int stage, Real dt) {
     def += CalculateDefectNorm(NRNormType::l2, v);
   //  defmax = std::max(defmax, CalculateDefectNorm(NRNormType::max, v));
   }
+
+  // std::cout << "epsilon for Newton-Raphson: " << eps_ << std::endl;
+
 //  if (Globals::my_rank == 0)
 //    std::cout << "initial defect " << def << " max " << defmax << std::endl;
   while (def > eps_) {
@@ -196,10 +199,11 @@ void NewtonRaphsonDriver::Solve_general(int stage, Real dt) {
       def += CalculateDefectNorm(NRNormType::l2, v);
 //      defmax = std::max(defmax, CalculateDefectNorm(NRNormType::max, v));
     }
-    // if (Globals::my_rank == 0)
-    // std::cout << "[debug in NR] niter " << n << " def " << def << " convergence factor "
-    //           << def/olddef<< " defmax  "<< defmax << " cf "
-    //           <<  defmax/oldmax << std::endl;
+    if (Globals::my_rank == 0)
+      std::cout << "[debug in NR] niter " << n << " def " << def << " convergence factor "
+                << def/olddef<< " defmax  "<< defmax << " cf "
+                <<  defmax/oldmax << std::endl;
+    if (pmy_mesh_->ncycle == 0) break;
     if (def/olddef > 0.9) {
       if (n > 1 && eps_ == 0.0) break;
       if (Globals::my_rank == 0)
@@ -213,15 +217,22 @@ void NewtonRaphsonDriver::Solve_general(int stage, Real dt) {
                     << ", convergence factor = " << def/olddef << ", and niter = " << n << "." << std::endl;
         break;
       }
+      if (n > 1 && std::abs(def - olddef) < 1e-12) {
+        if (Globals::my_rank == 0)
+          std::cout << "### Warning in NewtonRaphsonDriver::SolveIterative" << std::endl
+                    << "NewtonRaphson is not converging: defect norm = " << def
+                    << ", convergence factor = " << def/olddef << ", and niter = " << n << "." << std::endl;
+        break;
+      }
     }
     // if (n > 100) {
     if (n > 100) {
-      // if (Globals::my_rank == 0) {
-      //   std::cout
-      //       << "### Warning in NewtonRaphsonDriver::SolveIterative" << std::endl
-      //       << "Aborting because the # iterations is too large, n > 30." << std::endl
-      //       << "Check the solution as it may not be accurate enough." << std::endl;
-      // }
+      if (Globals::my_rank == 0) {
+        std::cout
+            << "### Warning in NewtonRaphsonDriver::SolveIterative" << std::endl
+            << "Aborting because the # iterations is too large, n > 30." << std::endl
+            << "Check the solution as it may not be accurate enough." << std::endl;
+      }
       break;
     }
     n++;
@@ -284,8 +295,8 @@ void NewtonRaphsonDriver::SolveOneCycle() {
     std::cout << std::endl;
   }
 
-  std::cout << "NewtonRaphson correction retrieved from linear solver at "
-            << Globals::my_rank << std::endl;
+  // std::cout << "NewtonRaphson correction retrieved from linear solver at "
+  //           << Globals::my_rank << std::endl;
 
   for (auto itr = vnr_.begin(); itr < vnr_.end(); itr++) {
     NewtonRaphson *pnr = *itr;
@@ -294,27 +305,41 @@ void NewtonRaphsonDriver::SolveOneCycle() {
                        pnr->derivetive_);
   }
 
-  std::cout << "NewtonRaphson update applied at " << Globals::my_rank << std::endl;
+  // std::cout << "NewtonRaphson update applied at " << Globals::my_rank << std::endl;
 
+  // std::cout << "size of vnr_: " << vnr_.size() << std::endl;
   // for boundary values
   for (auto itr = vnr_.begin(); itr < vnr_.end(); itr++) {
     NewtonRaphson *pnr = *itr;
-    std::cout << (itr - vnr_.begin()) << std::endl;
+    // std::cout << (itr - vnr_.begin()) << std::endl;
     // pnr->nrbvar.StartReceiving(BoundaryCommSubset::newton_raphson);
     pnr->nrbvar.StartReceiving(BoundaryCommSubset::all);
-    std::cout << "NewtonRaphson boundary buffers sent at " << Globals::my_rank << std::endl;
+    // std::cout << "NewtonRaphson boundary buffers sent at " << Globals::my_rank << std::endl;
+    
     pnr->nrbvar.SendBoundaryBuffers();
+    // std::cout << "NewtonRaphson boundary buffers sent at " << Globals::my_rank << std::endl;
+    // bool received = pnr->nrbvar.ReceiveBoundaryBuffers();
+    // if (!received) {
+    //   std::stringstream msg;
+    //   msg << "### FATAL ERROR in NewtonRaphsonDriver::SolveOneCycle" << std::endl
+    //       << "Failed to receive NewtonRaphson boundary buffers." << std::endl;
+    //   ATHENA_ERROR(msg);
+    // } else {
+    //   std::cout << "NewtonRaphson boundary buffers received at " << Globals::my_rank << std::endl;
+    // }
+
+    pnr->nrbvar.ReceiveAndSetBoundariesWithWait();
+
   }
 
-  std::cout << "NewtonRaphson boundary buffers sent at " << Globals::my_rank << std::endl;
 
-  for (auto itr = vnr_.begin(); itr < vnr_.end(); itr++) {
-    NewtonRaphson *pnr = *itr;
-    pnr->nrbvar.SetBoundaries();
-  }
+  // for (auto itr = vnr_.begin(); itr < vnr_.end(); itr++) {
+  //   NewtonRaphson *pnr = *itr;
+  //   pnr->nrbvar.SetBoundaries();
+  // }
 
-  std::cout << "NewtonRaphson boundary values set at " << Globals::my_rank << std::endl;
-
+  // std::cout << "NewtonRaphson boundary values set at " << Globals::my_rank << std::endl;
+  // std::cout << "pmy_mesh_->multilevel: " << pmy_mesh_->multilevel << std::endl;
   if (pmy_mesh_->multilevel) {
     for (auto itr = vnr_.begin(); itr < vnr_.end(); itr++) {
       NewtonRaphson *pnr = *itr;
@@ -323,16 +348,16 @@ void NewtonRaphsonDriver::SolveOneCycle() {
     }
   }
 
-  std::cout << "NewtonRaphson prolongation done at " << Globals::my_rank << std::endl;
+  // std::cout << "NewtonRaphson prolongation done at " << Globals::my_rank << std::endl;
 
-  for (auto itr = vnr_.begin(); itr < vnr_.end(); itr++) {
-    NewtonRaphson *pnr = *itr;
-    MeshBlock *pmb = pnr->pmy_block_;
-    pnr->nrbvar.var_cc = &(pnr->u_);
-    pmb->pbval->ApplyPhysicalBoundaries(pmy_mesh_->time, dt_, pmb->pbval->bvars_main_int);
-  }
+  // for (auto itr = vnr_.begin(); itr < vnr_.end(); itr++) {
+  //   NewtonRaphson *pnr = *itr;
+  //   MeshBlock *pmb = pnr->pmy_block_;
+  //   pnr->nrbvar.var_cc = &(pnr->u_);
+  //   pmb->pbval->ApplyPhysicalBoundaries(pmy_mesh_->time, dt_, pmb->pbval->bvars_main_int);
+  // }
   
-  std::cout << "NewtonRaphson physical boundaries applied at " << Globals::my_rank << std::endl;
+  // std::cout << "NewtonRaphson physical boundaries applied at " << Globals::my_rank << std::endl;
 
   for (auto itr = vnr_.begin(); itr < vnr_.end(); itr++) {
     NewtonRaphson *pnr = *itr;
@@ -340,7 +365,7 @@ void NewtonRaphsonDriver::SolveOneCycle() {
     pnr->nrbvar.ClearBoundary(BoundaryCommSubset::all);
   }
 
-  std::cout << "NewtonRaphson boundary buffers cleared at " << Globals::my_rank << std::endl;
+  // std::cout << "NewtonRaphson boundary buffers cleared at " << Globals::my_rank << std::endl;
 
   return;
 }

@@ -86,23 +86,24 @@ void LinearMGBoundaryTaskList::AddTask(const TaskID& id, const TaskID& dep) {
 }
 
 void LinearMGBoundaryTaskList::StartupTaskList(MeshBlock *pmb, int stage) {
-  std::cout << "In LinearMGBoundaryTaskList::StartupTaskList" << std::endl;
+  // std::cout << "In LinearMGBoundaryTaskList::StartupTaskList" << std::endl;
   pmb->pnr->delta_bvar.StartReceiving(BoundaryCommSubset::all);
-  std::cout << "LinearMGBoundaryTaskList startup tasks done at " << Globals::my_rank << std::endl;
+  // std::cout << "LinearMGBoundaryTaskList startup tasks done at " << Globals::my_rank << " gid "
+  //           << pmb->gid << std::endl;
   return;
 }
 
 TaskStatus LinearMGBoundaryTaskList::ClearLinearMGBoundary(MeshBlock *pmb, int stage) {
-  std::cout << "Clearing LinearMG boundary buffers." << std::endl;
+  // std::cout << "Clearing LinearMG boundary buffers." << std::endl;
   pmb->pnr->delta_bvar.ClearBoundary(BoundaryCommSubset::all);
-  std::cout << "LinearMG boundary buffers cleared." << std::endl;
+  // std::cout << "LinearMG boundary buffers cleared." << std::endl;
   return TaskStatus::success;
 }
 
 TaskStatus LinearMGBoundaryTaskList::SendLinearMGBoundary(MeshBlock *pmb, int stage) {
-  std::cout << "Sending LinearMG boundary buffers." << std::endl;
+  // std::cout << "Sending LinearMG boundary buffers." << std::endl;
   pmb->pnr->delta_bvar.SendBoundaryBuffers();
-  std::cout << "LinearMG boundary buffers sent." << std::endl;
+  // std::cout << "LinearMG boundary buffers sent." << std::endl;
   return TaskStatus::success;
 }
 
@@ -112,28 +113,28 @@ TaskStatus LinearMGBoundaryTaskList::ReceiveLinearMGBoundary(MeshBlock *pmb,
   bool ret = pmb->pnr->delta_bvar.ReceiveBoundaryBuffers();
   if (!ret)
     return TaskStatus::fail;
-  std::cout << "LinearMG boundary buffers received." << std::endl;
+  // std::cout << "LinearMG boundary buffers received." << std::endl;
   return TaskStatus::success;
 }
 
 TaskStatus LinearMGBoundaryTaskList::SetLinearMGBoundary(MeshBlock *pmb, int stage) {
-  std::cout << "Setting LinearMG boundary." << std::endl;
+  // std::cout << "Setting LinearMG boundary." << std::endl;
   pmb->pnr->delta_bvar.SetBoundaries();
-  std::cout << "LinearMG boundary set." <<std::endl;
+  // std::cout << "LinearMG boundary set." <<std::endl;
   return TaskStatus::success;
 }
 
 TaskStatus LinearMGBoundaryTaskList::ProlongateLinearMGBoundary(MeshBlock *pmb,
                                                               int stage) {
-  std::cout << "Prolongate LinearMG." << std::endl;
+  // std::cout << "Prolongate LinearMG." << std::endl;
   pmb->pbval->ProlongateBoundariesPostMG(&(pmb->pnr->delta_bvar));
-  std::cout << "LinearMG Prolongated" << std::endl;
+  // std::cout << "LinearMG Prolongated" << std::endl;
   return TaskStatus::success;
 }
 
 TaskStatus LinearMGBoundaryTaskList::PhysicalBoundary(MeshBlock *pmb, int stage) {
-  std::cout << "Apply PhysicalBoundary" << std::endl;
+  // std::cout << "Apply PhysicalBoundary" << std::endl;
   pmb->pnr->delta_bvar.ExpandPhysicalBoundaries();
-  std::cout << "End PhysicalBoundary" << std::endl;
+  // std::cout << "End PhysicalBoundary" << std::endl;
   return TaskStatus::next;
 }

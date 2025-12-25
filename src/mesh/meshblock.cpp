@@ -272,8 +272,10 @@ MeshBlock::MeshBlock(int igid, int ilid, LogicalLocation iloc, RegionSize input_
   }
 
   if (NRMGFLD_ENABLED) { // caution! NRFLD should be constructed after FLD2
+    std::cout << "Constructing FLD2 object in MeshBlock at rank " << Globals::my_rank << std::endl;
     prfld2 = new FLD2(this, pin);
     // pbval->AdvanceCounterPhysID(1); // for advection // caution! this is called in NRFLD constructor
+    std::cout << "Constructing NRFLD object in MeshBlock at rank " << Globals::my_rank << std::endl;
     pnr = new NRFLD(this, pin);
     // pbval->AdvanceCounterPhysID(1); // for NewtonRaphson // caution! this is called in NRFLD constructor
   }

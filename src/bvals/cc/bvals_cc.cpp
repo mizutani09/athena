@@ -67,7 +67,19 @@ CellCenteredBoundaryVariable::CellCenteredBoundaryVariable(
   // cc_phys_id_ = pbval_->ReserveTagVariableIDs(1);
   // cc_phys_id_ = pbval_->bvars_next_phys_id_;
   // Advance the global physical ID counter in BoundaryValues and get start idx
+  std::cout << "CellCenteredBoundaryVariable: num_phys = " << num_phys << std::endl;
   cc_phys_id_ = pbval_->AdvanceCounterPhysID(num_phys);
+#ifdef DEBUG_PERSISTENT_MPI
+  std::cout << "[rank " << Globals::my_rank << "] DEBUG_PERSISTENT_MPI ctor"
+            << " this=" << this
+            << " gid=" << pmb->gid
+            << " cycle=" << pmy_mesh_->ncycle
+            << " cc_phys_id=" << cc_phys_id_
+            << " bd_var_req_recv=" << static_cast<void*>((bd_var_.nbmax>0)?
+                  &(bd_var_.req_recv[0]):nullptr)
+            << " nbmax=" << bd_var_.nbmax
+            << std::endl;
+#endif
 #endif
   if (fflux_ && ((pmy_mesh_->multilevel)
       || (pbval_->shearing_box != 0))) { // SMR or AMR or SHEARING_BOX
@@ -125,6 +137,14 @@ CellCenteredBoundaryVariable::CellCenteredBoundaryVariable(
 //! destructor
 
 CellCenteredBoundaryVariable::~CellCenteredBoundaryVariable() {
+#if defined(MPI_PARALLEL) && defined(DEBUG_PERSISTENT_MPI)
+  std::cout << "[rank " << Globals::my_rank << "] DEBUG_PERSISTENT_MPI dtor"
+            << " this=" << this
+            << " gid=" << pmy_block_->gid
+            << " cycle=" << pmy_mesh_->ncycle
+            << " cc_phys_id=" << cc_phys_id_
+            << std::endl;
+#endif
   DestroyBoundaryData(bd_var_);
   if (fflux_ && ((pmy_mesh_->multilevel)
       || (pbval_->shearing_box != 0)))
@@ -169,6 +189,9 @@ CellCenteredBoundaryVariable::CellCenteredBoundaryVariable(
     ATHENA_ERROR(msg);
   }
 
+  std::cout << "CellCenteredBoundaryVariable overloaded constructor called with flag = "
+            << flag << std::endl;
+
   // KT: fflux is a flag and it is true (false) when flux correction is (not) needed.
   //     I have not implemented it for shearing box, leaving it to Tomohiro.
 
@@ -179,6 +202,17 @@ CellCenteredBoundaryVariable::CellCenteredBoundaryVariable(
   // cc_phys_id_ = pbval_->ReserveTagVariableIDs(1);
   cc_phys_id_ = pbval_->bvars_next_phys_id_;
   // cc_phys_id_ = pbval_->AdvanceCounterPhysID(num_phys); // to be modified
+#ifdef DEBUG_PERSISTENT_MPI
+  std::cout << "[rank " << Globals::my_rank << "] DEBUG_PERSISTENT_MPI ctor_overloaded"
+            << " this=" << this
+            << " gid=" << pmb->gid
+            << " cycle=" << pmy_mesh_->ncycle
+            << " cc_phys_id=" << cc_phys_id_
+            << " bd_var_req_recv=" << static_cast<void*>((bd_var_.nbmax>0)?
+                  &(bd_var_.req_recv[0]):nullptr)
+            << " nbmax=" << bd_var_.nbmax
+            << std::endl;
+#endif
 #endif
   if (fflux_ && ((pmy_mesh_->multilevel)
       || (pbval_->shearing_box != 0))) { // SMR or AMR or SHEARING_BOX
@@ -626,7 +660,15 @@ void CellCenteredBoundaryVariable::SetupPersistentMPI() {
   cng3 = cng*f3;
   int ssize, rsize;
   int tag;
-  std::cout << "In SetupPersistentMPI nneighbor = " << pbval_->nneighbor << std::endl;
+#ifdef DEBUG_PERSISTENT_MPI
+  DebugLogTrackerSnapshot(debug_var_tracker_, "SetupPersistentMPI");
+  if (fflux_) DebugLogTrackerSnapshot(debug_flcor_tracker_, "SetupPersistentMPI");
+  std::cout << "[rank " << Globals::my_rank << "] DEBUG_PERSISTENT_MPI SetupPersistentMPI"
+            << " nneighbor=" << pbval_->nneighbor
+            << " gid=" << pmb->gid
+            << " cc_phys_id=" << cc_phys_id_
+            << std::endl;
+#endif
   // Initialize non-polar neighbor communications to other ranks
   for (int n=0; n<pbval_->nneighbor; n++) {
     NeighborBlock& nb = pbval_->neighbor[n];
@@ -656,15 +698,45 @@ void CellCenteredBoundaryVariable::SetupPersistentMPI() {
       // Initialize persistent communication requests attached to specific BoundaryData
       // cell-centered hydro: bd_hydro_
       tag = pbval_->CreateBvalsMPITag(nb.snb.lid, nb.targetid, cc_phys_id_);
-      if (bd_var_.req_send[nb.bufid] != MPI_REQUEST_NULL)
+      if (bd_var_.req_send[nb.bufid] != MPI_REQUEST_NULL) {
+#if defined(DEBUG_PERSISTENT_MPI)
+        DebugCommitState(debug_var_tracker_, true, nb.bufid, DebugReqState::kFreed,
+                         "SetupPersistentMPI", "MPI_Request_free(send)",
+                         &(bd_var_.req_send[nb.bufid]));
+#endif
         MPI_Request_free(&bd_var_.req_send[nb.bufid]);
+      }
       MPI_Send_init(bd_var_.send[nb.bufid], ssize, MPI_ATHENA_REAL,
                     nb.snb.rank, tag, MPI_COMM_WORLD, &(bd_var_.req_send[nb.bufid]));
+#if defined(DEBUG_PERSISTENT_MPI)
+      {
+        std::ostringstream extra;
+        extra << "peer=" << nb.snb.rank << " tag=" << tag << " size=" << ssize;
+        DebugCommitState(debug_var_tracker_, true, nb.bufid, DebugReqState::kInit,
+                         "SetupPersistentMPI", "MPI_Send_init",
+                         &(bd_var_.req_send[nb.bufid]), extra.str());
+      }
+#endif
       tag = pbval_->CreateBvalsMPITag(pmb->lid, nb.bufid, cc_phys_id_);
-      if (bd_var_.req_recv[nb.bufid] != MPI_REQUEST_NULL)
+      if (bd_var_.req_recv[nb.bufid] != MPI_REQUEST_NULL) {
+#if defined(DEBUG_PERSISTENT_MPI)
+        DebugCommitState(debug_var_tracker_, false, nb.bufid, DebugReqState::kFreed,
+                         "SetupPersistentMPI", "MPI_Request_free(recv)",
+                         &(bd_var_.req_recv[nb.bufid]));
+#endif
         MPI_Request_free(&bd_var_.req_recv[nb.bufid]);
+      }
       MPI_Recv_init(bd_var_.recv[nb.bufid], rsize, MPI_ATHENA_REAL,
                     nb.snb.rank, tag, MPI_COMM_WORLD, &(bd_var_.req_recv[nb.bufid]));
+#if defined(DEBUG_PERSISTENT_MPI)
+      {
+        std::ostringstream extra;
+        extra << "peer=" << nb.snb.rank << " tag=" << tag << " size=" << rsize;
+        DebugCommitState(debug_var_tracker_, false, nb.bufid, DebugReqState::kInit,
+                         "SetupPersistentMPI", "MPI_Recv_init",
+                         &(bd_var_.req_recv[nb.bufid]), extra.str());
+      }
+#endif
 
       // hydro flux correction: bd_var_flcor_
       if (fflux_ && nb.ni.type == NeighborConnect::face) {
@@ -679,18 +751,52 @@ void CellCenteredBoundaryVariable::SetupPersistentMPI() {
           size *= (nu_ + 1);
           if (nb.snb.level < mylevel) { // send to coarser
             tag = pbval_->CreateBvalsMPITag(nb.snb.lid, nb.targetid, cc_flx_phys_id_);
-            if (bd_var_flcor_.req_send[nb.bufid] != MPI_REQUEST_NULL)
+            if (bd_var_flcor_.req_send[nb.bufid] != MPI_REQUEST_NULL) {
+#if defined(DEBUG_PERSISTENT_MPI)
+              DebugCommitState(debug_flcor_tracker_, true, nb.bufid,
+                               DebugReqState::kFreed, "SetupPersistentMPI",
+                               "MPI_Request_free(flux_send)",
+                               &(bd_var_flcor_.req_send[nb.bufid]));
+#endif
               MPI_Request_free(&bd_var_flcor_.req_send[nb.bufid]);
+            }
             MPI_Send_init(bd_var_flcor_.send[nb.bufid], size, MPI_ATHENA_REAL,
                           nb.snb.rank, tag, MPI_COMM_WORLD,
                           &(bd_var_flcor_.req_send[nb.bufid]));
+#if defined(DEBUG_PERSISTENT_MPI)
+            {
+              std::ostringstream extra;
+              extra << "peer=" << nb.snb.rank << " tag=" << tag << " size=" << size;
+              DebugCommitState(debug_flcor_tracker_, true, nb.bufid,
+                               DebugReqState::kInit, "SetupPersistentMPI",
+                               "MPI_Send_init(flux)",
+                               &(bd_var_flcor_.req_send[nb.bufid]), extra.str());
+            }
+#endif
           } else if (nb.snb.level > mylevel) { // receive from finer
             tag = pbval_->CreateBvalsMPITag(pmb->lid, nb.bufid, cc_flx_phys_id_);
-            if (bd_var_flcor_.req_recv[nb.bufid] != MPI_REQUEST_NULL)
+            if (bd_var_flcor_.req_recv[nb.bufid] != MPI_REQUEST_NULL) {
+#if defined(DEBUG_PERSISTENT_MPI)
+              DebugCommitState(debug_flcor_tracker_, false, nb.bufid,
+                               DebugReqState::kFreed, "SetupPersistentMPI",
+                               "MPI_Request_free(flux_recv)",
+                               &(bd_var_flcor_.req_recv[nb.bufid]));
+#endif
               MPI_Request_free(&bd_var_flcor_.req_recv[nb.bufid]);
+            }
             MPI_Recv_init(bd_var_flcor_.recv[nb.bufid], size, MPI_ATHENA_REAL,
                           nb.snb.rank, tag, MPI_COMM_WORLD,
                           &(bd_var_flcor_.req_recv[nb.bufid]));
+#if defined(DEBUG_PERSISTENT_MPI)
+            {
+              std::ostringstream extra;
+              extra << "peer=" << nb.snb.rank << " tag=" << tag << " size=" << size;
+              DebugCommitState(debug_flcor_tracker_, false, nb.bufid,
+                               DebugReqState::kInit, "SetupPersistentMPI",
+                               "MPI_Recv_init(flux)",
+                               &(bd_var_flcor_.req_recv[nb.bufid]), extra.str());
+            }
+#endif
           }
         } else { // communication with same level
           if (nb.shear && (nb.fid == BoundaryFace::inner_x1
@@ -698,17 +804,45 @@ void CellCenteredBoundaryVariable::SetupPersistentMPI() {
               && pbval_->shearing_box==1) {
             int size = pmb->block_size.nx2*pmb->block_size.nx3*(nu_+1);
             tag = pbval_->CreateBvalsMPITag(nb.snb.lid, nb.targetid, cc_flx_phys_id_);
-            if (bd_var_flcor_.req_send[nb.bufid] != MPI_REQUEST_NULL)
+            if (bd_var_flcor_.req_send[nb.bufid] != MPI_REQUEST_NULL) {
+#if defined(DEBUG_PERSISTENT_MPI)
+              DebugCommitState(debug_flcor_tracker_, true, nb.bufid,
+                               DebugReqState::kFreed, "SetupPersistentMPI",
+                               "MPI_Request_free(flux_send)",
+                               &(bd_var_flcor_.req_send[nb.bufid]));
+#endif
               MPI_Request_free(&bd_var_flcor_.req_send[nb.bufid]);
+            }
             MPI_Send_init(bd_var_flcor_.send[nb.bufid], size, MPI_ATHENA_REAL,
                           nb.snb.rank, tag, MPI_COMM_WORLD,
                           &(bd_var_flcor_.req_send[nb.bufid]));
             tag = pbval_->CreateBvalsMPITag(pmb->lid, nb.bufid, cc_flx_phys_id_);
-            if (bd_var_flcor_.req_recv[nb.bufid] != MPI_REQUEST_NULL)
+            if (bd_var_flcor_.req_recv[nb.bufid] != MPI_REQUEST_NULL) {
+#if defined(DEBUG_PERSISTENT_MPI)
+              DebugCommitState(debug_flcor_tracker_, false, nb.bufid,
+                               DebugReqState::kFreed, "SetupPersistentMPI",
+                               "MPI_Request_free(flux_recv)",
+                               &(bd_var_flcor_.req_recv[nb.bufid]));
+#endif
               MPI_Request_free(&bd_var_flcor_.req_recv[nb.bufid]);
+            }
             MPI_Recv_init(bd_var_flcor_.recv[nb.bufid], size, MPI_ATHENA_REAL,
                           nb.snb.rank, tag, MPI_COMM_WORLD,
                           &(bd_var_flcor_.req_recv[nb.bufid]));
+#if defined(DEBUG_PERSISTENT_MPI)
+            {
+              std::ostringstream extra;
+              extra << "peer=" << nb.snb.rank << " tag=" << tag << " size=" << size;
+              DebugCommitState(debug_flcor_tracker_, true, nb.bufid,
+                               DebugReqState::kInit, "SetupPersistentMPI",
+                               "MPI_Send_init(flux)",
+                               &(bd_var_flcor_.req_send[nb.bufid]), extra.str());
+              DebugCommitState(debug_flcor_tracker_, false, nb.bufid,
+                               DebugReqState::kInit, "SetupPersistentMPI",
+                               "MPI_Recv_init(flux)",
+                               &(bd_var_flcor_.req_recv[nb.bufid]), extra.str());
+            }
+#endif
           }
         }
       }
@@ -724,19 +858,67 @@ void CellCenteredBoundaryVariable::SetupPersistentMPI() {
 
 void CellCenteredBoundaryVariable::StartReceiving(BoundaryCommSubset phase) {
   MeshBlock *pmb = pmy_block_;
-  std::cout << "In StartReceiving nneighbor = " << pbval_->nneighbor << std::endl;
 #ifdef MPI_PARALLEL
   int mylevel = pmb->loc.level;
+#ifdef DEBUG_PERSISTENT_MPI
+  DebugLogTrackerSnapshot(debug_var_tracker_, "StartReceiving");
+  if (fflux_) DebugLogTrackerSnapshot(debug_flcor_tracker_, "StartReceiving");
+#endif
+
   for (int n=0; n<pbval_->nneighbor; n++) {
     NeighborBlock& nb = pbval_->neighbor[n];
     if (nb.snb.rank != Globals::my_rank) {
-      MPI_Start(&(bd_var_.req_recv[nb.bufid]));
+      // if (bd_var_.req_recv[nb.bufid] == MPI_REQUEST_NULL) {
+      //   std::cerr << "Error: bd_var_.req_recv[" << nb.bufid << "] is MPI_REQUEST_NULL"
+      //             << " in StartReceiving()" << std::endl;
+      //   MPI_Abort(MPI_COMM_WORLD, -1);
+      // }
+#if defined(DEBUG_PERSISTENT_MPI)
+      DebugRequireState(debug_var_tracker_, false, nb.bufid, "CellCenteredBoundaryVariable::StartReceiving",
+                        "MPI_Start(req_recv)", DebugReqState::kInit,
+                        DebugReqState::kCompleted);
+#endif
+      int res = MPI_Start(&(bd_var_.req_recv[nb.bufid]));
+      // if (res != MPI_SUCCESS) {
+      //   std::cerr << "Error: MPI_Start failed for bd_var_.req_recv[" << nb.bufid << "]"
+      //             << " in StartReceiving()" << std::endl;
+      //   MPI_Abort(MPI_COMM_WORLD, -1);
+      // }
+#if defined(DEBUG_PERSISTENT_MPI)
+      {
+        std::ostringstream extra;
+        extra << "peer=" << nb.snb.rank << " bufid=" << nb.bufid;
+        DebugCommitState(debug_var_tracker_, false, nb.bufid,
+                         DebugReqState::kStarted,
+                         "CellCenteredBoundaryVariable::StartReceiving",
+                         "MPI_Start(req_recv)", &(bd_var_.req_recv[nb.bufid]),
+                         extra.str());
+      }
+#endif
       if (fflux_ && phase == BoundaryCommSubset::all
                  && nb.ni.type == NeighborConnect::face) {
         if ((nb.shear&&(nb.fid == BoundaryFace::inner_x1
                      || nb.fid == BoundaryFace::outer_x1)
           && pbval_->shearing_box==1) || nb.snb.level > mylevel) {
+#if defined(DEBUG_PERSISTENT_MPI)
+          DebugRequireState(debug_flcor_tracker_, false, nb.bufid,
+                            "CellCenteredBoundaryVariable::StartReceiving",
+                            "MPI_Start(flux_recv)", DebugReqState::kInit,
+                            DebugReqState::kCompleted);
+#endif
           MPI_Start(&(bd_var_flcor_.req_recv[nb.bufid]));
+#if defined(DEBUG_PERSISTENT_MPI)
+          {
+            std::ostringstream extra;
+            extra << "peer=" << nb.snb.rank << " flux bufid=" << nb.bufid;
+            DebugCommitState(debug_flcor_tracker_, false, nb.bufid,
+                             DebugReqState::kStarted,
+                             "CellCenteredBoundaryVariable::StartReceiving",
+                             "MPI_Start(flux_recv)",
+                             &(bd_var_flcor_.req_recv[nb.bufid]),
+                             extra.str());
+          }
+#endif
         } else { // no recv
           bd_var_flcor_.flag[nb.bufid] = BoundaryStatus::completed;
         }
@@ -817,13 +999,50 @@ void CellCenteredBoundaryVariable::ClearBoundary(BoundaryCommSubset phase) {
     int mylevel = pmb->loc.level;
     if (nb.snb.rank != Globals::my_rank) {
       // Wait for Isend
-      MPI_Wait(&(bd_var_.req_send[nb.bufid]), MPI_STATUS_IGNORE);
+#if defined(DEBUG_PERSISTENT_MPI)
+      DebugRequireState(debug_var_tracker_, true, nb.bufid,
+                        "CellCenteredBoundaryVariable::ClearBoundary",
+                        "MPI_Wait(req_send)", DebugReqState::kStarted,
+                        DebugReqState::kCompleted);
+#endif
+      MPI_Status dbg_status;
+      MPI_Wait(&(bd_var_.req_send[nb.bufid]), &dbg_status);
+#if defined(DEBUG_PERSISTENT_MPI)
+      std::ostringstream extra;
+      extra << "peer=" << nb.snb.rank
+            << " bufid=" << nb.bufid
+            << " tag=" << dbg_status.MPI_TAG;
+      DebugCommitState(debug_var_tracker_, true, nb.bufid,
+                       DebugReqState::kCompleted,
+                       "CellCenteredBoundaryVariable::ClearBoundary",
+                       "MPI_Wait(req_send)", &(bd_var_.req_send[nb.bufid]),
+                       extra.str());
+#endif
       if (fflux_ && phase == BoundaryCommSubset::all
                  && nb.ni.type == NeighborConnect::face) {
         if ((nb.shear && (nb.fid == BoundaryFace::inner_x1
                        || nb.fid == BoundaryFace::outer_x1)
              && pbval_->shearing_box==1) || nb.snb.level < mylevel) {
-          MPI_Wait(&(bd_var_flcor_.req_send[nb.bufid]), MPI_STATUS_IGNORE);
+#if defined(DEBUG_PERSISTENT_MPI)
+          DebugRequireState(debug_flcor_tracker_, true, nb.bufid,
+                            "CellCenteredBoundaryVariable::ClearBoundary",
+                            "MPI_Wait(flux_send)", DebugReqState::kStarted,
+                            DebugReqState::kCompleted);
+#endif
+          MPI_Status dbg_flux_status;
+          MPI_Wait(&(bd_var_flcor_.req_send[nb.bufid]), &dbg_flux_status);
+#if defined(DEBUG_PERSISTENT_MPI)
+          std::ostringstream extra_flux;
+          extra_flux << "peer=" << nb.snb.rank
+                     << " bufid=" << nb.bufid
+                     << " tag=" << dbg_flux_status.MPI_TAG;
+          DebugCommitState(debug_flcor_tracker_, true, nb.bufid,
+                           DebugReqState::kCompleted,
+                           "CellCenteredBoundaryVariable::ClearBoundary",
+                           "MPI_Wait(flux_send)",
+                           &(bd_var_flcor_.req_send[nb.bufid]),
+                           extra_flux.str());
+#endif
         }
       }
     }

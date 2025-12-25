@@ -113,13 +113,13 @@ NewtonRaphson::NewtonRaphson(NewtonRaphsonDriver *pmd, MeshBlock *pmb, int nghos
 
 
   // enroll NRBoundaryVariable object
-  nrbvar.bvar_index = pmb->pbval->bvars.size();
-  pmb->pbval->bvars.push_back(&nrbvar);
+  nrbvar.bvar_index = pmb->pbval->bvars.size(); 
+  pmb->pbval->bvars.push_back(&nrbvar); // this is needed for BoundaryVariable::CopyVariableBufferSameProcess in bvals_var.cpp
   // pmb->pbval->bvars_main_int.push_back(&nrbvar); // now NewtonRaphson's boundary is manually handled in NewtonRaphsonDriver::SolveOneCycle()
 
   // Enroll CellCenteredBoundaryVariable object for linear solver
   delta_bvar.bvar_index = pmb->pbval->bvars.size();
-  pmb->pbval->bvars.push_back(&delta_bvar);
+  pmb->pbval->bvars.push_back(&delta_bvar); // this is needed for BoundaryVariable::CopyVariableBufferSameProcess in bvals_var.cpp
   pmb->pbval->pdeltabvar = &delta_bvar;
 }
 

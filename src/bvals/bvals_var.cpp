@@ -77,22 +77,210 @@ void BoundaryVariable::InitBoundaryData(BoundaryData<> &bd, BoundaryQuantity typ
     bd.send[n] = new Real[size];
     bd.recv[n] = new Real[size];
   }
+#if defined(MPI_PARALLEL) && defined(DEBUG_PERSISTENT_MPI)
+  DebugReqTracker *tracker = DebugTrackerFor(bd);
+  if (tracker != nullptr) {
+    const char* label = (&bd == &bd_var_) ? "var" : "var_flcor";
+    bool is_flux = (&bd == &bd_var_flcor_);
+    DebugInitTracker(*tracker, bd, label, is_flux);
+  }
+#endif
 }
 
+#if defined(MPI_PARALLEL) && defined(DEBUG_PERSISTENT_MPI)
+BoundaryVariable::DebugReqTracker* BoundaryVariable::DebugTrackerFor(BoundaryData<> &bd) {
+  if (&bd == &bd_var_) return &debug_var_tracker_;
+  if (&bd == &bd_var_flcor_) return &debug_flcor_tracker_;
+  return nullptr;
+}
+
+const char* BoundaryVariable::DebugStateName(DebugReqState state) const {
+  switch (state) {
+    case DebugReqState::kNeverInit: return "NEVER_INIT";
+    case DebugReqState::kInit: return "INIT";
+    case DebugReqState::kStarted: return "STARTED";
+    case DebugReqState::kCompleted: return "COMPLETED";
+    case DebugReqState::kFreed: return "FREED";
+    default: return "INVALID";
+  }
+}
+
+void BoundaryVariable::DebugInitTracker(DebugReqTracker &tracker, BoundaryData<> &bd,
+                                        const char* label, bool is_flux) {
+  tracker.label = label;
+  tracker.is_flux = is_flux;
+  tracker.nbmax = bd.nbmax;
+  tracker.send_base = (bd.nbmax > 0 ? &(bd.req_send[0]) : nullptr);
+  tracker.recv_base = (bd.nbmax > 0 ? &(bd.req_recv[0]) : nullptr);
+  for (int n=0; n<BoundaryData<>::kMaxNeighbor; ++n) {
+    tracker.send_info[n].state = DebugReqState::kNeverInit;
+    tracker.send_info[n].last_cycle = -1;
+    tracker.send_info[n].last_where = "init";
+    tracker.recv_info[n].state = DebugReqState::kNeverInit;
+    tracker.recv_info[n].last_cycle = -1;
+    tracker.recv_info[n].last_where = "init";
+  }
+  DebugLogTrackerSnapshot(tracker, "InitBoundaryData");
+}
+
+void BoundaryVariable::DebugLogTrackerSnapshot(const DebugReqTracker &tracker,
+                                               const char* where) const {
+  if (tracker.nbmax <= 0) return;
+  std::ostringstream msg;
+  msg << "[rank " << Globals::my_rank << "] DEBUG_PERSISTENT_MPI ARRAY "
+      << "where=" << where
+      << " var=" << DebugVarName()
+      << " tracker=" << tracker.label
+      << " cycle=" << pmy_mesh_->ncycle
+      << " gid=" << pmy_block_->gid
+      << " nbmax=" << tracker.nbmax
+      << " phys=" << DebugGetPhysID(tracker.is_flux)
+      << " this=" << this
+      << " send_base=" << static_cast<void*>(tracker.send_base)
+      << " recv_base=" << static_cast<void*>(tracker.recv_base);
+  std::cout << msg.str() << std::endl;
+}
+
+void BoundaryVariable::DebugCheckArrayIdentity(const DebugReqTracker &tracker, bool is_send,
+                                               MPI_Request *slot, int bufid,
+                                               const char* where,
+                                               const char* action) const {
+  if (tracker.nbmax <= 0 || slot == nullptr) return;
+  MPI_Request *expected = is_send ? tracker.send_base : tracker.recv_base;
+  if (expected == nullptr) return;
+  MPI_Request *computed = slot - bufid;
+  if (computed != expected) {
+    std::ostringstream msg;
+    msg << "[rank " << Globals::my_rank << "] DEBUG_PERSISTENT_MPI ERROR "
+        << "where=" << where << " action=" << action
+        << " var=" << DebugVarName()
+        << " tracker=" << tracker.label
+        << " bufid=" << bufid
+        << " expected_base=" << static_cast<void*>(expected)
+        << " computed_base=" << static_cast<void*>(computed)
+        << " slot=" << static_cast<void*>(slot)
+        << " gid=" << pmy_block_->gid
+        << " cycle=" << pmy_mesh_->ncycle;
+    std::cerr << msg.str() << std::endl;
+    MPI_Abort(MPI_COMM_WORLD, -1);
+  }
+}
+
+void BoundaryVariable::DebugRequireState(const DebugReqTracker &tracker, bool is_send,
+                                         int bufid, const char* where,
+                                         const char* action,
+                                         DebugReqState allowed_a,
+                                         DebugReqState allowed_b,
+                                         DebugReqState allowed_c) const {
+  if (tracker.nbmax <= 0) return;
+  if (bufid < 0 || bufid >= tracker.nbmax) {
+    std::ostringstream msg;
+    msg << "[rank " << Globals::my_rank << "] DEBUG_PERSISTENT_MPI ERROR "
+        << "where=" << where << " action=" << action
+        << " var=" << DebugVarName()
+        << " tracker=" << tracker.label
+        << " bufid=" << bufid << " nbmax=" << tracker.nbmax
+        << " gid=" << pmy_block_->gid
+        << " cycle=" << pmy_mesh_->ncycle
+        << " reason=bufid_out_of_range";
+    std::cerr << msg.str() << std::endl;
+    MPI_Abort(MPI_COMM_WORLD, -1);
+  }
+  const DebugRequestInfo &info = is_send ? tracker.send_info[bufid]
+                                         : tracker.recv_info[bufid];
+  auto matches = [&](DebugReqState st) {
+    return st != DebugReqState::kInvalid && info.state == st;
+  };
+  if (!(matches(allowed_a) || matches(allowed_b) || matches(allowed_c))) {
+    std::ostringstream msg;
+    msg << "[rank " << Globals::my_rank << "] DEBUG_PERSISTENT_MPI STATE_VIOLATION "
+        << "where=" << where << " action=" << action
+        << " var=" << DebugVarName()
+        << " tracker=" << tracker.label
+        << " bufid=" << bufid
+        << " state=" << DebugStateName(info.state)
+        << " allowed=" << DebugStateName(allowed_a)
+        << "/" << DebugStateName(allowed_b)
+        << "/" << DebugStateName(allowed_c)
+        << " gid=" << pmy_block_->gid
+        << " cycle=" << pmy_mesh_->ncycle;
+    std::cerr << msg.str() << std::endl;
+    MPI_Abort(MPI_COMM_WORLD, -2);
+  }
+}
+
+void BoundaryVariable::DebugCommitState(DebugReqTracker &tracker, bool is_send, int bufid,
+                                        DebugReqState new_state, const char* where,
+                                        const char* action, MPI_Request *slot,
+                                        const std::string &extra) {
+  if (tracker.nbmax <= 0) return;
+  DebugRequestInfo &info = is_send ? tracker.send_info[bufid]
+                                   : tracker.recv_info[bufid];
+  DebugCheckArrayIdentity(tracker, is_send, slot, bufid, where, action);
+  MPI_Fint req_f = MPI_Request_c2f(slot != nullptr ? *slot : MPI_REQUEST_NULL);
+  std::ostringstream msg;
+  msg << "[rank " << Globals::my_rank << "] DEBUG_PERSISTENT_MPI "
+      << action
+      << " where=" << where
+      << " var=" << DebugVarName()
+      << " tracker=" << tracker.label
+      << " kind=" << (is_send ? "send" : "recv")
+      << " bufid=" << bufid
+      << " gid=" << pmy_block_->gid
+      << " cycle=" << pmy_mesh_->ncycle
+      << " phys=" << DebugGetPhysID(tracker.is_flux)
+      << " state=" << DebugStateName(info.state)
+      << "->" << DebugStateName(new_state)
+      << " this=" << this
+      << " array=" << static_cast<void*>(is_send ? tracker.send_base : tracker.recv_base)
+      << " slot=" << static_cast<void*>(slot)
+      << " req_f=" << req_f;
+  if (!extra.empty()) msg << " " << extra;
+  std::cout << msg.str() << std::endl;
+  info.state = new_state;
+  info.last_cycle = pmy_mesh_->ncycle;
+  info.last_where = where;
+}
+#endif
 
 //----------------------------------------------------------------------------------------
 //! \fn void BoundaryVariable::DestroyBoundaryData(BoundaryData<> &bd)
 //! \brief Destroy BoundaryData structure
 
 void BoundaryVariable::DestroyBoundaryData(BoundaryData<> &bd) {
+#if defined(MPI_PARALLEL) && defined(DEBUG_PERSISTENT_MPI)
+  DebugReqTracker *tracker = DebugTrackerFor(bd);
+#endif
   for (int n=0; n<bd.nbmax; n++) {
     delete [] bd.send[n];
     delete [] bd.recv[n];
 #ifdef MPI_PARALLEL
-    if (bd.req_send[n] != MPI_REQUEST_NULL)
+    if (bd.req_send[n] != MPI_REQUEST_NULL) {
+#if defined(DEBUG_PERSISTENT_MPI)
+      if (tracker != nullptr) {
+        DebugRequireState(*tracker, true, n, "DestroyBoundaryData",
+                          "MPI_Request_free(send)",
+                          DebugReqState::kInit, DebugReqState::kCompleted);
+        DebugCommitState(*tracker, true, n, DebugReqState::kFreed,
+                         "DestroyBoundaryData", "MPI_Request_free(send)",
+                         &(bd.req_send[n]));
+      }
+#endif
       MPI_Request_free(&bd.req_send[n]);
-    if (bd.req_recv[n] != MPI_REQUEST_NULL)
+    }
+    if (bd.req_recv[n] != MPI_REQUEST_NULL) {
+#if defined(DEBUG_PERSISTENT_MPI)
+      if (tracker != nullptr) {
+        DebugRequireState(*tracker, false, n, "DestroyBoundaryData",
+                          "MPI_Request_free(recv)",
+                          DebugReqState::kInit, DebugReqState::kCompleted);
+        DebugCommitState(*tracker, false, n, DebugReqState::kFreed,
+                         "DestroyBoundaryData", "MPI_Request_free(recv)",
+                         &(bd.req_recv[n]));
+      }
+#endif
       MPI_Request_free(&bd.req_recv[n]);
+    }
 #endif
   }
 }
@@ -214,11 +402,11 @@ void BoundaryVariable::SendBoundaryBuffers() {
   int mylevel = pmb->loc.level;
   for (int n=0; n<pbval_->nneighbor; n++) {
     NeighborBlock& nb = pbval_->neighbor[n];
-    if (Globals::my_rank == 0) {
-      std::cout << "Sending boundary buffer " << n << " of "
-                << pbval_->nneighbor << " Status=" << static_cast<int>(bd_var_.sflag[nb.bufid])
-                << " Rank=" << nb.snb.rank << " gid=" << nb.snb.gid << std::endl;
-    }
+    // if (Globals::my_rank == 0) {
+    //   std::cout << "Sending boundary buffer " << n << " of "
+    //             << pbval_->nneighbor << " Status=" << static_cast<int>(bd_var_.sflag[nb.bufid])
+    //             << " Rank=" << nb.snb.rank << " gid=" << nb.snb.gid << std::endl;
+    // }
     if (bd_var_.sflag[nb.bufid] == BoundaryStatus::completed) continue;
     int ssize;
     if (nb.snb.level == mylevel)
@@ -232,15 +420,32 @@ void BoundaryVariable::SendBoundaryBuffers() {
     }
 #ifdef MPI_PARALLEL
     else {  // MPI
-      if (Globals::my_rank == 0) {
-        std::cout << "  MPI_Send to rank " << nb.snb.rank << " bufid=" << nb.bufid
-                  << " ssize=" << ssize << std::endl;
-      }
+      // if (Globals::my_rank == 0) {
+      //   std::cout << "  MPI_Send to rank " << nb.snb.rank << " bufid=" << nb.bufid
+      //             << " ssize=" << ssize << std::endl;
+      // }
+#if defined(DEBUG_PERSISTENT_MPI)
+      DebugRequireState(debug_var_tracker_, true, nb.bufid,
+                        "BoundaryVariable::SendBoundaryBuffers",
+                        "MPI_Start(req_send)", DebugReqState::kInit,
+                        DebugReqState::kCompleted);
+#endif
       MPI_Start(&(bd_var_.req_send[nb.bufid]));
-      if (Globals::my_rank == 0) {
-        std::cout << "  MPI_Send started to rank " << nb.snb.rank << " bufid=" << nb.bufid
-                  << std::endl;
+#if defined(DEBUG_PERSISTENT_MPI)
+      {
+        std::ostringstream extra;
+        extra << "peer=" << nb.snb.rank << " bufid=" << nb.bufid;
+        DebugCommitState(debug_var_tracker_, true, nb.bufid,
+                         DebugReqState::kStarted,
+                         "BoundaryVariable::SendBoundaryBuffers",
+                         "MPI_Start(req_send)", &(bd_var_.req_send[nb.bufid]),
+                         extra.str());
       }
+#endif
+      // if (Globals::my_rank == 0) {
+      //   std::cout << "  MPI_Send started to rank " << nb.snb.rank << " bufid=" << nb.bufid
+      //             << std::endl;
+      // }
     }
 #endif
     bd_var_.sflag[nb.bufid] = BoundaryStatus::completed;
@@ -268,7 +473,7 @@ bool BoundaryVariable::ReceiveBoundaryBuffers() {
     //   std::cout << "Receiving boundary buffer " << n << " of "
     //             << pbval_->nneighbor << " Status=" << static_cast<int>(bd_var_.flag[nb.bufid])
     //             << " Rank=" << nb.snb.rank << " gid=" << nb.snb.gid << " size="
-    //             << ComputeVariableBufferSize(nb.ni, pmy_block_->cnghost()) << std::endl;
+    //             // << ComputeVariableBufferSize(nb.ni, pmy_block_->cnghost()) << std::endl;
     // }
     if (bd_var_.flag[nb.bufid] == BoundaryStatus::arrived) continue;
     if (bd_var_.flag[nb.bufid] == BoundaryStatus::waiting) {
@@ -282,7 +487,29 @@ bool BoundaryVariable::ReceiveBoundaryBuffers() {
         // probe MPI communications.  This is a bit of black magic that seems to promote
         // communications to top of stack and gets them to complete more quickly
         MPI_Iprobe(MPI_ANY_SOURCE, MPI_ANY_TAG, MPI_COMM_WORLD, &test, MPI_STATUS_IGNORE);
+#if defined(DEBUG_PERSISTENT_MPI)
+        DebugRequireState(debug_var_tracker_, false, nb.bufid,
+                          "BoundaryVariable::ReceiveBoundaryBuffers",
+                          "MPI_Test(req_recv)", DebugReqState::kStarted,
+                          DebugReqState::kInit);
+        MPI_Status dbg_status;
+        MPI_Test(&(bd_var_.req_recv[nb.bufid]), &test, &dbg_status);
+        if (static_cast<bool>(test)) {
+          int dbg_count = 0;
+          MPI_Get_count(&dbg_status, MPI_ATHENA_REAL, &dbg_count);
+          std::ostringstream extra;
+          extra << "src=" << dbg_status.MPI_SOURCE
+                << " tag=" << dbg_status.MPI_TAG
+                << " count=" << dbg_count;
+          DebugCommitState(debug_var_tracker_, false, nb.bufid,
+                           DebugReqState::kCompleted,
+                           "BoundaryVariable::ReceiveBoundaryBuffers",
+                           "MPI_Test(req_recv)", &(bd_var_.req_recv[nb.bufid]),
+                           extra.str());
+        }
+#else
         MPI_Test(&(bd_var_.req_recv[nb.bufid]), &test, MPI_STATUS_IGNORE);
+#endif
         if (!static_cast<bool>(test)) {
           bflag = false;
           continue;
@@ -333,7 +560,32 @@ void BoundaryVariable::ReceiveAndSetBoundariesWithWait() {
     NeighborBlock& nb = pbval_->neighbor[n];
 #ifdef MPI_PARALLEL
     if (nb.snb.rank != Globals::my_rank)
-      MPI_Wait(&(bd_var_.req_recv[nb.bufid]),MPI_STATUS_IGNORE);
+      {
+#if defined(DEBUG_PERSISTENT_MPI)
+        bool allow_init_wait = (pmy_mesh_->ncycle == 0);
+        DebugRequireState(debug_var_tracker_, false, nb.bufid,
+                          "BoundaryVariable::ReceiveAndSetBoundariesWithWait",
+                          "MPI_Wait(req_recv)", DebugReqState::kStarted,
+                          DebugReqState::kCompleted,
+                          allow_init_wait ? DebugReqState::kInit
+                                          : DebugReqState::kInvalid);
+#endif
+        MPI_Status dbg_status;
+        MPI_Wait(&(bd_var_.req_recv[nb.bufid]), &dbg_status);
+#if defined(DEBUG_PERSISTENT_MPI)
+        int dbg_count = 0;
+        MPI_Get_count(&dbg_status, MPI_ATHENA_REAL, &dbg_count);
+        std::ostringstream extra;
+        extra << "src=" << dbg_status.MPI_SOURCE
+              << " tag=" << dbg_status.MPI_TAG
+              << " count=" << dbg_count;
+        DebugCommitState(debug_var_tracker_, false, nb.bufid,
+                         DebugReqState::kCompleted,
+                         "BoundaryVariable::ReceiveAndSetBoundariesWithWait",
+                         "MPI_Wait(req_recv)", &(bd_var_.req_recv[nb.bufid]),
+                         extra.str());
+#endif
+      }
 #endif
     if (nb.snb.level == mylevel)
       SetBoundarySameLevel(bd_var_.recv[nb.bufid], nb);

@@ -172,6 +172,12 @@ class CellCenteredBoundaryVariable : public BoundaryVariable {
   void PolarBoundarySingleAzimuthalBlock() override;
 
 #ifdef MPI_PARALLEL
+#ifdef DEBUG_PERSISTENT_MPI
+  const char* DebugVarName() const override { return "CellCenteredBoundaryVariable"; }
+  int DebugGetPhysID(bool flux) const override {
+    return flux ? cc_flx_phys_id_ : cc_phys_id_;
+  }
+#endif
   int cc_phys_id_, cc_flx_phys_id_;
 #endif
   // shearing box:

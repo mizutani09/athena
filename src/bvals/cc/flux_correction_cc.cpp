@@ -187,8 +187,26 @@ void CellCenteredBoundaryVariable::SendFluxCorrection() {
       if (nb.snb.rank == Globals::my_rank) // on the same node
         CopyFluxCorrectionBufferSameProcess(nb, p);
 #ifdef MPI_PARALLEL
-      else
+      else {
+#if defined(DEBUG_PERSISTENT_MPI)
+        DebugRequireState(debug_flcor_tracker_, true, nb.bufid,
+                          "CellCenteredBoundaryVariable::SendFluxCorrection",
+                          "MPI_Start(flux_send)", DebugReqState::kInit,
+                          DebugReqState::kCompleted);
+#endif
         MPI_Start(&(bd_var_flcor_.req_send[nb.bufid]));
+#if defined(DEBUG_PERSISTENT_MPI)
+        {
+          std::ostringstream extra;
+          extra << "peer=" << nb.snb.rank << " bufid=" << nb.bufid;
+          DebugCommitState(debug_flcor_tracker_, true, nb.bufid,
+                           DebugReqState::kStarted,
+                           "CellCenteredBoundaryVariable::SendFluxCorrection",
+                           "MPI_Start(flux_send)",
+                           &(bd_var_flcor_.req_send[nb.bufid]), extra.str());
+        }
+#endif
+      }
 #endif
     } else {
       if (nb.snb.rank == Globals::my_rank) // on the same node
@@ -306,7 +324,29 @@ bool CellCenteredBoundaryVariable::ReceiveFluxCorrection() {
         // communications to top of stack and gets them to complete more quickly
         MPI_Iprobe(MPI_ANY_SOURCE, MPI_ANY_TAG, MPI_COMM_WORLD, &test,
                    MPI_STATUS_IGNORE);
+#if defined(DEBUG_PERSISTENT_MPI)
+        DebugRequireState(debug_flcor_tracker_, false, nb.bufid,
+                          "CellCenteredBoundaryVariable::ReceiveFluxCorrection",
+                          "MPI_Test(flux_recv)", DebugReqState::kStarted,
+                          DebugReqState::kInit);
+        MPI_Status dbg_status;
+        MPI_Test(&(bd_var_flcor_.req_recv[nb.bufid]), &test, &dbg_status);
+        if (static_cast<bool>(test)) {
+          int dbg_count = 0;
+          MPI_Get_count(&dbg_status, MPI_ATHENA_REAL, &dbg_count);
+          std::ostringstream extra;
+          extra << "src=" << dbg_status.MPI_SOURCE
+                << " tag=" << dbg_status.MPI_TAG
+                << " count=" << dbg_count;
+          DebugCommitState(debug_flcor_tracker_, false, nb.bufid,
+                           DebugReqState::kCompleted,
+                           "CellCenteredBoundaryVariable::ReceiveFluxCorrection",
+                           "MPI_Test(flux_recv)",
+                           &(bd_var_flcor_.req_recv[nb.bufid]), extra.str());
+        }
+#else
         MPI_Test(&(bd_var_flcor_.req_recv[nb.bufid]), &test, MPI_STATUS_IGNORE);
+#endif
         if (!static_cast<bool>(test)) {
           flag = false;
           continue;
