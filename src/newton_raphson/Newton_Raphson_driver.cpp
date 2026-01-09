@@ -203,7 +203,7 @@ void NewtonRaphsonDriver::Solve_general(int stage, Real dt) {
       std::cout << "[debug in NR] niter " << n << " def " << def << " convergence factor "
                 << def/olddef<< " defmax  "<< defmax << " cf "
                 <<  defmax/oldmax << std::endl;
-    if (pmy_mesh_->ncycle == 0) break;
+    if (pmy_mesh_->ncycle == 0 && dt_ == 0.0) break; // only for the first time: caution! ncycle=0 is also used after the calculation started (but dt > 0.0).
     if (def/olddef > 0.9) {
       if (n > 1 && eps_ == 0.0) break;
       if (Globals::my_rank == 0)
@@ -225,7 +225,6 @@ void NewtonRaphsonDriver::Solve_general(int stage, Real dt) {
         break;
       }
     }
-    // if (n > 100) {
     if (n > 100) {
       if (Globals::my_rank == 0) {
         std::cout
