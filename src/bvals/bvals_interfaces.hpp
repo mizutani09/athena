@@ -414,44 +414,6 @@ class BoundaryVariable : public BoundaryCommunication, public BoundaryBuffer,
   DebugReqTracker debug_var_tracker_;
   DebugReqTracker debug_flcor_tracker_;
 #endif
-#if defined(MPI_PARALLEL) && defined(DEBUG_PERSISTENT_MPI)
-  enum class DebugReqState {kInvalid=0, kNeverInit, kInit, kStarted, kCompleted, kFreed};
-  struct DebugRequestInfo {
-    DebugReqState state = DebugReqState::kNeverInit;
-    std::int64_t last_cycle = -1;
-    const char* last_where = "unset";
-  };
-  struct DebugReqTracker {
-    const char* label = "unset";
-    bool is_flux = false;
-    MPI_Request *send_base = nullptr;
-    MPI_Request *recv_base = nullptr;
-    int nbmax = 0;
-    std::array<DebugRequestInfo, BoundaryData<>::kMaxNeighbor> send_info{};
-    std::array<DebugRequestInfo, BoundaryData<>::kMaxNeighbor> recv_info{};
-  };
-  virtual const char* DebugVarName() const { return "BoundaryVariable"; }
-  virtual int DebugGetPhysID(bool flux) const { return -1; }
-  void DebugInitTracker(DebugReqTracker &tracker, BoundaryData<> &bd,
-                        const char* label, bool is_flux);
-  DebugReqTracker* DebugTrackerFor(BoundaryData<> &bd);
-  void DebugRequireState(const DebugReqTracker &tracker, bool is_send, int bufid,
-                         const char* where, const char* action,
-                         DebugReqState allowed_a, DebugReqState allowed_b,
-                         DebugReqState allowed_c = DebugReqState::kInvalid) const;
-  void DebugCommitState(DebugReqTracker &tracker, bool is_send, int bufid,
-                        DebugReqState new_state, const char* where,
-                        const char* action, MPI_Request *slot,
-                        const std::string &extra = "");
-  void DebugLogTrackerSnapshot(const DebugReqTracker &tracker,
-                               const char* where) const;
-  void DebugCheckArrayIdentity(const DebugReqTracker &tracker, bool is_send,
-                               MPI_Request *slot, int bufid,
-                               const char* where, const char* action) const;
-  const char* DebugStateName(DebugReqState state) const;
-  DebugReqTracker debug_var_tracker_;
-  DebugReqTracker debug_flcor_tracker_;
-#endif
   // private:
 };
 
