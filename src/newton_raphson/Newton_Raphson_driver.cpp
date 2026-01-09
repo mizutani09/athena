@@ -314,22 +314,16 @@ void NewtonRaphsonDriver::SolveOneCycle() {
     // std::cout << (itr - vnr_.begin()) << std::endl;
     // pnr->nrbvar.StartReceiving(BoundaryCommSubset::newton_raphson);
     pnr->nrbvar.StartReceiving(BoundaryCommSubset::all);
-    // std::cout << "NewtonRaphson boundary buffers sent at " << Globals::my_rank << std::endl;
+    // std::cout << "NewtonRaphson boundary buffers receiving started at " << Globals::my_rank << std::endl;
     
     pnr->nrbvar.SendBoundaryBuffers();
     // std::cout << "NewtonRaphson boundary buffers sent at " << Globals::my_rank << std::endl;
-    // bool received = pnr->nrbvar.ReceiveBoundaryBuffers();
-    // if (!received) {
-    //   std::stringstream msg;
-    //   msg << "### FATAL ERROR in NewtonRaphsonDriver::SolveOneCycle" << std::endl
-    //       << "Failed to receive NewtonRaphson boundary buffers." << std::endl;
-    //   ATHENA_ERROR(msg);
-    // } else {
-    //   std::cout << "NewtonRaphson boundary buffers received at " << Globals::my_rank << std::endl;
-    // }
-
+  }
+  
+  for (auto itr = vnr_.begin(); itr < vnr_.end(); itr++) {
+    NewtonRaphson *pnr = *itr;
     pnr->nrbvar.ReceiveAndSetBoundariesWithWait();
-
+    // std::cout << "NewtonRaphson boundary buffers received and set at " << Globals::my_rank << std::endl;
   }
 
 
