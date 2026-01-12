@@ -187,8 +187,8 @@ void NewtonRaphsonDriver::Solve_general(int stage, Real dt) {
 
   // std::cout << "epsilon for Newton-Raphson: " << eps_ << std::endl;
 
-//  if (Globals::my_rank == 0)
-//    std::cout << "initial defect " << def << " max " << defmax << std::endl;
+  // if (Globals::my_rank == 0)
+  //   std::cout << "initial defect " << def << " max " << defmax << std::endl;
   while (def > eps_) {
     SolveOneCycle();
     // if (matrixmode_ == 1)
@@ -197,7 +197,7 @@ void NewtonRaphsonDriver::Solve_general(int stage, Real dt) {
     def = 0.0, defmax = 0.0;
     for (int v = 0; v < nvar_; ++v) {
       def += CalculateDefectNorm(NRNormType::l2, v);
-//      defmax = std::max(defmax, CalculateDefectNorm(NRNormType::max, v));
+    //  defmax = std::max(defmax, CalculateDefectNorm(NRNormType::max, v));
     }
     if (Globals::my_rank == 0)
       std::cout << "[debug in NR] niter " << n << " def " << def << " convergence factor "
@@ -225,11 +225,11 @@ void NewtonRaphsonDriver::Solve_general(int stage, Real dt) {
         break;
       }
     }
-    if (n > 100) {
+    if (niter_ != -1 && n > niter_) {
       if (Globals::my_rank == 0) {
         std::cout
             << "### Warning in NewtonRaphsonDriver::SolveIterative" << std::endl
-            << "Aborting because the # iterations is too large, n > 30." << std::endl
+            << "Aborting because the # iterations is too large, n > " << niter_ << "." << std::endl
             << "Check the solution as it may not be accurate enough." << std::endl;
       }
       break;

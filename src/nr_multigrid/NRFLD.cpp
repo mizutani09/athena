@@ -41,10 +41,10 @@ NRFLDDriver::NRFLDDriver(Mesh *pm, ParameterInput *pin)
 //   fshowdef_ = pin->GetOrAddBoolean("mgfld", "show_defect", fshowdef_);
   if (eps_ < 0.0 && niter_ < 0) {
     std::stringstream msg;
-    msg << "### FATAL ERROR in MGFLDDriver::MGFLDDriver" << std::endl
+    msg << "### FATAL ERROR in NRFLDDriver::NRFLDDriver" << std::endl
         << "Either \"threshold\" or \"niteration\" parameter must be set "
-        << "in the <mgfld> block." << std::endl
-        << "When both parameters are specified, \"niteration\" is ignored." << std::endl
+        << "in the <nrfld> block." << std::endl
+      << "When both parameters are specified, \"niteration\" is ignored." << std::endl  
         << "Set \"threshold = 0.0\" for automatic convergence control." << std::endl;
     ATHENA_ERROR(msg);
   }
