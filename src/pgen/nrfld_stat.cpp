@@ -234,6 +234,17 @@ void Mesh::InitUserMeshData(ParameterInput *pin) {
 }
 
 
+void MeshBlock::InitUserMeshBlockData(ParameterInput *pin) {
+  AllocateUserOutputVariables(5);
+  SetUserOutputVariableName(0, "e_gas");
+  SetUserOutputVariableName(1, "E_rad");
+  SetUserOutputVariableName(2, "T_gas");
+  SetUserOutputVariableName(3, "T_rad");
+  SetUserOutputVariableName(4, "L1norm");
+  return;
+}
+
+
 //======================================================================================
 //! \fn void MeshBlock::ProblemGenerator(ParameterInput *pin)
 //  \brief FLD test
@@ -244,7 +255,8 @@ void MeshBlock::ProblemGenerator(ParameterInput *pin) {
   Real igm1 = 1.0/(gamma-1.0);
   Real dx1 = pcoord->dx1f(4);
   Real courant = pin->GetReal("time", "cfl_number");
-  Real dt_exp = courant*dx1*std::sqrt(rho0/(gamma*p0))*time_unit;
+  Real sound = std::sqrt(gamma*p0/rho0);
+  Real dt_exp = courant*dx1/sound*time_unit;
   Real const_opasity = pin->GetReal("nrfld", "const_opacity");
   Real const_opasity_sim = const_opasity*leng_unit*rho_unit;
   Real c_ph_dim = 2.99792458e10; // speed of light in cm s^-1
@@ -273,6 +285,11 @@ void MeshBlock::ProblemGenerator(ParameterInput *pin) {
     std::cout << "tau_diff = " << tau_diff << " s" << std::endl;
     std::cout << "tau_diff in sim = " << tau_diff/time_unit << std::endl;
     std::cout << "tau_diff/dt = " << tau_diff/dt_exp << std::endl;
+
+    Real ideal_step = 100.0;
+    Real ideal_cfl = (tau_diff/time_unit)*sound/(dx1*ideal_step);
+    std::cout << "If you want to finish the diffusion in " << ideal_step
+              << " steps, the cfl_number should be " << ideal_cfl << std::endl;
   }
 
   int kl = ks-NGHOST;
@@ -285,6 +302,8 @@ void MeshBlock::ProblemGenerator(ParameterInput *pin) {
   Real x_R = pmy_mesh->mesh_size.x1max + pcoord->dx1f(0)/2.0;
   Real slope = (Er0_R-Er0_L)/(x_R-x_L);
   Real cons = Er0_L - slope*x_L;
+
+  Real x_mid = 0.5*(x_L + x_R);
 
   for(int k=kl; k<=ku; ++k) {
     Real x3 = pcoord->x3v(k);
@@ -305,11 +324,16 @@ void MeshBlock::ProblemGenerator(ParameterInput *pin) {
     for (int j=jl; j<=ju; j++) {
       for (int i=il; i<=iu; i++) {
         prfld2->u_gas(k,j,i) = p0*igm1;
-        if (pcoord->x1v(i) < 0.5) {
-        prfld2->u_rad(k,j,i) = Er0_L;
-        } else {
-        prfld2->u_rad(k,j,i) = Er0_R;
-        }
+        // if (pcoord->x1v(i) < x_mid) {
+        // prfld2->u_rad(k,j,i) = Er0_L;
+        // } else {
+        // prfld2->u_rad(k,j,i) = Er0_R;
+        // }
+
+        // put tanh profile to avoid initial strong diffusion flux
+        Real x = pcoord->x1v(i);
+        Real an = 0.5*(Er0_R + Er0_L) + 0.5*(Er0_R - Er0_L)*std::tanh((x - x_mid)/(L/4.0));
+        prfld2->u_rad(k,j,i) = an;
 
         if (i == il || i == iu) {
           Real an = slope*pcoord->x1v(i) + cons;
@@ -322,17 +346,6 @@ void MeshBlock::ProblemGenerator(ParameterInput *pin) {
   return;
 }
 
-
-
-
-void MeshBlock::InitUserMeshBlockData(ParameterInput *pin) {
-  AllocateUserOutputVariables(4);
-  SetUserOutputVariableName(0, "e_gas");
-  SetUserOutputVariableName(1, "E_rad");
-  SetUserOutputVariableName(2, "T_gas");
-  SetUserOutputVariableName(3, "T_rad");
-  return;
-}
 
 void MeshBlock::UserWorkBeforeOutput(ParameterInput *pin) {
   Real gm1 = peos->GetGamma() - 1.0;
@@ -351,6 +364,22 @@ void MeshBlock::UserWorkBeforeOutput(ParameterInput *pin) {
         user_out_var(1,k,j,i) = prfld2->u_rad(k,j,i)*egas_unit;
         user_out_var(2,k,j,i) = prfld2->u_gas(k,j,i)/phydro->w(IDN,k,j,i)*temp_coef;
         user_out_var(3,k,j,i) = std::pow(prfld2->u_rad(k,j,i)*egas_unit/a_r_dim, 0.25);
+      }
+    }
+  }
+
+  
+  Real x_L = pmy_mesh->mesh_size.x1min - pcoord->dx1f(0)/2.0;
+  Real x_R = pmy_mesh->mesh_size.x1max + pcoord->dx1f(0)/2.0;
+  Real slope = (Er0_R-Er0_L)/(x_R-x_L);
+  Real cons = Er0_L - slope*x_L;
+  for (int k=ks; k<=ke; k++) {
+    for (int j=js; j<=je; j++) {
+      for (int i=is; i<=ie; i++) {
+        Real x = pcoord->x1v(i);
+        Real an = slope*x + cons;
+        Real L1norm = std::abs(prfld2->u_rad(k,j,i) - an)/std::abs(an);
+        user_out_var(4,k,j,i) = L1norm;
       }
     }
   }
