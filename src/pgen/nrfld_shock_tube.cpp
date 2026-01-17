@@ -489,16 +489,21 @@ void AddRadiativeForceAndWork(MeshBlock *pmb, const Real time, const Real dt,
     for (int k = kl; k <= ku; ++k) {
       for (int j = jl; j <= ju; ++j) {
         for (int i = il; i <= iu; ++i) {
-          for (int ii = 0; ii < 3; ++ii) {
-            int di = (ii == 0) ? 1 : 0;
-            int dj = (ii == 1) ? 1 : 0;
-            int dk = (ii == 2) ? 1 : 0;
-            dEr[ii] = hidx*(fld_u(k+dk,j+dj,i+di) - fld_u(k-dk,j-dj,i-di));
-          }
-          Real gradE = std::sqrt(SQR(dEr[0]) + SQR(dEr[1]) + SQR(dEr[2]));
+          Real lambda;
+          if (prfld->fixed_flux_limitter) {
+            lambda = ONE_3RD;
+          } else{
+            for (int ii = 0; ii < 3; ++ii) {
+              int di = (ii == 0) ? 1 : 0;
+              int dj = (ii == 1) ? 1 : 0;
+              int dk = (ii == 2) ? 1 : 0;
+              dEr[ii] = hidx*(fld_u(k+dk,j+dj,i+di) - fld_u(k-dk,j-dj,i-di));
+            }
+            Real gradE = std::sqrt(SQR(dEr[0]) + SQR(dEr[1]) + SQR(dEr[2]));
 
-          Real R = gradE/(prfld->sigma_r(k,j,i)*fld_u(k,j,i)); // center
-          Real lambda = (2.0+R)/(6.0+2.0*R+R*R);
+            Real R = gradE/(prfld->sigma_r(k,j,i)*fld_u(k,j,i)); // center
+            lambda = (2.0+R)/(6.0+2.0*R+R*R);
+          }
 
           cons(IM1,k,j,i) += -lambda*dt*dEr[0];
           cons(IM2,k,j,i) += -lambda*dt*dEr[1];
