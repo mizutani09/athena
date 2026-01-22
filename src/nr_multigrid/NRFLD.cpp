@@ -64,6 +64,20 @@ NRFLDDriver::NRFLDDriver(Mesh *pm, ParameterInput *pin)
   if (NRMGFLD_ENABLED) {
     plmgd_ = new linearMGDriver(pm, pin, this);
     pmy_mesh_->pmlmd = plmgd_;
+
+    nr_mesh_bcs_[inner_x1] =
+                GetBoundaryFlag(pin->GetOrAddString("nrfld", "ix1_bc", "none"));
+    nr_mesh_bcs_[outer_x1] =
+                GetBoundaryFlag(pin->GetOrAddString("nrfld", "ox1_bc", "none"));
+    nr_mesh_bcs_[inner_x2] =
+                GetBoundaryFlag(pin->GetOrAddString("nrfld", "ix2_bc", "none"));
+    nr_mesh_bcs_[outer_x2] =
+                GetBoundaryFlag(pin->GetOrAddString("nrfld", "ox2_bc", "none"));
+    nr_mesh_bcs_[inner_x3] =
+                GetBoundaryFlag(pin->GetOrAddString("nrfld", "ix3_bc", "none"));
+    nr_mesh_bcs_[outer_x3] =
+                GetBoundaryFlag(pin->GetOrAddString("nrfld", "ox3_bc", "none"));
+    CheckBoundaryFunctions();
   } else {
     std::stringstream msg;
     msg << "### FATAL ERROR in NewtonRaphsonDriver::NewtonRaphsonDriver" << std::endl
@@ -239,7 +253,10 @@ void NRFLD::CalculateCoefficientsOnce(const AthenaArray<Real> &u_pre,
 
         AthenaArray<Real> ngrad;
         ngrad.NewAthenaArray(3);
-        for (int ii = 0; ii < 3; ++ii) ngrad(ii) = dEr(ii)/(gradE+TINY_NUMBER);
+        // for (int ii = 0; ii < 3; ++ii) ngrad(ii) = dEr(ii)/(gradE+TINY_NUMBER);
+        ngrad(0) = dEr(0)/(gradE+TINY_NUMBER);
+        ngrad(1) = dEr(1)/(gradE+TINY_NUMBER);
+        ngrad(2) = dEr(2)/(gradE+TINY_NUMBER);
 
         def_coeff(NewtonRaphsonFLD::DDV,k,j,i) = 0.0;
         for (int jj = 0; jj < 3; ++jj) {
@@ -480,5 +497,26 @@ void NRFLD::AddDifference(AthenaArray<Real> &u_rad,
               << ", derivetive.dFg_dEr = " << derivetive(NewtonRaphsonFLD::dFg_dEr,k,j,i)
               << ", derivetive.dFg_deg = " << derivetive(NewtonRaphsonFLD::dFg_deg,k,j,i) << std::endl;
   }
+  return;
+}
+
+void NRFLD::ApplyPhysicalBoundary() {
+  for (int dir = 0; dir < 6; dir++) {
+    // check if neighbor block exists
+    if (pmy_block_->pbval->block_bcs[dir] == BoundaryFlag::block) continue;
+    BoundaryFace face = static_cast<BoundaryFace>(dir);
+    BoundaryFlag bflag = pmy_driver_->nr_mesh_bcs_[dir];
+    // To do: add other boundary conditions like outflow
+    if (bflag == BoundaryFlag::user) {
+      pmy_driver_->NRBoundaryFunction_[dir](pmy_block_, u_, u_gas_,
+      pmy_block_->pcoord, pmy_block_->phydro->w,
+      pmy_block_->pmy_mesh->time, pmy_driver_->dt_,
+      pmy_block_->is, pmy_block_->ie,
+      pmy_block_->js, pmy_block_->je,
+      pmy_block_->ks, pmy_block_->ke,
+      NGHOST);
+    }
+  }
+  
   return;
 }

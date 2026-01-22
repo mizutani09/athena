@@ -126,6 +126,7 @@ class NRFLD : public NewtonRaphson {
                              AthenaArray<Real> &derivetive,
                              AthenaArray<Real> &src,
                              Real dt) final;
+  void ApplyPhysicalBoundary() final;
 
   // void LoadSource(const AthenaArray<Real> &src, int ns, int ngh, Real fac);
   // void LoadCoefficients(const AthenaArray<Real> &coeff, int ngh);

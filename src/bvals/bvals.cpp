@@ -385,17 +385,15 @@ void BoundaryValues::CheckUserBoundaries() {
               << std::endl;
           ATHENA_ERROR(msg);
         }
+        if (pmy_mesh_->NRBoundaryFunc_[i] == nullptr) {
+          std::stringstream msg;
+          msg << "### FATAL ERROR in BoundaryValues::CheckBoundary" << std::endl
+              << "A user-defined boundary is specified but the actual NRBoundaryFunc_ "
+              << "is not enrolled in direction " << i  << " (in [0,6])."
+              << std::endl;
+          ATHENA_ERROR(msg);
+        }
       }
-      // if (MGFLD_ENABLED || NRMGFLD_ENABLED) {
-      //   if (pmy_mesh_->FLDAdvBoundaryFunc_[i] == nullptr) {
-      //     std::stringstream msg;
-      //     msg << "### FATAL ERROR in BoundaryValues::CheckBoundary" << std::endl
-      //         << "A user-defined boundary is specified but the actual FLDAdvBoundaryFunc_ "
-      //         << "is not enrolled in direction " << i  << " (in [0,6])."
-      //         << std::endl;
-      //     ATHENA_ERROR(msg);
-      //   }
-      // }
     }
   }
   return;
@@ -719,12 +717,6 @@ void BoundaryValues::DispatchBoundaryFunctions(
                                         u_rad_fld,
                                         time,dt,il,iu,jl,ju,kl,ku,NGHOST);
     }
-
-    // if (MGFLD_ENABLED || NRMGFLD_ENABLED) {
-    //   pmy_mesh_->FLDAdvBoundaryFunc_[face](pmb,pco,pmb->prfld2,prim,
-    //                                     u_rad_fld,
-    //                                     time,dt,il,iu,jl,ju,kl,ku,NGHOST);
-    // }
   }
   // KGF: this is only to silence the compiler -Wswitch warnings about not handling the
   // "undef" case when considering all possible BoundaryFace enumerator values. If "undef"

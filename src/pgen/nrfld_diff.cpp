@@ -61,12 +61,54 @@ namespace {
   Real chi;
 }
 
+void NRInnerX1(MeshBlock *pmb,
+               AthenaArray<Real> &u_rad, AthenaArray<Real> &u_gas,
+               Coordinates *pco, const AthenaArray<Real> &w, Real time, Real dt,
+               int is, int ie, int js, int je, int ks, int ke, int ngh) {
+  // put analytic solution
+  Real chi_t = chi * (time+dt+init_time);
+  if (dim == 1) {
+    Real coef = Er0/(2*std::sqrt(M_PI*chi_t));
+    for (int k=ks; k<=ke; k++) {
+      for (int j=js; j<=je; j++) {
+        for (int i=1; i<=ngh; i++) {
+          Real x = pco->x1v(is-i);
+          Real r_sq = SQR(x-0.5);
+          u_rad(k,j,is-i) = coef*std::exp(-r_sq/(4*chi_t));
+        }
+      }
+    }
+  }
+  return;
+}
+
+void NROuterX1(MeshBlock *pmb,
+               AthenaArray<Real> &u_rad, AthenaArray<Real> &u_gas,
+               Coordinates *pco, const AthenaArray<Real> &w, Real time, Real dt,
+               int is, int ie, int js, int je, int ks, int ke, int ngh) {
+  // put analytic solution
+  Real chi_t = chi * (time+dt+init_time);
+  if (dim == 1) {
+    Real coef = Er0/(2*std::sqrt(M_PI*chi_t));
+    for (int k=ks; k<=ke; k++) {
+      for (int j=js; j<=je; j++) {
+        for (int i=1; i<=ngh; i++) {
+            Real x = pco->x1v(ie+i);
+            Real r_sq = SQR(x-0.5);
+            u_rad(k,j,ie+i) = coef*std::exp(-r_sq/(4*chi_t));
+        }
+      }
+    }
+  }
+  return;
+}
+
 void FLDInnerX1(MeshBlock *pmb, Coordinates *pco, FLD2 *pfld,
                 const AthenaArray<Real> &w, AthenaArray<Real> &u_rad_fld,
                 Real time, Real dt,
                 int is, int ie, int js, int je, int ks, int ke, int ngh) {
   // put analytic solution
-  Real chi_t = chi * (time+init_time);
+  Real chi_t = chi * (time+dt+init_time);
   if (dim == 1) {
     Real coef = Er0/(2*std::sqrt(M_PI*chi_t));
     for (int k=ks; k<=ke; k++) {
@@ -87,7 +129,7 @@ void FLDOuterX1(MeshBlock *pmb, Coordinates *pco, FLD2 *pfld,
                 Real time, Real dt,
                 int is, int ie, int js, int je, int ks, int ke, int ngh) {
   // put analytic solution
-  Real chi_t = chi * (time+init_time);
+  Real chi_t = chi * (time+dt+init_time);
   if (dim == 1) {
     Real coef = Er0/(2*std::sqrt(M_PI*chi_t));
     for (int k=ks; k<=ke; k++) {
@@ -228,6 +270,8 @@ void Mesh::InitUserMeshData(ParameterInput *pin) {
 
   EnrollUserFLDBoundaryFunction(BoundaryFace::inner_x1, FLDInnerX1);
   EnrollUserFLDBoundaryFunction(BoundaryFace::outer_x1, FLDOuterX1);
+  EnrollUserNRBoundaryFunction(BoundaryFace::inner_x1, NRInnerX1);
+  EnrollUserNRBoundaryFunction(BoundaryFace::outer_x1, NROuterX1);
   EnrollUserBoundaryFunction(BoundaryFace::inner_x1, HydroInnerX1);
   EnrollUserBoundaryFunction(BoundaryFace::outer_x1, HydroOuterX1);
 

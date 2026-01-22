@@ -72,6 +72,11 @@ NewtonRaphsonDriver::NewtonRaphsonDriver(Mesh *pm,
     return;
   }
 
+  // NRBoundaryFunction_[BoundaryFace::inner_x1] = pmy_mesh_->NRBoundaryFunc_[BoundaryFace::inner_x1];
+  for (int i = 0; i < 6; ++i) {
+    nr_mesh_bcs_[i] = pmy_mesh_->mesh_bcs[i];
+    NRBoundaryFunction_[i] = pmy_mesh_->NRBoundaryFunc_[i];
+  }
 
   // ranklist_  = new int[nbtotal_];
   // int nv = std::max(nvar_*2, ncoeff_);
@@ -149,6 +154,150 @@ NewtonRaphsonDriver::~NewtonRaphsonDriver() {
 }
 
 
+//----------------------------------------------------------------------------------------
+//! \fn void NewtonRaphsonDriver::CheckBoundaryFunctions()
+//  \brief check boundary functions and set some internal flags.
+
+void NewtonRaphsonDriver::CheckBoundaryFunctions() {
+  switch(nr_mesh_bcs_[BoundaryFace::inner_x1]) {
+    case BoundaryFlag::user:
+      if (NRBoundaryFunction_[BoundaryFace::inner_x1] == nullptr) {
+        std::stringstream msg;
+        msg << "### FATAL ERROR in NewtonRaphsonDriver::CheckBoundaryFunctions" << std::endl
+            << "A user-defined boundary condition is specified for " << std::endl
+            << "inner_x1 but no function is enrolled." << std::endl;
+        ATHENA_ERROR(msg);
+      }
+      break;
+    case BoundaryFlag::periodic:
+    case BoundaryFlag::outflow:
+      break;
+    default:
+      std::stringstream msg;
+      msg << "### FATAL ERROR in NewtonRaphsonDriver::CheckBoundaryFunctions" << std::endl
+          << "Invalid or no boundary type is specified." << std::endl;
+      ATHENA_ERROR(msg);
+      break;
+  }
+  switch(nr_mesh_bcs_[BoundaryFace::outer_x1]) {
+    case BoundaryFlag::user:
+      if (NRBoundaryFunction_[BoundaryFace::outer_x1] == nullptr) {
+        std::stringstream msg;
+        msg << "### FATAL ERROR in NewtonRaphsonDriver::CheckBoundaryFunctions" << std::endl
+            << "A user-defined boundary condition is specified for " << std::endl
+            << "outer_x1 but no function is enrolled." << std::endl;
+        ATHENA_ERROR(msg);
+      }
+      break;
+    case BoundaryFlag::periodic:
+    case BoundaryFlag::outflow:
+      break;
+    default:
+      std::stringstream msg;
+      msg << "### FATAL ERROR in NewtonRaphsonDriver::CheckBoundaryFunctions" << std::endl
+          << "Invalid or no boundary type is specified." << std::endl;
+      ATHENA_ERROR(msg);
+      break;
+  }
+  switch(nr_mesh_bcs_[BoundaryFace::inner_x2]) {
+    case BoundaryFlag::user:
+      if (NRBoundaryFunction_[BoundaryFace::inner_x2] == nullptr) {
+        std::stringstream msg;
+        msg << "### FATAL ERROR in NewtonRaphsonDriver::CheckBoundaryFunctions" << std::endl
+            << "A user-defined boundary condition is specified for " << std::endl
+            << "inner_x2 but no function is enrolled." << std::endl;
+        ATHENA_ERROR(msg);
+      }
+      break;
+    case BoundaryFlag::periodic:
+    case BoundaryFlag::outflow:
+      break;
+    default:
+      std::stringstream msg;
+      msg << "### FATAL ERROR in NewtonRaphsonDriver::CheckBoundaryFunctions" << std::endl
+          << "Invalid or no boundary type is specified." << std::endl;
+      ATHENA_ERROR(msg);
+      break;
+  }
+  switch(nr_mesh_bcs_[BoundaryFace::outer_x2]) {
+    case BoundaryFlag::user:
+      if (NRBoundaryFunction_[BoundaryFace::outer_x2] == nullptr) {
+        std::stringstream msg;
+        msg << "### FATAL ERROR in NewtonRaphsonDriver::CheckBoundaryFunctions" << std::endl
+            << "A user-defined boundary condition is specified for " << std::endl
+            << "outer_x2 but no function is enrolled." << std::endl;
+        ATHENA_ERROR(msg);
+      }
+      break;
+    case BoundaryFlag::periodic:
+    case BoundaryFlag::outflow:
+      break;
+    default:
+      std::stringstream msg;
+      msg << "### FATAL ERROR in NewtonRaphsonDriver::CheckBoundaryFunctions" << std::endl
+          << "Invalid or no boundary type is specified." << std::endl;
+      ATHENA_ERROR(msg);
+      break;
+  }
+  switch(nr_mesh_bcs_[BoundaryFace::inner_x3]) {
+    case BoundaryFlag::user:
+      if (NRBoundaryFunction_[BoundaryFace::inner_x3] == nullptr) {
+        std::stringstream msg;
+        msg << "### FATAL ERROR in NewtonRaphsonDriver::CheckBoundaryFunctions" << std::endl
+            << "A user-defined boundary condition is specified for " << std::endl
+            << "inner_x3 but no function is enrolled." << std::endl;
+        ATHENA_ERROR(msg);
+      }
+      break;
+    case BoundaryFlag::periodic:
+    case BoundaryFlag::outflow:
+      break;
+    default:
+      std::stringstream msg;
+      msg << "### FATAL ERROR in NewtonRaphsonDriver::CheckBoundaryFunctions" << std::endl
+          << "Invalid or no boundary type is specified." << std::endl;
+      ATHENA_ERROR(msg);
+      break;
+  }
+  switch(nr_mesh_bcs_[BoundaryFace::outer_x3]) {
+    case BoundaryFlag::user:
+      if (NRBoundaryFunction_[BoundaryFace::outer_x3] == nullptr) {
+        std::stringstream msg;
+        msg << "### FATAL ERROR in NewtonRaphsonDriver::CheckBoundaryFunctions" << std::endl
+            << "A user-defined boundary condition is specified for " << std::endl
+            << "outer_x3 but no function is enrolled." << std::endl;
+        ATHENA_ERROR(msg);
+      }
+      break;
+    case BoundaryFlag::periodic:
+    case BoundaryFlag::outflow:
+      break;
+    default:
+      std::stringstream msg;
+      msg << "### FATAL ERROR in NewtonRaphsonDriver::CheckBoundaryFunctions" << std::endl
+          << "Invalid or no boundary type is specified." << std::endl;
+      ATHENA_ERROR(msg);
+      break;
+  }
+
+  // check periodic boundary conditions
+  for (int i = 0; i < 6; ++i) {
+    if (pmy_mesh_->mesh_bcs[i] == BoundaryFlag::periodic
+     || nr_mesh_bcs_[i] == BoundaryFlag::periodic) {
+      if (pmy_mesh_->mesh_bcs[i] != nr_mesh_bcs_[i]) {
+        std::stringstream msg;
+        msg << "### FATAL ERROR in NewtonRaphsonDriver::CheckBoundaryFunctions" << std::endl
+            << "When periodic boundary condition is set either for" << std::endl
+            << "Multigrid or for the main part, both must be periodic." << std::endl;
+        ATHENA_ERROR(msg);
+      }
+    }
+  }
+
+  return;
+}
+
+
 void NewtonRaphsonDriver::Solve_general(int stage, Real dt) {
   // std::cout << "In NewtonRaphsonDriver::Solve_general" << std::endl;
   stage_ = stage;
@@ -187,8 +336,8 @@ void NewtonRaphsonDriver::Solve_general(int stage, Real dt) {
 
   // std::cout << "epsilon for Newton-Raphson: " << eps_ << std::endl;
 
-  // if (Globals::my_rank == 0)
-  //   std::cout << "initial defect " << def << " max " << defmax << std::endl;
+  if (Globals::my_rank == 0)
+    std::cout << "initial defect " << def << " max " << defmax << std::endl;
   while (def > eps_) {
     SolveOneCycle();
     // if (matrixmode_ == 1)
@@ -343,12 +492,14 @@ void NewtonRaphsonDriver::SolveOneCycle() {
 
   // std::cout << "NewtonRaphson prolongation done at " << Globals::my_rank << std::endl;
 
-  // for (auto itr = vnr_.begin(); itr < vnr_.end(); itr++) {
-  //   NewtonRaphson *pnr = *itr;
-  //   MeshBlock *pmb = pnr->pmy_block_;
-  //   pnr->nrbvar.var_cc = &(pnr->u_);
-  //   pmb->pbval->ApplyPhysicalBoundaries(pmy_mesh_->time, dt_, pmb->pbval->bvars_main_int);
-  // }
+  for (auto itr = vnr_.begin(); itr < vnr_.end(); itr++) {
+    NewtonRaphson *pnr = *itr;
+    // MeshBlock *pmb = pnr->pmy_block_;
+    // pnr->nrbvar.var_cc = &(pnr->u_);
+    // std::vector<BoundaryVariable *> bvar_nr = {&(pnr->nrbvar)};
+    // pmb->pbval->ApplyPhysicalBoundaries(pmy_mesh_->time, dt_, bvar_nr);
+    pnr->ApplyPhysicalBoundary();
+  }
   
   // std::cout << "NewtonRaphson physical boundaries applied at " << Globals::my_rank << std::endl;
 
@@ -357,8 +508,6 @@ void NewtonRaphsonDriver::SolveOneCycle() {
     // pnr->nrbvar.ClearBoundary(BoundaryCommSubset::newton_raphson);
     pnr->nrbvar.ClearBoundary(BoundaryCommSubset::all);
   }
-
-  // std::cout << "NewtonRaphson boundary buffers cleared at " << Globals::my_rank << std::endl;
 
   return;
 }

@@ -103,6 +103,7 @@ class NewtonRaphson {
                                const AthenaArray<Real> &coeff,
                                const AthenaArray<Real> &def_coeff,
                                bool th) = 0;
+  virtual void ApplyPhysicalBoundary() = 0;
 
   friend class NewtonRaphsonDriver;
   friend class NewtonRaphsonTaskList;
@@ -154,7 +155,7 @@ class NewtonRaphsonDriver {
   NewtonRaphsonDriver(Mesh *pm,
                   int invar, int ncoeff, int nmatrix);
   virtual ~NewtonRaphsonDriver();
-
+  void CheckBoundaryFunctions();
   // pure virtual function
   // virtual void Solve(int step, Real dt = 0.0) = 0;
 
@@ -185,7 +186,7 @@ class NewtonRaphsonDriver {
   //                         *nclist_, *ncslist_, *ranklist_;
   int nrbx1_, nrbx2_, nrbx3_;
   BoundaryFlag nr_mesh_bcs_[6];
-  // NRBoundaryFunc NRBoundaryFunction_[6];
+  NRBoundaryFunc NRBoundaryFunction_[6]; // caution!!
   // NRBoundaryFunc NRCoeffBoundaryFunction_[6];
   Mesh *pmy_mesh_;
   linearMGDriver *plmgd_; // to be set in derived class constructors

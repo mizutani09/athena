@@ -245,10 +245,10 @@ using FLDBoundaryFunc = void (*)(
      MeshBlock *pmb, Coordinates *pco, FLD2 *prfld,
      const AthenaArray<Real> &w, AthenaArray<Real> &u_rad_fld,
      Real time, Real dt, int is, int ie, int js, int je, int ks, int ke, int ngh);
-// using FLDAdvBoundaryFunc = void (*)(
-//      MeshBlock *pmb, Coordinates *pco, FLD2 *prfld,
-//      const AthenaArray<Real> &w, AthenaArray<Real> &u_rad_fld,
-//      Real time, Real dt, int is, int ie, int js, int je, int ks, int ke, int ngh);
+using NRBoundaryFunc = void (*)(
+     MeshBlock *pmb, AthenaArray<Real> &u_rad, AthenaArray<Real> &u_gas, Coordinates *pco,
+     const AthenaArray<Real> &w,
+     Real time, Real dt, int is, int ie, int js, int je, int ks, int ke, int ngh);
 using FLDOpacityFunc = void (*)(MeshBlock *pmb, AthenaArray<Real> &u_rad_fld,
                       AthenaArray<Real> &prim);
 
