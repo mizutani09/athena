@@ -920,7 +920,7 @@ TimeIntegratorTaskList::TimeIntegratorTaskList(ParameterInput *pin, Mesh *pm) {
         AddTask(CALC_SCLRFLX,(CALC_HYDFLX|DIFFUSE_SCLR));
       }
       if (MGFLD_ENABLED || NRMGFLD_ENABLED)
-        AddTask(CALC_FLDADVFLX,CALC_HYDFLX);
+        AddTask(CALC_FLDADVFLX,CALC_HYDFLX); // MARK: 923
     } else { // STS enabled:
       AddTask(CALC_HYDFLX,NONE);
       if (NSCALARS > 0)
@@ -979,11 +979,11 @@ TimeIntegratorTaskList::TimeIntegratorTaskList(ParameterInput *pin, Mesh *pm) {
     }
 
     if (NSCALARS > 0 && (MGFLD_ENABLED || NRMGFLD_ENABLED)) {
-      AddTask(SRC_TERM,(INT_HYD|INT_SCLR|INT_CHM|INT_FLDADV));
+      AddTask(SRC_TERM,(INT_HYD|INT_SCLR|INT_CHM|SETB_FLDADV));
     } else if (NSCALARS > 0) {
       AddTask(SRC_TERM,(INT_HYD|INT_SCLR|INT_CHM));
     } else if (MGFLD_ENABLED || NRMGFLD_ENABLED) {
-      AddTask(SRC_TERM,(INT_HYD|INT_FLDADV));
+      AddTask(SRC_TERM,(INT_HYD|SETB_FLDADV));
     } else {
       AddTask(SRC_TERM,INT_HYD);
     }
@@ -1060,9 +1060,9 @@ TimeIntegratorTaskList::TimeIntegratorTaskList(ParameterInput *pin, Mesh *pm) {
       } else {
           AddTask(INT_FLDADV,CALC_FLDADVFLX);
       }
-      AddTask(SEND_FLDADV,SRC_TERM);
+      AddTask(SEND_FLDADV,INT_FLDADV);
       AddTask(RECV_FLDADV,NONE);
-      AddTask(SETB_FLDADV,(RECV_FLDADV|SRC_TERM));
+      AddTask(SETB_FLDADV,RECV_FLDADV);
     }
 
     if (MAGNETIC_FIELDS_ENABLED) { // MHD
