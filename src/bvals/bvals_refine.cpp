@@ -431,14 +431,6 @@ void BoundaryValues::ApplyPhysicalBoundariesOnCoarseLevel(
   if (CR_ENABLED)
     pcr = pmb->pcr;
 
-  FLD2 *prfld = nullptr;
-  if (MGFLD_ENABLED || NRMGFLD_ENABLED)
-    prfld = pmb->prfld2;
-
-  NewtonRaphson *pnr=nullptr;
-  if (NRMGFLD_ENABLED)
-    pnr = pmb->pnr;
-
   // convert the ghost zone and ghost-ghost zones into primitive variables
   // this includes cell-centered field calculation
   int f1m = 0, f1p = 0, f2m = 0, f2p = 0, f3m = 0, f3p = 0;
@@ -495,7 +487,6 @@ void BoundaryValues::ApplyPhysicalBoundariesOnCoarseLevel(
                                 pmb->cis, pmb->cie, sj, ej, sk, ek, 1,
                                 ph->coarse_prim_, pf->coarse_b_,
                                 pnrrad->coarse_ir_, pcr->coarse_cr_,
-                                prfld->coarse_u_rad,
                                 BoundaryFace::inner_x1,
                                 bvars_subset);
     }
@@ -504,7 +495,6 @@ void BoundaryValues::ApplyPhysicalBoundariesOnCoarseLevel(
                                 pmb->cis, pmb->cie, sj, ej, sk, ek, 1,
                                 ph->coarse_prim_, pf->coarse_b_,
                                 pnrrad->coarse_ir_, pcr->coarse_cr_,
-                                prfld->coarse_u_rad,
                                 BoundaryFace::outer_x1,
                                 bvars_subset);
     }
@@ -515,7 +505,6 @@ void BoundaryValues::ApplyPhysicalBoundariesOnCoarseLevel(
                                 si, ei, pmb->cjs, pmb->cje, sk, ek, 1,
                                 ph->coarse_prim_, pf->coarse_b_,
                                 pnrrad->coarse_ir_, pcr->coarse_cr_,
-                                prfld->coarse_u_rad,
                                 BoundaryFace::inner_x2,
                                 bvars_subset);
     }
@@ -531,7 +520,6 @@ void BoundaryValues::ApplyPhysicalBoundariesOnCoarseLevel(
                                 si, ei, pmb->cjs, pmb->cje, sk, ek, 1,
                                 ph->coarse_prim_, pf->coarse_b_,
                                 pnrrad->coarse_ir_, pcr->coarse_cr_,
-                                prfld->coarse_u_rad,
                                 BoundaryFace::outer_x2,
                                 bvars_subset);
     }
@@ -548,7 +536,6 @@ void BoundaryValues::ApplyPhysicalBoundariesOnCoarseLevel(
                                 si, ei, sj, ej, pmb->cks, pmb->cke, 1,
                                 ph->coarse_prim_, pf->coarse_b_,
                                 pnrrad->coarse_ir_, pcr->coarse_cr_,
-                                prfld->coarse_u_rad,
                                 BoundaryFace::inner_x3,
                                 bvars_subset);
     }
@@ -566,7 +553,6 @@ void BoundaryValues::ApplyPhysicalBoundariesOnCoarseLevel(
                                 si, ei, sj, ej, pmb->cks, pmb->cke, 1,
                                 ph->coarse_prim_, pf->coarse_b_,
                                 pnrrad->coarse_ir_, pcr->coarse_cr_,
-                                prfld->coarse_u_rad,
                                 BoundaryFace::outer_x3,
                                 bvars_subset);
     }
@@ -577,6 +563,64 @@ void BoundaryValues::ApplyPhysicalBoundariesOnCoarseLevel(
       } else if (pnrrad->rotate_phi == 2) {
         pradbvar->RotatePi_OuterX3(time, dt, si, ei, sj, ej, pmb->cke, 1);
       }
+    }
+  }
+  return;
+}
+
+
+void BoundaryValues::ApplyFLDPhysicalBoundariesOnCoarseLevel(
+    const NeighborBlock& nb, const Real time, const Real dt,
+    int si, int ei, int sj, int ej, int sk, int ek) {
+  MeshBlock *pmb = pmy_block_;
+  MeshRefinement *pmr = pmb->pmr;
+
+  // temporarily hardcode Hydro and Field array access:
+  Hydro *ph = pmb->phydro;
+  FLD2 *prfld = prfld = pmb->prfld2;
+
+  if (nb.ni.ox1 == 0) {
+    if (apply_bndry_fn_[BoundaryFace::inner_x1]) {
+      DispatchFLDBoundaryFunctions(pmb, pmr->pcoarsec, time, dt,
+                                pmb->cis, pmb->cie, sj, ej, sk, ek, 1,
+                                ph->coarse_prim_, prfld->coarse_u_rad,
+                                BoundaryFace::inner_x1);
+    }
+    if (apply_bndry_fn_[BoundaryFace::outer_x1]) {
+      DispatchFLDBoundaryFunctions(pmb, pmr->pcoarsec, time, dt,
+                                pmb->cis, pmb->cie, sj, ej, sk, ek, 1,
+                                ph->coarse_prim_, prfld->coarse_u_rad,
+                                BoundaryFace::outer_x1);
+    }
+  }
+  if (nb.ni.ox2 == 0 && pmb->block_size.nx2 > 1) {
+    if (apply_bndry_fn_[BoundaryFace::inner_x2]) {
+      DispatchFLDBoundaryFunctions(pmb, pmr->pcoarsec, time, dt,
+                                si, ei, pmb->cjs, pmb->cje, sk, ek, 1,
+                                ph->coarse_prim_, prfld->coarse_u_rad,
+                                BoundaryFace::inner_x2);
+    }
+
+    if (apply_bndry_fn_[BoundaryFace::outer_x2]) {
+      DispatchFLDBoundaryFunctions(pmb, pmr->pcoarsec, time, dt,
+                                si, ei, pmb->cjs, pmb->cje, sk, ek, 1,
+                                ph->coarse_prim_, prfld->coarse_u_rad,
+                                BoundaryFace::outer_x2);
+    }
+  }
+  if (nb.ni.ox3 == 0 && pmb->block_size.nx3 > 1) {
+    if (apply_bndry_fn_[BoundaryFace::inner_x3]) {
+      DispatchFLDBoundaryFunctions(pmb, pmr->pcoarsec, time, dt,
+                                si, ei, sj, ej, pmb->cks, pmb->cke, 1,
+                                ph->coarse_prim_, prfld->coarse_u_rad,
+                                BoundaryFace::inner_x3);
+    }
+
+    if (apply_bndry_fn_[BoundaryFace::outer_x3]) {
+      DispatchFLDBoundaryFunctions(pmb, pmr->pcoarsec, time, dt,
+                                si, ei, sj, ej, pmb->cks, pmb->cke, 1,
+                                ph->coarse_prim_, prfld->coarse_u_rad,
+                                BoundaryFace::outer_x3);
     }
   }
   return;

@@ -979,11 +979,11 @@ TimeIntegratorTaskList::TimeIntegratorTaskList(ParameterInput *pin, Mesh *pm) {
     }
 
     if (NSCALARS > 0 && (MGFLD_ENABLED || NRMGFLD_ENABLED)) {
-      AddTask(SRC_TERM,(INT_HYD|INT_SCLR|INT_CHM|SETB_FLDADV));
+      AddTask(SRC_TERM,(INT_HYD|INT_SCLR|INT_CHM|SETPHYSB_FLDADV));
     } else if (NSCALARS > 0) {
       AddTask(SRC_TERM,(INT_HYD|INT_SCLR|INT_CHM));
     } else if (MGFLD_ENABLED || NRMGFLD_ENABLED) {
-      AddTask(SRC_TERM,(INT_HYD|SETB_FLDADV));
+      AddTask(SRC_TERM,(INT_HYD|SETPHYSB_FLDADV));
     } else {
       AddTask(SRC_TERM,INT_HYD);
     }
@@ -1063,6 +1063,7 @@ TimeIntegratorTaskList::TimeIntegratorTaskList(ParameterInput *pin, Mesh *pm) {
       AddTask(SEND_FLDADV,INT_FLDADV);
       AddTask(RECV_FLDADV,NONE);
       AddTask(SETB_FLDADV,RECV_FLDADV);
+      AddTask(SETPHYSB_FLDADV,SETB_FLDADV);
     }
 
     if (MAGNETIC_FIELDS_ENABLED) { // MHD
@@ -1109,11 +1110,11 @@ TimeIntegratorTaskList::TimeIntegratorTaskList(ParameterInput *pin, Mesh *pm) {
           }
         } else {
           if (NSCALARS > 0 && (MGFLD_ENABLED || NRMGFLD_ENABLED)) {
-            setb=(setb|SETB_HYD|SETB_FLD|SEND_SCLR|SETB_SCLR|SEND_FLDADV|SETB_FLDADV);
+            setb=(setb|SETB_HYD|SETB_FLD|SEND_SCLR|SETB_SCLR|SEND_FLDADV|SETPHYSB_FLDADV);
           } else if (NSCALARS > 0) {
             setb=(setb|SETB_HYD|SETB_FLD|SEND_SCLR|SETB_SCLR);
           } else if (MGFLD_ENABLED || NRMGFLD_ENABLED) {
-            setb=(setb|SETB_HYD|SETB_FLD|SEND_FLDADV|SETB_FLDADV);
+            setb=(setb|SETB_HYD|SETB_FLD|SEND_FLDADV|SETPHYSB_FLDADV);
           } else {
             setb=(setb|SETB_HYD|SETB_FLD);
           }
@@ -1140,11 +1141,11 @@ TimeIntegratorTaskList::TimeIntegratorTaskList(ParameterInput *pin, Mesh *pm) {
           }
         } else {
           if (NSCALARS > 0 && (MGFLD_ENABLED || NRMGFLD_ENABLED)) {
-            AddTask(CONS2PRIM,(SETB_HYD|SETB_FLD|SETB_SCLR|SETB_FLDADV));
+            AddTask(CONS2PRIM,(SETB_HYD|SETB_FLD|SETB_SCLR|SETPHYSB_FLDADV));
           } else if (NSCALARS > 0) {
             AddTask(CONS2PRIM,(SETB_HYD|SETB_FLD|SETB_SCLR));
           } else if (MGFLD_ENABLED || NRMGFLD_ENABLED) {
-            AddTask(CONS2PRIM,(SETB_HYD|SETB_FLD|SETB_FLDADV));
+            AddTask(CONS2PRIM,(SETB_HYD|SETB_FLD|SETPHYSB_FLDADV));
           } else {
             AddTask(CONS2PRIM,(SETB_HYD|SETB_FLD));
           }
@@ -1162,11 +1163,11 @@ TimeIntegratorTaskList::TimeIntegratorTaskList(ParameterInput *pin, Mesh *pm) {
           }
         } else {
           if (NSCALARS > 0 && (MGFLD_ENABLED || NRMGFLD_ENABLED)) {
-            setb=(setb|SETB_HYD|SEND_SCLR|SETB_SCLR|SEND_FLDADV|SETB_FLDADV);
+            setb=(setb|SETB_HYD|SEND_SCLR|SETB_SCLR|SEND_FLDADV|SETPHYSB_FLDADV);
           } else if (NSCALARS > 0) {
             setb=(setb|SETB_HYD|SEND_SCLR|SETB_SCLR);
           } else if (MGFLD_ENABLED || NRMGFLD_ENABLED) {
-            setb=(setb|SETB_HYD|SEND_FLDADV|SETB_FLDADV);
+            setb=(setb|SETB_HYD|SEND_FLDADV|SETPHYSB_FLDADV);
           } else {
             setb=(setb|SETB_HYD);
           }
@@ -1192,11 +1193,11 @@ TimeIntegratorTaskList::TimeIntegratorTaskList(ParameterInput *pin, Mesh *pm) {
           }
         } else {
           if (NSCALARS > 0 && (MGFLD_ENABLED || NRMGFLD_ENABLED)) {
-            AddTask(CONS2PRIM,(SETB_HYD|SETB_SCLR|SETB_FLDADV));
+            AddTask(CONS2PRIM,(SETB_HYD|SETB_SCLR|SETPHYSB_FLDADV));
           } else if (NSCALARS > 0) {
             AddTask(CONS2PRIM,(SETB_HYD|SETB_SCLR));
           } else if (MGFLD_ENABLED || NRMGFLD_ENABLED) {
-            AddTask(CONS2PRIM,(SETB_HYD|SETB_FLDADV));
+            AddTask(CONS2PRIM,(SETB_HYD|SETPHYSB_FLDADV));
           } else {
             AddTask(CONS2PRIM,SETB_HYD);
           }
@@ -1656,6 +1657,11 @@ void TimeIntegratorTaskList::AddTask(const TaskID& id, const TaskID& dep) {
     task_list_[ntasks].TaskFunc=
         static_cast<TaskStatus (TaskList::*)(MeshBlock*,int)>
         (&TimeIntegratorTaskList::SetBoundariesRADFLD);
+  } else if (id == SETPHYSB_FLDADV) {
+    task_list_[ntasks].TaskFunc=
+        static_cast<TaskStatus (TaskList::*)(MeshBlock*,int)>
+        (&TimeIntegratorTaskList::SetPhysicalBoundariesRADFLD);
+    // task_list_[ntasks].lb_time = true; // ?
   } else {
     std::stringstream msg;
     msg << "### FATAL ERROR in AddTask" << std::endl
@@ -2359,7 +2365,6 @@ TaskStatus TimeIntegratorTaskList::Primitives(MeshBlock *pmb, int stage) {
 TaskStatus TimeIntegratorTaskList::PhysicalBoundary(MeshBlock *pmb, int stage) {
   Hydro *ph = pmb->phydro;
   PassiveScalars *ps = pmb->pscalars;
-  FLD2 *prfld = pmb->prfld2;
   BoundaryValues *pbval = pmb->pbval;
 
   if (stage <= nstages) {
@@ -2375,12 +2380,6 @@ TaskStatus TimeIntegratorTaskList::PhysicalBoundary(MeshBlock *pmb, int stage) {
       ps->sbvar.var_cc = &(ps->r);
       if (pmb->pmy_mesh->multilevel) {
         ps->sbvar.coarse_buf = &(ps->coarse_r_);
-      }
-    }
-    if (MGFLD_ENABLED || NRMGFLD_ENABLED) {
-      prfld->u_rad_fldbvar.var_cc = &(prfld->u_rad);
-      if (pmb->pmy_mesh->multilevel) {
-        prfld->u_rad_fldbvar.coarse_buf = &(prfld->coarse_u_rad);
       }
     }
     pbval->ApplyPhysicalBoundaries(t_end_stage, dt, pmb->pbval->bvars_main_int);
@@ -3259,6 +3258,28 @@ TaskStatus TimeIntegratorTaskList::SetBoundariesRADFLD(MeshBlock *pmb, int stage
     //   pmb->prfld2->UpdateRadiationEnergy(pmb->prfld2->u, pmb->prfld2->u_rad);
     //   pmb->prfld2->u_rad.SwapAthenaArray(pmb->prfld2->u_rad1);
     // }
+    return TaskStatus::success;
+  }
+  return TaskStatus::fail;
+}
+
+
+TaskStatus TimeIntegratorTaskList::SetPhysicalBoundariesRADFLD(MeshBlock *pmb, int stage) {
+  // Set FLD quantity in BoundaryVariable interface
+  FLD2 *prfld = pmb->prfld2;
+  BoundaryValues *pbval = pmb->pbval;
+
+  if (stage <= nstages) {
+    Real t_end_stage = pmb->pmy_mesh->time
+                       + stage_wghts[(stage-1)].ebeta*pmb->pmy_mesh->dt;
+    Real dt = (stage_wghts[(stage-1)].beta)*(pmb->pmy_mesh->dt);
+  
+    prfld->u_rad_fldbvar.var_cc = &(prfld->u_rad);
+    if (pmb->pmy_mesh->multilevel) {
+      prfld->u_rad_fldbvar.coarse_buf = &(prfld->coarse_u_rad);
+    }
+  
+    pbval->ApplyFLDPhysicalBoundaries(t_end_stage, dt);
     return TaskStatus::success;
   }
   return TaskStatus::fail;

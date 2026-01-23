@@ -147,6 +147,7 @@ class BoundaryValues : public BoundaryBase, //public BoundaryPhysics,
                            std::vector<BoundaryVariable *> bvars_subset);
   void ApplyPhysicalBoundaries(const Real time, const Real dt,
                                std::vector<BoundaryVariable *> bvars_subset);
+  void ApplyFLDPhysicalBoundaries(const Real time, const Real dt);
   void ProlongateBoundaries(const Real time, const Real dt,
                             std::vector<BoundaryVariable *> bvars_subset);
 
@@ -215,6 +216,9 @@ class BoundaryValues : public BoundaryBase, //public BoundaryPhysics,
       const NeighborBlock& nb, const Real time, const Real dt,
       int si, int ei, int sj, int ej, int sk, int ek,
       std::vector<BoundaryVariable *> bvars_subset);
+  void ApplyFLDPhysicalBoundariesOnCoarseLevel(
+      const NeighborBlock& nb, const Real time, const Real dt,
+      int si, int ei, int sj, int ej, int sk, int ek);
   void ProlongateGhostCells(const NeighborBlock& nb,
                             int si, int ei, int sj, int ej, int sk, int ek);
 
@@ -228,8 +232,14 @@ class BoundaryValues : public BoundaryBase, //public BoundaryPhysics,
       MeshBlock *pmb, Coordinates *pco, Real time, Real dt,
       int il, int iu, int jl, int ju, int kl, int ku, int ngh,
       AthenaArray<Real> &prim, FaceField &b, AthenaArray<Real> &ir,
-      AthenaArray<Real> &u_cr, AthenaArray<Real> &r_fld, BoundaryFace face,
+      AthenaArray<Real> &u_cr, BoundaryFace face,
       std::vector<BoundaryVariable *> bvars_subset);
+
+  void DispatchFLDBoundaryFunctions(
+      MeshBlock *pmb, Coordinates *pco, Real time, Real dt,
+      int il, int iu, int jl, int ju, int kl, int ku, int ngh,
+      AthenaArray<Real> &prim, AthenaArray<Real> &u_rad_fld,
+      BoundaryFace face);
 
   void CheckPolarBoundaries();  // called in BoundaryValues() ctor
 

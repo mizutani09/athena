@@ -528,16 +528,11 @@ void BoundaryValues::ApplyPhysicalBoundaries(const Real time, const Real dt,
     //pcrbvar = &(pcr->cr_bvar);
   }
 
-  FLD2 *prfld = nullptr;
-  if (MGFLD_ENABLED || NRMGFLD_ENABLED) {
-    prfld = pmb->prfld2;
-  }
-
   // Apply boundary function on inner-x1 and update W,bcc (if not periodic)
   if (apply_bndry_fn_[BoundaryFace::inner_x1]) {
     DispatchBoundaryFunctions(pmb, pco, time, dt,
                               pmb->is, pmb->ie, bjs, bje, bks, bke, NGHOST,
-                              ph->w, pf->b, prad->ir, pcr->u_cr, prfld->u_rad,
+                              ph->w, pf->b, prad->ir, pcr->u_cr,
                               BoundaryFace::inner_x1, bvars_subset);
     // KGF: COUPLING OF QUANTITIES (must be manually specified)
     if (MAGNETIC_FIELDS_ENABLED) {
@@ -557,7 +552,7 @@ void BoundaryValues::ApplyPhysicalBoundaries(const Real time, const Real dt,
   if (apply_bndry_fn_[BoundaryFace::outer_x1]) {
     DispatchBoundaryFunctions(pmb, pco, time, dt,
                               pmb->is, pmb->ie, bjs, bje, bks, bke, NGHOST,
-                              ph->w, pf->b, prad->ir, pcr->u_cr, prfld->u_rad,
+                              ph->w, pf->b, prad->ir, pcr->u_cr,
                               BoundaryFace::outer_x1, bvars_subset);
     // KGF: COUPLING OF QUANTITIES (must be manually specified)
     if (MAGNETIC_FIELDS_ENABLED) {
@@ -578,7 +573,7 @@ void BoundaryValues::ApplyPhysicalBoundaries(const Real time, const Real dt,
     if (apply_bndry_fn_[BoundaryFace::inner_x2]) {
       DispatchBoundaryFunctions(pmb, pco, time, dt,
                                 bis, bie, pmb->js, pmb->je, bks, bke, NGHOST,
-                                ph->w, pf->b, prad->ir, pcr->u_cr, prfld->u_rad,
+                                ph->w, pf->b, prad->ir, pcr->u_cr,
                                 BoundaryFace::inner_x2, bvars_subset);
       // KGF: COUPLING OF QUANTITIES (must be manually specified)
       if (MAGNETIC_FIELDS_ENABLED) {
@@ -605,7 +600,7 @@ void BoundaryValues::ApplyPhysicalBoundaries(const Real time, const Real dt,
     if (apply_bndry_fn_[BoundaryFace::outer_x2]) {
       DispatchBoundaryFunctions(pmb, pco, time, dt,
                                 bis, bie, pmb->js, pmb->je, bks, bke, NGHOST,
-                                ph->w, pf->b, prad->ir, pcr->u_cr, prfld->u_rad,
+                                ph->w, pf->b, prad->ir, pcr->u_cr,
                                 BoundaryFace::outer_x2, bvars_subset);
       // KGF: COUPLING OF QUANTITIES (must be manually specified)
       if (MAGNETIC_FIELDS_ENABLED) {
@@ -630,7 +625,7 @@ void BoundaryValues::ApplyPhysicalBoundaries(const Real time, const Real dt,
     if (apply_bndry_fn_[BoundaryFace::inner_x3]) {
       DispatchBoundaryFunctions(pmb, pco, time, dt,
                                 bis, bie, bjs, bje, pmb->ks, pmb->ke, NGHOST,
-                                ph->w, pf->b, prad->ir, pcr->u_cr, prfld->u_rad,
+                                ph->w, pf->b, prad->ir, pcr->u_cr,
                                 BoundaryFace::inner_x3, bvars_subset);
       // KGF: COUPLING OF QUANTITIES (must be manually specified)
       if (MAGNETIC_FIELDS_ENABLED) {
@@ -659,7 +654,7 @@ void BoundaryValues::ApplyPhysicalBoundaries(const Real time, const Real dt,
     if (apply_bndry_fn_[BoundaryFace::outer_x3]) {
       DispatchBoundaryFunctions(pmb, pco, time, dt,
                                 bis, bie, bjs, bje, pmb->ks, pmb->ke, NGHOST,
-                                ph->w, pf->b, prad->ir, pcr->u_cr, prfld->u_rad,
+                                ph->w, pf->b, prad->ir, pcr->u_cr,
                                 BoundaryFace::outer_x3, bvars_subset);
       // KGF: COUPLING OF QUANTITIES (must be manually specified)
       if (MAGNETIC_FIELDS_ENABLED) {
@@ -694,7 +689,7 @@ void BoundaryValues::DispatchBoundaryFunctions(
     MeshBlock *pmb, Coordinates *pco, Real time, Real dt,
     int il, int iu, int jl, int ju, int kl, int ku, int ngh,
     AthenaArray<Real> &prim, FaceField &b, AthenaArray<Real> &ir,
-    AthenaArray<Real> &u_cr,  AthenaArray<Real> &u_rad_fld,
+    AthenaArray<Real> &u_cr,
     BoundaryFace face,
     std::vector<BoundaryVariable *> bvars_subset) {
   if (block_bcs[face] ==  BoundaryFlag::user) {  // user-enrolled BCs
@@ -710,12 +705,6 @@ void BoundaryValues::DispatchBoundaryFunctions(
     if (CR_ENABLED) {
       pmy_mesh_->CRBoundaryFunc_[face](pmb,pco,pmb->pcr,prim, b, u_cr,time,dt,
                                               il,iu,jl,ju,kl,ku,NGHOST);
-    }
-
-    if (MGFLD_ENABLED || NRMGFLD_ENABLED) {
-      pmy_mesh_->FLDBoundaryFunc_[face](pmb,pco,pmb->prfld2,prim,
-                                        u_rad_fld,
-                                        time,dt,il,iu,jl,ju,kl,ku,NGHOST);
     }
   }
   // KGF: this is only to silence the compiler -Wswitch warnings about not handling the
@@ -834,6 +823,98 @@ void BoundaryValues::DispatchBoundaryFunctions(
         break;
     } // end switch (block_bcs[face])
   } // end loop over BoundaryVariable *
+}
+
+
+void BoundaryValues::ApplyFLDPhysicalBoundaries(const Real time, const Real dt) {
+  MeshBlock *pmb = pmy_block_;
+  Coordinates *pco = pmb->pcoord;
+  int bis = pmb->is - NGHOST, bie = pmb->ie + NGHOST,
+      bjs = pmb->js, bje = pmb->je,
+      bks = pmb->ks, bke = pmb->ke;
+
+  // Extend the transverse limits that correspond to periodic boundaries as they are
+  // updated: x1, then x2, then x3
+  if (!apply_bndry_fn_[BoundaryFace::inner_x2] && pmb->block_size.nx2 > 1)
+    bjs = pmb->js - NGHOST;
+  if (!apply_bndry_fn_[BoundaryFace::outer_x2] && pmb->block_size.nx2 > 1)
+    bje = pmb->je + NGHOST;
+  if (!apply_bndry_fn_[BoundaryFace::inner_x3] && pmb->block_size.nx3 > 1)
+    bks = pmb->ks - NGHOST;
+  if (!apply_bndry_fn_[BoundaryFace::outer_x3] && pmb->block_size.nx3 > 1)
+    bke = pmb->ke + NGHOST;
+
+  Hydro *ph = pmb->phydro;
+
+  FLD2 *prfld = pmb->prfld2;
+
+  // Apply boundary function on inner-x1
+  if (apply_bndry_fn_[BoundaryFace::inner_x1]) {
+    DispatchFLDBoundaryFunctions(pmb, pco, time, dt,
+                              pmb->is, pmb->ie, bjs, bje, bks, bke, NGHOST,
+                              ph->w, prfld->u_rad,
+                              BoundaryFace::inner_x1);
+  }
+
+  // Apply boundary function on outer-x1
+  if (apply_bndry_fn_[BoundaryFace::outer_x1]) {
+    DispatchFLDBoundaryFunctions(pmb, pco, time, dt,
+                              pmb->is, pmb->ie, bjs, bje, bks, bke, NGHOST,
+                              ph->w, prfld->u_rad,
+                              BoundaryFace::outer_x1);
+  }
+
+  if (pmb->block_size.nx2 > 1) { // 2D or 3D
+    // Apply boundary function on inner-x2
+    if (apply_bndry_fn_[BoundaryFace::inner_x2]) {
+      DispatchFLDBoundaryFunctions(pmb, pco, time, dt,
+                                bis, bie, pmb->js, pmb->je, bks, bke, NGHOST,
+                                ph->w, prfld->u_rad,
+                                BoundaryFace::inner_x2);
+    }
+
+    // Apply boundary function on outer-x2
+    if (apply_bndry_fn_[BoundaryFace::outer_x2]) {
+      DispatchFLDBoundaryFunctions(pmb, pco, time, dt,
+                                bis, bie, pmb->js, pmb->je, bks, bke, NGHOST,
+                                ph->w, prfld->u_rad,
+                                BoundaryFace::outer_x2);
+    }
+  }
+
+  if (pmb->block_size.nx3 > 1) { // 3D
+    bjs = pmb->js - NGHOST;
+    bje = pmb->je + NGHOST;
+
+    // Apply boundary function on inner-x3 and update W,bcc (if not periodic)
+    if (apply_bndry_fn_[BoundaryFace::inner_x3]) {
+      DispatchFLDBoundaryFunctions(pmb, pco, time, dt,
+                                bis, bie, bjs, bje, pmb->ks, pmb->ke, NGHOST,
+                                ph->w, prfld->u_rad,
+                                BoundaryFace::inner_x3);
+    }
+
+    // Apply boundary function on outer-x3 and update W,bcc (if not periodic)
+    if (apply_bndry_fn_[BoundaryFace::outer_x3]) {
+      DispatchFLDBoundaryFunctions(pmb, pco, time, dt,
+                                bis, bie, bjs, bje, pmb->ks, pmb->ke, NGHOST,
+                                ph->w, prfld->u_rad,
+                                BoundaryFace::outer_x3);
+    }
+  }
+  return;
+}
+
+void BoundaryValues::DispatchFLDBoundaryFunctions(
+    MeshBlock *pmb, Coordinates *pco, Real time, Real dt,
+    int il, int iu, int jl, int ju, int kl, int ku, int ngh,
+    AthenaArray<Real> &prim, AthenaArray<Real> &u_rad_fld,
+    BoundaryFace face) {
+  if (block_bcs[face] ==  BoundaryFlag::user) {  // user-enrolled BCs
+    pmy_mesh_->FLDBoundaryFunc_[face](pmb,pco,pmb->prfld2,prim,
+                                      u_rad_fld,
+                                      time,dt,il,iu,jl,ju,kl,ku,NGHOST);
+  }
 }
 
 
