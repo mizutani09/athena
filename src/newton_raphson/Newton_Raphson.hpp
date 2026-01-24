@@ -78,7 +78,7 @@ class NewtonRaphson {
 //   void SubtractAverage(NRVariable type, int n, Real ave);
   void StoreOldData();
   virtual void AddDifference(AthenaArray<Real> &dst,
-                             const AthenaArray<Real> &delta,
+                             AthenaArray<Real> &delta,
                              const AthenaArray<Real> &derivetive) = 0;
 
   // physics-dependent virtual functions

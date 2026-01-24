@@ -92,10 +92,9 @@ NRFLDDriver::NRFLDDriver(Mesh *pm, ParameterInput *pin)
 //! \brief NRFLDDriver destructor
 
 NRFLDDriver::~NRFLDDriver() {
-  // delete fldtlist_;
-  // delete mgroot_;
-  // delete mgtlist_;
-  // delete [] temp;
+  if (NRMGFLD_ENABLED) {
+    delete plmgd_;
+  }
 }
 
 
@@ -177,6 +176,7 @@ void NRFLD::CalculateCoefficientsOnce(const AthenaArray<Real> &u_pre,
                                       AthenaArray<Real> &def_coeff,
                                       AthenaArray<Real> &derivetive) {
   FLD2 *pfld = pmy_block_->prfld2;
+  AthenaArray<Real> sigma_r = pfld->sigma_r;
   int is = pmy_block_->is, ie = pmy_block_->ie;
   int js = pmy_block_->js, je = pmy_block_->je;
   int ks = pmy_block_->ks, ke = pmy_block_->ke;
@@ -190,6 +190,7 @@ void NRFLD::CalculateCoefficientsOnce(const AthenaArray<Real> &u_pre,
   Real hidy = 0.5*idy;
   Real hidz = 0.5*idz;
   Real gm1 = pmy_block_->peos->GetGamma() - 1.0;
+
   for (int k=ks; k<=ke; k++) {
     for (int j=js; j<=je; j++) {
       for (int i=is; i<=ie; i++) {
@@ -204,75 +205,125 @@ void NRFLD::CalculateCoefficientsOnce(const AthenaArray<Real> &u_pre,
         dEr(2) = hidz*(u_pre(k+1,j,i) - u_pre(k-1,j,i));
         Real gradE = std::sqrt(SQR(dEr(0)) + SQR(dEr(1)) + SQR(dEr(2)));
 
-        Real sigma_rface, R, lambda;
-        if (pfld->fixed_flux_limitter) lambda = ONE_3RD;
+        // not to use loop for better performance
+        // compute derivetive at faces and store in derivetive array
 
-        for (int ii = 0; ii < 6; ++ii) {
-          int di = (ii == 0) ? -1 : (ii == 1) ? 1 : 0;
-          int dj = (ii == 2) ? -1 : (ii == 3) ? 1 : 0;
-          int dk = (ii == 4) ? -1 : (ii == 5) ? 1 : 0;
-          sigma_rface = std::min(0.5*(pfld->sigma_r(k,j,i) + pfld->sigma_r(k+dk,j+dj,i+di)),
-                std::max(2.0*pfld->sigma_r(k,j,i)*pfld->sigma_r(k+dk,j+dj,i+di)/(pfld->sigma_r(k,j,i) + pfld->sigma_r(k+dk,j+dj,i+di)),
-                2.0*TWO_3RD*idx)); // Howell & Greenough 2002 (after eq. 15)
-          Real gx = 0.0, gy = 0.0, gz = 0.0;
-          if (di != 0) {
-            gx = (u_pre(k,j,i+di) - u_pre(k,j,i))*idx;
-            gy = 0.25*idy*((u_pre(k,j+1,i+di) - u_pre(k,j-1,i+di)) +
-                           (u_pre(k,j+1,i) - u_pre(k,j-1,i)));
-            gz = 0.25*idz*((u_pre(k+1,j,i+di) - u_pre(k-1,j,i+di)) +
-                           (u_pre(k+1,j,i) - u_pre(k-1,j,i)));
-          } else if (dj != 0) {
-            gx = 0.25*idx*((u_pre(k,j+dj,i+1) - u_pre(k,j+dj,i-1)) +
-                           (u_pre(k,j,i+1) - u_pre(k,j,i-1)));
-            gy = (u_pre(k,j+dj,i) - u_pre(k,j,i))*idy;
-            gz = 0.25*idz*((u_pre(k+1,j+dj,i) - u_pre(k-1,j+dj,i)) +
-                           (u_pre(k+1,j,i) - u_pre(k-1,j,i)));
-          } else if (dk != 0) {
-            gx = 0.25*idx*((u_pre(k+dk,j,i+1) - u_pre(k+dk,j,i-1)) +
-                           (u_pre(k,j,i+1) - u_pre(k,j,i-1)));
-            gy = 0.25*idy*((u_pre(k+dk,j+1,i) - u_pre(k+dk,j-1,i)) +
-                           (u_pre(k,j+1,i) - u_pre(k,j-1,i)));
-            gz = (u_pre(k+dk,j,i) - u_pre(k,j,i))*idz;
-          }
-          Real gradE_face = std::sqrt(SQR(gx) + SQR(gy) + SQR(gz));
-          Real E_face = 0.5*(u_pre(k,j,i) + u_pre(k+dk,j+dj,i+di));
-          R = gradE_face/(sigma_rface*E_face);
-          if (!pfld->fixed_flux_limitter) lambda = (2.0+R)/(6.0+2.0*R+R*R);
-          derivetive(NewtonRaphsonFLD::dFr_dEr_xm+ii,k,j,i) = pfld->c_ph*lambda/sigma_rface;
-          if (pmy_driver_->fshowdef_ && k == (ks+ke) / 2 && j == (js+je) / 2 && i == (is+ie) / 2) {
-            std::cout << "sigma_rface = " << sigma_rface << ", R = " << R << std::endl;
-            std::cout << "u_pre = " << u_pre(k,j,i) << ", gradE = " << gradE << std::endl;
-            std::cout << "pfld->c_ph = " << pfld->c_ph << ", lambda = " << lambda << std::endl;
-          }
-        }
+        Real sigma_rface, R_face, lambda_face;
+        if (pfld->fixed_flux_limitter) lambda_face = ONE_3RD;
+        Real gx, gy, gz, gradE_face, E_face;
+
+        // for i-1/2 face
+        sigma_rface = std::min(0.5*(sigma_r(k,j,i) + sigma_r(k,j,i-1)),
+                      std::max(2.0*sigma_r(k,j,i)*sigma_r(k,j,i-1)/(sigma_r(k,j,i) + sigma_r(k,j,i-1)),
+                      2.0*TWO_3RD*idx)); // Howell & Greenough 2002 (after eq. 15)
+        gx = (u_pre(k,j,i-1) - u_pre(k,j,i))*idx;
+        gy = 0.25*idy*((u_pre(k,j+1,i-1) - u_pre(k,j-1,i-1)) + (u_pre(k,j+1,i) - u_pre(k,j-1,i)));
+        gz = 0.25*idz*((u_pre(k+1,j,i-1) - u_pre(k-1,j,i-1)) + (u_pre(k+1,j,i) - u_pre(k-1,j,i)));
+        gradE_face = std::sqrt(SQR(gx) + SQR(gy) + SQR(gz));
+        E_face = 0.5*(u_pre(k,j,i) + u_pre(k,j,i-1));
+        R_face = gradE_face/(sigma_rface*E_face);
+        if (!pfld->fixed_flux_limitter) lambda_face = (2.0+R_face)/(6.0+2.0*R_face+R_face*R_face);
+        derivetive(NewtonRaphsonFLD::dFr_dEr_xp,k,j,i) = pfld->c_ph*lambda_face/sigma_rface;
+
+         // for i+1/2 face
+        sigma_rface = std::min(0.5*(sigma_r(k,j,i) + sigma_r(k,j,i+1)),
+                      std::max(2.0*sigma_r(k,j,i)*sigma_r(k,j,i+1)/(sigma_r(k,j,i) + sigma_r(k,j,i+1)),
+                      2.0*TWO_3RD*idx)); // Howell & Greenough 2002 (after eq. 15)
+        gx = (u_pre(k,j,i+1) - u_pre(k,j,i))*idx;
+        gy = 0.25*idy*((u_pre(k,j+1,i+1) - u_pre(k,j-1,i+1)) + (u_pre(k,j+1,i) - u_pre(k,j-1,i)));
+        gz = 0.25*idz*((u_pre(k+1,j,i+1) - u_pre(k-1,j,i+1)) + (u_pre(k+1,j,i) - u_pre(k-1,j,i)));
+        gradE_face = std::sqrt(SQR(gx) + SQR(gy) + SQR(gz));
+        E_face = 0.5*(u_pre(k,j,i) + u_pre(k,j,i+1));
+        R_face = gradE_face/(sigma_rface*E_face);
+        if (!pfld->fixed_flux_limitter) lambda_face = (2.0+R_face)/(6.0+2.0*R_face+R_face*R_face);
+        derivetive(NewtonRaphsonFLD::dFr_dEr_xm,k,j,i) = pfld->c_ph*lambda_face/sigma_rface;
+
+        // for j-1/2 face
+        sigma_rface = std::min(0.5*(sigma_r(k,j,i) + sigma_r(k,j-1,i)),
+                      std::max(2.0*sigma_r(k,j,i)*sigma_r(k,j-1,i)/(sigma_r(k,j,i) + sigma_r(k,j-1,i)),
+                      2.0*TWO_3RD*idx)); // Howell & Greenough 2002 (after eq. 15)
+        gx = 0.25*idx*((u_pre(k,j-1,i+1) - u_pre(k,j-1,i-1)) + (u_pre(k,j,i+1) - u_pre(k,j,i-1)));
+        gy = (u_pre(k,j-1,i) - u_pre(k,j,i))*idy;
+        gz = 0.25*idz*((u_pre(k+1,j-1,i) - u_pre(k-1,j-1,i)) + (u_pre(k+1,j,i) - u_pre(k-1,j,i)));
+        gradE_face = std::sqrt(SQR(gx) + SQR(gy) + SQR(gz));
+        E_face = 0.5*(u_pre(k,j,i) + u_pre(k,j-1,i));
+        R_face = gradE_face/(sigma_rface*E_face);
+        if (!pfld->fixed_flux_limitter) lambda_face = (2.0+R_face)/(6.0+2.0*R_face+R_face*R_face);
+        derivetive(NewtonRaphsonFLD::dFr_dEr_yp,k,j,i) = pfld->c_ph*lambda_face/sigma_rface;
+
+        // for j+1/2 face
+        sigma_rface = std::min(0.5*(sigma_r(k,j,i) + sigma_r(k,j+1,i)),
+                      std::max(2.0*sigma_r(k,j,i)*sigma_r(k,j+1,i)/(sigma_r(k,j,i) + sigma_r(k,j+1,i)),
+                      2.0*TWO_3RD*idx)); // Howell & Greenough 2002 (after eq. 15)
+        gx = 0.25*idx*((u_pre(k,j+1,i+1) - u_pre(k,j+1,i-1)) + (u_pre(k,j,i+1) - u_pre(k,j,i-1)));
+        gy = (u_pre(k,j+1,i) - u_pre(k,j,i))*idy;
+        gz = 0.25*idz*((u_pre(k+1,j+1,i) - u_pre(k-1,j+1,i)) + (u_pre(k+1,j,i) - u_pre(k-1,j,i)));
+        gradE_face = std::sqrt(SQR(gx) + SQR(gy) + SQR(gz));
+        E_face = 0.5*(u_pre(k,j,i) + u_pre(k,j+1,i));
+        R_face = gradE_face/(sigma_rface*E_face);
+        if (!pfld->fixed_flux_limitter) lambda_face = (2.0+R_face)/(6.0+2.0*R_face+R_face*R_face);
+        derivetive(NewtonRaphsonFLD::dFr_dEr_ym,k,j,i) = pfld->c_ph*lambda_face/sigma_rface;
+
+        // for k-1/2 face
+        sigma_rface = std::min(0.5*(sigma_r(k,j,i) + sigma_r(k-1,j,i)),
+                      std::max(2.0*sigma_r(k,j,i)*sigma_r(k-1,j,i)/(sigma_r(k,j,i) + sigma_r(k-1,j,i)),
+                      2.0*TWO_3RD*idx)); // Howell & Greenough 2002 (after eq. 15)
+        gx = 0.25*idx*((u_pre(k-1,j,i+1) - u_pre(k-1,j,i-1)) + (u_pre(k,j,i+1) - u_pre(k,j,i-1)));
+        gy = 0.25*idy*((u_pre(k-1,j+1,i) - u_pre(k-1,j-1,i)) + (u_pre(k,j+1,i) - u_pre(k,j-1,i)));
+        gz = (u_pre(k-1,j,i) - u_pre(k,j,i))*idz;
+        gradE_face = std::sqrt(SQR(gx) + SQR(gy) + SQR(gz));
+        E_face = 0.5*(u_pre(k,j,i) + u_pre(k-1,j,i));
+        R_face = gradE_face/(sigma_rface*E_face);
+        if (!pfld->fixed_flux_limitter) lambda_face = (2.0+R_face)/(6.0+2.0*R_face+R_face*R_face);
+        derivetive(NewtonRaphsonFLD::dFr_dEr_zp,k,j,i) = pfld->c_ph*lambda_face/sigma_rface;
+
+        // for k+1/2 face
+        sigma_rface = std::min(0.5*(sigma_r(k,j,i) + sigma_r(k+1,j,i)),
+                      std::max(2.0*sigma_r(k,j,i)*sigma_r(k+1,j,i)/(sigma_r(k,j,i) + sigma_r(k+1,j,i)),
+                      2.0*TWO_3RD*idx)); // Howell & Greenough 2002 (after eq. 15)
+        gx = 0.25*idx*((u_pre(k+1,j,i+1) - u_pre(k+1,j,i-1)) + (u_pre(k,j,i+1) - u_pre(k,j,i-1)));
+        gy = 0.25*idy*((u_pre(k+1,j+1,i) - u_pre(k+1,j-1,i)) + (u_pre(k,j+1,i) - u_pre(k,j-1,i)));
+        gz = (u_pre(k+1,j,i) - u_pre(k,j,i))*idz;
+        gradE_face = std::sqrt(SQR(gx) + SQR(gy) + SQR(gz));
+        E_face = 0.5*(u_pre(k,j,i) + u_pre(k+1,j,i));
+        R_face = gradE_face/(sigma_rface*E_face);
+        if (!pfld->fixed_flux_limitter) lambda_face = (2.0+R_face)/(6.0+2.0*R_face+R_face*R_face);
+        derivetive(NewtonRaphsonFLD::dFr_dEr_zm,k,j,i) = pfld->c_ph*lambda_face/sigma_rface;
+
+        Real R_center, lambda_center;
+        if (pfld->fixed_flux_limitter) lambda_center = ONE_3RD;
 
         // for P:\nabla v
-        R = gradE/(pfld->sigma_r(k,j,i)*u_pre(k,j,i)); // center
-        if (!pfld->fixed_flux_limitter) lambda = (2.0+R)/(6.0+2.0*R+R*R);
-        Real chi = lambda+std::pow(lambda*R,2);
+        R_center = gradE/(sigma_r(k,j,i)*u_pre(k,j,i)); // center
+        if (!pfld->fixed_flux_limitter) lambda_center = (2.0+R_center)/(6.0+2.0*R_center+R_center*R_center);
+        Real chi = lambda_center+std::pow(lambda_center*R_center,2);
 
         AthenaArray<Real> ngrad;
         ngrad.NewAthenaArray(3);
-        // for (int ii = 0; ii < 3; ++ii) ngrad(ii) = dEr(ii)/(gradE+TINY_NUMBER);
         ngrad(0) = dEr(0)/(gradE+TINY_NUMBER);
         ngrad(1) = dEr(1)/(gradE+TINY_NUMBER);
         ngrad(2) = dEr(2)/(gradE+TINY_NUMBER);
 
+        AthenaArray<Real> dv_dx;
+        dv_dx.NewAthenaArray(3);
+        dv_dx(0) = hidx*(w(IVX,k,j,i+1) - w(IVX,k,j,i-1));
+        dv_dx(1) = hidy*(w(IVY,k,j+1,i) - w(IVY,k,j-1,i));
+        dv_dx(2) = hidz*(w(IVZ,k+1,j,i) - w(IVZ,k-1,j,i));
+
         def_coeff(NewtonRaphsonFLD::DDV,k,j,i) = 0.0;
-        for (int jj = 0; jj < 3; ++jj) {
-          for (int ii = 0; ii < 3; ++ii) {
-            Real D_edd = 0.0;
-            if (ii == jj) D_edd += .5*(1.-chi);
-            D_edd += .5*(3.*chi-1.)*ngrad(jj)*ngrad(ii); //caution
-
-            int di = ii == 0 ? 1 : 0;
-            int dj = ii == 1 ? 1 : 0;
-            int dk = ii == 2 ? 1 : 0;
-
-            Real dv_dx = hidx*(w(IVX+jj,k+dk,j+dj,i+di) - w(IVX+jj,k-dk,j-dj,i-di));
-            def_coeff(NewtonRaphsonFLD::DDV,k,j,i) += D_edd * dv_dx;
-          }
-        }
+        Real DDV_sum = 0.0;
+        Real chi_term_diag = 0.5*(1.-chi), chi_term_all = 0.5*(3.*chi-1.);
+        // not to use loop for better performance
+        DDV_sum += (chi_term_diag + chi_term_all*ngrad(0)*ngrad(0)) * dv_dx(0);
+        DDV_sum += (                chi_term_all*ngrad(1)*ngrad(0)) * dv_dx(1);
+        DDV_sum += (                chi_term_all*ngrad(2)*ngrad(0)) * dv_dx(2);
+        DDV_sum += (                chi_term_all*ngrad(0)*ngrad(1)) * dv_dx(0);
+        DDV_sum += (chi_term_diag + chi_term_all*ngrad(1)*ngrad(1)) * dv_dx(1);
+        DDV_sum += (                chi_term_all*ngrad(2)*ngrad(1)) * dv_dx(2);
+        DDV_sum += (                chi_term_all*ngrad(0)*ngrad(2)) * dv_dx(0);
+        DDV_sum += (                chi_term_all*ngrad(1)*ngrad(2)) * dv_dx(1);
+        DDV_sum += (chi_term_diag + chi_term_all*ngrad(2)*ngrad(2)) * dv_dx(2);
+        def_coeff(NewtonRaphsonFLD::DDV,k,j,i) = DDV_sum;
       }
     }
   }
@@ -338,27 +389,28 @@ void NRFLD::CalculateCoefficients(const AthenaArray<Real> &u_rad_old,
   for (int k=ks; k<=ke; k++) {
     for (int j=js; j<=je; j++) {
       for (int i=is; i<=ie; i++) {
-        delta_u_(0,k,j,i) = 0.0; // caution! reset correction should be in different function
         Real c_sigma_p = pfld->c_ph*pfld->sigma_p(k,j,i);
 
         // caution! following can be optimized (only once per step)
         Real sum_dcp = 0.0;
-        for (int n = 0; n < 6; n++) {
-          sum_dcp += derivetive(NewtonRaphsonFLD::dFr_dEr_xm+n,k,j,i);
-        }
+        sum_dcp += derivetive(NewtonRaphsonFLD::dFr_dEr_xm,k,j,i);
+        sum_dcp += derivetive(NewtonRaphsonFLD::dFr_dEr_xp,k,j,i);
+        sum_dcp += derivetive(NewtonRaphsonFLD::dFr_dEr_ym,k,j,i);
+        sum_dcp += derivetive(NewtonRaphsonFLD::dFr_dEr_yp,k,j,i);
+        sum_dcp += derivetive(NewtonRaphsonFLD::dFr_dEr_zm,k,j,i);
+        sum_dcp += derivetive(NewtonRaphsonFLD::dFr_dEr_zp,k,j,i);
 
         Real T_gas_new = def_coeff(NewtonRaphsonFLD::DCOUPLE,k,j,i)*u_gas_new(k,j,i);
         Real src_term = c_sigma_p*(pfld->a_r*std::pow(T_gas_new,4) - u_rad_new(k,j,i));
         Real Pnablav = def_coeff(NewtonRaphsonFLD::DDV,k,j,i)*u_rad_new(k,j,i);
         Real diff_term = 0.0;
-        for (int n = 0; n < 6; n++) {
-          int di = (n == 0) ? -1 : (n == 1) ? 1 : 0;
-          int dj = (n == 2) ? -1 : (n == 3) ? 1 : 0;
-          int dk = (n == 4) ? -1 : (n == 5) ? 1 : 0;
-          diff_term += derivetive(NewtonRaphsonFLD::dFr_dEr_xm+n,k,j,i)*(u_rad_new(k+dk,j+dj,i+di) - u_rad_new(k,j,i));
-        }
+        diff_term += derivetive(NewtonRaphsonFLD::dFr_dEr_xm,k,j,i)*(u_rad_new(k,j,i-1) - u_rad_new(k,j,i));
+        diff_term += derivetive(NewtonRaphsonFLD::dFr_dEr_xp,k,j,i)*(u_rad_new(k,j,i+1) - u_rad_new(k,j,i));
+        diff_term += derivetive(NewtonRaphsonFLD::dFr_dEr_ym,k,j,i)*(u_rad_new(k,j-1,i) - u_rad_new(k,j,i));
+        diff_term += derivetive(NewtonRaphsonFLD::dFr_dEr_yp,k,j,i)*(u_rad_new(k,j+1,i) - u_rad_new(k,j,i));
+        diff_term += derivetive(NewtonRaphsonFLD::dFr_dEr_zm,k,j,i)*(u_rad_new(k-1,j,i) - u_rad_new(k,j,i));
+        diff_term += derivetive(NewtonRaphsonFLD::dFr_dEr_zp,k,j,i)*(u_rad_new(k+1,j,i) - u_rad_new(k,j,i));
         diff_term *= idx2;
-
 
         derivetive(NewtonRaphsonFLD::Fg,k,j,i) = (u_gas_new(k,j,i) - u_gas_old(k,j,i)) + dt * src_term;
         derivetive(NewtonRaphsonFLD::Fr,k,j,i) = (u_rad_new(k,j,i) - u_rad_old(k,j,i)) - dt *(src_term - Pnablav + diff_term);
@@ -372,7 +424,14 @@ void NRFLD::CalculateCoefficients(const AthenaArray<Real> &u_rad_old,
         coeff(linearSolver::DCCF,k,j,i) = sum_dcp;
         coeff(linearSolver::DCCS,k,j,i) = 1.0 + dt*(pfld->c_ph*pfld->sigma_p(k,j,i)+def_coeff(NewtonRaphsonFLD::DDV,k,j,i)); // from dFr_dEr
         coeff(linearSolver::DCCS,k,j,i) += -(derivetive(NewtonRaphsonFLD::dFr_deg,k,j,i)/derivetive(NewtonRaphsonFLD::dFg_deg,k,j,i))*derivetive(NewtonRaphsonFLD::dFg_dEr,k,j,i);
-        for (int n = 0; n < 6; n++) coeff(linearSolver::DXMF+n,k,j,i) = -derivetive(NewtonRaphsonFLD::dFr_dEr_xm+n,k,j,i);
+
+        
+        coeff(linearSolver::DXMF,k,j,i) = -derivetive(NewtonRaphsonFLD::dFr_dEr_xm,k,j,i);
+        coeff(linearSolver::DXPF,k,j,i) = -derivetive(NewtonRaphsonFLD::dFr_dEr_xp,k,j,i);
+        coeff(linearSolver::DYMF,k,j,i) = -derivetive(NewtonRaphsonFLD::dFr_dEr_ym,k,j,i);
+        coeff(linearSolver::DYPF,k,j,i) = -derivetive(NewtonRaphsonFLD::dFr_dEr_yp,k,j,i);
+        coeff(linearSolver::DZMF,k,j,i) = -derivetive(NewtonRaphsonFLD::dFr_dEr_zm,k,j,i);
+        coeff(linearSolver::DZPF,k,j,i) = -derivetive(NewtonRaphsonFLD::dFr_dEr_zp,k,j,i);
 
         src(k,j,i) = -derivetive(NewtonRaphsonFLD::Fr,k,j,i) + (derivetive(NewtonRaphsonFLD::dFr_deg,k,j,i)/derivetive(NewtonRaphsonFLD::dFg_deg,k,j,i))*derivetive(NewtonRaphsonFLD::Fg,k,j,i);
 
@@ -397,10 +456,13 @@ void NRFLD::CalculateCoefficients(const AthenaArray<Real> &u_rad_old,
                     << ", derivetive.dFr_dEr = " << derivetive(NewtonRaphsonFLD::dFr_dEr,k,j,i) << std::endl;
           std::cout << "  coeff.DCCF = " << coeff(linearSolver::DCCF,k,j,i)
                     << ", coeff.DCCS = " << coeff(linearSolver::DCCS,k,j,i) << std::endl;
-          for (int n = 0; n < 6; ++n) {
-            std::cout << "  coeff.DXMF+"<< n <<" = " << coeff(linearSolver::DXMF+n,k,j,i) << std::endl;
-            std::cout << "  coeff.DXMS+"<< n <<" = " << coeff(linearSolver::DXMS+n,k,j,i) << std::endl;
-          }
+          // for (int n = 0; n < 6; ++n) {
+          //   std::cout << "  coeff.DXMF+"<< n <<" = " << coeff(linearSolver::DXMF+n,k,j,i) << std::endl;
+          //   std::cout << "  coeff.DXMS+"<< n <<" = " << coeff(linearSolver::DXMS+n,k,j,i) << std::endl;
+          // }
+          std::cout << "  i-face coeffs: " << coeff(linearSolver::DXMF,k,j,i) << ", " << coeff(linearSolver::DXPF,k,j,i) << std::endl;
+          std::cout << "  j-face coeffs: " << coeff(linearSolver::DYMF,k,j,i) << ", " << coeff(linearSolver::DYPF,k,j,i) << std::endl;
+          std::cout << "  k-face coeffs: " << coeff(linearSolver::DZMF,k,j,i) << ", " << coeff(linearSolver::DZPF,k,j,i) << std::endl;
           std::cout << "  src = " << src(k,j,i) << std::endl;
           std::cout << "  delta_u = " << delta_u_(k,j,i) << std::endl;
         }
@@ -433,12 +495,12 @@ void NRFLD::CalculateDefect(AthenaArray<Real> &def, const AthenaArray<Real> &u,
         Real src_term = pfld->c_ph*pfld->sigma_p(k,j,i)*(pfld->a_r*std::pow(T_gas,4) - u(k,j,i));
         Real Pnablav = def_coeff(NewtonRaphsonFLD::DDV,k,j,i)*u(k,j,i);
         Real diff_term = 0.0;
-        for (int n = 0; n < 6; n++) {
-          int di = (n == 0) ? -1 : (n == 1) ? 1 : 0;
-          int dj = (n == 2) ? -1 : (n == 3) ? 1 : 0;
-          int dk = (n == 4) ? -1 : (n == 5) ? 1 : 0;
-          diff_term += -coeff(linearSolver::DXMF+n,k,j,i)*(u(k+dk,j+dj,i+di) - u(k,j,i)); // caution! about sign of coeff
-        }
+        diff_term += -coeff(linearSolver::DXMF,k,j,i)*(u(k,j,i-1) - u(k,j,i));
+        diff_term += -coeff(linearSolver::DXPF,k,j,i)*(u(k,j,i+1) - u(k,j,i));
+        diff_term += -coeff(linearSolver::DYMF,k,j,i)*(u(k,j-1,i) - u(k,j,i));
+        diff_term += -coeff(linearSolver::DYPF,k,j,i)*(u(k,j+1,i) - u(k,j,i));
+        diff_term += -coeff(linearSolver::DZMF,k,j,i)*(u(k-1,j,i) - u(k,j,i));
+        diff_term += -coeff(linearSolver::DZPF,k,j,i)*(u(k+1,j,i) - u(k,j,i));
         diff_term *= idx2;
 
         Real Fg = (u_gas(k,j,i) - pfld->u_gas(k,j,i)) + dt* src_term;
@@ -463,8 +525,10 @@ void NRFLD::CalculateDefect(AthenaArray<Real> &def, const AthenaArray<Real> &u,
   return;
 }
 
+
+// delta is reset to zero in this function
 void NRFLD::AddDifference(AthenaArray<Real> &u_rad,
-                          const AthenaArray<Real> &delta_u,
+                          AthenaArray<Real> &delta_u,
                           const AthenaArray<Real> &derivetive) {
 
   int is = pmy_block_->is;
@@ -482,21 +546,24 @@ void NRFLD::AddDifference(AthenaArray<Real> &u_rad,
         if (!pfld->fixed_u_rad)
           u_rad(k,j,i) += delta_u(k,j,i);
         u_gas_(k,j,i) += -(derivetive(NewtonRaphsonFLD::Fg,k,j,i) + derivetive(NewtonRaphsonFLD::dFg_dEr,k,j,i)*delta_u(k,j,i)) / derivetive(NewtonRaphsonFLD::dFg_deg,k,j,i);
+        
+        // reset delta_u to zero for next iteration
+        delta_u(k,j,i) = 0.0;
       }
     }
   }
-  if(pmy_driver_->fshowdef_)  {
-    int k = (ks + ke) / 2;
-    int j = (js + je) / 2;
-    int i = (is + ie) / 2;
-    Real u_gas_delta = -(derivetive(NewtonRaphsonFLD::Fg,k,j,i) + derivetive(NewtonRaphsonFLD::dFg_dEr,k,j,i)*delta_u(k,j,i)) / derivetive(NewtonRaphsonFLD::dFg_deg,k,j,i);
-    std::cout << "At (" << k << "," << j << "," << i << "):" << std::endl;
-    std::cout << "u_rad_delta = " << delta_u(k,j,i) << std::endl;
-    std::cout << "u_gas_delta = " << u_gas_delta << std::endl;
-    std::cout << "derivetive.Fg = " << derivetive(NewtonRaphsonFLD::Fg,k,j,i)
-              << ", derivetive.dFg_dEr = " << derivetive(NewtonRaphsonFLD::dFg_dEr,k,j,i)
-              << ", derivetive.dFg_deg = " << derivetive(NewtonRaphsonFLD::dFg_deg,k,j,i) << std::endl;
-  }
+  // if(pmy_driver_->fshowdef_)  {
+  //   int k = (ks + ke) / 2;
+  //   int j = (js + je) / 2;
+  //   int i = (is + ie) / 2;
+  //   Real u_gas_delta = -(derivetive(NewtonRaphsonFLD::Fg,k,j,i) + derivetive(NewtonRaphsonFLD::dFg_dEr,k,j,i)*delta_u(k,j,i)) / derivetive(NewtonRaphsonFLD::dFg_deg,k,j,i);
+  //   std::cout << "At (" << k << "," << j << "," << i << "):" << std::endl;
+  //   std::cout << "u_rad_delta = " << delta_u(k,j,i) << std::endl;
+  //   std::cout << "u_gas_delta = " << u_gas_delta << std::endl;
+  //   std::cout << "derivetive.Fg = " << derivetive(NewtonRaphsonFLD::Fg,k,j,i)
+  //             << ", derivetive.dFg_dEr = " << derivetive(NewtonRaphsonFLD::dFg_dEr,k,j,i)
+  //             << ", derivetive.dFg_deg = " << derivetive(NewtonRaphsonFLD::dFg_deg,k,j,i) << std::endl;
+  // }
   return;
 }
 

@@ -162,7 +162,7 @@ class NRFLD : public NewtonRaphson {
   //              int il, int iu, int jl, int ju, int kl, int ku, bool th) final;
 
   void AddDifference(AthenaArray<Real> &dst,
-                     const AthenaArray<Real> &delta,
+                     AthenaArray<Real> &delta,
                      const AthenaArray<Real> &derivetive) final;
 
   friend class NewtonRaphsonDriver;
