@@ -48,6 +48,7 @@ namespace {
   Real T_unit, time_unit;
   Real a_r_dim, Rgas, mu;
   Real sigma_P, sigma_R;
+  Real T0;
   Real HistoryTg(MeshBlock *pmb, int iout);
   Real HistoryTr(MeshBlock *pmb, int iout);
   Real HistoryEg(MeshBlock *pmb, int iout);
@@ -207,7 +208,7 @@ void MeshBlock::ProblemGenerator(ParameterInput *pin) {
   Real amp = pin->GetReal("problem", "amp");
   Real num_wave = pin->GetOrAddReal("problem", "num_wave", 1.0);
   Real wave_number = 2.0*M_PI*num_wave/(pmy_mesh->mesh_size.x1max - pmy_mesh->mesh_size.x1min);
-  Real T0 = p0/rho0;
+  T0 = p0/rho0;
 
   std::cout << pmy_mesh->mesh_size.x1max << " " << pmy_mesh->mesh_size.x1min << std::endl;
   std::cout << pcoord->x1v(is) << " " << pcoord->x1v(ie) << std::endl;
@@ -265,6 +266,7 @@ void MeshBlock::ProblemGenerator(ParameterInput *pin) {
     msg << "amp                  = " << amp << std::endl;
     msg << "num_wave             = " << num_wave << std::endl;
     msg << "wave_number          = " << wave_number/(1/leng_unit) << " cm^-1" << std::endl;
+    msg << "E0sim                = " << prfld2->a_r*std::pow(T0, 4) << std::endl;
     msg << std::endl;
 
     std::cout << msg.str();
@@ -366,13 +368,9 @@ void AddRadiativeForceAndWork(MeshBlock *pmb, const Real time, const Real dt,
         for (int i = il; i <= iu; ++i) {
           Real lambda;
           Real dEr[3];
-          // !! to do: 
-          for (int ii = 0; ii < 3; ++ii) {
-            int di = (ii == 0) ? 1 : 0;
-            int dj = (ii == 1) ? 1 : 0;
-            int dk = (ii == 2) ? 1 : 0;
-            dEr[ii] = hidx*(fld_u(k+dk,j+dj,i+di) - fld_u(k-dk,j-dj,i-di));
-          }
+          dEr[0] = hidx*(fld_u(k,j,i+1) - fld_u(k,j,i-1));
+          dEr[1] = hidx*(fld_u(k,j+1,i) - fld_u(k,j-1,i));
+          dEr[2] = hidx*(fld_u(k+1,j,i) - fld_u(k-1,j,i));
 
           if (prfld->fixed_flux_limitter) {
             lambda = ONE_3RD;
@@ -380,11 +378,6 @@ void AddRadiativeForceAndWork(MeshBlock *pmb, const Real time, const Real dt,
             Real gradE = std::sqrt(SQR(dEr[0]) + SQR(dEr[1]) + SQR(dEr[2]));
             Real R = gradE/(prfld->sigma_r(k,j,i)*fld_u(k,j,i)); // center
             lambda = (2.0+R)/(6.0+2.0*R+R*R);
-          }
-          if (k == (kl+ku)/2 && j == (jl+ju)/2) {
-          //   // std::cout << "dEr = " << dEr[0] << ", " << dEr[1] << ", " << dEr[2] << std::endl;
-          //   // std::cout << "R = " << R << ", lambda = " << lambda << ", gradE = " << gradE << std::endl;
-            std::cout << "At x = " << pmb->pcoord->x1v(i) <<  " E = " << fld_u(k,j,i) << std::endl;
           }
 
           cons(IM1,k,j,i) += -lambda*dt*dEr[0];
