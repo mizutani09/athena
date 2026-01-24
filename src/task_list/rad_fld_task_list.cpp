@@ -19,6 +19,7 @@
 #include "../hydro/hydro.hpp"
 #include "../mesh/mesh.hpp"
 #include "../parameter_input.hpp"
+#include "../fld/fld.hpp"
 #include "../mg_fld/rad_fld.hpp"
 #include "rad_fld_task_list.hpp"
 #include "task_list.hpp"
@@ -92,25 +93,25 @@ void FLDBoundaryTaskList::AddTask(const TaskID& id, const TaskID& dep) {
 }
 
 void FLDBoundaryTaskList::StartupTaskList(MeshBlock *pmb, int stage) {
-  pmb->prfld->mgfldbvar.StartReceiving(BoundaryCommSubset::all);
+  pmb->pmg_fld->mgfldbvar.StartReceiving(BoundaryCommSubset::all);
   return;
 }
 
 TaskStatus FLDBoundaryTaskList::ClearFLDBoundary(MeshBlock *pmb,
                                                                  int stage) {
-  pmb->prfld->mgfldbvar.ClearBoundary(BoundaryCommSubset::all);
+  pmb->pmg_fld->mgfldbvar.ClearBoundary(BoundaryCommSubset::all);
   return TaskStatus::success;
 }
 
 TaskStatus FLDBoundaryTaskList::SendFLDBoundary(MeshBlock *pmb,
                                                                 int stage) {
-  pmb->prfld->mgfldbvar.SendBoundaryBuffers();
+  pmb->pmg_fld->mgfldbvar.SendBoundaryBuffers();
   return TaskStatus::success;
 }
 
 TaskStatus FLDBoundaryTaskList::ReceiveFLDBoundary(MeshBlock *pmb,
                                                                    int stage) {
-  bool ret = pmb->prfld->mgfldbvar.ReceiveBoundaryBuffers();
+  bool ret = pmb->pmg_fld->mgfldbvar.ReceiveBoundaryBuffers();
   if (!ret)
     return TaskStatus::fail;
   return TaskStatus::success;
@@ -118,22 +119,22 @@ TaskStatus FLDBoundaryTaskList::ReceiveFLDBoundary(MeshBlock *pmb,
 
 TaskStatus FLDBoundaryTaskList::SetFLDBoundary(MeshBlock *pmb,
                                                                int stage) {
-  pmb->prfld->mgfldbvar.SetBoundaries();
+  pmb->pmg_fld->mgfldbvar.SetBoundaries();
   return TaskStatus::success;
 }
 
 TaskStatus FLDBoundaryTaskList::ProlongateFLDBoundary(MeshBlock *pmb,
                                                                       int stage) {
-  pmb->pbval->ProlongateBoundariesPostMG(&(pmb->prfld->mgfldbvar));
+  pmb->pbval->ProlongateBoundariesPostMG(&(pmb->pmg_fld->mgfldbvar));
   return TaskStatus::success;
 }
 
 TaskStatus FLDBoundaryTaskList::PhysicalBoundary(MeshBlock *pmb, int stage) {
-  pmb->prfld->mgfldbvar.ExpandPhysicalBoundaries();
+  pmb->pmg_fld->mgfldbvar.ExpandPhysicalBoundaries();
   return TaskStatus::next;
 }
 
 TaskStatus FLDBoundaryTaskList::UpdateOpacity(MeshBlock *pmb, int stage) {
-  pmb->prfld->UpdateOpacity(pmb, pmb->prfld->u, pmb->phydro->w);
+  pmb->prfld2->UpdateOpacity(pmb, pmb->prfld2->u_rad, pmb->phydro->w);
   return TaskStatus::success;
 }

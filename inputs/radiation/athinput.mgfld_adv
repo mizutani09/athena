@@ -79,7 +79,6 @@ npostsmooth     = 2
 omega           = 1.0
 niteration      = 10
 # threshold       = 0.0
-output_defect   = true
 ix1_bc          = periodic
 ox1_bc          = periodic
 ix2_bc          = periodic
@@ -88,6 +87,8 @@ ix3_bc          = periodic
 ox3_bc          = periodic
 
 # calc_in_temp    = false
+<fld>
+output_defect   = true
 cut_diff        = true
 is_couple       = false
 only_rad        = true

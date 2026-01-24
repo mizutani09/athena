@@ -266,18 +266,14 @@ MeshBlock::MeshBlock(int igid, int ilid, LogicalLocation iloc, RegionSize input_
     // pbval->AdvanceCounterPhysID(CellCenteredBoundaryVariable::max_phys_id);
   }
 
-  if (MGFLD_ENABLED) {
-    prfld = new FLD(this, pin);
-    // pbval->AdvanceCounterPhysID(CellCenteredBoundaryVariable::max_phys_id);
-  }
-
-  if (NRMGFLD_ENABLED) { // caution! NRFLD should be constructed after FLD2
-    std::cout << "Constructing FLD2 object in MeshBlock at rank " << Globals::my_rank << std::endl;
+  if (MGFLD_ENABLED || NRMGFLD_ENABLED) {
     prfld2 = new FLD2(this, pin);
-    // pbval->AdvanceCounterPhysID(1); // for advection // caution! this is called in NRFLD constructor
-    std::cout << "Constructing NRFLD object in MeshBlock at rank " << Globals::my_rank << std::endl;
+  }
+  if (MGFLD_ENABLED) {
+    pmg_fld = new MGFLDInterface(this, pin);
+  }
+  if (NRMGFLD_ENABLED) { // caution! NRFLD should be constructed after FLD2
     pnr = new NRFLD(this, pin);
-    // pbval->AdvanceCounterPhysID(1); // for NewtonRaphson // caution! this is called in NRFLD constructor
   }
 
   // OrbitalAdvection: constructor depends on Coordinates, Hydro, Field, PassiveScalars.
@@ -479,16 +475,14 @@ MeshBlock::MeshBlock(int igid, int ilid, Mesh *pm, ParameterInput *pin,
     // pbval->AdvanceCounterPhysID(CellCenteredBoundaryVariable::max_phys_id);
   }
 
-  if (MGFLD_ENABLED) {
-    prfld = new FLD(this, pin);
-    // pbval->AdvanceCounterPhysID(CellCenteredBoundaryVariable::max_phys_id);
-  }
-
-  if (NRMGFLD_ENABLED) {
+  if (MGFLD_ENABLED || NRMGFLD_ENABLED) {
     prfld2 = new FLD2(this, pin);
-    // pbval->AdvanceCounterPhysID(CellCenteredBoundaryVariable::max_phys_id);
+  }
+  if (MGFLD_ENABLED) {
+    pmg_fld = new MGFLDInterface(this, pin);
+  }
+  if (NRMGFLD_ENABLED) {
     pnr = new NRFLD(this, pin);
-    // pbval->AdvanceCounterPhysID(CellCenteredBoundaryVariable::max_phys_id);
   }
 
   // OrbitalAdvection: constructor depends on Coordinates, Hydro, Field, PassiveScalars.
@@ -572,8 +566,9 @@ MeshBlock::MeshBlock(int igid, int ilid, Mesh *pm, ParameterInput *pin,
   }
 
   if (MGFLD_ENABLED) {
-    std::memcpy(prfld->u.data(), &(mbdata[os]), prfld->u.GetSizeInBytes());
-    os += prfld->u.GetSizeInBytes();
+    std::memcpy(pmg_fld->u.data(), &(mbdata[os]), pmg_fld->u.GetSizeInBytes());
+    os += pmg_fld->u.GetSizeInBytes();
+    pmg_fld->SyncToFld2();
   }
 
   if (NRMGFLD_ENABLED) {
@@ -632,11 +627,9 @@ MeshBlock::~MeshBlock() {
   if (NR_RADIATION_ENABLED || IM_RADIATION_ENABLED) delete pnrrad;
   if (CR_ENABLED) delete pcr;
   if (CRDIFFUSION_ENABLED) delete pcrdiff;
-  if (MGFLD_ENABLED) delete prfld;
-  if (NRMGFLD_ENABLED) {
-    delete prfld2;
-    delete pnr;
-  }
+  if (MGFLD_ENABLED) delete pmg_fld;
+  if (NRMGFLD_ENABLED) delete pnr;
+  if (MGFLD_ENABLED || NRMGFLD_ENABLED) delete prfld2;
 
   // BoundaryValues should be destructed AFTER all BoundaryVariable objects are destroyed
   delete pbval;
@@ -750,7 +743,7 @@ std::size_t MeshBlock::GetBlockSizeInBytes() {
   if (CRDIFFUSION_ENABLED)
     size += pcrdiff->ecr.GetSizeInBytes();
   if (MGFLD_ENABLED)
-    size += prfld->u.GetSizeInBytes();
+    size += pmg_fld->u.GetSizeInBytes();
   if (NRMGFLD_ENABLED) {
     size += pnr->u_.GetSizeInBytes();
     size += pnr->delta_u_.GetSizeInBytes();
@@ -792,7 +785,7 @@ std::size_t MeshBlock::GetBlockSizeInBytesGray() {
   if (CRDIFFUSION_ENABLED)
     size += pcrdiff->ecr.GetSizeInBytes();
   if (MGFLD_ENABLED)
-    size += prfld->u.GetSizeInBytes();
+    size += pmg_fld->u.GetSizeInBytes();
   if (NRMGFLD_ENABLED) {
     size += pnr->u_.GetSizeInBytes();
     size += pnr->delta_u_.GetSizeInBytes();

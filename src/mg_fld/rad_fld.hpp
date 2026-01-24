@@ -27,6 +27,7 @@ class FLDBoundaryValues;
 class MGFLD;
 class MGFLDDriver;
 class UserOpacityTable;
+class FLD2;
 
 namespace RadFLD {
   constexpr int NTEMP=2, NMATRIX=15, NCOEFF=9, NOPACITY=2;
@@ -39,93 +40,31 @@ namespace RadFLD {
   enum OpacityIndex {SIGMA_P=0, SIGMA_R=1};
 }
 
-//! \class FLD
-//! \brief gravitational potential data and functions
-
-class FLD {
+//! \class MGFLDInterface
+//! \brief Bridge between FLD2 state and MGFLD multigrid solver
+class MGFLDInterface {
  public:
-  FLD(MeshBlock *pmb, ParameterInput *pin);
-  ~FLD();
+  MGFLDInterface(MeshBlock *pmb, ParameterInput *pin);
+  ~MGFLDInterface();
 
   MeshBlock* pmy_block;
+  FLD2 *pfld2;
   MGFLD *pmg;
-  // AthenaArray<Real> ecr, source, zeta, coeff; //!
-  AthenaArray<Real> source, coeff;
+
   AthenaArray<Real> u, coarse_u;
-
-  AthenaArray<Real> r, r1, r2;  // (no more than MAX_NREGISTER allowed)
-  AthenaArray<Real> r0, r_fl_div;  // rkl2 STS memory registers;
-  AthenaArray<Real> r_flux[3];  // face-averaged flux vector
-  AthenaArray<Real> coarse_r;
-  int refinement_idx{-1}; // for r
-
-  AthenaArray<Real> sigma_p, sigma_r;
+  AthenaArray<Real> coeff;
+  AthenaArray<Real> def;
   AthenaArray<Real> empty_flux[3];
-  AthenaArray<Real> def;   // defect from the Multigrid solver
-  bool output_defect;
-  bool calc_in_temp;
-  bool is_couple;
-  bool only_rad;
-  bool cut_diff;
-  bool cut_Pnablav;
-  bool fixed_flux_limitter;
-
-  void LoadHydroVariables(const AthenaArray<Real> &w, AthenaArray<Real> &u);
-  void UpdateRadiationEnergy(AthenaArray<Real> &u, const AthenaArray<Real> &r);
-  void CalculateCoefficients(const AthenaArray<Real> &w,
-                             const AthenaArray<Real> &u);
-  void UpdateHydroVariables(AthenaArray<Real> &w,
-       AthenaArray<Real> &hydro_u, const AthenaArray<Real> &fld_u);
-  // Real CalculateSigmaR(const Real den, const Real egas);
   CellCenteredBoundaryVariable mgfldbvar;
-  CellCenteredBoundaryVariable rfldbvar;
-  void CalculateFluxes(AthenaArray<Real> &u, const int order);
-  void LoadRadEnergyforFlux(AthenaArray<Real> &u, AthenaArray<Real> &r);
+  bool output_defect;
 
-  friend class MGFLDDriver;
-
-  // Function in problem generators to update opacity
-  void EnrollOpacityFunction(FLDOpacityFunc MyOpacityFunction);
-  FLDOpacityFunc UpdateOpacity;
-
-  UserOpacityTable *pUserOpacityTable;
-
-  void AddFluxDivergence(const Real wght, AthenaArray<Real> &u_out);
-  // void CheckFLD(const AthenaArray<Real> &r);
+  void SyncFromFld2(const AthenaArray<Real> &w);
+  void SyncToFld2();
+  void CalculateCoefficients(const AthenaArray<Real> &w);
+  void UpdateHydroVariables(AthenaArray<Real> &w, AthenaArray<Real> &hydro_u);
 
  private:
   int refinement_idx_;
-
-  // scratch space used to compute fluxes
-  // 2D scratch arrays
-  AthenaArray<Real> rl_, rr_, rlb_;
-  // 1D scratch arrays
-  AthenaArray<Real> x1face_area_, x2face_area_, x3face_area_;
-  AthenaArray<Real> x2face_area_p1_, x3face_area_p1_;
-  AthenaArray<Real> cell_volume_;
-  AthenaArray<Real> dflx_;
-
-  void ComputeUpwindFlux(const int k, const int j, const int il,
-                         const int iu, // CoordinateDirection dir,
-                         AthenaArray<Real> &rl, AthenaArray<Real> &rr,
-                         AthenaArray<Real> &mass_flx,
-                         AthenaArray<Real> &flx_out);
 };
 
-
-class UserOpacityTable : public InterpTable2D {
- public:
-  UserOpacityTable(ParameterInput *pin);
-  ~UserOpacityTable();
-
-  // Methods for opacity interpolation
-  Real GetOpacity(int var_index, Real x2, Real x1); // Generic interface (x2=pressure, x1=temperature)
-
-  bool use_tables; // Flag to indicate if tables are used
-  // Data members for opacity table properties
-  Real tempMin, tempMax;    // Temperature limits
-  Real pressureMin, pressureMax;  // Pressure limits
-  int nTemp, nPressure, nVar;    // Table dimensions
-  AthenaArray<Real> OpacityTables;  // Tables for each variable
-};
 #endif // RAD_FLD_RAD_FLD_HPP_

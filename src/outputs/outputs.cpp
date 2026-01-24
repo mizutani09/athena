@@ -355,7 +355,6 @@ void OutputType::LoadOutputData(MeshBlock *pmb) {
   NRRadiation *prad=pmb->pnrrad;
   CosmicRay *pcr=pmb->pcr;
   CRDiffusion *pcrdiff=pmb->pcrdiff;
-  FLD *prfld=pmb->prfld;
   PassiveScalars *psclr = pmb->pscalars;
   ChemRadiation *pchemrad = pmb->pchemrad;
   Gravity *pgrav = pmb->pgrav;

@@ -57,7 +57,6 @@
 #include "../outputs/io_wrapper.hpp"
 #include "../parameter_input.hpp"
 #include "../mg_fld/mg_rad_fld.hpp"
-#include "../mg_fld/rad_fld.hpp"
 #include "../reconstruct/reconstruction.hpp"
 #include "../scalars/scalars.hpp"
 #include "../units/units.hpp"
@@ -1743,12 +1742,9 @@ void Mesh::Initialize(int res_flag, ParameterInput *pin) {
       if (CRDIFFUSION_ENABLED)
         pmb->pcrdiff->crbvar.SetupPersistentMPI();
       if (MGFLD_ENABLED)
-        pmb->prfld->mgfldbvar.SetupPersistentMPI();
+        pmb->pmg_fld->mgfldbvar.SetupPersistentMPI();
       if (NRMGFLD_ENABLED) {
-        // pmb->prfld2->u_rad_fldbvar.SetupPersistentMPI(); // caution!
-        std::cout << "Now setting up persistent MPI for NRMGFLD nr_bvar" << std::endl;
         pmb->pnr->nrbvar.SetupPersistentMPI();
-        std::cout << "Now setting up persistent MPI for NRMGFLD delta_bvar" << std::endl;
         pmb->pnr->delta_bvar.SetupPersistentMPI();
       }
     }
@@ -1775,7 +1771,7 @@ void Mesh::Initialize(int res_flag, ParameterInput *pin) {
                                     pbval->bvars_main_int);
         if (IM_RADIATION_ENABLED)
           pmb->pnrrad->rad_bvar.StartReceiving(BoundaryCommSubset::radiation);
-        if (MGFLD_ENABLED || NRMGFLD_ENABLED) {
+        if (NRMGFLD_ENABLED) {
           pmb->pnr->nrbvar.StartReceiving(BoundaryCommSubset::all);
           pmb->pnr->delta_bvar.StartReceiving(BoundaryCommSubset::all);
         }
@@ -1803,15 +1799,11 @@ void Mesh::Initialize(int res_flag, ParameterInput *pin) {
           if (pmb->pmy_mesh->multilevel) {
             pmb->prfld2->u_rad_fldbvar.coarse_buf = &(pmb->prfld2->coarse_u_rad);
           }
-          std::cout << "sending nrmgfld u_rad_fldbvar boundary buffers" << std::endl;
           pmb->prfld2->u_rad_fldbvar.SendBoundaryBuffers();
-          std::cout << "nrmgfld u_rad_fldbvar sent boundary buffers" << std::endl;
-          std::cout << "Now sending nrmgfld nrbvar boundary buffers" << std::endl;
+        }
+        if (NRMGFLD_ENABLED) {
           pmb->pnr->nrbvar.SendBoundaryBuffers();
-          std::cout << "nrbvar sent boundary buffers" << std::endl;
-          std::cout << "Now sending nrmgfld delta_bvar boundary buffers" << std::endl;
           pmb->pnr->delta_bvar.SendBoundaryBuffers();
-          std::cout << "delta_bvar sent boundary buffers" << std::endl;
         }
 
 
@@ -1834,8 +1826,9 @@ void Mesh::Initialize(int res_flag, ParameterInput *pin) {
 
         if (MGFLD_ENABLED || NRMGFLD_ENABLED) {
           pmb->prfld2->u_rad_fldbvar.ReceiveAndSetBoundariesWithWait();
+        }
+        if (NRMGFLD_ENABLED) {
           pmb->pnr->nrbvar.ReceiveAndSetBoundariesWithWait();
-          std::cout << "nrbvar received boundary buffers" << std::endl;
           pmb->pnr->delta_bvar.ReceiveAndSetBoundariesWithWait();
         }
 
@@ -1855,7 +1848,7 @@ void Mesh::Initialize(int res_flag, ParameterInput *pin) {
         if (IM_RADIATION_ENABLED)
           pmb->pnrrad->rad_bvar.ClearBoundary(BoundaryCommSubset::radiation);
         
-        if (MGFLD_ENABLED || NRMGFLD_ENABLED) {
+        if (NRMGFLD_ENABLED) {
           pmb->pnr->nrbvar.ClearBoundary(BoundaryCommSubset::all);
           pmb->pnr->delta_bvar.ClearBoundary(BoundaryCommSubset::all);
         }
@@ -1897,6 +1890,8 @@ void Mesh::Initialize(int res_flag, ParameterInput *pin) {
           }
           if (MGFLD_ENABLED || NRMGFLD_ENABLED) {
             pmb->prfld2->u_rad_fldbvar.ReceiveAndSetBoundariesWithWait();
+          }
+          if (NRMGFLD_ENABLED) {
             pmb->pnr->nrbvar.ReceiveAndSetBoundariesWithWait();
             pmb->pnr->delta_bvar.ReceiveAndSetBoundariesWithWait();
           }

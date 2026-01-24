@@ -3266,10 +3266,10 @@ TaskStatus TimeIntegratorTaskList::SetBoundariesRADFLD(MeshBlock *pmb, int stage
 
 TaskStatus TimeIntegratorTaskList::SetPhysicalBoundariesRADFLD(MeshBlock *pmb, int stage) {
   // Set FLD quantity in BoundaryVariable interface
-  FLD2 *prfld = pmb->prfld2;
   BoundaryValues *pbval = pmb->pbval;
 
   if (stage <= nstages) {
+    FLD2 *prfld = pmb->prfld2;
     Real t_end_stage = pmb->pmy_mesh->time
                        + stage_wghts[(stage-1)].ebeta*pmb->pmy_mesh->dt;
     Real dt = (stage_wghts[(stage-1)].beta)*(pmb->pmy_mesh->dt);

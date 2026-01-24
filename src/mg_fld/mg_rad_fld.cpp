@@ -25,9 +25,9 @@
 #include "../mesh/mesh.hpp"
 #include "../multigrid/multigrid.hpp"
 #include "../parameter_input.hpp"
+#include "../fld/fld.hpp"
 #include "../task_list/rad_fld_task_list.hpp"
 #include "mg_rad_fld.hpp"
-#include "rad_fld.hpp"
 
 #ifdef MPI_PARALLEL
 #include <mpi.h>
@@ -48,7 +48,8 @@ MGFLDDriver::MGFLDDriver(Mesh *pm, ParameterInput *pin)
                           pm->MGFLDCoeffBoundaryFunction_,
                           pm->MGFLDSourceMaskFunction_,
                           pm->MGFLDCoeffMaskFunction_,
-                          RadFLD::NTEMP, RadFLD::NCOEFF, RadFLD::NMATRIX) {
+                          RadFLD::NTEMP, RadFLD::NCOEFF, RadFLD::NMATRIX),
+      radiation_constants_set_(false) {
   eps_ = pin->GetOrAddReal("mgfld", "threshold", -1.0);
   niter_ = pin->GetOrAddInteger("mgfld", "niteration", -1);
   ffas_ = pin->GetOrAddBoolean("mgfld", "fas", ffas_);
@@ -148,45 +149,18 @@ MGFLDDriver::~MGFLDDriver() {
 //! \brief MGFLD constructor
 
 MGFLD::MGFLD(MGFLDDriver *pmd, MeshBlock *pmb, ParameterInput *pin)
-  : Multigrid(pmd, pmb, 1), omega_(pmd->omega_), fsmoother_(pmd->fsmoother_) {
+  : Multigrid(pmd, pmb, 1),
+    c_ph_(0.0),
+    a_r_(0.0),
+    omega_(pmd->omega_),
+    fsmoother_(pmd->fsmoother_) {
   btype = btypef = BoundaryQuantity::mg;
   pmgbval = new MGBoundaryValues(this, mg_block_bcs_);
-  // initialize the constants
+}
 
-  Real c_ph_dim = 2.99792458e10; // speed of light in cm s^-1
-  Real a_r_dim = 7.5657e-15; // radiation constant in erg cm^-3 K^-4
-  Real R_gas = 8.3144621e7; // gas constant in erg K^-1 mol^-1
-  Real const_opacity_dim = pin->GetOrAddReal("mgfld", "const_opacity", 0.4);//caution: in cm^2 g^-1
-
-  Real rho_unit = pin->GetReal("hydro", "rho_unit");
-  Real egas_unit = pin->GetReal("hydro", "egas_unit");
-  Real pres_unit = egas_unit;
-  Real vel_unit = std::sqrt(pres_unit/rho_unit);
-
-  Real time_unit = pin->GetOrAddReal("hydro", "time_unit", -1.0);
-  Real leng_unit = pin->GetOrAddReal("hydro", "leng_unit", -1.0);
-  if (time_unit < 0.0 && leng_unit < 0.0) {
-    std::stringstream msg;
-    msg << "### FATAL ERROR in function [FLD::InitFLDConstants]" << std::endl;
-    msg << "time_unit or leng_unit must be specified in block 'hydro'.";
-    ATHENA_ERROR(msg);
-  } else if (time_unit > 0.0 && leng_unit > 0.0) {
-    std::stringstream msg;
-    msg << "time_unit and leng_unit cannot be specified at the same time.";
-    ATHENA_ERROR(msg);
-  }
-  if (time_unit < 0.0) time_unit = leng_unit/vel_unit;
-  if (leng_unit < 0.0) leng_unit = vel_unit*time_unit;
-
-  Real mu = pin->GetReal("hydro", "mu");
-  Real T_unit = pres_unit/rho_unit*mu/R_gas;
-  c_ph = c_ph_dim/vel_unit;
-  a_r = a_r_dim/(egas_unit/std::pow(T_unit, 4));
-  const_opacity = const_opacity_dim*leng_unit*rho_unit; // to be multiplied by rho
-
-  // std::cout << "c_ph in sim: " << c_ph << std::endl;
-  // std::cout << "a_r in sim: " << a_r << std::endl;
-  // std::cout << "const_opacity in sim: " << const_opacity << std::endl;
+void MGFLD::SetRadiationConstants(Real c_ph, Real a_r) {
+  c_ph_ = c_ph;
+  a_r_ = a_r;
 }
 
 
@@ -199,45 +173,6 @@ MGFLD::~MGFLD() {
 }
 
 
-// //----------------------------------------------------------------------------------------
-// //! \fn void MGFLDDriver::AddFLDSource(const AthenaArray<Real> &src,
-// //!                                           int ngh, Real dt)
-// //! \brief Add the FLD source term
-
-// void MGFLD::AddFLDSource(const AthenaArray<Real> &src, int ngh, Real dt) {
-//   AthenaArray<Real> &dst=src_[nlevel_-1];
-//   int is, ie, js, je, ks, ke;
-//   is=js=ks=ngh_;
-//   ie=is+size_.nx1-1, je=js+size_.nx2-1, ke=ks+size_.nx3-1;
-//   if (!(static_cast<MGFLDDriver*>(pmy_driver_)->fsteady_)) {
-//     for (int mk=ks; mk<=ke; ++mk) {
-//       int k = mk - ks + ngh;
-//       for (int mj=js; mj<=je; ++mj) {
-//         int j = mj - js + ngh;
-// #pragma omp simd
-//         for (int mi=is; mi<=ie; ++mi) {
-//           int i = mi - is + ngh;
-//           dst(mk,mj,mi) += dt * src(k,j,i);
-//         }
-//       }
-//     }
-//   } else {
-//     for (int mk=ks; mk<=ke; ++mk) {
-//       int k = mk - ks + ngh;
-//       for (int mj=js; mj<=je; ++mj) {
-//         int j = mj - js + ngh;
-// #pragma omp simd
-//         for (int mi=is; mi<=ie; ++mi) {
-//           int i = mi - is + ngh;
-//           dst(mk,mj,mi) = src(k,j,i);
-//         }
-//       }
-//     }
-//   }
-
-//   return;
-// }
-
 //----------------------------------------------------------------------------------------
 //! \fn void MGFLDDriver::Solve(int stage, Real dt)
 //! \brief load the data and solve
@@ -247,112 +182,60 @@ void MGFLDDriver::Solve(int stage, Real dt) {
   // Construct the Multigrid array
   vmg_.clear();
   for (int i = 0; i < pmy_mesh_->nblocal; ++i)
-    vmg_.push_back(pmy_mesh_->my_blocks(i)->prfld->pmg);
+    vmg_.push_back(pmy_mesh_->my_blocks(i)->pmg_fld->pmg);
 
   // load the source
 #pragma omp parallel for num_threads(nthreads_)
   for (auto itr = vmg_.begin(); itr < vmg_.end(); itr++) {
     MGFLD *pmg = static_cast<MGFLD*>(*itr);
-    // assume all the data are located on the same node
-    FLD *prfld = pmg->pmy_block_->prfld;
-    // Hydro *phydro = pmg->pmy_block_->phydro;
-    // std::cout << "fsteady_: " << fsteady_ << std::endl;
-    // std::cout << "mode_: " << mode_ << std::endl;
-    // std::cout << "pre-LoadSource" << std::endl;
+    MGFLDInterface *pmg_fld = pmg->pmy_block_->pmg_fld;
     Hydro *phydro = pmg->pmy_block_->phydro;
-    if (!prfld->only_rad)
-      prfld->LoadHydroVariables(phydro->w, prfld->u);
-    prfld->CalculateCoefficients(phydro->w, prfld->u);
-    pmg->LoadSource(prfld->u, 0, NGHOST, 1.0);
-    // std::cout << "post-LoadSource" << std::endl;
-    pmg->LoadFinestData(prfld->u, 0, NGHOST); // always load the initial guess
-    pmg->LoadCoefficients(prfld->coeff, NGHOST);
-    // pmg->AddFLDSource(prfld->source, NGHOST, dt_);
-    // std::cout << "Finish LoadFinesData" << std::endl;
-
-    // 供給側の ghost 幅をはっきり観測
-const int ngh_src = NGHOST;  // prfld->u の仕様どおり
-const int ni_src = prfld->u.GetDim3();
-const int nj_src = prfld->u.GetDim2();
-const int nk_src = prfld->u.GetDim1();
-
-const int ni_int_src = ni_src - 2*ngh_src;
-const int nj_int_src = nj_src - 2*ngh_src;
-const int nk_int_src = nk_src - 2*ngh_src;
-
-// MG 側 finest の内部幅（size_ は MG の）
-const int ni_int_mg = pmg->size_.nx1;
-const int nj_int_mg = pmg->size_.nx2;
-const int nk_int_mg = pmg->size_.nx3;
-
-// fprintf(stderr,
-//   "src int=(%d,%d,%d)  mg int=(%d,%d,%d)  nvar(u)=%d  nvar(MG)=%d  ngh_src=%d ngh_mg=%d\n",
-//   nk_int_src,nj_int_src,ni_int_src,
-//       nk_int_mg,nj_int_mg,ni_int_mg,
-//       prfld->u.GetDim4(), pmg->nvar_, ngh_src, pmg->ngh_);
+    pmg_fld->SyncFromFld2(phydro->w);
+    pmg_fld->CalculateCoefficients(phydro->w);
+    pmg->LoadSource(pmg_fld->u, 0, NGHOST, 1.0);
+    pmg->LoadFinestData(pmg_fld->u, 0, NGHOST); // always load the initial guess
+    pmg->LoadCoefficients(pmg_fld->coeff, NGHOST);
   }
 
-  // if (dt_ > 0.0 || fsteady_) {
-    // std::cout << "Start SetupMultigrid" << std::endl;
-    SetupMultigrid(false);
-    // std::cout << "End SetupMultigrid" << std::endl;
-    if (mode_ == 0) {
-      SolveFMGCycle();
-    } else {
-      // std::cout << "eps: " << eps_ << std::endl;
-      if (eps_ >= 0.0)
-        SolveIterative();
-      else
-        SolveIterativeFixedTimes();
-      // std::cout << "End SolveIterative" << std::endl;
-    }
-  // } else { // just copy trivial solution and set boundaries
-//     SetupMultigrid(true);
-//     if (mode_ != 1) {
-// #pragma omp parallel for num_threads(nthreads_)
-//       for (auto itr = vmg_.begin(); itr < vmg_.end(); itr++) {
-//         MGFLD *pmg = static_cast<MGFLD*>(*itr);
-//         AthenaArray<Real> &u = pmg->GetCurrentData();
-//         AthenaArray<Real> &u0 = pmg->GetCurrentSource();
-//         u = u0;
-//       }
-//     }
-//     mgtlist_->SetMGTaskListBoundaryCommunication();
-//     mgtlist_->DoTaskListOneStage(this);
-//   }
+  SetupMultigrid(false);
+  if (mode_ == 0) {
+    SolveFMGCycle();
+  } else {
+    if (eps_ >= 0.0)
+      SolveIterative();
+    else
+      SolveIterativeFixedTimes();
+  }
 
   // Return the result
 #pragma omp parallel for num_threads(nthreads_)
   for (auto itr = vmg_.begin(); itr < vmg_.end(); itr++) {
-    // Multigrid *pmg = *itr;
     MGFLD *pmg = static_cast<MGFLD*>(*itr);
-    FLD *prfld = pmg->pmy_block_->prfld;
+    MGFLDInterface *pmg_fld = pmg->pmy_block_->pmg_fld;
     Hydro *phydro = pmg->pmy_block_->phydro;
-    // std::cout << "Start RetrieveResult" << std::endl;
-    // std::cout << "stage: " << stage << std::endl;
-    // std::cout << "dt: " << dt_ << std::endl;
-    // std::cout << pmg->size_.nx1 << std::endl;
-    // std::cout << pmg->pmy_block_->ncells1 << std::endl;
-    // std::cout << &prfld << std::endl;
-    // std::cout << "--" << std::endl;
-    // std::cout << prfld->calc_in_temp << std::endl;
-    // print the size of the array u
-    // std::cout << "u size: " << prfld->u.GetDim1() << " " << prfld->u.GetDim2() << " " << prfld->u.GetDim3() << std::endl;
-    pmg->RetrieveResult(prfld->u, 0, NGHOST);
-    // std::cout << "End RetrieveResult" << std::endl;
-    if (prfld->output_defect)
-      pmg->RetrieveDefect(prfld->def, 0, NGHOST);
+    pmg->RetrieveResult(pmg_fld->u, 0, NGHOST);
+    if (pmg_fld->output_defect)
+      pmg->RetrieveDefect(pmg_fld->def, 0, NGHOST);
   }
   fldtlist_->DoTaskListOneStage(pmy_mesh_, stage);
 #pragma omp parallel for num_threads(nthreads_)
   for (auto itr = vmg_.begin(); itr < vmg_.end(); itr++) {
     MGFLD *pmg = static_cast<MGFLD*>(*itr);
-    FLD *prfld = pmg->pmy_block_->prfld;
+    MGFLDInterface *pmg_fld = pmg->pmy_block_->pmg_fld;
     Hydro *phydro = pmg->pmy_block_->phydro;
-    if (!prfld->only_rad)
-      prfld->UpdateHydroVariables(phydro->w, phydro->u, prfld->u);
+    if (!pmg_fld->pfld2->only_rad)
+      pmg_fld->UpdateHydroVariables(phydro->w, phydro->u);
+    pmg_fld->SyncToFld2();
   }
   return;
+}
+
+void MGFLDDriver::SetRadiationConstantsOnce(Real c_ph, Real a_r) {
+  if (radiation_constants_set_) {
+    return;
+  }
+  static_cast<MGFLD*>(mgroot_)->SetRadiationConstants(c_ph, a_r);
+  radiation_constants_set_ = true;
 }
 
 
@@ -699,17 +582,17 @@ void MGFLD::CalculateMatrix(AthenaArray<Real> &matrix, const AthenaArray<Real> &
 
         // coupling
         Real Tg = coeff(RadFLD::DCOUPLE,k,j,i)*u(RadFLD::GAS,k,j,i); // latest energy
-        matrix(RadFLD::CPRR,k,j,i) = dt*c_ph*coeff(RadFLD::DSIGMAP,k,j,i)
+        matrix(RadFLD::CPRR,k,j,i) = dt*c_ph_*coeff(RadFLD::DSIGMAP,k,j,i)
                                    + dt*coeff(RadFLD::DPV,k,j,i); // for P: \nabla v
-        matrix(RadFLD::CPRG,k,j,i) = -4.0*dt*c_ph*coeff(RadFLD::DSIGMAP,k,j,i)
-                                     *a_r*std::pow(Tg, 3)*coeff(RadFLD::DCOUPLE,k,j,i);
-        matrix(RadFLD::CPRC,k,j,i) =  3.0*dt*c_ph*coeff(RadFLD::DSIGMAP,k,j,i)
-                                     *a_r*std::pow(Tg, 4);
-        matrix(RadFLD::CPGR,k,j,i) = -dt*c_ph*coeff(RadFLD::DSIGMAP,k,j,i);
-        matrix(RadFLD::CPGG,k,j,i) = 1.0+4.0*dt*c_ph*coeff(RadFLD::DSIGMAP,k,j,i)
-                                     *a_r*std::pow(Tg, 3)*coeff(RadFLD::DCOUPLE,k,j,i);
-        matrix(RadFLD::CPGC,k,j,i) = -3.0*dt*c_ph*coeff(RadFLD::DSIGMAP,k,j,i)
-                                     *a_r*std::pow(Tg, 4);
+        matrix(RadFLD::CPRG,k,j,i) = -4.0*dt*c_ph_*coeff(RadFLD::DSIGMAP,k,j,i)
+                                     *a_r_*std::pow(Tg, 3)*coeff(RadFLD::DCOUPLE,k,j,i);
+        matrix(RadFLD::CPRC,k,j,i) =  3.0*dt*c_ph_*coeff(RadFLD::DSIGMAP,k,j,i)
+                                     *a_r_*std::pow(Tg, 4);
+        matrix(RadFLD::CPGR,k,j,i) = -dt*c_ph_*coeff(RadFLD::DSIGMAP,k,j,i);
+        matrix(RadFLD::CPGG,k,j,i) = 1.0+4.0*dt*c_ph_*coeff(RadFLD::DSIGMAP,k,j,i)
+                                     *a_r_*std::pow(Tg, 3)*coeff(RadFLD::DCOUPLE,k,j,i);
+        matrix(RadFLD::CPGC,k,j,i) = -3.0*dt*c_ph_*coeff(RadFLD::DSIGMAP,k,j,i)
+                                     *a_r_*std::pow(Tg, 4);
 
         // additional term from egas
         matrix(RadFLD::CPRRS,k,j,i) = -matrix(RadFLD::CPRG,k,j,i)

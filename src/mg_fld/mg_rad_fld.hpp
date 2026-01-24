@@ -33,7 +33,7 @@ class MGFLD : public Multigrid {
   MGFLD(MGFLDDriver *pmd, MeshBlock *pmb, ParameterInput *pin);
   ~MGFLD();
 
-  // void AddFLDSource(const AthenaArray<Real> &src, int ngh, Real dt);
+  void SetRadiationConstants(Real c_ph, Real a_r);
 
   void Smooth(AthenaArray<Real> &dst, const AthenaArray<Real> &src,
               const AthenaArray<Real> &coeff, const AthenaArray<Real> &matrix, int rlev,
@@ -49,10 +49,11 @@ class MGFLD : public Multigrid {
                 const AthenaArray<Real> &src, const AthenaArray<Real> &coeff,
                 int rlev, int il, int iu, int jl, int ju, int kl, int ku, bool th) final;
 
-  friend class MGFLDDriver;
-  Real c_ph, a_r, const_opacity;
+ friend class MGFLDDriver;
 
  private:
+  Real c_ph_;
+  Real a_r_;
   Real omega_;
   int fsmoother_;
 };
@@ -66,11 +67,13 @@ class MGFLDDriver : public MultigridDriver {
   MGFLDDriver(Mesh *pm, ParameterInput *pin);
   ~MGFLDDriver();
   void Solve(int stage, Real dt = 0.0) final;
-  void ProlongateOctetBoundariesFluxCons(AthenaArray<Real> &dst,
+  void SetRadiationConstantsOnce(Real c_ph, Real a_r);
+ void ProlongateOctetBoundariesFluxCons(AthenaArray<Real> &dst,
                  AthenaArray<Real> &cbuf, const AthenaArray<bool> &ncoarse) final;
   friend class MGFLD;
 
  private:
+  bool radiation_constants_set_;
   FLDBoundaryTaskList *fldtlist_;
   Real omega_;
   int fsmoother_;

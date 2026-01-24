@@ -77,7 +77,6 @@ npostsmooth     = 2
 omega           = 1.0
 niteration      = 100
 # threshold       = 0.00001
-output_defect   = true
 ix1_bc          = user
 ox1_bc          = user
 ix2_bc          = user
@@ -85,6 +84,8 @@ ox2_bc          = user
 ix3_bc          = user
 ox3_bc          = user
 
+<fld>
+output_defect   = true
 is_couple       = true
 only_rad        = true
 cut_diff        = true

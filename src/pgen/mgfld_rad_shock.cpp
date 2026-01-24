@@ -40,8 +40,9 @@
 #include "../hydro/srcterms/hydro_srcterms.hpp"
 #include "../mesh/mesh.hpp"
 #include "../parameter_input.hpp"
-#include "../rad_fld/rad_fld.hpp"
-#include "../rad_fld/mg_rad_fld.hpp"
+#include "../fld/fld.hpp"
+#include "../mg_fld/rad_fld.hpp"
+#include "../mg_fld/mg_rad_fld.hpp"
 
 
 #if !MGFLD_ENABLED
@@ -112,7 +113,7 @@ void FLDOuterOutflowX1(AthenaArray<Real> &dst, Real time, int nvar,
   return;
 }
 
-// void FLDAdvInnerX1(MeshBlock *pmb, Coordinates *pco, FLD *prfld,
+// void FLDAdvInnerX1(MeshBlock *pmb, Coordinates *pco, FLD2 *prfld,
 //     const AthenaArray<Real> &w, FaceField &b, AthenaArray<Real> &r_fld,
 //     Real time, Real dt, int is, int ie, int js, int je, int ks, int ke, int ngh) {
 //   // for reflective boundary condition
@@ -126,7 +127,7 @@ void FLDOuterOutflowX1(AthenaArray<Real> &dst, Real time, int nvar,
 //   return;
 // }
 
-// void FLDAdvOuterX1(MeshBlock *pmb, Coordinates *pco, FLD *prfld,
+// void FLDAdvOuterX1(MeshBlock *pmb, Coordinates *pco, FLD2 *prfld,
 //     const AthenaArray<Real> &w, FaceField &b, AthenaArray<Real> &r_fld,
 //     Real time, Real dt, int is, int ie, int js, int je, int ks, int ke, int ngh) {
 //   // for fixed boundary condition
@@ -207,7 +208,7 @@ void Mesh::InitUserMeshData(ParameterInput *pin) {
   if (time_unit < 0.0) time_unit = leng_unit/vel_unit;
   if (leng_unit < 0.0) leng_unit = vel_unit*time_unit;
 
-  Real const_opasity = pin->GetReal("mgfld", "const_opacity");
+  Real const_opasity = pin->GetReal("fld", "const_opacity");
   Real c_ph_dim = 2.99792458e10; // speed of light in cm s^-1
   Real c_ph_sim = c_ph_dim/(leng_unit/time_unit);
   Real mfp_sim = 1.0/(const_opasity*rho_unit)/leng_unit;
@@ -274,7 +275,7 @@ void MeshBlock::ProblemGenerator(ParameterInput *pin) {
   Real courant = pin->GetReal("time", "cfl_number");
   Real sound = std::sqrt(gamma*p0/rho0);
   Real dt_exp = courant*dx1/(sound+vel_piston)*time_unit;
-  Real const_opasity = pin->GetReal("mgfld", "const_opacity");
+  Real const_opasity = pin->GetReal("fld", "const_opacity");
   Real const_opasity_sim = const_opasity*leng_unit*rho_unit;
   Real c_ph_dim = 2.99792458e10; // speed of light in cm s^-1
   Real c_ph_sim = c_ph_dim/(leng_unit/time_unit);
@@ -321,8 +322,8 @@ void MeshBlock::ProblemGenerator(ParameterInput *pin) {
           phydro->u(IEN,k,j,i) = egas0 + 0.5*rho0*SQR(vel_piston);
 
         // for FLD
-        prfld->u(RadFLD::GAS,k,j,i) = egas0;
-        prfld->u(RadFLD::RAD,k,j,i) = Er0;
+        prfld->u_gas(k,j,i) = egas0;
+        prfld->u_rad(k,j,i) = Er0;
       }
     }
   }
@@ -345,17 +346,17 @@ void MeshBlock::UserWorkBeforeOutput(ParameterInput *pin) {
         // assume cal in E
 
         // for egas
-        // user_out_var(0,k,j,i) = prfld->u(RadFLD::GAS,k,j,i);//*egas_unit;
+        // user_out_var(0,k,j,i) = prfld->u_gas(k,j,i);//*egas_unit;
         user_out_var(0,k,j,i) = phydro->w(IPR,k,j,i)*igm1;//*egas_unit;
 
         // for Erad
-        user_out_var(1,k,j,i) = prfld->u(RadFLD::RAD,k,j,i);//*egas_unit;
+        user_out_var(1,k,j,i) = prfld->u_rad(k,j,i);//*egas_unit;
 
         // for Tgas
         user_out_var(2,k,j,i) = phydro->w(IPR,k,j,i)/phydro->w(IDN,k,j,i)*T_unit;
 
         // for Trad
-        user_out_var(3,k,j,i) = std::pow(prfld->u(RadFLD::RAD,k,j,i)/a_r_sim, 0.25)*T_unit;
+        user_out_var(3,k,j,i) = std::pow(prfld->u_rad(k,j,i)/a_r_sim, 0.25)*T_unit;
       }
     }
   }
@@ -372,7 +373,7 @@ Real HistoryTg(MeshBlock *pmb, int iout) {
   for (int k=ks; k<=ke; k++) {
     for (int j=js; j<=je; j++) {
       for (int i=is; i<=ie; i++) {
-        T += pmb->prfld->u(RadFLD::GAS,k,j,i)*gm1/pmb->phydro->w(IDN,k,j,i)*T_unit;
+        T += pmb->prfld2->u_gas(k,j,i)*gm1/pmb->phydro->w(IDN,k,j,i)*T_unit;
         num++;
       }
     }
@@ -388,7 +389,7 @@ Real HistoryTr(MeshBlock *pmb, int iout) {
   for (int k=ks; k<=ke; k++) {
     for (int j=js; j<=je; j++) {
       for (int i=is; i<=ie; i++) {
-        T += std::pow(pmb->prfld->u(RadFLD::RAD,k,j,i)*egas_unit/a_r_dim, 0.25);
+        T += std::pow(pmb->prfld2->u_rad(k,j,i)*egas_unit/a_r_dim, 0.25);
         num++;
       }
     }
@@ -409,7 +410,7 @@ Real HistoryEg(MeshBlock *pmb, int iout) {
     for (int j=js; j<=je; j++) {
       // pmb->pcoord->CellVolume(k, j, is, ie, vol);
       for (int i=is; i<=ie; i++) {
-        e += pmb->prfld->u(RadFLD::GAS,k,j,i);//*vol(i);
+        e += pmb->prfld2->u_gas(k,j,i);//*vol(i);
         num++;
       }
     }
@@ -429,7 +430,7 @@ Real HistoryEr(MeshBlock *pmb, int iout) {
     for (int j=js; j<=je; j++) {
       // pmb->pcoord->CellVolume(k, j, is, ie, vol);
       for (int i=is; i<=ie; i++) {
-        E += pmb->prfld->u(RadFLD::RAD,k,j,i);//*vol(i);
+        E += pmb->prfld2->u_rad(k,j,i);//*vol(i);
         num++;
       }
     }
@@ -446,7 +447,7 @@ Real HistoryaTg4(MeshBlock *pmb, int iout) {
   for (int k=ks; k<=ke; k++) {
     for (int j=js; j<=je; j++) {
       for (int i=is; i<=ie; i++) {
-        aT4 += std::pow(pmb->prfld->u(RadFLD::GAS,k,j,i)*gm1/pmb->phydro->w(IDN,k,j,i)*T_unit, 4);
+        aT4 += std::pow(pmb->prfld2->u_gas(k,j,i)*gm1/pmb->phydro->w(IDN,k,j,i)*T_unit, 4);
         num++;
       }
     }
@@ -471,8 +472,8 @@ Real HistoryEall(MeshBlock *pmb, int iout) {
     for (int j=js; j<=je; j++) {
       pmb->pcoord->CellVolume(k, j, is, ie, vol);
       for (int i=is; i<=ie; i++) {
-        E += pmb->prfld->u(RadFLD::GAS,k,j,i)*vol(i);
-        E += pmb->prfld->u(RadFLD::RAD,k,j,i)*vol(i);
+        E += pmb->prfld2->u_gas(k,j,i)*vol(i);
+        E += pmb->prfld2->u_rad(k,j,i)*vol(i);
       }
     }
   }
@@ -491,7 +492,7 @@ Real HistoryEall(MeshBlock *pmb, int iout) {
 //       for (int i=is; i<=ie; i++) {
 //         Real x = pmb->pcoord->x1v(i);
 //         Real an = slope*x + cons;
-//         L1norm += std::abs(pmb->prfld->u(RadFLD::RAD,k,j,i) - an)/std::abs(an);
+//         L1norm += std::abs(pmb->prfld2->u_rad(k,j,i) - an)/std::abs(an);
 //       }
 //     }
 //   }

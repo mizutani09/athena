@@ -77,7 +77,6 @@ FLD2::FLD2(MeshBlock *pmb, ParameterInput *pin) :
     sigma_p(pmb->ncells3,pmb->ncells2,pmb->ncells1),
     sigma_r(pmb->ncells3,pmb->ncells2,pmb->ncells1),
     empty_flux{AthenaArray<Real>(), AthenaArray<Real>(), AthenaArray<Real>()},
-    // output_defect(false), mgfldbvar(pmb, &u, &coarse_u, empty_flux, false), //!
     u_rad_flux{ {pmb->ncells3, pmb->ncells2, pmb->ncells1+1},
             {pmb->ncells3, pmb->ncells2+1, pmb->ncells1,
              (pmb->pmy_mesh->f2 ? AthenaArray<Real>::DataStatus::allocated :
@@ -87,29 +86,15 @@ FLD2::FLD2(MeshBlock *pmb, ParameterInput *pin) :
               AthenaArray<Real>::DataStatus::empty)}
     },
     u_rad_fldbvar(pmb, &u_rad, &coarse_u_rad, u_rad_flux, 1, true),
-    // coarse_r_(RadFLD::NADV, pmb->ncc3, pmb->ncc2, pmb->ncc1,
-    //           (pmb->pmy_mesh->multilevel ? AthenaArray<Real>::DataStatus::allocated :
-    //            AthenaArray<Real>::DataStatus::empty)),
     refinement_idx_(),
     is_couple(), only_rad(), cut_diff(), cut_Pnablav(), fixed_u_rad()
-    // is_adv(false)
     {
-  is_couple = pin->GetOrAddBoolean("nrfld", "is_couple", true);
-//   output_defect = pin->GetOrAddBoolean("nrfld", "output_defect", false);
-//   calc_in_temp = pin->GetOrAddBoolean("nrfld", "calc_in_temp", false);
-  only_rad = pin->GetOrAddBoolean("nrfld", "only_rad", false);
-  cut_diff = pin->GetOrAddBoolean("nrfld", "cut_diff", false);
-  cut_Pnablav = pin->GetOrAddBoolean("nrfld", "cut_Pnablav", false);
-  fixed_flux_limitter = pin->GetOrAddBoolean("nrfld", "fixed_flux_limitter", false);
-  fixed_u_rad = pin->GetOrAddBoolean("nrfld", "fixed_u_rad", false);
-//   if (calc_in_temp) {
-//     // raise error
-//     std::stringstream msg;
-//     msg << "Error: calc_in_temp is not implemented yet.";
-//     ATHENA_ERROR(msg);
-//   }
-//   if (output_defect)
-//     def.NewAthenaArray(RadFLD::NTEMP, pmb->ncells3, pmb->ncells2, pmb->ncells1);
+  is_couple = pin->GetOrAddBoolean("fld", "is_couple", true);
+  only_rad = pin->GetOrAddBoolean("fld", "only_rad", false);
+  cut_diff = pin->GetOrAddBoolean("fld", "cut_diff", false);
+  cut_Pnablav = pin->GetOrAddBoolean("fld", "cut_Pnablav", false);
+  fixed_flux_limitter = pin->GetOrAddBoolean("fld", "fixed_flux_limitter", false);
+  fixed_u_rad = pin->GetOrAddBoolean("fld", "fixed_u_rad", false);
 
   pmb->RegisterMeshBlockData(u_gas);
   pmb->RegisterMeshBlockData(u_rad);
@@ -129,12 +114,7 @@ FLD2::FLD2(MeshBlock *pmb, ParameterInput *pin) :
     }
   }
 
-//   // "Enroll" in S/AMR by adding to vector of tuples of pointers in MeshRefinement class
-//   if (pmb->pmy_mesh->multilevel)
-//     refinement_idx_ = pmy_block->pmr->AddToRefinement(&u, &coarse_u); //!
-
-  // caution!
-    // "Enroll" in SMR/AMR by adding to vector of pointers in MeshRefinement class
+  // "Enroll" in SMR/AMR by adding to vector of pointers in MeshRefinement class
   if (pmb->pmy_mesh->multilevel) {
     refinement_idx = pmy_block->pmr->AddToRefinement(&u_rad, &coarse_u_rad);
   }
@@ -144,9 +124,6 @@ FLD2::FLD2(MeshBlock *pmb, ParameterInput *pin) :
   pmb->pbval->bvars.push_back(&u_rad_fldbvar);
   pmb->pbval->prfldbvar = &u_rad_fldbvar;
   pmb->pbval->bvars_main_int.push_back(&u_rad_fldbvar); // for main integration
-
-  // int tmp = pmb->pbval->prfldbvar->nu_;
-  // std::cout << "tmp: " << tmp << std::endl;
 
   // Allocate memory for scratch arrays
   u_radl_.NewAthenaArray(pmb->ncells1);
@@ -172,7 +149,7 @@ FLD2::FLD2(MeshBlock *pmb, ParameterInput *pin) :
   Real c_ph_dim = 2.99792458e10; // speed of light in cm s^-1
   Real a_r_dim = 7.5657e-15; // radiation constant in erg cm^-3 K^-4
   Real R_gas = 8.3144621e7; // gas constant in erg K^-1 mol^-1
-  Real const_opacity_dim = pin->GetOrAddReal("nrfld", "const_opacity", 0.4); //caution: in cm^2 g^-1
+  Real const_opacity_dim = pin->GetOrAddReal("fld", "const_opacity", 0.4); //caution: in cm^2 g^-1
 
   Real rho_unit = pin->GetReal("hydro", "rho_unit");
   Real egas_unit = pin->GetReal("hydro", "egas_unit");
@@ -200,9 +177,9 @@ FLD2::FLD2(MeshBlock *pmb, ParameterInput *pin) :
   a_r = a_r_dim/(egas_unit/std::pow(T_unit, 4));
   const_opacity = const_opacity_dim*leng_unit*rho_unit; // to be multiplied by rho
 
-  std::cout << "c_ph in sim: " << c_ph << std::endl;
-  std::cout << "a_r in sim: " << a_r << std::endl;
-  std::cout << "const_opacity in sim: " << const_opacity << std::endl;
+  // std::cout << "c_ph in sim: " << c_ph << std::endl;
+  // std::cout << "a_r in sim: " << a_r << std::endl;
+  // std::cout << "const_opacity in sim: " << const_opacity << std::endl;
 }
 
 void FLD2::EnrollOpacityFunction(FLDOpacityFunc MyOpacityFunction) {
@@ -214,17 +191,7 @@ void FLD2::EnrollOpacityFunction(FLDOpacityFunc MyOpacityFunction) {
 //! \fn FLD2::~FLD2()
 //! \brief FLD2 destructor
 FLD2::~FLD2() {
-//   delete pmg;
 }
-
-
-// //----------------------------------------------------------------------------------------
-// //! \fn Real FLD2::CalculateSigmaR(const Real den, const Real egas)
-// //! \brief Calculate Rosseland mean opacity
-// Real FLD2::CalculateSigmaR(const Real den, const Real egas) {
-//   Real sigma_r = pmg->const_opacity*den; // temporary
-//   return sigma_r;
-// }
 
 
 //----------------------------------------------------------------------------------------

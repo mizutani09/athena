@@ -40,8 +40,9 @@
 #include "../hydro/srcterms/hydro_srcterms.hpp"
 #include "../mesh/mesh.hpp"
 #include "../parameter_input.hpp"
-#include "../rad_fld/rad_fld.hpp"
-#include "../rad_fld/mg_rad_fld.hpp"
+#include "../fld/fld.hpp"
+#include "../mg_fld/rad_fld.hpp"
+#include "../mg_fld/mg_rad_fld.hpp"
 
 
 #if !MGFLD_ENABLED
@@ -62,7 +63,7 @@ namespace {
 
 void ConstantOpacity(MeshBlock *pmb, AthenaArray<Real> &u_fld,
               AthenaArray<Real> &prim) {
-  FLD *prfld = pmb->prfld;
+  FLD2 *prfld = pmb->prfld2;
   int kl=pmb->ks, ku=pmb->ke;
   int jl=pmb->js, ju=pmb->je;
   int il=pmb->is-NGHOST, iu=pmb->ie+NGHOST;
@@ -120,9 +121,9 @@ void Mesh::InitUserMeshData(ParameterInput *pin) {
 
   opacity_unit = 1.0/(rho_unit*leng_unit); // cm^2/g
 
-  // // Real const_opasity = pin->GetReal("mgfld", "const_opacity");
-  // sigma_P = pin->GetReal("mgfld", "const_opacity_P") * (leng_unit);
-  // sigma_R = pin->GetReal("mgfld", "const_opacity_R") * (leng_unit);
+  // // Real const_opasity = pin->GetReal("fld", "const_opacity");
+  // sigma_P = pin->GetReal("fld", "const_opacity_P") * (leng_unit);
+  // sigma_R = pin->GetReal("fld", "const_opacity_R") * (leng_unit);
   // Real c_ph_dim = 2.99792458e10; // speed of light in cm s^-1
   // Real c_ph_sim = c_ph_dim/(leng_unit/time_unit);
   // Real mfp_sim = 1.0/(const_opasity*rho_unit)/leng_unit;
@@ -200,7 +201,7 @@ void MeshBlock::ProblemGenerator(ParameterInput *pin) {
 //   Real Cs_R = std::sqrt(gamma*p0_R/rho0_R);
 //   Real max_vel = std::max(std::abs(v0_L+Cs_L), std::abs(v0_R+Cs_R));
 //   Real dt_exp = courant*dx1/max_vel;
-//   // Real const_opasity = pin->GetReal("mgfld", "const_opacity");
+//   // Real const_opasity = pin->GetReal("fld", "const_opacity");
 //   // Real const_opasity_sim = const_opasity*leng_unit*rho_unit;
 //   Real c_ph_dim = 2.99792458e10; // speed of light in cm s^-1
 //   Real c_ph_sim = c_ph_dim/(leng_unit/time_unit);
@@ -296,8 +297,8 @@ void MeshBlock::ProblemGenerator(ParameterInput *pin) {
             phydro->u(IEN,k,j,i) = 0.0;
 
           // for FLD
-          prfld->u(RadFLD::GAS,k,j,i) = 0.0;
-          prfld->u(RadFLD::RAD,k,j,i) = 0.0;
+          prfld->u_gas(k,j,i) = 0.0;
+          prfld->u_rad(k,j,i) = 0.0;
       }
     }
   }

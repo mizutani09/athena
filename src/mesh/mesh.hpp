@@ -50,8 +50,8 @@ class Hydro;
 class CosmicRay;
 class CRDiffusion;
 class MGCRDiffusionDriver;
-class FLD;
 class FLD2;
+class MGFLDInterface;
 // class LinearSolver;
 // class LinearSolverDriver;
 class MGFLDDriver;
@@ -138,7 +138,7 @@ class MeshBlock {
   NRRadiation *pnrrad;
   CosmicRay *pcr;
   CRDiffusion *pcrdiff;
-  FLD *prfld;
+  MGFLDInterface *pmg_fld;
   FLD2 *prfld2;
   NewtonRaphson *pnr;
   linearMG *plmg;

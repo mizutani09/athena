@@ -35,8 +35,8 @@
 #include "../hydro/srcterms/hydro_srcterms.hpp"
 #include "../mesh/mesh.hpp"
 #include "../parameter_input.hpp"
-#include "../rad_fld/rad_fld.hpp"
-#include "../rad_fld/mg_rad_fld.hpp"
+#include "../fld/fld.hpp"
+#include "../mg_fld/mg_rad_fld.hpp"
 
 
 #if !MGFLD_ENABLED
@@ -335,8 +335,8 @@ void MeshBlock::ProblemGenerator(ParameterInput *pin) {
   for(int k=kl; k<=ku; ++k) {
     for(int j=jl; j<=ju; ++j) {
       for(int i=il; i<=iu; ++i) {
-        prfld->u(RadFLD::GAS,k,j,i) = eg_0;
-        prfld->u(RadFLD::RAD,k,j,i) = Er_0;
+        prfld2->u_gas(k,j,i) = eg_0;
+        prfld2->u_rad(k,j,i) = Er_0;
       }
     }
   }
@@ -369,10 +369,10 @@ void MeshBlock::UserWorkBeforeOutput(ParameterInput *pin) {
     for (int j=jl; j<=ju; j++) {
       for (int i=il; i<=iu; i++) {
         // assume cal in E
-        user_out_var(0,k,j,i) = prfld->u(RadFLD::GAS,k,j,i)*egas_unit;
-        user_out_var(1,k,j,i) = prfld->u(RadFLD::RAD,k,j,i)*egas_unit;
-        user_out_var(2,k,j,i) = prfld->u(RadFLD::GAS,k,j,i)/phydro->w(IDN,k,j,i)*temp_coef;
-        user_out_var(3,k,j,i) = std::pow(prfld->u(RadFLD::RAD,k,j,i)*egas_unit/a_r_dim, 0.25);
+        user_out_var(0,k,j,i) = prfld2->u_gas(k,j,i)*egas_unit;
+        user_out_var(1,k,j,i) = prfld2->u_rad(k,j,i)*egas_unit;
+        user_out_var(2,k,j,i) = prfld2->u_gas(k,j,i)/phydro->w(IDN,k,j,i)*temp_coef;
+        user_out_var(3,k,j,i) = std::pow(prfld2->u_rad(k,j,i)*egas_unit/a_r_dim, 0.25);
       }
     }
   }
@@ -389,7 +389,7 @@ Real HistoryTg(MeshBlock *pmb, int iout) {
   for (int k=ks; k<=ke; k++) {
     for (int j=js; j<=je; j++) {
       for (int i=is; i<=ie; i++) {
-        T += pmb->prfld->u(RadFLD::GAS,k,j,i)*gm1/pmb->phydro->w(IDN,k,j,i)*T_unit;
+        T += pmb->prfld2->u_gas(k,j,i)*gm1/pmb->phydro->w(IDN,k,j,i)*T_unit;
         num++;
       }
     }
@@ -405,7 +405,7 @@ Real HistoryTr(MeshBlock *pmb, int iout) {
   for (int k=ks; k<=ke; k++) {
     for (int j=js; j<=je; j++) {
       for (int i=is; i<=ie; i++) {
-        T += std::pow(pmb->prfld->u(RadFLD::RAD,k,j,i)*egas_unit/a_r_dim, 0.25);
+        T += std::pow(pmb->prfld2->u_rad(k,j,i)*egas_unit/a_r_dim, 0.25);
         num++;
       }
     }
@@ -423,7 +423,7 @@ Real HistoryEg(MeshBlock *pmb, int iout) {
   for (int k=ks; k<=ke; k++) {
     for (int j=js; j<=je; j++) {
       for (int i=is; i<=ie; i++) {
-        e += pmb->prfld->u(RadFLD::GAS,k,j,i);
+        e += pmb->prfld2->u_gas(k,j,i);
         num++;
       }
     }
@@ -440,7 +440,7 @@ Real HistoryEr(MeshBlock *pmb, int iout) {
   for (int k=ks; k<=ke; k++) {
     for (int j=js; j<=je; j++) {
       for (int i=is; i<=ie; i++) {
-        E += pmb->prfld->u(RadFLD::RAD,k,j,i);
+        E += pmb->prfld2->u_rad(k,j,i);
         num++;
       }
     }
@@ -457,7 +457,7 @@ Real HistoryaTg4(MeshBlock *pmb, int iout) {
   for (int k=ks; k<=ke; k++) {
     for (int j=js; j<=je; j++) {
       for (int i=is; i<=ie; i++) {
-        aT4 += std::pow(pmb->prfld->u(RadFLD::GAS,k,j,i)*gm1/pmb->phydro->w(IDN,k,j,i)*T_unit, 4);
+        aT4 += std::pow(pmb->prfld2->u_gas(k,j,i)*gm1/pmb->phydro->w(IDN,k,j,i)*T_unit, 4);
         num++;
       }
     }
@@ -482,8 +482,8 @@ Real HistoryEall(MeshBlock *pmb, int iout) {
     for (int j=js; j<=je; j++) {
       pmb->pcoord->CellVolume(k, j, is, ie, vol);
       for (int i=is; i<=ie; i++) {
-        E += pmb->prfld->u(RadFLD::GAS,k,j,i)*vol(i);
-        E += pmb->prfld->u(RadFLD::RAD,k,j,i)*vol(i);
+        E += pmb->prfld2->u_gas(k,j,i)*vol(i);
+        E += pmb->prfld2->u_rad(k,j,i)*vol(i);
       }
     }
   }
