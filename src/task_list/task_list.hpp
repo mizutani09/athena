@@ -23,6 +23,7 @@ class Mesh;
 class MeshBlock;
 class TaskList;
 class TaskID;
+class NewtonRaphsonTaskList;
 
 //! \todo (felker):
 //! - these 4x declarations can be nested in TaskList if MGTaskList is derived
@@ -61,6 +62,7 @@ class TaskID {  // POD but not aggregate (there is a user-provided ctor)
   friend class MultigridTaskList;
   friend class IMRadTaskList;
   friend class IMRadHydroTaskList;
+  friend class NewtonRaphsonTaskList;
 };
 
 

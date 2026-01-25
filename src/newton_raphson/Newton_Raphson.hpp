@@ -25,7 +25,6 @@
 #include "../globals.hpp"
 #include "../linear_solver/linear_solver.hpp"
 #include "../mesh/mesh.hpp"
-#include "../task_list/nr_task_list.hpp"
 
 #ifdef MPI_PARALLEL
 #include <mpi.h>
@@ -35,6 +34,7 @@ class Mesh;
 class MeshBlock;
 class ParameterInput;
 class Coordinates;
+class NewtonRaphsonTaskList;
 
 enum class NRVariable {src, u, coeff};
 enum class NRNormType {max, l1, l2};
@@ -104,9 +104,17 @@ class NewtonRaphson {
                                const AthenaArray<Real> &def_coeff,
                                bool th) = 0;
   virtual void ApplyPhysicalBoundary() = 0;
+  void CalculateCoefficientsTask(Real dt);
+  void ApplyCorrectionTask();
+  void StartBoundary();
+  void SendBoundary();
+  bool ReceiveBoundary();
+  void SetBoundary();
+  void ProlongateBoundary(Real dt);
+  void ClearBoundary();
+  friend class NewtonRaphsonTaskList;
 
   friend class NewtonRaphsonDriver;
-  friend class NewtonRaphsonTaskList;
   friend class NRBoundaryValues;
   friend class NRFLDDriver;
   friend class linearNRDriver;
@@ -197,8 +205,9 @@ class NewtonRaphsonDriver {
   int stage_;
   int niter_;
   int os_, oe_;
+  NewtonRaphsonTaskList *nrtlist_coeff_;
+  NewtonRaphsonTaskList *nrtlist_post_;
 
-  // NewtonRaphsonTaskList *nrtlist_;
 
  private:
   // Real *rootbuf_;

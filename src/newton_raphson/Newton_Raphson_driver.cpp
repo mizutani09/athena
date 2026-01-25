@@ -29,6 +29,7 @@
 #include "Newton_Raphson.hpp"
 #include "../linear_solver/linearMG/linearMG.hpp"
 #include "../linear_solver/linear_solver.hpp"
+#include "../task_list/nr_task_list.hpp"
 
 #ifdef MPI_PARALLEL
 #include <mpi.h>
@@ -99,6 +100,8 @@ NewtonRaphsonDriver::NewtonRaphsonDriver(Mesh *pm,
   MPI_Comm_dup(MPI_COMM_WORLD, &MPI_COMM_NEWTON_RAPHSON);
   nr_phys_id_ = pmy_mesh_->ReserveTagPhysIDs(1);
 #endif
+  nrtlist_coeff_ = new NewtonRaphsonTaskList(this, NewtonRaphsonTaskList::Mode::coeff);
+  nrtlist_post_ = new NewtonRaphsonTaskList(this, NewtonRaphsonTaskList::Mode::post);
 
 //   if (maxreflevel_ > 0) { // SMR / AMR
 //     octets_ = new std::vector<MGOctet>[maxreflevel_];
@@ -151,6 +154,8 @@ NewtonRaphsonDriver::~NewtonRaphsonDriver() {
 #ifdef MPI_PARALLEL
   MPI_Comm_free(&MPI_COMM_NEWTON_RAPHSON);
 #endif
+  delete nrtlist_coeff_;
+  delete nrtlist_post_;
 }
 
 
@@ -399,116 +404,9 @@ void NewtonRaphsonDriver::Solve_general(int stage, Real dt) {
 //! \brief Solve one cycle of NewtonRaphson
 
 void NewtonRaphsonDriver::SolveOneCycle() {
-  // calc coefficients
-  for (auto itr = vnr_.begin(); itr < vnr_.end(); itr++) {
-    NewtonRaphson *pnr = *itr;
-    pnr->CalculateCoefficients(pnr->uold_, pnr->u_,
-      pnr->def_coeff_, pnr->coeff_,
-      pnr->derivetive_, pnr->src_, dt_);
-  }
-
-  // print for debug
-  if (fshowdef_) {
-    NewtonRaphson *pnr = *(vnr_.begin());
-    MeshBlock *pmb = pnr->pmy_block_;
-    int is = pmb->is, ie = pmb->ie;
-    int js = pmb->js, je = pmb->je;
-    int ks = pmb->ks, ke = pmb->ke;
-    int i = (is + ie) / 2;
-    int j = (js + je) / 2;
-    int k = (ks + ke) / 2;
-    std::cout << "At (" << k << "," << j << "," << i << "):" << std::endl;
-    std::cout <<"delta_u_ before MG at " << Globals::my_rank << ": ";
-    for (int n = 0; n < nvar_; n++)
-      std::cout << pnr->delta_u_(n,k,j,i) << " ";
-    std::cout << std::endl;
-  }
-
-  // call linear solver (should be replaced general solver)
+  nrtlist_coeff_->DoTaskListOneStage(stage_);
   plmgd_->Solve(stage_, dt_);
-
-  // print for debug
-  if (fshowdef_) {
-    NewtonRaphson *pnr = *(vnr_.begin());
-    MeshBlock *pmb = pnr->pmy_block_;
-    int is = pmb->is, ie = pmb->ie;
-    int js = pmb->js, je = pmb->je;
-    int ks = pmb->ks, ke = pmb->ke;
-    int i = (is + ie) / 2;
-    int j = (js + je) / 2;
-    int k = (ks + ke) / 2;
-    std::cout << "At (" << k << "," << j << "," << i << "):" << std::endl;
-    std::cout <<"delta_u_ after MG: ";
-    std::cout << pnr->delta_u_(k,j,i) << " ";
-    std::cout << std::endl;
-  }
-
-  // std::cout << "NewtonRaphson correction retrieved from linear solver at "
-  //           << Globals::my_rank << std::endl;
-
-  for (auto itr = vnr_.begin(); itr < vnr_.end(); itr++) {
-    NewtonRaphson *pnr = *itr;
-    pnr->AddDifference(pnr->u_,
-                       pnr->delta_u_,
-                       pnr->derivetive_);
-  }
-
-  // std::cout << "NewtonRaphson update applied at " << Globals::my_rank << std::endl;
-
-  // std::cout << "size of vnr_: " << vnr_.size() << std::endl;
-  // for boundary values
-  for (auto itr = vnr_.begin(); itr < vnr_.end(); itr++) {
-    NewtonRaphson *pnr = *itr;
-    // std::cout << (itr - vnr_.begin()) << std::endl;
-    // pnr->nrbvar.StartReceiving(BoundaryCommSubset::newton_raphson);
-    pnr->nrbvar.StartReceiving(BoundaryCommSubset::all);
-    // std::cout << "NewtonRaphson boundary buffers receiving started at " << Globals::my_rank << std::endl;
-    
-    pnr->nrbvar.SendBoundaryBuffers();
-    // std::cout << "NewtonRaphson boundary buffers sent at " << Globals::my_rank << std::endl;
-  }
-  
-  for (auto itr = vnr_.begin(); itr < vnr_.end(); itr++) {
-    NewtonRaphson *pnr = *itr;
-    pnr->nrbvar.ReceiveAndSetBoundariesWithWait();
-    // std::cout << "NewtonRaphson boundary buffers received and set at " << Globals::my_rank << std::endl;
-  }
-
-
-  // for (auto itr = vnr_.begin(); itr < vnr_.end(); itr++) {
-  //   NewtonRaphson *pnr = *itr;
-  //   pnr->nrbvar.SetBoundaries();
-  // }
-
-  // std::cout << "NewtonRaphson boundary values set at " << Globals::my_rank << std::endl;
-  // std::cout << "pmy_mesh_->multilevel: " << pmy_mesh_->multilevel << std::endl;
-  if (pmy_mesh_->multilevel) {
-    for (auto itr = vnr_.begin(); itr < vnr_.end(); itr++) {
-      NewtonRaphson *pnr = *itr;
-      MeshBlock *pmb = pnr->pmy_block_;
-      pmb->pbval->ProlongateBoundaries(pmy_mesh_->time, dt_, pmb->pbval->bvars_main_int);
-    }
-  }
-
-  // std::cout << "NewtonRaphson prolongation done at " << Globals::my_rank << std::endl;
-
-  for (auto itr = vnr_.begin(); itr < vnr_.end(); itr++) {
-    NewtonRaphson *pnr = *itr;
-    // MeshBlock *pmb = pnr->pmy_block_;
-    // pnr->nrbvar.var_cc = &(pnr->u_);
-    // std::vector<BoundaryVariable *> bvar_nr = {&(pnr->nrbvar)};
-    // pmb->pbval->ApplyPhysicalBoundaries(pmy_mesh_->time, dt_, bvar_nr);
-    pnr->ApplyPhysicalBoundary();
-  }
-  
-  // std::cout << "NewtonRaphson physical boundaries applied at " << Globals::my_rank << std::endl;
-
-  for (auto itr = vnr_.begin(); itr < vnr_.end(); itr++) {
-    NewtonRaphson *pnr = *itr;
-    // pnr->nrbvar.ClearBoundary(BoundaryCommSubset::newton_raphson);
-    pnr->nrbvar.ClearBoundary(BoundaryCommSubset::all);
-  }
-
+  nrtlist_post_->DoTaskListOneStage(stage_);
   return;
 }
 

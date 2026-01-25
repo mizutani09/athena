@@ -158,6 +158,41 @@ void NewtonRaphson::RetrieveResult(AthenaArray<Real> &dst, int ns, int ngh) {
   return;
 }
 
+void NewtonRaphson::StartBoundary() {
+  nrbvar.StartReceiving(BoundaryCommSubset::all);
+}
+
+void NewtonRaphson::SendBoundary() {
+  nrbvar.SendBoundaryBuffers();
+}
+
+bool NewtonRaphson::ReceiveBoundary() {
+  return nrbvar.ReceiveBoundaryBuffers();
+}
+
+void NewtonRaphson::SetBoundary() {
+  nrbvar.SetBoundaries();
+}
+
+void NewtonRaphson::ProlongateBoundary(Real dt) {
+  if (pmy_block_->pmy_mesh->multilevel) {
+    pmy_block_->pbval->ProlongateBoundaries(pmy_block_->pmy_mesh->time, dt,
+                                            pmy_block_->pbval->bvars_main_int);
+  }
+}
+
+void NewtonRaphson::ClearBoundary() {
+  nrbvar.ClearBoundary(BoundaryCommSubset::all);
+}
+
+void NewtonRaphson::CalculateCoefficientsTask(Real dt) {
+  CalculateCoefficients(uold_, u_, def_coeff_, coeff_, derivetive_, src_, dt);
+}
+
+void NewtonRaphson::ApplyCorrectionTask() {
+  AddDifference(u_, delta_u_, derivetive_);
+}
+
 
 //----------------------------------------------------------------------------------------
 //! \fn void NewtonRaphson::RetrieveDefect(AthenaArray<Real> &dst, int ns, int ngh)

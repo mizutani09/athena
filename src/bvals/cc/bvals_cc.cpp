@@ -67,7 +67,6 @@ CellCenteredBoundaryVariable::CellCenteredBoundaryVariable(
   // cc_phys_id_ = pbval_->ReserveTagVariableIDs(1);
   // cc_phys_id_ = pbval_->bvars_next_phys_id_;
   // Advance the global physical ID counter in BoundaryValues and get start idx
-  std::cout << "CellCenteredBoundaryVariable: num_phys = " << num_phys << std::endl;
   cc_phys_id_ = pbval_->AdvanceCounterPhysID(num_phys);
 #ifdef DEBUG_PERSISTENT_MPI
   std::cout << "[rank " << Globals::my_rank << "] DEBUG_PERSISTENT_MPI ctor"
