@@ -29,8 +29,6 @@
 #include "../bvals/bvals.hpp"
 #include "../coordinates/coordinates.hpp"
 #include "../eos/eos.hpp"
-#include "../field/field.hpp"
-#include "../globals.hpp"
 #include "../hydro/hydro.hpp"
 #include "../hydro/srcterms/hydro_srcterms.hpp"
 #include "../mesh/mesh.hpp"
@@ -192,28 +190,28 @@ void Mesh::InitUserMeshData(ParameterInput *pin) {
   cut_Pnablav     = true
   */
   // check input
-  if (pin->GetBoolean("nrfld", "is_couple")) {
+  if (pin->GetBoolean("fld", "is_couple")) {
     std::stringstream msg;
     msg << "### FATAL ERROR in function [Mesh::InitUserMeshData]" << std::endl;
     msg << "is_couple must be false for this problem.";
     ATHENA_ERROR(msg);
   }
 
-  if (!pin->GetBoolean("nrfld", "only_rad")) {
+  if (!pin->GetBoolean("fld", "only_rad")) {
     std::stringstream msg;
     msg << "### FATAL ERROR in function [Mesh::InitUserMeshData]" << std::endl;
     msg << "only_rad must be true for this problem.";
     ATHENA_ERROR(msg);
   }
 
-  if (pin->GetBoolean("nrfld", "cut_diff")) {
+  if (pin->GetBoolean("fld", "cut_diff")) {
     std::stringstream msg;
     msg << "### FATAL ERROR in function [Mesh::InitUserMeshData]" << std::endl;
     msg << "cut_diff must be false for this problem.";
     ATHENA_ERROR(msg);
   }
 
-  if (!pin->GetBoolean("nrfld", "cut_Pnablav")) {
+  if (!pin->GetBoolean("fld", "cut_Pnablav")) {
     std::stringstream msg;
     msg << "### FATAL ERROR in function [Mesh::InitUserMeshData]" << std::endl;
     msg << "cut_Pnablav must be true for this problem.";
@@ -256,7 +254,7 @@ void Mesh::InitUserMeshData(ParameterInput *pin) {
   a_r_dim = 7.5657e-15; // radiation constant in erg cm^-3 K^-4
 
 
-  Real const_opasity = pin->GetReal("nrfld", "const_opacity");
+  Real const_opasity = pin->GetReal("fld", "const_opacity");
   Real c_ph_dim = 2.99792458e10; // speed of light in cm s^-1
   Real c_ph_sim = c_ph_dim/(leng_unit/time_unit);
   Real mfp_sim = 1.0/(const_opasity*rho_unit)/leng_unit;
@@ -310,7 +308,7 @@ void MeshBlock::ProblemGenerator(ParameterInput *pin) {
   Real dx1 = pcoord->dx1f(4);
   Real courant = pin->GetReal("time", "cfl_number");
   Real dt_exp = courant*dx1*std::sqrt(rho0/(gamma*p0))*time_unit;
-  Real const_opasity = pin->GetReal("nrfld", "const_opacity");
+  Real const_opasity = pin->GetReal("fld", "const_opacity");
   Real c_ph_dim = 2.99792458e10; // speed of light in cm s^-1
   Real c_ph_sim = c_ph_dim/(leng_unit/time_unit);
   Real mfp_sim = 1.0/(const_opasity*rho_unit)/leng_unit;

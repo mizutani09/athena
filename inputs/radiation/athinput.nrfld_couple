@@ -79,7 +79,6 @@ omega           = 1.0
 threshold       = 1e-10
 # nr_niteration   = 1
 nr_threshold   = 1e-10
-output_defect   = true
 ix1_bc          = outflow
 ox1_bc          = outflow
 ix2_bc          = outflow
@@ -87,6 +86,9 @@ ox2_bc          = outflow
 ix3_bc          = outflow
 ox3_bc          = outflow
 
+
+<fld>
+output_defect   = true
 is_couple       = true
 only_rad        = true
 cut_diff        = true

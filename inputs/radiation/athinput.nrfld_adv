@@ -81,7 +81,6 @@ niteration      = 10
 nr_niteration   = 0
 # threshold       = 0.0
 # nr_threshold    = 0.0
-output_defect   = true
 ix1_bc          = periodic
 ox1_bc          = periodic
 ix2_bc          = periodic
@@ -89,6 +88,9 @@ ox2_bc          = periodic
 ix3_bc          = periodic
 ox3_bc          = periodic
 
+
+<fld>
+output_defect   = true
 is_couple       = false
 only_rad        = true
 cut_diff        = true

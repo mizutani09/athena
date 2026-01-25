@@ -80,7 +80,6 @@ npostsmooth     = 2
 omega           = 1.0
 # niteration      = 10
 threshold       = 1e-10
-output_defect   = true
 ix1_bc          = user
 ox1_bc          = user
 ix2_bc          = periodic
@@ -88,6 +87,8 @@ ox2_bc          = periodic
 ix3_bc          = periodic
 ox3_bc          = periodic
 
+<fld>
+output_defect   = true
 const_opacity_P = 1e6   # in cm^-1 caution!
 const_opacity_R = 1e8     # in cm^-1 caution!
 fixed_flux_limitter = false
@@ -100,5 +101,4 @@ v0_L            = 0.0   # in cm s^-1
 rho0_R          = 1e-5  # in g cm^-3
 T0_R            = 3.0e5      # in K
 v0_R            = 0.0   # in cm s^-1
-
 

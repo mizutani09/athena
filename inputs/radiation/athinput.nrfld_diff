@@ -80,7 +80,6 @@ omega           = 1.0
 # nr_niteration   = 1
 threshold       = 1e-10
 nr_threshold   = 1e-10
-output_defect   = true
 ix1_bc          = user
 ox1_bc          = user
 ix2_bc          = periodic
@@ -88,6 +87,9 @@ ox2_bc          = periodic
 ix3_bc          = periodic
 ox3_bc          = periodic
 
+
+<fld>
+output_defect   = true
 is_couple       = false
 only_rad        = true
 cut_diff        = false

@@ -34,12 +34,9 @@
 #include "../bvals/bvals.hpp"
 #include "../coordinates/coordinates.hpp"
 #include "../eos/eos.hpp"
-#include "../field/field.hpp"
 #include "../fld/fld.hpp"
-#include "../globals.hpp"
 #include "../hydro/hydro.hpp"
 #include "../hydro/srcterms/hydro_srcterms.hpp"
-#include "../mg_fld/rad_fld.hpp"
 #include "../mg_fld/mg_rad_fld.hpp"
 #include "../mesh/mesh.hpp"
 #include "../parameter_input.hpp"
@@ -112,7 +109,7 @@ void FLDFixedOuterX1(AthenaArray<Real> &dst, Real time, int nvar,
 }
 
 void FLDAdvFixedInnerX1(MeshBlock *pmb, Coordinates *pco, FLD2 *prfld,
-    const AthenaArray<Real> &w, FaceField &b, AthenaArray<Real> &r_fld,
+    const AthenaArray<Real> &w, AthenaArray<Real> &r_fld,
     Real time, Real dt, int is, int ie, int js, int je, int ks, int ke, int ngh) {
   // for fixed boundary condition
   for (int k=ks; k<=ke; k++) {
@@ -126,7 +123,7 @@ void FLDAdvFixedInnerX1(MeshBlock *pmb, Coordinates *pco, FLD2 *prfld,
 }
 
 void FLDAdvFixedOuterX1(MeshBlock *pmb, Coordinates *pco, FLD2 *prfld,
-    const AthenaArray<Real> &w, FaceField &b, AthenaArray<Real> &r_fld,
+    const AthenaArray<Real> &w, AthenaArray<Real> &r_fld,
     Real time, Real dt, int is, int ie, int js, int je, int ks, int ke, int ngh) {
   // for fixed boundary condition
   for (int k=ks; k<=ke; k++) {
@@ -253,21 +250,12 @@ void Mesh::InitUserMeshData(ParameterInput *pin) {
   v0_L = pin->GetReal("problem", "v0_L") / vel_unit;
   v0_R = pin->GetReal("problem", "v0_R") / vel_unit;
 
-  std::string ix1_bc = pin->GetString("mgfld", "ix1_bc");
-  std::string ox1_bc = pin->GetString("mgfld", "ox1_bc");
-  if (ix1_bc == "user") EnrollUserMGFLDBoundaryFunction(BoundaryFace::inner_x1, FLDFixedInnerX1);
-  if (ox1_bc == "user") EnrollUserMGFLDBoundaryFunction(BoundaryFace::outer_x1, FLDFixedOuterX1);
-
-  ix1_bc = pin->GetString("mesh", "ix1_bc");
-  ox1_bc = pin->GetString("mesh", "ox1_bc");
-  if (ix1_bc == "user") {
-    EnrollUserBoundaryFunction(BoundaryFace::inner_x1, HydroFixedInnerX1);
-    EnrollUserFLDAdvBoundaryFunction(BoundaryFace::inner_x1, FLDAdvFixedInnerX1);
-  }
-  if (ox1_bc == "user"){
-    EnrollUserBoundaryFunction(BoundaryFace::outer_x1, HydroFixedOuterX1);
-    EnrollUserFLDAdvBoundaryFunction(BoundaryFace::outer_x1, FLDAdvFixedOuterX1);
-  }
+  EnrollUserMGFLDBoundaryFunction(BoundaryFace::inner_x1, FLDFixedInnerX1);
+  EnrollUserMGFLDBoundaryFunction(BoundaryFace::outer_x1, FLDFixedOuterX1);
+  EnrollUserBoundaryFunction(BoundaryFace::inner_x1, HydroFixedInnerX1);
+  EnrollUserBoundaryFunction(BoundaryFace::outer_x1, HydroFixedOuterX1);
+  EnrollUserFLDBoundaryFunction(BoundaryFace::inner_x1, FLDAdvFixedInnerX1);
+  EnrollUserFLDBoundaryFunction(BoundaryFace::outer_x1, FLDAdvFixedOuterX1);
 
   EnrollUserExplicitSourceFunction(AddRadiativeForceAndWork);
 
@@ -319,7 +307,7 @@ void MeshBlock::InitUserMeshBlockData(ParameterInput *pin) {
   SetUserOutputVariableName(3, "T_rad");
   SetUserOutputVariableName(4, "P_tot");
 
-  prfld->EnrollOpacityFunction(ConstantOpacity);
+  prfld2->EnrollOpacityFunction(ConstantOpacity);
   return;
 }
 
@@ -421,8 +409,8 @@ void MeshBlock::ProblemGenerator(ParameterInput *pin) {
             phydro->u(IEN,k,j,i) = egas0_L + 0.5*rho0_L*v0_L*v0_L;
 
           // for FLD
-          prfld->u_gas(k,j,i) = egas0_L;
-          prfld->u_rad(k,j,i) = Er0_L;
+          prfld2->u_gas(k,j,i) = egas0_L;
+          prfld2->u_rad(k,j,i) = Er0_L;
         } else {
           phydro->u(IDN,k,j,i) = rho0_R;
           phydro->u(IM1,k,j,i) = rho0_R*v0_R;
@@ -432,8 +420,8 @@ void MeshBlock::ProblemGenerator(ParameterInput *pin) {
             phydro->u(IEN,k,j,i) = egas0_R + 0.5*rho0_R*v0_R*v0_R;
 
           // for FLD
-          prfld->u_gas(k,j,i) = egas0_R;
-          prfld->u_rad(k,j,i) = Er0_R;
+          prfld2->u_gas(k,j,i) = egas0_R;
+          prfld2->u_rad(k,j,i) = Er0_R;
         }
       }
     }
@@ -454,10 +442,10 @@ void MeshBlock::UserWorkBeforeOutput(ParameterInput *pin) {
     for (int j=jl; j<=ju; j++) {
       for (int i=il; i<=iu; i++) {
         // assume cal in E
-        user_out_var(0,k,j,i) = prfld->u_gas(k,j,i)*egas_unit;
-        user_out_var(1,k,j,i) = prfld->u_rad(k,j,i)*egas_unit;
-        user_out_var(2,k,j,i) = prfld->u_gas(k,j,i)/phydro->w(IDN,k,j,i)*temp_coef;
-        user_out_var(3,k,j,i) = std::pow(prfld->u_rad(k,j,i)*egas_unit/a_r_dim, 0.25);
+        user_out_var(0,k,j,i) = prfld2->u_gas(k,j,i)*egas_unit;
+        user_out_var(1,k,j,i) = prfld2->u_rad(k,j,i)*egas_unit;
+        user_out_var(2,k,j,i) = prfld2->u_gas(k,j,i)/phydro->w(IDN,k,j,i)*temp_coef;
+        user_out_var(3,k,j,i) = std::pow(prfld2->u_rad(k,j,i)*egas_unit/a_r_dim, 0.25);
         user_out_var(4,k,j,i) = gm1*user_out_var(0,k,j,i) + ONE_3RD*user_out_var(1,k,j,i);
       }
     }
@@ -482,21 +470,18 @@ void AddRadiativeForceAndWork(MeshBlock *pmb, const Real time, const Real dt,
     Real hidx = 0.5*idx;
     Real dEr[3]; // caution when you use simd
 
-    FLD2 *prfld = pmb->prfld2;
-    AthenaArray<Real> &fld_u = prfld->u_rad;
+    FLD2 *prfld2 = pmb->prfld2;
+    AthenaArray<Real> &fld_u = prfld2->u_rad;
 
     for (int k = kl; k <= ku; ++k) {
       for (int j = jl; j <= ju; ++j) {
         for (int i = il; i <= iu; ++i) {
-          for (int ii = 0; ii < 3; ++ii) {
-            int di = (ii == 0) ? 1 : 0;
-            int dj = (ii == 1) ? 1 : 0;
-            int dk = (ii == 2) ? 1 : 0;
-            dEr[ii] = hidx*(fld_u(k+dk,j+dj,i+di) - fld_u(k-dk,j-dj,i-di));
-          }
+          dEr[0] = hidx*(fld_u(k,j,i+1) - fld_u(k,j,i-1));
+          dEr[1] = hidx*(fld_u(k,j+1,i) - fld_u(k,j-1,i));
+          dEr[2] = hidx*(fld_u(k+1,j,i) - fld_u(k-1,j,i));
           Real gradE = std::sqrt(SQR(dEr[0]) + SQR(dEr[1]) + SQR(dEr[2]));
 
-          Real R = gradE/(prfld->sigma_r(k,j,i)*fld_u(k,j,i)); // center
+          Real R = gradE/(prfld2->sigma_r(k,j,i)*fld_u(k,j,i)); // center
           Real lambda = (2.0+R)/(6.0+2.0*R+R*R);
 
           cons(IM1,k,j,i) += -lambda*dt*dEr[0];

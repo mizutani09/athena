@@ -29,8 +29,6 @@
 #include "../bvals/bvals.hpp"
 #include "../coordinates/coordinates.hpp"
 #include "../eos/eos.hpp"
-#include "../field/field.hpp"
-#include "../globals.hpp"
 #include "../hydro/hydro.hpp"
 #include "../hydro/srcterms/hydro_srcterms.hpp"
 #include "../mesh/mesh.hpp"
@@ -103,28 +101,28 @@ void Mesh::InitUserMeshData(ParameterInput *pin) {
   cut_Pnablav     = true
   */
   // // check input
-  // if (!pin->GetBoolean("nrfld", "is_couple")) {
+  // if (!pin->GetBoolean("fld", "is_couple")) {
   //   std::stringstream msg;
   //   msg << "### FATAL ERROR in function [Mesh::InitUserMeshData]" << std::endl;
   //   msg << "is_couple must be true for this problem.";
   //   ATHENA_ERROR(msg);
   // }
 
-  // if (pin->GetBoolean("nrfld", "only_rad")) {
+  // if (pin->GetBoolean("fld", "only_rad")) {
   //   std::stringstream msg;
   //   msg << "### FATAL ERROR in function [Mesh::InitUserMeshData]" << std::endl;
   //   msg << "only_rad must be false for this problem.";
   //   ATHENA_ERROR(msg);
   // }
 
-  // if (pin->GetBoolean("nrfld", "cut_diff")) {
+  // if (pin->GetBoolean("fld", "cut_diff")) {
   //   std::stringstream msg;
   //   msg << "### FATAL ERROR in function [Mesh::InitUserMeshData]" << std::endl;
   //   msg << "cut_diff must be false for this problem.";
   //   ATHENA_ERROR(msg);
   // }
 
-  // if (!pin->GetBoolean("nrfld", "cut_Pnablav")) {
+  // if (!pin->GetBoolean("fld", "cut_Pnablav")) {
   //   std::stringstream msg;
   //   msg << "### FATAL ERROR in function [Mesh::InitUserMeshData]" << std::endl;
   //   msg << "cut_Pnablav must be true for this problem.";

@@ -29,8 +29,6 @@
 #include "../bvals/bvals.hpp"
 #include "../coordinates/coordinates.hpp"
 #include "../eos/eos.hpp"
-#include "../field/field.hpp"
-#include "../globals.hpp"
 #include "../hydro/hydro.hpp"
 #include "../hydro/srcterms/hydro_srcterms.hpp"
 #include "../mesh/mesh.hpp"
@@ -144,35 +142,35 @@ void Mesh::InitUserMeshData(ParameterInput *pin) {
   fixed_flux_limitter  = true
   */
   // check input
-  if (pin->GetBoolean("nrfld", "is_couple")) {
+  if (pin->GetBoolean("fld", "is_couple")) {
     std::stringstream msg;
     msg << "### FATAL ERROR in function [Mesh::InitUserMeshData]" << std::endl;
     msg << "is_couple must be false for this problem.";
     ATHENA_ERROR(msg);
   }
 
-  if (!pin->GetBoolean("nrfld", "only_rad")) {
+  if (!pin->GetBoolean("fld", "only_rad")) {
     std::stringstream msg;
     msg << "### FATAL ERROR in function [Mesh::InitUserMeshData]" << std::endl;
     msg << "only_rad must be true for this problem.";
     ATHENA_ERROR(msg);
   }
 
-  if (pin->GetBoolean("nrfld", "cut_diff")) {
+  if (pin->GetBoolean("fld", "cut_diff")) {
     std::stringstream msg;
     msg << "### FATAL ERROR in function [Mesh::InitUserMeshData]" << std::endl;
     msg << "cut_diff must be false for this problem.";
     ATHENA_ERROR(msg);
   }
 
-  if (!pin->GetBoolean("nrfld", "cut_Pnablav")) {
+  if (!pin->GetBoolean("fld", "cut_Pnablav")) {
     std::stringstream msg;
     msg << "### FATAL ERROR in function [Mesh::InitUserMeshData]" << std::endl;
     msg << "cut_Pnablav must be true for this problem.";
     ATHENA_ERROR(msg);
   }
 
-  if (!pin->GetBoolean("nrfld", "fixed_flux_limitter")) {
+  if (!pin->GetBoolean("fld", "fixed_flux_limitter")) {
     std::stringstream msg;
     msg << "### FATAL ERROR in function [Mesh::InitUserMeshData]" << std::endl;
     msg << "fixed_flux_limitter must be true for this problem.";
@@ -205,7 +203,7 @@ void Mesh::InitUserMeshData(ParameterInput *pin) {
   if (time_unit < 0.0) time_unit = leng_unit/vel_unit;
   if (leng_unit < 0.0) leng_unit = vel_unit*time_unit;
 
-  Real const_opasity = pin->GetReal("nrfld", "const_opacity");
+  Real const_opasity = pin->GetReal("fld", "const_opacity");
   Real c_ph_dim = 2.99792458e10; // speed of light in cm s^-1
   Real c_ph_sim = c_ph_dim/(leng_unit/time_unit);
   Real mfp_sim = 1.0/(const_opasity*rho_unit)/leng_unit;
@@ -257,7 +255,7 @@ void MeshBlock::ProblemGenerator(ParameterInput *pin) {
   Real courant = pin->GetReal("time", "cfl_number");
   Real sound = std::sqrt(gamma*p0/rho0);
   Real dt_exp = courant*dx1/sound*time_unit;
-  Real const_opasity = pin->GetReal("nrfld", "const_opacity");
+  Real const_opasity = pin->GetReal("fld", "const_opacity");
   Real const_opasity_sim = const_opasity*leng_unit*rho_unit;
   Real c_ph_dim = 2.99792458e10; // speed of light in cm s^-1
   Real c_ph_sim = c_ph_dim/(leng_unit/time_unit);

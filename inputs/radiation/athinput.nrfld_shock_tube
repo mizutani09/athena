@@ -82,7 +82,6 @@ omega           = 1.0
 # nr_niteration   = 1
 threshold       = 1e-10
 nr_threshold   = 1e-10
-output_defect   = true
 ix1_bc          = user
 ox1_bc          = user
 ix2_bc          = periodic
@@ -90,13 +89,16 @@ ox2_bc          = periodic
 ix3_bc          = periodic
 ox3_bc          = periodic
 
+
+<fld>
+fixed_flux_limitter = false
+output_defect   = true
 const_opacity_P = 1e6   # in cm^-1 caution!
 const_opacity_R = 1e8     # in cm^-1 caution!
 is_couple       = true
 only_rad        = false
 cut_diff        = false
 cut_Pnablav     = false
-fixed_flux_limitter = false
 
 <problem>
 rho0_L          = 1e-5  # in g cm^-3

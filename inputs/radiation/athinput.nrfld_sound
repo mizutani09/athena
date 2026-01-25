@@ -81,7 +81,6 @@ omega           = 1.0
 niteration      = 10
 nr_threshold    = 1e-10
 nr_niteration   = 100
-output_defect   = true
 ix1_bc          = periodic
 ox1_bc          = periodic
 ix2_bc          = periodic
@@ -89,11 +88,14 @@ ox2_bc          = periodic
 ix3_bc          = periodic
 ox3_bc          = periodic
 
+
+<fld>
+fixed_flux_limitter  = true
+output_defect   = true
 is_couple       = true
 only_rad        = false
 cut_diff        = false
 cut_Pnablav     = false
-fixed_flux_limitter  = true
 
 <problem>
 # all in code units
