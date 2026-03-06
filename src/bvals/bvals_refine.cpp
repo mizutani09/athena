@@ -148,13 +148,6 @@ void BoundaryValues::ProlongateBoundaries(const Real time, const Real dt,
     pcrbvar = &(pcr->cr_bvar);
   }
 
-  FLD2 *prfld=nullptr;
-  CellCenteredBoundaryVariable *pfldbvar = nullptr;
-  if (MGFLD_ENABLED || NRMGFLD_ENABLED) {
-    prfld = pmb->prfld2;
-    pfldbvar = &(prfld->u_rad_fldbvar);
-  }
-
   NewtonRaphson *pnr=nullptr;
   CellCenteredBoundaryVariable *pnr_bvar = nullptr;
   CellCenteredBoundaryVariable *pdeltabvar = nullptr;
@@ -249,9 +242,6 @@ void BoundaryValues::ProlongateBoundaries(const Real time, const Real dt,
     if (CR_ENABLED)
       pcrbvar->var_cc = &(pcr->coarse_cr_);
 
-    if (MGFLD_ENABLED || NRMGFLD_ENABLED)
-      pfldbvar->var_cc = &(prfld->coarse_u_rad);
-
     if (NRMGFLD_ENABLED) {
       pnr_bvar->var_cc = &(pnr->coarse_u_);
       pdeltabvar->var_cc = &(pnr->coarse_delta_u_);
@@ -277,9 +267,6 @@ void BoundaryValues::ProlongateBoundaries(const Real time, const Real dt,
     if (CR_ENABLED)
       pcrbvar->var_cc = &(pcr->u_cr);
 
-    if (MGFLD_ENABLED || NRMGFLD_ENABLED)
-      pfldbvar->var_cc = &(prfld->u_rad);
-
     if (NRMGFLD_ENABLED) {
       pnr_bvar->var_cc = &(pnr->u_);
       pdeltabvar->var_cc = &(pnr->delta_u_);
@@ -287,6 +274,102 @@ void BoundaryValues::ProlongateBoundaries(const Real time, const Real dt,
 
     // Step 3. Finally, the ghost-ghost zones are ready for prolongation:
     ProlongateGhostCells(nb, si, ei, sj, ej, sk, ek);
+  } // end loop over nneighbor
+  return;
+}
+
+
+void BoundaryValues::ProlongateFLDBoundaries(const Real time, const Real dt) {
+  MeshBlock *pmb = pmy_block_;
+  const int& mylevel = loc.level;
+
+  FLD2 *prfld=nullptr;
+  CellCenteredBoundaryVariable *pfldbvar = nullptr;
+  if (MGFLD_ENABLED || NRMGFLD_ENABLED) {
+    prfld = pmb->prfld2;
+    pfldbvar = &(prfld->u_rad_fldbvar);
+  }
+
+  // For each finer neighbor, to prolongate a boundary we need to fill one more cell
+  // surrounding the boundary zone to calculate the slopes ("ghost-ghost zone"). 3x steps:
+  for (int n=0; n<nneighbor; n++) {
+    NeighborBlock& nb = neighbor[n];
+    if (nb.snb.level >= mylevel) continue;
+    // fill the required ghost-ghost zone
+    int nis, nie, njs, nje, nks, nke;
+    nis = std::max(nb.ni.ox1-1, -1);
+    nie = std::min(nb.ni.ox1+1, 1);
+    if (pmb->block_size.nx2 == 1) {
+      njs = 0;
+      nje = 0;
+    } else {
+      njs = std::max(nb.ni.ox2-1, -1);
+      nje = std::min(nb.ni.ox2+1, 1);
+    }
+
+    if (pmb->block_size.nx3 == 1) {
+      nks = 0;
+      nke = 0;
+    } else {
+      nks = std::max(nb.ni.ox3-1, -1);
+      nke = std::min(nb.ni.ox3+1, 1);
+    }
+
+    // Step 1. Apply necessary variable restrictions when ghost-ghost zone is on same lvl
+    for (int nk=nks; nk<=nke; nk++) {
+      for (int nj=njs; nj<=nje; nj++) {
+        for (int ni=nis; ni<=nie; ni++) {
+          int ntype = std::abs(ni) + std::abs(nj) + std::abs(nk);
+          // skip myself or coarse levels; only the same level must be restricted
+          if (ntype == 0 || nblevel[nk+1][nj+1][ni+1] != mylevel) continue;
+
+          // this neighbor block is on the same level
+          // and needs to be restricted for prolongation
+          RestrictFLDGhostCellsOnSameLevel(nb, nk, nj, ni);
+        }
+      }
+    }
+
+    // calculate the loop limits for the ghost zones
+    int cn = pmb->cnghost - 1;
+    int si, ei, sj, ej, sk, ek;
+    if (nb.ni.ox1 == 0) {
+      std::int64_t &lx1 = loc.lx1;
+      si = pmb->cis, ei = pmb->cie;
+      if ((lx1 & 1LL) == 0LL) ei += cn;
+      else             si -= cn;
+    } else if (nb.ni.ox1 > 0) { si = pmb->cie + 1,  ei = pmb->cie + cn;}
+    else              si = pmb->cis-cn, ei = pmb->cis-1;
+    if (nb.ni.ox2 == 0) {
+      sj = pmb->cjs, ej = pmb->cje;
+      if (pmb->block_size.nx2 > 1) {
+        std::int64_t &lx2 = loc.lx2;
+        if ((lx2 & 1LL) == 0LL) ej += cn;
+        else             sj -= cn;
+      }
+    } else if (nb.ni.ox2 > 0) { sj = pmb->cje + 1,  ej = pmb->cje + cn;}
+    else              sj = pmb->cjs-cn, ej = pmb->cjs-1;
+    if (nb.ni.ox3 == 0) {
+      sk = pmb->cks, ek = pmb->cke;
+      if (pmb->block_size.nx3 > 1) {
+        std::int64_t &lx3 = loc.lx3;
+        if ((lx3 & 1LL) == 0LL) ek += cn;
+        else             sk -= cn;
+      }
+    } else if (nb.ni.ox3 > 0) { sk = pmb->cke + 1,  ek = pmb->cke + cn;}
+    else              sk = pmb->cks-cn, ek = pmb->cks-1;
+
+    if (MGFLD_ENABLED || NRMGFLD_ENABLED)
+      pfldbvar->var_cc = &(prfld->coarse_u_rad);
+
+    // Step 2. Re-apply physical boundaries on the coarse boundary:
+    ApplyFLDPhysicalBoundariesOnCoarseLevel(nb, time, dt, si, ei, sj, ej, sk, ek);
+
+    if (MGFLD_ENABLED || NRMGFLD_ENABLED)
+      pfldbvar->var_cc = &(prfld->u_rad);
+
+    // Step 3. Finally, the ghost-ghost zones are ready for prolongation:
+    ProlongateFLDGhostCells(nb, si, ei, sj, ej, sk, ek);
   } // end loop over nneighbor
   return;
 }
@@ -394,6 +477,57 @@ void BoundaryValues::RestrictGhostCellsOnSameLevel(const NeighborBlock& nb, int 
     pmr->RestrictCellCenteredValues(*var_cc, *coarse_cc, -1, 0, nu,
                                          ris, rie, rjs, rje, rks, rke);
   }
+  return;
+}
+
+
+//----------------------------------------------------------------------------------------
+//! \fn void BoundaryValues::RestrictFLDGhostCellsOnSameLevel(const NeighborBlock& nb,
+//!                                                        int nk, int nj, int ni)
+//! \brief Restrict ghost cells on same level for FLD advection
+void BoundaryValues::RestrictFLDGhostCellsOnSameLevel(const NeighborBlock& nb, int nk,
+                                                   int nj, int ni) {
+  MeshBlock *pmb = pmy_block_;
+  MeshRefinement *pmr = pmb->pmr;
+
+  int ris, rie, rjs, rje, rks, rke;
+  if (ni == 0) {
+    ris = pmb->cis, rie = pmb->cie;
+    if (nb.ni.ox1 == 1)       ris = pmb->cie;
+    else if (nb.ni.ox1 == -1) rie = pmb->cis;
+  } else if (ni == 1) {
+    ris = pmb->cie + 1, rie = pmb->cie + 1;
+  } else { //(ni ==  - 1)
+    ris = pmb->cis - 1, rie = pmb->cis - 1;
+  }
+  if (nj == 0) {
+    rjs = pmb->cjs, rje = pmb->cje;
+    if (nb.ni.ox2 == 1)       rjs = pmb->cje;
+    else if (nb.ni.ox2 == -1) rje = pmb->cjs;
+  } else if (nj == 1) {
+    rjs = pmb->cje + 1, rje = pmb->cje + 1;
+  } else { //(nj == -1)
+    rjs = pmb->cjs - 1, rje = pmb->cjs - 1;
+  }
+  if (nk == 0) {
+    rks = pmb->cks, rke = pmb->cke;
+    if (nb.ni.ox3 == 1)       rks = pmb->cke;
+    else if (nb.ni.ox3 == -1) rke = pmb->cks;
+  } else if (nk == 1) {
+    rks = pmb->cke + 1, rke = pmb->cke + 1;
+  } else { //(nk == -1)
+    rks = pmb->cks - 1, rke = pmb->cks - 1;
+  }
+
+  // for (auto cc_pair : pmr->pvars_cc_) {
+    FLD2 *prfld = pmb->prfld2;
+    auto cc_pair = pmr->pvars_cc_[prfld->refinement_idx];
+    AthenaArray<Real> *var_cc = std::get<0>(cc_pair);
+    AthenaArray<Real> *coarse_cc = std::get<1>(cc_pair);
+    int nu = var_cc->GetDim4() - 1;
+    pmb->pmr->RestrictCellCenteredValues(*var_cc, *coarse_cc, 0, nu,
+                                         ris, rie, rjs, rje, rks, rke);
+  // }
   return;
 }
 
@@ -647,11 +781,6 @@ void BoundaryValues::ProlongateGhostCells(const NeighborBlock& nb,
     pmr->pvars_cc_[ps->refinement_idx] = std::make_tuple(&ps->r, &ps->coarse_r_);
   }
 
-  if (MGFLD_ENABLED || NRMGFLD_ENABLED) {
-    FLD2 *prfld = pmb->prfld2;
-    pmr->pvars_cc_[prfld->refinement_idx] = std::make_tuple(&prfld->u_rad, &prfld->coarse_u_rad);
-  }
-
   for (auto cc_pair : pmr->pvars_cc_) {
     AthenaArray<Real> *var_cc = std::get<0>(cc_pair);
     AthenaArray<Real> *coarse_cc = std::get<1>(cc_pair);
@@ -675,10 +804,6 @@ void BoundaryValues::ProlongateGhostCells(const NeighborBlock& nb,
   if (NSCALARS > 0) {
     PassiveScalars *ps = pmb->pscalars;
     pmr->pvars_cc_[ps->refinement_idx] = std::make_tuple(&ps->s, &ps->coarse_s_);
-  }
-  if (MGFLD_ENABLED || NRMGFLD_ENABLED) {
-    FLD2 *prfld = pmb->prfld2;
-    pmr->pvars_cc_[prfld->refinement_idx] = std::make_tuple(&prfld->u_rad, &prfld->coarse_u_rad);
   }
 
   // prolongate face-centered S/AMR-enrolled quantities (magnetic fields)
@@ -768,6 +893,40 @@ void BoundaryValues::ProlongateGhostCells(const NeighborBlock& nb,
     PassiveScalars *ps = pmb->pscalars;
     pmb->peos->PassiveScalarPrimitiveToConserved(ps->r, ph->u, ps->s, pmb->pcoord,
                                                  fsi, fei, fsj, fej, fsk, fek);
+  }
+  return;
+}
+
+
+//----------------------------------------------------------------------------------------
+//! \fn void BoundaryValues::ProlongateFLDGhostCells(const NeighborBlock& nb,
+//!                                               int si, int ei, int sj, int ej,
+//!                                               int sk, int ek)
+//! \brief Prolongate ghost cells for FLD advection
+
+void BoundaryValues::ProlongateFLDGhostCells(const NeighborBlock& nb,
+                                          int si, int ei, int sj, int ej,
+                                          int sk, int ek) {
+  MeshBlock *pmb = pmy_block_;
+  MeshRefinement *pmr = pmb->pmr;
+
+  if (MGFLD_ENABLED || NRMGFLD_ENABLED) {
+    FLD2 *prfld = pmb->prfld2;
+    pmr->pvars_cc_[prfld->refinement_idx] = std::make_tuple(&prfld->u_rad, &prfld->coarse_u_rad);
+  }
+
+  // for (auto cc_pair : pmr->pvars_cc_) {
+    auto cc_pair = pmr->pvars_cc_[pmb->prfld2->refinement_idx];
+    AthenaArray<Real> *var_cc = std::get<0>(cc_pair);
+    AthenaArray<Real> *coarse_cc = std::get<1>(cc_pair);
+    int nu = var_cc->GetDim4() - 1;
+    pmr->ProlongateCellCenteredValues(*coarse_cc, *var_cc, 0, nu,
+                                      si, ei, sj, ej, sk, ek);
+  // }
+
+  if (MGFLD_ENABLED || NRMGFLD_ENABLED) {
+    FLD2 *prfld = pmb->prfld2;
+    pmr->pvars_cc_[prfld->refinement_idx] = std::make_tuple(&prfld->u_rad, &prfld->coarse_u_rad);
   }
   return;
 }

@@ -35,8 +35,12 @@ NewtonRaphsonTaskList::NewtonRaphsonTaskList(NewtonRaphsonDriver *pmd, Mode mode
     AddNewtonRaphsonTask(SEND_BND, START_RECV);
     AddNewtonRaphsonTask(RECV_BND, SEND_BND);
     AddNewtonRaphsonTask(SET_BND, RECV_BND);
-    AddNewtonRaphsonTask(PROLONG, SET_BND);
-    AddNewtonRaphsonTask(PHYS_BND, PROLONG);
+    if (pmy_driver_->pmy_mesh_->multilevel) {
+      AddNewtonRaphsonTask(PROLONG, SET_BND);
+      AddNewtonRaphsonTask(PHYS_BND, PROLONG);
+    } else {
+      AddNewtonRaphsonTask(PHYS_BND, SET_BND);
+    }
     AddNewtonRaphsonTask(CLEAR_BND, PHYS_BND);
   }
 }

@@ -175,10 +175,9 @@ void NewtonRaphson::SetBoundary() {
 }
 
 void NewtonRaphson::ProlongateBoundary(Real dt) {
-  if (pmy_block_->pmy_mesh->multilevel) {
-    pmy_block_->pbval->ProlongateBoundaries(pmy_block_->pmy_mesh->time, dt,
-                                            pmy_block_->pbval->bvars_main_int);
-  }
+  std::vector<BoundaryVariable *> bvars_subset = {&nrbvar};
+  pmy_block_->pbval->ProlongateBoundaries(pmy_block_->pmy_mesh->time, dt,
+                                          bvars_subset);
 }
 
 void NewtonRaphson::ClearBoundary() {

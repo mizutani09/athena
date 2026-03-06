@@ -245,6 +245,7 @@ class TimeIntegratorTaskList : public TaskList {
   TaskStatus ReceiveRADFLD(MeshBlock *pmb, int stage);
   TaskStatus SetBoundariesRADFLD(MeshBlock *pmb, int stage);
   TaskStatus SetPhysicalBoundariesRADFLD(MeshBlock *pmb, int stage);
+  TaskStatus ProlongationRADFLD(MeshBlock *pmb, int stage);
 
   bool CheckNextMainStage(int stage) const {return stage_wghts[stage%nstages].main_stage;}
 
@@ -406,6 +407,7 @@ const TaskID RECV_FLDADV(79);
 const TaskID SETB_FLDADV(80);
 const TaskID SETPHYSB_FLDADV(81);
 const TaskID INT_FLDADV(82);
+const TaskID PROLONG_FLDADV(83);
 
 }  // namespace HydroIntegratorTaskNames
 #endif  // TASK_LIST_TASK_LIST_HPP_
