@@ -640,6 +640,7 @@ void MultigridDriver::SetupCoefficients() {
     mgroot_->pmgbval->ApplyPhysicalBoundaries(0, true);
   }
   mgroot_->current_level_ = nrootlevel_ - 1;
+  current_level_ = ntotallevel_ - 1;
 
   return;
 }
@@ -650,17 +651,15 @@ void MultigridDriver::SetupCoefficients() {
 //! \brief Setup initial data
 
 void MultigridDriver::RestrictInitialData() {
-  if (current_level_ >= nrootlevel_ + nreflevel_ - 1) {
 #pragma omp parallel for num_threads(nthreads_)
-    for (auto itr = vmg_.begin(); itr < vmg_.end(); itr++) {
-      Multigrid *pmg = *itr;
-      pmg->RestrictInitialData();
-    }
-    TransferFromBlocksToRoot(false);
+  for (auto itr = vmg_.begin(); itr < vmg_.end(); itr++) {
+    Multigrid *pmg = *itr;
+    pmg->RestrictInitialData();
   }
-  if (current_level_ >= nrootlevel_ - 1 && nreflevel_ > 0) {
+  TransferFromBlocksToRoot(false);
+  if (nreflevel_ > 0) {
     const int &ngh = mgroot_->ngh_;
-    for (int l = current_level_ - (nrootlevel_ - 1); l >= 1; --l) {
+    for (int l = nreflevel_ - 1; l >= 1; --l) {
       // fine octets to coarse octets
 #pragma omp parallel for num_threads(nthreads_)
       for (int o = 0; o < noctets_[l]; ++o) {
@@ -951,6 +950,7 @@ void MultigridDriver::OneStepToCoarser(int nsmooth) {
       }
     }
   } else if (current_level_ > nrootlevel_-1) { // refined octets
+    // std::cout << "Refined octets coarsening, fmglevel_: " << fmglevel_ << std::endl;
     SetBoundariesOctets(false, false, false);
     if (ffas_ && current_level_ < fmglevel_) {
       StoreOldDataOctets();
@@ -1057,8 +1057,7 @@ void MultigridDriver::SolveIterative() {
     def += CalculateDefectNorm(MGNormType::l2, v);
 //    defmax = std::max(defmax, CalculateDefectNorm(MGNormType::max, v));
   }
-//  if (Globals::my_rank == 0)
-//    std::cout << "initial defect " << def << " max " << defmax << std::endl;
+
   while (def > eps_) {
     SolveVCycle(npresmooth_, npostsmooth_);
     if (matrixmode_ == 1)
@@ -1069,10 +1068,7 @@ void MultigridDriver::SolveIterative() {
       def += CalculateDefectNorm(MGNormType::l2, v);
 //      defmax = std::max(defmax, CalculateDefectNorm(MGNormType::max, v));
     }
-  //  if (Globals::my_rank == 0)
-  //    std::cout << "[debug] niter " << n << " def " << def << " convergence factor "
-  //              << def/olddef<< " defmax  "<< defmax << " cf "
-  //              <<  defmax/oldmax << std::endl;
+    
     if (def/olddef > 0.9) {
       if (eps_ == 0.0) break;
       if (Globals::my_rank == 0)
@@ -1396,22 +1392,18 @@ void MultigridDriver::CalculateMatrixAll() {
   if (nmatrix_ == 0)
     return;
   RestrictInitialData();
-  if (current_level_ >= nrootlevel_ + nreflevel_ - 1) {
 #pragma omp parallel for num_threads(nthreads_)
-    for (auto itr = vmg_.begin(); itr < vmg_.end(); itr++) {
-      Multigrid *pmg = *itr;
-      pmg->CalculateMatrixBlockAll();
-    }
+  for (auto itr = vmg_.begin(); itr < vmg_.end(); itr++) {
+    Multigrid *pmg = *itr;
+    pmg->CalculateMatrixBlockAll();
   }
-  if (current_level_ >= nrootlevel_ - 1 && nreflevel_ > 0) {
-    const int &ngh = mgroot_->ngh_;
-    for (int l = current_level_ - (nrootlevel_ - 1); l >= 0; --l) {  // fine to coarse
+  const int &ngh = mgroot_->ngh_;
+  for (int l = nreflevel_ - 1; l >= 0; --l) {  // fine to coarse
 #pragma omp parallel for num_threads(nthreads_)
-      for (int o = 0; o < noctets_[l]; ++o) {
-        MGOctet &oct = octets_[l][o];
-        mgroot_->CalculateMatrix(oct.matrix, oct.u, oct.src, oct.coeff, l+1,
-                          os_, oe_, os_, oe_, os_, oe_, false);
-      }
+    for (int o = 0; o < noctets_[l]; ++o) {
+      MGOctet &oct = octets_[l][o];
+      mgroot_->CalculateMatrix(oct.matrix, oct.u, oct.src, oct.coeff, l+1,
+                        os_, oe_, os_, oe_, os_, oe_, false);
     }
   }
   mgroot_->CalculateMatrixBlockAll();
@@ -2425,4 +2417,3 @@ void MultigridDriver::CalculateCenterOfMass() {
 
   return;
 }
-
