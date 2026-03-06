@@ -45,6 +45,7 @@ namespace {
   Real rho_unit, egas_unit, leng_unit;
   Real T_unit, time_unit;
   Real a_r_dim, Rgas, mu;
+  int dir;
   Real HistoryTg(MeshBlock *pmb, int iout);
   Real HistoryTr(MeshBlock *pmb, int iout);
   Real HistoryEg(MeshBlock *pmb, int iout);
@@ -55,24 +56,125 @@ namespace {
   Real HistoryL1norm(MeshBlock *pmb, int iout);
   Real Er0_L, Er0_R, rho0, p0;
   Real chi;
+
+  Real CoordAt(const Coordinates *pco, int i, int j, int k) {
+    if (dir == 1) return pco->x1v(i);
+    if (dir == 2) return pco->x2v(j);
+    return pco->x3v(k);
+  }
+
+  Real DxAt(const Coordinates *pco, int idx) {
+    if (dir == 1) return pco->dx1f(idx);
+    if (dir == 2) return pco->dx2f(idx);
+    return pco->dx3f(idx);
+  }
+
+  Real MeshMin(const Mesh *pm) {
+    if (dir == 1) return pm->mesh_size.x1min;
+    if (dir == 2) return pm->mesh_size.x2min;
+    return pm->mesh_size.x3min;
+  }
+
+  Real MeshMax(const Mesh *pm) {
+    if (dir == 1) return pm->mesh_size.x1max;
+    if (dir == 2) return pm->mesh_size.x2max;
+    return pm->mesh_size.x3max;
+  }
+
+  void SetLinearBoundary(MeshBlock *pmb, Coordinates *pco, FLD2 *pfld,
+                         int is, int ie, int js, int je, int ks, int ke, int ngh,
+                         int axis, bool inner) {
+    Real x_L = MeshMin(pmb->pmy_mesh) - 0.5*DxAt(pco, 0);
+    Real x_R = MeshMax(pmb->pmy_mesh) + 0.5*DxAt(pco, 0);
+    Real slope = (Er0_R-Er0_L)/(x_R-x_L);
+    Real cons = Er0_L - slope*x_L;
+    if (axis == 1) {
+      for (int k=ks; k<=ke; k++) {
+        for (int j=js; j<=je; j++) {
+          for (int i=1; i<=ngh; i++) {
+            int ii = inner ? is-i : ie+i;
+            Real x = pco->x1v(ii);
+            pfld->u_rad(k,j,ii) = slope*x + cons;
+          }
+        }
+      }
+    } else if (axis == 2) {
+      for (int k=ks; k<=ke; k++) {
+        for (int i=is; i<=ie; i++) {
+          for (int j=1; j<=ngh; j++) {
+            int jj = inner ? js-j : je+j;
+            Real x = pco->x2v(jj);
+            pfld->u_rad(k,jj,i) = slope*x + cons;
+          }
+        }
+      }
+    } else {
+      for (int j=js; j<=je; j++) {
+        for (int i=is; i<=ie; i++) {
+          for (int k=1; k<=ngh; k++) {
+            int kk = inner ? ks-k : ke+k;
+            Real x = pco->x3v(kk);
+            pfld->u_rad(kk,j,i) = slope*x + cons;
+          }
+        }
+      }
+    }
+  }
+
+  void HydroCopyBoundary(MeshBlock *pmb, AthenaArray<Real> &prim,
+                         int is, int ie, int js, int je, int ks, int ke, int ngh,
+                         int axis, bool inner) {
+    if (axis == 1) {
+      for (int k=ks; k<=ke; k++) {
+        for (int j=js; j<=je; j++) {
+          for (int i=1; i<=ngh; i++) {
+            int ii = inner ? is-i : ie+i;
+            int ir = inner ? is : ie;
+            prim(IDN,k,j,ii) = prim(IDN,k,j,ir);
+            prim(IVX,k,j,ii) = prim(IVX,k,j,ir);
+            prim(IVY,k,j,ii) = prim(IVY,k,j,ir);
+            prim(IVZ,k,j,ii) = prim(IVZ,k,j,ir);
+            prim(IPR,k,j,ii) = prim(IPR,k,j,ir);
+          }
+        }
+      }
+    } else if (axis == 2) {
+      for (int k=ks; k<=ke; k++) {
+        for (int i=is; i<=ie; i++) {
+          for (int j=1; j<=ngh; j++) {
+            int jj = inner ? js-j : je+j;
+            int jr = inner ? js : je;
+            prim(IDN,k,jj,i) = prim(IDN,k,jr,i);
+            prim(IVX,k,jj,i) = prim(IVX,k,jr,i);
+            prim(IVY,k,jj,i) = prim(IVY,k,jr,i);
+            prim(IVZ,k,jj,i) = prim(IVZ,k,jr,i);
+            prim(IPR,k,jj,i) = prim(IPR,k,jr,i);
+          }
+        }
+      }
+    } else {
+      for (int j=js; j<=je; j++) {
+        for (int i=is; i<=ie; i++) {
+          for (int k=1; k<=ngh; k++) {
+            int kk = inner ? ks-k : ke+k;
+            int kr = inner ? ks : ke;
+            prim(IDN,kk,j,i) = prim(IDN,kr,j,i);
+            prim(IVX,kk,j,i) = prim(IVX,kr,j,i);
+            prim(IVY,kk,j,i) = prim(IVY,kr,j,i);
+            prim(IVZ,kk,j,i) = prim(IVZ,kr,j,i);
+            prim(IPR,kk,j,i) = prim(IPR,kr,j,i);
+          }
+        }
+      }
+    }
+  }
 }
 
 void FLDFixedInnerX1(MeshBlock *pmb, Coordinates *pco, FLD2 *pfld,
                      const AthenaArray<Real> &w, AthenaArray<Real> &u_rad_fld,
                      Real time, Real dt,
                      int is, int ie, int js, int je, int ks, int ke, int ngh) {
-  Real x_L = pmb->pmy_mesh->mesh_size.x1min - pmb->pcoord->dx1f(0)/2.0;
-  Real x_R = pmb->pmy_mesh->mesh_size.x1max + pmb->pcoord->dx1f(0)/2.0;
-  Real slope = (Er0_R-Er0_L)/(x_R-x_L);
-  Real cons = Er0_L - slope*x_L;
-  for (int k=ks; k<=ke; k++) {
-    for (int j=js; j<=je; j++) {
-      for (int i=1; i<=ngh; i++) {
-        Real an = slope*pco->x1v(is-i) + cons;
-        pfld->u_rad(k,j,is-i) = an;
-      }
-    }
-  }
+  SetLinearBoundary(pmb, pco, pfld, is, ie, js, je, ks, ke, ngh, 1, true);
   return;
 }
 
@@ -80,50 +182,75 @@ void FLDFixedOuterX1(MeshBlock *pmb, Coordinates *pco, FLD2 *pfld,
                      const AthenaArray<Real> &w, AthenaArray<Real> &u_rad_fld,
                      Real time, Real dt,
                      int is, int ie, int js, int je, int ks, int ke, int ngh) {
-  Real x_L = pmb->pmy_mesh->mesh_size.x1min - pmb->pcoord->dx1f(0)/2.0;
-  Real x_R = pmb->pmy_mesh->mesh_size.x1max + pmb->pcoord->dx1f(0)/2.0;
-  Real slope = (Er0_R-Er0_L)/(x_R-x_L);
-  Real cons = Er0_L - slope*x_L;
-  for (int k=ks; k<=ke; k++) {
-    for (int j=js; j<=je; j++) {
-      for (int i=1; i<=ngh; i++) {
-        Real an = slope*pco->x1v(ie+i) + cons;
-        pfld->u_rad(k,j,ie+i) = an;
-      }
-    }
-  }
+  SetLinearBoundary(pmb, pco, pfld, is, ie, js, je, ks, ke, ngh, 1, false);
+  return;
+}
+
+void FLDFixedInnerX2(MeshBlock *pmb, Coordinates *pco, FLD2 *pfld,
+                     const AthenaArray<Real> &w, AthenaArray<Real> &u_rad_fld,
+                     Real time, Real dt,
+                     int is, int ie, int js, int je, int ks, int ke, int ngh) {
+  SetLinearBoundary(pmb, pco, pfld, is, ie, js, je, ks, ke, ngh, 2, true);
+  return;
+}
+
+void FLDFixedOuterX2(MeshBlock *pmb, Coordinates *pco, FLD2 *pfld,
+                     const AthenaArray<Real> &w, AthenaArray<Real> &u_rad_fld,
+                     Real time, Real dt,
+                     int is, int ie, int js, int je, int ks, int ke, int ngh) {
+  SetLinearBoundary(pmb, pco, pfld, is, ie, js, je, ks, ke, ngh, 2, false);
+  return;
+}
+
+void FLDFixedInnerX3(MeshBlock *pmb, Coordinates *pco, FLD2 *pfld,
+                     const AthenaArray<Real> &w, AthenaArray<Real> &u_rad_fld,
+                     Real time, Real dt,
+                     int is, int ie, int js, int je, int ks, int ke, int ngh) {
+  SetLinearBoundary(pmb, pco, pfld, is, ie, js, je, ks, ke, ngh, 3, true);
+  return;
+}
+
+void FLDFixedOuterX3(MeshBlock *pmb, Coordinates *pco, FLD2 *pfld,
+                     const AthenaArray<Real> &w, AthenaArray<Real> &u_rad_fld,
+                     Real time, Real dt,
+                     int is, int ie, int js, int je, int ks, int ke, int ngh) {
+  SetLinearBoundary(pmb, pco, pfld, is, ie, js, je, ks, ke, ngh, 3, false);
   return;
 }
 
 void HydroInnerX1(MeshBlock *pmb, Coordinates *pco, AthenaArray<Real> &prim, FaceField &b,
     Real time, Real dt, int is, int ie, int js, int je, int ks, int ke, int ngh) {
-  for (int k=ks; k<=ke; k++) {
-    for (int j=js; j<=je; j++) {
-      for (int i=1; i<=ngh; i++) {
-        prim(IDN,k,j,is-i) = prim(IDN,k,j,is);
-        prim(IVX,k,j,is-i) = prim(IVX,k,j,is);
-        prim(IVY,k,j,is-i) = prim(IVY,k,j,is);
-        prim(IVZ,k,j,is-i) = prim(IVZ,k,j,is);
-        prim(IPR,k,j,is-i) = prim(IPR,k,j,is);
-      }
-    }
-  }
+  HydroCopyBoundary(pmb, prim, is, ie, js, je, ks, ke, ngh, 1, true);
   return;
 }
 
 void HydroOuterX1(MeshBlock *pmb, Coordinates *pco, AthenaArray<Real> &prim, FaceField &b,
     Real time, Real dt, int is, int ie, int js, int je, int ks, int ke, int ngh) {
-  for (int k=ks; k<=ke; k++) {
-    for (int j=js; j<=je; j++) {
-      for (int i=1; i<=ngh; i++) {
-        prim(IDN,k,j,ie+i) = prim(IDN,k,j,ie);
-        prim(IVX,k,j,ie+i) = prim(IVX,k,j,ie);
-        prim(IVY,k,j,ie+i) = prim(IVY,k,j,ie);
-        prim(IVZ,k,j,ie+i) = prim(IVZ,k,j,ie);
-        prim(IPR,k,j,ie+i) = prim(IPR,k,j,ie);
-      }
-    }
-  }
+  HydroCopyBoundary(pmb, prim, is, ie, js, je, ks, ke, ngh, 1, false);
+  return;
+}
+
+void HydroInnerX2(MeshBlock *pmb, Coordinates *pco, AthenaArray<Real> &prim, FaceField &b,
+    Real time, Real dt, int is, int ie, int js, int je, int ks, int ke, int ngh) {
+  HydroCopyBoundary(pmb, prim, is, ie, js, je, ks, ke, ngh, 2, true);
+  return;
+}
+
+void HydroOuterX2(MeshBlock *pmb, Coordinates *pco, AthenaArray<Real> &prim, FaceField &b,
+    Real time, Real dt, int is, int ie, int js, int je, int ks, int ke, int ngh) {
+  HydroCopyBoundary(pmb, prim, is, ie, js, je, ks, ke, ngh, 2, false);
+  return;
+}
+
+void HydroInnerX3(MeshBlock *pmb, Coordinates *pco, AthenaArray<Real> &prim, FaceField &b,
+    Real time, Real dt, int is, int ie, int js, int je, int ks, int ke, int ngh) {
+  HydroCopyBoundary(pmb, prim, is, ie, js, je, ks, ke, ngh, 3, true);
+  return;
+}
+
+void HydroOuterX3(MeshBlock *pmb, Coordinates *pco, AthenaArray<Real> &prim, FaceField &b,
+    Real time, Real dt, int is, int ie, int js, int je, int ks, int ke, int ngh) {
+  HydroCopyBoundary(pmb, prim, is, ie, js, je, ks, ke, ngh, 3, false);
   return;
 }
 
@@ -177,6 +304,14 @@ void Mesh::InitUserMeshData(ParameterInput *pin) {
     ATHENA_ERROR(msg);
   }
 
+  dir = pin->GetOrAddInteger("problem", "dir", 1);
+  if (dir < 1 || dir > 3) {
+    std::stringstream msg;
+    msg << "### FATAL ERROR in function [Mesh::InitUserMeshData]" << std::endl;
+    msg << "dir must be 1, 2, or 3.";
+    ATHENA_ERROR(msg);
+  }
+
   rho_unit = pin->GetReal("hydro", "rho_unit");
   egas_unit = pin->GetReal("hydro", "egas_unit");
   time_unit = pin->GetOrAddReal("hydro", "time_unit", -1.0);
@@ -215,11 +350,22 @@ void Mesh::InitUserMeshData(ParameterInput *pin) {
   Er0_R = pin->GetReal("problem", "Er0_R");
 
 
-  EnrollUserFLDBoundaryFunction(BoundaryFace::inner_x1, FLDFixedInnerX1);
-  EnrollUserFLDBoundaryFunction(BoundaryFace::outer_x1, FLDFixedOuterX1);
-
-  EnrollUserBoundaryFunction(BoundaryFace::inner_x1, HydroInnerX1);
-  EnrollUserBoundaryFunction(BoundaryFace::outer_x1, HydroOuterX1);
+  if (dir == 1) {
+    EnrollUserFLDBoundaryFunction(BoundaryFace::inner_x1, FLDFixedInnerX1);
+    EnrollUserFLDBoundaryFunction(BoundaryFace::outer_x1, FLDFixedOuterX1);
+    EnrollUserBoundaryFunction(BoundaryFace::inner_x1, HydroInnerX1);
+    EnrollUserBoundaryFunction(BoundaryFace::outer_x1, HydroOuterX1);
+  } else if (dir == 2) {
+    EnrollUserFLDBoundaryFunction(BoundaryFace::inner_x2, FLDFixedInnerX2);
+    EnrollUserFLDBoundaryFunction(BoundaryFace::outer_x2, FLDFixedOuterX2);
+    EnrollUserBoundaryFunction(BoundaryFace::inner_x2, HydroInnerX2);
+    EnrollUserBoundaryFunction(BoundaryFace::outer_x2, HydroOuterX2);
+  } else {
+    EnrollUserFLDBoundaryFunction(BoundaryFace::inner_x3, FLDFixedInnerX3);
+    EnrollUserFLDBoundaryFunction(BoundaryFace::outer_x3, FLDFixedOuterX3);
+    EnrollUserBoundaryFunction(BoundaryFace::inner_x3, HydroInnerX3);
+    EnrollUserBoundaryFunction(BoundaryFace::outer_x3, HydroOuterX3);
+  }
   AllocateUserHistoryOutput(8);
   EnrollUserHistoryOutput(0, HistoryTg, "T_gas", UserHistoryOperation::max);
   EnrollUserHistoryOutput(1, HistoryTr, "T_rad", UserHistoryOperation::max);
@@ -251,17 +397,17 @@ void MeshBlock::InitUserMeshBlockData(ParameterInput *pin) {
 void MeshBlock::ProblemGenerator(ParameterInput *pin) {
   Real gamma = peos->GetGamma();
   Real igm1 = 1.0/(gamma-1.0);
-  Real dx1 = pcoord->dx1f(4);
+  Real dx = DxAt(pcoord, 4);
   Real courant = pin->GetReal("time", "cfl_number");
   Real sound = std::sqrt(gamma*p0/rho0);
-  Real dt_exp = courant*dx1/sound*time_unit;
+  Real dt_exp = courant*dx/sound*time_unit;
   Real const_opasity = pin->GetReal("fld", "const_opacity");
   Real const_opasity_sim = const_opasity*leng_unit*rho_unit;
   Real c_ph_dim = 2.99792458e10; // speed of light in cm s^-1
   Real c_ph_sim = c_ph_dim/(leng_unit/time_unit);
   Real mfp_sim = 1.0/(const_opasity*rho_unit)/leng_unit;
 
-  Real L = pmy_mesh->mesh_size.x1max - pmy_mesh->mesh_size.x1min;
+  Real L = MeshMax(pmy_mesh) - MeshMin(pmy_mesh);
   // Real tau_diff = L*L/chi;
   // Real tau_diff_dt = tau_diff/dt_exp;
   Real Er_mean = 0.5*(Er0_L+Er0_R), Er_dif = std::abs(Er0_L-Er0_R);
@@ -277,7 +423,7 @@ void MeshBlock::ProblemGenerator(ParameterInput *pin) {
     std::cout << "T_unit = " << T_unit << " K" << std::endl;
     std::cout << "c_ph_sim = " << c_ph_sim << " cm s^-1" << std::endl;
     std::cout << "chi = " << chi*leng_unit*leng_unit/time_unit << " cm^2 s^-1" << std::endl;
-    std::cout << "dx = " << dx1*leng_unit << " cm" << std::endl;
+    std::cout << "dx = " << dx*leng_unit << " cm" << std::endl;
     std::cout << "dt = " << dt_exp << " s" << std::endl;
     std::cout << "dt_sim = " << dt_exp/time_unit << std::endl;
     std::cout << "tau_diff = " << tau_diff << " s" << std::endl;
@@ -285,7 +431,7 @@ void MeshBlock::ProblemGenerator(ParameterInput *pin) {
     std::cout << "tau_diff/dt = " << tau_diff/dt_exp << std::endl;
 
     Real ideal_step = 100.0;
-    Real ideal_cfl = (tau_diff/time_unit)*sound/(dx1*ideal_step);
+    Real ideal_cfl = (tau_diff/time_unit)*sound/(dx*ideal_step);
     std::cout << "If you want to finish the diffusion in " << ideal_step
               << " steps, the cfl_number should be " << ideal_cfl << std::endl;
   }
@@ -296,8 +442,8 @@ void MeshBlock::ProblemGenerator(ParameterInput *pin) {
   int ju = je+NGHOST;
   int il = is-NGHOST;
   int iu = ie+NGHOST;
-  Real x_L = pmy_mesh->mesh_size.x1min - pcoord->dx1f(0)/2.0;
-  Real x_R = pmy_mesh->mesh_size.x1max + pcoord->dx1f(0)/2.0;
+  Real x_L = MeshMin(pmy_mesh) - DxAt(pcoord, 0)/2.0;
+  Real x_R = MeshMax(pmy_mesh) + DxAt(pcoord, 0)/2.0;
   Real slope = (Er0_R-Er0_L)/(x_R-x_L);
   Real cons = Er0_L - slope*x_L;
 
@@ -329,12 +475,14 @@ void MeshBlock::ProblemGenerator(ParameterInput *pin) {
         // }
 
         // put tanh profile to avoid initial strong diffusion flux
-        Real x = pcoord->x1v(i);
+        Real x = CoordAt(pcoord, i, j, k);
         Real an = 0.5*(Er0_R + Er0_L) + 0.5*(Er0_R - Er0_L)*std::tanh((x - x_mid)/(L/4.0));
         prfld2->u_rad(k,j,i) = an;
 
-        if (i == il || i == iu) {
-          Real an = slope*pcoord->x1v(i) + cons;
+        if ((dir == 1 && (i == il || i == iu)) ||
+            (dir == 2 && (j == jl || j == ju)) ||
+            (dir == 3 && (k == kl || k == ku))) {
+          Real an = slope*x + cons;
           prfld2->u_rad(k,j,i) = an;
         }
       }
@@ -367,14 +515,14 @@ void MeshBlock::UserWorkBeforeOutput(ParameterInput *pin) {
   }
 
   
-  Real x_L = pmy_mesh->mesh_size.x1min - pcoord->dx1f(0)/2.0;
-  Real x_R = pmy_mesh->mesh_size.x1max + pcoord->dx1f(0)/2.0;
+  Real x_L = MeshMin(pmy_mesh) - DxAt(pcoord, 0)/2.0;
+  Real x_R = MeshMax(pmy_mesh) + DxAt(pcoord, 0)/2.0;
   Real slope = (Er0_R-Er0_L)/(x_R-x_L);
   Real cons = Er0_L - slope*x_L;
   for (int k=ks; k<=ke; k++) {
     for (int j=js; j<=je; j++) {
       for (int i=is; i<=ie; i++) {
-        Real x = pcoord->x1v(i);
+        Real x = CoordAt(pcoord, i, j, k);
         Real an = slope*x + cons;
         Real L1norm = std::abs(prfld2->u_rad(k,j,i) - an)/std::abs(an);
         user_out_var(4,k,j,i) = L1norm;
@@ -504,14 +652,14 @@ Real HistoryEall(MeshBlock *pmb, int iout) {
 Real HistoryL1norm(MeshBlock *pmb, int iout) {
   int is = pmb->is, ie = pmb->ie, js = pmb->js, je = pmb->je, ks = pmb->ks, ke = pmb->ke;
   Real L1norm = 0;
-  Real x_L = pmb->pmy_mesh->mesh_size.x1min - pmb->pcoord->dx1f(0)/2.0;
-  Real x_R = pmb->pmy_mesh->mesh_size.x1max + pmb->pcoord->dx1f(0)/2.0;
+  Real x_L = MeshMin(pmb->pmy_mesh) - DxAt(pmb->pcoord, 0)/2.0;
+  Real x_R = MeshMax(pmb->pmy_mesh) + DxAt(pmb->pcoord, 0)/2.0;
   Real slope = (Er0_R-Er0_L)/(x_R-x_L);
   Real cons = Er0_L - slope*x_L;
   for (int k=ks; k<=ke; k++) {
     for (int j=js; j<=je; j++) {
       for (int i=is; i<=ie; i++) {
-        Real x = pmb->pcoord->x1v(i);
+        Real x = CoordAt(pmb->pcoord, i, j, k);
         Real an = slope*x + cons;
         L1norm += std::abs(pmb->prfld2->u_rad(k,j,i) - an)/std::abs(an);
       }

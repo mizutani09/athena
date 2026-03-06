@@ -51,6 +51,7 @@ namespace {
   Real T_unit, time_unit, vel_unit;
   Real a_r_dim, Rgas, mu;
   Real a_r_sim;
+  int dir;
   Real HistoryTg(MeshBlock *pmb, int iout);
   Real HistoryTr(MeshBlock *pmb, int iout);
   Real HistoryEg(MeshBlock *pmb, int iout);
@@ -70,6 +71,154 @@ namespace {
 
   // for iuser_meshblock
   int TSTEP_COUNTER = 0;
+
+  Real CoordAt(const Coordinates *pco, int i, int j, int k) {
+    if (dir == 1) return pco->x1v(i);
+    if (dir == 2) return pco->x2v(j);
+    return pco->x3v(k);
+  }
+
+  Real DxAt(const Coordinates *pco, int idx) {
+    if (dir == 1) return pco->dx1f(idx);
+    if (dir == 2) return pco->dx2f(idx);
+    return pco->dx3f(idx);
+  }
+
+  Real MeshMin(const Mesh *pm) {
+    if (dir == 1) return pm->mesh_size.x1min;
+    if (dir == 2) return pm->mesh_size.x2min;
+    return pm->mesh_size.x3min;
+  }
+
+  Real MeshMax(const Mesh *pm) {
+    if (dir == 1) return pm->mesh_size.x1max;
+    if (dir == 2) return pm->mesh_size.x2max;
+    return pm->mesh_size.x3max;
+  }
+
+  void SetNRFixedBoundary(AthenaArray<Real> &u_rad, AthenaArray<Real> &u_gas,
+                          int is, int ie, int js, int je, int ks, int ke, int ngh,
+                          int axis, bool inner) {
+    Real u_rad_val = inner ? Er0_L : Er0_R;
+    Real u_gas_val = inner ? egas0_L : egas0_R;
+    if (axis == 1) {
+      for (int k=ks; k<=ke; k++) {
+        for (int j=js; j<=je; j++) {
+          for (int i=1; i<=ngh; i++) {
+            int ii = inner ? is-i : ie+i;
+            u_rad(k,j,ii) = u_rad_val;
+            u_gas(k,j,ii) = u_gas_val;
+          }
+        }
+      }
+    } else if (axis == 2) {
+      for (int k=ks; k<=ke; k++) {
+        for (int i=is; i<=ie; i++) {
+          for (int j=1; j<=ngh; j++) {
+            int jj = inner ? js-j : je+j;
+            u_rad(k,jj,i) = u_rad_val;
+            u_gas(k,jj,i) = u_gas_val;
+          }
+        }
+      }
+    } else {
+      for (int j=js; j<=je; j++) {
+        for (int i=is; i<=ie; i++) {
+          for (int k=1; k<=ngh; k++) {
+            int kk = inner ? ks-k : ke+k;
+            u_rad(kk,j,i) = u_rad_val;
+            u_gas(kk,j,i) = u_gas_val;
+          }
+        }
+      }
+    }
+  }
+
+  void SetFLDFixedBoundary(AthenaArray<Real> &u_rad_fld,
+                           int is, int ie, int js, int je, int ks, int ke, int ngh,
+                           int axis, bool inner) {
+    Real u_rad_val = inner ? Er0_L : Er0_R;
+    if (axis == 1) {
+      for (int k=ks; k<=ke; k++) {
+        for (int j=js; j<=je; j++) {
+          for (int i=1; i<=ngh; i++) {
+            int ii = inner ? is-i : ie+i;
+            u_rad_fld(k,j,ii) = u_rad_val;
+          }
+        }
+      }
+    } else if (axis == 2) {
+      for (int k=ks; k<=ke; k++) {
+        for (int i=is; i<=ie; i++) {
+          for (int j=1; j<=ngh; j++) {
+            int jj = inner ? js-j : je+j;
+            u_rad_fld(k,jj,i) = u_rad_val;
+          }
+        }
+      }
+    } else {
+      for (int j=js; j<=je; j++) {
+        for (int i=is; i<=ie; i++) {
+          for (int k=1; k<=ngh; k++) {
+            int kk = inner ? ks-k : ke+k;
+            u_rad_fld(kk,j,i) = u_rad_val;
+          }
+        }
+      }
+    }
+  }
+
+  void SetHydroFixedBoundary(AthenaArray<Real> &prim,
+                             int is, int ie, int js, int je, int ks, int ke, int ngh,
+                             int axis, bool inner) {
+    Real rho_val = inner ? rho0_L : rho0_R;
+    Real v_val = inner ? v0_L : v0_R;
+    Real p_val = inner ? p0_L : p0_R;
+    int vel = (axis == 1) ? IVX : (axis == 2) ? IVY : IVZ;
+    if (axis == 1) {
+      for (int k=ks; k<=ke; k++) {
+        for (int j=js; j<=je; j++) {
+          for (int i=1; i<=ngh; i++) {
+            int ii = inner ? is-i : ie+i;
+            prim(IDN,k,j,ii) = rho_val;
+            prim(IVX,k,j,ii) = 0.0;
+            prim(IVY,k,j,ii) = 0.0;
+            prim(IVZ,k,j,ii) = 0.0;
+            prim(vel,k,j,ii) = v_val;
+            prim(IPR,k,j,ii) = p_val;
+          }
+        }
+      }
+    } else if (axis == 2) {
+      for (int k=ks; k<=ke; k++) {
+        for (int i=is; i<=ie; i++) {
+          for (int j=1; j<=ngh; j++) {
+            int jj = inner ? js-j : je+j;
+            prim(IDN,k,jj,i) = rho_val;
+            prim(IVX,k,jj,i) = 0.0;
+            prim(IVY,k,jj,i) = 0.0;
+            prim(IVZ,k,jj,i) = 0.0;
+            prim(vel,k,jj,i) = v_val;
+            prim(IPR,k,jj,i) = p_val;
+          }
+        }
+      }
+    } else {
+      for (int j=js; j<=je; j++) {
+        for (int i=is; i<=ie; i++) {
+          for (int k=1; k<=ngh; k++) {
+            int kk = inner ? ks-k : ke+k;
+            prim(IDN,kk,j,i) = rho_val;
+            prim(IVX,kk,j,i) = 0.0;
+            prim(IVY,kk,j,i) = 0.0;
+            prim(IVZ,kk,j,i) = 0.0;
+            prim(vel,kk,j,i) = v_val;
+            prim(IPR,kk,j,i) = p_val;
+          }
+        }
+      }
+    }
+  }
 }
 
 void AddRadiativeForceAndWork(MeshBlock *pmb, const Real time, const Real dt,
@@ -82,15 +231,7 @@ void NRInnerX1(MeshBlock *pmb,
                Coordinates *pco, const AthenaArray<Real> &w, Real time, Real dt,
                int is, int ie, int js, int je, int ks, int ke, int ngh) {
   // for fixed boundary condition
-  // std::cout << "Apply fixed inner x1 NR BC" << std::endl;
-  for (int k=ks; k<=ke; k++) {
-    for (int j=js; j<=je; j++) {
-      for (int i=1; i<=ngh; i++) {
-        u_rad(k,j,is-i) = Er0_L;
-        u_gas(k,j,is-i) = egas0_L;
-      }
-    }
-  }
+  SetNRFixedBoundary(u_rad, u_gas, is, ie, js, je, ks, ke, ngh, 1, true);
   return;
 }
 
@@ -99,14 +240,7 @@ void NROuterX1(MeshBlock *pmb,
                Coordinates *pco, const AthenaArray<Real> &w, Real time, Real dt,
                int is, int ie, int js, int je, int ks, int ke, int ngh) {
   // for fixed boundary condition
-  for (int k=ks; k<=ke; k++) {
-    for (int j=js; j<=je; j++) {
-      for (int i=1; i<=ngh; i++) {
-        u_rad(k,j,ie+i) = Er0_R;
-        u_gas(k,j,ie+i) = egas0_R;
-      }
-    }
-  }
+  SetNRFixedBoundary(u_rad, u_gas, is, ie, js, je, ks, ke, ngh, 1, false);
   return;
 }
 
@@ -116,13 +250,7 @@ void FLDFixedInnerX1(MeshBlock *pmb, Coordinates *pco, FLD2 *pfld,
                      int is, int ie, int js, int je, int ks, int ke, int ngh) {
   // std::cout << "Apply fixed inner x1 FLD BC" << std::endl;
   // for fixed boundary condition
-  for (int k=ks; k<=ke; k++) {
-    for (int j=js; j<=je; j++) {
-      for (int i=1; i<=ngh; i++) {
-        u_rad_fld(k,j,is-i) = Er0_L;
-      }
-    }
-  }
+  SetFLDFixedBoundary(u_rad_fld, is, ie, js, je, ks, ke, ngh, 1, true);
   return;
 }
 
@@ -131,47 +259,109 @@ void FLDFixedOuterX1(MeshBlock *pmb, Coordinates *pco, FLD2 *pfld,
                      Real time, Real dt,
                      int is, int ie, int js, int je, int ks, int ke, int ngh) {
   // for fixed boundary condition
-  for (int k=ks; k<=ke; k++) {
-    for (int j=js; j<=je; j++) {
-      for (int i=1; i<=ngh; i++) {
-        u_rad_fld(k,j,ie+i) = Er0_R;
-      }
-    }
-  }
+  SetFLDFixedBoundary(u_rad_fld, is, ie, js, je, ks, ke, ngh, 1, false);
   return;
 }
 
 void HydroFixedInnerX1(MeshBlock *pmb, Coordinates *pco, AthenaArray<Real> &prim, FaceField &b,
     Real time, Real dt, int is, int ie, int js, int je, int ks, int ke, int ngh) {
   // for fixed boundary condition
-  for (int k=ks; k<=ke; k++) {
-    for (int j=js; j<=je; j++) {
-      for (int i=1; i<=ngh; i++) {
-        prim(IDN,k,j,is-i) = rho0_L;
-        prim(IVX,k,j,is-i) = v0_L;
-        prim(IVY,k,j,is-i) = 0.0;
-        prim(IVZ,k,j,is-i) = 0.0;
-        prim(IPR,k,j,is-i) = p0_L;
-      }
-    }
-  }
+  SetHydroFixedBoundary(prim, is, ie, js, je, ks, ke, ngh, 1, true);
   return;
 }
 
 void HydroFixedOuterX1(MeshBlock *pmb, Coordinates *pco, AthenaArray<Real> &prim, FaceField &b,
     Real time, Real dt, int is, int ie, int js, int je, int ks, int ke, int ngh) {
   // for fixed boundary condition
-  for (int k=ks; k<=ke; k++) {
-    for (int j=js; j<=je; j++) {
-      for (int i=1; i<=ngh; i++) {
-        prim(IDN,k,j,ie+i) = rho0_R;
-        prim(IVX,k,j,ie+i) = v0_R;
-        prim(IVY,k,j,ie+i) = 0.0;
-        prim(IVZ,k,j,ie+i) = 0.0;
-        prim(IPR,k,j,ie+i) = p0_R;
-      }
-    }
-  }
+  SetHydroFixedBoundary(prim, is, ie, js, je, ks, ke, ngh, 1, false);
+  return;
+}
+
+void NRInnerX2(MeshBlock *pmb,
+               AthenaArray<Real> &u_rad, AthenaArray<Real> &u_gas,
+               Coordinates *pco, const AthenaArray<Real> &w, Real time, Real dt,
+               int is, int ie, int js, int je, int ks, int ke, int ngh) {
+  SetNRFixedBoundary(u_rad, u_gas, is, ie, js, je, ks, ke, ngh, 2, true);
+  return;
+}
+
+void NROuterX2(MeshBlock *pmb,
+               AthenaArray<Real> &u_rad, AthenaArray<Real> &u_gas,
+               Coordinates *pco, const AthenaArray<Real> &w, Real time, Real dt,
+               int is, int ie, int js, int je, int ks, int ke, int ngh) {
+  SetNRFixedBoundary(u_rad, u_gas, is, ie, js, je, ks, ke, ngh, 2, false);
+  return;
+}
+
+void NRInnerX3(MeshBlock *pmb,
+               AthenaArray<Real> &u_rad, AthenaArray<Real> &u_gas,
+               Coordinates *pco, const AthenaArray<Real> &w, Real time, Real dt,
+               int is, int ie, int js, int je, int ks, int ke, int ngh) {
+  SetNRFixedBoundary(u_rad, u_gas, is, ie, js, je, ks, ke, ngh, 3, true);
+  return;
+}
+
+void NROuterX3(MeshBlock *pmb,
+               AthenaArray<Real> &u_rad, AthenaArray<Real> &u_gas,
+               Coordinates *pco, const AthenaArray<Real> &w, Real time, Real dt,
+               int is, int ie, int js, int je, int ks, int ke, int ngh) {
+  SetNRFixedBoundary(u_rad, u_gas, is, ie, js, je, ks, ke, ngh, 3, false);
+  return;
+}
+
+void FLDFixedInnerX2(MeshBlock *pmb, Coordinates *pco, FLD2 *pfld,
+                     const AthenaArray<Real> &w, AthenaArray<Real> &u_rad_fld,
+                     Real time, Real dt,
+                     int is, int ie, int js, int je, int ks, int ke, int ngh) {
+  SetFLDFixedBoundary(u_rad_fld, is, ie, js, je, ks, ke, ngh, 2, true);
+  return;
+}
+
+void FLDFixedOuterX2(MeshBlock *pmb, Coordinates *pco, FLD2 *pfld,
+                     const AthenaArray<Real> &w, AthenaArray<Real> &u_rad_fld,
+                     Real time, Real dt,
+                     int is, int ie, int js, int je, int ks, int ke, int ngh) {
+  SetFLDFixedBoundary(u_rad_fld, is, ie, js, je, ks, ke, ngh, 2, false);
+  return;
+}
+
+void FLDFixedInnerX3(MeshBlock *pmb, Coordinates *pco, FLD2 *pfld,
+                     const AthenaArray<Real> &w, AthenaArray<Real> &u_rad_fld,
+                     Real time, Real dt,
+                     int is, int ie, int js, int je, int ks, int ke, int ngh) {
+  SetFLDFixedBoundary(u_rad_fld, is, ie, js, je, ks, ke, ngh, 3, true);
+  return;
+}
+
+void FLDFixedOuterX3(MeshBlock *pmb, Coordinates *pco, FLD2 *pfld,
+                     const AthenaArray<Real> &w, AthenaArray<Real> &u_rad_fld,
+                     Real time, Real dt,
+                     int is, int ie, int js, int je, int ks, int ke, int ngh) {
+  SetFLDFixedBoundary(u_rad_fld, is, ie, js, je, ks, ke, ngh, 3, false);
+  return;
+}
+
+void HydroFixedInnerX2(MeshBlock *pmb, Coordinates *pco, AthenaArray<Real> &prim, FaceField &b,
+    Real time, Real dt, int is, int ie, int js, int je, int ks, int ke, int ngh) {
+  SetHydroFixedBoundary(prim, is, ie, js, je, ks, ke, ngh, 2, true);
+  return;
+}
+
+void HydroFixedOuterX2(MeshBlock *pmb, Coordinates *pco, AthenaArray<Real> &prim, FaceField &b,
+    Real time, Real dt, int is, int ie, int js, int je, int ks, int ke, int ngh) {
+  SetHydroFixedBoundary(prim, is, ie, js, je, ks, ke, ngh, 2, false);
+  return;
+}
+
+void HydroFixedInnerX3(MeshBlock *pmb, Coordinates *pco, AthenaArray<Real> &prim, FaceField &b,
+    Real time, Real dt, int is, int ie, int js, int je, int ks, int ke, int ngh) {
+  SetHydroFixedBoundary(prim, is, ie, js, je, ks, ke, ngh, 3, true);
+  return;
+}
+
+void HydroFixedOuterX3(MeshBlock *pmb, Coordinates *pco, AthenaArray<Real> &prim, FaceField &b,
+    Real time, Real dt, int is, int ie, int js, int je, int ks, int ke, int ngh) {
+  SetHydroFixedBoundary(prim, is, ie, js, je, ks, ke, ngh, 3, false);
   return;
 }
 
@@ -206,6 +396,7 @@ void ConstantOpacity(MeshBlock *pmb, AthenaArray<Real> &u_fld,
 //========================================================================================
 
 void Mesh::InitUserMeshData(ParameterInput *pin) {
+  std::cout << "multilevel = " << multilevel << std::endl;
   /*
   is_couple       = true
   only_rad        = false
@@ -213,39 +404,47 @@ void Mesh::InitUserMeshData(ParameterInput *pin) {
   cut_Pnablav     = false
   */
   // check input
-  if (!pin->GetBoolean("fld", "is_couple")) {
-    std::stringstream msg;
-    msg << "### FATAL ERROR in function [Mesh::InitUserMeshData]" << std::endl;
-    msg << "is_couple must be true for this problem.";
-    ATHENA_ERROR(msg);
-  }
+  // if (!pin->GetBoolean("fld", "is_couple")) {
+  //   std::stringstream msg;
+  //   msg << "### FATAL ERROR in function [Mesh::InitUserMeshData]" << std::endl;
+  //   msg << "is_couple must be true for this problem.";
+  //   ATHENA_ERROR(msg);
+  // }
 
-  if (pin->GetBoolean("fld", "only_rad")) {
-    std::stringstream msg;
-    msg << "### FATAL ERROR in function [Mesh::InitUserMeshData]" << std::endl;
-    msg << "only_rad must be true for this problem.";
-    ATHENA_ERROR(msg);
-  }
+  // if (pin->GetBoolean("fld", "only_rad")) {
+  //   std::stringstream msg;
+  //   msg << "### FATAL ERROR in function [Mesh::InitUserMeshData]" << std::endl;
+  //   msg << "only_rad must be true for this problem.";
+  //   ATHENA_ERROR(msg);
+  // }
 
-  if (pin->GetBoolean("fld", "cut_diff")) {
-    std::stringstream msg;
-    msg << "### FATAL ERROR in function [Mesh::InitUserMeshData]" << std::endl;
-    msg << "cut_diff must be true for this problem.";
-    ATHENA_ERROR(msg);
-  }
+  // if (pin->GetBoolean("fld", "cut_diff")) {
+  //   std::stringstream msg;
+  //   msg << "### FATAL ERROR in function [Mesh::InitUserMeshData]" << std::endl;
+  //   msg << "cut_diff must be true for this problem.";
+  //   ATHENA_ERROR(msg);
+  // }
 
-  if (pin->GetBoolean("fld", "cut_Pnablav")) {
-    std::stringstream msg;
-    msg << "### FATAL ERROR in function [Mesh::InitUserMeshData]" << std::endl;
-    msg << "cut_Pnablav must be true for this problem.";
-    ATHENA_ERROR(msg);
-  }
+  // if (pin->GetBoolean("fld", "cut_Pnablav")) {
+  //   std::stringstream msg;
+  //   msg << "### FATAL ERROR in function [Mesh::InitUserMeshData]" << std::endl;
+  //   msg << "cut_Pnablav must be true for this problem.";
+  //   ATHENA_ERROR(msg);
+  // }
 
-  if (pin->GetBoolean("fld", "fixed_flux_limitter")) {
+  // if (pin->GetBoolean("fld", "fixed_flux_limitter")) {
+  //   std::stringstream msg;
+  //   msg << "### FATAL ERROR in function [Mesh::InitUserMeshData]" << std::endl;
+  //   msg << "fixed_flux_limitter must be used in this problem." << std::endl;
+  //   msg << "Please set fixed_flux_limitter = false in block 'fld'.";
+  //   ATHENA_ERROR(msg);
+  // }
+
+  dir = pin->GetOrAddInteger("problem", "dir", 1);
+  if (dir < 1 || dir > 3) {
     std::stringstream msg;
     msg << "### FATAL ERROR in function [Mesh::InitUserMeshData]" << std::endl;
-    msg << "fixed_flux_limitter must be used in this problem." << std::endl;
-    msg << "Please set fixed_flux_limitter = false in block 'fld'.";
+    msg << "dir must be 1, 2, or 3.";
     ATHENA_ERROR(msg);
   }
 
@@ -290,12 +489,28 @@ void Mesh::InitUserMeshData(ParameterInput *pin) {
   v0_L = pin->GetReal("problem", "v0_L") / vel_unit;
   v0_R = pin->GetReal("problem", "v0_R") / vel_unit;
 
-  EnrollUserFLDBoundaryFunction(BoundaryFace::inner_x1, FLDFixedInnerX1);
-  EnrollUserFLDBoundaryFunction(BoundaryFace::outer_x1, FLDFixedOuterX1);
-  EnrollUserNRBoundaryFunction(BoundaryFace::inner_x1, NRInnerX1);
-  EnrollUserNRBoundaryFunction(BoundaryFace::outer_x1, NROuterX1);
-  EnrollUserBoundaryFunction(BoundaryFace::inner_x1, HydroFixedInnerX1);
-  EnrollUserBoundaryFunction(BoundaryFace::outer_x1, HydroFixedOuterX1);
+  if (dir == 1) {
+    EnrollUserFLDBoundaryFunction(BoundaryFace::inner_x1, FLDFixedInnerX1);
+    EnrollUserFLDBoundaryFunction(BoundaryFace::outer_x1, FLDFixedOuterX1);
+    EnrollUserNRBoundaryFunction(BoundaryFace::inner_x1, NRInnerX1);
+    EnrollUserNRBoundaryFunction(BoundaryFace::outer_x1, NROuterX1);
+    EnrollUserBoundaryFunction(BoundaryFace::inner_x1, HydroFixedInnerX1);
+    EnrollUserBoundaryFunction(BoundaryFace::outer_x1, HydroFixedOuterX1);
+  } else if (dir == 2) {
+    EnrollUserFLDBoundaryFunction(BoundaryFace::inner_x2, FLDFixedInnerX2);
+    EnrollUserFLDBoundaryFunction(BoundaryFace::outer_x2, FLDFixedOuterX2);
+    EnrollUserNRBoundaryFunction(BoundaryFace::inner_x2, NRInnerX2);
+    EnrollUserNRBoundaryFunction(BoundaryFace::outer_x2, NROuterX2);
+    EnrollUserBoundaryFunction(BoundaryFace::inner_x2, HydroFixedInnerX2);
+    EnrollUserBoundaryFunction(BoundaryFace::outer_x2, HydroFixedOuterX2);
+  } else {
+    EnrollUserFLDBoundaryFunction(BoundaryFace::inner_x3, FLDFixedInnerX3);
+    EnrollUserFLDBoundaryFunction(BoundaryFace::outer_x3, FLDFixedOuterX3);
+    EnrollUserNRBoundaryFunction(BoundaryFace::inner_x3, NRInnerX3);
+    EnrollUserNRBoundaryFunction(BoundaryFace::outer_x3, NROuterX3);
+    EnrollUserBoundaryFunction(BoundaryFace::inner_x3, HydroFixedInnerX3);
+    EnrollUserBoundaryFunction(BoundaryFace::outer_x3, HydroFixedOuterX3);
+  }
 
   EnrollUserExplicitSourceFunction(AddRadiativeForceAndWork);
 
@@ -360,12 +575,12 @@ void MeshBlock::InitUserMeshBlockData(ParameterInput *pin) {
 void MeshBlock::ProblemGenerator(ParameterInput *pin) {
   Real gamma = peos->GetGamma();
   Real igm1 = 1.0/(gamma-1.0);
-  Real dx1 = pcoord->dx1f(4);
+  Real dx = DxAt(pcoord, 4);
   Real courant = pin->GetReal("time", "cfl_number");
   Real Cs_L = std::sqrt(gamma*p0_L/rho0_L);
   Real Cs_R = std::sqrt(gamma*p0_R/rho0_R);
   Real max_vel = std::max(std::abs(v0_L+Cs_L), std::abs(v0_R+Cs_R));
-  Real dt_exp = courant*dx1/max_vel*time_unit;
+  Real dt_exp = courant*dx/max_vel*time_unit;
   // Real const_opasity = pin->GetReal("fld", "const_opacity");
   // Real const_opasity_sim = const_opasity*leng_unit*rho_unit;
   Real c_ph_dim = 2.99792458e10; // speed of light in cm s^-1
@@ -374,7 +589,7 @@ void MeshBlock::ProblemGenerator(ParameterInput *pin) {
   Real t_lim = 1e-6; // in s
   Real exp_cycle = t_lim/dt_exp;
 
-  Real L = pmy_mesh->mesh_size.x1max - pmy_mesh->mesh_size.x1min;
+  Real L = MeshMax(pmy_mesh) - MeshMin(pmy_mesh);
   if (gid == 0) {
     std::cout << "rho_unit = " << rho_unit << " g cm^-3" << std::endl;
     std::cout << "egas_unit = " << egas_unit << " erg cm^-3" << std::endl;
@@ -383,7 +598,7 @@ void MeshBlock::ProblemGenerator(ParameterInput *pin) {
     std::cout << "vel_unit = " << leng_unit/time_unit << " cm s^-1" << std::endl;
     std::cout << "T_unit = " << T_unit << " K" << std::endl;
     std::cout << "c_ph_sim = " << c_ph_sim << " cm s^-1" << std::endl;
-    std::cout << "dx = " << dx1*leng_unit << " cm" << std::endl;
+    std::cout << "dx = " << dx*leng_unit << " cm" << std::endl;
     std::cout << "dt = " << dt_exp << " s" << std::endl;
     std::cout << "dt_sim = " << dt_exp/time_unit << std::endl;
     std::cout << "p0_L = " << p0_L << std::endl;
@@ -410,7 +625,7 @@ void MeshBlock::ProblemGenerator(ParameterInput *pin) {
 
     ofs << "- Simulation parameters" << std::endl;
     ofs << "c_ph_sim        = " << c_ph_sim << std::endl;
-    ofs << "dx_dim          = " << dx1*leng_unit << " cm" << std::endl;
+    ofs << "dx_dim          = " << dx*leng_unit << " cm" << std::endl;
     ofs << "dt_dim          = " << dt_exp << " s" << std::endl;
     ofs << "dt_sim          = " << dt_exp/time_unit << std::endl;
     ofs << "rho0_L          = " << rho0_L << std::endl;
@@ -435,16 +650,19 @@ void MeshBlock::ProblemGenerator(ParameterInput *pin) {
   int il = is-NGHOST;
   int iu = ie+NGHOST;
 
+  int mom = (dir == 1) ? IM1 : (dir == 2) ? IM2 : IM3;
+  Real x_mid = 0.5*(MeshMin(pmy_mesh) + MeshMax(pmy_mesh));
 
   for(int k=kl; k<=ku; ++k) {
     for (int j=jl; j<=ju; ++j) {
       for (int i=il; i<=iu; ++i) {
-        Real x1 = pcoord->x1v(i);
-        if (x1 < 0.5) {
+        Real x = CoordAt(pcoord, i, j, k);
+        if (x < x_mid) {
           phydro->u(IDN,k,j,i) = rho0_L;
-          phydro->u(IM1,k,j,i) = rho0_L*v0_L;
+          phydro->u(IM1,k,j,i) = 0.0;
           phydro->u(IM2,k,j,i) = 0.0;
           phydro->u(IM3,k,j,i) = 0.0;
+          phydro->u(mom,k,j,i) = rho0_L*v0_L;
           if (NON_BAROTROPIC_EOS)
             phydro->u(IEN,k,j,i) = egas0_L + 0.5*rho0_L*v0_L*v0_L;
 
@@ -453,9 +671,10 @@ void MeshBlock::ProblemGenerator(ParameterInput *pin) {
           prfld2->u_rad(k,j,i) = Er0_L;
         } else {
           phydro->u(IDN,k,j,i) = rho0_R;
-          phydro->u(IM1,k,j,i) = rho0_R*v0_R;
+          phydro->u(IM1,k,j,i) = 0.0;
           phydro->u(IM2,k,j,i) = 0.0;
           phydro->u(IM3,k,j,i) = 0.0;
+          phydro->u(mom,k,j,i) = rho0_R*v0_R;
           if (NON_BAROTROPIC_EOS)
             phydro->u(IEN,k,j,i) = egas0_R + 0.5*rho0_R*v0_R*v0_R;
 
@@ -506,8 +725,12 @@ void AddRadiativeForceAndWork(MeshBlock *pmb, const Real time, const Real dt,
     int il = pmb->is - NGHOST, iu = pmb->ie + NGHOST;
     int jl = pmb->js - NGHOST, ju = pmb->je + NGHOST;
     int kl = pmb->ks - NGHOST, ku = pmb->ke + NGHOST;
-    Real idx = 1.0/pmb->pcoord->dx1f(pmb->is);
-    Real hidx = 0.5*idx;
+    Real idx1 = 1.0/pmb->pcoord->dx1f(pmb->is);
+    Real idx2 = 1.0/pmb->pcoord->dx2f(pmb->js);
+    Real idx3 = 1.0/pmb->pcoord->dx3f(pmb->ks);
+    Real hidx1 = 0.5*idx1;
+    Real hidx2 = 0.5*idx2;
+    Real hidx3 = 0.5*idx3;
     Real dEr[3]; // caution when you use simd
 
     FLD2 *prfld = pmb->prfld2;
@@ -518,9 +741,9 @@ void AddRadiativeForceAndWork(MeshBlock *pmb, const Real time, const Real dt,
         for (int i = il; i <= iu; ++i) {
           Real lambda;
           Real dEr[3];
-          dEr[0] = hidx*(fld_u(k,j,i+1) - fld_u(k,j,i-1));
-          dEr[1] = hidx*(fld_u(k,j+1,i) - fld_u(k,j-1,i));
-          dEr[2] = hidx*(fld_u(k+1,j,i) - fld_u(k-1,j,i));
+          dEr[0] = hidx1*(fld_u(k,j,i+1) - fld_u(k,j,i-1));
+          dEr[1] = hidx2*(fld_u(k,j+1,i) - fld_u(k,j-1,i));
+          dEr[2] = hidx3*(fld_u(k+1,j,i) - fld_u(k-1,j,i));
 
           if (prfld->fixed_flux_limitter) {
             lambda = ONE_3RD;

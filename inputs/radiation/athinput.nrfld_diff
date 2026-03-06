@@ -19,14 +19,34 @@ dcycle     = 1       # time increment between outputs
 # ghost_zones= true
 
 <output3>
-file_type  = hdf5
-id         = uov_x_slice
-variable   = uov
-dcycle     = 1
-# dt         = 0.1
-x2_slice   = 0.5
-x3_slice   = 0.5
-ghost_zones= true
+file_type      = hdf5
+id             = uov_x_slice
+variable       = uov
+dcycle         = 1
+# dt             = 0.1
+x2_slice       = 0.5
+x3_slice       = 0.5
+ghost_zones    = true
+
+<output4>
+file_type      = hdf5
+id             = uov_y_slice
+variable       = uov
+dcycle         = 1
+# dt             = 0.1
+x1_slice       = 0.5
+x3_slice       = 0.5
+ghost_zones    = true
+
+<output5>
+file_type       = hdf5
+id              = uov_z_slice
+variable        = uov
+dcycle          = 1
+# dt              = 0.1
+x1_slice        = 0.5
+x2_slice        = 0.5
+ghost_zones     = true
 
 <time>
 cfl_number = 0.3         # The Courant, Friedrichs, & Lewy (CFL) Number
@@ -77,8 +97,8 @@ npresmooth      = 2
 npostsmooth     = 2
 omega           = 1.0
 # niteration      = 10
-# nr_niteration   = 1
 threshold       = 1e-10
+# nr_niteration   = 1
 nr_threshold   = 1e-10
 ix1_bc          = user
 ox1_bc          = user
@@ -98,4 +118,5 @@ const_opacity   = 0.4 # in cm^2 g^-1 caution!
 
 <problem>
 dim             = 1
-init_ratio      = 1e-2 # the time for initial profile of analytic solution
+dir             = 1
+init_ratio      = 1e-1 # the time for initial profile of analytic solution

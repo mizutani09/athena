@@ -98,6 +98,7 @@ cut_Pnablav     = true
 const_opacity   = 0.4 # in cm^2 g^-1 caution!
 
 <problem>
+dir             = 1
 rho0            = 1.0
 p0              = 1.0
 v0              = 0.1

@@ -46,6 +46,7 @@ namespace {
   Real T_unit, time_unit;
   Real a_r_dim, Rgas, mu;
   int dim;
+  int dir;
   Real init_ratio, init_time;
   Real HistoryTg(MeshBlock *pmb, int iout);
   Real HistoryTr(MeshBlock *pmb, int iout);
@@ -57,26 +58,115 @@ namespace {
   Real HistoryL1norm(MeshBlock *pmb, int iout);
   Real Er0, rho0, p0;
   Real chi;
+
+  Real CoordAt(const Coordinates *pco, int i, int j, int k) {
+    if (dir == 1) return pco->x1v(i);
+    if (dir == 2) return pco->x2v(j);
+    return pco->x3v(k);
+  }
+
+  Real DxAt(const Coordinates *pco) {
+    if (dir == 1) return pco->dx1f(4);
+    if (dir == 2) return pco->dx2f(4);
+    return pco->dx3f(4);
+  }
+
+  void SetGaussianBoundary(AthenaArray<Real> &u_rad, Coordinates *pco,
+                           int axis, bool inner,
+                           int is, int ie, int js, int je, int ks, int ke, int ngh,
+                           Real time, Real dt) {
+    Real chi_t = chi * (time+dt+init_time);
+    if (dim != 1) return;
+    Real coef = Er0/(2*std::sqrt(M_PI*chi_t));
+    if (axis == 1) {
+      for (int k=ks; k<=ke; k++) {
+        for (int j=js; j<=je; j++) {
+          for (int i=1; i<=ngh; i++) {
+            int ii = inner ? (is-i) : (ie+i);
+            Real x = pco->x1v(ii);
+            Real r_sq = SQR(x-0.5);
+            u_rad(k,j,ii) = coef*std::exp(-r_sq/(4*chi_t));
+          }
+        }
+      }
+    } else if (axis == 2) {
+      for (int k=ks; k<=ke; k++) {
+        for (int j=1; j<=ngh; j++) {
+          int jj = inner ? (js-j) : (je+j);
+          Real x = pco->x2v(jj);
+          Real r_sq = SQR(x-0.5);
+          for (int i=is; i<=ie; i++) {
+            u_rad(k,jj,i) = coef*std::exp(-r_sq/(4*chi_t));
+          }
+        }
+      }
+    } else {
+      for (int k=1; k<=ngh; k++) {
+        int kk = inner ? (ks-k) : (ke+k);
+        Real x = pco->x3v(kk);
+        Real r_sq = SQR(x-0.5);
+        for (int j=js; j<=je; j++) {
+          for (int i=is; i<=ie; i++) {
+            u_rad(kk,j,i) = coef*std::exp(-r_sq/(4*chi_t));
+          }
+        }
+      }
+    }
+  }
+
+  void HydroOutflowBoundary(AthenaArray<Real> &prim, int axis, bool inner,
+                            int is, int ie, int js, int je, int ks, int ke, int ngh) {
+    if (axis == 1) {
+      for (int k=ks; k<=ke; k++) {
+        for (int j=js; j<=je; j++) {
+          for (int i=1; i<=ngh; i++) {
+            int ii = inner ? (is-i) : (ie+i);
+            int ir = inner ? is : ie;
+            prim(IDN,k,j,ii) = prim(IDN,k,j,ir);
+            prim(IVX,k,j,ii) = prim(IVX,k,j,ir);
+            prim(IVY,k,j,ii) = prim(IVY,k,j,ir);
+            prim(IVZ,k,j,ii) = prim(IVZ,k,j,ir);
+            prim(IPR,k,j,ii) = prim(IPR,k,j,ir);
+          }
+        }
+      }
+    } else if (axis == 2) {
+      for (int k=ks; k<=ke; k++) {
+        for (int j=1; j<=ngh; j++) {
+          int jj = inner ? (js-j) : (je+j);
+          int jr = inner ? js : je;
+          for (int i=is; i<=ie; i++) {
+            prim(IDN,k,jj,i) = prim(IDN,k,jr,i);
+            prim(IVX,k,jj,i) = prim(IVX,k,jr,i);
+            prim(IVY,k,jj,i) = prim(IVY,k,jr,i);
+            prim(IVZ,k,jj,i) = prim(IVZ,k,jr,i);
+            prim(IPR,k,jj,i) = prim(IPR,k,jr,i);
+          }
+        }
+      }
+    } else {
+      for (int k=1; k<=ngh; k++) {
+        int kk = inner ? (ks-k) : (ke+k);
+        int kr = inner ? ks : ke;
+        for (int j=js; j<=je; j++) {
+          for (int i=is; i<=ie; i++) {
+            prim(IDN,kk,j,i) = prim(IDN,kr,j,i);
+            prim(IVX,kk,j,i) = prim(IVX,kr,j,i);
+            prim(IVY,kk,j,i) = prim(IVY,kr,j,i);
+            prim(IVZ,kk,j,i) = prim(IVZ,kr,j,i);
+            prim(IPR,kk,j,i) = prim(IPR,kr,j,i);
+          }
+        }
+      }
+    }
+  }
 }
 
 void NRInnerX1(MeshBlock *pmb,
                AthenaArray<Real> &u_rad, AthenaArray<Real> &u_gas,
                Coordinates *pco, const AthenaArray<Real> &w, Real time, Real dt,
                int is, int ie, int js, int je, int ks, int ke, int ngh) {
-  // put analytic solution
-  Real chi_t = chi * (time+dt+init_time);
-  if (dim == 1) {
-    Real coef = Er0/(2*std::sqrt(M_PI*chi_t));
-    for (int k=ks; k<=ke; k++) {
-      for (int j=js; j<=je; j++) {
-        for (int i=1; i<=ngh; i++) {
-          Real x = pco->x1v(is-i);
-          Real r_sq = SQR(x-0.5);
-          u_rad(k,j,is-i) = coef*std::exp(-r_sq/(4*chi_t));
-        }
-      }
-    }
-  }
+  SetGaussianBoundary(u_rad, pco, 1, true, is, ie, js, je, ks, ke, ngh, time, dt);
   return;
 }
 
@@ -84,20 +174,39 @@ void NROuterX1(MeshBlock *pmb,
                AthenaArray<Real> &u_rad, AthenaArray<Real> &u_gas,
                Coordinates *pco, const AthenaArray<Real> &w, Real time, Real dt,
                int is, int ie, int js, int je, int ks, int ke, int ngh) {
-  // put analytic solution
-  Real chi_t = chi * (time+dt+init_time);
-  if (dim == 1) {
-    Real coef = Er0/(2*std::sqrt(M_PI*chi_t));
-    for (int k=ks; k<=ke; k++) {
-      for (int j=js; j<=je; j++) {
-        for (int i=1; i<=ngh; i++) {
-            Real x = pco->x1v(ie+i);
-            Real r_sq = SQR(x-0.5);
-            u_rad(k,j,ie+i) = coef*std::exp(-r_sq/(4*chi_t));
-        }
-      }
-    }
-  }
+  SetGaussianBoundary(u_rad, pco, 1, false, is, ie, js, je, ks, ke, ngh, time, dt);
+  return;
+}
+
+void NRInnerX2(MeshBlock *pmb,
+               AthenaArray<Real> &u_rad, AthenaArray<Real> &u_gas,
+               Coordinates *pco, const AthenaArray<Real> &w, Real time, Real dt,
+               int is, int ie, int js, int je, int ks, int ke, int ngh) {
+  SetGaussianBoundary(u_rad, pco, 2, true, is, ie, js, je, ks, ke, ngh, time, dt);
+  return;
+}
+
+void NROuterX2(MeshBlock *pmb,
+               AthenaArray<Real> &u_rad, AthenaArray<Real> &u_gas,
+               Coordinates *pco, const AthenaArray<Real> &w, Real time, Real dt,
+               int is, int ie, int js, int je, int ks, int ke, int ngh) {
+  SetGaussianBoundary(u_rad, pco, 2, false, is, ie, js, je, ks, ke, ngh, time, dt);
+  return;
+}
+
+void NRInnerX3(MeshBlock *pmb,
+               AthenaArray<Real> &u_rad, AthenaArray<Real> &u_gas,
+               Coordinates *pco, const AthenaArray<Real> &w, Real time, Real dt,
+               int is, int ie, int js, int je, int ks, int ke, int ngh) {
+  SetGaussianBoundary(u_rad, pco, 3, true, is, ie, js, je, ks, ke, ngh, time, dt);
+  return;
+}
+
+void NROuterX3(MeshBlock *pmb,
+               AthenaArray<Real> &u_rad, AthenaArray<Real> &u_gas,
+               Coordinates *pco, const AthenaArray<Real> &w, Real time, Real dt,
+               int is, int ie, int js, int je, int ks, int ke, int ngh) {
+  SetGaussianBoundary(u_rad, pco, 3, false, is, ie, js, je, ks, ke, ngh, time, dt);
   return;
 }
 
@@ -105,20 +214,7 @@ void FLDInnerX1(MeshBlock *pmb, Coordinates *pco, FLD2 *pfld,
                 const AthenaArray<Real> &w, AthenaArray<Real> &u_rad_fld,
                 Real time, Real dt,
                 int is, int ie, int js, int je, int ks, int ke, int ngh) {
-  // put analytic solution
-  Real chi_t = chi * (time+dt+init_time);
-  if (dim == 1) {
-    Real coef = Er0/(2*std::sqrt(M_PI*chi_t));
-    for (int k=ks; k<=ke; k++) {
-      for (int j=js; j<=je; j++) {
-        for (int i=1; i<=ngh; i++) {
-          Real x = pco->x1v(is-i);
-          Real r_sq = SQR(x-0.5);
-          u_rad_fld(k,j,is-i) = coef*std::exp(-r_sq/(4*chi_t));
-        }
-      }
-    }
-  }
+  SetGaussianBoundary(u_rad_fld, pco, 1, true, is, ie, js, je, ks, ke, ngh, time, dt);
   return;
 }
 
@@ -126,54 +222,75 @@ void FLDOuterX1(MeshBlock *pmb, Coordinates *pco, FLD2 *pfld,
                 const AthenaArray<Real> &w, AthenaArray<Real> &u_rad_fld,
                 Real time, Real dt,
                 int is, int ie, int js, int je, int ks, int ke, int ngh) {
-  // put analytic solution
-  Real chi_t = chi * (time+dt+init_time);
-  if (dim == 1) {
-    Real coef = Er0/(2*std::sqrt(M_PI*chi_t));
-    for (int k=ks; k<=ke; k++) {
-      for (int j=js; j<=je; j++) {
-        for (int i=1; i<=ngh; i++) {
-            Real x = pco->x1v(ie+i);
-            Real r_sq = SQR(x-0.5);
-            u_rad_fld(k,j,ie+i) = coef*std::exp(-r_sq/(4*chi_t));
-        }
-      }
-    }
-  }
+  SetGaussianBoundary(u_rad_fld, pco, 1, false, is, ie, js, je, ks, ke, ngh, time, dt);
+  return;
+}
+
+void FLDInnerX2(MeshBlock *pmb, Coordinates *pco, FLD2 *pfld,
+                const AthenaArray<Real> &w, AthenaArray<Real> &u_rad_fld,
+                Real time, Real dt,
+                int is, int ie, int js, int je, int ks, int ke, int ngh) {
+  SetGaussianBoundary(u_rad_fld, pco, 2, true, is, ie, js, je, ks, ke, ngh, time, dt);
+  return;
+}
+
+void FLDOuterX2(MeshBlock *pmb, Coordinates *pco, FLD2 *pfld,
+                const AthenaArray<Real> &w, AthenaArray<Real> &u_rad_fld,
+                Real time, Real dt,
+                int is, int ie, int js, int je, int ks, int ke, int ngh) {
+  SetGaussianBoundary(u_rad_fld, pco, 2, false, is, ie, js, je, ks, ke, ngh, time, dt);
+  return;
+}
+
+void FLDInnerX3(MeshBlock *pmb, Coordinates *pco, FLD2 *pfld,
+                const AthenaArray<Real> &w, AthenaArray<Real> &u_rad_fld,
+                Real time, Real dt,
+                int is, int ie, int js, int je, int ks, int ke, int ngh) {
+  SetGaussianBoundary(u_rad_fld, pco, 3, true, is, ie, js, je, ks, ke, ngh, time, dt);
+  return;
+}
+
+void FLDOuterX3(MeshBlock *pmb, Coordinates *pco, FLD2 *pfld,
+                const AthenaArray<Real> &w, AthenaArray<Real> &u_rad_fld,
+                Real time, Real dt,
+                int is, int ie, int js, int je, int ks, int ke, int ngh) {
+  SetGaussianBoundary(u_rad_fld, pco, 3, false, is, ie, js, je, ks, ke, ngh, time, dt);
   return;
 }
 
 void HydroInnerX1(MeshBlock *pmb, Coordinates *pco, AthenaArray<Real> &prim, FaceField &b,
     Real time, Real dt, int is, int ie, int js, int je, int ks, int ke, int ngh) {
-  // for outflow boundary condition
-  for (int k=ks; k<=ke; k++) {
-    for (int j=js; j<=je; j++) {
-      for (int i=1; i<=ngh; i++) {
-        prim(IDN,k,j,is-i) = prim(IDN,k,j,is);
-        prim(IVX,k,j,is-i) = prim(IVX,k,j,is);
-        prim(IVY,k,j,is-i) = prim(IVY,k,j,is);
-        prim(IVZ,k,j,is-i) = prim(IVZ,k,j,is);
-        prim(IPR,k,j,is-i) = prim(IPR,k,j,is);
-      }
-    }
-  }
+  HydroOutflowBoundary(prim, 1, true, is, ie, js, je, ks, ke, ngh);
   return;
 }
 
 void HydroOuterX1(MeshBlock *pmb, Coordinates *pco, AthenaArray<Real> &prim, FaceField &b,
     Real time, Real dt, int is, int ie, int js, int je, int ks, int ke, int ngh) {
-  // for outflow boundary condition
-  for (int k=ks; k<=ke; k++) {
-    for (int j=js; j<=je; j++) {
-      for (int i=1; i<=ngh; i++) {
-        prim(IDN,k,j,ie+i) = prim(IDN,k,j,ie);
-        prim(IVX,k,j,ie+i) = prim(IVX,k,j,ie);
-        prim(IVY,k,j,ie+i) = prim(IVY,k,j,ie);
-        prim(IVZ,k,j,ie+i) = prim(IVZ,k,j,ie);
-        prim(IPR,k,j,ie+i) = prim(IPR,k,j,ie);
-      }
-    }
-  }
+  HydroOutflowBoundary(prim, 1, false, is, ie, js, je, ks, ke, ngh);
+  return;
+}
+
+void HydroInnerX2(MeshBlock *pmb, Coordinates *pco, AthenaArray<Real> &prim, FaceField &b,
+    Real time, Real dt, int is, int ie, int js, int je, int ks, int ke, int ngh) {
+  HydroOutflowBoundary(prim, 2, true, is, ie, js, je, ks, ke, ngh);
+  return;
+}
+
+void HydroOuterX2(MeshBlock *pmb, Coordinates *pco, AthenaArray<Real> &prim, FaceField &b,
+    Real time, Real dt, int is, int ie, int js, int je, int ks, int ke, int ngh) {
+  HydroOutflowBoundary(prim, 2, false, is, ie, js, je, ks, ke, ngh);
+  return;
+}
+
+void HydroInnerX3(MeshBlock *pmb, Coordinates *pco, AthenaArray<Real> &prim, FaceField &b,
+    Real time, Real dt, int is, int ie, int js, int je, int ks, int ke, int ngh) {
+  HydroOutflowBoundary(prim, 3, true, is, ie, js, je, ks, ke, ngh);
+  return;
+}
+
+void HydroOuterX3(MeshBlock *pmb, Coordinates *pco, AthenaArray<Real> &prim, FaceField &b,
+    Real time, Real dt, int is, int ie, int js, int je, int ks, int ke, int ngh) {
+  HydroOutflowBoundary(prim, 3, false, is, ie, js, je, ks, ke, ngh);
   return;
 }
 
@@ -225,6 +342,13 @@ void Mesh::InitUserMeshData(ParameterInput *pin) {
     msg << "dim should be 1.";
     ATHENA_ERROR(msg);
   }
+  dir = pin->GetOrAddInteger("problem", "dir", 1);
+  if (dir < 1 || dir > 3) {
+    std::stringstream msg;
+    msg << "### FATAL ERROR in function [Mesh::InitUserMeshData]" << std::endl;
+    msg << "dir must be 1, 2, or 3.";
+    ATHENA_ERROR(msg);
+  }
   init_ratio = pin->GetReal("problem", "init_ratio");
   rho_unit = pin->GetReal("hydro", "rho_unit");
   egas_unit = pin->GetReal("hydro", "egas_unit");
@@ -266,12 +390,28 @@ void Mesh::InitUserMeshData(ParameterInput *pin) {
   init_time = tau_diff/(time_unit)*init_ratio;
 
 
-  EnrollUserFLDBoundaryFunction(BoundaryFace::inner_x1, FLDInnerX1);
-  EnrollUserFLDBoundaryFunction(BoundaryFace::outer_x1, FLDOuterX1);
-  EnrollUserNRBoundaryFunction(BoundaryFace::inner_x1, NRInnerX1);
-  EnrollUserNRBoundaryFunction(BoundaryFace::outer_x1, NROuterX1);
-  EnrollUserBoundaryFunction(BoundaryFace::inner_x1, HydroInnerX1);
-  EnrollUserBoundaryFunction(BoundaryFace::outer_x1, HydroOuterX1);
+  if (dir == 1) {
+    EnrollUserFLDBoundaryFunction(BoundaryFace::inner_x1, FLDInnerX1);
+    EnrollUserFLDBoundaryFunction(BoundaryFace::outer_x1, FLDOuterX1);
+    EnrollUserNRBoundaryFunction(BoundaryFace::inner_x1, NRInnerX1);
+    EnrollUserNRBoundaryFunction(BoundaryFace::outer_x1, NROuterX1);
+    EnrollUserBoundaryFunction(BoundaryFace::inner_x1, HydroInnerX1);
+    EnrollUserBoundaryFunction(BoundaryFace::outer_x1, HydroOuterX1);
+  } else if (dir == 2) {
+    EnrollUserFLDBoundaryFunction(BoundaryFace::inner_x2, FLDInnerX2);
+    EnrollUserFLDBoundaryFunction(BoundaryFace::outer_x2, FLDOuterX2);
+    EnrollUserNRBoundaryFunction(BoundaryFace::inner_x2, NRInnerX2);
+    EnrollUserNRBoundaryFunction(BoundaryFace::outer_x2, NROuterX2);
+    EnrollUserBoundaryFunction(BoundaryFace::inner_x2, HydroInnerX2);
+    EnrollUserBoundaryFunction(BoundaryFace::outer_x2, HydroOuterX2);
+  } else {
+    EnrollUserFLDBoundaryFunction(BoundaryFace::inner_x3, FLDInnerX3);
+    EnrollUserFLDBoundaryFunction(BoundaryFace::outer_x3, FLDOuterX3);
+    EnrollUserNRBoundaryFunction(BoundaryFace::inner_x3, NRInnerX3);
+    EnrollUserNRBoundaryFunction(BoundaryFace::outer_x3, NROuterX3);
+    EnrollUserBoundaryFunction(BoundaryFace::inner_x3, HydroInnerX3);
+    EnrollUserBoundaryFunction(BoundaryFace::outer_x3, HydroOuterX3);
+  }
 
   AllocateUserHistoryOutput(8);
   EnrollUserHistoryOutput(0, HistoryTg, "T_gas", UserHistoryOperation::max);
@@ -305,9 +445,9 @@ void MeshBlock::InitUserMeshBlockData(ParameterInput *pin) {
 void MeshBlock::ProblemGenerator(ParameterInput *pin) {
   Real gamma = peos->GetGamma();
   Real igm1 = 1.0/(gamma-1.0);
-  Real dx1 = pcoord->dx1f(4);
+  Real dx = DxAt(pcoord);
   Real courant = pin->GetReal("time", "cfl_number");
-  Real dt_exp = courant*dx1*std::sqrt(rho0/(gamma*p0))*time_unit;
+  Real dt_exp = courant*dx*std::sqrt(rho0/(gamma*p0))*time_unit;
   Real const_opasity = pin->GetReal("fld", "const_opacity");
   Real c_ph_dim = 2.99792458e10; // speed of light in cm s^-1
   Real c_ph_sim = c_ph_dim/(leng_unit/time_unit);
@@ -323,7 +463,7 @@ void MeshBlock::ProblemGenerator(ParameterInput *pin) {
     std::cout << "T_unit = " << T_unit << " K" << std::endl;
     std::cout << "chi = " << chi*leng_unit*leng_unit/time_unit << " cm^2 s^-1" << std::endl;
     std::cout << "init_time = " << init_time * time_unit << " s" << std::endl;
-    std::cout << "dx = " << dx1*leng_unit << " cm" << std::endl;
+    std::cout << "dx = " << dx*leng_unit << " cm" << std::endl;
     std::cout << "dt = " << dt_exp << " s" << std::endl;
     std::cout << "dt_sim = " << dt_exp/time_unit << std::endl;
     std::cout << "tau_diff = " << tau_diff << " s" << std::endl;
@@ -381,7 +521,7 @@ void MeshBlock::ProblemGenerator(ParameterInput *pin) {
     for (int k=kl; k<=ku; k++) {
       for (int j=jl; j<=ju; j++) {
         for (int i=il; i<=iu; i++) {
-          Real r_sq = SQR(pcoord->x1v(i)-0.5);
+          Real r_sq = SQR(CoordAt(pcoord, i, j, k) - 0.5);
           prfld2->u_gas(k,j,i) = p0*igm1;
           Real res = Er0/(2*std::sqrt(M_PI*chi*init_time))*std::exp(-r_sq/(4*chi*init_time));
           prfld2->u_rad(k,j,i) = res;
@@ -543,7 +683,7 @@ Real HistoryL1norm(MeshBlock *pmb, int iout) {
     for (int k=ks; k<=ke; k++) {
       for (int j=js; j<=je; j++) {
         for (int i=is; i<=ie; i++) {
-          Real x = pmb->pcoord->x1v(i);
+          Real x = CoordAt(pmb->pcoord, i, j, k);
           Real r_sq = SQR(x-0.5);
           Real an = coef*std::exp(-r_sq/(4*chi_t));
           L1norm += std::abs(pmb->prfld2->u_rad(k,j,i)-an)/an;

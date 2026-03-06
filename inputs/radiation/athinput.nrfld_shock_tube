@@ -16,8 +16,8 @@ id              = prim_x_slice
 variable        = prim        # variables to be output
 # dcycle          = 1         # time increment between outputs
 dt              = 0.005
-x2_slice        = 0.0         # slice location in X2
-x3_slice        = 0.0         # slice location in X3
+x2_slice        = 0.5         # slice location in X2
+x3_slice        = 0.5         # slice location in X3
 ghost_zones     = true
 
 <output3>
@@ -26,8 +26,8 @@ id              = uov_x_slice
 variable        = uov
 # dcycle          = 1
 dt              = 0.005
-x2_slice        = 0.0
-x3_slice        = 0.0
+x2_slice        = 0.5
+x3_slice        = 0.5
 ghost_zones     = true
 
 <time>
@@ -101,6 +101,7 @@ cut_diff        = false
 cut_Pnablav     = false
 
 <problem>
+dir             = 1
 rho0_L          = 1e-5  # in g cm^-3
 T0_L            = 1.5e6          # in K
 v0_L            = 0.0   # in cm s^-1

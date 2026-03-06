@@ -56,6 +56,25 @@ namespace {
   Real Er0, rho0, p0, v0;
   Real r0, r_sigma;
   Real delta_ratio;
+  int dir;
+
+  Real CoordAt(const Coordinates *pco, int i, int j, int k) {
+    if (dir == 1) return pco->x1v(i);
+    if (dir == 2) return pco->x2v(j);
+    return pco->x3v(k);
+  }
+
+  Real DxAt(const Coordinates *pco) {
+    if (dir == 1) return pco->dx1f(0);
+    if (dir == 2) return pco->dx2f(0);
+    return pco->dx3f(0);
+  }
+
+  Real MeshLength(const Mesh *pm) {
+    if (dir == 1) return pm->mesh_size.x1max - pm->mesh_size.x1min;
+    if (dir == 2) return pm->mesh_size.x2max - pm->mesh_size.x2min;
+    return pm->mesh_size.x3max - pm->mesh_size.x3min;
+  }
 }
 
 //========================================================================================
@@ -96,6 +115,14 @@ void Mesh::InitUserMeshData(ParameterInput *pin) {
     std::stringstream msg;
     msg << "### FATAL ERROR in function [Mesh::InitUserMeshData]" << std::endl;
     msg << "cut_Pnablav must be true for this problem.";
+    ATHENA_ERROR(msg);
+  }
+
+  dir = pin->GetOrAddInteger("problem", "dir", 1);
+  if (dir < 1 || dir > 3) {
+    std::stringstream msg;
+    msg << "### FATAL ERROR in function [Mesh::InitUserMeshData]" << std::endl;
+    msg << "dir must be 1, 2, or 3.";
     ATHENA_ERROR(msg);
   }
 
@@ -158,16 +185,16 @@ void Mesh::InitUserMeshData(ParameterInput *pin) {
 void MeshBlock::ProblemGenerator(ParameterInput *pin) {
   Real gamma = peos->GetGamma();
   Real igm1 = 1.0/(gamma-1.0);
-  Real dx1 = pcoord->dx1f(4);
+  Real dx = DxAt(pcoord);
   Real courant = pin->GetReal("time", "cfl_number");
-  Real dt_exp = courant*dx1*std::sqrt(rho0/(gamma*p0))*time_unit;
+  Real dt_exp = courant*dx*std::sqrt(rho0/(gamma*p0))*time_unit;
   Real const_opasity = pin->GetReal("fld", "const_opacity");
   Real const_opasity_sim = const_opasity*leng_unit*rho_unit;
   Real c_ph_dim = 2.99792458e10; // speed of light in cm s^-1
   Real c_ph_sim = c_ph_dim/(leng_unit/time_unit);
   Real mfp_sim = 1.0/(const_opasity*rho_unit)/leng_unit;
 
-  Real L = pmy_mesh->mesh_size.x1max - pmy_mesh->mesh_size.x1min;
+  Real L = MeshLength(pmy_mesh);
   if (gid == 0) {
     std::cout << "rho_unit = " << rho_unit << " g cm^-3" << std::endl;
     std::cout << "egas_unit = " << egas_unit << " erg cm^-3" << std::endl;
@@ -176,7 +203,7 @@ void MeshBlock::ProblemGenerator(ParameterInput *pin) {
     std::cout << "vel_unit = " << leng_unit/time_unit << " cm s^-1" << std::endl;
     std::cout << "T_unit = " << T_unit << " K" << std::endl;
     std::cout << "c_ph_sim = " << c_ph_sim << " cm s^-1" << std::endl;
-    std::cout << "dx = " << dx1*leng_unit << " cm" << std::endl;
+    std::cout << "dx = " << dx*leng_unit << " cm" << std::endl;
     std::cout << "dt = " << dt_exp << " s" << std::endl;
     std::cout << "dt_sim = " << dt_exp/time_unit << std::endl;
   }
@@ -196,15 +223,18 @@ void MeshBlock::ProblemGenerator(ParameterInput *pin) {
       Real x2 = pcoord->x2v(j);
       for (int i=il; i<=iu; ++i) {
         phydro->u(IDN,k,j,i) = rho0;
-        phydro->u(IM1,k,j,i) = rho0*v0;
+        phydro->u(IM1,k,j,i) = 0.0;
         phydro->u(IM2,k,j,i) = 0.0;
         phydro->u(IM3,k,j,i) = 0.0;
+        if (dir == 1) phydro->u(IM1,k,j,i) = rho0*v0;
+        if (dir == 2) phydro->u(IM2,k,j,i) = rho0*v0;
+        if (dir == 3) phydro->u(IM3,k,j,i) = rho0*v0;
         if (NON_BAROTROPIC_EOS)
           phydro->u(IEN,k,j,i) = p0*igm1 + 0.5*rho0*v0*v0;
 
         // for FLD
         prfld2->u_gas(k,j,i) = p0*igm1;
-        Real r_sq = SQR(pcoord->x1v(i)-r0);
+        Real r_sq = SQR(CoordAt(pcoord, i, j, k) - r0);
         prfld2->u_rad(k,j,i) = Er0*(1.0+delta_ratio*std::exp(-r_sq/r_sigma_sq));
       }
     }
@@ -229,16 +259,22 @@ void MeshBlock::UserWorkInLoop() {
       Real x2 = pcoord->x2v(j);
       for (int i=il; i<=iu; ++i) {
         phydro->u(IDN,k,j,i) = rho0;
-        phydro->u(IM1,k,j,i) = rho0*v0;
+        phydro->u(IM1,k,j,i) = 0.0;
         phydro->u(IM2,k,j,i) = 0.0;
         phydro->u(IM3,k,j,i) = 0.0;
+        if (dir == 1) phydro->u(IM1,k,j,i) = rho0*v0;
+        if (dir == 2) phydro->u(IM2,k,j,i) = rho0*v0;
+        if (dir == 3) phydro->u(IM3,k,j,i) = rho0*v0;
         if (NON_BAROTROPIC_EOS)
           phydro->u(IEN,k,j,i) = p0*igm1 + 0.5*rho0*v0*v0;
 
         phydro->w(IDN,k,j,i) = rho0;
-        phydro->w(IVX,k,j,i) = v0;
+        phydro->w(IVX,k,j,i) = 0.0;
         phydro->w(IVY,k,j,i) = 0.0;
         phydro->w(IVZ,k,j,i) = 0.0;
+        if (dir == 1) phydro->w(IVX,k,j,i) = v0;
+        if (dir == 2) phydro->w(IVY,k,j,i) = v0;
+        if (dir == 3) phydro->w(IVZ,k,j,i) = v0;
         phydro->w(IPR,k,j,i) = p0;
       }
     }
@@ -400,11 +436,11 @@ Real HistoryL1norm(MeshBlock *pmb, int iout) {
   int is = pmb->is, ie = pmb->ie, js = pmb->js, je = pmb->je, ks = pmb->ks, ke = pmb->ke;
   Real L1norm = 0;
   Real r_sigma_sq = SQR(r_sigma);
-  Real l_sim = pmb->pmy_mesh->mesh_size.x1max - pmb->pmy_mesh->mesh_size.x1min;
+  Real l_sim = MeshLength(pmb->pmy_mesh);
   for (int k=ks; k<=ke; k++) {
     for (int j=js; j<=je; j++) {
       for (int i=is; i<=ie; i++) {
-        Real ref_x = pmb->pcoord->x1v(i) - v0*pmb->pmy_mesh->time;
+        Real ref_x = CoordAt(pmb->pcoord, i, j, k) - v0*pmb->pmy_mesh->time;
         if (ref_x < 0) ref_x += l_sim*(1+std::floor(-ref_x/l_sim));
         Real x = ref_x - r0;
         Real r_sq = SQR(x);
