@@ -1,7 +1,7 @@
 <comment>
 problem         = test for reading opacity table with Multigrid
 reference       =
-configure       = --prob=mgfld_test_table -mgfld -hdf5 -mpi
+configure       = --prob=test_opacity_table -nrmgfld -hdf5 -mpi
 
 <job>
 problem_id      = MGFLD # problem ID: basename of output filenames
@@ -48,7 +48,7 @@ egas_unit       = 1e+10          # in erg cm^-3
 time_unit       = 1e-7           # in s
 mu              = 0.6            # mean molecular weight in g mol^-1
 
-<mgfld>
+<nrfld>
 mgmode          = FMG
 fas             = true
 smoother        = jacobi-rb
@@ -56,7 +56,9 @@ npresmooth      = 2
 npostsmooth     = 2
 omega           = 1.0
 niteration      = 10
+nr_iteration    = 10
 # threshold       = 0.00001
+# nr_threshold    = 1e-10
 output_defect   = true
 ix1_bc          = periodic
 ox1_bc          = periodic
@@ -68,5 +70,15 @@ ox3_bc          = periodic
 use_opacity_table = true
 opacity_table_file = path/to/your/opacity_table.h5
 opacity_table_file_type = hdf5
+opacity_table_axis = tp
+# opacity_table_axis options:
+#   tp   : x2 = log10(pressure[cgs])
+#   trho : x2 = log10(density[cgs])
+#   tr   : x2 = OPAL logR = log10(rho) - 3*log10(T) + 18
+# Optional dataset overrides (default=auto):
+# opacity_table_temperature_dataset = auto
+# opacity_table_x2_dataset = auto
+# opacity_table_planck_dataset = auto
+# opacity_table_rosseland_dataset = auto
 
 <problem>

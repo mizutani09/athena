@@ -113,21 +113,27 @@ class FLD2 {
 };
 
 
-// class UserOpacityTable : public InterpTable2D {
-//  public:
-//   UserOpacityTable(ParameterInput *pin);
-//   ~UserOpacityTable();
+class UserOpacityTable : public InterpTable2D {
+ public:
+  enum class X2AxisKind {pressure, density, opal_r};
 
-//   // Methods for opacity interpolation
-//   Real GetOpacity(int var_index, Real x2, Real x1); // Generic interface (x2=pressure, x1=temperature)
+  UserOpacityTable(ParameterInput *pin);
+  ~UserOpacityTable();
 
-//   bool use_tables; // Flag to indicate if tables are used
-//   // Data members for opacity table properties
-//   Real tempMin, tempMax;    // Temperature limits
-//   Real pressureMin, pressureMax;  // Pressure limits
-//   int nTemp, nPressure, nVar;    // Table dimensions
-//   AthenaArray<Real> OpacityTables;  // Tables for each variable
-// };
+  // Methods for opacity interpolation
+  Real GetOpacity(int var_index, Real density, Real temperature);
+  Real GetOpacityFromRhoT(int var_index, Real density, Real temperature);
+  Real GetOpacityFromPT(int var_index, Real pressure, Real temperature);
+
+  bool use_tables; // Flag to indicate if tables are used
+  // Data members for opacity table properties
+  Real tempMin, tempMax;    // Temperature limits
+  Real pressureMin, pressureMax;  // Pressure limits
+  int nTemp, nPressure, nVar;    // Table dimensions
+  AthenaArray<Real> OpacityTables;  // Tables for each variable
+  X2AxisKind x2_axis_kind = X2AxisKind::pressure;
+  Real mean_molecular_weight = 1.0;
+};
 
 
 #endif // FLD_FLD_HPP_

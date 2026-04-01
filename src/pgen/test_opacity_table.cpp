@@ -13,7 +13,7 @@
  * You should have received a copy of GNU GPL in the file LICENSE included in the code
  * distribution.  If not see <http://www.gnu.org/licenses/>.
  *====================================================================================*/
-//! \file mgfld_shock.cpp
+//! \file test_opacity_table.cpp
 //! \brief Problem generator for radiative shock test
 //! REFERENCE: W. Zhang, L. Howell, A. Almgren, A. Burrows, J. Bell, Astrophys. J. Suppl. Ser. 196, 20 (2011).
 //!            for section 6.6: Non-equilibrium Radiative Shock
@@ -41,12 +41,10 @@
 #include "../mesh/mesh.hpp"
 #include "../parameter_input.hpp"
 #include "../fld/fld.hpp"
-#include "../mg_fld/rad_fld.hpp"
-#include "../mg_fld/mg_rad_fld.hpp"
 
 
-#if !MGFLD_ENABLED
-#error "The implicit FLD solver must be enabled (-mgfld)."
+#if !NRMGFLD_ENABLED
+#error "The implicit FLD solver must be enabled (-nrmgfld)."
 #endif
 
 namespace {
@@ -142,7 +140,7 @@ void MeshBlock::InitUserMeshBlockData(ParameterInput *pin) {
   puser_table = new UserOpacityTable(pin);
 
 
-  prfld->EnrollOpacityFunction(ConstantOpacity);
+  prfld2->EnrollOpacityFunction(ConstantOpacity);
   return;
 }
 
@@ -179,8 +177,8 @@ void MeshBlock::ProblemGenerator(ParameterInput *pin) {
     std::cout << "Pressure: " << press << " erg cm^-3" << std::endl;
 
     // GetOpacity now expects physical density and temperature for log-scale tables
-    sigma_P = puser_table->GetOpacity(RadFLD::SIGMA_P, press, temp);
-    sigma_R = puser_table->GetOpacity(RadFLD::SIGMA_R, press, temp);
+    sigma_P = puser_table->GetOpacity(RadFLD2::SIGMA_P, rho, temp);
+    sigma_R = puser_table->GetOpacity(RadFLD2::SIGMA_R, rho, temp);
     // std::cout << "opacity_unit: " << opacity_unit << " cm^2/g" << std::endl;
 
     std::cout << "Rosseland opacity: " << sigma_R << " cm^2/g" << std::endl;
@@ -297,8 +295,8 @@ void MeshBlock::ProblemGenerator(ParameterInput *pin) {
             phydro->u(IEN,k,j,i) = 0.0;
 
           // for FLD
-          prfld->u_gas(k,j,i) = 0.0;
-          prfld->u_rad(k,j,i) = 0.0;
+          prfld2->u_gas(k,j,i) = 0.0;
+          prfld2->u_rad(k,j,i) = 0.0;
       }
     }
   }
