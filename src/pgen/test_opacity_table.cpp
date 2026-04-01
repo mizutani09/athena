@@ -41,6 +41,7 @@
 #include "../mesh/mesh.hpp"
 #include "../parameter_input.hpp"
 #include "../fld/fld.hpp"
+#include "../fld/opacity_table.hpp"
 
 
 #if !NRMGFLD_ENABLED
@@ -152,7 +153,9 @@ void MeshBlock::InitUserMeshBlockData(ParameterInput *pin) {
 
 void MeshBlock::ProblemGenerator(ParameterInput *pin) {
 
-  Real rho=1e-10, temp=1e5; // g/cm³, K
+  // Real rho=1e-10, temp=1e5; // g/cm³, K
+  Real rho = pin->GetReal("problem", "rho"); // in cgs
+  Real temp = pin->GetReal("problem", "temp"); // in K
   Real press = rho*temp*Rgas/mu; // in cgs
   // Real rho=7e-11, temp=6e3;
   // Real rho=8.89e-02, temp=3.16e+07;

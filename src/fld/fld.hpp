@@ -32,7 +32,6 @@ class MeshBlock;
 class ParameterInput;
 class Coordinates;
 class FLDBoundaryValues;
-class UserOpacityTable;
 
 
 namespace RadFLD2 {
@@ -82,7 +81,6 @@ class FLD2 {
   // Function in problem generators to update opacity
   void EnrollOpacityFunction(FLDOpacityFunc MyOpacityFunction);
   FLDOpacityFunc UpdateOpacity;
-  UserOpacityTable *pUserOpacityTable;
 
   // Function for Newton Raphson solver
   void CalculateDefect(AthenaArray<Real> &def, const AthenaArray<Real> &u,
@@ -111,29 +109,5 @@ class FLD2 {
                          AthenaArray<Real> &mass_flx,
                          AthenaArray<Real> &flx_out);
 };
-
-
-class UserOpacityTable : public InterpTable2D {
- public:
-  enum class X2AxisKind {pressure, density, opal_r};
-
-  UserOpacityTable(ParameterInput *pin);
-  ~UserOpacityTable();
-
-  // Methods for opacity interpolation
-  Real GetOpacity(int var_index, Real density, Real temperature);
-  Real GetOpacityFromRhoT(int var_index, Real density, Real temperature);
-  Real GetOpacityFromPT(int var_index, Real pressure, Real temperature);
-
-  bool use_tables; // Flag to indicate if tables are used
-  // Data members for opacity table properties
-  Real tempMin, tempMax;    // Temperature limits
-  Real pressureMin, pressureMax;  // Pressure limits
-  int nTemp, nPressure, nVar;    // Table dimensions
-  AthenaArray<Real> OpacityTables;  // Tables for each variable
-  X2AxisKind x2_axis_kind = X2AxisKind::pressure;
-  Real mean_molecular_weight = 1.0;
-};
-
 
 #endif // FLD_FLD_HPP_

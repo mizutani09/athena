@@ -28,6 +28,7 @@
 #include "../parameter_input.hpp"
 #include "../utils/interp_table.hpp"
 #include "fld.hpp"
+#include "opacity_table.hpp"
 
 #ifdef HDF5OUTPUT
 #include <hdf5.h>
