@@ -107,7 +107,7 @@ NRFLD::NRFLD(MeshBlock *pmb, ParameterInput *pin) :
     u_gas_(pmb->ncells3, pmb->ncells2, pmb->ncells1),
     ngh_(NGHOST)
     {
-    if (pmy_driver_->fshowdef_) std::cout << ngh_ << std::endl;
+    if (pmy_driver_->fshowdef_ && pmy_block_->gid == 0) std::cout << ngh_ << std::endl;
 
     // check pointer
     if (pmy_driver_ == nullptr) {
@@ -189,13 +189,21 @@ void NRFLD::CalculateCoefficientsOnce(const AthenaArray<Real> &u_pre,
   Real hidx = 0.5*idx;
   Real hidy = 0.5*idy;
   Real hidz = 0.5*idz;
-  Real gm1 = pmy_block_->peos->GetGamma() - 1.0;
-
   for (int k=ks; k<=ke; k++) {
     for (int j=js; j<=je; j++) {
       for (int i=is; i<=ie; i++) {
-        // for coefficient from e_gas to T_gas
+        def_coeff(NewtonRaphsonFLD::DRHO,k,j,i) = w(IDN,k,j,i);
+        // for derivetive of temperature to gas energy
+#if GENERAL_EOS
+        Real rho = w(IDN,k,j,i);
+        Real egas = u_gas_(k,j,i);
+        Real temperature = pmy_block_->peos->TempFromRhoEg(rho, egas);
+        Real dlnT_dlnE = pmy_block_->peos->DlnTDlnEgasFromRhoEg(rho, egas);
+        def_coeff(NewtonRaphsonFLD::DCOUPLE,k,j,i) = temperature/egas * dlnT_dlnE;
+#else
+        Real gm1 = pmy_block_->peos->GetGamma() - 1.0;
         def_coeff(NewtonRaphsonFLD::DCOUPLE,k,j,i) = gm1/w(IDN,k,j,i);
+#endif
 
         // for lambda and coefficient of diff term
         AthenaArray<Real> dEr;
@@ -329,7 +337,8 @@ void NRFLD::CalculateCoefficientsOnce(const AthenaArray<Real> &u_pre,
   }
 
   if (pfld->cut_diff) {
-    if (pmy_driver_->fshowdef_) std::cout << "Cutting diffusion term coefficients to zero." << std::endl;
+    if (pmy_driver_->fshowdef_ && pmy_block_->gid == 0)
+      std::cout << "Cutting diffusion term coefficients to zero." << std::endl;
     for (int k=ks; k<=ke; k++) {
       for (int j=js; j<=je; j++) {
         for (int i=is; i<=ie; i++) {
@@ -342,7 +351,8 @@ void NRFLD::CalculateCoefficientsOnce(const AthenaArray<Real> &u_pre,
   }
 
   if (pfld->cut_Pnablav) {
-    if (pmy_driver_->fshowdef_) std::cout << "Cutting P:nabla v term coefficients to zero." << std::endl;
+    if (pmy_driver_->fshowdef_ && pmy_block_->gid == 0)
+      std::cout << "Cutting P:nabla v term coefficients to zero." << std::endl;
     for (int k=ks; k<=ke; k++) {
       for (int j=js; j<=je; j++) {
         for (int i=is; i<=ie; i++) {
@@ -352,7 +362,7 @@ void NRFLD::CalculateCoefficientsOnce(const AthenaArray<Real> &u_pre,
     }
   }
 
-  if(pmy_driver_->fshowdef_) {
+  if (pmy_driver_->fshowdef_ && pmy_block_->gid == 0) {
     // print everything
     int i = (is + ie) / 2;
     int j = (js + je) / 2;
@@ -400,7 +410,12 @@ void NRFLD::CalculateCoefficients(const AthenaArray<Real> &u_rad_old,
         sum_dcp += derivetive(NewtonRaphsonFLD::dFr_dEr_zm,k,j,i);
         sum_dcp += derivetive(NewtonRaphsonFLD::dFr_dEr_zp,k,j,i);
 
-        Real T_gas_new = def_coeff(NewtonRaphsonFLD::DCOUPLE,k,j,i)*u_gas_new(k,j,i);
+        Real T_gas_new;
+#if GENERAL_EOS
+        T_gas_new = pmy_block_->peos->TempFromRhoEg(def_coeff(NewtonRaphsonFLD::DRHO,k,j,i), u_gas_new(k,j,i));
+#else
+        T_gas_new = def_coeff(NewtonRaphsonFLD::DCOUPLE,k,j,i)*u_gas_new(k,j,i);
+#endif
         Real src_term = c_sigma_p*(pfld->a_r*std::pow(T_gas_new,4) - u_rad_new(k,j,i));
         Real Pnablav = def_coeff(NewtonRaphsonFLD::DDV,k,j,i)*u_rad_new(k,j,i);
         Real diff_term = 0.0;
@@ -436,8 +451,14 @@ void NRFLD::CalculateCoefficients(const AthenaArray<Real> &u_rad_old,
         src(k,j,i) = -derivetive(NewtonRaphsonFLD::Fr,k,j,i) + (derivetive(NewtonRaphsonFLD::dFr_deg,k,j,i)/derivetive(NewtonRaphsonFLD::dFg_deg,k,j,i))*derivetive(NewtonRaphsonFLD::Fg,k,j,i);
 
         // output
-        if (pmy_driver_->fshowdef_ && k == (ks+ke) / 2 && j == (js+je) / 2 && i == (is+ie) / 2) {
-          Real T_gas_old = def_coeff(NewtonRaphsonFLD::DCOUPLE,k,j,i)*u_gas_old(k,j,i);
+        if (pmy_driver_->fshowdef_ && pmy_block_->gid == 0 &&
+            k == (ks+ke) / 2 && j == (js+je) / 2 && i == (is+ie) / 2) {
+          Real T_gas_old;
+#if GENERAL_EOS
+          T_gas_old = pmy_block_->peos->TempFromRhoEg(def_coeff(NewtonRaphsonFLD::DRHO,k,j,i), u_gas_old(k,j,i));
+#else
+          T_gas_old = def_coeff(NewtonRaphsonFLD::DCOUPLE,k,j,i)*u_gas_old(k,j,i);
+#endif
           Real T_rad_new = std::pow(u_rad_new(k,j,i)/pfld->a_r, 0.25);
           Real T_rad_old = std::pow(u_rad_old(k,j,i)/pfld->a_r, 0.25);
           std::cout << "At (" << k << "," << j << "," << i << "):" << std::endl;
@@ -491,7 +512,12 @@ void NRFLD::CalculateDefect(AthenaArray<Real> &def, const AthenaArray<Real> &u,
     for (int j=jl; j<=ju; j++) {
 #pragma omp simd
       for (int i=il; i<=iu; i++) {
-        Real T_gas = def_coeff(NewtonRaphsonFLD::DCOUPLE,k,j,i)*u_gas(k,j,i);
+        Real T_gas;
+#if GENERAL_EOS
+        T_gas = pmy_block_->peos->TempFromRhoEg(def_coeff(NewtonRaphsonFLD::DRHO,k,j,i), u_gas(k,j,i));
+#else
+        T_gas = def_coeff(NewtonRaphsonFLD::DCOUPLE,k,j,i)*u_gas(k,j,i);
+#endif
         Real src_term = pfld->c_ph*pfld->sigma_p(k,j,i)*(pfld->a_r*std::pow(T_gas,4) - u(k,j,i));
         Real Pnablav = def_coeff(NewtonRaphsonFLD::DDV,k,j,i)*u(k,j,i);
         Real diff_term = 0.0;
@@ -508,7 +534,8 @@ void NRFLD::CalculateDefect(AthenaArray<Real> &def, const AthenaArray<Real> &u,
         // def(k,j,i) = std::abs(Fg) + std::abs(Fr);
         def(k,j,i) = Fr;
 
-        if (pmy_driver_->fshowdef_ && k==(kl+ku)/2 && j==(jl+ju)/2 && i==(il+iu)/2) {
+        if (pmy_driver_->fshowdef_ && pmy_block_->gid == 0 &&
+            k==(kl+ku)/2 && j==(jl+ju)/2 && i==(il+iu)/2) {
           Real T_rad = std::pow(u(k,j,i)/pfld->a_r, 0.25);
           std::cout << "At (" << k << "," << j << "," << i << "):" << std::endl;
           std::cout << "  u_gas = " << u_gas(k,j,i) << ", pfld->u_gas = " << pfld->u_gas(k,j,i) << std::endl;

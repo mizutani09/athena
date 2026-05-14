@@ -40,6 +40,20 @@ Real EquationOfState::AsqFromRhoP(Real rho, Real pres) {
   ATHENA_ERROR(msg);
   return -1.0;
 }
+Real EquationOfState::TempFromRhoEg(Real rho, Real egas) {
+  std::stringstream msg;
+  msg << "### FATAL ERROR in EquationOfState::TempFromRhoEg" << std::endl
+      << "Function should not be called with current configuration." << std::endl;
+  ATHENA_ERROR(msg);
+  return -1.0;
+}
+Real EquationOfState::DlnTDlnEgasFromRhoEg(Real rho, Real egas) {
+  std::stringstream msg;
+  msg << "### FATAL ERROR in EquationOfState::DlnTDlnEgasFromRhoEg" << std::endl
+      << "Function should not be called with current configuration." << std::endl;
+  ATHENA_ERROR(msg);
+  return -1.0;
+}
 
 //----------------------------------------------------------------------------------------
 //! \fn void EquationOfState::InitEosConstants(ParameterInput* pin)

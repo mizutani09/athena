@@ -145,6 +145,8 @@ class EquationOfState {
   Real PresFromRhoEg(Real rho, Real egas);
   Real EgasFromRhoP(Real rho, Real pres);
   Real AsqFromRhoP(Real rho, Real pres);
+  Real TempFromRhoEg(Real rho, Real egas);
+  Real DlnTDlnEgasFromRhoEg(Real rho, Real egas);
   Real GetIsoSoundSpeed() const {return iso_sound_speed_;}
   Real GetDensityFloor() const {return density_floor_;}
   Real GetPressureFloor() const {return pressure_floor_;}

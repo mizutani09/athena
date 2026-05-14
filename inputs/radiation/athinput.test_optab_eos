@@ -1,0 +1,119 @@
+<comment>
+problem         = test for reading opacity table and EOS table with shock tube setup
+reference       = 
+configure       = --prob=test_optab_eos --eos general/eos_table -nrmgfld -hdf5 -mpi -debug
+
+<job>
+problem_id      = NRFLD       # problem ID: basename of output filenames
+
+<output1>
+file_type       = hst         # History data dump
+dcycle          = 1           # time increment between outputs
+
+<output2>
+file_type       = hdf5        # Binary data dump
+id              = prim_x_slice
+variable        = prim        # variables to be output
+# dcycle          = 1         # time increment between outputs
+dt              = 0.005
+x2_slice        = 0.5         # slice location in X2
+x3_slice        = 0.5         # slice location in X3
+ghost_zones     = true
+
+<output3>
+file_type       = hdf5
+id              = uov_x_slice
+variable        = uov
+# dcycle          = 1
+dt              = 0.005
+x2_slice        = 0.5
+x3_slice        = 0.5
+ghost_zones     = true
+
+<time>
+cfl_number      = 0.03         # The Courant, Friedrichs, & Lewy (CFL) Number
+nlim            = -1        # cycle limit
+tlim            = 0.1        # time limit
+integrator      = rk2         # time integration algorithm
+xorder          = 2           # order of spatial reconstruction
+ncycle_out      = 1         # interval for stdout summary info
+
+<mesh>
+nx1             = 64          # Number of zones in X1-direction
+x1min           = 0.0        # minimum value of X1
+x1max           = 1.0        # maximum value of X1
+ix1_bc          = user        # inner-X1 boundary flag
+ox1_bc          = user        # outer-X1 boundary flag
+
+nx2             = 64          # Number of zones in X2-direction
+x2min           = 0.0        # minimum value of X2
+x2max           = 1.0        # maximum value of X2
+ix2_bc          = periodic    # inner-X2 boundary flag
+ox2_bc          = periodic    # outer-X2 boundary flag
+
+nx3             = 64          # Number of zones in X3-direction
+x3min           = 0.0        # minimum value of X3
+x3max           = 1.0        # maximum value of X3
+ix3_bc          = periodic    # inner-X3 boundary flag
+ox3_bc          = periodic    # outer-X3 boundary flag
+
+<meshblock>
+nx1             = 32
+nx2             = 32
+nx3             = 32
+
+<hydro>
+rho_unit        = 1e-5             # in g cm^-3
+egas_unit       = 1e+9             # in erg cm^-3
+leng_unit       = 1e+2             # in cm
+T_unit          = 1e+6             # in K
+dens_pow        = -1.0             # specify density power for EOS table energy axis
+eos_file_name   = path/to/your/eos_table.h5
+eos_file_type   = hdf5             # Specify EOS table file type [ascii,binary,hdf5]
+eos_read_ratios = true             # Table file specifies ratios between different
+                                   # variables, e.g e/rho vs p/rho (default=true)
+eos_rho_unit    = 1e-5             # rho (in sim units) * eos_rho_unit = rho (in table units)
+eos_egas_unit   = 1e+9             # Similar to eos_rho_unit. Both default to 1.0
+
+
+<nrfld>
+mgmode          = MGI
+fas             = true
+smoother        = jacobi-rb
+npresmooth      = 2
+npostsmooth     = 2
+omega           = 1.0
+# niteration      = 10
+# nr_niteration   = 1
+threshold       = 1e-10
+nr_threshold   = 1e-10
+ix1_bc          = user
+ox1_bc          = user
+ix2_bc          = periodic
+ox2_bc          = periodic
+ix3_bc          = periodic
+ox3_bc          = periodic
+
+
+<fld>
+fixed_flux_limitter = false
+output_defect   = true
+is_couple       = true
+only_rad        = false
+cut_diff        = false
+cut_Pnablav     = false
+
+use_opacity_table       = true
+opacity_table_file      = path/to/your/opacity_table.h5
+opacity_table_file_type = hdf5
+opacity_table_axis      = tp # tp, trho or tr
+
+<problem>
+dir             = 1
+rho0_L          = 1e-5  # in g cm^-3
+T0_L            = 1.5e6          # in K
+v0_L            = 0.0   # in cm s^-1
+
+rho0_R          = 1e-5  # in g cm^-3
+T0_R            = 3.0e5      # in K
+v0_R            = 0.0   # in cm s^-1

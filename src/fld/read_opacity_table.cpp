@@ -41,21 +41,16 @@ const char *opacity_var_names[] = {"planck_mean_opacity", "rosseland_mean_opacit
 
 #ifdef HDF5OUTPUT
 namespace {
-constexpr const char *kOpacityBlockPrimary = "nrfld";
-constexpr const char *kOpacityBlockFallback = "mgfld";
+constexpr const char *kOpacityBlockPrimary = "fld";
 
 bool OpacityParamExists(ParameterInput *pin, const std::string &name) {
-  return (pin->DoesParameterExist(kOpacityBlockPrimary, name) != 0
-          || pin->DoesParameterExist(kOpacityBlockFallback, name) != 0);
+  return (pin->DoesParameterExist(kOpacityBlockPrimary, name) != 0);
 }
 
 std::string GetOpacityStringOrDefault(ParameterInput *pin, const std::string &name,
                                       const std::string &default_value) {
   if (pin->DoesParameterExist(kOpacityBlockPrimary, name)) {
     return pin->GetString(kOpacityBlockPrimary, name);
-  }
-  if (pin->DoesParameterExist(kOpacityBlockFallback, name)) {
-    return pin->GetString(kOpacityBlockFallback, name);
   }
   return default_value;
 }
@@ -64,9 +59,6 @@ bool GetOpacityBoolOrDefault(ParameterInput *pin, const std::string &name,
                              bool default_value) {
   if (pin->DoesParameterExist(kOpacityBlockPrimary, name)) {
     return pin->GetBoolean(kOpacityBlockPrimary, name);
-  }
-  if (pin->DoesParameterExist(kOpacityBlockFallback, name)) {
-    return pin->GetBoolean(kOpacityBlockFallback, name);
   }
   return default_value;
 }
@@ -81,6 +73,13 @@ bool FindExistingDataset(hid_t file, const std::vector<std::string> &candidates,
     }
   }
   return false;
+}
+
+bool PathLooksLikeLog10Opacity(const std::string &path) {
+  return (path.find("log10_planck") != std::string::npos ||
+          path.find("log10_rosseland") != std::string::npos ||
+          path.find("log_planck") != std::string::npos ||
+          path.find("log_rosseland") != std::string::npos);
 }
 
 std::string ResolveDatasetPath(hid_t file, const std::string &configured_name,
@@ -187,6 +186,7 @@ void ReadHDF5OpacityTable(std::string fn, UserOpacityTable *puser_table, Paramet
   int nvar = RadFLD2::NOPACITY;
   std::string temp_path, x2_path;
   std::string var_paths[RadFLD2::NOPACITY];
+  bool values_are_log10 = false;
   UserOpacityTable::X2AxisKind x2_axis_kind = puser_table->x2_axis_kind;
 
   std::vector<std::string> x2_candidates;
@@ -228,7 +228,9 @@ void ReadHDF5OpacityTable(std::string fn, UserOpacityTable *puser_table, Paramet
     var_paths[RadFLD2::SIGMA_P] = ResolveDatasetPath(
         file,
         GetOpacityStringOrDefault(pin, "opacity_table_planck_dataset", "auto"),
-        {opacity_var_names[RadFLD2::SIGMA_P],
+        {"kappa/log10_planck", "/kappa/log10_planck",
+         "log10_planck", "/log10_planck",
+         opacity_var_names[RadFLD2::SIGMA_P],
          "/planck_mean_opacity",
          "kappa/planck", "/kappa/planck", "planck", "/planck"},
         "Planck opacity");
@@ -236,10 +238,15 @@ void ReadHDF5OpacityTable(std::string fn, UserOpacityTable *puser_table, Paramet
     var_paths[RadFLD2::SIGMA_R] = ResolveDatasetPath(
         file,
         GetOpacityStringOrDefault(pin, "opacity_table_rosseland_dataset", "auto"),
-        {opacity_var_names[RadFLD2::SIGMA_R],
+        {"kappa/log10_rosseland", "/kappa/log10_rosseland",
+         "log10_rosseland", "/log10_rosseland",
+         opacity_var_names[RadFLD2::SIGMA_R],
          "/rosseland_mean_opacity",
          "kappa/rosseland", "/kappa/rosseland", "rosseland", "/rosseland"},
         "Rosseland opacity");
+
+    values_are_log10 = PathLooksLikeLog10Opacity(var_paths[RadFLD2::SIGMA_P]) &&
+                       PathLooksLikeLog10Opacity(var_paths[RadFLD2::SIGMA_R]);
 
     H5Fclose(file);
     H5Pclose(property_list_file);
@@ -257,6 +264,7 @@ void ReadHDF5OpacityTable(std::string fn, UserOpacityTable *puser_table, Paramet
   puser_table->nTemp = temp_size;
   puser_table->nPressure = pressure_size;
   puser_table->x2_axis_kind = x2_axis_kind;
+  puser_table->values_are_log10 = values_are_log10;
 
   // Read coordinate arrays
   temp_array.NewAthenaArray(temp_size);
@@ -308,8 +316,8 @@ void ReadHDF5OpacityTable(std::string fn, UserOpacityTable *puser_table, Paramet
     HDF5ReadRealArray(fn.c_str(), var_paths[ivar].c_str(), 2, start_file_2d, count_2d,
                       2, start_mem_2d, count_2d, opacity_2d);
 
-    // Store 2D opacity data with unit conversion from physical units (cm^2/g) to code units
-    // Note: HDF5 data is opacity[pressure_idx, temp_idx], InterpTable2D expects data(ivar, j, i)
+    // Store 2D opacity data. HDF5 data is opacity[pressure_idx, temp_idx],
+    // InterpTable2D expects data(ivar, j, i).
     for (int j = 0; j < pressure_size; ++j) {
       for (int i = 0; i < temp_size; ++i) {
         puser_table->data(ivar, j, i) = opacity_2d(j, i);
@@ -426,7 +434,7 @@ Real UserOpacityTable::GetOpacityFromPT(int var_index, Real pressure, Real tempe
     std::stringstream msg;
     msg << "### FATAL ERROR in UserOpacityTable::GetOpacityFromPT" << std::endl
         << "Opacity tables are not enabled. Set 'use_opacity_table=true' in "
-        << "<nrfld> or <mgfld> block." << std::endl;
+        << "<fld> block." << std::endl;
     ATHENA_ERROR(msg);
   }
 
@@ -448,7 +456,7 @@ Real UserOpacityTable::GetOpacityFromRhoT(int var_index, Real density, Real temp
     std::stringstream msg;
     msg << "### FATAL ERROR in UserOpacityTable::GetOpacityFromRhoT" << std::endl
         << "Opacity tables are not enabled. Set 'use_opacity_table=true' in "
-        << "<nrfld> or <mgfld> block." << std::endl;
+        << "<fld> block." << std::endl;
     ATHENA_ERROR(msg);
   }
 
@@ -472,6 +480,9 @@ Real UserOpacityTable::GetOpacityFromRhoT(int var_index, Real density, Real temp
     log_x2 = std::log10(density) - 3.0*log_temperature + 18.0;
   }
   Real result = interpolate(var_index, log_x2, log_temperature);
+  if (values_are_log10) {
+    result = std::pow(static_cast<Real>(10.0), result);
+  }
   if (result < 0.0) {
     result = TINY_NUMBER;
     std::cerr << "Warning: Negative opacity value encountered. Returning TINY_NUMBER instead."

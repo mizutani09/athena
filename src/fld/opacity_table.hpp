@@ -32,6 +32,7 @@ class UserOpacityTable : public InterpTable2D {
   AthenaArray<Real> OpacityTables;
   X2AxisKind x2_axis_kind = X2AxisKind::pressure;
   Real mean_molecular_weight = 1.0;
+  bool values_are_log10 = false;
 };
 
 #endif // FLD_OPACITY_TABLE_HPP_

@@ -51,7 +51,7 @@ class EosTable {
   InterpTable2D table;
   Real logRhoMin, logRhoMax;
   Real logEgasMin, logEgasMax;
-  Real rhoUnit, eUnit, hUnit;
+  Real rhoUnit, eUnit, hUnit, tUnit;
   int nRho, nEgas, nVar;
   AthenaArray<Real> EosRatios;
 };

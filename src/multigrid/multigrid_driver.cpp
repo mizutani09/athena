@@ -741,11 +741,14 @@ void MultigridDriver::TransferFromBlocksToRoot(bool initflag) {
     int j = static_cast<int>(loc.lx2);
     int k = static_cast<int>(loc.lx3);
     if (loc.level == locrootlevel_) {
+      int ri = i + mgroot_->ngh_;
+      int rj = j + mgroot_->ngh_;
+      int rk = k + mgroot_->ngh_;
       for (int v = 0; v < nvar_; ++v)
-        mgroot_->SetData(MGVariable::src, v, k, j, i, rootbuf_[n*nv+v]);
+        mgroot_->src_[mgroot_->nlevel_-1](v, rk, rj, ri) = rootbuf_[n*nv+v];
       if (ffas_ && !initflag) {
         for (int v = 0; v < nvar_; ++v)
-          mgroot_->SetData(MGVariable::u, v, k, j, i, rootbuf_[n*nv+nvar_+v]);
+          mgroot_->u_[mgroot_->nlevel_-1](v, rk, rj, ri) = rootbuf_[n*nv+nvar_+v];
       }
     } else {
       LogicalLocation oloc;
@@ -821,8 +824,11 @@ void MultigridDriver::TransferCoefficientFromBlocksToRoot() {
     int j = static_cast<int>(loc.lx2);
     int k = static_cast<int>(loc.lx3);
     if (loc.level == locrootlevel_) {
+      int ri = i + mgroot_->ngh_;
+      int rj = j + mgroot_->ngh_;
+      int rk = k + mgroot_->ngh_;
       for (int v = 0; v < ncoeff_; ++v)
-        mgroot_->SetData(MGVariable::coeff, v, k, j, i, rootbuf_[n*ncoeff_+v]);
+        mgroot_->coeff_[mgroot_->nlevel_-1](v, rk, rj, ri) = rootbuf_[n*ncoeff_+v];
     } else {
       LogicalLocation oloc;
       oloc.lx1 = (loc.lx1 >> 1);
@@ -1316,10 +1322,12 @@ void MultigridDriver::RestrictFMGSourceOctets() {
     for (int o = 0; o < noctets_[0]; ++o) { // octets to the root grid
       MGOctet &oct = octets_[0][o];
       const LogicalLocation &loc = oct.loc;
+      int lx1 = static_cast<int>(loc.lx1) + mgroot_->ngh_;
+      int lx2 = static_cast<int>(loc.lx2) + mgroot_->ngh_;
+      int lx3 = static_cast<int>(loc.lx3) + mgroot_->ngh_;
       for (int v = 0; v < nvar_; ++v)
-        mgroot_->SetData(MGVariable::src, v, static_cast<int>(loc.lx3),
-                         static_cast<int>(loc.lx2), static_cast<int>(loc.lx1),
-                         RestrictOne(oct.src, v, ngh, ngh, ngh));
+        mgroot_->src_[mgroot_->nlevel_-1](v, lx3, lx2, lx1)
+          = RestrictOne(oct.src, v, ngh, ngh, ngh);
     }
   }
 

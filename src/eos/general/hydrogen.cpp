@@ -167,6 +167,27 @@ Real EquationOfState::AsqFromRhoP(Real rho, Real pres) {
 }
 
 //----------------------------------------------------------------------------------------
+//! \fn Real EquationOfState::TempFromRhoEg(Real rho, Real egas)
+//! \brief Return gas temperature
+Real EquationOfState::TempFromRhoEg(Real rho, Real egas) {
+  rho *= rho_unit_;
+  egas *= egas_unit_;
+  Real es = egas / rho;
+  return invert(*e_of_rho_T, rho, egas, std::max(es - 1.0, 0.1*es)/3.0,
+                float_1pe*2.0*es/3.0);
+}
+
+//----------------------------------------------------------------------------------------
+//! \fn Real EquationOfState::DlnTDlnEgasFromRhoEg(Real rho, Real egas)
+//! \brief Return d ln(T) / d ln(egas) at constant density using a local log-derivative
+Real EquationOfState::DlnTDlnEgasFromRhoEg(Real rho, Real egas) {
+  Real T = TempFromRhoEg(rho, egas);
+  Real deps = 1.0e-6*std::max(std::abs(egas), TINY_NUMBER);
+  Real Tp = TempFromRhoEg(rho, egas + deps);
+  return (std::log(Tp) - std::log(T))/std::log((egas + deps)/egas);
+}
+
+//----------------------------------------------------------------------------------------
 //! \fn void EquationOfState::InitEosConstants(ParameterInput* pin)
 //! \brief Initialize constants for EOS
 void EquationOfState::InitEosConstants(ParameterInput* pin) {

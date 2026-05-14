@@ -171,8 +171,13 @@ FLD2::FLD2(MeshBlock *pmb, ParameterInput *pin) :
   if (time_unit < 0.0) time_unit = leng_unit/vel_unit;
   if (leng_unit < 0.0) leng_unit = vel_unit*time_unit;
 
+  Real T_unit;
+#if GENERAL_EOS
+  T_unit = pin->GetReal("hydro", "T_unit");
+#else
   Real mu = pin->GetReal("hydro", "mu");
-  Real T_unit = pres_unit/rho_unit*mu/R_gas;
+  T_unit = pres_unit/rho_unit*mu/R_gas;
+#endif
   c_ph = c_ph_dim/vel_unit;
   a_r = a_r_dim/(egas_unit/std::pow(T_unit, 4));
   const_opacity = const_opacity_dim*leng_unit*rho_unit; // to be multiplied by rho
@@ -202,7 +207,6 @@ void FLD2::LoadHydroVariables(const AthenaArray<Real> &w, AthenaArray<Real> &fld
   int il = pmy_block->is - NGHOST, iu = pmy_block->ie + NGHOST;
   int jl = pmy_block->js, ju = pmy_block->je;
   int kl = pmy_block->ks, ku = pmy_block->ke;
-  Real igm1 = 1.0/(pmy_block->peos->GetGamma() - 1.0);
   if (pmy_block->pmy_mesh->f2)
     jl -= NGHOST, ju += NGHOST;
   if (pmy_block->pmy_mesh->f3)
@@ -210,7 +214,14 @@ void FLD2::LoadHydroVariables(const AthenaArray<Real> &w, AthenaArray<Real> &fld
   for (int k = kl; k <= ku; ++k) {
     for (int j = jl; j <= ju; ++j) {
       for (int i = il; i <= iu; ++i) {
-        fld_u_gas(k,j,i) = igm1*w(IPR,k,j,i);
+#if GENERAL_EOS
+        Real rho = w(IDN,k,j,i);
+        Real pres = w(IPR,k,j,i);
+        fld_u_gas(k,j,i) = pmy_block->peos->EgasFromRhoP(rho, pres);
+#else
+        Real igm1 = 1.0/(pmy_block->peos->GetGamma() - 1.0);
+        fld_u_gas(k,j,i) = igm1*w(IEN,k,j,i);
+#endif
       }
     }
   }
@@ -228,21 +239,39 @@ void FLD2::UpdateHydroVariables(AthenaArray<Real> &w, AthenaArray<Real> &hydro_u
   int il = pmy_block->is - NGHOST, iu = pmy_block->ie + NGHOST;
   int jl = pmy_block->js, ju = pmy_block->je;
   int kl = pmy_block->ks, ku = pmy_block->ke;
-  Real gm1 = pmy_block->peos->GetGamma() - 1.0;
-  Real igm1 = 1.0/gm1;
   if (pmy_block->pmy_mesh->f2)
     jl -= NGHOST, ju += NGHOST;
   if (pmy_block->pmy_mesh->f3)
     kl -= NGHOST, ku += NGHOST;
+  
+  // first, update FLD quantities
   for (int k = kl; k <= ku; ++k) {
     for (int j = jl; j <= ju; ++j) {
       for (int i = il; i <= iu; ++i) {
         if (!fixed_u_rad)
           u_rad(k,j,i) = fld_u_rad(k,j,i);
         u_gas(k,j,i) = fld_u_gas(k,j,i);
-        if (!only_rad) {
+      }
+    }
+  }
+
+  // then, update hydro variables
+  if (!only_rad) {
+    for (int k = kl; k <= ku; ++k) {
+      for (int j = jl; j <= ju; ++j) {
+        for (int i = il; i <= iu; ++i) {
+#if GENERAL_EOS
+          Real rho = w(IDN,k,j,i);
+          Real egas_old = pmy_block->peos->EgasFromRhoP(rho, w(IPR,k,j,i));
+          Real pres_new = pmy_block->peos->PresFromRhoEg(rho, fld_u_gas(k,j,i));
+          hydro_u(IEN,k,j,i) += (fld_u_gas(k,j,i) - egas_old);
+          w(IPR,k,j,i) = pres_new;
+#else
+          Real gm1 = pmy_block->peos->GetGamma() - 1.0;
+          Real igm1 = 1.0/gm1;
           hydro_u(IEN,k,j,i) += (fld_u_gas(k,j,i) - igm1*w(IPR,k,j,i));
           w(IPR,k,j,i) = gm1*fld_u_gas(k,j,i);
+#endif
         }
       }
     }

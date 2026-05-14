@@ -67,10 +67,10 @@ ox2_bc          = periodic
 ix3_bc          = periodic
 ox3_bc          = periodic
 
-use_opacity_table = true
-opacity_table_file = path/to/your/opacity_table.h5
+use_opacity_table       = true
+opacity_table_file      = path/to/your/opacity_table.h5
 opacity_table_file_type = hdf5
-opacity_table_axis = tp
+opacity_table_axis      = tp
 # opacity_table_axis options:
 #   tp   : x2 = log10(pressure[cgs])
 #   trho : x2 = log10(density[cgs])
@@ -82,3 +82,5 @@ opacity_table_axis = tp
 # opacity_table_rosseland_dataset = auto
 
 <problem>
+rho             = 1e-10 # in g cm^-3
+temp            = 1e4   # in K

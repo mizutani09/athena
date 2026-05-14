@@ -36,6 +36,20 @@ Real EquationOfState::AsqFromRhoP(Real rho, Real pres) {
 }
 
 //----------------------------------------------------------------------------------------
+//! \fn Real EquationOfState::TempFromRhoEg(Real rho, Real egas)
+//! \brief Return gas temperature in the general EOS ideal-gas debug mode
+Real EquationOfState::TempFromRhoEg(Real rho, Real egas) {
+  return (gamma_ - 1.) * egas / rho;
+}
+
+//----------------------------------------------------------------------------------------
+//! \fn Real EquationOfState::DlnTDlnEgasFromRhoEg(Real rho, Real egas)
+//! \brief Return d ln(T) / d ln(egas) at constant density
+Real EquationOfState::DlnTDlnEgasFromRhoEg(Real rho, Real egas) {
+  return 1.0;
+}
+
+//----------------------------------------------------------------------------------------
 //! \fn void EquationOfState::InitEosConstants(ParameterInput* pin)
 //! \brief Initialize constants for EOS
 void EquationOfState::InitEosConstants(ParameterInput *pin) {
