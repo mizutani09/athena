@@ -1,0 +1,132 @@
+<comment>
+problem         = mdot_through_L1
+reference       =
+configure       = --prob mdot_through_L1 -mpi -hdf5 --grav mg
+
+<job>
+problem_id      = mdot_through_L1   # problem ID: basename of output filenames
+
+<output1>
+file_type       = hst       # History data dump
+dt              = 0.01    # time increment between outputs
+
+#<output2>
+#id              = prim
+#file_type       = hdf5       # HDF5 data dump
+#variable        = prim      # variables to be output
+#dt              = 10.0    # time increment between outputs
+# ghost_zones     = true
+
+#<output3>
+#id              = uov
+#file_type       = hdf5
+#variable        = uov
+#dt              = 10.0
+
+<output4>
+id              = prim_xy_slice
+file_type       = hdf5
+variable        = prim
+dt              = 0.05
+x3_slice        = 0.0
+
+<output5>
+id              = uov_xy_slice
+file_type       = hdf5
+variable        = uov
+dt              = 0.05
+x3_slice        = 0.0
+
+# <output6>
+# id              = prim_xz_slice
+# file_type       = hdf5
+# variable        = prim
+# dt              = 0.05
+# x2_slice        = 0.0
+# 
+# <output7>
+# id              = uov_xz_slice
+# file_type       = hdf5
+# variable        = uov
+# dt              = 0.05
+# x2_slice        = 0.0
+
+# <output10>
+# file_type       = rst
+# dt              = 30.0
+
+<time>
+cfl_number      = 0.3        # The Courant, Friedrichs, & Lewy (CFL) Number
+nlim            = -1         # cycle limit
+tlim            = 10000.0        # time limit
+integrator      = rk2       # time integration algorithm
+xorder          = 2         # order of spatial reconstruction
+ncycle_out      = 1         # interval for stdout summary info
+clight_boris    = 1.
+
+<mesh>
+nx1             = 64        # Number of zones in X1-direction
+x1min           = -0.5       # minimum value of X1
+x1max           =  0.5       # maximum value of X1
+ix1_bc          = outflow       # Inner-X1 boundary condition flag
+ox1_bc          = outflow       # Outer-X1 boundary condition flag
+
+nx2             = 64        # Number of zones in X2-direction
+x2min           = -0.5       # minimum value of X2
+x2max           =  0.5       # maximum value of X2
+ix2_bc          = outflow       # Inner-X2 boundary condition flag
+ox2_bc          = outflow       # Outer-X2 boundary condition flag
+
+nx3             = 64         # Number of zones in X3-direction
+x3min           = -0.5       # minimum value of X3
+x3max           =  0.5       # maximum value of X3
+ix3_bc          = outflow       # Inner-X3 boundary condition flag
+ox3_bc          = outflow       # Outer-X3 boundary condition flag
+
+num_threads     = 1          # maximum number of OMP threads
+refinement      = static
+
+<meshblock>
+nx1             = 32
+nx2             = 32
+nx3             = 32
+
+# <refinement1>
+# # for main star
+# x1min           = -2.56
+# x1max           = 2.56
+# x2min           = -2.56
+# x2max           = 2.56
+# x3min           = -2.56
+# x3max           = 2.56
+# level           = 3
+
+# <refinement2>
+# # for secondary star
+# x1min           = -5.12
+# x1max           = 5.12
+# x2min           = -5.12
+# x2max           = 5.12
+# x3min           = -2.56
+# x3max           = 2.56
+# level           = 2
+
+<hydro>
+gamma           = 1.6666666666666667   # gamma = C_p/C_v
+iso_sound_speed = 1.0   # equivalent to sqrt(gamma*p/d) for p=0.1, d=1
+# Omega_frame     = 1.0   # frame rotation
+# pfloor          = 1.0e-8
+# dfloor          = 1.0e-8
+mu_mmw          = 0.5
+
+<problem>
+Mtot_dim        = 37.0  # in M_sun
+separation_dim  = 70.0  # in R_sun
+Mdot_dim        = -1.0 # 1.0e-5 # in M_sun/yr  # < 0.0 means no mass addition
+
+mass_ratio      = 4.23 # M_donor = 30.0 M_sun, M_accretor = 7.1 M_sun
+grav_eps        = 0.1
+R_sink          = -1.0 # 0.1 # in R_sun, < 0.0 means no sink accretion
+
+centrifugal     = true
+coriolis        = true
