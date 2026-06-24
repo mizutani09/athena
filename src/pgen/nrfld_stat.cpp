@@ -81,7 +81,7 @@ namespace {
     return pm->mesh_size.x3max;
   }
 
-  void SetLinearBoundary(MeshBlock *pmb, Coordinates *pco, FLD2 *pfld,
+  void SetLinearBoundary(MeshBlock *pmb, Coordinates *pco, AthenaArray<Real> &u_rad,
                          int is, int ie, int js, int je, int ks, int ke, int ngh,
                          int axis, bool inner) {
     Real x_L = MeshMin(pmb->pmy_mesh) - 0.5*DxAt(pco, 0);
@@ -94,7 +94,7 @@ namespace {
           for (int i=1; i<=ngh; i++) {
             int ii = inner ? is-i : ie+i;
             Real x = pco->x1v(ii);
-            pfld->u_rad(k,j,ii) = slope*x + cons;
+            u_rad(k,j,ii) = slope*x + cons;
           }
         }
       }
@@ -104,7 +104,7 @@ namespace {
           for (int j=1; j<=ngh; j++) {
             int jj = inner ? js-j : je+j;
             Real x = pco->x2v(jj);
-            pfld->u_rad(k,jj,i) = slope*x + cons;
+            u_rad(k,jj,i) = slope*x + cons;
           }
         }
       }
@@ -114,7 +114,7 @@ namespace {
           for (int k=1; k<=ngh; k++) {
             int kk = inner ? ks-k : ke+k;
             Real x = pco->x3v(kk);
-            pfld->u_rad(kk,j,i) = slope*x + cons;
+            u_rad(kk,j,i) = slope*x + cons;
           }
         }
       }
@@ -174,7 +174,15 @@ void FLDFixedInnerX1(MeshBlock *pmb, Coordinates *pco, FLD2 *pfld,
                      const AthenaArray<Real> &w, AthenaArray<Real> &u_rad_fld,
                      Real time, Real dt,
                      int is, int ie, int js, int je, int ks, int ke, int ngh) {
-  SetLinearBoundary(pmb, pco, pfld, is, ie, js, je, ks, ke, ngh, 1, true);
+  SetLinearBoundary(pmb, pco, u_rad_fld, is, ie, js, je, ks, ke, ngh, 1, true);
+  return;
+}
+
+void NRInnerX1(MeshBlock *pmb,
+               AthenaArray<Real> &u_rad, AthenaArray<Real> &u_gas,
+               Coordinates *pco, const AthenaArray<Real> &w, Real time, Real dt,
+               int is, int ie, int js, int je, int ks, int ke, int ngh) {
+  SetLinearBoundary(pmb, pco, u_rad, is, ie, js, je, ks, ke, ngh, 1, true);
   return;
 }
 
@@ -182,7 +190,15 @@ void FLDFixedOuterX1(MeshBlock *pmb, Coordinates *pco, FLD2 *pfld,
                      const AthenaArray<Real> &w, AthenaArray<Real> &u_rad_fld,
                      Real time, Real dt,
                      int is, int ie, int js, int je, int ks, int ke, int ngh) {
-  SetLinearBoundary(pmb, pco, pfld, is, ie, js, je, ks, ke, ngh, 1, false);
+  SetLinearBoundary(pmb, pco, u_rad_fld, is, ie, js, je, ks, ke, ngh, 1, false);
+  return;
+}
+
+void NROuterX1(MeshBlock *pmb,
+               AthenaArray<Real> &u_rad, AthenaArray<Real> &u_gas,
+               Coordinates *pco, const AthenaArray<Real> &w, Real time, Real dt,
+               int is, int ie, int js, int je, int ks, int ke, int ngh) {
+  SetLinearBoundary(pmb, pco, u_rad, is, ie, js, je, ks, ke, ngh, 1, false);
   return;
 }
 
@@ -190,7 +206,15 @@ void FLDFixedInnerX2(MeshBlock *pmb, Coordinates *pco, FLD2 *pfld,
                      const AthenaArray<Real> &w, AthenaArray<Real> &u_rad_fld,
                      Real time, Real dt,
                      int is, int ie, int js, int je, int ks, int ke, int ngh) {
-  SetLinearBoundary(pmb, pco, pfld, is, ie, js, je, ks, ke, ngh, 2, true);
+  SetLinearBoundary(pmb, pco, u_rad_fld, is, ie, js, je, ks, ke, ngh, 2, true);
+  return;
+}
+
+void NRInnerX2(MeshBlock *pmb,
+               AthenaArray<Real> &u_rad, AthenaArray<Real> &u_gas,
+               Coordinates *pco, const AthenaArray<Real> &w, Real time, Real dt,
+               int is, int ie, int js, int je, int ks, int ke, int ngh) {
+  SetLinearBoundary(pmb, pco, u_rad, is, ie, js, je, ks, ke, ngh, 2, true);
   return;
 }
 
@@ -198,7 +222,15 @@ void FLDFixedOuterX2(MeshBlock *pmb, Coordinates *pco, FLD2 *pfld,
                      const AthenaArray<Real> &w, AthenaArray<Real> &u_rad_fld,
                      Real time, Real dt,
                      int is, int ie, int js, int je, int ks, int ke, int ngh) {
-  SetLinearBoundary(pmb, pco, pfld, is, ie, js, je, ks, ke, ngh, 2, false);
+  SetLinearBoundary(pmb, pco, u_rad_fld, is, ie, js, je, ks, ke, ngh, 2, false);
+  return;
+}
+
+void NROuterX2(MeshBlock *pmb,
+               AthenaArray<Real> &u_rad, AthenaArray<Real> &u_gas,
+               Coordinates *pco, const AthenaArray<Real> &w, Real time, Real dt,
+               int is, int ie, int js, int je, int ks, int ke, int ngh) {
+  SetLinearBoundary(pmb, pco, u_rad, is, ie, js, je, ks, ke, ngh, 2, false);
   return;
 }
 
@@ -206,7 +238,15 @@ void FLDFixedInnerX3(MeshBlock *pmb, Coordinates *pco, FLD2 *pfld,
                      const AthenaArray<Real> &w, AthenaArray<Real> &u_rad_fld,
                      Real time, Real dt,
                      int is, int ie, int js, int je, int ks, int ke, int ngh) {
-  SetLinearBoundary(pmb, pco, pfld, is, ie, js, je, ks, ke, ngh, 3, true);
+  SetLinearBoundary(pmb, pco, u_rad_fld, is, ie, js, je, ks, ke, ngh, 3, true);
+  return;
+}
+
+void NRInnerX3(MeshBlock *pmb,
+               AthenaArray<Real> &u_rad, AthenaArray<Real> &u_gas,
+               Coordinates *pco, const AthenaArray<Real> &w, Real time, Real dt,
+               int is, int ie, int js, int je, int ks, int ke, int ngh) {
+  SetLinearBoundary(pmb, pco, u_rad, is, ie, js, je, ks, ke, ngh, 3, true);
   return;
 }
 
@@ -214,7 +254,15 @@ void FLDFixedOuterX3(MeshBlock *pmb, Coordinates *pco, FLD2 *pfld,
                      const AthenaArray<Real> &w, AthenaArray<Real> &u_rad_fld,
                      Real time, Real dt,
                      int is, int ie, int js, int je, int ks, int ke, int ngh) {
-  SetLinearBoundary(pmb, pco, pfld, is, ie, js, je, ks, ke, ngh, 3, false);
+  SetLinearBoundary(pmb, pco, u_rad_fld, is, ie, js, je, ks, ke, ngh, 3, false);
+  return;
+}
+
+void NROuterX3(MeshBlock *pmb,
+               AthenaArray<Real> &u_rad, AthenaArray<Real> &u_gas,
+               Coordinates *pco, const AthenaArray<Real> &w, Real time, Real dt,
+               int is, int ie, int js, int je, int ks, int ke, int ngh) {
+  SetLinearBoundary(pmb, pco, u_rad, is, ie, js, je, ks, ke, ngh, 3, false);
   return;
 }
 
@@ -353,16 +401,22 @@ void Mesh::InitUserMeshData(ParameterInput *pin) {
   if (dir == 1) {
     EnrollUserFLDBoundaryFunction(BoundaryFace::inner_x1, FLDFixedInnerX1);
     EnrollUserFLDBoundaryFunction(BoundaryFace::outer_x1, FLDFixedOuterX1);
+    EnrollUserNRBoundaryFunction(BoundaryFace::inner_x1, NRInnerX1);
+    EnrollUserNRBoundaryFunction(BoundaryFace::outer_x1, NROuterX1);
     EnrollUserBoundaryFunction(BoundaryFace::inner_x1, HydroInnerX1);
     EnrollUserBoundaryFunction(BoundaryFace::outer_x1, HydroOuterX1);
   } else if (dir == 2) {
     EnrollUserFLDBoundaryFunction(BoundaryFace::inner_x2, FLDFixedInnerX2);
     EnrollUserFLDBoundaryFunction(BoundaryFace::outer_x2, FLDFixedOuterX2);
+    EnrollUserNRBoundaryFunction(BoundaryFace::inner_x2, NRInnerX2);
+    EnrollUserNRBoundaryFunction(BoundaryFace::outer_x2, NROuterX2);
     EnrollUserBoundaryFunction(BoundaryFace::inner_x2, HydroInnerX2);
     EnrollUserBoundaryFunction(BoundaryFace::outer_x2, HydroOuterX2);
   } else {
     EnrollUserFLDBoundaryFunction(BoundaryFace::inner_x3, FLDFixedInnerX3);
     EnrollUserFLDBoundaryFunction(BoundaryFace::outer_x3, FLDFixedOuterX3);
+    EnrollUserNRBoundaryFunction(BoundaryFace::inner_x3, NRInnerX3);
+    EnrollUserNRBoundaryFunction(BoundaryFace::outer_x3, NROuterX3);
     EnrollUserBoundaryFunction(BoundaryFace::inner_x3, HydroInnerX3);
     EnrollUserBoundaryFunction(BoundaryFace::outer_x3, HydroOuterX3);
   }
