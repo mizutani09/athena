@@ -1,0 +1,121 @@
+<comment>
+problem    = Thermal wave for NR-FLD
+reference  = Zhang et al. 2011 section 6.3
+configure  = --prob=nrfld_thermal_wave --eos=general/thermal_wave -nrmgfld -hdf5 -mpi -debug
+
+<job>
+problem_id = nrfld_thermal_wave
+
+<output1>
+file_type  = hst
+dcycle     = 1
+
+<output2>
+file_type  = hdf5
+id         = uov_xy
+variable   = uov
+dcycle     = 50
+x3_slice   = 0.0
+
+<output3>
+file_type  = hdf5
+id         = uov_xz
+variable   = uov
+dcycle     = 50
+x2_slice   = 0.0
+
+<output4>
+file_type  = hdf5
+id         = uov_yz
+variable   = uov
+dcycle     = 50
+x1_slice   = 0.0
+
+<time>
+cfl_number = 0.3
+nlim       = 100000
+tlim       = 0.006
+integrator = rk2
+xorder     = 2
+ncycle_out = 20
+
+<mesh>
+nx1        = 128
+x1min      = -200.0
+x1max      =  200.0
+ix1_bc     = user
+ox1_bc     = user
+
+nx2        = 128
+x2min      = -200.0
+x2max      =  200.0
+ix2_bc     = user
+ox2_bc     = user
+
+nx3        = 128
+x3min      = -200.0
+x3max      =  200.0
+ix3_bc     = user
+ox3_bc     = user
+
+# AMR example:
+# refinement     = adaptive
+# numlevel       = 2
+# derefine_count = 5
+
+<meshblock>
+nx1        = 32
+nx2        = 32
+nx3        = 32
+
+<hydro>
+active          = fixed
+gamma           = 1.666666666667
+rho_unit        = 1.0
+egas_unit       = 1.0
+leng_unit       = 1.0
+T_unit          = 1.0
+mu              = 1.0
+
+<nrfld>
+mgmode          = FMG
+fas             = false
+smoother        = jacobi-rb
+npresmooth      = 2
+npostsmooth     = 2
+omega           = 1.0
+threshold       = 1e-10
+nr_niteration   = 20
+ix1_bc          = user
+ox1_bc          = user
+ix2_bc          = user
+ox2_bc          = user
+ix3_bc          = user
+ox3_bc          = user
+
+<fld>
+output_defect        = true
+is_couple            = true
+only_rad             = true
+cut_diff             = false
+cut_Pnablav          = true
+fixed_flux_limitter  = true
+
+<problem>
+rho0                 = 1.0
+rho_cv               = 5.0e-2
+kappa_p              = 1.0e6
+chi_r_coeff          = 1.0e-3
+t_ambient            = 1.0e-6
+r_hot                = 3.125
+e_hot_total          = 3.0e7
+egas_floor           = 1e-40
+erad_floor           = 1e-60
+use_discrete_hot_volume = true
+use_amr_dt           = false
+dt0                  = 5.0e-16
+dt_growth            = 1.03
+dt0_amr              = 1.015e-15
+dt_growth_amr        = 1.0609
+amr_grad_factor      = 0.4
+amr_temp_floor       = 1.0e-5
