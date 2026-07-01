@@ -1,0 +1,114 @@
+<comment>
+problem    = Non-equilibrium Marshak wave for NR-FLD
+reference  = Zhang et al. 2011 section 6.2 / Su-Olson type test
+configure  = --prob=nrfld_marshak --eos=general/marshak -nrmgfld -hdf5 -mpi -debug
+
+<job>
+problem_id = nrfld_marshak
+
+<output1>
+file_type  = hst
+dcycle     = 1
+
+
+# <output2>
+# file_type  = hdf5
+# id         = uov_x_early
+# x2_slice   = 0.0
+# x3_slice   = 0.0
+# variable   = uov
+# dcycle     = 1
+# ghost_zones = true
+
+<output3>
+file_type  = hdf5
+id         = uov_x_early
+x2_slice   = 0.0
+x3_slice   = 0.0
+variable   = uov
+dcycle     = 34         # t ~= 0.102, tau ~= 0.0102 for the defaults below
+ghost_zones = true
+
+<output4>
+file_type  = hdf5
+id         = uov_x_final
+x2_slice   = 0.0
+x3_slice   = 0.0
+variable   = uov
+dcycle     = 1000       # t = 3.0, tau = 0.3 for the defaults below
+ghost_zones = true
+
+<time>
+cfl_number = 0.3
+nlim       = 1000
+tlim       = 3.0
+integrator = rk2
+xorder     = 2
+ncycle_out = 1
+
+<mesh>
+nx1        = 64
+x1min      = 0.0
+x1max      = 5.0
+ix1_bc     = user
+ox1_bc     = user
+
+nx2        = 64
+x2min      = -2.5
+x2max      =  2.5
+ix2_bc     = periodic
+ox2_bc     = periodic
+
+nx3        = 64
+x3min      = -2.5
+x3max      =  2.5
+ix3_bc     = periodic
+ox3_bc     = periodic
+
+<meshblock>
+nx1        = 32
+nx2        = 32
+nx3        = 32
+
+<hydro>
+active          = fixed
+gamma           = 1.666666666667
+rho_unit        = 1.0e-18
+egas_unit       = 8.987551787368176e2    # rho_unit * c^2, so vel_unit = c and c_sim = 1
+leng_unit       = 1.0
+T_unit          = 1.0809540868997617e13  # egas_unit / rho_unit * mu / R_gas
+mu              = 1.0
+
+<nrfld>
+mgmode          = FMG
+fas             = false
+smoother        = jacobi-rb
+npresmooth      = 2
+npostsmooth     = 2
+omega           = 1.0
+threshold       = 1e-10
+nr_threshold    = 0.0
+# nr_niteration    = 30
+ix1_bc          = user
+ox1_bc          = user
+ix2_bc          = periodic
+ox2_bc          = periodic
+ix3_bc          = periodic
+ox3_bc          = periodic
+
+<fld>
+output_defect        = true
+is_couple            = true
+only_rad             = true
+cut_diff             = false
+cut_Pnablav          = true
+fixed_flux_limitter  = true
+
+<problem>
+rho0        = 1.0
+kappa       = 1.0
+beta        = 0.1
+Finc        = 1e7
+Tgas0       = 0.1
+egas_floor  = 1e-42
+erad_floor  = 1e-50
