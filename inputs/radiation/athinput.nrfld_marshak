@@ -27,7 +27,7 @@ x2_slice   = 0.0
 x3_slice   = 0.0
 variable   = uov
 dcycle     = 34         # t ~= 0.102, tau ~= 0.0102 for the defaults below
-ghost_zones = true
+# ghost_zones = true
 
 <output4>
 file_type  = hdf5
@@ -36,7 +36,7 @@ x2_slice   = 0.0
 x3_slice   = 0.0
 variable   = uov
 dcycle     = 1000       # t = 3.0, tau = 0.3 for the defaults below
-ghost_zones = true
+# ghost_zones = true
 
 <time>
 cfl_number = 0.3
@@ -47,19 +47,19 @@ xorder     = 2
 ncycle_out = 1
 
 <mesh>
-nx1        = 64
+nx1        = 128
 x1min      = 0.0
 x1max      = 5.0
 ix1_bc     = user
 ox1_bc     = user
 
-nx2        = 64
+nx2        = 128
 x2min      = -2.5
 x2max      =  2.5
 ix2_bc     = periodic
 ox2_bc     = periodic
 
-nx3        = 64
+nx3        = 128
 x3min      = -2.5
 x3max      =  2.5
 ix3_bc     = periodic
