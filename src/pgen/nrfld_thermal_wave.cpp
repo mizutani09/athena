@@ -42,17 +42,26 @@
 
 namespace {
 constexpr Real kRadiationConst = 7.5657e-15;  // erg cm^-3 K^-4
+constexpr Real kLightSpeed = 2.99792458e10;   // cm s^-1
+constexpr Real kSimilarityM = 2.5;
+constexpr Real kSimilarityD = 3.0;
 
 Real rho_unit, egas_unit, leng_unit, time_unit, t_unit;
 Real rho0, rho_cv_phys, kappa_p_phys, chi_r_coeff_phys;
 Real t_ambient_phys, hot_radius_phys, hot_energy_total_phys;
 Real egas_floor, erad_floor;
+Real sigma_r_floor_phys;
 Real hot_volume_phys, hot_temperature_phys;
 int hot_cell_count_root;
 Real dt0_phys, dt_growth, dt0_amr_phys, dt_growth_amr;
 Real amr_grad_factor, amr_temp_floor_phys;
 Real hydro_p_floor;
+Real analytic_init_ratio, analytic_init_time_phys, analytic_time_ref_phys;
+Real analytic_init_front_radius_phys;
+Real similarity_alpha, similarity_beta, similarity_A, similarity_B, similarity_K;
 bool use_discrete_hot_volume, use_amr_dt, allow_debug_toggles;
+bool use_analytic_profile_init, analytic_init_lte;
+std::string hot_init_mode;
 
 Real FixedTimeStep(MeshBlock *pmb);
 int RefinementCondition(MeshBlock *pmb);
@@ -115,6 +124,53 @@ Real SolveHotTemperature(Real energy_density_phys) {
     }
   }
   return 0.5 * (t_lo + t_hi);
+}
+
+Real SolveGasDominatedHotTemperature(Real energy_density_phys) {
+  return std::max(energy_density_phys / rho_cv_phys, t_ambient_phys);
+}
+
+Real BetaFunction(Real a, Real b) {
+  return std::tgamma(a) * std::tgamma(b) / std::tgamma(a + b);
+}
+
+void ComputeSimilarityConstants() {
+  similarity_beta = 1.0 / (kSimilarityD * kSimilarityM + 2.0);
+  similarity_alpha = kSimilarityD * similarity_beta;
+  similarity_K = 4.0 * kRadiationConst * kLightSpeed / (3.0 * chi_r_coeff_phys * rho_cv_phys);
+  similarity_B = kSimilarityM * similarity_beta / (2.0 * similarity_K);
+  Real i_m = 0.5 * BetaFunction(1.5, 1.0 + 1.0 / kSimilarityM);
+  Real exponent = 1.0 / kSimilarityM + 1.5;
+  similarity_A = std::pow(((hot_energy_total_phys / rho_cv_phys) * std::pow(similarity_B, 1.5))
+                          / (4.0 * PI * i_m), 1.0 / exponent);
+}
+
+Real ThermalWaveAnalyticTemperature(Real radius_phys, Real time_phys) {
+  if (time_phys <= 0.0) {
+    return t_ambient_phys;
+  }
+  Real eta2 = radius_phys * radius_phys * std::pow(time_phys, -2.0 * similarity_beta);
+  Real core = std::max(similarity_A - similarity_B * eta2, 0.0);
+  if (core <= 0.0) {
+    return t_ambient_phys;
+  }
+  Real temp = std::pow(time_phys, -similarity_alpha) * std::pow(core, 1.0 / kSimilarityM);
+  return std::max(temp, t_ambient_phys);
+}
+
+Real ThermalWaveFrontRadius(Real time_phys) {
+  if (time_phys <= 0.0) {
+    return 0.0;
+  }
+  return std::sqrt(similarity_A / similarity_B) * std::pow(time_phys, similarity_beta);
+}
+
+Real ThermalWaveTimeFromFrontRadius(Real radius_phys) {
+  if (radius_phys <= 0.0) {
+    return 0.0;
+  }
+  Real front_coef = std::sqrt(similarity_A / similarity_B);
+  return std::pow(radius_phys / front_coef, 1.0 / similarity_beta);
 }
 
 Real HotspotVolumeFractionInCell(Real x_center_phys, Real y_center_phys, Real z_center_phys,
@@ -345,7 +401,8 @@ void ThermalWaveOpacity(MeshBlock *pmb, AthenaArray<Real> &u_fld, AthenaArray<Re
 #pragma omp simd
       for (int i = il; i <= iu; ++i) {
         Real temp_phys = TemperaturePhysFromGasEnergyCode(prfld->u_gas(k, j, i));
-        Real sigma_r_code = RosselandOpacityPhysFromTemp(temp_phys) * leng_unit;
+        Real sigma_r_code = std::max(RosselandOpacityPhysFromTemp(temp_phys),
+                                     sigma_r_floor_phys) * leng_unit;
         prfld->sigma_p(k, j, i) = (prfld->is_couple ? sigma_p_code : 0.0);
         prfld->sigma_r(k, j, i) = std::max(sigma_r_code, TINY_NUMBER);
       }
@@ -539,6 +596,7 @@ void Mesh::InitUserMeshData(ParameterInput *pin) {
   rho_cv_phys = pin->GetOrAddReal("problem", "rho_cv", 0.05);
   kappa_p_phys = pin->GetOrAddReal("problem", "kappa_p", 1.0e6);
   chi_r_coeff_phys = pin->GetOrAddReal("problem", "chi_r_coeff", 1.0e-3);
+  sigma_r_floor_phys = pin->GetOrAddReal("problem", "sigma_r_floor", 0.0);
   t_ambient_phys = pin->GetOrAddReal("problem", "t_ambient", 1.0e-6);
   hot_radius_phys = pin->GetOrAddReal("problem", "r_hot", 3.125);
   hot_energy_total_phys = pin->GetOrAddReal("problem", "e_hot_total", 3.0e7);
@@ -546,6 +604,15 @@ void Mesh::InitUserMeshData(ParameterInput *pin) {
   erad_floor = pin->GetOrAddReal("problem", "erad_floor", 1.0e-60);
   use_discrete_hot_volume = pin->GetOrAddBoolean("problem", "use_discrete_hot_volume", true);
   use_amr_dt = pin->GetOrAddBoolean("problem", "use_amr_dt", multilevel);
+  use_analytic_profile_init =
+      pin->GetOrAddBoolean("problem", "use_analytic_profile_init", false);
+  analytic_init_lte = pin->GetOrAddBoolean("problem", "analytic_init_lte", true);
+  hot_init_mode = pin->GetOrAddString("problem", "hot_init_mode", "gas_total");
+  analytic_init_front_radius_phys =
+      pin->GetOrAddReal("problem", "init_front_radius", 50.0);
+  analytic_init_ratio = pin->GetOrAddReal("problem", "init_ratio", -1.0);
+  analytic_init_time_phys = pin->GetOrAddReal("problem", "init_time", -1.0);
+  analytic_time_ref_phys = pin->GetOrAddReal("problem", "analytic_time_ref", -1.0);
   dt0_phys = pin->GetOrAddReal("problem", "dt0", 5.0e-16);
   dt_growth = pin->GetOrAddReal("problem", "dt_growth", 1.03);
   dt0_amr_phys = pin->GetOrAddReal("problem", "dt0_amr", 1.015e-15);
@@ -562,7 +629,42 @@ void Mesh::InitUserMeshData(ParameterInput *pin) {
       hot_volume_phys = discrete_root_volume;
     }
   }
-  hot_temperature_phys = SolveHotTemperature(hot_energy_total_phys / hot_volume_phys);
+  if (hot_init_mode == "lte_total") {
+    hot_temperature_phys = SolveHotTemperature(hot_energy_total_phys / hot_volume_phys);
+  } else if (hot_init_mode == "gas_total") {
+    hot_temperature_phys = SolveGasDominatedHotTemperature(hot_energy_total_phys / hot_volume_phys);
+  } else {
+    std::stringstream msg;
+    msg << "### FATAL ERROR in function [Mesh::InitUserMeshData]" << std::endl;
+    msg << "problem/hot_init_mode must be either 'lte_total' or 'gas_total'.";
+    ATHENA_ERROR(msg);
+  }
+  ComputeSimilarityConstants();
+  if (use_analytic_profile_init) {
+    if (analytic_init_time_phys <= 0.0) {
+      if (analytic_init_front_radius_phys > 0.0) {
+        analytic_init_time_phys = ThermalWaveTimeFromFrontRadius(analytic_init_front_radius_phys);
+      } else {
+        if (analytic_time_ref_phys <= 0.0) {
+          analytic_time_ref_phys = pin->GetReal("time", "tlim");
+        }
+        if (analytic_init_ratio <= 0.0) {
+          std::stringstream msg;
+          msg << "### FATAL ERROR in function [Mesh::InitUserMeshData]" << std::endl;
+          msg << "analytic initial profile requires problem/init_front_radius > 0, "
+                 "problem/init_time > 0, or problem/init_ratio > 0.";
+          ATHENA_ERROR(msg);
+        }
+        analytic_init_time_phys = analytic_init_ratio * analytic_time_ref_phys;
+      }
+    }
+    if (analytic_init_time_phys <= 0.0) {
+      std::stringstream msg;
+      msg << "### FATAL ERROR in function [Mesh::InitUserMeshData]" << std::endl;
+      msg << "problem/init_time must be positive after applying the chosen analytic initializer.";
+      ATHENA_ERROR(msg);
+    }
+  }
 
   Real gamma_gas = pin->GetReal("hydro", "gamma");
   hydro_p_floor = std::max((gamma_gas - 1.0) * egas_floor, TINY_NUMBER);
@@ -619,6 +721,8 @@ void MeshBlock::ProblemGenerator(ParameterInput *pin) {
   int ju = je + NGHOST;
   int il = is - NGHOST;
   int iu = ie + NGHOST;
+  Real egas_ambient = GasEnergyCodeFromTemp(t_ambient_phys);
+  Real erad_ambient = RadiationEnergyCodeFromTemp(t_ambient_phys);
 
   for (int k = kl; k <= ku; ++k) {
     Real z_phys = pcoord->x3v(k) * leng_unit;
@@ -626,16 +730,28 @@ void MeshBlock::ProblemGenerator(ParameterInput *pin) {
       Real y_phys = pcoord->x2v(j) * leng_unit;
       for (int i = il; i <= iu; ++i) {
         Real x_phys = pcoord->x1v(i) * leng_unit;
-        Real frac = HotspotVolumeFractionInCell(x_phys, y_phys, z_phys,
-                                                pcoord->dx1v(i) * leng_unit,
-                                                pcoord->dx2v(j) * leng_unit,
-                                                pcoord->dx3v(k) * leng_unit);
-        Real egas_ambient = GasEnergyCodeFromTemp(t_ambient_phys);
-        Real erad_ambient = RadiationEnergyCodeFromTemp(t_ambient_phys);
-        Real egas_hot = GasEnergyCodeFromTemp(hot_temperature_phys);
-        Real erad_hot = RadiationEnergyCodeFromTemp(hot_temperature_phys);
-        Real egas_code = std::max(egas_ambient + frac * (egas_hot - egas_ambient), egas_floor);
-        Real erad_code = std::max(erad_ambient + frac * (erad_hot - erad_ambient), erad_floor);
+        Real egas_code = egas_ambient;
+        Real erad_code = erad_ambient;
+        if (use_analytic_profile_init) {
+          Real radius_phys = std::sqrt(x_phys * x_phys + y_phys * y_phys + z_phys * z_phys);
+          Real temp_phys = ThermalWaveAnalyticTemperature(radius_phys, analytic_init_time_phys);
+          egas_code = std::max(GasEnergyCodeFromTemp(temp_phys), egas_floor);
+          if (analytic_init_lte) {
+            erad_code = std::max(RadiationEnergyCodeFromTemp(temp_phys), erad_floor);
+          }
+        } else {
+          Real frac = HotspotVolumeFractionInCell(x_phys, y_phys, z_phys,
+                                                  pcoord->dx1v(i) * leng_unit,
+                                                  pcoord->dx2v(j) * leng_unit,
+                                                  pcoord->dx3v(k) * leng_unit);
+          Real egas_hot = GasEnergyCodeFromTemp(hot_temperature_phys);
+          Real erad_hot = erad_ambient;
+          if (hot_init_mode == "lte_total") {
+            erad_hot = RadiationEnergyCodeFromTemp(hot_temperature_phys);
+          }
+          egas_code = std::max(egas_ambient + frac * (egas_hot - egas_ambient), egas_floor);
+          erad_code = std::max(erad_ambient + frac * (erad_hot - erad_ambient), erad_floor);
+        }
         Real pres = std::max((pin->GetReal("hydro", "gamma") - 1.0) * egas_code,
                              hydro_p_floor);
 
@@ -658,8 +774,17 @@ void MeshBlock::ProblemGenerator(ParameterInput *pin) {
 
   if (gid == 0) {
     Real analytic_hot_volume = 4.0 * PI * std::pow(hot_radius_phys, 3) / 3.0;
-    Real erad_hot = RadiationEnergyCodeFromTemp(hot_temperature_phys);
     Real egas_hot = GasEnergyCodeFromTemp(hot_temperature_phys);
+    Real erad_hot = RadiationEnergyCodeFromTemp(t_ambient_phys);
+    Real analytic_front = 0.0;
+    Real analytic_center_temp = 0.0;
+    if (hot_init_mode == "lte_total") {
+      erad_hot = RadiationEnergyCodeFromTemp(hot_temperature_phys);
+    }
+    if (use_analytic_profile_init) {
+      analytic_front = ThermalWaveFrontRadius(analytic_init_time_phys);
+      analytic_center_temp = ThermalWaveAnalyticTemperature(0.0, analytic_init_time_phys);
+    }
     Real sigma_p_code = kappa_p_phys * leng_unit;
     Real sigma_r_hot = RosselandOpacityPhysFromTemp(hot_temperature_phys) * leng_unit;
     Real sigma_r_amb = RosselandOpacityPhysFromTemp(t_ambient_phys) * leng_unit;
@@ -671,12 +796,26 @@ void MeshBlock::ProblemGenerator(ParameterInput *pin) {
     std::cout << "hot_volume = " << hot_volume_phys << " cm^3" << std::endl;
     std::cout << "hot_volume_analytic = " << analytic_hot_volume << " cm^3" << std::endl;
     std::cout << "hot_cell_count_root = " << hot_cell_count_root << std::endl;
+    std::cout << "hot_init_mode = " << hot_init_mode << std::endl;
     std::cout << "T_hot = " << hot_temperature_phys << " K" << std::endl;
     std::cout << "egas_hot = " << egas_hot << " [code]" << std::endl;
     std::cout << "erad_hot = " << erad_hot << " [code]" << std::endl;
     std::cout << "sigma_p = " << sigma_p_code << " [code]" << std::endl;
     std::cout << "sigma_r_hot = " << sigma_r_hot << " [code]" << std::endl;
     std::cout << "sigma_r_ambient = " << sigma_r_amb << " [code]" << std::endl;
+    std::cout << "sigma_r_floor = " << sigma_r_floor_phys * leng_unit << " [code]" << std::endl;
+    std::cout << "use_analytic_profile_init = " << use_analytic_profile_init << std::endl;
+    if (use_analytic_profile_init) {
+      std::cout << "analytic_init_lte = " << analytic_init_lte << std::endl;
+      std::cout << "init_front_radius = " << analytic_init_front_radius_phys << " cm" << std::endl;
+      std::cout << "analytic_time_ref = " << analytic_time_ref_phys << " s" << std::endl;
+      std::cout << "init_ratio = " << analytic_init_ratio << std::endl;
+      std::cout << "init_time = " << analytic_init_time_phys << " s" << std::endl;
+      std::cout << "analytic_alpha = " << similarity_alpha << std::endl;
+      std::cout << "analytic_beta = " << similarity_beta << std::endl;
+      std::cout << "analytic_front = " << analytic_front << " cm" << std::endl;
+      std::cout << "analytic_T_center = " << analytic_center_temp << " K" << std::endl;
+    }
     std::cout << "dt0 = " << dt0_phys << " s" << std::endl;
     std::cout << "dt_growth = " << dt_growth << std::endl;
     std::cout << "dt0_amr = " << dt0_amr_phys << " s" << std::endl;
@@ -698,12 +837,26 @@ void MeshBlock::ProblemGenerator(ParameterInput *pin) {
     ofs << "e_hot_total       = " << hot_energy_total_phys << std::endl;
     ofs << "hot_volume        = " << hot_volume_phys << std::endl;
     ofs << "hot_cell_count_root = " << hot_cell_count_root << std::endl;
+    ofs << "hot_init_mode     = " << hot_init_mode << std::endl;
     ofs << "T_hot             = " << hot_temperature_phys << std::endl;
     ofs << "egas_hot          = " << egas_hot << std::endl;
     ofs << "erad_hot          = " << erad_hot << std::endl;
     ofs << "sigma_p_code      = " << sigma_p_code << std::endl;
     ofs << "sigma_r_hot_code  = " << sigma_r_hot << std::endl;
     ofs << "sigma_r_amb_code  = " << sigma_r_amb << std::endl;
+    ofs << "sigma_r_floor_code = " << sigma_r_floor_phys * leng_unit << std::endl;
+    ofs << "use_analytic_profile_init = " << use_analytic_profile_init << std::endl;
+    if (use_analytic_profile_init) {
+      ofs << "analytic_init_lte = " << analytic_init_lte << std::endl;
+      ofs << "init_front_radius = " << analytic_init_front_radius_phys << std::endl;
+      ofs << "analytic_time_ref = " << analytic_time_ref_phys << std::endl;
+      ofs << "init_ratio        = " << analytic_init_ratio << std::endl;
+      ofs << "init_time         = " << analytic_init_time_phys << std::endl;
+      ofs << "analytic_alpha    = " << similarity_alpha << std::endl;
+      ofs << "analytic_beta     = " << similarity_beta << std::endl;
+      ofs << "analytic_front    = " << analytic_front << std::endl;
+      ofs << "analytic_T_center = " << analytic_center_temp << std::endl;
+    }
     ofs << "dt0               = " << dt0_phys << std::endl;
     ofs << "dt_growth         = " << dt_growth << std::endl;
     ofs << "dt0_amr           = " << dt0_amr_phys << std::endl;
@@ -797,11 +950,14 @@ Real HistoryEall(MeshBlock *pmb, int iout) {
   AthenaArray<Real> vol;
   vol.NewAthenaArray((pmb->ie - pmb->is) + 2 * NGHOST);
   Real eall = 0.0;
+  Real eambient = GasEnergyCodeFromTemp(t_ambient_phys)
+                + RadiationEnergyCodeFromTemp(t_ambient_phys);
   for (int k = pmb->ks; k <= pmb->ke; ++k) {
     for (int j = pmb->js; j <= pmb->je; ++j) {
       pmb->pcoord->CellVolume(k, j, pmb->is, pmb->ie, vol);
       for (int i = pmb->is; i <= pmb->ie; ++i) {
-        eall += (pmb->prfld2->u_gas(k, j, i) + pmb->prfld2->u_rad(k, j, i)) * vol(i);
+        eall += (pmb->prfld2->u_gas(k, j, i) + pmb->prfld2->u_rad(k, j, i) - eambient)
+            * vol(i);
       }
     }
   }

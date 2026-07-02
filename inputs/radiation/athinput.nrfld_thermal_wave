@@ -107,11 +107,21 @@ rho0                 = 1.0
 rho_cv               = 5.0e-2
 kappa_p              = 1.0e6
 chi_r_coeff          = 1.0e-3
+# Optional floor to suppress low-temperature radiation precursor:
+sigma_r_floor      = 1.0e-2
 t_ambient            = 1.0e-6
 r_hot                = 3.125
 e_hot_total          = 3.0e7
 egas_floor           = 1e-40
 erad_floor           = 1e-60
+hot_init_mode        = gas_total
+# Optional analytic-profile initialization:
+use_analytic_profile_init = false
+# analytic_init_lte   = true
+# init_front_radius   = 25.0     # front-radius based analytic init, disabled by default
+# analytic_time_ref   = 6.0e-6   # used only if init_front_radius <= 0 and init_time <= 0
+# init_ratio          = 1.0e-2   # used only if init_front_radius <= 0 and init_time <= 0
+# init_time           = 6.0e-8   # if > 0, this overrides the other two
 use_discrete_hot_volume = true
 use_amr_dt           = false
 # Zhang et al. (2011), section 6.3:
