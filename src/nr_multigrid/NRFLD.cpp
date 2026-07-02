@@ -37,6 +37,7 @@ NRFLDDriver::NRFLDDriver(Mesh *pm, ParameterInput *pin)
     : NewtonRaphsonDriver(pm, 1, linearSolver::NCOEFF, linearSolver::NMATRIX) {
   eps_ = pin->GetOrAddReal("nrfld", "nr_threshold", -1.0);
   niter_ = pin->GetOrAddInteger("nrfld", "nr_niteration", -1);
+  fshowdef_ = pin->GetOrAddBoolean("nrfld", "show_defect", fshowdef_);
 //   omega_ = pin->GetOrAddReal("mgfld", "omega", 1.0);
 //   fshowdef_ = pin->GetOrAddBoolean("mgfld", "show_defect", fshowdef_);
   if (eps_ < 0.0 && niter_ < 0) {
@@ -231,7 +232,7 @@ void NRFLD::CalculateCoefficientsOnce(const AthenaArray<Real> &u_pre,
         E_face = 0.5*(u_pre(k,j,i) + u_pre(k,j,i-1));
         R_face = gradE_face/(sigma_rface*E_face);
         if (!pfld->fixed_flux_limitter) lambda_face = (2.0+R_face)/(6.0+2.0*R_face+R_face*R_face);
-        derivetive(NewtonRaphsonFLD::dFr_dEr_xp,k,j,i) = pfld->c_ph*lambda_face/sigma_rface;
+        derivetive(NewtonRaphsonFLD::dFr_dEr_xm,k,j,i) = pfld->c_ph*lambda_face/sigma_rface;
 
          // for i+1/2 face
         sigma_rface = std::min(0.5*(sigma_r(k,j,i) + sigma_r(k,j,i+1)),
@@ -244,7 +245,7 @@ void NRFLD::CalculateCoefficientsOnce(const AthenaArray<Real> &u_pre,
         E_face = 0.5*(u_pre(k,j,i) + u_pre(k,j,i+1));
         R_face = gradE_face/(sigma_rface*E_face);
         if (!pfld->fixed_flux_limitter) lambda_face = (2.0+R_face)/(6.0+2.0*R_face+R_face*R_face);
-        derivetive(NewtonRaphsonFLD::dFr_dEr_xm,k,j,i) = pfld->c_ph*lambda_face/sigma_rface;
+        derivetive(NewtonRaphsonFLD::dFr_dEr_xp,k,j,i) = pfld->c_ph*lambda_face/sigma_rface;
 
         // for j-1/2 face
         sigma_rface = std::min(0.5*(sigma_r(k,j,i) + sigma_r(k,j-1,i)),
@@ -257,7 +258,7 @@ void NRFLD::CalculateCoefficientsOnce(const AthenaArray<Real> &u_pre,
         E_face = 0.5*(u_pre(k,j,i) + u_pre(k,j-1,i));
         R_face = gradE_face/(sigma_rface*E_face);
         if (!pfld->fixed_flux_limitter) lambda_face = (2.0+R_face)/(6.0+2.0*R_face+R_face*R_face);
-        derivetive(NewtonRaphsonFLD::dFr_dEr_yp,k,j,i) = pfld->c_ph*lambda_face/sigma_rface;
+        derivetive(NewtonRaphsonFLD::dFr_dEr_ym,k,j,i) = pfld->c_ph*lambda_face/sigma_rface;
 
         // for j+1/2 face
         sigma_rface = std::min(0.5*(sigma_r(k,j,i) + sigma_r(k,j+1,i)),
@@ -270,7 +271,7 @@ void NRFLD::CalculateCoefficientsOnce(const AthenaArray<Real> &u_pre,
         E_face = 0.5*(u_pre(k,j,i) + u_pre(k,j+1,i));
         R_face = gradE_face/(sigma_rface*E_face);
         if (!pfld->fixed_flux_limitter) lambda_face = (2.0+R_face)/(6.0+2.0*R_face+R_face*R_face);
-        derivetive(NewtonRaphsonFLD::dFr_dEr_ym,k,j,i) = pfld->c_ph*lambda_face/sigma_rface;
+        derivetive(NewtonRaphsonFLD::dFr_dEr_yp,k,j,i) = pfld->c_ph*lambda_face/sigma_rface;
 
         // for k-1/2 face
         sigma_rface = std::min(0.5*(sigma_r(k,j,i) + sigma_r(k-1,j,i)),
@@ -283,7 +284,7 @@ void NRFLD::CalculateCoefficientsOnce(const AthenaArray<Real> &u_pre,
         E_face = 0.5*(u_pre(k,j,i) + u_pre(k-1,j,i));
         R_face = gradE_face/(sigma_rface*E_face);
         if (!pfld->fixed_flux_limitter) lambda_face = (2.0+R_face)/(6.0+2.0*R_face+R_face*R_face);
-        derivetive(NewtonRaphsonFLD::dFr_dEr_zp,k,j,i) = pfld->c_ph*lambda_face/sigma_rface;
+        derivetive(NewtonRaphsonFLD::dFr_dEr_zm,k,j,i) = pfld->c_ph*lambda_face/sigma_rface;
 
         // for k+1/2 face
         sigma_rface = std::min(0.5*(sigma_r(k,j,i) + sigma_r(k+1,j,i)),
@@ -296,7 +297,7 @@ void NRFLD::CalculateCoefficientsOnce(const AthenaArray<Real> &u_pre,
         E_face = 0.5*(u_pre(k,j,i) + u_pre(k+1,j,i));
         R_face = gradE_face/(sigma_rface*E_face);
         if (!pfld->fixed_flux_limitter) lambda_face = (2.0+R_face)/(6.0+2.0*R_face+R_face*R_face);
-        derivetive(NewtonRaphsonFLD::dFr_dEr_zm,k,j,i) = pfld->c_ph*lambda_face/sigma_rface;
+        derivetive(NewtonRaphsonFLD::dFr_dEr_zp,k,j,i) = pfld->c_ph*lambda_face/sigma_rface;
 
         Real R_center, lambda_center;
         if (pfld->fixed_flux_limitter) lambda_center = ONE_3RD;
