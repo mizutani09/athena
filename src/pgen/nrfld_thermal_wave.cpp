@@ -48,10 +48,11 @@ Real rho0, rho_cv_phys, kappa_p_phys, chi_r_coeff_phys;
 Real t_ambient_phys, hot_radius_phys, hot_energy_total_phys;
 Real egas_floor, erad_floor;
 Real hot_volume_phys, hot_temperature_phys;
+int hot_cell_count_root;
 Real dt0_phys, dt_growth, dt0_amr_phys, dt_growth_amr;
 Real amr_grad_factor, amr_temp_floor_phys;
 Real hydro_p_floor;
-bool use_discrete_hot_volume, use_amr_dt;
+bool use_discrete_hot_volume, use_amr_dt, allow_debug_toggles;
 
 Real FixedTimeStep(MeshBlock *pmb);
 int RefinementCondition(MeshBlock *pmb);
@@ -60,6 +61,7 @@ Real HistoryTmax(MeshBlock *pmb, int iout);
 Real HistoryTmin(MeshBlock *pmb, int iout);
 Real HistoryErMax(MeshBlock *pmb, int iout);
 Real HistoryVmax(MeshBlock *pmb, int iout);
+constexpr int kHotspotSubsample = 4;
 
 Real GasEnergyDensityPhysFromTemp(Real temp_phys) {
   return rho_cv_phys * temp_phys;
@@ -86,7 +88,10 @@ Real RosselandOpacityPhysFromTemp(Real temp_phys) {
 }
 
 Real LocalDtPhys(const Mesh *pm) {
-  if (use_amr_dt || pm->multilevel) {
+  // Zhang et al. (2011) define the growing timestep with step index n starting
+  // from 1. Athena++ starts ncycle from 0, so the correct exponent here is
+  // simply ncycle. Select the AMR schedule only when explicitly requested.
+  if (use_amr_dt) {
     return dt0_amr_phys * std::pow(dt_growth_amr, static_cast<Real>(pm->ncycle));
   }
   return dt0_phys * std::pow(dt_growth, static_cast<Real>(pm->ncycle));
@@ -112,6 +117,31 @@ Real SolveHotTemperature(Real energy_density_phys) {
   return 0.5 * (t_lo + t_hi);
 }
 
+Real HotspotVolumeFractionInCell(Real x_center_phys, Real y_center_phys, Real z_center_phys,
+                                 Real dx_phys, Real dy_phys, Real dz_phys) {
+  int nhot = 0;
+  int ntot = kHotspotSubsample * kHotspotSubsample * kHotspotSubsample;
+  for (int kk = 0; kk < kHotspotSubsample; ++kk) {
+    Real z = z_center_phys
+        + (static_cast<Real>(kk) + 0.5) * dz_phys / static_cast<Real>(kHotspotSubsample)
+        - 0.5 * dz_phys;
+    for (int jj = 0; jj < kHotspotSubsample; ++jj) {
+      Real y = y_center_phys
+          + (static_cast<Real>(jj) + 0.5) * dy_phys / static_cast<Real>(kHotspotSubsample)
+          - 0.5 * dy_phys;
+      for (int ii = 0; ii < kHotspotSubsample; ++ii) {
+        Real x = x_center_phys
+            + (static_cast<Real>(ii) + 0.5) * dx_phys / static_cast<Real>(kHotspotSubsample)
+            - 0.5 * dx_phys;
+        if (std::sqrt(x * x + y * y + z * z) < hot_radius_phys) {
+          ++nhot;
+        }
+      }
+    }
+  }
+  return static_cast<Real>(nhot) / static_cast<Real>(ntot);
+}
+
 Real ComputeDiscreteHotVolumeRootGrid(const RegionSize &rs) {
   if (rs.nx1 <= 0 || rs.nx2 <= 0 || rs.nx3 <= 0) {
     return 0.0;
@@ -132,13 +162,42 @@ Real ComputeDiscreteHotVolumeRootGrid(const RegionSize &rs) {
       Real y = (rs.x2min + (static_cast<Real>(j) + 0.5) * dy) * leng_unit;
       for (int i = 0; i < rs.nx1; ++i) {
         Real x = (rs.x1min + (static_cast<Real>(i) + 0.5) * dx) * leng_unit;
-        if (std::sqrt(x * x + y * y + z * z) < hot_radius_phys) {
-          volume += cell_volume_phys;
-        }
+        Real frac = HotspotVolumeFractionInCell(x, y, z, dx * leng_unit, dy * leng_unit,
+                                                dz * leng_unit);
+        volume += frac * cell_volume_phys;
       }
     }
   }
   return volume;
+}
+
+int CountHotCellsRootGrid(const RegionSize &rs) {
+  if (rs.nx1 <= 0 || rs.nx2 <= 0 || rs.nx3 <= 0) {
+    return 0;
+  }
+  if (rs.x1rat != 1.0 || rs.x2rat != 1.0 || rs.x3rat != 1.0) {
+    return -1;
+  }
+
+  Real dx = (rs.x1max - rs.x1min) / static_cast<Real>(rs.nx1);
+  Real dy = (rs.x2max - rs.x2min) / static_cast<Real>(rs.nx2);
+  Real dz = (rs.x3max - rs.x3min) / static_cast<Real>(rs.nx3);
+  int count = 0;
+  for (int k = 0; k < rs.nx3; ++k) {
+    Real z = (rs.x3min + (static_cast<Real>(k) + 0.5) * dz) * leng_unit;
+    for (int j = 0; j < rs.nx2; ++j) {
+      Real y = (rs.x2min + (static_cast<Real>(j) + 0.5) * dy) * leng_unit;
+      for (int i = 0; i < rs.nx1; ++i) {
+        Real x = (rs.x1min + (static_cast<Real>(i) + 0.5) * dx) * leng_unit;
+        Real frac = HotspotVolumeFractionInCell(x, y, z, dx * leng_unit, dy * leng_unit,
+                                                dz * leng_unit);
+        if (frac > 0.0) {
+          ++count;
+        }
+      }
+    }
+  }
+  return count;
 }
 
 void CopyNRBoundary(AthenaArray<Real> &u_rad, AthenaArray<Real> &u_gas, int axis, bool inner,
@@ -287,7 +346,7 @@ void ThermalWaveOpacity(MeshBlock *pmb, AthenaArray<Real> &u_fld, AthenaArray<Re
       for (int i = il; i <= iu; ++i) {
         Real temp_phys = TemperaturePhysFromGasEnergyCode(prfld->u_gas(k, j, i));
         Real sigma_r_code = RosselandOpacityPhysFromTemp(temp_phys) * leng_unit;
-        prfld->sigma_p(k, j, i) = sigma_p_code;
+        prfld->sigma_p(k, j, i) = (prfld->is_couple ? sigma_p_code : 0.0);
         prfld->sigma_r(k, j, i) = std::max(sigma_r_code, TINY_NUMBER);
       }
     }
@@ -410,7 +469,9 @@ void HydroOuterX3(MeshBlock *pmb, Coordinates *pco, AthenaArray<Real> &prim, Fac
 }
 
 void Mesh::InitUserMeshData(ParameterInput *pin) {
-  if (!pin->GetBoolean("fld", "is_couple")) {
+  allow_debug_toggles = pin->GetOrAddBoolean("problem", "allow_debug_toggles", false);
+
+  if (!pin->GetBoolean("fld", "is_couple") && !allow_debug_toggles) {
     std::stringstream msg;
     msg << "### FATAL ERROR in function [Mesh::InitUserMeshData]" << std::endl;
     msg << "is_couple must be true for this problem.";
@@ -422,10 +483,16 @@ void Mesh::InitUserMeshData(ParameterInput *pin) {
     msg << "only_rad must be true for this problem.";
     ATHENA_ERROR(msg);
   }
-  if (pin->GetBoolean("fld", "cut_diff")) {
+  if (pin->GetBoolean("fld", "cut_diff") && !allow_debug_toggles) {
     std::stringstream msg;
     msg << "### FATAL ERROR in function [Mesh::InitUserMeshData]" << std::endl;
     msg << "cut_diff must be false for this problem.";
+    ATHENA_ERROR(msg);
+  }
+  if (!pin->GetBoolean("fld", "is_couple") && !allow_debug_toggles) {
+    std::stringstream msg;
+    msg << "### FATAL ERROR in function [Mesh::InitUserMeshData]" << std::endl;
+    msg << "is_couple must be true for this problem.";
     ATHENA_ERROR(msg);
   }
   if (!pin->GetBoolean("fld", "cut_Pnablav")) {
@@ -440,11 +507,11 @@ void Mesh::InitUserMeshData(ParameterInput *pin) {
     msg << "fixed_flux_limitter must be true for this problem.";
     ATHENA_ERROR(msg);
   }
-  if (GetFluidFormulation(pin->GetOrAddString("hydro", "active", "true"))
-      != FluidFormulation::fixed) {
+  FluidFormulation fluid = GetFluidFormulation(pin->GetOrAddString("hydro", "active", "true"));
+  if (fluid != FluidFormulation::background) {
     std::stringstream msg;
     msg << "### FATAL ERROR in function [Mesh::InitUserMeshData]" << std::endl;
-    msg << "hydro/active must be set to fixed for this problem.";
+    msg << "hydro/active must be set to background for this problem.";
     ATHENA_ERROR(msg);
   }
 
@@ -488,6 +555,7 @@ void Mesh::InitUserMeshData(ParameterInput *pin) {
 
   Real analytic_hot_volume = 4.0 * PI * std::pow(hot_radius_phys, 3) / 3.0;
   hot_volume_phys = analytic_hot_volume;
+  hot_cell_count_root = CountHotCellsRootGrid(mesh_size);
   if (use_discrete_hot_volume) {
     Real discrete_root_volume = ComputeDiscreteHotVolumeRootGrid(mesh_size);
     if (discrete_root_volume > 0.0) {
@@ -558,10 +626,16 @@ void MeshBlock::ProblemGenerator(ParameterInput *pin) {
       Real y_phys = pcoord->x2v(j) * leng_unit;
       for (int i = il; i <= iu; ++i) {
         Real x_phys = pcoord->x1v(i) * leng_unit;
-        Real r_phys = std::sqrt(x_phys * x_phys + y_phys * y_phys + z_phys * z_phys);
-        Real temp_phys = (r_phys < hot_radius_phys ? hot_temperature_phys : t_ambient_phys);
-        Real egas_code = std::max(GasEnergyCodeFromTemp(temp_phys), egas_floor);
-        Real erad_code = std::max(RadiationEnergyCodeFromTemp(temp_phys), erad_floor);
+        Real frac = HotspotVolumeFractionInCell(x_phys, y_phys, z_phys,
+                                                pcoord->dx1v(i) * leng_unit,
+                                                pcoord->dx2v(j) * leng_unit,
+                                                pcoord->dx3v(k) * leng_unit);
+        Real egas_ambient = GasEnergyCodeFromTemp(t_ambient_phys);
+        Real erad_ambient = RadiationEnergyCodeFromTemp(t_ambient_phys);
+        Real egas_hot = GasEnergyCodeFromTemp(hot_temperature_phys);
+        Real erad_hot = RadiationEnergyCodeFromTemp(hot_temperature_phys);
+        Real egas_code = std::max(egas_ambient + frac * (egas_hot - egas_ambient), egas_floor);
+        Real erad_code = std::max(erad_ambient + frac * (erad_hot - erad_ambient), erad_floor);
         Real pres = std::max((pin->GetReal("hydro", "gamma") - 1.0) * egas_code,
                              hydro_p_floor);
 
@@ -584,6 +658,11 @@ void MeshBlock::ProblemGenerator(ParameterInput *pin) {
 
   if (gid == 0) {
     Real analytic_hot_volume = 4.0 * PI * std::pow(hot_radius_phys, 3) / 3.0;
+    Real erad_hot = RadiationEnergyCodeFromTemp(hot_temperature_phys);
+    Real egas_hot = GasEnergyCodeFromTemp(hot_temperature_phys);
+    Real sigma_p_code = kappa_p_phys * leng_unit;
+    Real sigma_r_hot = RosselandOpacityPhysFromTemp(hot_temperature_phys) * leng_unit;
+    Real sigma_r_amb = RosselandOpacityPhysFromTemp(t_ambient_phys) * leng_unit;
     std::cout << "rho_unit = " << rho_unit << " g cm^-3" << std::endl;
     std::cout << "egas_unit = " << egas_unit << " erg cm^-3" << std::endl;
     std::cout << "time_unit = " << time_unit << " s" << std::endl;
@@ -591,7 +670,13 @@ void MeshBlock::ProblemGenerator(ParameterInput *pin) {
     std::cout << "T_unit = " << t_unit << " K" << std::endl;
     std::cout << "hot_volume = " << hot_volume_phys << " cm^3" << std::endl;
     std::cout << "hot_volume_analytic = " << analytic_hot_volume << " cm^3" << std::endl;
+    std::cout << "hot_cell_count_root = " << hot_cell_count_root << std::endl;
     std::cout << "T_hot = " << hot_temperature_phys << " K" << std::endl;
+    std::cout << "egas_hot = " << egas_hot << " [code]" << std::endl;
+    std::cout << "erad_hot = " << erad_hot << " [code]" << std::endl;
+    std::cout << "sigma_p = " << sigma_p_code << " [code]" << std::endl;
+    std::cout << "sigma_r_hot = " << sigma_r_hot << " [code]" << std::endl;
+    std::cout << "sigma_r_ambient = " << sigma_r_amb << " [code]" << std::endl;
     std::cout << "dt0 = " << dt0_phys << " s" << std::endl;
     std::cout << "dt_growth = " << dt_growth << std::endl;
     std::cout << "dt0_amr = " << dt0_amr_phys << " s" << std::endl;
@@ -612,7 +697,13 @@ void MeshBlock::ProblemGenerator(ParameterInput *pin) {
     ofs << "r_hot             = " << hot_radius_phys << std::endl;
     ofs << "e_hot_total       = " << hot_energy_total_phys << std::endl;
     ofs << "hot_volume        = " << hot_volume_phys << std::endl;
+    ofs << "hot_cell_count_root = " << hot_cell_count_root << std::endl;
     ofs << "T_hot             = " << hot_temperature_phys << std::endl;
+    ofs << "egas_hot          = " << egas_hot << std::endl;
+    ofs << "erad_hot          = " << erad_hot << std::endl;
+    ofs << "sigma_p_code      = " << sigma_p_code << std::endl;
+    ofs << "sigma_r_hot_code  = " << sigma_r_hot << std::endl;
+    ofs << "sigma_r_amb_code  = " << sigma_r_amb << std::endl;
     ofs << "dt0               = " << dt0_phys << std::endl;
     ofs << "dt_growth         = " << dt_growth << std::endl;
     ofs << "dt0_amr           = " << dt0_amr_phys << std::endl;

@@ -37,7 +37,7 @@ nlim       = 100000
 tlim       = 0.006
 integrator = rk2
 xorder     = 2
-ncycle_out = 20
+ncycle_out = 1
 
 <mesh>
 nx1        = 128
@@ -69,7 +69,7 @@ nx2        = 32
 nx3        = 32
 
 <hydro>
-active          = fixed
+active          = background
 gamma           = 1.666666666667
 rho_unit        = 1.0
 egas_unit       = 1.0
@@ -84,8 +84,9 @@ smoother        = jacobi-rb
 npresmooth      = 2
 npostsmooth     = 2
 omega           = 1.0
-threshold       = 1e-10
-nr_niteration   = 20
+threshold       = 0.0
+nr_threshold    = 0.0
+# nr_niteration   = 20
 ix1_bc          = user
 ox1_bc          = user
 ix2_bc          = user
@@ -113,6 +114,10 @@ egas_floor           = 1e-40
 erad_floor           = 1e-60
 use_discrete_hot_volume = true
 use_amr_dt           = false
+# Zhang et al. (2011), section 6.3:
+# non-AMR: dt_n = 5.0e-16 * 1.03^(n-1) s
+# AMR coarse level: dt_n = 1.015e-15 * 1.0609^(n-1) s
+# Athena++ uses ncycle starting from 0, so step n corresponds to exponent ncycle.
 dt0                  = 5.0e-16
 dt_growth            = 1.03
 dt0_amr              = 1.015e-15
