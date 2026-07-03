@@ -1,0 +1,109 @@
+<comment>
+problem    = Optically thin streaming radiation front for NR-FLD
+reference  = Zhang et al. 2011 section 6.4
+configure  = --prob=nrfld_streaming_front --eos=adiabatic -nrmgfld -hdf5 -mpi
+
+<job>
+problem_id = nrfld_streaming_front
+
+<output1>
+file_type  = hst
+dcycle     = 1
+
+<output2>
+file_type   = hdf5
+id          = uov_x_final
+variable    = uov
+dt          = 2.0e-9
+x2_slice    = 0.0
+x3_slice    = 0.0
+# ghost_zones = true
+
+<output3>
+file_type   = hdf5
+id          = uov_x_early
+variable    = uov
+dt          = 1.0e-10
+x2_slice    = 0.0
+x3_slice    = 0.0
+# ghost_zones = true
+
+<time>
+cfl_number = 0.3
+nlim       = 100000
+tlim       = 2.0e-9
+integrator = rk2
+xorder     = 2
+ncycle_out = 1
+
+<mesh>
+nx1        = 128
+x1min      = 0.0
+x1max      = 100.0
+ix1_bc     = user
+ox1_bc     = user
+
+nx2        = 32
+x2min      = -12.5
+x2max      =  12.5
+ix2_bc     = periodic
+ox2_bc     = periodic
+
+nx3        = 32
+x3min      = -12.5
+x3max      =  12.5
+ix3_bc     = periodic
+ox3_bc     = periodic
+
+<meshblock>
+nx1        = 32
+nx2        = 32
+nx3        = 32
+
+<hydro>
+active          = background
+gamma           = 1.666666666667
+rho_unit        = 1.0
+egas_unit       = 1.0
+leng_unit       = 1.0
+mu              = 1.0
+
+<nrfld>
+mgmode          = FMG
+fas             = false　
+smoother        = jacobi-rb
+npresmooth      = 2
+npostsmooth     = 2
+omega           = 1.0
+threshold       = 1.0e-12
+nr_threshold    = 0.0
+ix1_bc          = user
+ox1_bc          = user
+ix2_bc          = periodic
+ox2_bc          = periodic
+ix3_bc          = periodic
+ox3_bc          = periodic
+
+<fld>
+output_defect        = true
+is_couple            = true
+only_rad             = true
+cut_diff             = false
+cut_Pnablav          = true
+fixed_flux_limitter  = false
+
+<problem>
+kappa_P           = 0.0
+c_light           = 2.99792458e10
+rho0              = 1.0
+Er_left           = 1.0
+Er_right          = 1.0e-10
+x_front0          = 10.0
+
+chi_R             = 1.0e-4
+# chi_R             = 1.0e-7
+
+dt_light_divisor  = 20.0
+# dt_light_divisor  = 2.0
+
+gas_pressure      = 1.0e-20
