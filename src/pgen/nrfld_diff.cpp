@@ -22,6 +22,7 @@
 #include <sstream>    // stringstream
 #include <stdexcept>  // runtime_error
 #include <string>     // c_str()
+#include <vector>
 
 // Athena++ headers
 #include "../athena.hpp"
@@ -57,6 +58,9 @@ namespace {
   Real HistoryEall(MeshBlock *pmb, int iout);
   Real HistoryL1norm(MeshBlock *pmb, int iout);
   Real HistoryL1normRel(MeshBlock *pmb, int iout);
+  Real HistoryTransL1(MeshBlock *pmb, int iout);
+  Real HistoryTransL1Rel(MeshBlock *pmb, int iout);
+  Real HistoryTransMaxRel(MeshBlock *pmb, int iout);
   Real Er0, rho0, p0;
   Real chi;
 
@@ -159,6 +163,47 @@ namespace {
           }
         }
       }
+    }
+  }
+
+  void ComputeTransverseMean(MeshBlock *pmb, std::vector<Real> &mean) {
+    int is = pmb->is, ie = pmb->ie, js = pmb->js, je = pmb->je, ks = pmb->ks, ke = pmb->ke;
+    if (dir == 1) {
+      int nx = ie - is + 1;
+      int ntr = (je - js + 1) * (ke - ks + 1);
+      mean.assign(nx, 0.0);
+      for (int k = ks; k <= ke; ++k) {
+        for (int j = js; j <= je; ++j) {
+          for (int i = is; i <= ie; ++i) {
+            mean[i - is] += pmb->prfld2->u_rad(k, j, i);
+          }
+        }
+      }
+      for (int i = 0; i < nx; ++i) mean[i] /= ntr;
+    } else if (dir == 2) {
+      int nx = je - js + 1;
+      int ntr = (ie - is + 1) * (ke - ks + 1);
+      mean.assign(nx, 0.0);
+      for (int k = ks; k <= ke; ++k) {
+        for (int j = js; j <= je; ++j) {
+          for (int i = is; i <= ie; ++i) {
+            mean[j - js] += pmb->prfld2->u_rad(k, j, i);
+          }
+        }
+      }
+      for (int j = 0; j < nx; ++j) mean[j] /= ntr;
+    } else {
+      int nx = ke - ks + 1;
+      int ntr = (ie - is + 1) * (je - js + 1);
+      mean.assign(nx, 0.0);
+      for (int k = ks; k <= ke; ++k) {
+        for (int j = js; j <= je; ++j) {
+          for (int i = is; i <= ie; ++i) {
+            mean[k - ks] += pmb->prfld2->u_rad(k, j, i);
+          }
+        }
+      }
+      for (int k = 0; k < nx; ++k) mean[k] /= ntr;
     }
   }
 }
@@ -414,7 +459,7 @@ void Mesh::InitUserMeshData(ParameterInput *pin) {
     EnrollUserBoundaryFunction(BoundaryFace::outer_x3, HydroOuterX3);
   }
 
-  AllocateUserHistoryOutput(9);
+  AllocateUserHistoryOutput(12);
   EnrollUserHistoryOutput(0, HistoryTg, "T_gas", UserHistoryOperation::max);
   EnrollUserHistoryOutput(1, HistoryTr, "T_rad", UserHistoryOperation::max);
   EnrollUserHistoryOutput(2, HistoryEg, "e_gas", UserHistoryOperation::max);
@@ -424,6 +469,9 @@ void Mesh::InitUserMeshData(ParameterInput *pin) {
   EnrollUserHistoryOutput(6, HistoryEall, "all-E", UserHistoryOperation::sum);
   EnrollUserHistoryOutput(7, HistoryL1norm, "L1norm", UserHistoryOperation::sum);
   EnrollUserHistoryOutput(8, HistoryL1normRel, "L1norm_rel", UserHistoryOperation::sum);
+  EnrollUserHistoryOutput(9, HistoryTransL1, "L1norm_trans", UserHistoryOperation::sum);
+  EnrollUserHistoryOutput(10, HistoryTransL1Rel, "L1norm_trans_rel", UserHistoryOperation::sum);
+  EnrollUserHistoryOutput(11, HistoryTransMaxRel, "max_trans_rel", UserHistoryOperation::max);
 }
 
 
@@ -720,6 +768,129 @@ Real HistoryL1normRel(MeshBlock *pmb, int iout) {
   int ncells = (ie-is+1)*(je-js+1)*(ke-ks+1);
   L1norm /= ncells*nbtotal;
   return L1norm;
+}
+
+Real HistoryTransL1(MeshBlock *pmb, int iout) {
+  if (dim != 1) return 0.0;
+
+  int is = pmb->is, ie = pmb->ie, js = pmb->js, je = pmb->je, ks = pmb->ks, ke = pmb->ke;
+  std::vector<Real> mean;
+  ComputeTransverseMean(pmb, mean);
+
+  Real norm = 0.0;
+  if (dir == 1) {
+    for (int k = ks; k <= ke; ++k) {
+      for (int j = js; j <= je; ++j) {
+        for (int i = is; i <= ie; ++i) {
+          norm += std::abs(pmb->prfld2->u_rad(k, j, i) - mean[i - is]);
+        }
+      }
+    }
+  } else if (dir == 2) {
+    for (int k = ks; k <= ke; ++k) {
+      for (int j = js; j <= je; ++j) {
+        for (int i = is; i <= ie; ++i) {
+          norm += std::abs(pmb->prfld2->u_rad(k, j, i) - mean[j - js]);
+        }
+      }
+    }
+  } else {
+    for (int k = ks; k <= ke; ++k) {
+      for (int j = js; j <= je; ++j) {
+        for (int i = is; i <= ie; ++i) {
+          norm += std::abs(pmb->prfld2->u_rad(k, j, i) - mean[k - ks]);
+        }
+      }
+    }
+  }
+
+  int nbtotal = pmb->pmy_mesh->nbtotal;
+  int ncells = (ie - is + 1) * (je - js + 1) * (ke - ks + 1);
+  norm /= ncells * nbtotal;
+  return norm;
+}
+
+Real HistoryTransL1Rel(MeshBlock *pmb, int iout) {
+  if (dim != 1) return 0.0;
+
+  int is = pmb->is, ie = pmb->ie, js = pmb->js, je = pmb->je, ks = pmb->ks, ke = pmb->ke;
+  std::vector<Real> mean;
+  ComputeTransverseMean(pmb, mean);
+
+  Real norm = 0.0;
+  if (dir == 1) {
+    for (int k = ks; k <= ke; ++k) {
+      for (int j = js; j <= je; ++j) {
+        for (int i = is; i <= ie; ++i) {
+          Real denom = std::max(std::abs(mean[i - is]), static_cast<Real>(1.0e-30));
+          norm += std::abs(pmb->prfld2->u_rad(k, j, i) - mean[i - is]) / denom;
+        }
+      }
+    }
+  } else if (dir == 2) {
+    for (int k = ks; k <= ke; ++k) {
+      for (int j = js; j <= je; ++j) {
+        for (int i = is; i <= ie; ++i) {
+          Real denom = std::max(std::abs(mean[j - js]), static_cast<Real>(1.0e-30));
+          norm += std::abs(pmb->prfld2->u_rad(k, j, i) - mean[j - js]) / denom;
+        }
+      }
+    }
+  } else {
+    for (int k = ks; k <= ke; ++k) {
+      for (int j = js; j <= je; ++j) {
+        for (int i = is; i <= ie; ++i) {
+          Real denom = std::max(std::abs(mean[k - ks]), static_cast<Real>(1.0e-30));
+          norm += std::abs(pmb->prfld2->u_rad(k, j, i) - mean[k - ks]) / denom;
+        }
+      }
+    }
+  }
+
+  int nbtotal = pmb->pmy_mesh->nbtotal;
+  int ncells = (ie - is + 1) * (je - js + 1) * (ke - ks + 1);
+  norm /= ncells * nbtotal;
+  return norm;
+}
+
+Real HistoryTransMaxRel(MeshBlock *pmb, int iout) {
+  if (dim != 1) return 0.0;
+
+  int is = pmb->is, ie = pmb->ie, js = pmb->js, je = pmb->je, ks = pmb->ks, ke = pmb->ke;
+  std::vector<Real> mean;
+  ComputeTransverseMean(pmb, mean);
+
+  Real norm = 0.0;
+  if (dir == 1) {
+    for (int k = ks; k <= ke; ++k) {
+      for (int j = js; j <= je; ++j) {
+        for (int i = is; i <= ie; ++i) {
+          Real denom = std::max(std::abs(mean[i - is]), static_cast<Real>(1.0e-30));
+          norm = std::max(norm, std::abs(pmb->prfld2->u_rad(k, j, i) - mean[i - is]) / denom);
+        }
+      }
+    }
+  } else if (dir == 2) {
+    for (int k = ks; k <= ke; ++k) {
+      for (int j = js; j <= je; ++j) {
+        for (int i = is; i <= ie; ++i) {
+          Real denom = std::max(std::abs(mean[j - js]), static_cast<Real>(1.0e-30));
+          norm = std::max(norm, std::abs(pmb->prfld2->u_rad(k, j, i) - mean[j - js]) / denom);
+        }
+      }
+    }
+  } else {
+    for (int k = ks; k <= ke; ++k) {
+      for (int j = js; j <= je; ++j) {
+        for (int i = is; i <= ie; ++i) {
+          Real denom = std::max(std::abs(mean[k - ks]), static_cast<Real>(1.0e-30));
+          norm = std::max(norm, std::abs(pmb->prfld2->u_rad(k, j, i) - mean[k - ks]) / denom);
+        }
+      }
+    }
+  }
+
+  return norm;
 }
 
 } // namespace
