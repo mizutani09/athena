@@ -540,8 +540,12 @@ void NRFLD::CalculateDefect(AthenaArray<Real> &def, const AthenaArray<Real> &u,
 
         Real Fg = (u_gas(k,j,i) - pfld->u_gas(k,j,i)) + dt* src_term;
         Real Fr = (u(k,j,i)     - u_old(k,j,i))       - dt*(src_term - Pnablav + diff_term);
-        // def(k,j,i) = std::abs(Fg) + std::abs(Fr);
-        def(k,j,i) = Fr;
+        Real unsteady = u(k,j,i) - u_old(k,j,i);
+        Real scale = std::abs(unsteady)
+                   + dt*(std::abs(src_term) + std::abs(Pnablav) + std::abs(diff_term));
+        scale = std::max(scale, std::max(std::abs(u(k,j,i)), std::abs(u_old(k,j,i))));
+        scale = std::max(scale, static_cast<Real>(1.0e-30));
+        def(k,j,i) = Fr/scale;
 
         if (pmy_driver_->fshowdef_ && pmy_block_->gid == 0 &&
             k==(kl+ku)/2 && j==(jl+ju)/2 && i==(il+iu)/2) {
@@ -552,6 +556,7 @@ void NRFLD::CalculateDefect(AthenaArray<Real> &def, const AthenaArray<Real> &u,
           std::cout << "  T_gas = " << T_gas << ", T_rad = " << T_rad << std::endl;
           std::cout << "  src_term = " << src_term << ", Pnablav = " << Pnablav << ", diff_term = " << diff_term << std::endl;
           std::cout << "  Fg = " << Fg << ", Fr = " << Fr << std::endl;
+          std::cout << "  defect_scale = " << scale << std::endl;
           std::cout << "  defect = " << def(k,j,i) << std::endl;
         }
       }

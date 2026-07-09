@@ -418,7 +418,9 @@ void linearMG::CalculateDefect(AthenaArray<Real> &def, const AthenaArray<Real> &
                + matrix(linearSolver::CCM,k,j,i)*u(k,j,i-1)+matrix(linearSolver::CCP,k,j,i)*u(k,j,i+1)
                + matrix(linearSolver::CMC,k,j,i)*u(k,j-1,i)+matrix(linearSolver::CPC,k,j,i)*u(k,j+1,i)
                + matrix(linearSolver::MCC,k,j,i)*u(k-1,j,i)+matrix(linearSolver::PCC,k,j,i)*u(k+1,j,i);
-        def(k,j,i) = src(k,j,i) - M;
+        Real scale = std::max(std::abs(src(k,j,i)), std::abs(M));
+        scale = std::max(scale, static_cast<Real>(1.0e-30));
+        def(k,j,i) = (src(k,j,i) - M)/scale;
       }
     }
   }
