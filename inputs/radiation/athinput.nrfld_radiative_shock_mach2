@@ -1,0 +1,130 @@
+<comment>
+problem    = Non-equilibrium radiative shock for NR-FLD
+reference  = Zhang et al. 2011 section 6.6, Mach 2 and Mach 5 shocks
+configure  = --prob=nrfld_radiative_shock --eos=adiabatic -nrmgfld -hdf5 -mpi
+note       = Quasi-1D 3D mesh; transverse extent keeps cells cubic for NR-FLD multigrid.
+
+<job>
+problem_id = nrfld_radiative_shock
+
+<output1>
+file_type  = hst
+dcycle     = 1
+
+<output2>
+file_type   = hdf5
+id          = prim_x
+variable    = prim
+dt          = 0.0025  # for mach 2 shock
+x2_slice    = 0.0
+x3_slice    = 0.0
+# ghost_zones = true
+
+<output3>
+file_type   = hdf5
+id          = uov_x
+variable    = uov
+dt          = 0.0025  # for mach 2 shock
+x2_slice    = 0.0
+x3_slice    = 0.0
+# ghost_zones = true
+
+<output4>
+file_type   = rst
+dt          = 1e60
+
+<time>
+cfl_number = 0.3
+nlim       = -1
+tlim       = 0.05    # for Mach 2 shock
+integrator = rk2
+xorder     = 2
+ncycle_out = 1
+
+<mesh>
+ix1_bc     = user
+ox1_bc     = user
+ix2_bc     = periodic
+ox2_bc     = periodic
+ix3_bc     = periodic
+ox3_bc     = periodic
+
+# for Mach 2 shock:
+nx1        = 512
+x1min      = -1000.0
+x1max      = 500.0
+nx2        = 4
+x2min      = -5.859375
+x2max      =  5.859375
+nx3        = 4
+x3min      = -5.859375
+x3max      =  5.859375
+
+refinement     = none
+numlevel       = 1
+derefine_count = 5
+
+# AMR is off by default. To use the pgen tagger, set:
+#   refinement     = adaptive
+#   numlevel       = 3        # Mach 2 paper: three total levels
+# For Mach 5 AMR use numlevel = 5. Choose the root grid so root dx is cubic.
+# Example Mach 2 AMR root grid: nx1=128, x2/x3=[-187.5,187.5].
+# Example Mach 5 AMR root grid: nx1=256, x2/x3=[-375.0,375.0].
+
+<meshblock>
+nx1        = 4
+nx2        = 4
+nx3        = 4
+
+<hydro>
+gamma           = 1.666666666667
+rho_unit        = 1.0
+egas_unit       = 1.0
+leng_unit       = 1.0
+mu              = 1.0
+
+<nrfld>
+mgmode          = FMG
+fas             = false
+smoother        = jacobi-rb
+npresmooth      = 2
+npostsmooth     = 2
+omega           = 1.0
+threshold       = 1e-12  # 1.0e-12
+nr_threshold    = 1e-12  # 1.0e-12
+ix1_bc          = user
+ox1_bc          = user
+ix2_bc          = periodic
+ox2_bc          = periodic
+ix3_bc          = periodic
+ox3_bc          = periodic
+
+<fld>
+output_defect        = true
+is_couple            = true
+only_rad             = false
+cut_diff             = false
+cut_Pnablav          = false
+fixed_flux_limitter  = true
+
+<problem>
+problem_type  = mach2  # mach2 or mach5
+x_discont     = 0.0
+kappa_P       = 3.92664e-5
+chi_R         = 0.848902
+force_lambda_one_third = true
+
+# State defaults are selected in the pgen from problem_type.
+# Override these only for custom experiments:
+# rho_L = 5.45887e-13
+# T_L   = 100.0
+# u_L   = 2.35435e5
+# rho_R = 1.24794e-12
+# T_R   = 207.757
+# u_R   = 1.02987e5
+
+use_amr_refinement      = false
+amr_curvature_threshold = 0.8
+amr_curvature_eps       = 0.02
+amr_derefine_threshold  = 0.2
+shock_grad_threshold    = 0.05
