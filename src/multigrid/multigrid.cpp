@@ -802,9 +802,9 @@ const int niInt = (size_.nx1>>(nlevel_-1-lvl)), njInt = (size_.nx2>>(nlevel_-1-l
   //   __builtin_trap();
   // }
 
-  int ni = arr.GetDim3();
+  int ni = arr.GetDim1();
   int nj = arr.GetDim2();
-  int nk = arr.GetDim1();
+  int nk = arr.GetDim3();
   int nn = arr.GetDim4();  // optional
   if ((n < 0) || (n >= nn) ||
     (ngh_ + i < 0) || (ngh_ + i >= ni) ||
