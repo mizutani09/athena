@@ -56,6 +56,7 @@ namespace {
   Real HistoryRtime(MeshBlock *pmb, int iout);
   Real HistoryEall(MeshBlock *pmb, int iout);
   Real HistoryL1norm(MeshBlock *pmb, int iout);
+  Real HistoryL1normRel(MeshBlock *pmb, int iout);
   Real Er0, rho0, p0;
   Real chi;
 
@@ -413,7 +414,7 @@ void Mesh::InitUserMeshData(ParameterInput *pin) {
     EnrollUserBoundaryFunction(BoundaryFace::outer_x3, HydroOuterX3);
   }
 
-  AllocateUserHistoryOutput(8);
+  AllocateUserHistoryOutput(9);
   EnrollUserHistoryOutput(0, HistoryTg, "T_gas", UserHistoryOperation::max);
   EnrollUserHistoryOutput(1, HistoryTr, "T_rad", UserHistoryOperation::max);
   EnrollUserHistoryOutput(2, HistoryEg, "e_gas", UserHistoryOperation::max);
@@ -422,6 +423,7 @@ void Mesh::InitUserMeshData(ParameterInput *pin) {
   EnrollUserHistoryOutput(5, HistoryRtime, "Rtime", UserHistoryOperation::max);
   EnrollUserHistoryOutput(6, HistoryEall, "all-E", UserHistoryOperation::sum);
   EnrollUserHistoryOutput(7, HistoryL1norm, "L1norm", UserHistoryOperation::sum);
+  EnrollUserHistoryOutput(8, HistoryL1normRel, "L1norm_rel", UserHistoryOperation::sum);
 }
 
 
@@ -675,6 +677,29 @@ Real HistoryEall(MeshBlock *pmb, int iout) {
 }
 
 Real HistoryL1norm(MeshBlock *pmb, int iout) {
+  int is = pmb->is, ie = pmb->ie, js = pmb->js, je = pmb->je, ks = pmb->ks, ke = pmb->ke;
+  Real L1norm = 0;
+  Real chi_t = chi * (pmb->pmy_mesh->time+init_time);
+  if (dim == 1) {
+    Real coef = Er0/(2*std::sqrt(M_PI*chi_t));
+    for (int k=ks; k<=ke; k++) {
+      for (int j=js; j<=je; j++) {
+        for (int i=is; i<=ie; i++) {
+          Real x = CoordAt(pmb->pcoord, i, j, k);
+          Real r_sq = SQR(x-0.5);
+          Real an = coef*std::exp(-r_sq/(4*chi_t));
+          L1norm += std::abs(pmb->prfld2->u_rad(k,j,i)-an);
+        }
+      }
+    }
+  }
+  int nbtotal = pmb->pmy_mesh->nbtotal;
+  int ncells = (ie-is+1)*(je-js+1)*(ke-ks+1);
+  L1norm /= ncells*nbtotal;
+  return L1norm;
+}
+
+Real HistoryL1normRel(MeshBlock *pmb, int iout) {
   int is = pmb->is, ie = pmb->ie, js = pmb->js, je = pmb->je, ks = pmb->ks, ke = pmb->ke;
   Real L1norm = 0;
   Real chi_t = chi * (pmb->pmy_mesh->time+init_time);
