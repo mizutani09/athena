@@ -304,8 +304,16 @@ void NRFLD::CalculateCoefficientsOnce(const AthenaArray<Real> &u_pre,
 
         // for P:\nabla v
         R_center = gradE/(sigma_r(k,j,i)*u_pre(k,j,i)); // center
-        if (!pfld->fixed_flux_limitter) lambda_center = (2.0+R_center)/(6.0+2.0*R_center+R_center*R_center);
-        Real chi = lambda_center+std::pow(lambda_center*R_center,2);
+        Real chi;
+        if (pfld->fixed_flux_limitter) {
+          // The fixed limiter mode is used for gray diffusion tests whose
+          // reference solutions assume P_rad = E_rad I/3, not the variable
+          // Eddington factor chi = lambda + (lambda R)^2.
+          chi = ONE_3RD;
+        } else {
+          lambda_center = (2.0+R_center)/(6.0+2.0*R_center+R_center*R_center);
+          chi = lambda_center+std::pow(lambda_center*R_center,2);
+        }
 
         AthenaArray<Real> ngrad;
         ngrad.NewAthenaArray(3);
