@@ -106,6 +106,8 @@ class NewtonRaphson {
   virtual void ApplyPhysicalBoundary() = 0;
   void CalculateCoefficientsTask(Real dt);
   void ApplyCorrectionTask();
+  virtual void StoreIterate();
+  virtual void RestoreIterate();
   void StartBoundary();
   void SendBoundary();
   bool ReceiveBoundary();
@@ -127,7 +129,7 @@ class NewtonRaphson {
   RegionSize size_;
   int ngh_, nvar_, ncoeff_, nmatrix_;
   
-  AthenaArray<Real> u_, def_, src_, uold_, coeff_, matrix_;
+  AthenaArray<Real> u_, u_iter_backup_, def_, src_, uold_, coeff_, matrix_;
   AthenaArray<Real> flux[3];  // face-averaged flux vector
   
   AthenaArray<Real> derivetive_, def_coeff_; // caution! have to be initialized in derived class constructors!!

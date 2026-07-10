@@ -341,9 +341,13 @@ void NewtonRaphsonDriver::Solve_general(int stage, Real dt) {
 
   // std::cout << "epsilon for Newton-Raphson: " << eps_ << std::endl;
 
-  if (Globals::my_rank == 0)
+  if (fshowdef_ && Globals::my_rank == 0)
     std::cout << "initial defect " << def << " max " << defmax << std::endl;
   while (def > eps_) {
+    for (auto itr = vnr_.begin(); itr < vnr_.end(); itr++) {
+      NewtonRaphson *pnr = *itr;
+      pnr->StoreIterate();
+    }
     SolveOneCycle();
     // if (matrixmode_ == 1)
     //   CalculateMatrix();
@@ -353,26 +357,41 @@ void NewtonRaphsonDriver::Solve_general(int stage, Real dt) {
       def += CalculateDefectNorm(NRNormType::l2, v);
     //  defmax = std::max(defmax, CalculateDefectNorm(NRNormType::max, v));
     }
-    if (Globals::my_rank == 0)
+    if (fshowdef_ && Globals::my_rank == 0)
       std::cout << "[debug in NR] niter " << n << " def " << def << " convergence factor "
                 << def/olddef<< " defmax  "<< defmax << " cf "
                 <<  defmax/oldmax << std::endl;
     if (pmy_mesh_->ncycle == 0 && dt_ == 0.0) break; // only for the first time: caution! ncycle=0 is also used after the calculation started (but dt > 0.0).
+    if (!std::isfinite(def) || (n > 1 && def > olddef)) {
+      for (auto itr = vnr_.begin(); itr < vnr_.end(); itr++) {
+        NewtonRaphson *pnr = *itr;
+        pnr->RestoreIterate();
+      }
+      if (fshowdef_ && Globals::my_rank == 0)
+        std::cout << "### Warning in NewtonRaphsonDriver::SolveIterative" << std::endl
+                  << "Rolling back Newton-Raphson iterate: defect norm = " << def
+                  << ", previous defect norm = " << olddef
+                  << ", convergence factor = " << def/olddef
+                  << ", and niter = " << n << "." << std::endl;
+      def = olddef;
+      defmax = oldmax;
+      break;
+    }
     if (def/olddef > 0.9) {
       if (n > 1 && eps_ == 0.0) break;
-      if (Globals::my_rank == 0)
+      if (fshowdef_ && Globals::my_rank == 0)
         std::cout << "### Warning in NewtonRaphsonDriver::SolveIterative" << std::endl
                   << "Slow Newton-Raphson convergence : defect norm = " << def
                   << ", convergence factor = " << def/olddef << "." << std::endl;
       if (n > 1 && def/olddef > 1.0) {
-        if (Globals::my_rank == 0)
+        if (fshowdef_ && Globals::my_rank == 0)
           std::cout << "### Warning in NewtonRaphsonDriver::SolveIterative" << std::endl
                     << "NewtonRaphson is diverging: defect norm = " << def
                     << ", convergence factor = " << def/olddef << ", and niter = " << n << "." << std::endl;
         break;
       }
       if (n > 1 && std::abs(def - olddef) < 1e-12) {
-        if (Globals::my_rank == 0)
+        if (fshowdef_ && Globals::my_rank == 0)
           std::cout << "### Warning in NewtonRaphsonDriver::SolveIterative" << std::endl
                     << "NewtonRaphson is not converging: defect norm = " << def
                     << ", convergence factor = " << def/olddef << ", and niter = " << n << "." << std::endl;

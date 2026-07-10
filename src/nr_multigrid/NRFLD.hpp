@@ -127,6 +127,8 @@ class NRFLD : public NewtonRaphson {
                              AthenaArray<Real> &src,
                              Real dt) final;
   void ApplyPhysicalBoundary() final;
+  void StoreIterate() final;
+  void RestoreIterate() final;
 
   // void LoadSource(const AthenaArray<Real> &src, int ns, int ngh, Real fac);
   // void LoadCoefficients(const AthenaArray<Real> &coeff, int ngh);
@@ -184,9 +186,10 @@ class NRFLD : public NewtonRaphson {
   BoundaryFlag nr_block_bcs_[6];
   Real rdx_, rdy_, rdz_;
   Real defscale_;
+  Real max_update_fraction_;
   // AthenaArray<Real> *u_, *def_, *src_, *uold_, *coeff_, *matrix_;
   // AthenaArray<Real> delta_u_;
-  AthenaArray<Real> u_gas_;
+  AthenaArray<Real> u_gas_, u_gas_iter_backup_;
   // MGCoordinates *coord_, *ccoord_;
 
 

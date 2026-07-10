@@ -106,7 +106,9 @@ NRFLD::NRFLD(MeshBlock *pmb, ParameterInput *pin) :
     pmy_driver_(pmb->pmy_mesh->pmnr),
     pmy_block_(pmb),
     u_gas_(pmb->ncells3, pmb->ncells2, pmb->ncells1),
-    ngh_(NGHOST)
+    u_gas_iter_backup_(pmb->ncells3, pmb->ncells2, pmb->ncells1),
+    ngh_(NGHOST),
+    max_update_fraction_(pin->GetOrAddReal("nrfld", "max_update_fraction", 0.2))
     {
     if (pmy_driver_->fshowdef_ && pmy_block_->gid == 0) std::cout << ngh_ << std::endl;
 
@@ -170,6 +172,16 @@ void NRFLD::UpdateHydroVariables() {
                              pmy_block_->phydro->u,
                              u_, u_gas_);
   return;
+}
+
+void NRFLD::StoreIterate() {
+  NewtonRaphson::StoreIterate();
+  u_gas_iter_backup_ = u_gas_;
+}
+
+void NRFLD::RestoreIterate() {
+  NewtonRaphson::RestoreIterate();
+  u_gas_ = u_gas_iter_backup_;
 }
 
 void NRFLD::CalculateCoefficientsOnce(const AthenaArray<Real> &u_pre,
@@ -584,9 +596,38 @@ void NRFLD::AddDifference(AthenaArray<Real> &u_rad,
     for (int j=js; j<=je; ++j) {
 #pragma omp simd
       for (int i=is; i<=ie; ++i) {
-        if (!pfld->fixed_u_rad)
-          u_rad(k,j,i) += delta_u(k,j,i);
-        u_gas_(k,j,i) += -(derivetive(NewtonRaphsonFLD::Fg,k,j,i) + derivetive(NewtonRaphsonFLD::dFg_dEr,k,j,i)*delta_u(k,j,i)) / derivetive(NewtonRaphsonFLD::dFg_deg,k,j,i);
+        Real delta_ur = delta_u(k,j,i);
+        if (max_update_fraction_ > 0.0) {
+          const Real ur_scale = std::max(std::abs(u_rad(k,j,i)), TINY_NUMBER);
+          const Real ur_limit = max_update_fraction_*ur_scale;
+          delta_ur = std::max(-ur_limit, std::min(ur_limit, delta_ur));
+        }
+        if (!pfld->fixed_u_rad) {
+          const Real ur_next = u_rad(k,j,i) + delta_ur;
+          u_rad(k,j,i) = (std::isfinite(ur_next) && ur_next > TINY_NUMBER)
+                         ? ur_next : TINY_NUMBER;
+        }
+
+        const Real denom = derivetive(NewtonRaphsonFLD::dFg_deg,k,j,i);
+        const Real egas_delta = -(derivetive(NewtonRaphsonFLD::Fg,k,j,i)
+            + derivetive(NewtonRaphsonFLD::dFg_dEr,k,j,i)*delta_ur)/denom;
+        Real egas_floor = TINY_NUMBER;
+#if GENERAL_EOS
+        const Real rho = pmy_block_->phydro->w(IDN,k,j,i);
+        if (std::isfinite(rho) && rho > pmy_block_->peos->GetDensityFloor()) {
+          egas_floor = std::max(egas_floor,
+              pmy_block_->peos->EgasFromRhoP(rho, pmy_block_->peos->GetPressureFloor()));
+        }
+#endif
+        Real limited_egas_delta = egas_delta;
+        if (max_update_fraction_ > 0.0) {
+          const Real egas_scale = std::max(std::abs(u_gas_(k,j,i)), egas_floor);
+          const Real egas_limit = max_update_fraction_*egas_scale;
+          limited_egas_delta = std::max(-egas_limit, std::min(egas_limit, limited_egas_delta));
+        }
+        const Real egas_next = u_gas_(k,j,i) + limited_egas_delta;
+        u_gas_(k,j,i) = (std::isfinite(egas_next) && egas_next > egas_floor)
+                        ? egas_next : egas_floor;
         
         // reset delta_u to zero for next iteration
         delta_u(k,j,i) = 0.0;

@@ -34,6 +34,7 @@ NewtonRaphson::NewtonRaphson(NewtonRaphsonDriver *pmd, MeshBlock *pmb, int nghos
   pmy_driver_(pmd), pmy_block_(pmb),
   ngh_(nghost), nvar_(pmd->nvar_),
   u_(nvar_, pmb->ncells3, pmb->ncells2, pmb->ncells1),
+  u_iter_backup_(nvar_, pmb->ncells3, pmb->ncells2, pmb->ncells1),
   flux{ {nvar_, pmb->ncells3, pmb->ncells2, pmb->ncells1+1},
         {nvar_, pmb->ncells3, pmb->ncells2+1, pmb->ncells1,
           (pmb->pmy_mesh->f2 ? AthenaArray<Real>::DataStatus::allocated :
@@ -190,6 +191,14 @@ void NewtonRaphson::CalculateCoefficientsTask(Real dt) {
 
 void NewtonRaphson::ApplyCorrectionTask() {
   AddDifference(u_, delta_u_, derivetive_);
+}
+
+void NewtonRaphson::StoreIterate() {
+  u_iter_backup_ = u_;
+}
+
+void NewtonRaphson::RestoreIterate() {
+  u_ = u_iter_backup_;
 }
 
 
