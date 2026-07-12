@@ -11,6 +11,7 @@
 // C++ headers
 #include <algorithm>
 #include <cmath>
+#include <cstdlib>
 #include <cstring>    // memset, memcpy
 #include <iostream>
 #include <sstream>    // stringstream
@@ -38,6 +39,16 @@ NRFLDDriver::NRFLDDriver(Mesh *pm, ParameterInput *pin)
   eps_ = pin->GetOrAddReal("nrfld", "nr_threshold", -1.0);
   niter_ = pin->GetOrAddInteger("nrfld", "nr_niteration", -1);
   fshowdef_ = pin->GetOrAddBoolean("nrfld", "show_defect", fshowdef_);
+  use_mg_smoothing_fallback_ =
+      pin->GetOrAddBoolean("nrfld", "nr_use_mg_smoothing_fallback", true);
+  mg_coarse_retry_max_ = pin->GetOrAddInteger("nrfld", "nr_mg_coarse_retry_max", 4);
+  mg_coarse_retry_factor_ =
+      pin->GetOrAddReal("nrfld", "nr_mg_coarse_retry_factor", 0.5);
+  mg_coarse_retry_min_scale_ =
+      pin->GetOrAddReal("nrfld", "nr_mg_coarse_retry_min_scale", 0.0625);
+  max_backtrack_ = pin->GetOrAddInteger("nrfld", "nr_backtrack_max", 4);
+  backtrack_factor_ = pin->GetOrAddReal("nrfld", "nr_backtrack_factor", 0.5);
+  min_step_scale_ = pin->GetOrAddReal("nrfld", "nr_min_step_scale", 0.05);
 //   omega_ = pin->GetOrAddReal("mgfld", "omega", 1.0);
 //   fshowdef_ = pin->GetOrAddBoolean("mgfld", "show_defect", fshowdef_);
   if (eps_ < 0.0 && niter_ < 0) {
@@ -47,6 +58,42 @@ NRFLDDriver::NRFLDDriver(Mesh *pm, ParameterInput *pin)
         << "in the <nrfld> block." << std::endl
       << "When both parameters are specified, \"niteration\" is ignored." << std::endl  
         << "Set \"threshold = 0.0\" for automatic convergence control." << std::endl;
+    ATHENA_ERROR(msg);
+  }
+  if (max_backtrack_ < 0) {
+    std::stringstream msg;
+    msg << "### FATAL ERROR in NRFLDDriver::NRFLDDriver" << std::endl
+        << "\"nr_backtrack_max\" must be >= 0." << std::endl;
+    ATHENA_ERROR(msg);
+  }
+  if (!(backtrack_factor_ > 0.0 && backtrack_factor_ < 1.0)) {
+    std::stringstream msg;
+    msg << "### FATAL ERROR in NRFLDDriver::NRFLDDriver" << std::endl
+        << "\"nr_backtrack_factor\" must satisfy 0 < factor < 1." << std::endl;
+    ATHENA_ERROR(msg);
+  }
+  if (!(min_step_scale_ > 0.0 && min_step_scale_ <= 1.0)) {
+    std::stringstream msg;
+    msg << "### FATAL ERROR in NRFLDDriver::NRFLDDriver" << std::endl
+        << "\"nr_min_step_scale\" must satisfy 0 < scale <= 1." << std::endl;
+    ATHENA_ERROR(msg);
+  }
+  if (mg_coarse_retry_max_ < 0) {
+    std::stringstream msg;
+    msg << "### FATAL ERROR in NRFLDDriver::NRFLDDriver" << std::endl
+        << "\"nr_mg_coarse_retry_max\" must be >= 0." << std::endl;
+    ATHENA_ERROR(msg);
+  }
+  if (!(mg_coarse_retry_factor_ > 0.0 && mg_coarse_retry_factor_ < 1.0)) {
+    std::stringstream msg;
+    msg << "### FATAL ERROR in NRFLDDriver::NRFLDDriver" << std::endl
+        << "\"nr_mg_coarse_retry_factor\" must satisfy 0 < factor < 1." << std::endl;
+    ATHENA_ERROR(msg);
+  }
+  if (!(mg_coarse_retry_min_scale_ > 0.0 && mg_coarse_retry_min_scale_ <= 1.0)) {
+    std::stringstream msg;
+    msg << "### FATAL ERROR in NRFLDDriver::NRFLDDriver" << std::endl
+        << "\"nr_mg_coarse_retry_min_scale\" must satisfy 0 < scale <= 1." << std::endl;
     ATHENA_ERROR(msg);
   }
 //   fldtlist_ = new FLDBoundaryTaskList(pin, pm);
@@ -93,7 +140,9 @@ NRFLDDriver::NRFLDDriver(Mesh *pm, ParameterInput *pin)
 //! \brief NRFLDDriver destructor
 
 NRFLDDriver::~NRFLDDriver() {
+  const bool trace_dtor = (std::getenv("ATHENA_TRACE_DTOR") != nullptr);
   if (NRMGFLD_ENABLED) {
+    if (trace_dtor) std::cout << "[DTOR] NRFLDDriver delete plmgd_" << std::endl;
     delete plmgd_;
   }
 }
@@ -110,6 +159,8 @@ NRFLD::NRFLD(MeshBlock *pmb, ParameterInput *pin) :
     ngh_(NGHOST),
     max_update_fraction_(pin->GetOrAddReal("nrfld", "max_update_fraction", 0.2))
     {
+    last_delta_rad_.NewAthenaArray(2, pmb->ncells3, pmb->ncells2, pmb->ncells1);
+    last_delta_rad_.ZeroClear();
     if (pmy_driver_->fshowdef_ && pmy_block_->gid == 0) std::cout << ngh_ << std::endl;
 
     // check pointer
@@ -138,7 +189,13 @@ NRFLD::NRFLD(MeshBlock *pmb, ParameterInput *pin) :
  }
 
 NRFLD::~NRFLD() {
+  const bool trace_dtor = (std::getenv("ATHENA_TRACE_DTOR") != nullptr);
   if (NRMGFLD_ENABLED) {
+    if (trace_dtor) {
+      std::cout << "[DTOR] NRFLD gid=" << pmy_block_->gid
+                << " delete plmg_ ptr=" << plmg_
+                << " block.plmg=" << pmy_block_->plmg << std::endl;
+    }
     delete plmg_;
   }
 }
@@ -146,6 +203,17 @@ NRFLD::~NRFLD() {
 void NRFLD::LoadVariables() {
   FLD2 *pfld = pmy_block_->prfld2;
   pfld->LoadHydroVariables(pmy_block_->phydro->w, pfld->u_gas);
+  if (last_delta_rad_.data() == nullptr) {
+    std::stringstream msg;
+    msg << "### FATAL ERROR in NRFLD::LoadVariables" << std::endl
+        << "Debug delta array is not allocated."
+        << " ptr=" << static_cast<const void*>(last_delta_rad_.data())
+        << " dims=(" << last_delta_rad_.GetDim4() << ","
+        << last_delta_rad_.GetDim3() << ","
+        << last_delta_rad_.GetDim2() << ","
+        << last_delta_rad_.GetDim1() << ")" << std::endl;
+    ATHENA_ERROR(msg);
+  }
   int il = pmy_block_->is - NGHOST, iu = pmy_block_->ie + NGHOST;
   int jl = pmy_block_->js, ju = pmy_block_->je;
   int kl = pmy_block_->ks, ku = pmy_block_->ke;
@@ -159,6 +227,8 @@ void NRFLD::LoadVariables() {
         u_gas_(k,j,i) = pfld->u_gas(k,j,i);
         u_(k,j,i) = pfld->u_rad(k,j,i);
         uold_(k,j,i) = pfld->u_rad(k,j,i);
+        last_delta_rad_(0,k,j,i) = 0.0;
+        last_delta_rad_(1,k,j,i) = 0.0;
 
       }
     }
@@ -596,17 +666,23 @@ void NRFLD::AddDifference(AthenaArray<Real> &u_rad,
     for (int j=js; j<=je; ++j) {
 #pragma omp simd
       for (int i=is; i<=ie; ++i) {
-        Real delta_ur = delta_u(k,j,i);
+        const Real raw_delta_ur = delta_u(k,j,i);
+        Real delta_ur = raw_delta_ur;
         if (max_update_fraction_ > 0.0) {
           const Real ur_scale = std::max(std::abs(u_rad(k,j,i)), TINY_NUMBER);
           const Real ur_limit = max_update_fraction_*ur_scale;
           delta_ur = std::max(-ur_limit, std::min(ur_limit, delta_ur));
         }
+        const Real step_scale = pmy_driver_->step_scale_;
+        const Real scaled_delta_ur = step_scale*delta_ur;
+        const Real u_rad_before = u_rad(k,j,i);
         if (!pfld->fixed_u_rad) {
-          const Real ur_next = u_rad(k,j,i) + delta_ur;
+          const Real ur_next = u_rad(k,j,i) + scaled_delta_ur;
           u_rad(k,j,i) = (std::isfinite(ur_next) && ur_next > TINY_NUMBER)
                          ? ur_next : TINY_NUMBER;
         }
+        last_delta_rad_(0,k,j,i) = raw_delta_ur;
+        last_delta_rad_(1,k,j,i) = u_rad(k,j,i) - u_rad_before;
 
         const Real denom = derivetive(NewtonRaphsonFLD::dFg_deg,k,j,i);
         const Real egas_delta = -(derivetive(NewtonRaphsonFLD::Fg,k,j,i)
@@ -625,7 +701,7 @@ void NRFLD::AddDifference(AthenaArray<Real> &u_rad,
           const Real egas_limit = max_update_fraction_*egas_scale;
           limited_egas_delta = std::max(-egas_limit, std::min(egas_limit, limited_egas_delta));
         }
-        const Real egas_next = u_gas_(k,j,i) + limited_egas_delta;
+        const Real egas_next = u_gas_(k,j,i) + step_scale*limited_egas_delta;
         u_gas_(k,j,i) = (std::isfinite(egas_next) && egas_next > egas_floor)
                         ? egas_next : egas_floor;
         
@@ -668,4 +744,162 @@ void NRFLD::ApplyPhysicalBoundary() {
   }
   
   return;
+}
+
+void NRFLD::PrintCellPhysicsDebug(int k, int j, int i) {
+  FLD2 *pfld = pmy_block_->prfld2;
+  const AthenaArray<Real> &u_pre = u_;
+  const AthenaArray<Real> &sigma_r = pfld->sigma_r;
+  const AthenaArray<Real> &coeff = coeff_;
+  const AthenaArray<Real> &src = src_;
+  const Real dx = pmy_block_->pcoord->dx1f(i);
+  const Real dy = pmy_block_->pcoord->dx2f(j);
+  const Real dz = pmy_block_->pcoord->dx3f(k);
+  const Real idx = 1.0/dx;
+  const Real idy = 1.0/dy;
+  const Real idz = 1.0/dz;
+  const Real fac = pmy_driver_->dt_/SQR(dx);
+
+  auto print_face = [&](const char *label, Real sigma_face, Real gx, Real gy, Real gz,
+                        Real e_face, Real coeff_face) {
+    const Real grad_face = std::sqrt(SQR(gx) + SQR(gy) + SQR(gz));
+    const Real r_face = grad_face/(std::max(sigma_face*e_face, TINY_NUMBER));
+    const Real lambda_face = pfld->fixed_flux_limitter
+        ? ONE_3RD : (2.0 + r_face)/(6.0 + 2.0*r_face + r_face*r_face);
+    std::cout << "      " << label
+              << " sigma_face=" << sigma_face
+              << " E_face=" << e_face
+              << " gradE_face=" << grad_face
+              << " R_face=" << r_face
+              << " lambda_face=" << lambda_face
+              << " dFr_coeff=" << coeff_face
+              << std::endl;
+  };
+
+  Real sigma_face = std::min(0.5*(sigma_r(k,j,i) + sigma_r(k,j,i-1)),
+                    std::max(2.0*sigma_r(k,j,i)*sigma_r(k,j,i-1)/(sigma_r(k,j,i) + sigma_r(k,j,i-1)),
+                    2.0*TWO_3RD*idx));
+  Real gx = (u_pre(k,j,i-1) - u_pre(k,j,i))*idx;
+  Real gy = 0.25*idy*((u_pre(k,j+1,i-1) - u_pre(k,j-1,i-1)) + (u_pre(k,j+1,i) - u_pre(k,j-1,i)));
+  Real gz = 0.25*idz*((u_pre(k+1,j,i-1) - u_pre(k-1,j,i-1)) + (u_pre(k+1,j,i) - u_pre(k-1,j,i)));
+  Real e_face = 0.5*(u_pre(k,j,i) + u_pre(k,j,i-1));
+  print_face("face_xm", sigma_face, gx, gy, gz, e_face,
+             derivetive_(NewtonRaphsonFLD::dFr_dEr_xm, k, j, i));
+
+  sigma_face = std::min(0.5*(sigma_r(k,j,i) + sigma_r(k,j,i+1)),
+               std::max(2.0*sigma_r(k,j,i)*sigma_r(k,j,i+1)/(sigma_r(k,j,i) + sigma_r(k,j,i+1)),
+               2.0*TWO_3RD*idx));
+  gx = (u_pre(k,j,i+1) - u_pre(k,j,i))*idx;
+  gy = 0.25*idy*((u_pre(k,j+1,i+1) - u_pre(k,j-1,i+1)) + (u_pre(k,j+1,i) - u_pre(k,j-1,i)));
+  gz = 0.25*idz*((u_pre(k+1,j,i+1) - u_pre(k-1,j,i+1)) + (u_pre(k+1,j,i) - u_pre(k-1,j,i)));
+  e_face = 0.5*(u_pre(k,j,i) + u_pre(k,j,i+1));
+  print_face("face_xp", sigma_face, gx, gy, gz, e_face,
+             derivetive_(NewtonRaphsonFLD::dFr_dEr_xp, k, j, i));
+
+  sigma_face = std::min(0.5*(sigma_r(k,j,i) + sigma_r(k,j-1,i)),
+               std::max(2.0*sigma_r(k,j,i)*sigma_r(k,j-1,i)/(sigma_r(k,j,i) + sigma_r(k,j-1,i)),
+               2.0*TWO_3RD*idx));
+  gx = 0.25*idx*((u_pre(k,j-1,i+1) - u_pre(k,j-1,i-1)) + (u_pre(k,j,i+1) - u_pre(k,j,i-1)));
+  gy = (u_pre(k,j-1,i) - u_pre(k,j,i))*idy;
+  gz = 0.25*idz*((u_pre(k+1,j-1,i) - u_pre(k-1,j-1,i)) + (u_pre(k+1,j,i) - u_pre(k-1,j,i)));
+  e_face = 0.5*(u_pre(k,j,i) + u_pre(k,j-1,i));
+  print_face("face_ym", sigma_face, gx, gy, gz, e_face,
+             derivetive_(NewtonRaphsonFLD::dFr_dEr_ym, k, j, i));
+
+  sigma_face = std::min(0.5*(sigma_r(k,j,i) + sigma_r(k,j+1,i)),
+               std::max(2.0*sigma_r(k,j,i)*sigma_r(k,j+1,i)/(sigma_r(k,j,i) + sigma_r(k,j+1,i)),
+               2.0*TWO_3RD*idx));
+  gx = 0.25*idx*((u_pre(k,j+1,i+1) - u_pre(k,j+1,i-1)) + (u_pre(k,j,i+1) - u_pre(k,j,i-1)));
+  gy = (u_pre(k,j+1,i) - u_pre(k,j,i))*idy;
+  gz = 0.25*idz*((u_pre(k+1,j+1,i) - u_pre(k-1,j+1,i)) + (u_pre(k+1,j,i) - u_pre(k-1,j,i)));
+  e_face = 0.5*(u_pre(k,j,i) + u_pre(k,j+1,i));
+  print_face("face_yp", sigma_face, gx, gy, gz, e_face,
+             derivetive_(NewtonRaphsonFLD::dFr_dEr_yp, k, j, i));
+
+  sigma_face = std::min(0.5*(sigma_r(k,j,i) + sigma_r(k-1,j,i)),
+               std::max(2.0*sigma_r(k,j,i)*sigma_r(k-1,j,i)/(sigma_r(k,j,i) + sigma_r(k-1,j,i)),
+               2.0*TWO_3RD*idx));
+  gx = 0.25*idx*((u_pre(k-1,j,i+1) - u_pre(k-1,j,i-1)) + (u_pre(k,j,i+1) - u_pre(k,j,i-1)));
+  gy = 0.25*idy*((u_pre(k-1,j+1,i) - u_pre(k-1,j-1,i)) + (u_pre(k,j+1,i) - u_pre(k,j-1,i)));
+  gz = (u_pre(k-1,j,i) - u_pre(k,j,i))*idz;
+  e_face = 0.5*(u_pre(k,j,i) + u_pre(k-1,j,i));
+  print_face("face_zm", sigma_face, gx, gy, gz, e_face,
+             derivetive_(NewtonRaphsonFLD::dFr_dEr_zm, k, j, i));
+
+  sigma_face = std::min(0.5*(sigma_r(k,j,i) + sigma_r(k+1,j,i)),
+               std::max(2.0*sigma_r(k,j,i)*sigma_r(k+1,j,i)/(sigma_r(k,j,i) + sigma_r(k+1,j,i)),
+               2.0*TWO_3RD*idx));
+  gx = 0.25*idx*((u_pre(k+1,j,i+1) - u_pre(k+1,j,i-1)) + (u_pre(k,j,i+1) - u_pre(k,j,i-1)));
+  gy = 0.25*idy*((u_pre(k+1,j+1,i) - u_pre(k+1,j-1,i)) + (u_pre(k,j+1,i) - u_pre(k,j-1,i)));
+  gz = (u_pre(k+1,j,i) - u_pre(k,j,i))*idz;
+  e_face = 0.5*(u_pre(k,j,i) + u_pre(k+1,j,i));
+  print_face("face_zp", sigma_face, gx, gy, gz, e_face,
+             derivetive_(NewtonRaphsonFLD::dFr_dEr_zp, k, j, i));
+
+  const Real m_cc = fac*coeff(linearSolver::DCCF,k,j,i) + coeff(linearSolver::DCCS,k,j,i);
+  const Real m_xm = fac*coeff(linearSolver::DXMF,k,j,i);
+  const Real m_xp = fac*coeff(linearSolver::DXPF,k,j,i);
+  const Real m_ym = fac*coeff(linearSolver::DYMF,k,j,i);
+  const Real m_yp = fac*coeff(linearSolver::DYPF,k,j,i);
+  const Real m_zm = fac*coeff(linearSolver::DZMF,k,j,i);
+  const Real m_zp = fac*coeff(linearSolver::DZPF,k,j,i);
+
+  const Real delta_raw_c = last_delta_rad_(0,k,j,i);
+  const Real delta_raw_xm = last_delta_rad_(0,k,j,i-1);
+  const Real delta_raw_xp = last_delta_rad_(0,k,j,i+1);
+  const Real delta_raw_ym = last_delta_rad_(0,k,j-1,i);
+  const Real delta_raw_yp = last_delta_rad_(0,k,j+1,i);
+  const Real delta_raw_zm = last_delta_rad_(0,k-1,j,i);
+  const Real delta_raw_zp = last_delta_rad_(0,k+1,j,i);
+  const Real m_delta_raw = m_cc*delta_raw_c
+      + m_xm*delta_raw_xm + m_xp*delta_raw_xp
+      + m_ym*delta_raw_ym + m_yp*delta_raw_yp
+      + m_zm*delta_raw_zm + m_zp*delta_raw_zp;
+
+  const Real delta_app_c = last_delta_rad_(1,k,j,i);
+  const Real delta_app_xm = last_delta_rad_(1,k,j,i-1);
+  const Real delta_app_xp = last_delta_rad_(1,k,j,i+1);
+  const Real delta_app_ym = last_delta_rad_(1,k,j-1,i);
+  const Real delta_app_yp = last_delta_rad_(1,k,j+1,i);
+  const Real delta_app_zm = last_delta_rad_(1,k-1,j,i);
+  const Real delta_app_zp = last_delta_rad_(1,k+1,j,i);
+  const Real m_delta_applied = m_cc*delta_app_c
+      + m_xm*delta_app_xm + m_xp*delta_app_xp
+      + m_ym*delta_app_ym + m_yp*delta_app_yp
+      + m_zm*delta_app_zm + m_zp*delta_app_zp;
+
+  std::cout << "      linear_row"
+            << " m_cc=" << m_cc
+            << " m_xm=" << m_xm
+            << " m_xp=" << m_xp
+            << " m_ym=" << m_ym
+            << " m_yp=" << m_yp
+            << " m_zm=" << m_zm
+            << " m_zp=" << m_zp
+            << std::endl;
+  std::cout << "      delta_raw"
+            << " c=" << delta_raw_c
+            << " xm=" << delta_raw_xm
+            << " xp=" << delta_raw_xp
+            << " ym=" << delta_raw_ym
+            << " yp=" << delta_raw_yp
+            << " zm=" << delta_raw_zm
+            << " zp=" << delta_raw_zp
+            << std::endl;
+  std::cout << "      delta_applied"
+            << " c=" << delta_app_c
+            << " xm=" << delta_app_xm
+            << " xp=" << delta_app_xp
+            << " ym=" << delta_app_ym
+            << " yp=" << delta_app_yp
+            << " zm=" << delta_app_zm
+            << " zp=" << delta_app_zp
+            << std::endl;
+  std::cout << "      linear_balance"
+            << " src=" << src(k,j,i)
+            << " A_delta_raw=" << m_delta_raw
+            << " src_minus_A_delta_raw=" << (src(k,j,i) - m_delta_raw)
+            << " A_delta_applied=" << m_delta_applied
+            << " src_minus_A_delta_applied=" << (src(k,j,i) - m_delta_applied)
+            << std::endl;
 }

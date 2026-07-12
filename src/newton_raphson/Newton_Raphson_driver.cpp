@@ -12,6 +12,7 @@
 #include <algorithm>
 #include <cmath>
 #include <cstdlib>    // abs
+#include <limits>
 #include <iomanip>    // setprecision
 #include <iostream>   // endl
 #include <sstream>    // sstream
@@ -39,6 +40,91 @@
 #include <omp.h>
 #endif
 
+namespace {
+
+void PrintMaxDefectStencil(NewtonRaphson *pnr, int k, int j, int i, Real signed_defect) {
+  MeshBlock *pmb = pnr->pmy_block_;
+  const int is = pmb->is;
+  const int ie = pmb->ie;
+  const int js = pmb->js;
+  const int je = pmb->je;
+  const int ks = pmb->ks;
+  const int ke = pmb->ke;
+  const Real dx = pmb->pcoord->dx1f(i);
+  const Real idx2 = 1.0/(dx*dx);
+
+  auto print_axis_triplet = [&](const char *label, int km, int jm, int im,
+                                int kc, int jc, int ic,
+                                int kp, int jp, int ip) {
+    std::cout << "      " << label
+              << " u=(" << pnr->u_(km, jm, im) << ", "
+              << pnr->u_(kc, jc, ic) << ", "
+              << pnr->u_(kp, jp, ip) << ")"
+              << " def=(" << pnr->def_(0, km, jm, im) << ", "
+              << pnr->def_(0, kc, jc, ic) << ", "
+              << pnr->def_(0, kp, jp, ip) << ")"
+              << std::endl;
+  };
+
+  std::cout << "      max_defect_stencil rank=" << Globals::my_rank
+            << " gid=" << pmb->gid
+            << " signed_def=" << signed_defect
+            << " block_i=[" << is << "," << ie << "]"
+            << " block_j=[" << js << "," << je << "]"
+            << " block_k=[" << ks << "," << ke << "]"
+            << " on_edge=(" << (i == is || i == ie)
+            << "," << (j == js || j == je)
+            << "," << (k == ks || k == ke) << ")"
+            << std::endl;
+
+  print_axis_triplet("x-neigh", k, j, i - 1, k, j, i, k, j, i + 1);
+  print_axis_triplet("y-neigh", k, j - 1, i, k, j, i, k, j + 1, i);
+  print_axis_triplet("z-neigh", k - 1, j, i, k, j, i, k + 1, j, i);
+
+  const Real diff_xm = -pnr->coeff_(linearSolver::DXMF, k, j, i)
+      * (pnr->u_(k, j, i - 1) - pnr->u_(k, j, i)) * idx2;
+  const Real diff_xp = -pnr->coeff_(linearSolver::DXPF, k, j, i)
+      * (pnr->u_(k, j, i + 1) - pnr->u_(k, j, i)) * idx2;
+  const Real diff_ym = -pnr->coeff_(linearSolver::DYMF, k, j, i)
+      * (pnr->u_(k, j - 1, i) - pnr->u_(k, j, i)) * idx2;
+  const Real diff_yp = -pnr->coeff_(linearSolver::DYPF, k, j, i)
+      * (pnr->u_(k, j + 1, i) - pnr->u_(k, j, i)) * idx2;
+  const Real diff_zm = -pnr->coeff_(linearSolver::DZMF, k, j, i)
+      * (pnr->u_(k - 1, j, i) - pnr->u_(k, j, i)) * idx2;
+  const Real diff_zp = -pnr->coeff_(linearSolver::DZPF, k, j, i)
+      * (pnr->u_(k + 1, j, i) - pnr->u_(k, j, i)) * idx2;
+  const Real diff_sum = diff_xm + diff_xp + diff_ym + diff_yp + diff_zm + diff_zp;
+  std::cout << "      diff_contrib"
+            << " xm=" << diff_xm
+            << " xp=" << diff_xp
+            << " ym=" << diff_ym
+            << " yp=" << diff_yp
+            << " zm=" << diff_zm
+            << " zp=" << diff_zp
+            << " sum=" << diff_sum
+            << std::endl;
+
+  std::cout << "      coeff center DCCF=" << pnr->coeff_(linearSolver::DCCF, k, j, i)
+            << " DCCS=" << pnr->coeff_(linearSolver::DCCS, k, j, i)
+            << " DXMF=" << pnr->coeff_(linearSolver::DXMF, k, j, i)
+            << " DXPF=" << pnr->coeff_(linearSolver::DXPF, k, j, i)
+            << " DYMF=" << pnr->coeff_(linearSolver::DYMF, k, j, i)
+            << " DYPF=" << pnr->coeff_(linearSolver::DYPF, k, j, i)
+            << " DZMF=" << pnr->coeff_(linearSolver::DZMF, k, j, i)
+            << " DZPF=" << pnr->coeff_(linearSolver::DZPF, k, j, i)
+            << std::endl;
+  std::cout << "      src center=" << pnr->src_(k, j, i)
+            << " uold center=" << pnr->uold_(k, j, i)
+            << " u center=" << pnr->u_(k, j, i)
+            << " x=(" << pmb->pcoord->x1v(i) << ","
+            << pmb->pcoord->x2v(j) << ","
+            << pmb->pcoord->x3v(k) << ")"
+            << std::endl;
+  pnr->PrintCellPhysicsDebug(k, j, i);
+}
+
+}  // namespace
+
 // constructor, initializes data structures and parameters
 
 NewtonRaphsonDriver::NewtonRaphsonDriver(Mesh *pm,
@@ -50,8 +136,9 @@ NewtonRaphsonDriver::NewtonRaphsonDriver(Mesh *pm,
     // matrixmode_(0), // 0: fixed, 1: update after every V-cycle
     // nrbx1_(pm->nrbx1), nrbx2_(pm->nrbx2), nrbx3_(pm->nrbx3),
     pmy_mesh_(pm),
-    needinit_(true), fshowdef_(false),
-    eps_(-1.0), dt_(0.0), niter_(-1)
+    needinit_(true), fshowdef_(false), use_mg_smoothing_fallback_(false),
+    eps_(-1.0), dt_(0.0), step_scale_(1.0),
+    backtrack_factor_(0.5), min_step_scale_(0.05), niter_(-1), max_backtrack_(0)
     // nb_rank_(0)
     {
   std::cout << std::scientific << std::setprecision(15);
@@ -336,7 +423,7 @@ void NewtonRaphsonDriver::Solve_general(int stage, Real dt) {
   Real def = 0.0, defmax = 0.0;
   for (int v = 0; v < nvar_; ++v) {
     def += CalculateDefectNorm(NRNormType::l2, v);
-  //  defmax = std::max(defmax, CalculateDefectNorm(NRNormType::max, v));
+    defmax = std::max(defmax, CalculateDefectNorm(NRNormType::max, v));
   }
 
   // std::cout << "epsilon for Newton-Raphson: " << eps_ << std::endl;
@@ -344,25 +431,185 @@ void NewtonRaphsonDriver::Solve_general(int stage, Real dt) {
   if (fshowdef_ && Globals::my_rank == 0)
     std::cout << "initial defect " << def << " max " << defmax << std::endl;
   while (def > eps_) {
-    for (auto itr = vnr_.begin(); itr < vnr_.end(); itr++) {
-      NewtonRaphson *pnr = *itr;
-      pnr->StoreIterate();
-    }
-    SolveOneCycle();
     // if (matrixmode_ == 1)
     //   CalculateMatrix();
     Real olddef = def, oldmax = defmax;
-    def = 0.0, defmax = 0.0;
-    for (int v = 0; v < nvar_; ++v) {
-      def += CalculateDefectNorm(NRNormType::l2, v);
-    //  defmax = std::max(defmax, CalculateDefectNorm(NRNormType::max, v));
+    Real trial_scale = 1.0;
+    bool accepted = false;
+    const bool base_smoothing_only = plmgd_->GetSmoothingOnly();
+    const Real base_coarse_corr_scale = plmgd_->GetCoarseCorrectionScale();
+    bool use_smoothing_retry = false;
+    Real coarse_corr_trial_scale = base_coarse_corr_scale;
+    int nback = 0;
+    int ncoarse_retry = 0;
+
+    while (true) {
+      for (auto itr = vnr_.begin(); itr < vnr_.end(); itr++) {
+        NewtonRaphson *pnr = *itr;
+        pnr->StoreIterate();
+      }
+
+      step_scale_ = trial_scale;
+      plmgd_->SetSmoothingOnly(base_smoothing_only || use_smoothing_retry);
+      plmgd_->SetCoarseCorrectionScale(coarse_corr_trial_scale);
+      SolveOneCycle();
+
+      def = 0.0, defmax = 0.0;
+      for (int v = 0; v < nvar_; ++v) {
+        def += CalculateDefectNorm(NRNormType::l2, v);
+        defmax = std::max(defmax, CalculateDefectNorm(NRNormType::max, v));
+      }
+
+      if (fshowdef_ && Globals::my_rank == 0) {
+        const Real conv = (olddef > 0.0 ? def/olddef : 0.0);
+        const Real convmax = (oldmax > 0.0 ? defmax/oldmax : 0.0);
+        std::cout << "[debug in NR] niter " << n << " step_scale " << step_scale_
+                  << " def " << def << " convergence factor " << conv
+                  << " defmax  " << defmax << " cf " << convmax << std::endl;
+      }
+      if (fshowdef_) {
+        Real local_absmax = -1.0;
+        Real local_signed = 0.0;
+        Real local_x1 = 0.0, local_x2 = 0.0, local_x3 = 0.0;
+        int local_gid = -1, local_i = -1, local_j = -1, local_k = -1;
+        for (auto itr = vnr_.begin(); itr < vnr_.end(); itr++) {
+          NewtonRaphson *pnr = *itr;
+          MeshBlock *pmb = pnr->pmy_block_;
+          for (int k = pmb->ks; k <= pmb->ke; ++k) {
+            for (int j = pmb->js; j <= pmb->je; ++j) {
+              for (int i = pmb->is; i <= pmb->ie; ++i) {
+                const Real val = pnr->def_(0, k, j, i);
+                const Real aval = std::abs(val);
+                if (aval > local_absmax) {
+                  local_absmax = aval;
+                  local_signed = val;
+                  local_gid = pmb->gid;
+                  local_i = i;
+                  local_j = j;
+                  local_k = k;
+                  local_x1 = pmb->pcoord->x1v(i);
+                  local_x2 = pmb->pcoord->x2v(j);
+                  local_x3 = pmb->pcoord->x3v(k);
+                }
+              }
+            }
+          }
+        }
+
+        Real global_absmax = local_absmax;
+        int owner_rank = (local_absmax >= 0.0 ? Globals::my_rank : nranks_);
+#ifdef MPI_PARALLEL
+        MPI_Allreduce(MPI_IN_PLACE, &global_absmax, 1, MPI_ATHENA_REAL, MPI_MAX,
+                      MPI_COMM_NEWTON_RAPHSON);
+        const Real tol = std::max(static_cast<Real>(1.0e-14),
+                                  static_cast<Real>(1.0e-12)*global_absmax);
+        if (std::abs(local_absmax - global_absmax) > tol) owner_rank = nranks_;
+        MPI_Allreduce(MPI_IN_PLACE, &owner_rank, 1, MPI_INT, MPI_MIN,
+                      MPI_COMM_NEWTON_RAPHSON);
+#endif
+        Real max_info[8] = {local_signed, static_cast<Real>(local_gid),
+                            static_cast<Real>(local_i), static_cast<Real>(local_j),
+                            static_cast<Real>(local_k), local_x1, local_x2, local_x3};
+#ifdef MPI_PARALLEL
+        MPI_Bcast(max_info, 8, MPI_ATHENA_REAL, owner_rank, MPI_COMM_NEWTON_RAPHSON);
+#endif
+        if (Globals::my_rank == 0) {
+          std::cout << "    max_defect_loc gid=" << static_cast<int>(max_info[1])
+                    << " (k,j,i)=(" << static_cast<int>(max_info[4]) << ","
+                    << static_cast<int>(max_info[3]) << ","
+                    << static_cast<int>(max_info[2]) << ")"
+                    << " x=(" << max_info[5] << "," << max_info[6] << ","
+                    << max_info[7] << ")"
+                    << " signed=" << max_info[0]
+                    << " abs=" << global_absmax << std::endl;
+        }
+        if (Globals::my_rank == owner_rank) {
+          for (auto itr = vnr_.begin(); itr < vnr_.end(); itr++) {
+            NewtonRaphson *pnr = *itr;
+            if (pnr->pmy_block_->gid == static_cast<int>(max_info[1])) {
+              PrintMaxDefectStencil(
+                  pnr, static_cast<int>(max_info[4]), static_cast<int>(max_info[3]),
+                  static_cast<int>(max_info[2]), max_info[0]);
+              break;
+            }
+          }
+        }
+      }
+
+      if (std::isfinite(def) && def <= olddef) {
+        accepted = true;
+        break;
+      }
+
+      for (auto itr = vnr_.begin(); itr < vnr_.end(); itr++) {
+        NewtonRaphson *pnr = *itr;
+        pnr->RestoreIterate();
+      }
+
+      if (!base_smoothing_only && !use_smoothing_retry
+          && ncoarse_retry < mg_coarse_retry_max_
+          && coarse_corr_trial_scale*mg_coarse_retry_factor_
+                 >= mg_coarse_retry_min_scale_) {
+        coarse_corr_trial_scale *= mg_coarse_retry_factor_;
+        ++ncoarse_retry;
+        if (fshowdef_ && Globals::my_rank == 0) {
+          std::cout << "### Warning in NewtonRaphsonDriver::SolveIterative" << std::endl
+                    << "Retrying Newton-Raphson iterate with damped coarse correction: "
+                    << "previous defect norm = " << olddef
+                    << ", rejected defect norm = " << def
+                    << ", step scale = " << trial_scale
+                    << ", coarse_correction_scale = " << coarse_corr_trial_scale
+                    << ", niter = " << n << "." << std::endl;
+        }
+        continue;
+      }
+
+      if (use_mg_smoothing_fallback_ && !base_smoothing_only && !use_smoothing_retry) {
+        use_smoothing_retry = true;
+        if (fshowdef_ && Globals::my_rank == 0) {
+          std::cout << "### Warning in NewtonRaphsonDriver::SolveIterative" << std::endl
+                    << "Retrying Newton-Raphson iterate with smoothing-only linear MG: "
+                    << "previous defect norm = " << olddef
+                    << ", rejected defect norm = " << def
+                    << ", step scale = " << trial_scale
+                    << ", niter = " << n << "." << std::endl;
+        }
+        continue;
+      }
+
+      if (nback >= max_backtrack_ ||
+          trial_scale*backtrack_factor_ < min_step_scale_) {
+        if (fshowdef_ && Globals::my_rank == 0) {
+          std::cout << "### Warning in NewtonRaphsonDriver::SolveIterative" << std::endl
+                    << "Rejecting Newton-Raphson iterate after backtracking attempts: "
+                    << "defect norm = " << def
+                    << ", previous defect norm = " << olddef
+                    << ", last step scale = " << trial_scale
+                    << ", niter = " << n << "." << std::endl;
+        }
+        def = olddef;
+        defmax = oldmax;
+        break;
+      }
+
+      trial_scale *= backtrack_factor_;
+      ++nback;
+      if (fshowdef_ && Globals::my_rank == 0) {
+        std::cout << "### Warning in NewtonRaphsonDriver::SolveIterative" << std::endl
+                  << "Backtracking Newton-Raphson iterate: new step scale = "
+                  << trial_scale << ", previous defect norm = " << olddef
+                  << ", rejected defect norm = " << def
+                  << ", niter = " << n << "." << std::endl;
+      }
     }
-    if (fshowdef_ && Globals::my_rank == 0)
-      std::cout << "[debug in NR] niter " << n << " def " << def << " convergence factor "
-                << def/olddef<< " defmax  "<< defmax << " cf "
-                <<  defmax/oldmax << std::endl;
+    step_scale_ = 1.0;
+    plmgd_->SetSmoothingOnly(base_smoothing_only);
+    plmgd_->SetCoarseCorrectionScale(base_coarse_corr_scale);
+
+    if (!accepted) break;
+
     if (pmy_mesh_->ncycle == 0 && dt_ == 0.0) break; // only for the first time: caution! ncycle=0 is also used after the calculation started (but dt > 0.0).
-    if (!std::isfinite(def) || (n > 1 && def > olddef)) {
+    if (!std::isfinite(def)) {
       for (auto itr = vnr_.begin(); itr < vnr_.end(); itr++) {
         NewtonRaphson *pnr = *itr;
         pnr->RestoreIterate();

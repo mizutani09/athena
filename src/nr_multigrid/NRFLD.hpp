@@ -127,6 +127,7 @@ class NRFLD : public NewtonRaphson {
                              AthenaArray<Real> &src,
                              Real dt) final;
   void ApplyPhysicalBoundary() final;
+  void PrintCellPhysicsDebug(int k, int j, int i) final;
   void StoreIterate() final;
   void RestoreIterate() final;
 
@@ -190,6 +191,7 @@ class NRFLD : public NewtonRaphson {
   // AthenaArray<Real> *u_, *def_, *src_, *uold_, *coeff_, *matrix_;
   // AthenaArray<Real> delta_u_;
   AthenaArray<Real> u_gas_, u_gas_iter_backup_;
+  AthenaArray<Real> last_delta_rad_;
   // MGCoordinates *coord_, *ccoord_;
 
 

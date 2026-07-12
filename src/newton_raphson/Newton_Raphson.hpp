@@ -104,6 +104,7 @@ class NewtonRaphson {
                                const AthenaArray<Real> &def_coeff,
                                bool th) = 0;
   virtual void ApplyPhysicalBoundary() = 0;
+  virtual void PrintCellPhysicsDebug(int k, int j, int i) {}
   void CalculateCoefficientsTask(Real dt);
   void ApplyCorrectionTask();
   virtual void StoreIterate();
@@ -202,10 +203,12 @@ class NewtonRaphsonDriver {
   linearMGDriver *plmgd_; // to be set in derived class constructors
 
   std::vector<NewtonRaphson*> vnr_;
-  bool needinit_, fshowdef_;
+  bool needinit_, fshowdef_, use_mg_smoothing_fallback_;
   Real eps_, dt_;
+  Real mg_coarse_retry_factor_, mg_coarse_retry_min_scale_;
+  Real step_scale_, backtrack_factor_, min_step_scale_;
   int stage_;
-  int niter_;
+  int niter_, max_backtrack_, mg_coarse_retry_max_;
   int os_, oe_;
   NewtonRaphsonTaskList *nrtlist_coeff_;
   NewtonRaphsonTaskList *nrtlist_post_;
