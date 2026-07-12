@@ -1,0 +1,204 @@
+<comment>
+problem    = Advecting radiation pulse for NR-FLD
+reference  = Zhang et al. 2011 section 6.7; Krumholz et al. 2007
+configure  = --prob=nrfld_advect_radiation_pulse --eos=adiabatic -nrmgfld -hdf5 -mpi -debug
+# Single consolidated input:
+# - static 512:  set problem_id=nrfld_advect_pulse_static_512,  nx1=512,  v0=0.0
+# - moving 512:  set problem_id=nrfld_advect_pulse_moving_512,  nx1=512,  v0=1.0e6
+# - static 4096: set problem_id=nrfld_advect_pulse_static_4096, nx1=4096, v0=0.0
+# Time note:
+# - Athena++ <time>/tlim and output dt are in code units, not seconds.
+# - With the units below, time_unit = 5.2942343635241887e-08 s.
+# - Therefore 4.8e-5 s corresponds to 906.7527799999999 code time units.
+# Solver note:
+# - The main issues found in this test were:
+#   1) the linearMG coarse-grid correction used a normalized residual instead of
+#      the raw residual, which breaks the restricted error equation;
+#   2) the HDF5 Coordinates attribute write overran the fixed-length string buffer;
+#   3) threshold = 0.0 with niteration > 0 now acts as a fixed V-cycle count for
+#      the linearMG solve, matching the intent of these NRFLD inputs.
+# Stability note:
+# - The current safe path is the standard timestep/update ordering with the
+#   explicit radiation-force source kept inside the usual hydro source path.
+# - An experimental split-force path was found to correlate with pathological
+#   timestep growth (dt nearly doubling every cycle), so it is disabled below.
+# - Start from cfl_number = 0.03 for stable regression checks, then raise to
+#   cfl_number = 0.1 or 0.3 only after confirming the profile remains physical.
+# Geometry note:
+# - Physically this is a 1D test, but for this NRFLD implementation the meshblock
+#   is kept in a cubic (2^n)^3 form. The default below uses the minimum 4^3 block.
+# - Therefore the domain is a thin periodic slab in x2/x3 with nx2 = nx3 = 4.
+#   Choose x2,x3 extent [-4,4] so dx = 2 cm in every direction when nx1 = 512.
+
+<job>
+problem_id = nrfld_advect_pulse
+
+<output1>
+file_type  = hst
+dcycle     = 10
+# dcycle     = 1        # use this for step-by-step diagnostics
+
+<output2>
+file_type   = hdf5
+id          = prim_x_final
+variable    = prim
+dt          = 906.75278
+# dcycle      = 1        # use this for step-by-step diagnostics
+# dt          = 4.8e-5    # this would be 4.8e-5 in code units, not in seconds
+x2_slice   = 0.0
+x3_slice   = 0.0
+# ghost_zones = true
+
+<output3>
+file_type   = hdf5
+id          = uov_x_final
+variable    = uov
+dt          = 906.75278
+# dcycle      = 1        # use this for step-by-step diagnostics
+# dt          = 4.8e-5    # this would be 4.8e-5 in code units, not in seconds
+x2_slice   = 0.0
+x3_slice   = 0.0
+# ghost_zones = true
+
+<time>
+cfl_number = 0.03
+# cfl_number = 0.1     # intermediate check
+# cfl_number = 0.3     # aggressive run; re-check profile carefully
+# cfl_number = 0.003   # one-step diagnostic fallback
+nlim       = 200000
+# nlim       = 400000   # use this for nx1 = 4096
+tlim       = 906.75278
+# tlim       = 4.8e-5    # this would be 4.8e-5 in code units, not in seconds
+integrator = rk2
+xorder     = 2
+ncycle_out = 1
+
+<mesh>
+nx1        = 512
+# nx1        = 4096
+x1min      = -512.0
+x1max      =  512.0
+ix1_bc     = periodic
+ox1_bc     = periodic
+
+nx2        = 4
+# nx2        = 8        # this does not cure the NR/MG divergence seen in the log
+x2min      = -4.0
+x2max      =  4.0
+# x2min      = -8.0     # use this pair with nx2 = 8 to keep dx = 2 cm
+# x2max      =  8.0
+ix2_bc     = periodic
+ox2_bc     = periodic
+
+nx3        = 4
+# nx3        = 8        # this does not cure the NR/MG divergence seen in the log
+x3min      = -4.0
+x3max      =  4.0
+# x3min      = -8.0     # use this pair with nx3 = 8 to keep dx = 2 cm
+# x3max      =  8.0
+ix3_bc     = periodic
+ox3_bc     = periodic
+
+<meshblock>
+nx1        = 4
+nx2        = 4
+nx3        = 4
+# nx1        = 8        # optional; keep powers of two if you change the block shape
+
+<hydro>
+gamma      = 1.66666666666667
+rho_unit   = 1.2
+egas_unit  = 4.28129270484549e14
+leng_unit  = 1.0
+mu         = 2.33
+
+<nrfld>
+# mgmode          = FMG
+mgmode          = MGI
+fas             = false
+# fas             = true
+smoother        = jacobi-double
+# smoother        = jacobi-rb
+prolongation    = trilinear
+# prolongation    = constant
+npresmooth      = 2
+npostsmooth     = 0
+# npostsmooth     = 2
+omega           = 1.0
+niteration      = 10
+nr_niteration   = 100
+threshold       = 0.0
+nr_threshold    = 0.0
+# threshold = 0.0 with niteration = 10 now means: use 10 linearMG V-cycles.
+# nr_threshold = 0.0 with nr_niteration = 100 keeps the NR solve capped.
+show_defect     = false
+# show_defect     = true
+smoothing_only  = true
+# smoothing_only  = false   # coarse correction also starts correctly now, but is slower
+coarse_correction_scale = 1.0
+# coarse_correction_scale = 0.5
+# coarse_correction_scale = 0.25
+# coarse_correction_scale = 0.125
+nr_mg_coarse_retry_max = 4
+# nr_mg_coarse_retry_max = 0
+nr_mg_coarse_retry_factor = 0.5
+nr_mg_coarse_retry_min_scale = 0.0625
+# Default choice here:
+# smoothing-only is the fastest stable path that has been re-tested after the
+# residual/HDF5 fixes. Switch to smoothing_only = false if you want to exercise
+# the coarse-grid correction path explicitly.
+nr_backtrack_max = 4
+# nr_backtrack_max = 6
+nr_backtrack_factor = 0.5
+nr_min_step_scale = 0.05
+# nr_min_step_scale = 0.02
+nr_use_mg_smoothing_fallback = true
+# nr_use_mg_smoothing_fallback = false
+strang_split = true
+# strang_split = false
+max_update_fraction = 0.2
+# max_update_fraction = 0.05
+# max_update_fraction = 0.02
+# threshold       = 1.0e-12
+# nr_threshold    = 1.0e-12
+ix1_bc          = periodic
+ox1_bc          = periodic
+ix2_bc          = periodic
+ox2_bc          = periodic
+ix3_bc          = periodic
+ox3_bc          = periodic
+
+<fld>
+output_defect        = true
+is_couple            = true
+only_rad             = false
+cut_diff             = false
+cut_Pnablav          = false
+fixed_flux_limitter  = true
+
+<problem>
+T0                     = 1.0e7
+T1                     = 2.0e7
+rho0                   = 1.2
+w                      = 24.0
+mu                     = 2.33
+v0                     = 0.0
+# v0                     = 1.0e6
+opacity_mass_coeff     = 100.0
+force_lambda_one_third = true
+apply_explicit_rad_force = true
+# apply_explicit_rad_force = false
+use_split_explicit_rad_force = false
+# use_split_explicit_rad_force = true   # experimental path; leave off unless re-testing
+include_advective_rad_flux_force = false
+# include_advective_rad_flux_force = true
+use_half_step_erad_for_force = true
+# use_half_step_erad_for_force = false
+use_monotonic_prad_force = true
+# use_monotonic_prad_force = false
+allow_debug_operator_cuts = false
+# allow_debug_operator_cuts = true
+debug_print_centerline = false
+# debug_print_centerline = true
+debug_center_radius    = 3
+# debug_center_radius    = 5
