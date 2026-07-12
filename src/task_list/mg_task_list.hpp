@@ -73,6 +73,7 @@ class MultigridTaskList {
 
   void SetMGTaskListToFiner(int nsmooth, int ngh, int flag = 0);
   void SetMGTaskListToCoarser(int nsmooth, int ngh);
+  void SetMGTaskListSmoothOnly(int nsmooth);
   void SetMGTaskListFMGProlongate(int flag = 0);
   void SetMGTaskListBoundaryCommunication();
 

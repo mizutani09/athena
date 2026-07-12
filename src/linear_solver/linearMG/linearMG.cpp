@@ -57,6 +57,8 @@ linearMGDriver::linearMGDriver(Mesh *pm, ParameterInput *pin, NewtonRaphsonDrive
   npresmooth_ = pin->GetOrAddReal("nrfld", "npresmooth", 2);
   npostsmooth_ = pin->GetOrAddReal("nrfld", "npostsmooth", 2);
   fshowdef_ = pin->GetOrAddBoolean("nrfld", "show_defect", fshowdef_);
+  smoothing_only_ = pin->GetOrAddBoolean("nrfld", "smoothing_only", false);
+  coarse_corr_scale_ = pin->GetOrAddReal("nrfld", "coarse_correction_scale", 1.0);
   std::string smoother = pin->GetOrAddString("nrfld", "smoother", "jacobi-rb");
 //   matrixmode_ = 1;
   matrixmode_ = 0; // caution!
@@ -73,6 +75,8 @@ linearMGDriver::linearMGDriver(Mesh *pm, ParameterInput *pin, NewtonRaphsonDrive
   std::string prol = pin->GetOrAddString("nrfld", "prolongation", "trilinear");
   if (prol == "tricubic")
     fprolongation_ = 1;
+  else if (prol == "constant" || prol == "inject")
+    fprolongation_ = 2;
 
   std::string m = pin->GetOrAddString("nrfld", "mgmode", "none");
   std::transform(m.begin(), m.end(), m.begin(), ::tolower);
@@ -93,8 +97,10 @@ linearMGDriver::linearMGDriver(Mesh *pm, ParameterInput *pin, NewtonRaphsonDrive
     msg << "### FATAL ERROR in linearMGFLDDriver::linearMGFLDDriver" << std::endl
         << "Either \"threshold\" or \"niteration\" parameter must be set "
         << "in the <nrfld> block." << std::endl
-        << "When both parameters are specified, \"niteration\" is ignored." << std::endl
-        << "Set \"threshold = 0.0\" for automatic convergence control." << std::endl;
+        << "Set \"threshold = 0.0\" without \"niteration\" for automatic "
+        << "convergence control," << std::endl
+        << "or set \"threshold = 0.0\" together with \"niteration\" to use "
+        << "a fixed number of V-cycles." << std::endl;
     ATHENA_ERROR(msg);
   }
   mg_mesh_bcs_[inner_x1] = GetMGBoundaryFlag(pin->GetString("mesh", "ix1_bc") == "periodic" ?
@@ -144,9 +150,14 @@ linearMGDriver::linearMGDriver(Mesh *pm, ParameterInput *pin, NewtonRaphsonDrive
 //! \brief linearMGDriver destructor
 
 linearMGDriver::~linearMGDriver() {
+  const bool trace_dtor = (std::getenv("ATHENA_TRACE_DTOR") != nullptr);
+  if (trace_dtor) std::cout << "[DTOR] linearMGDriver delete linmgtlist_" << std::endl;
   delete linmgtlist_;
+  if (trace_dtor) std::cout << "[DTOR] linearMGDriver delete mgroot_" << std::endl;
   delete mgroot_;
+  if (trace_dtor) std::cout << "[DTOR] linearMGDriver delete mgtlist_" << std::endl;
   delete mgtlist_;
+  if (trace_dtor) std::cout << "[DTOR] linearMGDriver delete[] temp" << std::endl;
   delete [] temp;
 }
 
@@ -170,6 +181,12 @@ linearMG::linearMG(linearMGDriver *pmd, MeshBlock *pmb, ParameterInput *pin, New
 //! \brief linearMG deconstructor
 
 linearMG::~linearMG() {
+  const bool trace_dtor = (std::getenv("ATHENA_TRACE_DTOR") != nullptr);
+  if (trace_dtor) {
+    std::cout << "[DTOR] linearMG block="
+              << (pmy_block_ ? pmy_block_->gid : -1)
+              << " delete pmgbval ptr=" << pmgbval << std::endl;
+  }
   delete pmgbval;
 }
 
@@ -206,13 +223,16 @@ void linearMGDriver::Solve(int stage, Real dt) {
   if (mode_ == 0) {
     SolveFMGCycle();
   } else {
-    if (eps_ >= 0.0) {
+    // Interpret threshold == 0.0 with niteration >= 0 as a fixed-count solve.
+    // Several NRFLD inputs rely on this combination to cap the linear solve
+    // without setting a positive absolute residual tolerance.
+    if (eps_ > 0.0 || (eps_ == 0.0 && niter_ < 0)) {
       // std::cout << "linearMG solve with threshold " << eps_ << " at " << Globals::my_rank << std::endl;
       SolveIterative();
       // std::cout << "linearMG solve with threshold " << eps_ << " finished at " << Globals::my_rank << std::endl;
-    }
-    else
+    } else {
       SolveIterativeFixedTimes();
+    }
   }
   // std::cout << "linearMG solve finished at " << Globals::my_rank << std::endl;
 
@@ -418,9 +438,9 @@ void linearMG::CalculateDefect(AthenaArray<Real> &def, const AthenaArray<Real> &
                + matrix(linearSolver::CCM,k,j,i)*u(k,j,i-1)+matrix(linearSolver::CCP,k,j,i)*u(k,j,i+1)
                + matrix(linearSolver::CMC,k,j,i)*u(k,j-1,i)+matrix(linearSolver::CPC,k,j,i)*u(k,j+1,i)
                + matrix(linearSolver::MCC,k,j,i)*u(k-1,j,i)+matrix(linearSolver::PCC,k,j,i)*u(k+1,j,i);
-        Real scale = std::max(std::abs(src(k,j,i)), std::abs(M));
-        scale = std::max(scale, static_cast<Real>(1.0e-30));
-        def(k,j,i) = (src(k,j,i) - M)/scale;
+        // Multigrid coarse-grid correction must use the raw residual.
+        // Normalizing here distorts the restricted error equation.
+        def(k,j,i) = src(k,j,i) - M;
       }
     }
   }

@@ -312,7 +312,23 @@ void Multigrid::RestrictCoefficients() {
   for (int lev = nlevel_ - 1; lev > 0; lev--) {
     int ll = nlevel_ - lev;
     ie=is+(size_.nx1>>ll)-1, je=js+(size_.nx2>>ll)-1, ke=ks+(size_.nx3>>ll)-1;
-    Restrict(coeff_[lev-1], coeff_[lev], ncoeff_, is, ie, js, je, ks, ke, false);
+    if (ncoeff_ == linearSolver::NCOEFF) {
+      AthenaArray<Real> &dst = coeff_[lev-1];
+      const AthenaArray<Real> &src = coeff_[lev];
+      for (int k = ks; k <= ke; ++k) {
+        const int fk = 2*k - ks;
+        for (int j = js; j <= je; ++j) {
+          const int fj = 2*j - js;
+#pragma ivdep
+          for (int i = is; i <= ie; ++i) {
+            const int fi = 2*i - is;
+            RestrictLinearCoefficientsCell(dst, src, k, j, i, fk, fj, fi);
+          }
+        }
+      }
+    } else {
+      Restrict(coeff_[lev-1], coeff_[lev], ncoeff_, is, ie, js, je, ks, ke, false);
+    }
   }
   return;
 }
@@ -862,7 +878,31 @@ void Multigrid::Restrict(AthenaArray<Real> &dst, const AthenaArray<Real> &src,
 
 void Multigrid::ProlongateAndCorrect(AthenaArray<Real> &dst, const AthenaArray<Real> &src,
      int il, int iu, int jl, int ju, int kl, int ku, int fil, int fjl, int fkl, bool th) {
-  if (pmy_driver_->fprolongation_ == 1) { // tricubic
+  const Real corr_scale = pmy_driver_->coarse_corr_scale_;
+  if (pmy_driver_->fprolongation_ == 2) { // piecewise constant
+    for (int v = 0; v < nvar_; ++v) {
+#pragma omp parallel for num_threads(pmy_driver_->nthreads_) if (th && (ku-kl)>=minth_/2)
+      for (int k = kl; k <= ku; ++k) {
+        int fk = 2*(k-kl) + fkl;
+        for (int j = jl; j <= ju; ++j) {
+          int fj = 2*(j-jl) + fjl;
+#pragma ivdep
+          for (int i = il; i <= iu; ++i) {
+            int fi = 2*(i-il) + fil;
+            const Real corr = corr_scale*src(v, k, j, i);
+            dst(v, fk  , fj  , fi  ) += corr;
+            dst(v, fk  , fj  , fi+1) += corr;
+            dst(v, fk  , fj+1, fi  ) += corr;
+            dst(v, fk  , fj+1, fi+1) += corr;
+            dst(v, fk+1, fj  , fi  ) += corr;
+            dst(v, fk+1, fj  , fi+1) += corr;
+            dst(v, fk+1, fj+1, fi  ) += corr;
+            dst(v, fk+1, fj+1, fi+1) += corr;
+          }
+        }
+      }
+    }
+  } else if (pmy_driver_->fprolongation_ == 1) { // tricubic
     for (int v=0; v<nvar_; ++v) {
 #pragma omp parallel for num_threads(pmy_driver_->nthreads_) if (th && (ku-kl)>=minth_/2)
       for (int k=kl; k<=ku; ++k) {
@@ -872,7 +912,7 @@ void Multigrid::ProlongateAndCorrect(AthenaArray<Real> &dst, const AthenaArray<R
 #pragma ivdep
           for (int i=il; i<=iu; ++i) {
             int fi = 2*(i-il) + fil;
-          dst(v,fk  ,fj,  fi  ) += (
+          dst(v,fk  ,fj,  fi  ) += corr_scale*(
             + 125.*src(v,k-1,j-1,i-1)+  750.*src(v,k-1,j-1,i  )-  75.*src(v,k-1,j-1,i+1)
             + 750.*src(v,k-1,j,  i-1)+ 4500.*src(v,k-1,j,  i  )- 450.*src(v,k-1,j,  i+1)
             -  75.*src(v,k-1,j+1,i-1)-  450.*src(v,k-1,j+1,i  )+  45.*src(v,k-1,j+1,i+1)
@@ -883,7 +923,7 @@ void Multigrid::ProlongateAndCorrect(AthenaArray<Real> &dst, const AthenaArray<R
             - 450.*src(v,k+1,j,  i-1)- 2700.*src(v,k+1,j,  i  )+ 270.*src(v,k+1,j,  i+1)
             +  45.*src(v,k+1,j+1,i-1)+  270.*src(v,k+1,j+1,i  )-  27.*src(v,k+1,j+1,i+1)
                                )/32768.0;
-          dst(v,fk,  fj,  fi+1) += (
+          dst(v,fk,  fj,  fi+1) += corr_scale*(
             -  75.*src(v,k-1,j-1,i-1)+  750.*src(v,k-1,j-1,i  )+ 125.*src(v,k-1,j-1,i+1)
             - 450.*src(v,k-1,j,  i-1)+ 4500.*src(v,k-1,j,  i  )+ 750.*src(v,k-1,j,  i+1)
             +  45.*src(v,k-1,j+1,i-1)-  450.*src(v,k-1,j+1,i  )-  75.*src(v,k-1,j+1,i+1)
@@ -894,7 +934,7 @@ void Multigrid::ProlongateAndCorrect(AthenaArray<Real> &dst, const AthenaArray<R
             + 270.*src(v,k+1,j,  i-1)- 2700.*src(v,k+1,j,  i  )- 450.*src(v,k+1,j,  i+1)
             -  27.*src(v,k+1,j+1,i-1)+  270.*src(v,k+1,j+1,i  )+  45.*src(v,k+1,j+1,i+1)
                                )/32768.0;
-          dst(v,fk  ,fj+1,fi  ) += (
+          dst(v,fk  ,fj+1,fi  ) += corr_scale*(
             -  75.*src(v,k-1,j-1,i-1)-  450.*src(v,k-1,j-1,i  )+  45.*src(v,k-1,j-1,i+1)
             + 750.*src(v,k-1,j,  i-1)+ 4500.*src(v,k-1,j,  i  )- 450.*src(v,k-1,j,  i+1)
             + 125.*src(v,k-1,j+1,i-1)+  750.*src(v,k-1,j+1,i  )-  75.*src(v,k-1,j+1,i+1)
@@ -905,7 +945,7 @@ void Multigrid::ProlongateAndCorrect(AthenaArray<Real> &dst, const AthenaArray<R
             - 450.*src(v,k+1,j,  i-1)- 2700.*src(v,k+1,j,  i  )+ 270.*src(v,k+1,j,  i+1)
             -  75.*src(v,k+1,j+1,i-1)-  450.*src(v,k+1,j+1,i  )+  45.*src(v,k+1,j+1,i+1)
                                )/32768.0;
-          dst(v,fk,  fj+1,fi+1) += (
+          dst(v,fk,  fj+1,fi+1) += corr_scale*(
             +  45.*src(v,k-1,j-1,i-1)-  450.*src(v,k-1,j-1,i  )-  75.*src(v,k-1,j-1,i+1)
             - 450.*src(v,k-1,j,  i-1)+ 4500.*src(v,k-1,j,  i  )+ 750.*src(v,k-1,j,  i+1)
             -  75.*src(v,k-1,j+1,i-1)+  750.*src(v,k-1,j+1,i  )+ 125.*src(v,k-1,j+1,i+1)
@@ -916,7 +956,7 @@ void Multigrid::ProlongateAndCorrect(AthenaArray<Real> &dst, const AthenaArray<R
             + 270.*src(v,k+1,j,  i-1)- 2700.*src(v,k+1,j,  i  )- 450.*src(v,k+1,j,  i+1)
             +  45.*src(v,k+1,j+1,i-1)-  450.*src(v,k+1,j+1,i  )-  75.*src(v,k+1,j+1,i+1)
                                )/32768.0;
-          dst(v,fk+1,fj,  fi  ) += (
+          dst(v,fk+1,fj,  fi  ) += corr_scale*(
             -  75.*src(v,k-1,j-1,i-1)-  450.*src(v,k-1,j-1,i  )+  45.*src(v,k-1,j-1,i+1)
             - 450.*src(v,k-1,j,  i-1)- 2700.*src(v,k-1,j,  i  )+ 270.*src(v,k-1,j,  i+1)
             +  45.*src(v,k-1,j+1,i-1)+  270.*src(v,k-1,j+1,i  )-  27.*src(v,k-1,j+1,i+1)
@@ -927,7 +967,7 @@ void Multigrid::ProlongateAndCorrect(AthenaArray<Real> &dst, const AthenaArray<R
             + 750.*src(v,k+1,j,  i-1)+ 4500.*src(v,k+1,j,  i  )- 450.*src(v,k+1,j,  i+1)
             -  75.*src(v,k+1,j+1,i-1)-  450.*src(v,k+1,j+1,i  )+  45.*src(v,k+1,j+1,i+1)
                                )/32768.0;
-          dst(v,fk+1,fj,  fi+1) += (
+          dst(v,fk+1,fj,  fi+1) += corr_scale*(
             +  45.*src(v,k-1,j-1,i-1)-  450.*src(v,k-1,j-1,i  )-  75.*src(v,k-1,j-1,i+1)
             + 270.*src(v,k-1,j,  i-1)- 2700.*src(v,k-1,j,  i  )- 450.*src(v,k-1,j,  i+1)
             -  27.*src(v,k-1,j+1,i-1)+  270.*src(v,k-1,j+1,i  )+  45.*src(v,k-1,j+1,i+1)
@@ -938,7 +978,7 @@ void Multigrid::ProlongateAndCorrect(AthenaArray<Real> &dst, const AthenaArray<R
             - 450.*src(v,k+1,j,  i-1)+ 4500.*src(v,k+1,j,  i  )+ 750.*src(v,k+1,j,  i+1)
             +  45.*src(v,k+1,j+1,i-1)-  450.*src(v,k+1,j+1,i  )-  75.*src(v,k+1,j+1,i+1)
                                )/32768.0;
-          dst(v,fk+1,fj+1,fi  ) += (
+          dst(v,fk+1,fj+1,fi  ) += corr_scale*(
             +  45.*src(v,k-1,j-1,i-1)+  270.*src(v,k-1,j-1,i  )-  27.*src(v,k-1,j-1,i+1)
             - 450.*src(v,k-1,j,  i-1)- 2700.*src(v,k-1,j,  i  )+ 270.*src(v,k-1,j,  i+1)
             -  75.*src(v,k-1,j+1,i-1)-  450.*src(v,k-1,j+1,i  )+  45.*src(v,k-1,j+1,i+1)
@@ -949,7 +989,7 @@ void Multigrid::ProlongateAndCorrect(AthenaArray<Real> &dst, const AthenaArray<R
             + 750.*src(v,k+1,j,  i-1)+ 4500.*src(v,k+1,j,  i  )- 450.*src(v,k+1,j,  i+1)
             + 125.*src(v,k+1,j+1,i-1)+  750.*src(v,k+1,j+1,i  )-  75.*src(v,k+1,j+1,i+1)
                                )/32768.0;
-          dst(v,fk+1,fj+1,fi+1) += (
+          dst(v,fk+1,fj+1,fi+1) += corr_scale*(
             -  27.*src(v,k-1,j-1,i-1)+  270.*src(v,k-1,j-1,i  )+  45.*src(v,k-1,j-1,i+1)
             + 270.*src(v,k-1,j,  i-1)- 2700.*src(v,k-1,j,  i  )- 450.*src(v,k-1,j,  i+1)
             +  45.*src(v,k-1,j+1,i-1)-  450.*src(v,k-1,j+1,i  )-  75.*src(v,k-1,j+1,i+1)
@@ -975,35 +1015,35 @@ void Multigrid::ProlongateAndCorrect(AthenaArray<Real> &dst, const AthenaArray<R
           for (int i=il; i<=iu; ++i) {
             int fi = 2*(i-il) + fil;
             dst(v,fk  ,fj  ,fi  ) +=
-                0.015625*(27.0*src(v,k,j,i) + src(v,k-1,j-1,i-1)
+                corr_scale*0.015625*(27.0*src(v,k,j,i) + src(v,k-1,j-1,i-1)
                           +9.0*(src(v,k,j,i-1)+src(v,k,j-1,i)+src(v,k-1,j,i))
                           +3.0*(src(v,k-1,j-1,i)+src(v,k-1,j,i-1)+src(v,k,j-1,i-1)));
             dst(v,fk  ,fj  ,fi+1) +=
-                0.015625*(27.0*src(v,k,j,i) + src(v,k-1,j-1,i+1)
+                corr_scale*0.015625*(27.0*src(v,k,j,i) + src(v,k-1,j-1,i+1)
                           +9.0*(src(v,k,j,i+1)+src(v,k,j-1,i)+src(v,k-1,j,i))
                           +3.0*(src(v,k-1,j-1,i)+src(v,k-1,j,i+1)+src(v,k,j-1,i+1)));
             dst(v,fk  ,fj+1,fi  ) +=
-                0.015625*(27.0*src(v,k,j,i) + src(v,k-1,j+1,i-1)
+                corr_scale*0.015625*(27.0*src(v,k,j,i) + src(v,k-1,j+1,i-1)
                           +9.0*(src(v,k,j,i-1)+src(v,k,j+1,i)+src(v,k-1,j,i))
                           +3.0*(src(v,k-1,j+1,i)+src(v,k-1,j,i-1)+src(v,k,j+1,i-1)));
             dst(v,fk+1,fj  ,fi  ) +=
-                0.015625*(27.0*src(v,k,j,i) + src(v,k+1,j-1,i-1)
+                corr_scale*0.015625*(27.0*src(v,k,j,i) + src(v,k+1,j-1,i-1)
                           +9.0*(src(v,k,j,i-1)+src(v,k,j-1,i)+src(v,k+1,j,i))
                           +3.0*(src(v,k+1,j-1,i)+src(v,k+1,j,i-1)+src(v,k,j-1,i-1)));
             dst(v,fk+1,fj+1,fi  ) +=
-                0.015625*(27.0*src(v,k,j,i) + src(v,k+1,j+1,i-1)
+                corr_scale*0.015625*(27.0*src(v,k,j,i) + src(v,k+1,j+1,i-1)
                           +9.0*(src(v,k,j,i-1)+src(v,k,j+1,i)+src(v,k+1,j,i))
                           +3.0*(src(v,k+1,j+1,i)+src(v,k+1,j,i-1)+src(v,k,j+1,i-1)));
             dst(v,fk+1,fj  ,fi+1) +=
-                0.015625*(27.0*src(v,k,j,i) + src(v,k+1,j-1,i+1)
+                corr_scale*0.015625*(27.0*src(v,k,j,i) + src(v,k+1,j-1,i+1)
                           +9.0*(src(v,k,j,i+1)+src(v,k,j-1,i)+src(v,k+1,j,i))
                           +3.0*(src(v,k+1,j-1,i)+src(v,k+1,j,i+1)+src(v,k,j-1,i+1)));
             dst(v,fk  ,fj+1,fi+1) +=
-                0.015625*(27.0*src(v,k,j,i) + src(v,k-1,j+1,i+1)
+                corr_scale*0.015625*(27.0*src(v,k,j,i) + src(v,k-1,j+1,i+1)
                           +9.0*(src(v,k,j,i+1)+src(v,k,j+1,i)+src(v,k-1,j,i))
                           +3.0*(src(v,k-1,j+1,i)+src(v,k-1,j,i+1)+src(v,k,j+1,i+1)));
             dst(v,fk+1,fj+1,fi+1) +=
-                0.015625*(27.0*src(v,k,j,i) + src(v,k+1,j+1,i+1)
+                corr_scale*0.015625*(27.0*src(v,k,j,i) + src(v,k+1,j+1,i+1)
                           +9.0*(src(v,k,j,i+1)+src(v,k,j+1,i)+src(v,k+1,j,i))
                           +3.0*(src(v,k+1,j+1,i)+src(v,k+1,j,i+1)+src(v,k,j+1,i+1)));
           }

@@ -610,36 +610,83 @@ MeshBlock::MeshBlock(int igid, int ilid, Mesh *pm, ParameterInput *pin,
 //! MeshBlock destructor
 
 MeshBlock::~MeshBlock() {
+  const bool trace_dtor = (std::getenv("ATHENA_TRACE_DTOR") != nullptr);
+  if (trace_dtor) std::cout << "[DTOR] MeshBlock gid=" << gid << " begin" << std::endl;
+  if (trace_dtor) std::cout << "[DTOR] MeshBlock gid=" << gid << " delete pcoord" << std::endl;
   delete pcoord;
+  if (trace_dtor) std::cout << "[DTOR] MeshBlock gid=" << gid << " delete precon" << std::endl;
   delete precon;
-  if (pmy_mesh->multilevel) delete pmr;
+  if (pmy_mesh->multilevel) {
+    if (trace_dtor) std::cout << "[DTOR] MeshBlock gid=" << gid << " delete pmr" << std::endl;
+    delete pmr;
+  }
 
+  if (trace_dtor) std::cout << "[DTOR] MeshBlock gid=" << gid << " delete phydro" << std::endl;
   delete phydro;
-  if (MAGNETIC_FIELDS_ENABLED) delete pfield;
+  if (MAGNETIC_FIELDS_ENABLED) {
+    if (trace_dtor) std::cout << "[DTOR] MeshBlock gid=" << gid << " delete pfield" << std::endl;
+    delete pfield;
+  }
+  if (trace_dtor) std::cout << "[DTOR] MeshBlock gid=" << gid << " delete peos" << std::endl;
   delete peos;
+  if (trace_dtor) std::cout << "[DTOR] MeshBlock gid=" << gid << " delete porb" << std::endl;
   delete porb;
-  if (SELF_GRAVITY_ENABLED) delete pgrav;
-  if (NSCALARS > 0) delete pscalars;
+  if (SELF_GRAVITY_ENABLED) {
+    if (trace_dtor) std::cout << "[DTOR] MeshBlock gid=" << gid << " delete pgrav" << std::endl;
+    delete pgrav;
+  }
+  if (NSCALARS > 0) {
+    if (trace_dtor) std::cout << "[DTOR] MeshBlock gid=" << gid << " delete pscalars" << std::endl;
+    delete pscalars;
+  }
   if (CHEMRADIATION_ENABLED) {
+    if (trace_dtor) std::cout << "[DTOR] MeshBlock gid=" << gid << " delete pchemrad" << std::endl;
     delete pchemrad;
   }
 
-  if (NR_RADIATION_ENABLED || IM_RADIATION_ENABLED) delete pnrrad;
-  if (CR_ENABLED) delete pcr;
-  if (CRDIFFUSION_ENABLED) delete pcrdiff;
-  if (MGFLD_ENABLED) delete pmg_fld;
-  if (NRMGFLD_ENABLED) delete pnr;
-  if (MGFLD_ENABLED || NRMGFLD_ENABLED) delete prfld2;
+  if (NR_RADIATION_ENABLED || IM_RADIATION_ENABLED) {
+    if (trace_dtor) std::cout << "[DTOR] MeshBlock gid=" << gid << " delete pnrrad" << std::endl;
+    delete pnrrad;
+  }
+  if (CR_ENABLED) {
+    if (trace_dtor) std::cout << "[DTOR] MeshBlock gid=" << gid << " delete pcr" << std::endl;
+    delete pcr;
+  }
+  if (CRDIFFUSION_ENABLED) {
+    if (trace_dtor) std::cout << "[DTOR] MeshBlock gid=" << gid << " delete pcrdiff" << std::endl;
+    delete pcrdiff;
+  }
+  if (MGFLD_ENABLED) {
+    if (trace_dtor) std::cout << "[DTOR] MeshBlock gid=" << gid << " delete pmg_fld" << std::endl;
+    delete pmg_fld;
+  }
+  if (NRMGFLD_ENABLED) {
+    if (trace_dtor) std::cout << "[DTOR] MeshBlock gid=" << gid << " delete pnr" << std::endl;
+    delete pnr;
+  }
+  if (MGFLD_ENABLED || NRMGFLD_ENABLED) {
+    if (trace_dtor) std::cout << "[DTOR] MeshBlock gid=" << gid << " delete prfld2" << std::endl;
+    delete prfld2;
+  }
 
   // BoundaryValues should be destructed AFTER all BoundaryVariable objects are destroyed
+  if (trace_dtor) std::cout << "[DTOR] MeshBlock gid=" << gid << " delete pbval" << std::endl;
   delete pbval;
   // delete user output variables array
   if (nuser_out_var > 0) {
+    if (trace_dtor) std::cout << "[DTOR] MeshBlock gid=" << gid << " delete user_out_var_names_" << std::endl;
     delete [] user_out_var_names_;
   }
   // delete user MeshBlock data
-  if (nreal_user_meshblock_data_ > 0) delete [] ruser_meshblock_data;
-  if (nint_user_meshblock_data_ > 0) delete [] iuser_meshblock_data;
+  if (nreal_user_meshblock_data_ > 0) {
+    if (trace_dtor) std::cout << "[DTOR] MeshBlock gid=" << gid << " delete ruser_meshblock_data" << std::endl;
+    delete [] ruser_meshblock_data;
+  }
+  if (nint_user_meshblock_data_ > 0) {
+    if (trace_dtor) std::cout << "[DTOR] MeshBlock gid=" << gid << " delete iuser_meshblock_data" << std::endl;
+    delete [] iuser_meshblock_data;
+  }
+  if (trace_dtor) std::cout << "[DTOR] MeshBlock gid=" << gid << " end" << std::endl;
 }
 
 //----------------------------------------------------------------------------------------

@@ -55,6 +55,7 @@ void MultigridTaskList::DoTaskListOneStage(MultigridDriver *pmd) {
 //! cleared) in this TaskList, return status.
 
 TaskListStatus MultigridTaskList::DoAllAvailableTasks(Multigrid *pmg, TaskStates &ts) {
+  static bool printed_stuck = false;
   int skip=0;
   TaskStatus ret;
 
@@ -83,6 +84,28 @@ TaskListStatus MultigridTaskList::DoAllAvailableTasks(Multigrid *pmg, TaskStates
     }
   }
   // there are still tasks to do but nothing can be done now
+  if (pmg->pmy_driver_->fshowdef_ && Globals::my_rank == 0 && !printed_stuck) {
+    printed_stuck = true;
+    std::cout << "[MG stuck] gid="
+              << (pmg->pmy_block_ != nullptr ? pmg->pmy_block_->gid : -1)
+              << " current_level=" << pmg->current_level_
+              << " indx_first_task=" << ts.indx_first_task
+              << " num_tasks_left=" << ts.num_tasks_left << std::endl;
+    for (int i = ts.indx_first_task; i < ntasks; ++i) {
+      MGTask &taski = task_list_[i];
+      const bool unfinished = ts.finished_tasks.IsUnfinished(taski.task_id);
+      const bool dep_clear = ts.finished_tasks.CheckDependencies(taski.dependency);
+      if (!unfinished) continue;
+      std::cout << "  [MG stuck] task_index=" << i
+                << " dep_clear=" << dep_clear
+                << " task_bits=(" << taski.task_id.bitfld_[0] << ","
+                << taski.task_id.bitfld_[1] << ")"
+                << " dep_bits=(" << taski.dependency.bitfld_[0] << ","
+                << taski.dependency.bitfld_[1] << ")"
+                << " finished_bits=(" << ts.finished_tasks.bitfld_[0] << ","
+                << ts.finished_tasks.bitfld_[1] << ")" << std::endl;
+    }
+  }
   return TaskListStatus::stuck;
 }
 
@@ -365,7 +388,7 @@ void MultigridTaskList::SetMGTaskListToFiner(int nsmooth, int ngh, int flag) {
   }
   if (flag==2) { // last
     if (nsmooth==0)
-      AddMultigridTask(MG_STARTRECVL, MG_CLEARBND0);
+      AddMultigridTask(MG_STARTRECVL, flag == 1 ? MG_PROLONG : MG_CLEARBNDP);
     else if (nsmooth==1)
       AddMultigridTask(MG_STARTRECVL, MG_CLEARBND1B);
     else
@@ -522,6 +545,61 @@ void MultigridTaskList::SetMGTaskListToCoarser(int nsmooth, int ngh) {
     }
     AddMultigridTask(MG_RESTRICT,    MG_PHYSBND0);
     AddMultigridTask(MG_CLEARBND0,   MG_RESTRICT);
+  }
+}
+
+
+//----------------------------------------------------------------------------------------
+//! \fn void MultigridTaskList::SetMGTaskListSmoothOnly(int nsmooth)
+//! \brief Set the task list for finest-level smoothing without coarse correction
+
+void MultigridTaskList::SetMGTaskListSmoothOnly(int nsmooth) {
+  bool multilevel = false;
+  if (pmy_mgdriver_->nreflevel_ > 0)
+    multilevel = true;
+  ClearTaskList();
+  nsmooth = std::min(nsmooth, 2);
+  if (nsmooth <= 0) return;
+
+  auto add_sweep = [&](const TaskID &start_id, const TaskID &send_id, const TaskID &recv_id,
+                       const TaskID &prlng_id, const TaskID &phys_id,
+                       const TaskID &smooth_id, const TaskID &clear_id,
+                       const TaskID &dep) {
+    AddMultigridTask(start_id, dep);
+    AddMultigridTask(send_id,  start_id);
+    AddMultigridTask(recv_id,  start_id);
+    if (multilevel) {
+      AddMultigridTask(prlng_id, send_id|recv_id);
+      AddMultigridTask(phys_id,  prlng_id);
+    } else {
+      AddMultigridTask(phys_id,  send_id|recv_id);
+    }
+    AddMultigridTask(smooth_id, phys_id);
+    AddMultigridTask(clear_id,  smooth_id);
+  };
+
+  TaskID dep = NONE;
+  for (int n = 0; n < nsmooth; ++n) {
+    if (n == 0) {
+      add_sweep(MG_STARTRECV1R, MG_SENDBND1R, MG_RECVBND1R, MG_PRLNGFC1R,
+                MG_PHYSBND1R, MG_SMOOTH1R, MG_CLEARBND1R, dep);
+      dep = MG_CLEARBND1R;
+    } else {
+      add_sweep(MG_STARTRECV2R, MG_SENDBND2R, MG_RECVBND2R, MG_PRLNGFC2R,
+                MG_PHYSBND2R, MG_SMOOTH2R, MG_CLEARBND2R, dep);
+      dep = MG_CLEARBND2R;
+    }
+    if (pmy_mgdriver_->redblack_) {
+      if (n == 0) {
+        add_sweep(MG_STARTRECV1B, MG_SENDBND1B, MG_RECVBND1B, MG_PRLNGFC1B,
+                  MG_PHYSBND1B, MG_SMOOTH1B, MG_CLEARBND1B, dep);
+        dep = MG_CLEARBND1B;
+      } else {
+        add_sweep(MG_STARTRECV2B, MG_SENDBND2B, MG_RECVBND2B, MG_PRLNGFC2B,
+                  MG_PHYSBND2B, MG_SMOOTH2B, MG_CLEARBND2B, dep);
+        dep = MG_CLEARBND2B;
+      }
+    }
   }
 }
 

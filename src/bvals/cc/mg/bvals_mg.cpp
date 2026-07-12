@@ -38,6 +38,22 @@
 class Multigrid;
 class MultigridDriver;
 
+namespace {
+int BaseBoundaryElementCount(int nc, int ngh, NeighborConnect type) {
+  if (type == NeighborConnect::face) return SQR(nc)*ngh;
+  if (type == NeighborConnect::edge) return nc*ngh*ngh;
+  if (type == NeighborConnect::corner) return ngh*ngh*ngh;
+  return 0;
+}
+
+int CoarseAuxElementCount(int nc, int ngh, NeighborConnect type) {
+  if (type == NeighborConnect::face) return SQR(nc/2)*ngh;
+  if (type == NeighborConnect::edge) return (nc/2)*ngh*ngh;
+  if (type == NeighborConnect::corner) return ngh*ngh*ngh;
+  return 0;
+}
+}  // namespace
+
 //----------------------------------------------------------------------------------------
 //! \fn MGBoundaryValues::MGBoundaryValues(Multigrid *pmg, BoundaryFlag *input_bcs)
 //! \brief Constructor of the MGBoundaryValues class
@@ -74,6 +90,12 @@ MGBoundaryValues::MGBoundaryValues(Multigrid *pmg, BoundaryFlag *input_bcs)
 //! \brief Destructor of the MGBoundaryValues class
 
 MGBoundaryValues::~MGBoundaryValues() {
+  const bool trace_dtor = (std::getenv("ATHENA_TRACE_DTOR") != nullptr);
+  if (trace_dtor) {
+    std::cout << "[DTOR] MGBoundaryValues block="
+              << (pmy_mg_->pmy_block_ ? pmy_mg_->pmy_block_->gid : -1)
+              << " destroy=" << (pmy_mg_->pmy_block_ != nullptr) << std::endl;
+  }
   if (pmy_mg_->pmy_block_ != nullptr)
     DestroyBoundaryData();
 }
@@ -101,24 +123,12 @@ void MGBoundaryValues::InitBoundaryData(BoundaryQuantity type) {
       // calculate the buffer size
       int ngh = pmy_mg_->ngh_;
       int nc = block_size_.nx1;
-      int size = 0;
-      if (BoundaryValues::ni[n].type == NeighborConnect::face)
-        size = SQR(nc)*ngh;
-      else if (BoundaryValues::ni[n].type == NeighborConnect::edge)
-        size = nc*ngh*ngh;
-      else if (BoundaryValues::ni[n].type == NeighborConnect::corner)
-        size = ngh*ngh*ngh;
+      int size = BaseBoundaryElementCount(nc, ngh, BoundaryValues::ni[n].type);
       if (pmy_mg_->pmy_driver_->pmy_mesh_->multilevel) {
-        if (BoundaryValues::ni[n].type == NeighborConnect::face)
-          size += SQR(nc/2)*ngh;
-        else if (BoundaryValues::ni[n].type == NeighborConnect::edge)
-          size += nc/2*ngh*ngh;
-        else if (BoundaryValues::ni[n].type == NeighborConnect::corner)
-          size += ngh*ngh*ngh;
+        size += CoarseAuxElementCount(nc, ngh, BoundaryValues::ni[n].type);
       }
-
-      size *= std::max(pmy_mg_->nvar_*(1+pmy_mg_->pmy_driver_->ffas_), pmy_mg_->ncoeff_);
-
+      size *= std::max(pmy_mg_->nvar_*(1+pmy_mg_->pmy_driver_->ffas_),
+                       pmy_mg_->ncoeff_);
       bdata_[c].send[n] = new Real[size];
       bdata_[c].recv[n] = new Real[size];
     }
@@ -131,17 +141,36 @@ void MGBoundaryValues::InitBoundaryData(BoundaryQuantity type) {
 //! \brief Destroy BoundaryData<> structure
 
 void MGBoundaryValues::DestroyBoundaryData() {
+  const bool trace_dtor = (std::getenv("ATHENA_TRACE_DTOR") != nullptr);
   int nbuf = triplebuf_?3:1;
   for (int c = 0; c < nbuf; ++c) {
     for (int n = 0; n < bdata_[c].nbmax; ++n) {
+#ifdef MPI_PARALLEL
+      if (bdata_[c].req_send[n] != MPI_REQUEST_NULL) {
+        int completed = 0;
+        MPI_Test(&bdata_[c].req_send[n], &completed, MPI_STATUS_IGNORE);
+        if (!completed && trace_dtor) {
+          std::cout << "[DTOR] MGBoundaryValues waiting on active send request"
+                    << " block=" << (pmy_mg_->pmy_block_ ? pmy_mg_->pmy_block_->gid : -1)
+                    << " color=" << c << " bufid=" << n << std::endl;
+        }
+        if (!completed) MPI_Wait(&bdata_[c].req_send[n], MPI_STATUS_IGNORE);
+      }
+      if (bdata_[c].req_recv[n] != MPI_REQUEST_NULL) {
+        int completed = 0;
+        MPI_Test(&bdata_[c].req_recv[n], &completed, MPI_STATUS_IGNORE);
+        if (!completed && trace_dtor) {
+          std::cout << "[DTOR] MGBoundaryValues waiting on active recv request"
+                    << " block=" << (pmy_mg_->pmy_block_ ? pmy_mg_->pmy_block_->gid : -1)
+                    << " color=" << c << " bufid=" << n << std::endl;
+        }
+        if (!completed) MPI_Wait(&bdata_[c].req_recv[n], MPI_STATUS_IGNORE);
+      }
+#endif
       delete [] bdata_[c].send[n];
       delete [] bdata_[c].recv[n];
-#ifdef MPI_PARALLEL
-      if (bdata_[c].req_send[n] != MPI_REQUEST_NULL)
-        MPI_Request_free(&bdata_[c].req_send[n]);
-      if (bdata_[c].req_recv[n] != MPI_REQUEST_NULL)
-        MPI_Request_free(&bdata_[c].req_recv[n]);
-#endif
+      bdata_[c].send[n] = nullptr;
+      bdata_[c].recv[n] = nullptr;
     }
   }
 }

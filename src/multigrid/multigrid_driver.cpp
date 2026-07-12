@@ -47,7 +47,9 @@ MultigridDriver::MultigridDriver(Mesh *pm, MGBoundaryFunc *MGBoundary,
     nrbx1_(pm->nrbx1), nrbx2_(pm->nrbx2), nrbx3_(pm->nrbx3), srcmask_(MGSourceMask),
     coeffmask_(MGCoeffMask), pmy_mesh_(pm), fsubtract_average_(false),
     ffas_(pm->multilevel), redblack_(true), needinit_(true), fshowdef_(false),
-    eps_(-1.0), dt_(0.0), niter_(-1), npresmooth_(1), npostsmooth_(1),
+    smoothing_only_(false),
+    eps_(-1.0), dt_(0.0), coarse_corr_scale_(1.0), niter_(-1), npresmooth_(1),
+    npostsmooth_(1),
     coffset_(0), fprolongation_(0), mporder_(-1), nmpcoeff_(0), mpo_(3), autompo_(false),
     nodipole_(false), nb_rank_(0) {
   std::cout << std::scientific << std::setprecision(15);
@@ -559,8 +561,13 @@ void MultigridDriver::SetupCoefficients() {
         int oj = (static_cast<int>(loc.lx2) & 1) + ngh;
         int ok = (static_cast<int>(loc.lx3) & 1) + ngh;
         MGOctet &coct = octets_[l-1][oid];
-        for (int v = 0; v < ncoeff_; ++v)
-          coct.coeff(v, ok, oj, oi) = RestrictOne(foct.coeff, v, ngh, ngh, ngh);
+        if (ncoeff_ == linearSolver::NCOEFF) {
+          RestrictLinearCoefficientsCell(coct.coeff, foct.coeff, ok, oj, oi, ngh, ngh,
+                                         ngh);
+        } else {
+          for (int v = 0; v < ncoeff_; ++v)
+            coct.coeff(v, ok, oj, oi) = RestrictOne(foct.coeff, v, ngh, ngh, ngh);
+        }
         for (int v = 0; v < nvar_; ++v) {
           coct.u(v, ok, oj, oi) = RestrictOne(foct.u, v, ngh, ngh, ngh);
           coct.src(v, ok, oj, oi) = RestrictOne(foct.src, v, ngh, ngh, ngh);
@@ -574,9 +581,14 @@ void MultigridDriver::SetupCoefficients() {
       int lx1 = static_cast<int>(loc.lx1) + mgroot_->ngh_;
       int lx2 = static_cast<int>(loc.lx2) + mgroot_->ngh_;
       int lx3 = static_cast<int>(loc.lx3) + mgroot_->ngh_;
-      for (int v = 0; v < ncoeff_; ++v)
-        mgroot_->coeff_[mgroot_->nlevel_-1](v, lx3, lx2, lx1)
-          = RestrictOne(oct.coeff, v, ngh, ngh, ngh);
+      if (ncoeff_ == linearSolver::NCOEFF) {
+        RestrictLinearCoefficientsCell(mgroot_->coeff_[mgroot_->nlevel_-1], oct.coeff,
+                                       lx3, lx2, lx1, ngh, ngh, ngh);
+      } else {
+        for (int v = 0; v < ncoeff_; ++v)
+          mgroot_->coeff_[mgroot_->nlevel_-1](v, lx3, lx2, lx1)
+            = RestrictOne(oct.coeff, v, ngh, ngh, ngh);
+      }
       for (int v = 0; v < nvar_; ++v) {
         mgroot_->u_[mgroot_->nlevel_-1](v, lx3, lx2, lx1)
           = RestrictOne(oct.u, v, ngh, ngh, ngh);
@@ -891,7 +903,10 @@ void MultigridDriver::FMGProlongate() {
 //! \brief prolongation and smoothing one level
 
 void MultigridDriver::OneStepToFiner(int nsmooth) {
-  // std::cout << "In OneStepToFiner: current_level " << current_level_ << std::endl;
+  if (fshowdef_ && Globals::my_rank == 0) {
+    std::cout << "[MG trace] enter finer level=" << current_level_
+              << " nsmooth=" << nsmooth << std::endl;
+  }
   int ngh=mgroot_->ngh_;
   int flag=0;
   if (current_level_ == nrootlevel_ + nreflevel_ - 1) {
@@ -933,6 +948,10 @@ void MultigridDriver::OneStepToFiner(int nsmooth) {
     }
   }
 
+  if (fshowdef_ && Globals::my_rank == 0) {
+    std::cout << "[MG trace] leave finer level=" << current_level_ << std::endl;
+  }
+
   return;
 }
 
@@ -942,11 +961,22 @@ void MultigridDriver::OneStepToFiner(int nsmooth) {
 //! \brief smoothing and restriction one level
 
 void MultigridDriver::OneStepToCoarser(int nsmooth) {
-  // std::cout << "In OneStepToCoarser: current_level " << current_level_ << std::endl;
+  if (fshowdef_ && Globals::my_rank == 0) {
+    std::cout << "[MG trace] enter coarser level=" << current_level_
+              << " nsmooth=" << nsmooth << std::endl;
+  }
   int ngh=mgroot_->ngh_;
   if (current_level_ >= nrootlevel_ + nreflevel_) { // MeshBlocks
+    if (fshowdef_ && Globals::my_rank == 0) {
+      std::cout << "[MG trace] meshblock coarsen tasklist start level="
+                << current_level_ << std::endl;
+    }
     mgtlist_->SetMGTaskListToCoarser(nsmooth, ngh);
     mgtlist_->DoTaskListOneStage(this);
+    if (fshowdef_ && Globals::my_rank == 0) {
+      std::cout << "[MG trace] meshblock coarsen tasklist done level="
+                << current_level_ << std::endl;
+    }
     if (current_level_ == nrootlevel_ + nreflevel_) {
       TransferFromBlocksToRoot(false);
       if (!ffas_) {
@@ -994,6 +1024,10 @@ void MultigridDriver::OneStepToCoarser(int nsmooth) {
 
   current_level_--;
 
+  if (fshowdef_ && Globals::my_rank == 0) {
+    std::cout << "[MG trace] leave coarser level=" << current_level_ << std::endl;
+  }
+
   return;
 }
 
@@ -1004,12 +1038,31 @@ void MultigridDriver::OneStepToCoarser(int nsmooth) {
 
 void MultigridDriver::SolveVCycle(int npresmooth, int npostsmooth) {
   int startlevel=current_level_;
+  if (fshowdef_ && Globals::my_rank == 0) {
+    std::cout << "[MG trace] start V-cycle startlevel=" << startlevel
+              << " npresmooth=" << npresmooth
+              << " npostsmooth=" << npostsmooth << std::endl;
+  }
   coffset_ ^= 1;
+  if (smoothing_only_ && startlevel >= nrootlevel_ + nreflevel_) {
+    const int ngh = mgroot_->ngh_;
+    mgtlist_->SetMGTaskListSmoothOnly(npresmooth + npostsmooth);
+    mgtlist_->DoTaskListOneStage(this);
+    return;
+  }
   while (current_level_ > 0)
     OneStepToCoarser(npresmooth);
+  if (fshowdef_ && Globals::my_rank == 0) {
+    std::cout << "[MG trace] reached coarsest current_level=" << current_level_
+              << std::endl;
+  }
   SolveCoarsestGrid();
   while (current_level_ < startlevel) {
     OneStepToFiner(npostsmooth);
+  }
+  if (fshowdef_ && Globals::my_rank == 0) {
+    std::cout << "[MG trace] finish V-cycle current_level=" << current_level_
+              << std::endl;
   }
   return;
 }
@@ -1118,7 +1171,10 @@ void MultigridDriver::SolveIterativeFixedTimes() {
     Real def = 0.0;
     for (int v = 0; v < nvar_; ++v)
       def += CalculateDefectNorm(MGNormType::l2, v);
-    // std::cout << "Multigrid defect after post smooth : " << def << std::endl;
+    if (fshowdef_ && Globals::my_rank == 0) {
+      std::cout << "Multigrid fixed-iter residual after V-cycle " << (n + 1)
+                << " : " << def << std::endl;
+    }
 
     if (matrixmode_ == 1)
       CalculateMatrixAll();
@@ -1128,10 +1184,9 @@ void MultigridDriver::SolveIterativeFixedTimes() {
   Real def = 0.0;
   for (int v = 0; v < nvar_; ++v)
     def += CalculateDefectNorm(MGNormType::l2, v);
-  // if (fshowdef_ && Globals::my_rank == 0)
-  // if (Globals::my_rank == 0)
-  // std::cout << "Multigrid defect L2-norm : " << def << std::endl;
-  // std::cout << "End of SolveIterativeFixedTimes" << std::endl;
+  if (fshowdef_ && Globals::my_rank == 0) {
+    std::cout << "Multigrid fixed-iter final defect L2-norm : " << def << std::endl;
+  }
 
   return;
 }
