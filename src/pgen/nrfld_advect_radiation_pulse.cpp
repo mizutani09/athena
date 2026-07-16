@@ -282,9 +282,9 @@ void AddRadiativeForceAndWork(MeshBlock *pmb, const Real time, const Real dt,
   }
 
 #if NRMGFLD_ENABLED
-  // HLLC-FLD includes div(P_rad) in momentum and P_rad:v in the split
-  // gas/radiation energy fluxes.  The legacy centered pressure force,
-  // P:nabla-v source, and its gas work below would double count those terms.
+  // HLLC-FLD includes div(P_rad) in momentum.  This test uses the
+  // well-balanced enthalpy-flux mode with implicit_pnablav=false, so the
+  // legacy centered force and work below would double count those terms.
   // Keep only the separately derived mixed-frame O(v/c) exchange above.
   return;
 #endif
@@ -435,7 +435,8 @@ void Mesh::InitUserMeshData(ParameterInput *pin) {
   if (pin->GetBoolean("fld", "implicit_pnablav")) {
     std::stringstream msg;
     msg << "### FATAL ERROR in Mesh::InitUserMeshData" << std::endl
-        << "This test requires fld/implicit_pnablav=false.";
+        << "This test requires fld/implicit_pnablav=false for its "
+        << "well-balanced radiation-enthalpy flux.";
     ATHENA_ERROR(msg);
   }
   if (!pin->GetBoolean("fld", "include_mixed_frame_terms")

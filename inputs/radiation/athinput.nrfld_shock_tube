@@ -99,6 +99,7 @@ is_couple       = true
 only_rad        = false
 cut_diff        = false
 cut_Pnablav     = false
+implicit_pnablav = true  # paired gas/radiation work used by HLLC-FLD
 
 <problem>
 dir             = 1

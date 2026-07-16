@@ -533,13 +533,29 @@ void NRFLD::CalculateCoefficients(const AthenaArray<Real> &u_rad_old,
         diff_term += derivetive(NewtonRaphsonFLD::dFr_dEr_zp,k,j,i)*(u_rad_new(k+1,j,i) - u_rad_new(k,j,i));
         diff_term *= idx2;
 
-        derivetive(NewtonRaphsonFLD::Fg,k,j,i) = (u_gas_new(k,j,i) - u_gas_old(k,j,i))
-            + dt * (src_term + mixed_term);
+        // HLLC-FLD leaves P_rad.v in the gas-energy face flux and advects
+        // radiation with E_rad.v.  The paired work terms below therefore
+        // complete the product rule:
+        //   -div(P.v) + P:grad(v) = -v.grad(P)  (gas),
+        //   div(E.v) + P:grad(v)                 (radiation).
+        if (pfld->implicit_pnablav) {
+          derivetive(NewtonRaphsonFLD::Fg,k,j,i) =
+              (u_gas_new(k,j,i) - u_gas_old(k,j,i))
+              + dt * (src_term - Pnablav + mixed_term);
+        } else {
+          // Preserve the original well-balanced arithmetic when pressure work
+          // is carried entirely by the radiation-enthalpy face flux.
+          derivetive(NewtonRaphsonFLD::Fg,k,j,i) =
+              (u_gas_new(k,j,i) - u_gas_old(k,j,i))
+              + dt * (src_term + mixed_term);
+        }
         derivetive(NewtonRaphsonFLD::Fr,k,j,i) = (u_rad_new(k,j,i) - u_rad_old(k,j,i))
             - dt *(src_term - Pnablav + diff_term + mixed_term);
 
         derivetive(NewtonRaphsonFLD::dFg_deg,k,j,i) = 1.0 + 4.0*dt*c_sigma_p*pfld->a_r*std::pow(T_gas_new,3)*def_coeff(NewtonRaphsonFLD::DCOUPLE,k,j,i);
-        derivetive(NewtonRaphsonFLD::dFg_dEr,k,j,i) = -dt*c_sigma_p;
+        derivetive(NewtonRaphsonFLD::dFg_dEr,k,j,i) = pfld->implicit_pnablav
+            ? -dt*(c_sigma_p + def_coeff(NewtonRaphsonFLD::DDV,k,j,i))
+            : -dt*c_sigma_p;
         derivetive(NewtonRaphsonFLD::dFr_deg,k,j,i) = -4.0*dt*c_sigma_p*pfld->a_r*std::pow(T_gas_new,3)*def_coeff(NewtonRaphsonFLD::DCOUPLE,k,j,i);
         derivetive(NewtonRaphsonFLD::dFr_dEr,k,j,i) = 1.0 + dt*(c_sigma_p + def_coeff(NewtonRaphsonFLD::DDV,k,j,i) + idx2*sum_dcp);
 
@@ -666,8 +682,14 @@ void NRFLD::CalculateDefect(AthenaArray<Real> &def, const AthenaArray<Real> &u,
         diff_term += -coeff(linearSolver::DZPF,k,j,i)*(u(k+1,j,i) - u(k,j,i));
         diff_term *= idx2;
 
-        Real Fg = (u_gas(k,j,i) - pfld->u_gas(k,j,i))
-            + dt * (src_term + mixed_term);
+        Real Fg;
+        if (pfld->implicit_pnablav) {
+          Fg = (u_gas(k,j,i) - pfld->u_gas(k,j,i))
+              + dt * (src_term - Pnablav + mixed_term);
+        } else {
+          Fg = (u_gas(k,j,i) - pfld->u_gas(k,j,i))
+              + dt * (src_term + mixed_term);
+        }
         Real Fr = (u(k,j,i)     - u_old(k,j,i))
             - dt*(src_term - Pnablav + diff_term + mixed_term);
         Real unsteady = u(k,j,i) - u_old(k,j,i);

@@ -30,7 +30,9 @@ void Hydro::RiemannSolver(const int k, const int j, const int il, const int iu,
   // Some NR-FLD test problems intentionally remove radiation pressure from the
   // hyperbolic subsystem.  In that case this solver must reduce to the
   // ordinary gas HLLC solver, with E_rad advected as a passive quantity.
-  const bool couple_rad_pressure = !(pfld->only_rad || pfld->cut_Pnablav);
+  // Momentum coupling is independent of the P:grad(v) energy-work switch.
+  // cut_Pnablav must never remove the radiation force from the momentum flux.
+  const bool couple_rad_pressure = pfld->is_couple && !pfld->only_rad;
   AthenaArray<Real> &radl = pfld->rad_face_l[dir];
   AthenaArray<Real> &radr = pfld->rad_face_r[dir];
   AthenaArray<Real> &radflux = pfld->u_rad_flux[dir];
@@ -172,12 +174,21 @@ void Hydro::RiemannSolver(const int k, const int j, const int il, const int iu,
     flxi[IEN] = sl*fl[IEN] + sr*fr[IEN] + sm*cp*am;
     const Real vf = sl*wli[IVX] + sr*wri[IVX] + sm*am;
 
-    // Split the total-energy flux back into the separately evolved radiation
-    // and gas-energy variables.  Use the contact-wave upwind radiation state.
+    // Split the total-energy flux into gas and radiation parts.  E_rad obeys
+    // the advective part dE/dt + div(E v)=0 here; P_rad:grad(v) is applied with
+    // opposite signs to gas and radiation in the NR solve.  Applying the same
+    // HLLC weights as the density flux gives the Rankine-Hugoniot-consistent
+    // radiation star state across either outer wave.  The remainder retains
+    // P_rad.v in the gas-energy face flux, which combines with +P:grad(v) in
+    // the gas update to give the physical -v.grad(P_rad) work.
     Real fer;
     if (!couple_rad_pressure) {
-      fer = (vf >= 0.0 ? erl : err)*vf;
+      fer = sl*erl*vlbm + sr*err*vrbp;
+    } else if (pfld->implicit_pnablav) {
+      fer = sl*erl*vlbm + sr*err*vrbp;
     } else if (am >= 0.0) {
+      // The well-balanced static/advection mode places radiation enthalpy in
+      // the radiation flux and omits the separate P:grad(v) NR work.
       fer = (erl+pnnl)*am + pnt1l*wli[IVY] + pnt2l*wli[IVZ];
     } else {
       fer = (err+pnnr)*am + pnt1r*wri[IVY] + pnt2r*wri[IVZ];

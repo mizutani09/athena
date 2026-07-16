@@ -465,7 +465,9 @@ void Mesh::InitUserMeshData(ParameterInput *pin) {
   }
   Real pres_unit = egas_unit;
   // Rgas in cgs
-  Rgas = 8.31451e+7; // erg/(mol*K)
+  // Keep this identical to FLD2 so that E_rad=a_r*T_gas^4 is an exact
+  // equilibrium of the stiff matter-radiation coupling solve.
+  Rgas = 8.3144621e+7; // erg/(mol*K)
   mu = pin->GetReal("hydro", "mu");
   T_unit = pres_unit/rho_unit*mu/Rgas;
   a_r_dim = 7.5657e-15; // radiation constant in erg cm^-3 K^-4
