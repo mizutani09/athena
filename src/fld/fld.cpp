@@ -137,11 +137,32 @@ FLD2::FLD2(MeshBlock *pmb, ParameterInput *pin) :
   pmb->pbval->bvars_main_int.push_back(&u_rad_fldbvar); // for main integration
 
   // Allocate memory for scratch arrays
+  Mesh *pm = pmy_block->pmy_mesh;
   u_radl_.NewAthenaArray(pmb->ncells1);
   u_radr_.NewAthenaArray(pmb->ncells1);
   u_radlb_.NewAthenaArray(pmb->ncells1);
+  rad_state_cc_.NewAthenaArray(RadFLD2::NRAD_FACE_STATE,
+                               pmb->ncells3, pmb->ncells2, pmb->ncells1);
+  rad_statel_.NewAthenaArray(RadFLD2::NRAD_FACE_STATE, pmb->ncells1);
+  rad_stater_.NewAthenaArray(RadFLD2::NRAD_FACE_STATE, pmb->ncells1);
+  rad_statelb_.NewAthenaArray(RadFLD2::NRAD_FACE_STATE, pmb->ncells1);
+  rad_face_l[X1DIR].NewAthenaArray(RadFLD2::NRAD_FACE_STATE,
+                                   pmb->ncells3, pmb->ncells2, pmb->ncells1+1);
+  rad_face_r[X1DIR].NewAthenaArray(RadFLD2::NRAD_FACE_STATE,
+                                   pmb->ncells3, pmb->ncells2, pmb->ncells1+1);
+  if (pm->f2) {
+    rad_face_l[X2DIR].NewAthenaArray(RadFLD2::NRAD_FACE_STATE,
+                                     pmb->ncells3, pmb->ncells2+1, pmb->ncells1);
+    rad_face_r[X2DIR].NewAthenaArray(RadFLD2::NRAD_FACE_STATE,
+                                     pmb->ncells3, pmb->ncells2+1, pmb->ncells1);
+  }
+  if (pm->f3) {
+    rad_face_l[X3DIR].NewAthenaArray(RadFLD2::NRAD_FACE_STATE,
+                                     pmb->ncells3+1, pmb->ncells2, pmb->ncells1);
+    rad_face_r[X3DIR].NewAthenaArray(RadFLD2::NRAD_FACE_STATE,
+                                     pmb->ncells3+1, pmb->ncells2, pmb->ncells1);
+  }
   x1face_area_.NewAthenaArray(pmb->ncells1+1);
-  Mesh *pm = pmy_block->pmy_mesh;
   if (pm->f2) {
     x2face_area_.NewAthenaArray(pmb->ncells1);
     x2face_area_p1_.NewAthenaArray(pmb->ncells1);

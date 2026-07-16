@@ -390,6 +390,18 @@ if args['flux'] == 'default':
     else:
         args['flux'] = 'hllc'
 
+# NR-FLD evolves radiation pressure as part of the hyperbolic gas+radiation
+# subsystem.  Use its dedicated hydro Riemann solver without changing the
+# standard HLLC implementation used by non-FLD configurations.
+if args['nrmgfld']:
+    if args['b']:
+        raise SystemExit('### CONFIGURE ERROR: HLLC-FLD does not support MHD')
+    if args['eos'] == 'isothermal':
+        raise SystemExit('### CONFIGURE ERROR: HLLC-FLD requires an energy equation')
+    if args['s'] or args['g']:
+        raise SystemExit('### CONFIGURE ERROR: HLLC-FLD is Newtonian only')
+    args['flux'] = 'hllc_fld'
+
 # Check Riemann solver compatibility
 if args['flux'] == 'hllc' and args['eos'] == 'isothermal':
     raise SystemExit('### CONFIGURE ERROR: HLLC flux cannot be used with isothermal EOS')
@@ -429,7 +441,7 @@ if args['eos'][:8] == 'general/':
     if args['s'] or args['g']:
         raise SystemExit('### CONFIGURE ERROR: '
                          + 'General EOS is incompatible with relativity')
-    if args['flux'] not in ['hllc', 'hlld']:
+    if args['flux'] not in ['hllc', 'hllc_fld', 'hlld']:
         raise SystemExit('### CONFIGURE ERROR: '
                          + 'General EOS is incompatible with flux ' + args['flux'])
 

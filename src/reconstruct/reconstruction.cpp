@@ -233,6 +233,8 @@ Reconstruction::Reconstruction(MeshBlock *pmb, ParameterInput *pin) :
   int nsize = std::max(NWAVE, NSCALARS);
   if(CR_ENABLED)
     nsize = std::max(nsize,5);
+  if (NRMGFLD_ENABLED)
+    nsize = std::max(nsize, 13);  // Erad, Eddington tensor, and total pressures
 
 
   scr1_ni_.NewAthenaArray(nsize, nc1);

@@ -21,6 +21,7 @@
 #include "../eos/eos.hpp"
 #include "../field/field.hpp"
 #include "../field/field_diffusion/field_diffusion.hpp"
+#include "../fld/fld.hpp"
 #include "../mesh/mesh.hpp"
 #include "../nr_radiation/implicit/radiation_implicit.hpp"
 #include "../nr_radiation/radiation.hpp"
@@ -112,9 +113,15 @@ void Hydro::NewBlockTimeStep() {
               dt3(i) /= (speed);
             } else {
               Real cs = pmb->peos->SoundSpeed(wi);
-              Real speed1 = std::max(cspeed, (std::abs(wi[IVX]) + cs));
-              Real speed2 = std::max(cspeed, (std::abs(wi[IVY]) + cs));
-              Real speed3 = std::max(cspeed, (std::abs(wi[IVZ]) + cs));
+              Real cs1 = cs, cs2 = cs, cs3 = cs;
+#if NRMGFLD_ENABLED
+              cs1 = std::sqrt(SQR(cs) + pmb->prfld2->RadiationSoundSpeedSquared(k,j,i,X1DIR));
+              cs2 = std::sqrt(SQR(cs) + pmb->prfld2->RadiationSoundSpeedSquared(k,j,i,X2DIR));
+              cs3 = std::sqrt(SQR(cs) + pmb->prfld2->RadiationSoundSpeedSquared(k,j,i,X3DIR));
+#endif
+              Real speed1 = std::max(cspeed, (std::abs(wi[IVX]) + cs1));
+              Real speed2 = std::max(cspeed, (std::abs(wi[IVY]) + cs2));
+              Real speed3 = std::max(cspeed, (std::abs(wi[IVZ]) + cs3));
               dt1(i) /= (speed1);
               dt2(i) /= (speed2);
               dt3(i) /= (speed3);

@@ -783,6 +783,11 @@ void AddRadiativeForceAndWork(MeshBlock *pmb, const Real time, const Real dt,
   const AthenaArray<Real> &prim, const AthenaArray<Real> &prim_scalar,
   const AthenaArray<Real> &bcc, AthenaArray<Real> &cons,
   AthenaArray<Real> &cons_scalar) {
+#if NRMGFLD_ENABLED
+  (void)pmb; (void)time; (void)dt; (void)prim; (void)prim_scalar;
+  (void)bcc; (void)cons; (void)cons_scalar;
+  return;
+#endif
 
   // if ((pmb->iuser_meshblock_data[TSTEP_COUNTER](0) + 1) % rk_cycle == 0) {
     int il = pmb->is, iu = pmb->ie;

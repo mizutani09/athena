@@ -18,6 +18,7 @@
 #include "../eos/eos.hpp"   // reapply floors to face-centered reconstructed states
 #include "../field/field.hpp"
 #include "../field/field_diffusion/field_diffusion.hpp"
+#include "../fld/fld.hpp"
 #include "../gravity/gravity.hpp"
 #include "../reconstruct/reconstruction.hpp"
 #include "../scalars/scalars.hpp"
@@ -36,6 +37,12 @@
 void Hydro::CalculateFluxes(AthenaArray<Real> &w, FaceField &b,
                             AthenaArray<Real> &bcc, const int order) {
   MeshBlock *pmb = pmy_block;
+#if NRMGFLD_ENABLED
+  // HLLC-FLD uses the same spatial order as Hydro for E_rad and P_rad.
+  // Refresh density-dependent opacities before constructing the limiter.
+  pmb->prfld2->UpdateOpacity(pmb, pmb->prfld2->u_rad, w);
+  pmb->prfld2->CalculateRadiationFaceStates(order);
+#endif
   int is = pmb->is; int js = pmb->js; int ks = pmb->ks;
   int ie = pmb->ie; int je = pmb->je; int ke = pmb->ke;
   int il, iu, jl, ju, kl, ku;

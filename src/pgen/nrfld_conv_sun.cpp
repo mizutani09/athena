@@ -1413,6 +1413,7 @@ void AddRadiativeForceAndWork(MeshBlock *pmb, const Real time, const Real dt,
     FLD2 *prfld = pmb->prfld2;
     AthenaArray<Real> &fld_u = prfld->u_rad;
 
+#if !NRMGFLD_ENABLED
     for (int k = kl; k <= ku; ++k) {
       for (int j = jl; j <= ju; ++j) {
         for (int i = il; i <= iu; ++i) {
@@ -1435,6 +1436,9 @@ void AddRadiativeForceAndWork(MeshBlock *pmb, const Real time, const Real dt,
         }
       }
     }
+
+    // HLLC-FLD supplies the radiation-stress momentum and energy fluxes.
+#endif
 
     // for gravity
     for (int k=pmb->ks; k<=pmb->ke; ++k) {

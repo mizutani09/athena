@@ -39,6 +39,10 @@ namespace RadFLD2 {
   constexpr int NOPACITY=2;
 //   enum VarIndex {GAS=0, RAD=1};
   enum OpacityIndex {SIGMA_P=0, SIGMA_R=1};
+  constexpr int NRAD_FACE_STATE = 13;
+  enum RadiationFaceIndex {ERAD=0, P11=1, P12=2, P13=3,
+                           P21=4, P22=5, P23=6, P31=7, P32=8, P33=9,
+                           PTOT1=10, PTOT2=11, PTOT3=12};
 }
 
 class FLD2 {
@@ -52,6 +56,10 @@ class FLD2 {
   AthenaArray<Real> u_rad, u_rad1, u_rad2;  // (no more than MAX_NREGISTER allowed)
   AthenaArray<Real> u_rad0, u_rad_fl_div;  // rkl2 STS memory registers;
   AthenaArray<Real> u_rad_flux[3];  // face-averaged flux vector
+  // Reconstructed radiation energy and pressure tensor on hydro faces.  The
+  // first index is RadFLD2::RadiationFaceIndex.  HLLC-FLD consumes exactly
+  // these states, so radiation and gas use the same reconstruction order.
+  AthenaArray<Real> rad_face_l[3], rad_face_r[3];
   AthenaArray<Real> coarse_u_rad;
   int refinement_idx{-1}; // for r
 
@@ -88,6 +96,8 @@ class FLD2 {
   // for advection of radiation energy
   CellCenteredBoundaryVariable u_rad_fldbvar;
   void CalculateFluxes(AthenaArray<Real> &u, const int order);
+  void CalculateRadiationFaceStates(const int order);
+  Real RadiationSoundSpeedSquared(int k, int j, int i, int dir) const;
   void AddFluxDivergence(const Real wght, AthenaArray<Real> &u_out);
 
   // Function in problem generators to update opacity
@@ -109,6 +119,7 @@ class FLD2 {
   // scratch space used to compute fluxes
   // 2D scratch arrays
   AthenaArray<Real> u_radl_, u_radr_, u_radlb_;
+  AthenaArray<Real> rad_state_cc_, rad_statel_, rad_stater_, rad_statelb_;
   // 1D scratch arrays
   AthenaArray<Real> x1face_area_, x2face_area_, x3face_area_;
   AthenaArray<Real> x2face_area_p1_, x3face_area_p1_;

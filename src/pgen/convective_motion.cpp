@@ -690,6 +690,10 @@ void AddRadiativeForceAndWork(MeshBlock *pmb, const Real time, const Real dt,
     FLD2 *prfld = pmb->prfld2;
     AthenaArray<Real> &fld_u = prfld->u_rad;
 
+#if !NRMGFLD_ENABLED
+    // With NR-FLD the radiation pressure force and work are already included
+    // in the coupled HLLC-FLD face fluxes.  Retaining this cell-centred source
+    // would apply the same momentum and energy exchange twice.
     for (int k = kl; k <= ku; ++k) {
       for (int j = jl; j <= ju; ++j) {
         for (int i = il; i <= iu; ++i) {
@@ -712,6 +716,7 @@ void AddRadiativeForceAndWork(MeshBlock *pmb, const Real time, const Real dt,
         }
       }
     }
+#endif
 
     // for gravity
     for (int k=pmb->ks; k<=pmb->ke; ++k) {

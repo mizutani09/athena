@@ -40,6 +40,13 @@
 //!   approximations (flux_fc in calculate_fluxes.cpp is currently not saved persistently
 //!   in Hydro class but each flux dir is temp. stored in 4D scratch array scr1_nkji_)
 void FLD2::CalculateFluxes(AthenaArray<Real> &u_rad, const int order) {
+#if NRMGFLD_ENABLED
+  // HLLC-FLD has already written u_rad_flux from the same Riemann solution
+  // used for the Hydro flux.  Recomputing it here would break conservation.
+  (void)u_rad;
+  (void)order;
+  return;
+#endif
   MeshBlock *pmb = pmy_block;
   Hydro &hyd = *(pmb->phydro);
 

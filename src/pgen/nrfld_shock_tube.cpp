@@ -717,6 +717,11 @@ void AddRadiativeForceAndWork(MeshBlock *pmb, const Real time, const Real dt,
   const AthenaArray<Real> &prim, const AthenaArray<Real> &prim_scalar,
   const AthenaArray<Real> &bcc, AthenaArray<Real> &cons,
   AthenaArray<Real> &cons_scalar) {
+#if NRMGFLD_ENABLED
+  (void)pmb; (void)time; (void)dt; (void)prim; (void)prim_scalar;
+  (void)bcc; (void)cons; (void)cons_scalar;
+  return;
+#endif
   Real gamma = pmb->peos->GetGamma();
   Real gm1 = gamma - 1.0;
   Real igm1 = 1.0 / gm1;
