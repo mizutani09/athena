@@ -27,6 +27,10 @@ void Hydro::RiemannSolver(const int k, const int j, const int il, const int iu,
   const int ivy = IVX + t1dir;
   const int ivz = IVX + t2dir;
   FLD2 *pfld = pmy_block->prfld2;
+  // Some NR-FLD test problems intentionally remove radiation pressure from the
+  // hyperbolic subsystem.  In that case this solver must reduce to the
+  // ordinary gas HLLC solver, with E_rad advected as a passive quantity.
+  const bool couple_rad_pressure = !(pfld->only_rad || pfld->cut_Pnablav);
   AthenaArray<Real> &radl = pfld->rad_face_l[dir];
   AthenaArray<Real> &radr = pfld->rad_face_r[dir];
   AthenaArray<Real> &radflux = pfld->u_rad_flux[dir];
@@ -57,14 +61,18 @@ void Hydro::RiemannSolver(const int k, const int j, const int il, const int iu,
     const int pnn_idx = 1 + 3*dir + dir;
     const int pnt1_idx = 1 + 3*dir + t1dir;
     const int pnt2_idx = 1 + 3*dir + t2dir;
-    const Real pnnl = std::max(radl(pnn_idx,k,j,i), 0.0);
-    const Real pnnr = std::max(radr(pnn_idx,k,j,i), 0.0);
-    const Real pnt1l = radl(pnt1_idx,k,j,i);
-    const Real pnt1r = radr(pnt1_idx,k,j,i);
-    const Real pnt2l = radl(pnt2_idx,k,j,i);
-    const Real pnt2r = radr(pnt2_idx,k,j,i);
-    const Real ptl = std::max(radl(RadFLD2::PTOT1 + dir,k,j,i), TINY_NUMBER);
-    const Real ptr = std::max(radr(RadFLD2::PTOT1 + dir,k,j,i), TINY_NUMBER);
+    const Real pnnl = couple_rad_pressure
+        ? std::max(radl(pnn_idx,k,j,i), 0.0) : 0.0;
+    const Real pnnr = couple_rad_pressure
+        ? std::max(radr(pnn_idx,k,j,i), 0.0) : 0.0;
+    const Real pnt1l = couple_rad_pressure ? radl(pnt1_idx,k,j,i) : 0.0;
+    const Real pnt1r = couple_rad_pressure ? radr(pnt1_idx,k,j,i) : 0.0;
+    const Real pnt2l = couple_rad_pressure ? radl(pnt2_idx,k,j,i) : 0.0;
+    const Real pnt2r = couple_rad_pressure ? radr(pnt2_idx,k,j,i) : 0.0;
+    const Real ptl = couple_rad_pressure
+        ? std::max(radl(RadFLD2::PTOT1 + dir,k,j,i), TINY_NUMBER) : wli[IPR];
+    const Real ptr = couple_rad_pressure
+        ? std::max(radr(RadFLD2::PTOT1 + dir,k,j,i), TINY_NUMBER) : wri[IPR];
 
     Real elgas, ergas;
     if (GENERAL_EOS) {
@@ -78,8 +86,8 @@ void Hydro::RiemannSolver(const int k, const int j, const int il, const int iu,
         *(SQR(wli[IVX]) + SQR(wli[IVY]) + SQR(wli[IVZ]));
     const Real ker = 0.5*wri[IDN]
         *(SQR(wri[IVX]) + SQR(wri[IVY]) + SQR(wri[IVZ]));
-    const Real etotl = elgas + kel + erl;
-    const Real etotr = ergas + ker + err;
+    const Real etotl = elgas + kel + (couple_rad_pressure ? erl : 0.0);
+    const Real etotr = ergas + ker + (couple_rad_pressure ? err : 0.0);
 
     // Freeze the FLD closure during this Riemann solve.  Linearizing
     // dP_nn=f_nn dE and dE/dt+(E+P_nn) div(v)=0 gives the radiation
@@ -162,23 +170,26 @@ void Hydro::RiemannSolver(const int k, const int j, const int il, const int iu,
     flxi[IVY] = sl*fl[IVY] + sr*fr[IVY];
     flxi[IVZ] = sl*fl[IVZ] + sr*fr[IVZ];
     flxi[IEN] = sl*fl[IEN] + sr*fr[IEN] + sm*cp*am;
+    const Real vf = sl*wli[IVX] + sr*wri[IVX] + sm*am;
 
     // Split the total-energy flux back into the separately evolved radiation
     // and gas-energy variables.  Use the contact-wave upwind radiation state.
     Real fer;
-    if (am >= 0.0) {
+    if (!couple_rad_pressure) {
+      fer = (vf >= 0.0 ? erl : err)*vf;
+    } else if (am >= 0.0) {
       fer = (erl+pnnl)*am + pnt1l*wli[IVY] + pnt2l*wli[IVZ];
     } else {
       fer = (err+pnnr)*am + pnt1r*wri[IVY] + pnt2r*wri[IVZ];
     }
     radflux(k,j,i) = fer;
-    flxi[IEN] -= fer;
+    if (couple_rad_pressure) flxi[IEN] -= fer;
 
     flx(IDN,k,j,i) = flxi[IDN];
     flx(ivx,k,j,i) = flxi[IVX];
     flx(ivy,k,j,i) = flxi[IVY];
     flx(ivz,k,j,i) = flxi[IVZ];
     flx(IEN,k,j,i) = flxi[IEN];
-    pmy_block->phydro->vf[dir](k,j,i) = am;
+    pmy_block->phydro->vf[dir](k,j,i) = couple_rad_pressure ? am : vf;
   }
 }
