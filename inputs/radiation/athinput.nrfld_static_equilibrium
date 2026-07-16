@@ -1,17 +1,13 @@
 <comment>
-problem    = Advecting radiation pulse for NR-FLD
-reference  = Zhang et al. 2011 section 6.7; Krumholz et al. 2007
+problem    = Two-dimensional static gas+radiation pressure equilibrium
+reference  = Zhang et al. 2011 section 6.8
 configure  = --prob=nrfld_advect_radiation_pulse --eos=adiabatic -nrmgfld -hdf5 -mpi
 
-# This is the single input for both 512-cell runs.
-# Static run:  problem/v0=0.0
-# Moving run:  problem/v0=1.0e6
-# High-resolution comparison: override mesh/nx1=4096 and use a separate output directory.
-# Athena++ time is in code units. Here 4.8e-5 s = 906.75278 code time units.
-# The transverse 4 x 4 cells are required by the NR-FLD meshblock implementation.
+# Physical length is one cm per code length. With the units below,
+# 1.0e-4 s = 1888.84724652487 code time units.
 
 <job>
-problem_id = nrfld_advect_pulse
+problem_id = nrfld_static_equilibrium
 
 <output1>
 file_type = hst
@@ -19,46 +15,44 @@ dcycle    = 10
 
 <output2>
 file_type = hdf5
-id        = prim_x_final
+id        = prim_final
 variable  = prim
-dt        = 906.75278
-x2_slice = 0.0
-x3_slice = 0.0
+dt        = 1888.84724652487
 
 <output3>
 file_type = hdf5
-id        = uov_x_final
+id        = uov_final
 variable  = uov
-dt        = 906.75278
-x2_slice = 0.0
-x3_slice = 0.0
+# 100 intervals over t = 1.0e-4 s, for velocity-magnitude movies.
+dt        = 18.8884724652487
 
 <time>
 cfl_number = 0.03
-# cfl_number = 0.1   # optional accuracy/stability comparison
-# cfl_number = 0.3   # optional aggressive comparison
 nlim       = 200000
-tlim       = 906.75278
+tlim       = 1888.84724652487
 integrator = rk2
 xorder     = 2
+ncycle_out = 1
 
 <mesh>
-nx1    = 512
-# nx1    = 4096       # high-resolution static comparison
+nx1    = 64
 x1min  = -512.0
 x1max  =  512.0
 ix1_bc = periodic
 ox1_bc = periodic
 
-nx2    = 4
-x2min  = -4.0
-x2max  =  4.0
+nx2    = 64
+x2min  = -512.0
+x2max  =  512.0
 ix2_bc = periodic
 ox2_bc = periodic
 
+# The NR-FLD Newton-Raphson driver currently requires all three mesh
+# dimensions to be active. Four uniform, periodic z cells represent the
+# requested 2-D (z-invariant) problem, as in the Section 6.7 input.
 nx3    = 4
-x3min  = -4.0
-x3max  =  4.0
+x3min  = -32.0
+x3max  =  32.0
 ix3_bc = periodic
 ox3_bc = periodic
 
@@ -110,25 +104,19 @@ only_rad            = false
 cut_diff            = false
 cut_Pnablav         = false
 fixed_flux_limitter = true
-
-# Mixed-frame radiation-energy advection: 1 + 0.5 = 1.5 in the optically thick
-# limit used by this test. Radiation pressure is E_rad/3 everywhere.
 include_rad_pressure_advection = true
 rad_pressure_advection_factor  = 0.5
-
-# Keep O(v/c) energy exchange explicit, with P:nabla-v excluded from the NR solve.
-include_mixed_frame_terms = true
-mixed_frame_terms_explicit = true
-implicit_pnablav = false
+include_mixed_frame_terms      = true
+mixed_frame_terms_explicit     = true
+implicit_pnablav               = false
 
 <problem>
-# Changeable problem parameters:
-T0                 = 1.0e7
-T1                 = 2.0e7
-rho0               = 1.2
-w                  = 24.0
-mu                 = 2.33
-v0                 = 0.0       # set 1.0e6 for the moving run
-opacity_mass_coeff = 100.0
-
+problem_type         = static_equilibrium_2d
+T0                   = 1.0e7
+T1                   = 2.0e7
+rho0                 = 1.2
+w                    = 24.0
+mu                   = 2.33
+v0                   = 0.0
+opacity_mass_coeff   = 1.0e20
 force_lambda_one_third = true

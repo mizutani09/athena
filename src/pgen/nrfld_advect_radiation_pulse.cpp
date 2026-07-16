@@ -15,12 +15,11 @@
  *====================================================================================*/
 //! \file nrfld_advect_radiation_pulse.cpp
 //! \brief Problem generator for the Zhang et al. (2011) Section 6.7 advecting
-//! radiation pulse test in the NR-FLD module.
+//! radiation pulse and Section 6.8 static-equilibrium tests in NR-FLD.
 
 // C++ headers
 #include <algorithm>
 #include <cmath>
-#include <fstream>
 #include <iomanip>
 #include <iostream>
 #include <limits>
@@ -45,9 +44,9 @@
 
 namespace {
 constexpr Real kRadiationConst = 7.5657e-15;   // erg cm^-3 K^-4
-constexpr Real kGasConstant = 8.31451e7;       // erg mol^-1 K^-1
-constexpr Real kLightSpeed = 2.99792458e10;    // cm s^-1
-constexpr int kPrevEradField = 0;
+// Keep this identical to FLD2::FLD2 so that E_rad=aT_gas^4 is also an
+// exact fixed point of the stiff matter-radiation coupling solve.
+constexpr Real kGasConstant = 8.3144621e7;      // erg mol^-1 K^-1
 
 Real rho_unit, egas_unit, leng_unit, time_unit, vel_unit, t_unit;
 Real mu, gamma_gas, gm1, igm1;
@@ -55,13 +54,7 @@ Real t0_phys, t1_phys, rho0_phys, width_phys, v0_phys;
 Real opacity_mass_coeff_phys;
 Real rgas_over_mu_phys, total_pressure0_phys;
 bool force_lambda_one_third;
-bool apply_explicit_rad_force;
-bool include_advective_rad_flux_force;
-bool use_half_step_erad_for_force;
-bool use_monotonic_prad_force;
-bool allow_debug_operator_cuts;
-bool debug_print_centerline;
-int debug_center_radius;
+bool static_equilibrium_2d;
 int blocks_initialized_local;
 Real diag_t_min, diag_t_max;
 Real diag_rho_min, diag_rho_max;
@@ -71,22 +64,13 @@ Real diag_ptot_min, diag_ptot_max;
 Real diag_erad_min, diag_erad_max;
 Real diag_ptot_rel_var;
 
-Real TemperatureProfile(Real x_phys) {
+Real TemperatureProfile(Real radius_phys) {
   return t0_phys + (t1_phys - t0_phys)
-      * std::exp(-0.5 * SQR(x_phys / std::max(width_phys, TINY_NUMBER)));
+      * std::exp(-0.5 * SQR(radius_phys / std::max(width_phys, TINY_NUMBER)));
 }
 
 Real RadiationEnergyPhysFromTemp(Real temperature) {
   return kRadiationConst * std::pow(temperature, 4);
-}
-
-Real MonotonicSlope(Real qm, Real q0, Real qp) {
-  const Real dl = q0 - qm;
-  const Real dr = qp - q0;
-  if (dl * dr <= 0.0) return 0.0;
-  const Real dc = 0.5 * (qp - qm);
-  const Real s = (dc >= 0.0 ? 1.0 : -1.0);
-  return s * std::min(std::abs(dc), 2.0 * std::min(std::abs(dl), std::abs(dr)));
 }
 
 Real GasPressurePhys(Real density, Real temperature) {
@@ -146,13 +130,16 @@ Real HistoryTradMax(MeshBlock *pmb, int iout) {
   return out;
 }
 
-Real HistoryVxMax(MeshBlock *pmb, int iout) {
+Real HistoryVelocityMax(MeshBlock *pmb, int iout) {
   (void)iout;
   Real out = 0.0;
   for (int k = pmb->ks; k <= pmb->ke; ++k) {
     for (int j = pmb->js; j <= pmb->je; ++j) {
       for (int i = pmb->is; i <= pmb->ie; ++i) {
-        out = std::max(out, std::abs(pmb->phydro->w(IVX, k, j, i) * vel_unit));
+        const Real vx = pmb->phydro->w(IVX, k, j, i);
+        const Real vy = pmb->phydro->w(IVY, k, j, i);
+        const Real vz = pmb->phydro->w(IVZ, k, j, i);
+        out = std::max(out, std::sqrt(SQR(vx) + SQR(vy) + SQR(vz)) * vel_unit);
       }
     }
   }
@@ -215,135 +202,6 @@ Real HistoryTransverseTgasSpread(MeshBlock *pmb, int iout) {
   return out;
 }
 
-void PrintCenterlineDebug(MeshBlock *pmb) {
-  if (!debug_print_centerline) return;
-
-  int ic = pmb->is;
-  Real xmin = std::abs(pmb->pcoord->x1v(ic));
-  for (int i = pmb->is + 1; i <= pmb->ie; ++i) {
-    const Real xabs = std::abs(pmb->pcoord->x1v(i));
-    if (xabs < xmin) {
-      xmin = xabs;
-      ic = i;
-    }
-  }
-
-  // With an even number of cells over a symmetric domain, x=0 lies on a cell face,
-  // so no MeshBlock necessarily "straddles" the origin. Instead, print diagnostics
-  // for blocks whose nearest cell center is within the requested center radius.
-  const Real dx = pmb->pcoord->dx1f(ic) * leng_unit;
-  const Real x_limit = (debug_center_radius + 0.5) * dx;
-  if (xmin * leng_unit > x_limit) return;
-
-  std::ostringstream msg;
-  msg << std::setprecision(16);
-  msg << ">>> Advect pulse centerline debug:"
-      << " rank=" << Globals::my_rank
-      << " gid=" << pmb->gid
-      << " cycle=" << pmb->pmy_mesh->ncycle
-      << " time=" << pmb->pmy_mesh->time * time_unit << " s"
-      << " dt=" << pmb->pmy_mesh->dt * time_unit << " s"
-      << std::endl;
-  msg << "    i  x[cm]  rho_mean  rho_min  rho_max  "
-      << "vx_mean[km/s]  vx_min  vx_max  "
-      << "Tg_mean[K]  Tg_min  Tg_max  "
-      << "Tr_mean[K]  ptot_mean  ptot_min  ptot_max  "
-      << "dPgas_dx  dPrad_dx"
-      << std::endl;
-
-  const int ilo = std::max(pmb->is, ic - debug_center_radius);
-  const int ihi = std::min(pmb->ie, ic + debug_center_radius);
-  for (int i = ilo; i <= ihi; ++i) {
-    Real rho_min = std::numeric_limits<Real>::max();
-    Real rho_max = -std::numeric_limits<Real>::max();
-    Real vx_min = std::numeric_limits<Real>::max();
-    Real vx_max = -std::numeric_limits<Real>::max();
-    Real tg_min = std::numeric_limits<Real>::max();
-    Real tg_max = -std::numeric_limits<Real>::max();
-    Real tr_min = std::numeric_limits<Real>::max();
-    Real tr_max = -std::numeric_limits<Real>::max();
-    Real pt_min = std::numeric_limits<Real>::max();
-    Real pt_max = -std::numeric_limits<Real>::max();
-    Real rho_sum = 0.0;
-    Real vx_sum = 0.0;
-    Real tg_sum = 0.0;
-    Real tr_sum = 0.0;
-    Real pt_sum = 0.0;
-    Real dpg_sum = 0.0;
-    Real dpr_sum = 0.0;
-    int n = 0;
-
-    for (int k = pmb->ks; k <= pmb->ke; ++k) {
-      for (int j = pmb->js; j <= pmb->je; ++j) {
-        const Real rho = pmb->phydro->w(IDN, k, j, i) * rho_unit;
-        const Real vx = pmb->phydro->w(IVX, k, j, i) * vel_unit / 1.0e5;
-        const Real egas = pmb->prfld2->u_gas(k, j, i);
-        const Real erad = pmb->prfld2->u_rad(k, j, i) * egas_unit;
-        const Real tg = TemperatureFromGasState(pmb->phydro->w(IDN, k, j, i), egas);
-        const Real tr = std::pow(std::max(erad, 0.0) / kRadiationConst, 0.25);
-        const Real pt = gm1 * egas * egas_unit + ONE_3RD * erad;
-        const int im = std::max(pmb->is, i - 1);
-        const int ip = std::min(pmb->ie, i + 1);
-        const Real dx = (pmb->pcoord->x1v(ip) - pmb->pcoord->x1v(im)) * leng_unit;
-        const Real pgas_m = gm1 * pmb->prfld2->u_gas(k, j, im) * egas_unit;
-        const Real pgas_p = gm1 * pmb->prfld2->u_gas(k, j, ip) * egas_unit;
-        const Real prad_m = ONE_3RD * pmb->prfld2->u_rad(k, j, im) * egas_unit;
-        const Real prad_p = ONE_3RD * pmb->prfld2->u_rad(k, j, ip) * egas_unit;
-        const Real dpg = (ip == im) ? 0.0 : (pgas_p - pgas_m) / dx;
-        const Real dpr = (ip == im) ? 0.0 : (prad_p - prad_m) / dx;
-        rho_min = std::min(rho_min, rho);
-        rho_max = std::max(rho_max, rho);
-        vx_min = std::min(vx_min, vx);
-        vx_max = std::max(vx_max, vx);
-        tg_min = std::min(tg_min, tg);
-        tg_max = std::max(tg_max, tg);
-        tr_min = std::min(tr_min, tr);
-        tr_max = std::max(tr_max, tr);
-        pt_min = std::min(pt_min, pt);
-        pt_max = std::max(pt_max, pt);
-        rho_sum += rho;
-        vx_sum += vx;
-        tg_sum += tg;
-        tr_sum += tr;
-        pt_sum += pt;
-        dpg_sum += dpg;
-        dpr_sum += dpr;
-        ++n;
-      }
-    }
-
-    msg << std::setw(5) << i
-        << " " << std::setw(12) << pmb->pcoord->x1v(i) * leng_unit
-        << " " << std::setw(12) << rho_sum / n
-        << " " << std::setw(12) << rho_min
-        << " " << std::setw(12) << rho_max
-        << " " << std::setw(14) << vx_sum / n
-        << " " << std::setw(10) << vx_min
-        << " " << std::setw(10) << vx_max
-        << " " << std::setw(12) << tg_sum / n
-        << " " << std::setw(12) << tg_min
-        << " " << std::setw(12) << tg_max
-        << " " << std::setw(12) << tr_sum / n
-        << " " << std::setw(12) << pt_sum / n
-        << " " << std::setw(12) << pt_min
-        << " " << std::setw(12) << pt_max
-        << " " << std::setw(12) << dpg_sum / n
-        << " " << std::setw(12) << dpr_sum / n
-        << std::endl;
-  }
-
-  std::cout << msg.str();
-
-  std::ostringstream fname;
-  fname << "centerline_debug_rank" << Globals::my_rank
-        << "_gid" << pmb->gid
-        << "_cycle" << pmb->pmy_mesh->ncycle
-        << ".dat";
-  std::ofstream ofs(fname.str());
-  ofs << msg.str();
-  ofs.close();
-}
-
 void AdvectPulseOpacity(MeshBlock *pmb, AthenaArray<Real> &u_fld, AthenaArray<Real> &prim) {
   (void)u_fld;
   FLD2 *prfld = pmb->prfld2;
@@ -387,94 +245,107 @@ void AddRadiativeForceAndWork(MeshBlock *pmb, const Real time, const Real dt,
   (void)prim_scalar;
   (void)bcc;
   (void)cons_scalar;
-  if (!apply_explicit_rad_force) return;
   FLD2 *prfld = pmb->prfld2;
   AthenaArray<Real> &erad = prfld->u_rad;
-  AthenaArray<Real> &erad_prev = pmb->ruser_meshblock_data[kPrevEradField];
   const Real idx1 = 1.0 / pmb->pcoord->dx1f(pmb->is);
+  const Real idy = (pmb->block_size.nx2 > 1
+                        ? 1.0 / pmb->pcoord->dx2f(pmb->js) : 0.0);
+  const Real idz = (pmb->block_size.nx3 > 1
+                        ? 1.0 / pmb->pcoord->dx3f(pmb->ks) : 0.0);
+
+  // The static-diffusion algorithm treats the mixed-frame v dot grad(E)
+  // exchange explicitly, alongside the force and radiation advection terms.
+  // The gas and radiation updates are equal and opposite.
+  if (prfld->include_mixed_frame_terms && prfld->mixed_frame_terms_explicit) {
+    for (int k = pmb->ks; k <= pmb->ke; ++k) {
+      for (int j = pmb->js; j <= pmb->je; ++j) {
+        for (int i = pmb->is; i <= pmb->ie; ++i) {
+          const Real grad_ex = 0.5 * idx1
+              * (erad(k, j, i + 1) - erad(k, j, i - 1));
+          const Real grad_ey = (pmb->block_size.nx2 > 1
+              ? 0.5 * idy * (erad(k, j + 1, i) - erad(k, j - 1, i)) : 0.0);
+          const Real grad_ez = (pmb->block_size.nx3 > 1
+              ? 0.5 * idz * (erad(k + 1, j, i) - erad(k - 1, j, i)) : 0.0);
+          const Real opacity_ratio = prfld->sigma_p(k, j, i)
+              / std::max(prfld->sigma_r(k, j, i), TINY_NUMBER);
+          const Real mixed_factor = ONE_3RD * (2.0 * opacity_ratio - 1.0);
+          const Real mixed_gas = mixed_factor
+              * (prim(IVX, k, j, i) * grad_ex
+                 + prim(IVY, k, j, i) * grad_ey
+                 + prim(IVZ, k, j, i) * grad_ez);
+          if (NON_BAROTROPIC_EOS) cons(IEN, k, j, i) += dt * mixed_gas;
+          erad(k, j, i) -= dt * mixed_gas;
+          erad(k, j, i) = std::max(erad(k, j, i), TINY_NUMBER);
+        }
+      }
+    }
+  }
+
+#if NRMGFLD_ENABLED
+  // HLLC-FLD includes div(P_rad) in momentum and P_rad:v in the split
+  // gas/radiation energy fluxes.  The legacy centered pressure force,
+  // P:nabla-v source, and its gas work below would double count those terms.
+  // Keep only the separately derived mixed-frame O(v/c) exchange above.
+  return;
+#endif
+
+  // P:nabla-v is an explicit radiation-energy source when the implicit NR
+  // operator is configured with fld/implicit_pnablav=false.  Applying it here
+  // keeps its velocity gradient at the same RK stage as the hydro source.
+  if (!prfld->implicit_pnablav) {
+    for (int k = pmb->ks; k <= pmb->ke; ++k) {
+      for (int j = pmb->js; j <= pmb->je; ++j) {
+        for (int i = pmb->is; i <= pmb->ie; ++i) {
+          Real div_v = 0.5 * idx1 *
+              (prim(IVX, k, j, i + 1) - prim(IVX, k, j, i - 1));
+          if (pmb->block_size.nx2 > 1) {
+            div_v += 0.5 * idy *
+                (prim(IVY, k, j + 1, i) - prim(IVY, k, j - 1, i));
+          }
+          if (pmb->block_size.nx3 > 1) {
+            div_v += 0.5 * idz *
+                (prim(IVZ, k + 1, j, i) - prim(IVZ, k - 1, j, i));
+          }
+          erad(k, j, i) -= dt * ONE_3RD * erad(k, j, i) * div_v;
+          erad(k, j, i) = std::max(erad(k, j, i), TINY_NUMBER);
+        }
+      }
+    }
+  }
 
   for (int k = pmb->ks; k <= pmb->ke; ++k) {
     for (int j = pmb->js; j <= pmb->je; ++j) {
       for (int i = pmb->is; i <= pmb->ie; ++i) {
-        Real lambda = ONE_3RD;
-        if (!prfld->fixed_flux_limitter && !force_lambda_one_third) {
-          const Real dEr_dx = 0.5 * idx1 * (erad(k, j, i + 1) - erad(k, j, i - 1));
-          Real denom = std::max(prfld->sigma_r(k, j, i) * erad(k, j, i), TINY_NUMBER);
-          Real r = std::abs(dEr_dx) / denom;
-          lambda = (2.0 + r) / (6.0 + 2.0 * r + r * r);
-        }
+        // The test fixes lambda=1/3 and uses the post-NR radiation state.
+        const Real grad_prad = ONE_3RD * 0.5 * idx1
+            * (erad(k, j, i + 1) - erad(k, j, i - 1));
+        const Real force_x = -grad_prad;
+        const Real force_y = (pmb->block_size.nx2 > 1
+            ? -ONE_3RD * 0.5 * idy
+                * (erad(k, j + 1, i) - erad(k, j - 1, i)) : 0.0);
+        const Real force_z = (pmb->block_size.nx3 > 1
+            ? -ONE_3RD * 0.5 * idz
+                * (erad(k + 1, j, i) - erad(k - 1, j, i)) : 0.0);
 
-        // With Strang splitting, the pre-hydro NR-FLD solve advances u_rad to the
-        // half step. Use that half-step state directly in the explicit force. In the
-        // legacy unsplit path, retain the midpoint estimate from old/new radiation
-        // states to reduce forward-time bias.
-        const Real erad_im2 = (use_half_step_erad_for_force
-                                   ? erad(k, j, i - 2)
-                                   : 0.5 * (erad_prev(0, k, j, i - 2)
-                                          + erad(k, j, i - 2)));
-        const Real erad_im1 = (use_half_step_erad_for_force
-                                   ? erad(k, j, i - 1)
-                                   : 0.5 * (erad_prev(0, k, j, i - 1)
-                                          + erad(k, j, i - 1)));
-        const Real erad_i   = (use_half_step_erad_for_force
-                                   ? erad(k, j, i)
-                                   : 0.5 * (erad_prev(0, k, j, i)
-                                          + erad(k, j, i)));
-        const Real erad_ip1 = (use_half_step_erad_for_force
-                                   ? erad(k, j, i + 1)
-                                   : 0.5 * (erad_prev(0, k, j, i + 1)
-                                          + erad(k, j, i + 1)));
-        const Real erad_ip2 = (use_half_step_erad_for_force
-                                   ? erad(k, j, i + 2)
-                                   : 0.5 * (erad_prev(0, k, j, i + 2)
-                                          + erad(k, j, i + 2)));
-
-        const Real prad_im1 = lambda * erad_im1;
-        const Real prad_i   = lambda * erad_i;
-        const Real prad_ip1 = lambda * erad_ip1;
-        Real grad_prad;
-        if (use_monotonic_prad_force) {
-          // Reconstruct midpoint radiation pressure to faces with a monotonic slope
-          // limiter. This better matches the hydro pressure-gradient discretization
-          // than a raw cell-centered central difference and reduces spurious motion
-          // from imperfect cancellation of gas and radiation pressure forces.
-          const Real prad_im2 = lambda * erad_im2;
-          const Real prad_ip2 = lambda * erad_ip2;
-
-          const Real slope_im1 = MonotonicSlope(prad_im2, prad_im1, prad_i);
-          const Real slope_i   = MonotonicSlope(prad_im1, prad_i, prad_ip1);
-          const Real slope_ip1 = MonotonicSlope(prad_i, prad_ip1, prad_ip2);
-
-          const Real prad_face_im = 0.5 * ((prad_im1 + 0.5 * slope_im1)
-                                         + (prad_i   - 0.5 * slope_i));
-          const Real prad_face_ip = 0.5 * ((prad_i   + 0.5 * slope_i)
-                                         + (prad_ip1 - 0.5 * slope_ip1));
-          grad_prad = (prad_face_ip - prad_face_im) * idx1;
-        } else {
-          grad_prad = 0.5 * idx1 * (prad_ip1 - prad_im1);
-        }
-        Real force_x = -grad_prad;
-        Real force_y = 0.0;
-        Real force_z = 0.0;
-        if (include_advective_rad_flux_force) {
-          // O(v/c) mixed-frame correction from the advective part of the lab-frame
-          // radiation flux, F_adv = (E + P) v = (4/3) E v for lambda = 1/3.
-          // The corresponding momentum source is (sigma_r/c) F_adv.
-          const Real erad_mid = erad_i;
-          const Real sigma_over_c = prfld->sigma_r(k, j, i) / std::max(prfld->c_ph, TINY_NUMBER);
-          const Real adv_coeff = 4.0 * ONE_3RD * sigma_over_c * erad_mid;
-          force_x += adv_coeff * prim(IVX, k, j, i);
-          force_y += adv_coeff * prim(IVY, k, j, i);
-          force_z += adv_coeff * prim(IVZ, k, j, i);
-        }
-
+        const Real vx_old = prim(IVX, k, j, i);
+        const Real vy_old = prim(IVY, k, j, i);
+        const Real vz_old = prim(IVZ, k, j, i);
         cons(IM1, k, j, i) += dt * force_x;
         if (pmb->block_size.nx2 > 1) cons(IM2, k, j, i) += dt * force_y;
         if (pmb->block_size.nx3 > 1) cons(IM3, k, j, i) += dt * force_z;
         if (NON_BAROTROPIC_EOS) {
-          cons(IEN, k, j, i) += dt * (force_x * prim(IVX, k, j, i)
-                                    + force_y * prim(IVY, k, j, i)
-                                    + force_z * prim(IVZ, k, j, i));
+          const Real rho = std::max(prim(IDN, k, j, i), TINY_NUMBER);
+          const Real vx_new = cons(IM1, k, j, i) / rho;
+          const Real vy_new = (pmb->block_size.nx2 > 1
+                                   ? cons(IM2, k, j, i) / rho : vy_old);
+          const Real vz_new = (pmb->block_size.nx3 > 1
+                                   ? cons(IM3, k, j, i) / rho : vz_old);
+          const Real work = 0.5 * (force_x * (vx_old + vx_new)
+                                   + force_y * (vy_old + vy_new)
+                                   + force_z * (vz_old + vz_new));
+          // Use the same momentum kick in the work term. This is the exact
+          // discrete kinetic-energy change for a constant force over dt.
+          cons(IEN, k, j, i) += dt * work;
         }
       }
     }
@@ -496,6 +367,15 @@ void GlobalMax(Real &val) {
 }  // namespace
 
 void Mesh::InitUserMeshData(ParameterInput *pin) {
+  static_equilibrium_2d =
+      pin->GetOrAddString("problem", "problem_type", "advecting_pulse_1d")
+      == "static_equilibrium_2d";
+  if (static_equilibrium_2d && mesh_size.nx2 <= 1) {
+    std::stringstream msg;
+    msg << "### FATAL ERROR in Mesh::InitUserMeshData" << std::endl
+        << "static_equilibrium_2d requires nx2 > 1.";
+    ATHENA_ERROR(msg);
+  }
   if (!pin->GetBoolean("fld", "is_couple")) {
     std::stringstream msg;
     msg << "### FATAL ERROR in Mesh::InitUserMeshData" << std::endl
@@ -508,22 +388,16 @@ void Mesh::InitUserMeshData(ParameterInput *pin) {
         << "only_rad must be false for the advecting radiation pulse test.";
     ATHENA_ERROR(msg);
   }
-  allow_debug_operator_cuts =
-      pin->GetOrAddBoolean("problem", "allow_debug_operator_cuts", false);
-  if (pin->GetBoolean("fld", "cut_diff") && !allow_debug_operator_cuts) {
+  if (pin->GetBoolean("fld", "cut_diff")) {
     std::stringstream msg;
     msg << "### FATAL ERROR in Mesh::InitUserMeshData" << std::endl
-        << "cut_diff must be false for the advecting radiation pulse test."
-        << " Set problem/allow_debug_operator_cuts=true only for solver"
-        << " diagnostics.";
+        << "cut_diff must be false for the advecting radiation pulse test.";
     ATHENA_ERROR(msg);
   }
-  if (pin->GetBoolean("fld", "cut_Pnablav") && !allow_debug_operator_cuts) {
+  if (pin->GetBoolean("fld", "cut_Pnablav")) {
     std::stringstream msg;
     msg << "### FATAL ERROR in Mesh::InitUserMeshData" << std::endl
-        << "cut_Pnablav must be false for the advecting radiation pulse test."
-        << " Set problem/allow_debug_operator_cuts=true only for solver"
-        << " diagnostics.";
+        << "cut_Pnablav must be false for the advecting radiation pulse test.";
     ATHENA_ERROR(msg);
   }
   if (pin->GetString("mesh", "ix1_bc") != "periodic"
@@ -551,21 +425,24 @@ void Mesh::InitUserMeshData(ParameterInput *pin) {
   }
 
   force_lambda_one_third = pin->GetOrAddBoolean("problem", "force_lambda_one_third", true);
-  apply_explicit_rad_force = pin->GetOrAddBoolean("problem", "apply_explicit_rad_force", true);
-  include_advective_rad_flux_force =
-      pin->GetOrAddBoolean("problem", "include_advective_rad_flux_force", false);
-  use_half_step_erad_for_force =
-      pin->GetOrAddBoolean("problem", "use_half_step_erad_for_force",
-                           pin->GetOrAddBoolean("nrfld", "strang_split", false));
-  use_monotonic_prad_force =
-      pin->GetOrAddBoolean("problem", "use_monotonic_prad_force", true);
-  debug_print_centerline = pin->GetOrAddBoolean("problem", "debug_print_centerline", false);
-  debug_center_radius = pin->GetOrAddInteger("problem", "debug_center_radius", 3);
   if (!force_lambda_one_third || !pin->GetBoolean("fld", "fixed_flux_limitter")) {
     std::stringstream msg;
     msg << "### FATAL ERROR in Mesh::InitUserMeshData" << std::endl
         << "This test requires force_lambda_one_third=true and "
         << "fixed_flux_limitter=true so that lambda=1/3 everywhere.";
+    ATHENA_ERROR(msg);
+  }
+  if (pin->GetBoolean("fld", "implicit_pnablav")) {
+    std::stringstream msg;
+    msg << "### FATAL ERROR in Mesh::InitUserMeshData" << std::endl
+        << "This test requires fld/implicit_pnablav=false.";
+    ATHENA_ERROR(msg);
+  }
+  if (!pin->GetBoolean("fld", "include_mixed_frame_terms")
+      || !pin->GetBoolean("fld", "mixed_frame_terms_explicit")) {
+    std::stringstream msg;
+    msg << "### FATAL ERROR in Mesh::InitUserMeshData" << std::endl
+        << "This test requires explicit mixed-frame terms in the fld block.";
     ATHENA_ERROR(msg);
   }
 
@@ -599,7 +476,8 @@ void Mesh::InitUserMeshData(ParameterInput *pin) {
   rho0_phys = pin->GetOrAddReal("problem", "rho0", 1.2);
   width_phys = pin->GetOrAddReal("problem", "w", 24.0);
   v0_phys = pin->GetOrAddReal("problem", "v0", 0.0);
-  opacity_mass_coeff_phys = pin->GetOrAddReal("problem", "opacity_mass_coeff", 100.0);
+  opacity_mass_coeff_phys = pin->GetOrAddReal("problem", "opacity_mass_coeff",
+                                              static_equilibrium_2d ? 1.0e20 : 100.0);
 
   rgas_over_mu_phys = kGasConstant / mu;
   total_pressure0_phys = GasPressurePhys(rho0_phys, t0_phys)
@@ -623,7 +501,7 @@ void Mesh::InitUserMeshData(ParameterInput *pin) {
   EnrollUserHistoryOutput(0, HistoryTgasMax, "Tgas_max", UserHistoryOperation::max);
   EnrollUserHistoryOutput(1, HistoryTgasMin, "Tgas_min", UserHistoryOperation::min);
   EnrollUserHistoryOutput(2, HistoryTradMax, "Trad_max", UserHistoryOperation::max);
-  EnrollUserHistoryOutput(3, HistoryVxMax, "vx_abs_max", UserHistoryOperation::max);
+  EnrollUserHistoryOutput(3, HistoryVelocityMax, "vel_abs_max", UserHistoryOperation::max);
   EnrollUserHistoryOutput(4, HistoryPtotMax, "Ptot_max", UserHistoryOperation::max);
   EnrollUserHistoryOutput(5, HistoryPtotMin, "Ptot_min", UserHistoryOperation::min);
   EnrollUserHistoryOutput(6, HistoryTransverseTgasSpread, "Tgas_trans_rel",
@@ -634,27 +512,27 @@ void Mesh::InitUserMeshData(ParameterInput *pin) {
 
 void MeshBlock::InitUserMeshBlockData(ParameterInput *pin) {
   (void)pin;
-  AllocateRealUserMeshBlockDataField(1);
-  ruser_meshblock_data[kPrevEradField].NewAthenaArray(1, ncells3, ncells2, ncells1);
-  AllocateUserOutputVariables(11);
+  AllocateUserOutputVariables(14);
   SetUserOutputVariableName(0, "rho");
   SetUserOutputVariableName(1, "vel1");
-  SetUserOutputVariableName(2, "Pgas");
-  SetUserOutputVariableName(3, "Prad");
-  SetUserOutputVariableName(4, "Ptot");
-  SetUserOutputVariableName(5, "Tgas");
-  SetUserOutputVariableName(6, "Trad");
-  SetUserOutputVariableName(7, "Erad");
-  SetUserOutputVariableName(8, "lambda");
-  SetUserOutputVariableName(9, "sigma_P");
-  SetUserOutputVariableName(10, "sigma_R");
+  SetUserOutputVariableName(2, "vel2");
+  SetUserOutputVariableName(3, "vel3");
+  SetUserOutputVariableName(4, "vel_mag");
+  SetUserOutputVariableName(5, "Pgas");
+  SetUserOutputVariableName(6, "Prad");
+  SetUserOutputVariableName(7, "Ptot");
+  SetUserOutputVariableName(8, "Tgas");
+  SetUserOutputVariableName(9, "Trad");
+  SetUserOutputVariableName(10, "Erad");
+  SetUserOutputVariableName(11, "lambda");
+  SetUserOutputVariableName(12, "sigma_P");
+  SetUserOutputVariableName(13, "sigma_R");
   prfld2->EnrollOpacityFunction(AdvectPulseOpacity);
 }
 
 void MeshBlock::ProblemGenerator(ParameterInput *pin) {
   (void)pin;
   Real vx0_code = v0_phys / vel_unit;
-  AthenaArray<Real> &erad_prev = ruser_meshblock_data[kPrevEradField];
 
   Real t_min = std::numeric_limits<Real>::max();
   Real t_max = -std::numeric_limits<Real>::max();
@@ -689,7 +567,12 @@ void MeshBlock::ProblemGenerator(ParameterInput *pin) {
     for (int j = jl; j <= ju; ++j) {
       for (int i = il; i <= iu; ++i) {
         Real x_phys = pcoord->x1v(i) * leng_unit;
-        Real temp_phys = TemperatureProfile(x_phys);
+        Real y_phys = pcoord->x2v(j) * leng_unit;
+        // Section 6.8 replaces the Section 6.7 coordinate x by cylindrical
+        // radius sqrt(x^2+y^2); the 1-D mode remains unchanged.
+        Real profile_coordinate = static_equilibrium_2d
+            ? std::sqrt(SQR(x_phys) + SQR(y_phys)) : x_phys;
+        Real temp_phys = TemperatureProfile(profile_coordinate);
         Real rho_phys = DensityFromPressureBalance(temp_phys);
         Real erad_phys = RadiationEnergyPhysFromTemp(temp_phys);
         Real pgas_phys = GasPressurePhys(rho_phys, temp_phys);
@@ -698,7 +581,8 @@ void MeshBlock::ProblemGenerator(ParameterInput *pin) {
         if (!(rho_phys > 0.0) || !(pgas_phys > 0.0) || !(erad_phys > 0.0)) {
           std::stringstream msg;
           msg << "### FATAL ERROR in MeshBlock::ProblemGenerator" << std::endl
-              << "Non-positive initial state at x = " << x_phys << " cm: "
+              << "Non-positive initial state at (x,y) = (" << x_phys << ", "
+              << y_phys << ") cm: "
               << "rho=" << rho_phys << ", pgas=" << pgas_phys
               << ", Er=" << erad_phys;
           ATHENA_ERROR(msg);
@@ -718,7 +602,6 @@ void MeshBlock::ProblemGenerator(ParameterInput *pin) {
         }
         prfld2->u_gas(k, j, i) = egas_code;
         prfld2->u_rad(k, j, i) = erad_code;
-        erad_prev(0, k, j, i) = erad_code;
 
         if (i >= is && i <= ie) {
           t_min = std::min(t_min, temp_phys);
@@ -769,7 +652,9 @@ void MeshBlock::ProblemGenerator(ParameterInput *pin) {
     Real sigma_max = opacity_mass_coeff_phys * diag_rho_max;
     std::cout << std::setprecision(16);
     if (Globals::my_rank == 0) {
-      std::cout << ">>> Advecting radiation pulse initial diagnostics <<<" << std::endl;
+      std::cout << ">>> " << (static_equilibrium_2d ? "Static equilibrium"
+                                                     : "Advecting radiation pulse")
+                << " initial diagnostics <<<" << std::endl;
       std::cout << "rho_unit            = " << rho_unit << " g cm^-3" << std::endl;
       std::cout << "egas_unit           = " << egas_unit << " erg cm^-3" << std::endl;
       std::cout << "leng_unit           = " << leng_unit << " cm" << std::endl;
@@ -795,33 +680,6 @@ void MeshBlock::ProblemGenerator(ParameterInput *pin) {
       std::cout << "sigma_max           = " << sigma_max << " cm^-1" << std::endl;
       std::cout << "lambda_mode         = fixed 1/3" << std::endl;
 
-      std::ofstream ofs("problem_parameters.txt");
-      ofs << std::setprecision(16);
-      ofs << ">>> Advecting radiation pulse problem parameters <<<" << std::endl;
-      ofs << "rho_unit            = " << rho_unit << std::endl;
-      ofs << "egas_unit           = " << egas_unit << std::endl;
-      ofs << "leng_unit           = " << leng_unit << std::endl;
-      ofs << "time_unit           = " << time_unit << std::endl;
-      ofs << "vel_unit            = " << vel_unit << std::endl;
-      ofs << "T_unit              = " << t_unit << std::endl;
-      ofs << "T0                  = " << t0_phys << std::endl;
-      ofs << "T1                  = " << t1_phys << std::endl;
-      ofs << "rho0                = " << rho0_phys << std::endl;
-      ofs << "w                   = " << width_phys << std::endl;
-      ofs << "mu                  = " << mu << std::endl;
-      ofs << "gamma               = " << gamma_gas << std::endl;
-      ofs << "v0                  = " << v0_phys << std::endl;
-      ofs << "opacity_mass_coeff  = " << opacity_mass_coeff_phys << std::endl;
-      ofs << "force_lambda_1_3    = " << std::boolalpha << force_lambda_one_third << std::endl;
-      ofs << "Ptot0               = " << total_pressure0_phys << std::endl;
-      ofs << "T_min               = " << diag_t_min << std::endl;
-      ofs << "T_max               = " << diag_t_max << std::endl;
-      ofs << "rho_min             = " << diag_rho_min << std::endl;
-      ofs << "rho_max             = " << diag_rho_max << std::endl;
-      ofs << "Ptot_min            = " << diag_ptot_min << std::endl;
-      ofs << "Ptot_max            = " << diag_ptot_max << std::endl;
-      ofs << "Ptot_rel_variation  = " << diag_ptot_rel_var << std::endl;
-      ofs.close();
     }
   }
 }
@@ -833,6 +691,8 @@ void MeshBlock::UserWorkBeforeOutput(ParameterInput *pin) {
       for (int i = is; i <= ie; ++i) {
         Real rho_code = phydro->w(IDN, k, j, i);
         Real vx_code = phydro->w(IVX, k, j, i);
+        Real vy_code = phydro->w(IVY, k, j, i);
+        Real vz_code = phydro->w(IVZ, k, j, i);
         Real egas_code = prfld2->u_gas(k, j, i);
         Real erad_code = prfld2->u_rad(k, j, i);
         Real rho_phys = rho_code * rho_unit;
@@ -845,42 +705,20 @@ void MeshBlock::UserWorkBeforeOutput(ParameterInput *pin) {
 
         user_out_var(0, k, j, i) = rho_phys;
         user_out_var(1, k, j, i) = vx_code * vel_unit;
-        user_out_var(2, k, j, i) = pgas_phys;
-        user_out_var(3, k, j, i) = prad_phys;
-        user_out_var(4, k, j, i) = ptot_phys;
-        user_out_var(5, k, j, i) = tgas_phys;
-        user_out_var(6, k, j, i) = trad_phys;
-        user_out_var(7, k, j, i) = erad_code * egas_unit;
-        user_out_var(8, k, j, i) = lambda;
-        user_out_var(9, k, j, i) = prfld2->sigma_p(k, j, i) / leng_unit;
-        user_out_var(10, k, j, i) = prfld2->sigma_r(k, j, i) / leng_unit;
+        user_out_var(2, k, j, i) = vy_code * vel_unit;
+        user_out_var(3, k, j, i) = vz_code * vel_unit;
+        user_out_var(4, k, j, i) =
+            std::sqrt(SQR(vx_code) + SQR(vy_code) + SQR(vz_code)) * vel_unit;
+        user_out_var(5, k, j, i) = pgas_phys;
+        user_out_var(6, k, j, i) = prad_phys;
+        user_out_var(7, k, j, i) = ptot_phys;
+        user_out_var(8, k, j, i) = tgas_phys;
+        user_out_var(9, k, j, i) = trad_phys;
+        user_out_var(10, k, j, i) = erad_code * egas_unit;
+        user_out_var(11, k, j, i) = lambda;
+        user_out_var(12, k, j, i) = prfld2->sigma_p(k, j, i) / leng_unit;
+        user_out_var(13, k, j, i) = prfld2->sigma_r(k, j, i) / leng_unit;
       }
     }
   }
-}
-
-void MeshBlock::UserWorkInLoop() {
-  AthenaArray<Real> &erad_prev = ruser_meshblock_data[kPrevEradField];
-  int kl = ks;
-  int ku = ke;
-  int jl = js;
-  int ju = je;
-  int il = is - NGHOST;
-  int iu = ie + NGHOST;
-  if (block_size.nx2 > 1) {
-    jl -= NGHOST;
-    ju += NGHOST;
-  }
-  if (block_size.nx3 > 1) {
-    kl -= NGHOST;
-    ku += NGHOST;
-  }
-  for (int k = kl; k <= ku; ++k) {
-    for (int j = jl; j <= ju; ++j) {
-      for (int i = il; i <= iu; ++i) {
-        erad_prev(0, k, j, i) = prfld2->u_rad(k, j, i);
-      }
-    }
-  }
-  PrintCenterlineDebug(this);
 }
