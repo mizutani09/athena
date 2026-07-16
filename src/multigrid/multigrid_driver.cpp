@@ -47,7 +47,7 @@ MultigridDriver::MultigridDriver(Mesh *pm, MGBoundaryFunc *MGBoundary,
     nrbx1_(pm->nrbx1), nrbx2_(pm->nrbx2), nrbx3_(pm->nrbx3), srcmask_(MGSourceMask),
     coeffmask_(MGCoeffMask), pmy_mesh_(pm), fsubtract_average_(false),
     ffas_(pm->multilevel), redblack_(true), needinit_(true), fshowdef_(false),
-    smoothing_only_(false),
+    smoothing_only_(false), relative_defect_(false),
     eps_(-1.0), dt_(0.0), coarse_corr_scale_(1.0), niter_(-1), npresmooth_(1),
     npostsmooth_(1),
     coffset_(0), fprolongation_(0), mporder_(-1), nmpcoeff_(0), mpo_(3), autompo_(false),
@@ -1112,10 +1112,18 @@ void MultigridDriver::SolveFMGCycle() {
 void MultigridDriver::SolveIterative() {
   int n = 0;
   Real def = 0.0, defmax = 0.0;
+  Real source_norm = 1.0;
+  if (relative_defect_) {
+    source_norm = 0.0;
+    for (int v = 0; v < nvar_; ++v)
+      source_norm += CalculateSourceNorm(v);
+    source_norm = std::max(source_norm, static_cast<Real>(1.0e-30));
+  }
   for (int v = 0; v < nvar_; ++v) {
     def += CalculateDefectNorm(MGNormType::l2, v);
 //    defmax = std::max(defmax, CalculateDefectNorm(MGNormType::max, v));
   }
+  def /= source_norm;
 
   while (def > eps_) {
     SolveVCycle(npresmooth_, npostsmooth_);
@@ -1127,6 +1135,7 @@ void MultigridDriver::SolveIterative() {
       def += CalculateDefectNorm(MGNormType::l2, v);
 //      defmax = std::max(defmax, CalculateDefectNorm(MGNormType::max, v));
     }
+    def /= source_norm;
     
     if (def/olddef > 0.9) {
       if (eps_ == 0.0) break;
@@ -1278,6 +1287,25 @@ Real MultigridDriver::CalculateDefectNorm(MGNormType nrm, int n) {
     norm = std::sqrt(norm);
 
   return norm;
+}
+
+
+//----------------------------------------------------------------------------------------
+//! \brief Return the volume-weighted global L2 norm of the finest-level source.
+
+Real MultigridDriver::CalculateSourceNorm(int n) {
+  Real norm = 0.0;
+#pragma omp parallel for reduction(+ : norm) num_threads(nthreads_)
+  for (auto itr = vmg_.begin(); itr < vmg_.end(); itr++)
+    norm += (*itr)->CalculateSourceNorm(n);
+#ifdef MPI_PARALLEL
+  MPI_Allreduce(MPI_IN_PLACE, &norm, 1, MPI_ATHENA_REAL, MPI_SUM,
+                MPI_COMM_MULTIGRID);
+#endif
+  Real vol = (mgroot_->size_.x1max-mgroot_->size_.x1min)
+           * (mgroot_->size_.x2max-mgroot_->size_.x2min)
+           * (mgroot_->size_.x3max-mgroot_->size_.x3min);
+  return std::sqrt(norm/vol);
 }
 
 

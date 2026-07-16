@@ -120,6 +120,7 @@ class Multigrid {
   void CalculateMatrixBlockAll();
   void SetFromRootGrid(bool folddata);
   Real CalculateDefectNorm(MGNormType nrm, int n);
+  Real CalculateSourceNorm(int n);
   Real CalculateTotal(MGVariable type, int n);
   void SubtractAverage(MGVariable type, int n, Real ave);
   void StoreOldData();
@@ -233,6 +234,7 @@ class MultigridDriver {
 
   virtual void SolveCoarsestGrid();
   Real CalculateDefectNorm(MGNormType nrm, int n);
+  Real CalculateSourceNorm(int n);
   void CalculateMatrixAll();
   Multigrid* FindMultigrid(int tgid);
 
@@ -288,6 +290,7 @@ class MultigridDriver {
   std::vector<Multigrid*> vmg_;
   Multigrid *mgroot_;
   bool fsubtract_average_, ffas_, redblack_, needinit_, fshowdef_, smoothing_only_;
+  bool relative_defect_;
   Real last_ave_;
   Real eps_, dt_, coarse_corr_scale_;
   int niter_, npresmooth_, npostsmooth_;

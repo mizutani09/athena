@@ -724,6 +724,31 @@ Real Multigrid::CalculateDefectNorm(MGNormType nrm, int n) {
 
 
 //----------------------------------------------------------------------------------------
+//! \brief Return the volume-weighted squared L2 norm of the source on this block.
+
+Real Multigrid::CalculateSourceNorm(int n) {
+  AthenaArray<Real> &src = src_[current_level_];
+  int ll = nlevel_-1-current_level_;
+  int is=ngh_, js=ngh_, ks=ngh_;
+  int ie=is+(size_.nx1>>ll)-1;
+  int je=js+(size_.nx2>>ll)-1;
+  int ke=ks+(size_.nx3>>ll)-1;
+  Real norm = 0.0;
+  for (int k=ks; k<=ke; ++k) {
+    for (int j=js; j<=je; ++j) {
+#pragma omp simd reduction(+: norm)
+      for (int i=is; i<=ie; ++i)
+        norm += SQR(src(n,k,j,i));
+    }
+  }
+  Real dx=rdx_*static_cast<Real>(1<<ll);
+  Real dy=rdy_*static_cast<Real>(1<<ll);
+  Real dz=rdz_*static_cast<Real>(1<<ll);
+  return norm*dx*dy*dz*defscale_;
+}
+
+
+//----------------------------------------------------------------------------------------
 //! \fn Real Multigrid::CalculateTotal(MGVariable type, int n)
 //! \brief calculate the sum of the array (type: 0=src, 1=u)
 

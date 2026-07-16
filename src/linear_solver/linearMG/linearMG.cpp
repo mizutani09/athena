@@ -58,6 +58,7 @@ linearMGDriver::linearMGDriver(Mesh *pm, ParameterInput *pin, NewtonRaphsonDrive
   npostsmooth_ = pin->GetOrAddReal("nrfld", "npostsmooth", 2);
   fshowdef_ = pin->GetOrAddBoolean("nrfld", "show_defect", fshowdef_);
   smoothing_only_ = pin->GetOrAddBoolean("nrfld", "smoothing_only", false);
+  relative_defect_ = true;
   coarse_corr_scale_ = pin->GetOrAddReal("nrfld", "coarse_correction_scale", 1.0);
   std::string smoother = pin->GetOrAddString("nrfld", "smoother", "jacobi-rb");
 //   matrixmode_ = 1;
