@@ -544,19 +544,47 @@ void NRFLD::CalculateCoefficients(const AthenaArray<Real> &u_rad_old,
         derivetive(NewtonRaphsonFLD::dFr_dEr,k,j,i) = 1.0 + dt*(c_sigma_p + def_coeff(NewtonRaphsonFLD::DDV,k,j,i) + idx2*sum_dcp);
 
 
-        coeff(linearSolver::DCCF,k,j,i) = sum_dcp;
-        coeff(linearSolver::DCCS,k,j,i) = 1.0 + dt*(pfld->c_ph*pfld->sigma_p(k,j,i)+def_coeff(NewtonRaphsonFLD::DDV,k,j,i)); // from dFr_dEr
-        coeff(linearSolver::DCCS,k,j,i) += -(derivetive(NewtonRaphsonFLD::dFr_deg,k,j,i)/derivetive(NewtonRaphsonFLD::dFg_deg,k,j,i))*derivetive(NewtonRaphsonFLD::dFg_dEr,k,j,i);
+        if (pfld->fixed_u_rad) {
+          // Erad is prescribed rather than an NR unknown.  Leave the linear
+          // correction at zero; AddDifference performs the local Newton update
+          // of egas with delta_Erad = 0.
+          coeff(linearSolver::DCCF,k,j,i) = 0.0;
+          coeff(linearSolver::DCCS,k,j,i) = 1.0;
+          coeff(linearSolver::DXMF,k,j,i) = 0.0;
+          coeff(linearSolver::DXPF,k,j,i) = 0.0;
+          coeff(linearSolver::DYMF,k,j,i) = 0.0;
+          coeff(linearSolver::DYPF,k,j,i) = 0.0;
+          coeff(linearSolver::DZMF,k,j,i) = 0.0;
+          coeff(linearSolver::DZPF,k,j,i) = 0.0;
+          src(k,j,i) = 0.0;
+        } else {
+          coeff(linearSolver::DCCF,k,j,i) = sum_dcp;
+          coeff(linearSolver::DCCS,k,j,i) = 1.0
+              + dt*(pfld->c_ph*pfld->sigma_p(k,j,i)
+                    + def_coeff(NewtonRaphsonFLD::DDV,k,j,i));
+          coeff(linearSolver::DCCS,k,j,i) +=
+              -(derivetive(NewtonRaphsonFLD::dFr_deg,k,j,i)
+                /derivetive(NewtonRaphsonFLD::dFg_deg,k,j,i))
+              *derivetive(NewtonRaphsonFLD::dFg_dEr,k,j,i);
 
-        
-        coeff(linearSolver::DXMF,k,j,i) = -derivetive(NewtonRaphsonFLD::dFr_dEr_xm,k,j,i);
-        coeff(linearSolver::DXPF,k,j,i) = -derivetive(NewtonRaphsonFLD::dFr_dEr_xp,k,j,i);
-        coeff(linearSolver::DYMF,k,j,i) = -derivetive(NewtonRaphsonFLD::dFr_dEr_ym,k,j,i);
-        coeff(linearSolver::DYPF,k,j,i) = -derivetive(NewtonRaphsonFLD::dFr_dEr_yp,k,j,i);
-        coeff(linearSolver::DZMF,k,j,i) = -derivetive(NewtonRaphsonFLD::dFr_dEr_zm,k,j,i);
-        coeff(linearSolver::DZPF,k,j,i) = -derivetive(NewtonRaphsonFLD::dFr_dEr_zp,k,j,i);
+          coeff(linearSolver::DXMF,k,j,i) =
+              -derivetive(NewtonRaphsonFLD::dFr_dEr_xm,k,j,i);
+          coeff(linearSolver::DXPF,k,j,i) =
+              -derivetive(NewtonRaphsonFLD::dFr_dEr_xp,k,j,i);
+          coeff(linearSolver::DYMF,k,j,i) =
+              -derivetive(NewtonRaphsonFLD::dFr_dEr_ym,k,j,i);
+          coeff(linearSolver::DYPF,k,j,i) =
+              -derivetive(NewtonRaphsonFLD::dFr_dEr_yp,k,j,i);
+          coeff(linearSolver::DZMF,k,j,i) =
+              -derivetive(NewtonRaphsonFLD::dFr_dEr_zm,k,j,i);
+          coeff(linearSolver::DZPF,k,j,i) =
+              -derivetive(NewtonRaphsonFLD::dFr_dEr_zp,k,j,i);
 
-        src(k,j,i) = -derivetive(NewtonRaphsonFLD::Fr,k,j,i) + (derivetive(NewtonRaphsonFLD::dFr_deg,k,j,i)/derivetive(NewtonRaphsonFLD::dFg_deg,k,j,i))*derivetive(NewtonRaphsonFLD::Fg,k,j,i);
+          src(k,j,i) = -derivetive(NewtonRaphsonFLD::Fr,k,j,i)
+              + (derivetive(NewtonRaphsonFLD::dFr_deg,k,j,i)
+                 /derivetive(NewtonRaphsonFLD::dFg_deg,k,j,i))
+              *derivetive(NewtonRaphsonFLD::Fg,k,j,i);
+        }
 
         // output
         if (pmy_driver_->fshowdef_ && pmy_block_->gid == 0 &&
@@ -648,7 +676,17 @@ void NRFLD::CalculateDefect(AthenaArray<Real> &def, const AthenaArray<Real> &u,
                          + std::abs(diff_term) + std::abs(mixed_term));
         scale = std::max(scale, std::max(std::abs(u(k,j,i)), std::abs(u_old(k,j,i))));
         scale = std::max(scale, static_cast<Real>(1.0e-30));
-        def(k,j,i) = Fr/scale;
+        if (pfld->fixed_u_rad) {
+          Real gas_scale = std::abs(u_gas(k,j,i) - pfld->u_gas(k,j,i))
+                         + dt*(std::abs(src_term) + std::abs(mixed_term));
+          gas_scale = std::max(gas_scale,
+                               std::max(std::abs(u_gas(k,j,i)),
+                                        std::abs(pfld->u_gas(k,j,i))));
+          gas_scale = std::max(gas_scale, static_cast<Real>(1.0e-30));
+          def(k,j,i) = Fg/gas_scale;
+        } else {
+          def(k,j,i) = Fr/scale;
+        }
 
         if (pmy_driver_->fshowdef_ && pmy_block_->gid == 0 &&
             k==(kl+ku)/2 && j==(jl+ju)/2 && i==(il+iu)/2) {
@@ -688,7 +726,7 @@ void NRFLD::AddDifference(AthenaArray<Real> &u_rad,
 #pragma omp simd
       for (int i=is; i<=ie; ++i) {
         const Real raw_delta_ur = delta_u(k,j,i);
-        Real delta_ur = raw_delta_ur;
+        Real delta_ur = pfld->fixed_u_rad ? 0.0 : raw_delta_ur;
         if (max_update_fraction_ > 0.0) {
           const Real ur_scale = std::max(std::abs(u_rad(k,j,i)), TINY_NUMBER);
           const Real ur_limit = max_update_fraction_*ur_scale;
@@ -701,6 +739,9 @@ void NRFLD::AddDifference(AthenaArray<Real> &u_rad,
           const Real ur_next = u_rad(k,j,i) + scaled_delta_ur;
           u_rad(k,j,i) = (std::isfinite(ur_next) && ur_next > TINY_NUMBER)
                          ? ur_next : TINY_NUMBER;
+        } else {
+          // Enforce the prescribed value explicitly on every NR iteration.
+          u_rad(k,j,i) = uold_(k,j,i);
         }
         last_delta_rad_(0,k,j,i) = raw_delta_ur;
         last_delta_rad_(1,k,j,i) = u_rad(k,j,i) - u_rad_before;
@@ -761,6 +802,21 @@ void NRFLD::ApplyPhysicalBoundary() {
       pmy_block_->js, pmy_block_->je,
       pmy_block_->ks, pmy_block_->ke,
       NGHOST);
+    }
+  }
+
+  if (pmy_block_->prfld2->fixed_u_rad) {
+    int il = pmy_block_->is - NGHOST, iu = pmy_block_->ie + NGHOST;
+    int jl = pmy_block_->js, ju = pmy_block_->je;
+    int kl = pmy_block_->ks, ku = pmy_block_->ke;
+    if (pmy_block_->pmy_mesh->f2) jl -= NGHOST, ju += NGHOST;
+    if (pmy_block_->pmy_mesh->f3) kl -= NGHOST, ku += NGHOST;
+    for (int k = kl; k <= ku; ++k) {
+      for (int j = jl; j <= ju; ++j) {
+        for (int i = il; i <= iu; ++i) {
+          u_(k,j,i) = uold_(k,j,i);
+        }
+      }
     }
   }
   

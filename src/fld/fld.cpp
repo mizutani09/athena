@@ -31,7 +31,6 @@
 
 inline void DefaultOpacity(MeshBlock *pmb, AthenaArray<Real> &u_fld,
               AthenaArray<Real> &prim) {
-  std::cout << "DefaultOpacity is called!" << std::endl;
   FLD2 *prfld = pmb->prfld2;
   int kl=pmb->ks, ku=pmb->ke;
   int jl=pmb->js, ju=pmb->je;

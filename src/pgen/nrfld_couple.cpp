@@ -55,6 +55,8 @@ namespace {
   Real rho_unit, egas_unit, leng_unit;
   Real T_unit, time_unit;
   Real a_r_dim, Rgas, mu;
+  Real dt0_phys, dt_growth;
+  Real GrowingTimeStep(MeshBlock *pmb);
 }
 
 // void FLDFixedInnerX1(MeshBlock *pmb, Coordinates *pco, FLD2 *pfld,
@@ -324,6 +326,15 @@ void Mesh::InitUserMeshData(ParameterInput *pin) {
   if (time_unit < 0.0) time_unit = leng_unit/vel_unit;
   if (leng_unit < 0.0) leng_unit = vel_unit*time_unit;
 
+  dt0_phys = pin->GetOrAddReal("problem", "dt0", 1.0e-11);
+  dt_growth = pin->GetOrAddReal("problem", "dt_growth", 1.05);
+  if (dt0_phys <= 0.0 || dt_growth <= 0.0) {
+    std::stringstream msg;
+    msg << "### FATAL ERROR in function [Mesh::InitUserMeshData]" << std::endl;
+    msg << "problem/dt0 and problem/dt_growth must both be positive.";
+    ATHENA_ERROR(msg);
+  }
+
   calc_in_temp = pin->GetOrAddBoolean("fld", "calc_in_temp", false);
   if (calc_in_temp) {
     // raise error
@@ -346,6 +357,8 @@ void Mesh::InitUserMeshData(ParameterInput *pin) {
   // EnrollUserFLDBoundaryFunction(BoundaryFace::inner_x3, FLDFixedInnerX3);
   // EnrollUserFLDBoundaryFunction(BoundaryFace::outer_x3, FLDFixedOuterX3);
 
+  EnrollUserTimeStepFunction(GrowingTimeStep);
+
   AllocateUserHistoryOutput(7);
   EnrollUserHistoryOutput(0, HistoryTg, "T_gas", UserHistoryOperation::max);
   EnrollUserHistoryOutput(1, HistoryTr, "T_rad", UserHistoryOperation::max);
@@ -355,6 +368,16 @@ void Mesh::InitUserMeshData(ParameterInput *pin) {
   EnrollUserHistoryOutput(5, HistoryRtime, "Rtime", UserHistoryOperation::max);
   EnrollUserHistoryOutput(6, HistoryEall, "all-E", UserHistoryOperation::sum);
 }
+
+namespace {
+Real GrowingTimeStep(MeshBlock *pmb) {
+  // Athena++ starts ncycle from zero, so the first step uses dt0_phys.
+  const Real dt_phys = dt0_phys
+                       * std::pow(dt_growth,
+                                  static_cast<Real>(pmb->pmy_mesh->ncycle));
+  return dt_phys/time_unit;
+}
+}  // namespace
 
 
 void MeshBlock::InitUserMeshBlockData(ParameterInput *pin) {

@@ -91,6 +91,7 @@ ox3_bc          = outflow
 output_defect   = true
 is_couple       = true
 only_rad        = true
+fixed_u_rad     = true    # keep Erad fixed during every Newton-Raphson iteration
 cut_diff        = true
 cut_Pnablav     = true
 const_opacity   = 0.4    # in cm^2 g^-1 caution!
@@ -99,3 +100,7 @@ const_opacity   = 0.4    # in cm^2 g^-1 caution!
 Er_0            = 1e+12  # in erg cm^-3
 eg_0            = 1e+2   # in erg cm^-3
 rho0            = 1e-7   # in g cm^-3
+# Growing physical timestep: dt_n = dt0 * dt_growth^ncycle [s].
+# Increase or decrease dt_growth to tune the growth rate.
+dt0             = 1.0e-11
+dt_growth       = 1.05
