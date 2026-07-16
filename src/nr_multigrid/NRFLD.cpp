@@ -422,7 +422,21 @@ void NRFLD::CalculateCoefficientsOnce(const AthenaArray<Real> &u_pre,
         DDV_sum += (                chi_term_all*ngrad(0)*ngrad(2)) * dv_dx(0);
         DDV_sum += (                chi_term_all*ngrad(1)*ngrad(2)) * dv_dx(1);
         DDV_sum += (chi_term_diag + chi_term_all*ngrad(2)*ngrad(2)) * dv_dx(2);
-        def_coeff(NewtonRaphsonFLD::DDV,k,j,i) = DDV_sum;
+        def_coeff(NewtonRaphsonFLD::DDV,k,j,i) =
+            (pfld->implicit_pnablav ? DDV_sum : 0.0);
+
+        // Mixed-frame O(v/c) energy exchange. The coefficient is frozen for
+        // this NR solve, like the diffusion and P:nabla-v coefficients.
+        def_coeff(NewtonRaphsonFLD::MIXED,k,j,i) = 0.0;
+        if (pfld->include_mixed_frame_terms
+            && !pfld->mixed_frame_terms_explicit) {
+          const Real opacity_ratio = pfld->sigma_p(k,j,i)
+              / std::max(pfld->sigma_r(k,j,i), TINY_NUMBER);
+          const Real mixed_factor = lambda_center * (2.0*opacity_ratio - 1.0);
+          const Real v_dot_grad_e = w(IVX,k,j,i)*dEr(0)
+              + w(IVY,k,j,i)*dEr(1) + w(IVZ,k,j,i)*dEr(2);
+          def_coeff(NewtonRaphsonFLD::MIXED,k,j,i) = -mixed_factor*v_dot_grad_e;
+        }
       }
     }
   }
@@ -509,6 +523,7 @@ void NRFLD::CalculateCoefficients(const AthenaArray<Real> &u_rad_old,
 #endif
         Real src_term = c_sigma_p*(pfld->a_r*std::pow(T_gas_new,4) - u_rad_new(k,j,i));
         Real Pnablav = def_coeff(NewtonRaphsonFLD::DDV,k,j,i)*u_rad_new(k,j,i);
+        Real mixed_term = def_coeff(NewtonRaphsonFLD::MIXED,k,j,i);
         Real diff_term = 0.0;
         diff_term += derivetive(NewtonRaphsonFLD::dFr_dEr_xm,k,j,i)*(u_rad_new(k,j,i-1) - u_rad_new(k,j,i));
         diff_term += derivetive(NewtonRaphsonFLD::dFr_dEr_xp,k,j,i)*(u_rad_new(k,j,i+1) - u_rad_new(k,j,i));
@@ -518,8 +533,10 @@ void NRFLD::CalculateCoefficients(const AthenaArray<Real> &u_rad_old,
         diff_term += derivetive(NewtonRaphsonFLD::dFr_dEr_zp,k,j,i)*(u_rad_new(k+1,j,i) - u_rad_new(k,j,i));
         diff_term *= idx2;
 
-        derivetive(NewtonRaphsonFLD::Fg,k,j,i) = (u_gas_new(k,j,i) - u_gas_old(k,j,i)) + dt * src_term;
-        derivetive(NewtonRaphsonFLD::Fr,k,j,i) = (u_rad_new(k,j,i) - u_rad_old(k,j,i)) - dt *(src_term - Pnablav + diff_term);
+        derivetive(NewtonRaphsonFLD::Fg,k,j,i) = (u_gas_new(k,j,i) - u_gas_old(k,j,i))
+            + dt * (src_term + mixed_term);
+        derivetive(NewtonRaphsonFLD::Fr,k,j,i) = (u_rad_new(k,j,i) - u_rad_old(k,j,i))
+            - dt *(src_term - Pnablav + diff_term + mixed_term);
 
         derivetive(NewtonRaphsonFLD::dFg_deg,k,j,i) = 1.0 + 4.0*dt*c_sigma_p*pfld->a_r*std::pow(T_gas_new,3)*def_coeff(NewtonRaphsonFLD::DCOUPLE,k,j,i);
         derivetive(NewtonRaphsonFLD::dFg_dEr,k,j,i) = -dt*c_sigma_p;
@@ -611,6 +628,7 @@ void NRFLD::CalculateDefect(AthenaArray<Real> &def, const AthenaArray<Real> &u,
 #endif
         Real src_term = pfld->c_ph*pfld->sigma_p(k,j,i)*(pfld->a_r*std::pow(T_gas,4) - u(k,j,i));
         Real Pnablav = def_coeff(NewtonRaphsonFLD::DDV,k,j,i)*u(k,j,i);
+        Real mixed_term = def_coeff(NewtonRaphsonFLD::MIXED,k,j,i);
         Real diff_term = 0.0;
         diff_term += -coeff(linearSolver::DXMF,k,j,i)*(u(k,j,i-1) - u(k,j,i));
         diff_term += -coeff(linearSolver::DXPF,k,j,i)*(u(k,j,i+1) - u(k,j,i));
@@ -620,11 +638,14 @@ void NRFLD::CalculateDefect(AthenaArray<Real> &def, const AthenaArray<Real> &u,
         diff_term += -coeff(linearSolver::DZPF,k,j,i)*(u(k+1,j,i) - u(k,j,i));
         diff_term *= idx2;
 
-        Real Fg = (u_gas(k,j,i) - pfld->u_gas(k,j,i)) + dt* src_term;
-        Real Fr = (u(k,j,i)     - u_old(k,j,i))       - dt*(src_term - Pnablav + diff_term);
+        Real Fg = (u_gas(k,j,i) - pfld->u_gas(k,j,i))
+            + dt * (src_term + mixed_term);
+        Real Fr = (u(k,j,i)     - u_old(k,j,i))
+            - dt*(src_term - Pnablav + diff_term + mixed_term);
         Real unsteady = u(k,j,i) - u_old(k,j,i);
         Real scale = std::abs(unsteady)
-                   + dt*(std::abs(src_term) + std::abs(Pnablav) + std::abs(diff_term));
+                   + dt*(std::abs(src_term) + std::abs(Pnablav)
+                         + std::abs(diff_term) + std::abs(mixed_term));
         scale = std::max(scale, std::max(std::abs(u(k,j,i)), std::abs(u_old(k,j,i))));
         scale = std::max(scale, static_cast<Real>(1.0e-30));
         def(k,j,i) = Fr/scale;

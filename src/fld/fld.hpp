@@ -65,6 +65,18 @@ class FLD2 {
   bool cut_Pnablav;
   bool fixed_flux_limitter;
   bool fixed_u_rad;
+  // Optional mixed-frame correction for radiation-energy advection. When enabled,
+  // the advective flux is (E_rad + P_rad) v instead of the passive-scalar flux.
+  bool include_rad_pressure_advection;
+  Real rad_pressure_advection_factor;
+  // O(v/c) mixed-frame energy exchange term, with coefficients frozen during
+  // each NR solve. This is needed together with the radiation enthalpy flux.
+  bool include_mixed_frame_terms;
+  // Move the mixed-frame v dot grad(E) term to the explicit stage source.
+  bool mixed_frame_terms_explicit;
+  // When false, P:nabla-v is supplied by an explicit stage source instead of
+  // being included in the frozen-coefficient NR solve.
+  bool implicit_pnablav;
 
   // for interaction with Hydro
   void LoadHydroVariables(const AthenaArray<Real> &w, AthenaArray<Real> &fld_u_gas);

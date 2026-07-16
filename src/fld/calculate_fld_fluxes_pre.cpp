@@ -207,10 +207,12 @@ void FLD2::ComputeUpwindFlux(const int k, const int j, const int il,
 #pragma omp simd
   for (int i=il; i<=iu; i++) {
     Real fluid_flx = vf(k,j,i);
+    const Real advective_factor =
+        include_rad_pressure_advection ? (1.0 + rad_pressure_advection_factor) : 1.0;
     if (fluid_flx >= 0.0)
-      flx_out(k,j,i) = fluid_flx*rl(i);
+      flx_out(k,j,i) = fluid_flx*advective_factor*rl(i);
     else
-      flx_out(k,j,i) = fluid_flx*rr(i);
+      flx_out(k,j,i) = fluid_flx*advective_factor*rr(i);
   }
   return;
 }

@@ -45,7 +45,7 @@ class FLD2;
 // enum class NRNormType {max, l1, l2};
 
 namespace NewtonRaphsonFLD {
-  constexpr int NNRDIV = 12, NDCOEFF = 3;
+  constexpr int NNRDIV = 12, NDCOEFF = 4;
   enum DerivativeIndex {
     Fg=0,
     Fr=1,
@@ -60,7 +60,7 @@ namespace NewtonRaphsonFLD {
     dFr_dEr_zm=10,
     dFr_dEr_zp=11,
   };
-  enum CoeffIndex {DRHO=0, DCOUPLE=1, DDV=2};
+  enum CoeffIndex {DRHO=0, DCOUPLE=1, DDV=2, MIXED=3};
 }
 
 // class NewtonRaphson {
