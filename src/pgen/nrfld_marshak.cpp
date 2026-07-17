@@ -57,21 +57,30 @@ Real HistoryEgMin(MeshBlock *pmb, int iout);
 Real HistoryVMax(MeshBlock *pmb, int iout);
 Real HistoryEall(MeshBlock *pmb, int iout);
 
-Real RadiationFluxGhostDelta(const Coordinates *pco, int iref) {
+Real MarshakBoundaryGhostValue(const Real interior_erad,
+                               const Coordinates *pco, int iref) {
   constexpr Real c_ph_dim = 2.99792458e10;
   Real dx_phys = pco->dx1v(iref) * leng_unit;
-  Real delta_erad_phys = 3.0 * kappa_phys * finc_phys * dx_phys / c_ph_dim;
-  return delta_erad_phys / egas_unit;
+  // Su-Olson Marshak boundary condition at z=0:
+  //   E - 2/(3 kappa) dE/dz = 4 F_inc/c.
+  // Approximate E at the boundary by (E_0+E_g)/2 and dE/dz by
+  // (E_0-E_g)/dx, then solve the resulting Robin condition for E_g.
+  const Real a = 2.0/(3.0*kappa_phys*dx_phys);
+  const Real b = 4.0*finc_phys/(c_ph_dim*egas_unit);
+  return (b - (0.5-a)*interior_erad)/(0.5+a);
 }
 
 void SetInnerFluxBoundary(AthenaArray<Real> &u_rad, Coordinates *pco,
                           int is, int ie, int js, int je, int ks, int ke, int ngh) {
-  Real delta = RadiationFluxGhostDelta(pco, is);
   for (int k = ks; k <= ke; ++k) {
     for (int j = js; j <= je; ++j) {
-      Real edge_val = std::max(u_rad(k, j, is), erad_floor);
+      const Real edge_val = std::max(u_rad(k, j, is), erad_floor);
+      const Real first_ghost = std::max(
+          MarshakBoundaryGhostValue(edge_val, pco, is), erad_floor);
+      const Real ghost_delta = first_ghost - edge_val;
       for (int i = 1; i <= ngh; ++i) {
-        u_rad(k, j, is - i) = edge_val + i * delta;
+        u_rad(k, j, is - i) =
+            std::max(edge_val + i*ghost_delta, erad_floor);
       }
     }
   }
@@ -268,7 +277,8 @@ void Mesh::InitUserMeshData(ParameterInput *pin) {
                           hydro_p_floor);
 
   kappa_sim = kappa_phys * leng_unit;
-  fixed_dt_sim = 3.0e-7 / (beta_marshak * c_light_sim * kappa_sim);
+  // delta_tau = beta*c*kappa*dt = 3e-4, so 1000 cycles reach tau=0.3.
+  fixed_dt_sim = 3.0e-4 / (beta_marshak * c_light_sim * kappa_sim);
 
   EnrollUserFLDBoundaryFunction(BoundaryFace::inner_x1, FLDFixedInnerX1);
   EnrollUserFLDBoundaryFunction(BoundaryFace::outer_x1, FLDFixedOuterX1);
