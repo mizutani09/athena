@@ -269,9 +269,6 @@ void NRFLD::CalculateCoefficientsOnce(const AthenaArray<Real> &u_pre,
   Real idx = 1.0/dx;
   Real idy = 1.0/dy;
   Real idz = 1.0/dz;
-  Real hidx = 0.5*idx;
-  Real hidy = 0.5*idy;
-  Real hidz = 0.5*idz;
   for (int k=ks; k<=ke; k++) {
     for (int j=js; j<=je; j++) {
       for (int i=is; i<=ie; i++) {
@@ -289,13 +286,6 @@ void NRFLD::CalculateCoefficientsOnce(const AthenaArray<Real> &u_pre,
 #endif
 
         // for lambda and coefficient of diff term
-        AthenaArray<Real> dEr;
-        dEr.NewAthenaArray(3);
-        dEr(0) = hidx*(u_pre(k,j,i+1) - u_pre(k,j,i-1));
-        dEr(1) = hidy*(u_pre(k,j+1,i) - u_pre(k,j-1,i));
-        dEr(2) = hidz*(u_pre(k+1,j,i) - u_pre(k-1,j,i));
-        Real gradE = std::sqrt(SQR(dEr(0)) + SQR(dEr(1)) + SQR(dEr(2)));
-
         // not to use loop for better performance
         // compute derivetive at faces and store in derivetive array
 
@@ -380,55 +370,6 @@ void NRFLD::CalculateCoefficientsOnce(const AthenaArray<Real> &u_pre,
         lambda_face = RadFLD2::FluxLimiter(R_face, pfld->fixed_flux_limitter);
         derivetive(NewtonRaphsonFLD::dFr_dEr_zp,k,j,i) = pfld->c_ph*lambda_face/sigma_rface;
 
-        Real R_center, lambda_center;
-
-        // for P:\nabla v
-        R_center = gradE/(sigma_r(k,j,i)*u_pre(k,j,i)); // center
-        lambda_center = RadFLD2::FluxLimiter(
-            R_center, pfld->fixed_flux_limitter);
-        Real chi = RadFLD2::EddingtonFactor(
-            R_center, pfld->fixed_flux_limitter);
-
-        AthenaArray<Real> ngrad;
-        ngrad.NewAthenaArray(3);
-        ngrad(0) = dEr(0)/(gradE+TINY_NUMBER);
-        ngrad(1) = dEr(1)/(gradE+TINY_NUMBER);
-        ngrad(2) = dEr(2)/(gradE+TINY_NUMBER);
-
-        AthenaArray<Real> dv_dx;
-        dv_dx.NewAthenaArray(3);
-        dv_dx(0) = hidx*(w(IVX,k,j,i+1) - w(IVX,k,j,i-1));
-        dv_dx(1) = hidy*(w(IVY,k,j+1,i) - w(IVY,k,j-1,i));
-        dv_dx(2) = hidz*(w(IVZ,k+1,j,i) - w(IVZ,k-1,j,i));
-
-        def_coeff(NewtonRaphsonFLD::DDV,k,j,i) = 0.0;
-        Real DDV_sum = 0.0;
-        Real chi_term_diag = 0.5*(1.-chi), chi_term_all = 0.5*(3.*chi-1.);
-        // not to use loop for better performance
-        DDV_sum += (chi_term_diag + chi_term_all*ngrad(0)*ngrad(0)) * dv_dx(0);
-        DDV_sum += (                chi_term_all*ngrad(1)*ngrad(0)) * dv_dx(1);
-        DDV_sum += (                chi_term_all*ngrad(2)*ngrad(0)) * dv_dx(2);
-        DDV_sum += (                chi_term_all*ngrad(0)*ngrad(1)) * dv_dx(0);
-        DDV_sum += (chi_term_diag + chi_term_all*ngrad(1)*ngrad(1)) * dv_dx(1);
-        DDV_sum += (                chi_term_all*ngrad(2)*ngrad(1)) * dv_dx(2);
-        DDV_sum += (                chi_term_all*ngrad(0)*ngrad(2)) * dv_dx(0);
-        DDV_sum += (                chi_term_all*ngrad(1)*ngrad(2)) * dv_dx(1);
-        DDV_sum += (chi_term_diag + chi_term_all*ngrad(2)*ngrad(2)) * dv_dx(2);
-        def_coeff(NewtonRaphsonFLD::DDV,k,j,i) =
-            (pfld->implicit_pnablav ? DDV_sum : 0.0);
-
-        // Mixed-frame O(v/c) energy exchange. The coefficient is frozen for
-        // this NR solve, like the diffusion and P:nabla-v coefficients.
-        def_coeff(NewtonRaphsonFLD::MIXED,k,j,i) = 0.0;
-        if (pfld->include_mixed_frame_terms
-            && !pfld->mixed_frame_terms_explicit) {
-          const Real opacity_ratio = pfld->sigma_p(k,j,i)
-              / std::max(pfld->sigma_r(k,j,i), TINY_NUMBER);
-          const Real mixed_factor = lambda_center * (2.0*opacity_ratio - 1.0);
-          const Real v_dot_grad_e = w(IVX,k,j,i)*dEr(0)
-              + w(IVY,k,j,i)*dEr(1) + w(IVZ,k,j,i)*dEr(2);
-          def_coeff(NewtonRaphsonFLD::MIXED,k,j,i) = -mixed_factor*v_dot_grad_e;
-        }
       }
     }
   }
@@ -447,18 +388,6 @@ void NRFLD::CalculateCoefficientsOnce(const AthenaArray<Real> &u_pre,
     }
   }
 
-  if (pfld->cut_Pnablav) {
-    if (pmy_driver_->fshowdef_ && pmy_block_->gid == 0)
-      std::cout << "Cutting P:nabla v term coefficients to zero." << std::endl;
-    for (int k=ks; k<=ke; k++) {
-      for (int j=js; j<=je; j++) {
-        for (int i=is; i<=ie; i++) {
-          def_coeff(NewtonRaphsonFLD::DDV,k,j,i) = 0.0;
-        }
-      }
-    }
-  }
-
   if (pmy_driver_->fshowdef_ && pmy_block_->gid == 0) {
     // print everything
     int i = (is + ie) / 2;
@@ -466,8 +395,8 @@ void NRFLD::CalculateCoefficientsOnce(const AthenaArray<Real> &u_pre,
     int k = (ks + ke) / 2;
     std::cout << "At (k,j,i) = (" << k << "," << j << "," << i << "):" << std::endl;
     std::cout << "  sigma_p = " << pfld->sigma_p(k,j,i) << ", sigma_r = " << pfld->sigma_r(k,j,i) << std::endl;
-    std::cout << "  def_coeff.DCOUPLE = " << def_coeff(NewtonRaphsonFLD::DCOUPLE,k,j,i)
-              << ", def_coeff.DDV = " << def_coeff(NewtonRaphsonFLD::DDV,k,j,i) << std::endl;
+    std::cout << "  def_coeff.DCOUPLE = "
+              << def_coeff(NewtonRaphsonFLD::DCOUPLE,k,j,i) << std::endl;
     for (int ii = 0; ii < 6; ++ii)
       std::cout << "  derivetive.dFr_dEr_xm+"<< ii <<" = " << derivetive(NewtonRaphsonFLD::dFr_dEr_xm+ii,k,j,i) << std::endl;
   }
@@ -514,8 +443,6 @@ void NRFLD::CalculateCoefficients(const AthenaArray<Real> &u_rad_old,
         T_gas_new = def_coeff(NewtonRaphsonFLD::DCOUPLE,k,j,i)*u_gas_new(k,j,i);
 #endif
         Real src_term = c_sigma_p*(pfld->a_r*std::pow(T_gas_new,4) - u_rad_new(k,j,i));
-        Real Pnablav = def_coeff(NewtonRaphsonFLD::DDV,k,j,i)*u_rad_new(k,j,i);
-        Real mixed_term = def_coeff(NewtonRaphsonFLD::MIXED,k,j,i);
         Real diff_term = 0.0;
         diff_term += derivetive(NewtonRaphsonFLD::dFr_dEr_xm,k,j,i)*(u_rad_new(k,j,i-1) - u_rad_new(k,j,i));
         diff_term += derivetive(NewtonRaphsonFLD::dFr_dEr_xp,k,j,i)*(u_rad_new(k,j,i+1) - u_rad_new(k,j,i));
@@ -525,31 +452,19 @@ void NRFLD::CalculateCoefficients(const AthenaArray<Real> &u_rad_old,
         diff_term += derivetive(NewtonRaphsonFLD::dFr_dEr_zp,k,j,i)*(u_rad_new(k+1,j,i) - u_rad_new(k,j,i));
         diff_term *= idx2;
 
-        // HLLC-FLD leaves P_rad.v in the gas-energy face flux and advects
-        // radiation with E_rad.v.  The paired work terms below therefore
-        // complete the product rule:
-        //   -div(P.v) + P:grad(v) = -v.grad(P)  (gas),
-        //   div(E.v) + P:grad(v)                 (radiation).
-        if (pfld->implicit_pnablav) {
-          derivetive(NewtonRaphsonFLD::Fg,k,j,i) =
-              (u_gas_new(k,j,i) - u_gas_old(k,j,i))
-              + dt * (src_term - Pnablav + mixed_term);
-        } else {
-          // Preserve the original well-balanced arithmetic when pressure work
-          // is carried entirely by the radiation-enthalpy face flux.
-          derivetive(NewtonRaphsonFLD::Fg,k,j,i) =
-              (u_gas_new(k,j,i) - u_gas_old(k,j,i))
-              + dt * (src_term + mixed_term);
-        }
+        // The implicit subsystem contains only matter-radiation thermal
+        // exchange and radiation diffusion. The exchange appears with equal
+        // and opposite signs in the gas and radiation residuals.
+        derivetive(NewtonRaphsonFLD::Fg,k,j,i) =
+            (u_gas_new(k,j,i) - u_gas_old(k,j,i)) + dt*src_term;
         derivetive(NewtonRaphsonFLD::Fr,k,j,i) = (u_rad_new(k,j,i) - u_rad_old(k,j,i))
-            - dt *(src_term - Pnablav + diff_term + mixed_term);
+            - dt*(src_term + diff_term);
 
         derivetive(NewtonRaphsonFLD::dFg_deg,k,j,i) = 1.0 + 4.0*dt*c_sigma_p*pfld->a_r*std::pow(T_gas_new,3)*def_coeff(NewtonRaphsonFLD::DCOUPLE,k,j,i);
-        derivetive(NewtonRaphsonFLD::dFg_dEr,k,j,i) = pfld->implicit_pnablav
-            ? -dt*(c_sigma_p + def_coeff(NewtonRaphsonFLD::DDV,k,j,i))
-            : -dt*c_sigma_p;
+        derivetive(NewtonRaphsonFLD::dFg_dEr,k,j,i) = -dt*c_sigma_p;
         derivetive(NewtonRaphsonFLD::dFr_deg,k,j,i) = -4.0*dt*c_sigma_p*pfld->a_r*std::pow(T_gas_new,3)*def_coeff(NewtonRaphsonFLD::DCOUPLE,k,j,i);
-        derivetive(NewtonRaphsonFLD::dFr_dEr,k,j,i) = 1.0 + dt*(c_sigma_p + def_coeff(NewtonRaphsonFLD::DDV,k,j,i) + idx2*sum_dcp);
+        derivetive(NewtonRaphsonFLD::dFr_dEr,k,j,i) =
+            1.0 + dt*(c_sigma_p + idx2*sum_dcp);
 
 
         if (pfld->fixed_u_rad) {
@@ -567,9 +482,8 @@ void NRFLD::CalculateCoefficients(const AthenaArray<Real> &u_rad_old,
           src(k,j,i) = 0.0;
         } else {
           coeff(linearSolver::DCCF,k,j,i) = sum_dcp;
-          coeff(linearSolver::DCCS,k,j,i) = 1.0
-              + dt*(pfld->c_ph*pfld->sigma_p(k,j,i)
-                    + def_coeff(NewtonRaphsonFLD::DDV,k,j,i));
+          coeff(linearSolver::DCCS,k,j,i) =
+              1.0 + dt*pfld->c_ph*pfld->sigma_p(k,j,i);
           coeff(linearSolver::DCCS,k,j,i) +=
               -(derivetive(NewtonRaphsonFLD::dFr_deg,k,j,i)
                 /derivetive(NewtonRaphsonFLD::dFg_deg,k,j,i))
@@ -611,7 +525,8 @@ void NRFLD::CalculateCoefficients(const AthenaArray<Real> &u_rad_old,
           std::cout << "  u_rad_new = " << u_rad_new(k,j,i) << ", u_rad_old = " << u_rad_old(k,j,i) << std::endl;
           std::cout << "  T_gas_new = " << T_gas_new << ", T_gas_old = " << T_gas_old << std::endl;
           std::cout << "  T_rad_new = " << T_rad_new << ", T_rad_old = " << T_rad_old << std::endl; 
-          std::cout << "  src_term = " << src_term << ", Pnablav = " << Pnablav << ", diff_term = " << diff_term << std::endl;
+          std::cout << "  src_term = " << src_term
+                    << ", diff_term = " << diff_term << std::endl;
           std::cout << "  derivetive.Fg = " << derivetive(NewtonRaphsonFLD::Fg,k,j,i)
                     << ", derivetive.Fr = " << derivetive(NewtonRaphsonFLD::Fr,k,j,i) << std::endl;
           std::cout << "  derivetive.dFg_deg = " << derivetive(NewtonRaphsonFLD::dFg_deg,k,j,i)
@@ -663,8 +578,6 @@ void NRFLD::CalculateDefect(AthenaArray<Real> &def, const AthenaArray<Real> &u,
         T_gas = def_coeff(NewtonRaphsonFLD::DCOUPLE,k,j,i)*u_gas(k,j,i);
 #endif
         Real src_term = pfld->c_ph*pfld->sigma_p(k,j,i)*(pfld->a_r*std::pow(T_gas,4) - u(k,j,i));
-        Real Pnablav = def_coeff(NewtonRaphsonFLD::DDV,k,j,i)*u(k,j,i);
-        Real mixed_term = def_coeff(NewtonRaphsonFLD::MIXED,k,j,i);
         Real diff_term = 0.0;
         diff_term += -coeff(linearSolver::DXMF,k,j,i)*(u(k,j,i-1) - u(k,j,i));
         diff_term += -coeff(linearSolver::DXPF,k,j,i)*(u(k,j,i+1) - u(k,j,i));
@@ -674,25 +587,17 @@ void NRFLD::CalculateDefect(AthenaArray<Real> &def, const AthenaArray<Real> &u,
         diff_term += -coeff(linearSolver::DZPF,k,j,i)*(u(k+1,j,i) - u(k,j,i));
         diff_term *= idx2;
 
-        Real Fg;
-        if (pfld->implicit_pnablav) {
-          Fg = (u_gas(k,j,i) - pfld->u_gas(k,j,i))
-              + dt * (src_term - Pnablav + mixed_term);
-        } else {
-          Fg = (u_gas(k,j,i) - pfld->u_gas(k,j,i))
-              + dt * (src_term + mixed_term);
-        }
+        Real Fg = (u_gas(k,j,i) - pfld->u_gas(k,j,i)) + dt*src_term;
         Real Fr = (u(k,j,i)     - u_old(k,j,i))
-            - dt*(src_term - Pnablav + diff_term + mixed_term);
+            - dt*(src_term + diff_term);
         Real unsteady = u(k,j,i) - u_old(k,j,i);
         Real scale = std::abs(unsteady)
-                   + dt*(std::abs(src_term) + std::abs(Pnablav)
-                         + std::abs(diff_term) + std::abs(mixed_term));
+                   + dt*(std::abs(src_term) + std::abs(diff_term));
         scale = std::max(scale, std::max(std::abs(u(k,j,i)), std::abs(u_old(k,j,i))));
         scale = std::max(scale, static_cast<Real>(1.0e-30));
         if (pfld->fixed_u_rad) {
           Real gas_scale = std::abs(u_gas(k,j,i) - pfld->u_gas(k,j,i))
-                         + dt*(std::abs(src_term) + std::abs(mixed_term));
+                         + dt*std::abs(src_term);
           gas_scale = std::max(gas_scale,
                                std::max(std::abs(u_gas(k,j,i)),
                                         std::abs(pfld->u_gas(k,j,i))));
@@ -709,7 +614,8 @@ void NRFLD::CalculateDefect(AthenaArray<Real> &def, const AthenaArray<Real> &u,
           std::cout << "  u_gas = " << u_gas(k,j,i) << ", pfld->u_gas = " << pfld->u_gas(k,j,i) << std::endl;
           std::cout << "  u_rad = " << u(k,j,i) << ", u_rad_old = " << u_old(k,j,i) << std::endl;
           std::cout << "  T_gas = " << T_gas << ", T_rad = " << T_rad << std::endl;
-          std::cout << "  src_term = " << src_term << ", Pnablav = " << Pnablav << ", diff_term = " << diff_term << std::endl;
+          std::cout << "  src_term = " << src_term
+                    << ", diff_term = " << diff_term << std::endl;
           std::cout << "  Fg = " << Fg << ", Fr = " << Fr << std::endl;
           std::cout << "  defect_scale = " << scale << std::endl;
           std::cout << "  defect = " << def(k,j,i) << std::endl;
