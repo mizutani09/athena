@@ -137,7 +137,7 @@ Real CenteredGradX(const MeshBlock *pmb, int k, int j, int i) {
 }
 
 Real FluxLimiter(const Real r) {
-  return (2.0 + r)/(6.0 + 2.0*r + r*r);
+  return (2.0 + r)/(6.0 + 3.0*r + r*r);
 }
 }  // namespace
 

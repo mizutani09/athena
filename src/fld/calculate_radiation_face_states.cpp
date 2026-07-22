@@ -46,7 +46,7 @@ void FLD2::CalculateRadiationFaceStates(const int order) {
   const int kl = pmb->ks - 1, ku = pmb->ke + 1;
 
   // Use the same Levermore-Pomraning limiter and Eddington tensor as NRFLD:
-  //   lambda=(2+R)/(6+2R+R^2), chi=lambda+(lambda R)^2,
+  //   lambda=(2+R)/(6+3R+R^2), chi=lambda+(lambda R)^2,
   //   P_ij/E = (1-chi)delta_ij/2 + (3chi-1)n_i n_j/2.
   for (int k = kl; k <= ku; ++k) {
     for (int j = jl; j <= ju; ++j) {
@@ -63,7 +63,7 @@ void FLD2::CalculateRadiationFaceStates(const int order) {
         const Real r = grad / (sigma * erad);
         const Real lambda = fixed_flux_limitter
                                 ? ONE_3RD
-                                : (2.0 + r) / (6.0 + 2.0*r + r*r);
+                                : (2.0 + r) / (6.0 + 3.0*r + r*r);
         const Real chi = fixed_flux_limitter
                              ? ONE_3RD : lambda + SQR(lambda*r);
         const Real inv_grad = 1.0 / std::max(grad, TINY_NUMBER);
@@ -151,7 +151,7 @@ Real FLD2::RadiationSoundSpeedSquared(int k, int j, int i, int dir) const {
   const Real erad = std::max(u_rad(k,j,i), TINY_NUMBER);
   const Real r = grad/(std::max(sigma_r(k,j,i), TINY_NUMBER)*erad);
   const Real lambda = fixed_flux_limitter
-                          ? ONE_3RD : (2.0+r)/(6.0+2.0*r+r*r);
+                          ? ONE_3RD : (2.0+r)/(6.0+3.0*r+r*r);
   const Real chi = fixed_flux_limitter ? ONE_3RD : lambda+SQR(lambda*r);
   const Real g[3] = {gx, gy, gz};
   const Real nd = g[dir]/std::max(grad, TINY_NUMBER);

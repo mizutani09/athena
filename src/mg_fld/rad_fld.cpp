@@ -150,7 +150,7 @@ void MGFLDInterface::CalculateCoefficients(const AthenaArray<Real> &w) {
                          /(pfld2->sigma_r(k,j,i) + pfld2->sigma_r(k+dk,j+dj,i+di)),
                          2.0*TWO_3RD*idx));
           R = gradE/(sigma_rface*u(RadFLD::RAD,k,j,i));
-          if (!pfld2->fixed_flux_limitter) lambda = (2.0+R)/(6.0+2.0*R+R*R);
+          if (!pfld2->fixed_flux_limitter) lambda = (2.0+R)/(6.0+3.0*R+R*R);
           coeff(RadFLD::DXM+ii,k,j,i) = pfld2->c_ph*lambda/sigma_rface;
         }
 
@@ -158,7 +158,7 @@ void MGFLDInterface::CalculateCoefficients(const AthenaArray<Real> &w) {
         coeff(RadFLD::DCOUPLE,k,j,i) = gm1/w(IDN,k,j,i);
 
         R = gradE/(pfld2->sigma_r(k,j,i)*u(RadFLD::RAD,k,j,i));
-        if (!pfld2->fixed_flux_limitter) lambda = (2.0+R)/(6.0+2.0*R+R*R);
+        if (!pfld2->fixed_flux_limitter) lambda = (2.0+R)/(6.0+3.0*R+R*R);
         Real chi = lambda+std::pow(lambda*R,2);
 
         AthenaArray<Real> ngrad;

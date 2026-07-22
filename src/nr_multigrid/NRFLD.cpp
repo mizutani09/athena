@@ -313,7 +313,7 @@ void NRFLD::CalculateCoefficientsOnce(const AthenaArray<Real> &u_pre,
         gradE_face = std::sqrt(SQR(gx) + SQR(gy) + SQR(gz));
         E_face = 0.5*(u_pre(k,j,i) + u_pre(k,j,i-1));
         R_face = gradE_face/(sigma_rface*E_face);
-        if (!pfld->fixed_flux_limitter) lambda_face = (2.0+R_face)/(6.0+2.0*R_face+R_face*R_face);
+        if (!pfld->fixed_flux_limitter) lambda_face = (2.0+R_face)/(6.0+3.0*R_face+R_face*R_face);
         derivetive(NewtonRaphsonFLD::dFr_dEr_xm,k,j,i) = pfld->c_ph*lambda_face/sigma_rface;
 
          // for i+1/2 face
@@ -326,7 +326,7 @@ void NRFLD::CalculateCoefficientsOnce(const AthenaArray<Real> &u_pre,
         gradE_face = std::sqrt(SQR(gx) + SQR(gy) + SQR(gz));
         E_face = 0.5*(u_pre(k,j,i) + u_pre(k,j,i+1));
         R_face = gradE_face/(sigma_rface*E_face);
-        if (!pfld->fixed_flux_limitter) lambda_face = (2.0+R_face)/(6.0+2.0*R_face+R_face*R_face);
+        if (!pfld->fixed_flux_limitter) lambda_face = (2.0+R_face)/(6.0+3.0*R_face+R_face*R_face);
         derivetive(NewtonRaphsonFLD::dFr_dEr_xp,k,j,i) = pfld->c_ph*lambda_face/sigma_rface;
 
         // for j-1/2 face
@@ -339,7 +339,7 @@ void NRFLD::CalculateCoefficientsOnce(const AthenaArray<Real> &u_pre,
         gradE_face = std::sqrt(SQR(gx) + SQR(gy) + SQR(gz));
         E_face = 0.5*(u_pre(k,j,i) + u_pre(k,j-1,i));
         R_face = gradE_face/(sigma_rface*E_face);
-        if (!pfld->fixed_flux_limitter) lambda_face = (2.0+R_face)/(6.0+2.0*R_face+R_face*R_face);
+        if (!pfld->fixed_flux_limitter) lambda_face = (2.0+R_face)/(6.0+3.0*R_face+R_face*R_face);
         derivetive(NewtonRaphsonFLD::dFr_dEr_ym,k,j,i) = pfld->c_ph*lambda_face/sigma_rface;
 
         // for j+1/2 face
@@ -352,7 +352,7 @@ void NRFLD::CalculateCoefficientsOnce(const AthenaArray<Real> &u_pre,
         gradE_face = std::sqrt(SQR(gx) + SQR(gy) + SQR(gz));
         E_face = 0.5*(u_pre(k,j,i) + u_pre(k,j+1,i));
         R_face = gradE_face/(sigma_rface*E_face);
-        if (!pfld->fixed_flux_limitter) lambda_face = (2.0+R_face)/(6.0+2.0*R_face+R_face*R_face);
+        if (!pfld->fixed_flux_limitter) lambda_face = (2.0+R_face)/(6.0+3.0*R_face+R_face*R_face);
         derivetive(NewtonRaphsonFLD::dFr_dEr_yp,k,j,i) = pfld->c_ph*lambda_face/sigma_rface;
 
         // for k-1/2 face
@@ -365,7 +365,7 @@ void NRFLD::CalculateCoefficientsOnce(const AthenaArray<Real> &u_pre,
         gradE_face = std::sqrt(SQR(gx) + SQR(gy) + SQR(gz));
         E_face = 0.5*(u_pre(k,j,i) + u_pre(k-1,j,i));
         R_face = gradE_face/(sigma_rface*E_face);
-        if (!pfld->fixed_flux_limitter) lambda_face = (2.0+R_face)/(6.0+2.0*R_face+R_face*R_face);
+        if (!pfld->fixed_flux_limitter) lambda_face = (2.0+R_face)/(6.0+3.0*R_face+R_face*R_face);
         derivetive(NewtonRaphsonFLD::dFr_dEr_zm,k,j,i) = pfld->c_ph*lambda_face/sigma_rface;
 
         // for k+1/2 face
@@ -378,7 +378,7 @@ void NRFLD::CalculateCoefficientsOnce(const AthenaArray<Real> &u_pre,
         gradE_face = std::sqrt(SQR(gx) + SQR(gy) + SQR(gz));
         E_face = 0.5*(u_pre(k,j,i) + u_pre(k+1,j,i));
         R_face = gradE_face/(sigma_rface*E_face);
-        if (!pfld->fixed_flux_limitter) lambda_face = (2.0+R_face)/(6.0+2.0*R_face+R_face*R_face);
+        if (!pfld->fixed_flux_limitter) lambda_face = (2.0+R_face)/(6.0+3.0*R_face+R_face*R_face);
         derivetive(NewtonRaphsonFLD::dFr_dEr_zp,k,j,i) = pfld->c_ph*lambda_face/sigma_rface;
 
         Real R_center, lambda_center;
@@ -393,7 +393,7 @@ void NRFLD::CalculateCoefficientsOnce(const AthenaArray<Real> &u_pre,
           // Eddington factor chi = lambda + (lambda R)^2.
           chi = ONE_3RD;
         } else {
-          lambda_center = (2.0+R_center)/(6.0+2.0*R_center+R_center*R_center);
+          lambda_center = (2.0+R_center)/(6.0+3.0*R_center+R_center*R_center);
           chi = lambda_center+std::pow(lambda_center*R_center,2);
         }
 
@@ -864,7 +864,7 @@ void NRFLD::PrintCellPhysicsDebug(int k, int j, int i) {
     const Real grad_face = std::sqrt(SQR(gx) + SQR(gy) + SQR(gz));
     const Real r_face = grad_face/(std::max(sigma_face*e_face, TINY_NUMBER));
     const Real lambda_face = pfld->fixed_flux_limitter
-        ? ONE_3RD : (2.0 + r_face)/(6.0 + 2.0*r_face + r_face*r_face);
+        ? ONE_3RD : (2.0 + r_face)/(6.0 + 3.0*r_face + r_face*r_face);
     std::cout << "      " << label
               << " sigma_face=" << sigma_face
               << " E_face=" << e_face
