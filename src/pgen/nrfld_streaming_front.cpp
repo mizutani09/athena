@@ -136,9 +136,6 @@ Real CenteredGradX(const MeshBlock *pmb, int k, int j, int i) {
   return (pmb->prfld2->u_rad(k, j, ip) - pmb->prfld2->u_rad(k, j, im))/dx;
 }
 
-Real FluxLimiter(const Real r) {
-  return (2.0 + r)/(6.0 + 3.0*r + r*r);
-}
 }  // namespace
 
 void FLDInnerX1(MeshBlock *pmb, Coordinates *pco, FLD2 *pfld,
@@ -370,7 +367,7 @@ void MeshBlock::UserWorkBeforeOutput(ParameterInput *pin) {
         const Real erad = std::max(prfld2->u_rad(k, j, i), TINY_NUMBER);
         const Real grad = CenteredGradX(this, k, j, i);
         const Real rlim = std::abs(grad)/(std::max(chi_r_code, TINY_NUMBER)*erad);
-        const Real lambda = FluxLimiter(rlim);
+        const Real lambda = RadFLD2::FluxLimiter(rlim, false);
         const Real flux_code = -prfld2->c_ph*lambda*grad/std::max(chi_r_code, TINY_NUMBER);
         user_out_var(0, k, j, i) = pcoord->x1v(i)*leng_unit;
         user_out_var(1, k, j, i) = prfld2->u_rad(k, j, i)*egas_unit;

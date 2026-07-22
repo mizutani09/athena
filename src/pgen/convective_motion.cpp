@@ -706,7 +706,7 @@ void AddRadiativeForceAndWork(MeshBlock *pmb, const Real time, const Real dt,
           Real gradE = std::sqrt(SQR(dEr[0]) + SQR(dEr[1]) + SQR(dEr[2]));
 
           Real R = gradE/(prfld->sigma_r(k,j,i)*fld_u(k,j,i)); // center
-          Real lambda = (2.0+R)/(6.0+3.0*R+R*R);
+          Real lambda = RadFLD2::FluxLimiter(R, false);
 
           cons(IM1,k,j,i) += -lambda*dt*dEr[0];
           cons(IM2,k,j,i) += -lambda*dt*dEr[1];

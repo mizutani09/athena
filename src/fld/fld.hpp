@@ -43,6 +43,17 @@ namespace RadFLD2 {
   enum RadiationFaceIndex {ERAD=0, P11=1, P12=2, P13=3,
                            P21=4, P22=5, P23=6, P31=7, P32=8, P33=9,
                            PTOT1=10, PTOT2=11, PTOT3=12};
+
+  // Levermore-Pomraning FLD closure shared by every radiation operator.
+  inline Real FluxLimiter(const Real r, const bool fixed) {
+    return fixed ? ONE_3RD : (2.0 + r)/(6.0 + 3.0*r + r*r);
+  }
+
+  inline Real EddingtonFactor(const Real r, const bool fixed) {
+    if (fixed) return ONE_3RD;
+    const Real lambda = FluxLimiter(r, false);
+    return lambda + (lambda*r)*(lambda*r);
+  }
 }
 
 class FLD2 {
