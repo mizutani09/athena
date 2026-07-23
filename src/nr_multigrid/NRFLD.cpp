@@ -155,7 +155,8 @@ NRFLD::NRFLD(MeshBlock *pmb, ParameterInput *pin) :
     u_gas_(pmb->ncells3, pmb->ncells2, pmb->ncells1),
     u_gas_iter_backup_(pmb->ncells3, pmb->ncells2, pmb->ncells1),
     ngh_(NGHOST),
-    max_update_fraction_(pin->GetOrAddReal("nrfld", "max_update_fraction", 0.2))
+    max_update_fraction_(pin->GetOrAddReal("nrfld", "max_update_fraction", 0.2)),
+    fixed_linear_coefficients_initialized_(false)
     {
     last_delta_rad_.NewAthenaArray(2, pmb->ncells3, pmb->ncells2, pmb->ncells1);
     last_delta_rad_.ZeroClear();
@@ -200,6 +201,7 @@ NRFLD::~NRFLD() {
 
 void NRFLD::LoadVariables() {
   FLD *pfld = pmy_block_->prfld;
+  fixed_linear_coefficients_initialized_ = false;
   pfld->LoadHydroVariables(pmy_block_->phydro->w, pfld->u_gas);
   if (last_delta_rad_.data() == nullptr) {
     std::stringstream msg;
@@ -425,14 +427,17 @@ void NRFLD::CalculateCoefficients(const AthenaArray<Real> &u_rad_old,
       for (int i=is; i<=ie; i++) {
         Real c_sigma_p = pfld->c_ph*pfld->sigma_p(k,j,i);
 
-        // caution! following can be optimized (only once per step)
         Real sum_dcp = 0.0;
-        sum_dcp += derivetive(NewtonRaphsonFLD::dFr_dEr_xm,k,j,i);
-        sum_dcp += derivetive(NewtonRaphsonFLD::dFr_dEr_xp,k,j,i);
-        sum_dcp += derivetive(NewtonRaphsonFLD::dFr_dEr_ym,k,j,i);
-        sum_dcp += derivetive(NewtonRaphsonFLD::dFr_dEr_yp,k,j,i);
-        sum_dcp += derivetive(NewtonRaphsonFLD::dFr_dEr_zm,k,j,i);
-        sum_dcp += derivetive(NewtonRaphsonFLD::dFr_dEr_zp,k,j,i);
+        if (fixed_linear_coefficients_initialized_) {
+          sum_dcp = coeff(linearSolver::DCCF,k,j,i);
+        } else {
+          sum_dcp += derivetive(NewtonRaphsonFLD::dFr_dEr_xm,k,j,i);
+          sum_dcp += derivetive(NewtonRaphsonFLD::dFr_dEr_xp,k,j,i);
+          sum_dcp += derivetive(NewtonRaphsonFLD::dFr_dEr_ym,k,j,i);
+          sum_dcp += derivetive(NewtonRaphsonFLD::dFr_dEr_yp,k,j,i);
+          sum_dcp += derivetive(NewtonRaphsonFLD::dFr_dEr_zm,k,j,i);
+          sum_dcp += derivetive(NewtonRaphsonFLD::dFr_dEr_zp,k,j,i);
+        }
 
         Real T_gas_new;
 #if GENERAL_EOS
@@ -479,27 +484,27 @@ void NRFLD::CalculateCoefficients(const AthenaArray<Real> &u_rad_old,
           coeff(linearSolver::DZPF,k,j,i) = 0.0;
           src(k,j,i) = 0.0;
         } else {
-          coeff(linearSolver::DCCF,k,j,i) = sum_dcp;
+          if (!fixed_linear_coefficients_initialized_) {
+            coeff(linearSolver::DCCF,k,j,i) = sum_dcp;
+            coeff(linearSolver::DXMF,k,j,i) =
+                -derivetive(NewtonRaphsonFLD::dFr_dEr_xm,k,j,i);
+            coeff(linearSolver::DXPF,k,j,i) =
+                -derivetive(NewtonRaphsonFLD::dFr_dEr_xp,k,j,i);
+            coeff(linearSolver::DYMF,k,j,i) =
+                -derivetive(NewtonRaphsonFLD::dFr_dEr_ym,k,j,i);
+            coeff(linearSolver::DYPF,k,j,i) =
+                -derivetive(NewtonRaphsonFLD::dFr_dEr_yp,k,j,i);
+            coeff(linearSolver::DZMF,k,j,i) =
+                -derivetive(NewtonRaphsonFLD::dFr_dEr_zm,k,j,i);
+            coeff(linearSolver::DZPF,k,j,i) =
+                -derivetive(NewtonRaphsonFLD::dFr_dEr_zp,k,j,i);
+          }
           coeff(linearSolver::DCCS,k,j,i) =
               1.0 + dt*pfld->c_ph*pfld->sigma_p(k,j,i);
           coeff(linearSolver::DCCS,k,j,i) +=
               -(derivetive(NewtonRaphsonFLD::dFr_deg,k,j,i)
                 /derivetive(NewtonRaphsonFLD::dFg_deg,k,j,i))
               *derivetive(NewtonRaphsonFLD::dFg_dEr,k,j,i);
-
-          coeff(linearSolver::DXMF,k,j,i) =
-              -derivetive(NewtonRaphsonFLD::dFr_dEr_xm,k,j,i);
-          coeff(linearSolver::DXPF,k,j,i) =
-              -derivetive(NewtonRaphsonFLD::dFr_dEr_xp,k,j,i);
-          coeff(linearSolver::DYMF,k,j,i) =
-              -derivetive(NewtonRaphsonFLD::dFr_dEr_ym,k,j,i);
-          coeff(linearSolver::DYPF,k,j,i) =
-              -derivetive(NewtonRaphsonFLD::dFr_dEr_yp,k,j,i);
-          coeff(linearSolver::DZMF,k,j,i) =
-              -derivetive(NewtonRaphsonFLD::dFr_dEr_zm,k,j,i);
-          coeff(linearSolver::DZPF,k,j,i) =
-              -derivetive(NewtonRaphsonFLD::dFr_dEr_zp,k,j,i);
-
           src(k,j,i) = -derivetive(NewtonRaphsonFLD::Fr,k,j,i)
               + (derivetive(NewtonRaphsonFLD::dFr_deg,k,j,i)
                  /derivetive(NewtonRaphsonFLD::dFg_deg,k,j,i))
@@ -547,6 +552,7 @@ void NRFLD::CalculateCoefficients(const AthenaArray<Real> &u_rad_old,
       }
     }
   }
+  fixed_linear_coefficients_initialized_ = true;
 }
 
 void NRFLD::CalculateDefect(AthenaArray<Real> &def, const AthenaArray<Real> &u,

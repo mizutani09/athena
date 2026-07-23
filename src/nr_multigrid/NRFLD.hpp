@@ -188,6 +188,7 @@ class NRFLD : public NewtonRaphson {
   Real rdx_, rdy_, rdz_;
   Real defscale_;
   Real max_update_fraction_;
+  bool fixed_linear_coefficients_initialized_;
   // AthenaArray<Real> *u_, *def_, *src_, *uold_, *coeff_, *matrix_;
   // AthenaArray<Real> delta_u_;
   AthenaArray<Real> u_gas_, u_gas_iter_backup_;

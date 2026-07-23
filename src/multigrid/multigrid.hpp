@@ -103,6 +103,7 @@ class Multigrid {
   void LoadFinestData(const AthenaArray<Real> &src, int ns, int ngh);
   void LoadSource(const AthenaArray<Real> &src, int ns, int ngh, Real fac);
   void LoadCoefficients(const AthenaArray<Real> &coeff, int ngh);
+  void LoadCoefficient(const AthenaArray<Real> &coeff, int n, int ngh);
   void ApplyMask();
   void RestrictFMGSource();
   void RestrictInitialData();
@@ -111,6 +112,7 @@ class Multigrid {
   void ZeroClearData();
   void RestrictBlock();
   void RestrictCoefficients();
+  void RestrictCoefficient(int n);
   void ProlongateAndCorrectBlock();
   void FMGProlongateBlock();
   void SmoothBlock(int color);
@@ -218,10 +220,12 @@ class MultigridDriver {
   void SubtractAverage(MGVariable type);
   void SetupMultigrid(bool ftrivial = false);
   void SetupCoefficients();
+  void SetupCoefficient(int n);
   void RestrictInitialData();
   void TransferFromBlocksToRoot(bool initflag);
   void TransferFromRootToBlocks(bool folddata);
   void TransferCoefficientFromBlocksToRoot();
+  void TransferCoefficientFromBlocksToRoot(int n);
   void OneStepToFiner(int nsmooth);
   void OneStepToCoarser(int nsmooth);
   void FMGProlongate();

@@ -398,19 +398,22 @@ void NewtonRaphsonDriver::Solve_general(int stage, Real dt) {
   vnr_.clear();
   for (int i = 0; i < pmy_mesh_->nblocal; ++i)
     vnr_.push_back(pmy_mesh_->my_blocks(i)->pnr);
+  plmgd_->BeginTimeStep();
 
 
   // data load
-  for (auto itr = vnr_.begin(); itr < vnr_.end(); itr++) {
-    NewtonRaphson *pnr = *itr;
+#pragma omp parallel for num_threads(nthreads_)
+  for (int b = 0; b < static_cast<int>(vnr_.size()); ++b) {
+    NewtonRaphson *pnr = vnr_[b];
     MeshBlock *pmb = pnr->pmy_block_;
     pnr->LoadVariables();
   }
 
   // calc coefficients for initial setup
   // std::cout << "Number of NewtonRaphson objects: " << vnr_.size() << std::endl;
-  for (auto itr = vnr_.begin(); itr < vnr_.end(); itr++) {
-    NewtonRaphson *pnr = *itr;
+#pragma omp parallel for num_threads(nthreads_)
+  for (int b = 0; b < static_cast<int>(vnr_.size()); ++b) {
+    NewtonRaphson *pnr = vnr_[b];
     MeshBlock *pmb = pnr->pmy_block_;
     pnr->CalculateCoefficientsOnce(pnr->u_, pmb->phydro->w,
                                   pnr->def_coeff_, pnr->derivetive_);

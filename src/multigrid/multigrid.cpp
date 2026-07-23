@@ -267,6 +267,29 @@ void Multigrid::LoadCoefficients(const AthenaArray<Real> &coeff, int ngh) {
 }
 
 
+//----------------------------------------------------------------------------------------
+//! \fn void Multigrid::LoadCoefficient(const AthenaArray<Real> &coeff, int n, int ngh)
+//! \brief Load one coefficient whose value changes between linear solves
+
+void Multigrid::LoadCoefficient(const AthenaArray<Real> &coeff, int n, int ngh) {
+  AthenaArray<Real> &cm = coeff_[nlevel_-1];
+  const int ie = size_.nx1 + 2*ngh_ - 1;
+  const int je = size_.nx2 + 2*ngh_ - 1;
+  const int ke = size_.nx3 + 2*ngh_ - 1;
+  for (int mk = 0; mk <= ke; ++mk) {
+    const int k = mk + ngh - ngh_;
+    for (int mj = 0; mj <= je; ++mj) {
+      const int j = mj + ngh - ngh_;
+#pragma omp simd
+      for (int mi = 0; mi <= ie; ++mi) {
+        const int i = mi + ngh - ngh_;
+        cm(n,mk,mj,mi) = coeff(n,k,j,i);
+      }
+    }
+  }
+}
+
+
 
 //----------------------------------------------------------------------------------------
 //! \fn void Multigrid::ApplyMask()
@@ -331,6 +354,34 @@ void Multigrid::RestrictCoefficients() {
     }
   }
   return;
+}
+
+
+//----------------------------------------------------------------------------------------
+//! \fn void Multigrid::RestrictCoefficient(int n)
+//! \brief Restrict one cell-centered coefficient through this block hierarchy
+
+void Multigrid::RestrictCoefficient(int n) {
+  const int is = ngh_, js = ngh_, ks = ngh_;
+  for (int lev = nlevel_ - 1; lev > 0; --lev) {
+    const int ll = nlevel_ - lev;
+    const int ie = is + (size_.nx1 >> ll) - 1;
+    const int je = js + (size_.nx2 >> ll) - 1;
+    const int ke = ks + (size_.nx3 >> ll) - 1;
+    AthenaArray<Real> &dst = coeff_[lev-1];
+    const AthenaArray<Real> &src = coeff_[lev];
+    for (int k = ks; k <= ke; ++k) {
+      const int fk = 2*k - ks;
+      for (int j = js; j <= je; ++j) {
+        const int fj = 2*j - js;
+#pragma omp simd
+        for (int i = is; i <= ie; ++i) {
+          const int fi = 2*i - is;
+          dst(n,k,j,i) = RestrictOne(src, n, fi, fj, fk);
+        }
+      }
+    }
+  }
 }
 
 

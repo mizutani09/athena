@@ -48,7 +48,8 @@ linearMGDriver::linearMGDriver(Mesh *pm, ParameterInput *pin, NewtonRaphsonDrive
                           nullptr,
                           nullptr,
                           1, linearSolver::NCOEFF, linearSolver::NMATRIX),
-      pnrd_(pnrd) {
+      pnrd_(pnrd), cache_coefficient_hierarchy_(true),
+      coefficient_hierarchy_cached_(false) {
   eps_ = pin->GetOrAddReal("nrfld", "threshold", -1.0);
   niter_ = pin->GetOrAddInteger("nrfld", "niteration", -1);
   ffas_ = pin->GetOrAddBoolean("nrfld", "fas", ffas_);
@@ -58,6 +59,8 @@ linearMGDriver::linearMGDriver(Mesh *pm, ParameterInput *pin, NewtonRaphsonDrive
   npostsmooth_ = pin->GetOrAddReal("nrfld", "npostsmooth", 2);
   fshowdef_ = pin->GetOrAddBoolean("nrfld", "show_defect", fshowdef_);
   smoothing_only_ = pin->GetOrAddBoolean("nrfld", "smoothing_only", false);
+  cache_coefficient_hierarchy_ =
+      pin->GetOrAddBoolean("nrfld", "cache_coefficient_hierarchy", true);
   relative_defect_ = true;
   coarse_corr_scale_ = pin->GetOrAddReal("nrfld", "coarse_correction_scale", 1.0);
   std::string smoother = pin->GetOrAddString("nrfld", "smoother", "jacobi-rb");
@@ -213,13 +216,30 @@ void linearMGDriver::Solve(int stage, Real dt) {
     NewtonRaphson *pnr = pmg->pmy_block_->pnr;
     pmg->LoadSource(pnr->src_, 0, NGHOST, 1.0);
     pmg->LoadFinestData(pnr->delta_u_, 0, NGHOST); // caution! should be zero
-    pmg->LoadCoefficients(pnr->coeff_, NGHOST);
+    if (!cache_coefficient_hierarchy_ || !coefficient_hierarchy_cached_
+        || mode_ == 0 || pmy_mesh_->amr_updated) {
+      pmg->LoadCoefficients(pnr->coeff_, NGHOST);
+    } else {
+      // In NRFLD the face diffusion coefficients and DCCF are fixed during a
+      // hydro step.  Only the local Schur-complement diagonal changes.
+      pmg->LoadCoefficient(pnr->coeff_, linearSolver::DCCS, NGHOST);
+    }
     // pmg->AddFLDSource(prfld->source, NGHOST, dt_);
   }
 
   // std::cout << "Source loaded to linearMG. Start to solve... at " << Globals::my_rank << std::endl;
 
-  SetupMultigrid(false);
+  const bool rebuild_coefficients = !cache_coefficient_hierarchy_
+                                  || !coefficient_hierarchy_cached_
+                                  || mode_ == 0 || pmy_mesh_->amr_updated;
+  if (rebuild_coefficients) {
+    SetupMultigrid(false);
+    coefficient_hierarchy_cached_ = true;
+  } else {
+    SetupMultigrid(true);
+    SetupCoefficient(linearSolver::DCCS);
+    CalculateMatrixAll();
+  }
   // std::cout << "setup done at " << Globals::my_rank << std::endl;
   if (mode_ == 0) {
     SolveFMGCycle();

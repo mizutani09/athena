@@ -659,6 +659,49 @@ void MultigridDriver::SetupCoefficients() {
 
 
 //----------------------------------------------------------------------------------------
+//! \fn void MultigridDriver::SetupCoefficient(int n)
+//! \brief Update one cell-centered coefficient while retaining the cached hierarchy
+
+void MultigridDriver::SetupCoefficient(int n) {
+#pragma omp parallel for num_threads(nthreads_)
+  for (auto itr = vmg_.begin(); itr < vmg_.end(); ++itr) {
+    (*itr)->RestrictCoefficient(n);
+  }
+  TransferCoefficientFromBlocksToRoot(n);
+
+  if (nreflevel_ > 0) {
+    const int ngh = mgroot_->ngh_;
+    for (int l = nreflevel_ - 1; l >= 1; --l) {
+#pragma omp parallel for num_threads(nthreads_)
+      for (int o = 0; o < noctets_[l]; ++o) {
+        MGOctet &fine = octets_[l][o];
+        LogicalLocation coarse_loc;
+        coarse_loc.lx1 = fine.loc.lx1 >> 1;
+        coarse_loc.lx2 = fine.loc.lx2 >> 1;
+        coarse_loc.lx3 = fine.loc.lx3 >> 1;
+        coarse_loc.level = fine.loc.level - 1;
+        MGOctet &coarse = octets_[l-1][octetmap_[l-1][coarse_loc]];
+        const int ci = (static_cast<int>(fine.loc.lx1) & 1) + ngh;
+        const int cj = (static_cast<int>(fine.loc.lx2) & 1) + ngh;
+        const int ck = (static_cast<int>(fine.loc.lx3) & 1) + ngh;
+        coarse.coeff(n,ck,cj,ci) = RestrictOne(fine.coeff, n, ngh, ngh, ngh);
+      }
+    }
+#pragma omp parallel for num_threads(nthreads_)
+    for (int o = 0; o < noctets_[0]; ++o) {
+      MGOctet &oct = octets_[0][o];
+      const int i = static_cast<int>(oct.loc.lx1) + ngh;
+      const int j = static_cast<int>(oct.loc.lx2) + ngh;
+      const int k = static_cast<int>(oct.loc.lx3) + ngh;
+      mgroot_->coeff_[mgroot_->nlevel_-1](n,k,j,i) =
+          RestrictOne(oct.coeff, n, ngh, ngh, ngh);
+    }
+  }
+  mgroot_->RestrictCoefficient(n);
+}
+
+
+//----------------------------------------------------------------------------------------
 //! \fn void MultigridDiffusionDriver::RestrictInitialData
 //! \brief Setup initial data
 
@@ -859,6 +902,49 @@ void MultigridDriver::TransferCoefficientFromBlocksToRoot() {
   }
 
   return;
+}
+
+
+//----------------------------------------------------------------------------------------
+//! \fn void MultigridDriver::TransferCoefficientFromBlocksToRoot(int v)
+//! \brief Transfer one changing coefficient instead of all coefficient components
+
+void MultigridDriver::TransferCoefficientFromBlocksToRoot(int v) {
+  const int ngh = mgroot_->ngh_;
+#pragma omp parallel for num_threads(nthreads_)
+  for (auto itr = vmg_.begin(); itr < vmg_.end(); ++itr) {
+    Multigrid *pmg = *itr;
+    rootbuf_[pmg->pmy_block_->gid] = pmg->GetCoarsestData(MGVariable::coeff, v);
+  }
+#ifdef MPI_PARALLEL
+  if (nb_rank_ > 0) {
+    MPI_Allgather(MPI_IN_PLACE, nb_rank_, MPI_ATHENA_REAL,
+                  rootbuf_, nb_rank_, MPI_ATHENA_REAL, MPI_COMM_MULTIGRID);
+  } else {
+    MPI_Allgatherv(MPI_IN_PLACE, nblist_[Globals::my_rank], MPI_ATHENA_REAL,
+                   rootbuf_, nblist_, nslist_, MPI_ATHENA_REAL, MPI_COMM_MULTIGRID);
+  }
+#endif
+
+#pragma omp parallel for num_threads(nthreads_)
+  for (int b = 0; b < nbtotal_; ++b) {
+    const LogicalLocation &loc = pmy_mesh_->loclist[b];
+    const int i = static_cast<int>(loc.lx1);
+    const int j = static_cast<int>(loc.lx2);
+    const int k = static_cast<int>(loc.lx3);
+    if (loc.level == locrootlevel_) {
+      mgroot_->coeff_[mgroot_->nlevel_-1](v,k+ngh,j+ngh,i+ngh) = rootbuf_[b];
+    } else {
+      LogicalLocation oloc;
+      oloc.lx1 = loc.lx1 >> 1;
+      oloc.lx2 = loc.lx2 >> 1;
+      oloc.lx3 = loc.lx3 >> 1;
+      oloc.level = loc.level - 1;
+      MGOctet &oct = octets_[oloc.level-locrootlevel_]
+                             [octetmap_[oloc.level-locrootlevel_][oloc]];
+      oct.coeff(v,(k&1)+ngh,(j&1)+ngh,(i&1)+ngh) = rootbuf_[b];
+    }
+  }
 }
 
 
