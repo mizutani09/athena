@@ -846,7 +846,7 @@ void BoundaryValues::ApplyFLDPhysicalBoundaries(const Real time, const Real dt) 
 
   Hydro *ph = pmb->phydro;
 
-  FLD2 *prfld = pmb->prfld2;
+  FLD *prfld = pmb->prfld;
 
   // Apply boundary function on inner-x1
   if (apply_bndry_fn_[BoundaryFace::inner_x1]) {
@@ -911,7 +911,7 @@ void BoundaryValues::DispatchFLDBoundaryFunctions(
     AthenaArray<Real> &prim, AthenaArray<Real> &u_rad_fld,
     BoundaryFace face) {
   if (block_bcs[face] ==  BoundaryFlag::user) {  // user-enrolled BCs
-    pmy_mesh_->FLDBoundaryFunc_[face](pmb,pco,pmb->prfld2,prim,
+    pmy_mesh_->FLDBoundaryFunc_[face](pmb,pco,pmb->prfld,prim,
                                       u_rad_fld,
                                       time,dt,il,iu,jl,ju,kl,ku,NGHOST);
   }

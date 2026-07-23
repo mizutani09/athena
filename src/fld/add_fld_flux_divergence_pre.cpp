@@ -24,7 +24,7 @@
 #endif
 
 //----------------------------------------------------------------------------------------
-//! \fn  void FLD2::AddFluxDivergence
+//! \fn  void FLD::AddFluxDivergence
 //! \brief Adds flux divergence to weighted average of conservative variables from
 //!  previous step(s) of time integrator algorithm
 //!
@@ -39,7 +39,7 @@
 //! \todo (felker): remove the following unnecessary private class member?
 //! field_diffusion.cpp:66:    cell_volume_.NewAthenaArray(nc1);
 
-void FLD2::AddFluxDivergence(const Real wght, AthenaArray<Real> &u_rad_out) {
+void FLD::AddFluxDivergence(const Real wght, AthenaArray<Real> &u_rad_out) {
   MeshBlock *pmb = pmy_block;
   AthenaArray<Real> &x1flux = u_rad_flux[X1DIR];
   AthenaArray<Real> &x2flux = u_rad_flux[X2DIR];

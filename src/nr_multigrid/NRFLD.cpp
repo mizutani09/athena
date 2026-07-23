@@ -201,7 +201,7 @@ NRFLD::~NRFLD() {
 }
 
 void NRFLD::LoadVariables() {
-  FLD2 *pfld = pmy_block_->prfld2;
+  FLD *pfld = pmy_block_->prfld;
   pfld->LoadHydroVariables(pmy_block_->phydro->w, pfld->u_gas);
   if (last_delta_rad_.data() == nullptr) {
     std::stringstream msg;
@@ -237,7 +237,7 @@ void NRFLD::LoadVariables() {
 }
 
 void NRFLD::UpdateHydroVariables() {
-  FLD2 *pfld = pmy_block_->prfld2;
+  FLD *pfld = pmy_block_->prfld;
   pfld->UpdateHydroVariables(pmy_block_->phydro->w,
                              pmy_block_->phydro->u,
                              u_, u_gas_);
@@ -258,7 +258,7 @@ void NRFLD::CalculateCoefficientsOnce(const AthenaArray<Real> &u_pre,
                                       const AthenaArray<Real> &w,
                                       AthenaArray<Real> &def_coeff,
                                       AthenaArray<Real> &derivetive) {
-  FLD2 *pfld = pmy_block_->prfld2;
+  FLD *pfld = pmy_block_->prfld;
   AthenaArray<Real> sigma_r = pfld->sigma_r;
   int is = pmy_block_->is, ie = pmy_block_->ie;
   int js = pmy_block_->js, je = pmy_block_->je;
@@ -302,7 +302,7 @@ void NRFLD::CalculateCoefficientsOnce(const AthenaArray<Real> &u_pre,
         gradE_face = std::sqrt(SQR(gx) + SQR(gy) + SQR(gz));
         E_face = 0.5*(u_pre(k,j,i) + u_pre(k,j,i-1));
         R_face = gradE_face/(sigma_rface*E_face);
-        lambda_face = RadFLD2::FluxLimiter(R_face, pfld->fixed_flux_limiter);
+        lambda_face = RadFLD::FluxLimiter(R_face, pfld->fixed_flux_limiter);
         derivetive(NewtonRaphsonFLD::dFr_dEr_xm,k,j,i) = pfld->c_ph*lambda_face/sigma_rface;
 
          // for i+1/2 face
@@ -315,7 +315,7 @@ void NRFLD::CalculateCoefficientsOnce(const AthenaArray<Real> &u_pre,
         gradE_face = std::sqrt(SQR(gx) + SQR(gy) + SQR(gz));
         E_face = 0.5*(u_pre(k,j,i) + u_pre(k,j,i+1));
         R_face = gradE_face/(sigma_rface*E_face);
-        lambda_face = RadFLD2::FluxLimiter(R_face, pfld->fixed_flux_limiter);
+        lambda_face = RadFLD::FluxLimiter(R_face, pfld->fixed_flux_limiter);
         derivetive(NewtonRaphsonFLD::dFr_dEr_xp,k,j,i) = pfld->c_ph*lambda_face/sigma_rface;
 
         // for j-1/2 face
@@ -328,7 +328,7 @@ void NRFLD::CalculateCoefficientsOnce(const AthenaArray<Real> &u_pre,
         gradE_face = std::sqrt(SQR(gx) + SQR(gy) + SQR(gz));
         E_face = 0.5*(u_pre(k,j,i) + u_pre(k,j-1,i));
         R_face = gradE_face/(sigma_rface*E_face);
-        lambda_face = RadFLD2::FluxLimiter(R_face, pfld->fixed_flux_limiter);
+        lambda_face = RadFLD::FluxLimiter(R_face, pfld->fixed_flux_limiter);
         derivetive(NewtonRaphsonFLD::dFr_dEr_ym,k,j,i) = pfld->c_ph*lambda_face/sigma_rface;
 
         // for j+1/2 face
@@ -341,7 +341,7 @@ void NRFLD::CalculateCoefficientsOnce(const AthenaArray<Real> &u_pre,
         gradE_face = std::sqrt(SQR(gx) + SQR(gy) + SQR(gz));
         E_face = 0.5*(u_pre(k,j,i) + u_pre(k,j+1,i));
         R_face = gradE_face/(sigma_rface*E_face);
-        lambda_face = RadFLD2::FluxLimiter(R_face, pfld->fixed_flux_limiter);
+        lambda_face = RadFLD::FluxLimiter(R_face, pfld->fixed_flux_limiter);
         derivetive(NewtonRaphsonFLD::dFr_dEr_yp,k,j,i) = pfld->c_ph*lambda_face/sigma_rface;
 
         // for k-1/2 face
@@ -354,7 +354,7 @@ void NRFLD::CalculateCoefficientsOnce(const AthenaArray<Real> &u_pre,
         gradE_face = std::sqrt(SQR(gx) + SQR(gy) + SQR(gz));
         E_face = 0.5*(u_pre(k,j,i) + u_pre(k-1,j,i));
         R_face = gradE_face/(sigma_rface*E_face);
-        lambda_face = RadFLD2::FluxLimiter(R_face, pfld->fixed_flux_limiter);
+        lambda_face = RadFLD::FluxLimiter(R_face, pfld->fixed_flux_limiter);
         derivetive(NewtonRaphsonFLD::dFr_dEr_zm,k,j,i) = pfld->c_ph*lambda_face/sigma_rface;
 
         // for k+1/2 face
@@ -367,7 +367,7 @@ void NRFLD::CalculateCoefficientsOnce(const AthenaArray<Real> &u_pre,
         gradE_face = std::sqrt(SQR(gx) + SQR(gy) + SQR(gz));
         E_face = 0.5*(u_pre(k,j,i) + u_pre(k+1,j,i));
         R_face = gradE_face/(sigma_rface*E_face);
-        lambda_face = RadFLD2::FluxLimiter(R_face, pfld->fixed_flux_limiter);
+        lambda_face = RadFLD::FluxLimiter(R_face, pfld->fixed_flux_limiter);
         derivetive(NewtonRaphsonFLD::dFr_dEr_zp,k,j,i) = pfld->c_ph*lambda_face/sigma_rface;
 
       }
@@ -411,7 +411,7 @@ void NRFLD::CalculateCoefficients(const AthenaArray<Real> &u_rad_old,
                                   AthenaArray<Real> &derivetive,
                                   AthenaArray<Real> &src,
                                   Real dt) {
-  FLD2 *pfld = pmy_block_->prfld2;
+  FLD *pfld = pmy_block_->prfld;
   AthenaArray<Real> &u_gas_new = u_gas_; // caution! this should be in argument
   AthenaArray<Real> &u_gas_old = pfld->u_gas; // caution! this should be in argument
 
@@ -557,7 +557,7 @@ void NRFLD::CalculateDefect(AthenaArray<Real> &def, const AthenaArray<Real> &u,
               const AthenaArray<Real> &def_coeff,
               bool th) {
   AthenaArray<Real> &u_gas = u_gas_; // caution! this should be in argument
-  FLD2 *pfld = pmy_block_->prfld2;
+  FLD *pfld = pmy_block_->prfld;
   MeshBlock *pmb = pmy_block_;
   int il = pmb->is, iu = pmb->ie;
   int jl = pmb->js, ju = pmb->je;
@@ -639,7 +639,7 @@ void NRFLD::AddDifference(AthenaArray<Real> &u_rad,
   int je = pmy_block_->je;
   int ks = pmy_block_->ks;
   int ke = pmy_block_->ke;
-  FLD2 *pfld = pmy_block_->prfld2;
+  FLD *pfld = pmy_block_->prfld;
 
   for (int k=ks; k<=ke; ++k) {
     for (int j=js; j<=je; ++j) {
@@ -725,7 +725,7 @@ void NRFLD::ApplyPhysicalBoundary() {
     }
   }
 
-  if (pmy_block_->prfld2->fixed_u_rad) {
+  if (pmy_block_->prfld->fixed_u_rad) {
     int il = pmy_block_->is - NGHOST, iu = pmy_block_->ie + NGHOST;
     int jl = pmy_block_->js, ju = pmy_block_->je;
     int kl = pmy_block_->ks, ku = pmy_block_->ke;
@@ -744,7 +744,7 @@ void NRFLD::ApplyPhysicalBoundary() {
 }
 
 void NRFLD::PrintCellPhysicsDebug(int k, int j, int i) {
-  FLD2 *pfld = pmy_block_->prfld2;
+  FLD *pfld = pmy_block_->prfld;
   const AthenaArray<Real> &u_pre = u_;
   const AthenaArray<Real> &sigma_r = pfld->sigma_r;
   const AthenaArray<Real> &coeff = coeff_;
@@ -761,7 +761,7 @@ void NRFLD::PrintCellPhysicsDebug(int k, int j, int i) {
                         Real e_face, Real coeff_face) {
     const Real grad_face = std::sqrt(SQR(gx) + SQR(gy) + SQR(gz));
     const Real r_face = grad_face/(std::max(sigma_face*e_face, TINY_NUMBER));
-    const Real lambda_face = RadFLD2::FluxLimiter(
+    const Real lambda_face = RadFLD::FluxLimiter(
         r_face, pfld->fixed_flux_limiter);
     std::cout << "      " << label
               << " sigma_face=" << sigma_face

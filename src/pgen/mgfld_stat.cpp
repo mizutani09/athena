@@ -66,7 +66,7 @@ void FLDFixedInnerX1(AthenaArray<Real> &dst, Real time, int nvar,
   for (int k=ks; k<=ke; k++) {
     for (int j=js; j<=je; j++) {
       for (int i=1; i<=ngh; i++) {
-        dst(RadFLD::RAD,k,j,is-i) = coord.x1v(is-i) < 0.5? Er0_L : Er0_R;
+        dst(RadFLD2::RAD,k,j,is-i) = coord.x1v(is-i) < 0.5? Er0_L : Er0_R;
       }
     }
   }
@@ -79,7 +79,7 @@ void FLDFixedOuterX1(AthenaArray<Real> &dst, Real time, int nvar,
   for (int k=ks; k<=ke; k++) {
     for (int j=js; j<=je; j++) {
       for (int i=1; i<=ngh; i++) {
-        dst(RadFLD::RAD,k,j,ie+i) = coord.x1v(ie+i) < 0.5? Er0_L : Er0_R;
+        dst(RadFLD2::RAD,k,j,ie+i) = coord.x1v(ie+i) < 0.5? Er0_L : Er0_R;
       }
     }
   }
@@ -87,7 +87,7 @@ void FLDFixedOuterX1(AthenaArray<Real> &dst, Real time, int nvar,
 }
 
 void FLDAdvFixedInnerX1(
-     MeshBlock *pmb, Coordinates *pco, FLD2 *prfld,
+     MeshBlock *pmb, Coordinates *pco, FLD *prfld,
      const AthenaArray<Real> &w, AthenaArray<Real> &u_fld,
      Real time, Real dt, int is, int ie, int js, int je, int ks, int ke, int ngh) {
   Real x_L = pmb->pmy_mesh->mesh_size.x1min - pmb->pcoord->dx1f(0)/2.0;
@@ -106,7 +106,7 @@ void FLDAdvFixedInnerX1(
 }
 
 void FLDAdvFixedOuterX1(
-     MeshBlock *pmb, Coordinates *pco, FLD2 *prfld,
+     MeshBlock *pmb, Coordinates *pco, FLD *prfld,
      const AthenaArray<Real> &w, AthenaArray<Real> &u_fld,
      Real time, Real dt, int is, int ie, int js, int je, int ks, int ke, int ngh) {
   Real x_L = pmb->pmy_mesh->mesh_size.x1min - pmb->pcoord->dx1f(0)/2.0;
@@ -295,16 +295,16 @@ void MeshBlock::ProblemGenerator(ParameterInput *pin) {
   for (int k=kl; k<=ku; k++) {
     for (int j=jl; j<=ju; j++) {
       for (int i=il; i<=iu; i++) {
-        prfld2->u_gas(k,j,i) = p0*igm1;
+        prfld->u_gas(k,j,i) = p0*igm1;
         if (pcoord->x1v(i) < 0.5) {
-        prfld2->u_rad(k,j,i) = Er0_L;
+        prfld->u_rad(k,j,i) = Er0_L;
         } else {
-        prfld2->u_rad(k,j,i) = Er0_R;
+        prfld->u_rad(k,j,i) = Er0_R;
         }
 
         if (i == il || i == iu) {
           Real an = slope*pcoord->x1v(i) + cons;
-          prfld2->u_rad(k,j,i) = an;
+          prfld->u_rad(k,j,i) = an;
         }
       }
     }
@@ -338,10 +338,10 @@ void MeshBlock::UserWorkBeforeOutput(ParameterInput *pin) {
     for (int j=jl; j<=ju; j++) {
       for (int i=il; i<=iu; i++) {
         // assume cal in E
-        user_out_var(0,k,j,i) = prfld2->u_gas(k,j,i)*egas_unit;
-        user_out_var(1,k,j,i) = prfld2->u_rad(k,j,i)*egas_unit;
-        user_out_var(2,k,j,i) = prfld2->u_gas(k,j,i)/phydro->w(IDN,k,j,i)*temp_coef;
-        user_out_var(3,k,j,i) = std::pow(prfld2->u_rad(k,j,i)*egas_unit/a_r_dim, 0.25);
+        user_out_var(0,k,j,i) = prfld->u_gas(k,j,i)*egas_unit;
+        user_out_var(1,k,j,i) = prfld->u_rad(k,j,i)*egas_unit;
+        user_out_var(2,k,j,i) = prfld->u_gas(k,j,i)/phydro->w(IDN,k,j,i)*temp_coef;
+        user_out_var(3,k,j,i) = std::pow(prfld->u_rad(k,j,i)*egas_unit/a_r_dim, 0.25);
       }
     }
   }
@@ -358,7 +358,7 @@ Real HistoryTg(MeshBlock *pmb, int iout) {
   for (int k=ks; k<=ke; k++) {
     for (int j=js; j<=je; j++) {
       for (int i=is; i<=ie; i++) {
-        T += pmb->prfld2->u_gas(k,j,i)*gm1/pmb->phydro->w(IDN,k,j,i)*T_unit;
+        T += pmb->prfld->u_gas(k,j,i)*gm1/pmb->phydro->w(IDN,k,j,i)*T_unit;
         num++;
       }
     }
@@ -374,7 +374,7 @@ Real HistoryTr(MeshBlock *pmb, int iout) {
   for (int k=ks; k<=ke; k++) {
     for (int j=js; j<=je; j++) {
       for (int i=is; i<=ie; i++) {
-        T += std::pow(pmb->prfld2->u_rad(k,j,i)*egas_unit/a_r_dim, 0.25);
+        T += std::pow(pmb->prfld->u_rad(k,j,i)*egas_unit/a_r_dim, 0.25);
         num++;
       }
     }
@@ -395,7 +395,7 @@ Real HistoryEg(MeshBlock *pmb, int iout) {
     for (int j=js; j<=je; j++) {
       // pmb->pcoord->CellVolume(k, j, is, ie, vol);
       for (int i=is; i<=ie; i++) {
-        e += pmb->prfld2->u_gas(k,j,i);//*vol(i);
+        e += pmb->prfld->u_gas(k,j,i);//*vol(i);
         num++;
       }
     }
@@ -415,7 +415,7 @@ Real HistoryEr(MeshBlock *pmb, int iout) {
     for (int j=js; j<=je; j++) {
       // pmb->pcoord->CellVolume(k, j, is, ie, vol);
       for (int i=is; i<=ie; i++) {
-        E += pmb->prfld2->u_rad(k,j,i);//*vol(i);
+        E += pmb->prfld->u_rad(k,j,i);//*vol(i);
         num++;
       }
     }
@@ -432,7 +432,7 @@ Real HistoryaTg4(MeshBlock *pmb, int iout) {
   for (int k=ks; k<=ke; k++) {
     for (int j=js; j<=je; j++) {
       for (int i=is; i<=ie; i++) {
-        aT4 += std::pow(pmb->prfld2->u_gas(k,j,i)*gm1/pmb->phydro->w(IDN,k,j,i)*T_unit, 4);
+        aT4 += std::pow(pmb->prfld->u_gas(k,j,i)*gm1/pmb->phydro->w(IDN,k,j,i)*T_unit, 4);
         num++;
       }
     }
@@ -457,8 +457,8 @@ Real HistoryEall(MeshBlock *pmb, int iout) {
     for (int j=js; j<=je; j++) {
       pmb->pcoord->CellVolume(k, j, is, ie, vol);
       for (int i=is; i<=ie; i++) {
-        E += pmb->prfld2->u_gas(k,j,i)*vol(i);
-        E += pmb->prfld2->u_rad(k,j,i)*vol(i);
+        E += pmb->prfld->u_gas(k,j,i)*vol(i);
+        E += pmb->prfld->u_rad(k,j,i)*vol(i);
       }
     }
   }
@@ -477,7 +477,7 @@ Real HistoryL1norm(MeshBlock *pmb, int iout) {
       for (int i=is; i<=ie; i++) {
         Real x = pmb->pcoord->x1v(i);
         Real an = slope*x + cons;
-        L1norm += std::abs(pmb->prfld2->u_rad(k,j,i) - an)/std::abs(an);
+        L1norm += std::abs(pmb->prfld->u_rad(k,j,i) - an)/std::abs(an);
       }
     }
   }

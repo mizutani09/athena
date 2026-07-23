@@ -209,7 +209,7 @@ void linearMGDriver::Solve(int stage, Real dt) {
   for (auto itr = vmg_.begin(); itr < vmg_.end(); itr++) {
     linearMG *pmg = static_cast<linearMG*>(*itr);
     // assume all the data are located on the same node
-    // FLD2 *prfld = pmg->pmy_block_->prfld2;
+    // FLD *prfld = pmg->pmy_block_->prfld;
     NewtonRaphson *pnr = pmg->pmy_block_->pnr;
     pmg->LoadSource(pnr->src_, 0, NGHOST, 1.0);
     pmg->LoadFinestData(pnr->delta_u_, 0, NGHOST); // caution! should be zero
@@ -241,7 +241,7 @@ void linearMGDriver::Solve(int stage, Real dt) {
 #pragma omp parallel for num_threads(nthreads_)
   for (auto itr = vmg_.begin(); itr < vmg_.end(); itr++) {
     linearMG *pmg = static_cast<linearMG*>(*itr);
-    // FLD2 *prfld = pmg->pmy_block_->prfld2;
+    // FLD *prfld = pmg->pmy_block_->prfld;
     NewtonRaphson *pnr = pmg->pnr_;
     // Hydro *phydro = pmg->pmy_block_->phydro;
     pmg->RetrieveResult(pnr->delta_u_, 0, NGHOST);
@@ -255,7 +255,7 @@ void linearMGDriver::Solve(int stage, Real dt) {
 // #pragma omp parallel for num_threads(nthreads_)
 //   for (auto itr = vmg_.begin(); itr < vmg_.end(); itr++) {
 //     linearMG *pmg = static_cast<linearMG*>(*itr);
-//     FLD2 *prfld = pmg->pmy_block_->prfld2;
+//     FLD *prfld = pmg->pmy_block_->prfld;
 //     Hydro *phydro = pmg->pmy_block_->phydro;
 //     // if (!prfld->only_rad)
 //     //   prfld->UpdateHydroVariables(phydro->w, phydro->u, prfld->u);

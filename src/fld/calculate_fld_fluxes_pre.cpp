@@ -27,7 +27,7 @@
 #endif
 
 //----------------------------------------------------------------------------------------
-//! \fn  void FLD2::CalculateFluxes
+//! \fn  void FLD::CalculateFluxes
 //! \brief Calculate FLD fluxes using reconstruction + weighted upwinding rule
 //!
 //! \note
@@ -39,7 +39,7 @@
 //! - high-order calculation of scalar fluxes will require other Hydro flux
 //!   approximations (flux_fc in calculate_fluxes.cpp is currently not saved persistently
 //!   in Hydro class but each flux dir is temp. stored in 4D scratch array scr1_nkji_)
-void FLD2::CalculateFluxes(AthenaArray<Real> &u_rad, const int order) {
+void FLD::CalculateFluxes(AthenaArray<Real> &u_rad, const int order) {
 #if NRMGFLD_ENABLED
   // HLLC-FLD has already written u_rad_flux from the same Riemann solution
   // used for the Hydro flux.  Recomputing it here would break conservation.
@@ -78,7 +78,7 @@ void FLD2::CalculateFluxes(AthenaArray<Real> &u_rad, const int order) {
         pmb->precon->PiecewiseLinearX1(k, j, is-1, ie+1, u_rad, u_radl_, u_radr_);
       } else {
         pmb->precon->PiecewiseParabolicX1(k, j, is-1, ie+1, u_rad, u_radl_, u_radr_);
-//         for (int n=0; n<RadFLD::NADV; ++n) {
+//         for (int n=0; n<RadFLD2::NADV; ++n) {
 // #pragma omp simd
 //           for (int i=is; i<=ie+1; ++i) {
 //             pmb->peos->ApplyPassiveScalarFloors(rl_, n, k, j, i);
@@ -116,7 +116,7 @@ void FLD2::CalculateFluxes(AthenaArray<Real> &u_rad, const int order) {
         pmb->precon->PiecewiseLinearX2(k, js-1, il, iu, u_rad, u_radl_, u_radr_);
       } else {
         pmb->precon->PiecewiseParabolicX2(k, js-1, il, iu, u_rad, u_radl_, u_radr_);
-//         for (int n=0; n<RadFLD::NADV; ++n) {
+//         for (int n=0; n<RadFLD2::NADV; ++n) {
 // #pragma omp simd
 //           for (int i=il; i<=iu; ++i) {
 //             pmb->peos->ApplyPassiveScalarFloors(rl_, n, k, js-1, i);
@@ -132,7 +132,7 @@ void FLD2::CalculateFluxes(AthenaArray<Real> &u_rad, const int order) {
           pmb->precon->PiecewiseLinearX2(k, j, il, iu, u_rad, u_radlb_, u_radr_);
         } else {
           pmb->precon->PiecewiseParabolicX2(k, j, il, iu, u_rad, u_radlb_, u_radr_);
-//           for (int n=0; n<RadFLD::NADV; ++n) {
+//           for (int n=0; n<RadFLD2::NADV; ++n) {
 // #pragma omp simd
 //             for (int i=il; i<=iu; ++i) {
 //               pmb->peos->ApplyPassiveScalarFloors(rlb_, n, k, j, i);
@@ -169,7 +169,7 @@ void FLD2::CalculateFluxes(AthenaArray<Real> &u_rad, const int order) {
         pmb->precon->PiecewiseLinearX3(ks-1, j, il, iu, u_rad, u_radl_, u_radr_);
       } else {
         pmb->precon->PiecewiseParabolicX3(ks-1, j, il, iu, u_rad, u_radl_, u_radr_);
-//         for (int n=0; n<RadFLD::NADV; ++n) {
+//         for (int n=0; n<RadFLD2::NADV; ++n) {
 // #pragma omp simd
 //           for (int i=il; i<=iu; ++i) {
 //             pmb->peos->ApplyPassiveScalarFloors(rl_, n, ks-1, j, i);
@@ -185,7 +185,7 @@ void FLD2::CalculateFluxes(AthenaArray<Real> &u_rad, const int order) {
           pmb->precon->PiecewiseLinearX3(k, j, il, iu, u_rad, u_radlb_, u_radr_);
         } else {
           pmb->precon->PiecewiseParabolicX3(k, j, il, iu, u_rad, u_radlb_, u_radr_);
-//           for (int n=0; n<RadFLD::NADV; ++n) {
+//           for (int n=0; n<RadFLD2::NADV; ++n) {
 // #pragma omp simd
 //             for (int i=il; i<=iu; ++i) {
 //               pmb->peos->ApplyPassiveScalarFloors(rlb_, n, k, j, i);
@@ -205,7 +205,7 @@ void FLD2::CalculateFluxes(AthenaArray<Real> &u_rad, const int order) {
 }
 
 
-void FLD2::ComputeUpwindFlux(const int k, const int j, const int il,
+void FLD::ComputeUpwindFlux(const int k, const int j, const int il,
                                        const int iu, // CoordinateDirection dir,
                                        AthenaArray<Real> &rl, AthenaArray<Real> &rr, // 2D
                                        AthenaArray<Real> &vf,  // 3D

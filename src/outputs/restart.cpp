@@ -198,9 +198,9 @@ void RestartOutput::WriteOutputFile(Mesh *pm, ParameterInput *pin, bool force_wr
     }
 
     if (MGFLD_ENABLED) {
-      pmb->pmg_fld->SyncFromFld2(pmb->phydro->w);
-      std::memcpy(pdata, pmb->pmg_fld->u.data(), pmb->pmg_fld->u.GetSizeInBytes());
-      pdata += pmb->pmg_fld->u.GetSizeInBytes();
+      pmb->prfld2->SyncFromFld(pmb->phydro->w);
+      std::memcpy(pdata, pmb->prfld2->u.data(), pmb->prfld2->u.GetSizeInBytes());
+      pdata += pmb->prfld2->u.GetSizeInBytes();
     }
 
     // (conserved variable) Passive scalars:

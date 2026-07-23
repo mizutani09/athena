@@ -61,7 +61,7 @@ namespace {
 
 void ConstantOpacity(MeshBlock *pmb, AthenaArray<Real> &u_fld,
               AthenaArray<Real> &prim) {
-  FLD2 *prfld = pmb->prfld2;
+  FLD *prfld = pmb->prfld;
   int kl=pmb->ks, ku=pmb->ke;
   int jl=pmb->js, ju=pmb->je;
   int il=pmb->is-NGHOST, iu=pmb->ie+NGHOST;
@@ -185,7 +185,7 @@ void MeshBlock::InitUserMeshBlockData(ParameterInput *pin) {
 
   AllocateRealUserMeshBlockDataField(1);
   ruser_meshblock_data[0].NewAthenaArray(2, ncells3, ncells2, ncells1);
-  prfld2->EnrollOpacityFunction(ConstantOpacity);
+  prfld->EnrollOpacityFunction(ConstantOpacity);
   return;
 }
 
@@ -259,7 +259,7 @@ void MeshBlock::ProblemGenerator(ParameterInput *pin) {
     msg << "amp                  = " << amp << std::endl;
     msg << "num_wave             = " << num_wave << std::endl;
     msg << "wave_number          = " << wave_number/(1/leng_unit) << " cm^-1" << std::endl;
-    msg << "E0sim                = " << prfld2->a_r*std::pow(T0, 4) << std::endl;
+    msg << "E0sim                = " << prfld->a_r*std::pow(T0, 4) << std::endl;
     msg << std::endl;
 
     std::cout << msg.str();
@@ -290,7 +290,7 @@ void MeshBlock::ProblemGenerator(ParameterInput *pin) {
         phydro->u(IM2,k,j,i) = 0.0;
         phydro->u(IM3,k,j,i) = 0.0;
         phydro->u(IEN,k,j,i) = p*igm1 + 0.5*rho*v1*v1;
-        prfld2->u_rad(k,j,i) = prfld2->a_r*std::pow(T, 4);
+        prfld->u_rad(k,j,i) = prfld->a_r*std::pow(T, 4);
       }
     }
   }
@@ -326,10 +326,10 @@ void MeshBlock::UserWorkBeforeOutput(ParameterInput *pin) {
     for (int j=jl; j<=ju; j++) {
       for (int i=il; i<=iu; i++) {
         // assume cal in E
-        user_out_var(0,k,j,i) = prfld2->u_gas(k,j,i)*egas_unit;
-        user_out_var(1,k,j,i) = prfld2->u_rad(k,j,i)*egas_unit;
-        user_out_var(2,k,j,i) = prfld2->u_gas(k,j,i)/phydro->w(IDN,k,j,i)*temp_coef;
-        user_out_var(3,k,j,i) = std::pow(prfld2->u_rad(k,j,i)*egas_unit/a_r_dim, 0.25);
+        user_out_var(0,k,j,i) = prfld->u_gas(k,j,i)*egas_unit;
+        user_out_var(1,k,j,i) = prfld->u_rad(k,j,i)*egas_unit;
+        user_out_var(2,k,j,i) = prfld->u_gas(k,j,i)/phydro->w(IDN,k,j,i)*temp_coef;
+        user_out_var(3,k,j,i) = std::pow(prfld->u_rad(k,j,i)*egas_unit/a_r_dim, 0.25);
       }
     }
   }
@@ -349,7 +349,7 @@ Real HistoryTg(MeshBlock *pmb, int iout) {
   for (int k=ks; k<=ke; k++) {
     for (int j=js; j<=je; j++) {
       for (int i=is; i<=ie; i++) {
-        T += pmb->prfld2->u_gas(k,j,i)*gm1/pmb->phydro->w(IDN,k,j,i)*T_unit;
+        T += pmb->prfld->u_gas(k,j,i)*gm1/pmb->phydro->w(IDN,k,j,i)*T_unit;
         num++;
       }
     }
@@ -365,7 +365,7 @@ Real HistoryTr(MeshBlock *pmb, int iout) {
   for (int k=ks; k<=ke; k++) {
     for (int j=js; j<=je; j++) {
       for (int i=is; i<=ie; i++) {
-        T += std::pow(pmb->prfld2->u_rad(k,j,i)*egas_unit/a_r_dim, 0.25);
+        T += std::pow(pmb->prfld->u_rad(k,j,i)*egas_unit/a_r_dim, 0.25);
         num++;
       }
     }
@@ -386,7 +386,7 @@ Real HistoryEg(MeshBlock *pmb, int iout) {
     for (int j=js; j<=je; j++) {
       // pmb->pcoord->CellVolume(k, j, is, ie, vol);
       for (int i=is; i<=ie; i++) {
-        e += pmb->prfld2->u_gas(k,j,i);//*vol(i);
+        e += pmb->prfld->u_gas(k,j,i);//*vol(i);
         num++;
       }
     }
@@ -406,7 +406,7 @@ Real HistoryEr(MeshBlock *pmb, int iout) {
     for (int j=js; j<=je; j++) {
       // pmb->pcoord->CellVolume(k, j, is, ie, vol);
       for (int i=is; i<=ie; i++) {
-        E += pmb->prfld2->u_rad(k,j,i);//*vol(i);
+        E += pmb->prfld->u_rad(k,j,i);//*vol(i);
         num++;
       }
     }
@@ -423,7 +423,7 @@ Real HistoryaTg4(MeshBlock *pmb, int iout) {
   for (int k=ks; k<=ke; k++) {
     for (int j=js; j<=je; j++) {
       for (int i=is; i<=ie; i++) {
-        aT4 += std::pow(pmb->prfld2->u_gas(k,j,i)*gm1/pmb->phydro->w(IDN,k,j,i)*T_unit, 4);
+        aT4 += std::pow(pmb->prfld->u_gas(k,j,i)*gm1/pmb->phydro->w(IDN,k,j,i)*T_unit, 4);
         num++;
       }
     }
@@ -448,8 +448,8 @@ Real HistoryEall(MeshBlock *pmb, int iout) {
     for (int j=js; j<=je; j++) {
       pmb->pcoord->CellVolume(k, j, is, ie, vol);
       for (int i=is; i<=ie; i++) {
-        E += pmb->prfld2->u_gas(k,j,i)*vol(i);
-        E += pmb->prfld2->u_rad(k,j,i)*vol(i);
+        E += pmb->prfld->u_gas(k,j,i)*vol(i);
+        E += pmb->prfld->u_rad(k,j,i)*vol(i);
       }
     }
   }
@@ -468,7 +468,7 @@ Real HistoryEall(MeshBlock *pmb, int iout) {
 //           Real x = pmb->pcoord->x1v(i);
 //           Real r_sq = SQR(x-0.5);
 //           Real an = coef*std::exp(-r_sq/(4*chi_t));
-//           L1norm += std::abs(pmb->prfld2->u_rad(k,j,i)-an)/an;
+//           L1norm += std::abs(pmb->prfld->u_rad(k,j,i)-an)/an;
 //         }
 //       }
 //     }

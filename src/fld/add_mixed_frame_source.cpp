@@ -11,7 +11,7 @@
 #include "../mesh/mesh.hpp"
 #include "fld.hpp"
 
-void FLD2::AddExplicitSourceTerms(const Real dt, const AthenaArray<Real> &prim,
+void FLD::AddExplicitSourceTerms(const Real dt, const AthenaArray<Real> &prim,
                                   AthenaArray<Real> &hydro_u) {
   if (!is_couple || only_rad) return;
   MeshBlock *pmb=pmy_block;
@@ -34,7 +34,7 @@ void FLD2::AddExplicitSourceTerms(const Real dt, const AthenaArray<Real> &prim,
 
         // CalculateRadiationFaceStates has already evaluated the closure at
         // this RK stage. Reuse it here instead of recomputing R and lambda.
-        const Real lambda=rad_state_cc_(RadFLD2::LAMBDA,k,j,i);
+        const Real lambda=rad_state_cc_(RadFLD::LAMBDA,k,j,i);
 
         if (do_force) {
           hydro_u(IM1,k,j,i)-=dt*lambda*ex;
@@ -43,7 +43,7 @@ void FLD2::AddExplicitSourceTerms(const Real dt, const AthenaArray<Real> &prim,
         }
 
         if (do_mixed) {
-          // Zhang et al.: q=2 lambda kappa_P/chi_R. In FLD2, sigma_p and
+          // Zhang et al.: q=2 lambda kappa_P/chi_R. In FLD, sigma_p and
           // sigma_r are the corresponding inverse-length coefficients.
           const Real q=2.0*lambda*sigma_p(k,j,i)
                        /std::max(sigma_r(k,j,i),TINY_NUMBER);

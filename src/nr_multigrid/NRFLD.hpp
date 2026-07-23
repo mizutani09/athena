@@ -40,7 +40,7 @@ class ParameterInput;
 class Coordinates;
 // class linearMG;
 // class linearMGDriver;
-class FLD2;
+class FLD;
 
 // enum class NRNormType {max, l1, l2};
 
@@ -107,7 +107,7 @@ class NRFLD : public NewtonRaphson {
   NRFLD(MeshBlock *pmb, ParameterInput *pin);
   ~NRFLD();
 
-  FLD2 *pfld;
+  FLD *pfld;
   // NRBoundaryValues *pnrbval;
   BoundaryQuantity btype, btypef;
 

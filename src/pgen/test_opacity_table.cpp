@@ -62,7 +62,7 @@ namespace {
 
 void ConstantOpacity(MeshBlock *pmb, AthenaArray<Real> &u_fld,
               AthenaArray<Real> &prim) {
-  FLD2 *prfld = pmb->prfld2;
+  FLD *prfld = pmb->prfld;
   int kl=pmb->ks, ku=pmb->ke;
   int jl=pmb->js, ju=pmb->je;
   int il=pmb->is-NGHOST, iu=pmb->ie+NGHOST;
@@ -141,7 +141,7 @@ void MeshBlock::InitUserMeshBlockData(ParameterInput *pin) {
   puser_table = new UserOpacityTable(pin);
 
 
-  prfld2->EnrollOpacityFunction(ConstantOpacity);
+  prfld->EnrollOpacityFunction(ConstantOpacity);
   return;
 }
 
@@ -180,8 +180,8 @@ void MeshBlock::ProblemGenerator(ParameterInput *pin) {
     std::cout << "Pressure: " << press << " erg cm^-3" << std::endl;
 
     // GetOpacity now expects physical density and temperature for log-scale tables
-    sigma_P = puser_table->GetOpacity(RadFLD2::SIGMA_P, rho, temp);
-    sigma_R = puser_table->GetOpacity(RadFLD2::SIGMA_R, rho, temp);
+    sigma_P = puser_table->GetOpacity(RadFLD::SIGMA_P, rho, temp);
+    sigma_R = puser_table->GetOpacity(RadFLD::SIGMA_R, rho, temp);
     // std::cout << "opacity_unit: " << opacity_unit << " cm^2/g" << std::endl;
 
     std::cout << "Rosseland opacity: " << sigma_R << " cm^2/g" << std::endl;
@@ -298,8 +298,8 @@ void MeshBlock::ProblemGenerator(ParameterInput *pin) {
             phydro->u(IEN,k,j,i) = 0.0;
 
           // for FLD
-          prfld2->u_gas(k,j,i) = 0.0;
-          prfld2->u_rad(k,j,i) = 0.0;
+          prfld->u_gas(k,j,i) = 0.0;
+          prfld->u_rad(k,j,i) = 0.0;
       }
     }
   }

@@ -44,7 +44,7 @@
 
 namespace {
 constexpr Real kRadiationConst = 7.5657e-15;   // erg cm^-3 K^-4
-// Keep this identical to FLD2::FLD2 so that E_rad=aT_gas^4 is also an
+// Keep this identical to FLD::FLD so that E_rad=aT_gas^4 is also an
 // exact fixed point of the stiff matter-radiation coupling solve.
 constexpr Real kGasConstant = 8.3144621e7;      // erg mol^-1 K^-1
 
@@ -95,7 +95,7 @@ Real HistoryTgasMax(MeshBlock *pmb, int iout) {
     for (int j = pmb->js; j <= pmb->je; ++j) {
       for (int i = pmb->is; i <= pmb->ie; ++i) {
         out = std::max(out, TemperatureFromGasState(pmb->phydro->w(IDN, k, j, i),
-                                                    pmb->prfld2->u_gas(k, j, i)));
+                                                    pmb->prfld->u_gas(k, j, i)));
       }
     }
   }
@@ -109,7 +109,7 @@ Real HistoryTgasMin(MeshBlock *pmb, int iout) {
     for (int j = pmb->js; j <= pmb->je; ++j) {
       for (int i = pmb->is; i <= pmb->ie; ++i) {
         out = std::min(out, TemperatureFromGasState(pmb->phydro->w(IDN, k, j, i),
-                                                    pmb->prfld2->u_gas(k, j, i)));
+                                                    pmb->prfld->u_gas(k, j, i)));
       }
     }
   }
@@ -122,7 +122,7 @@ Real HistoryTradMax(MeshBlock *pmb, int iout) {
   for (int k = pmb->ks; k <= pmb->ke; ++k) {
     for (int j = pmb->js; j <= pmb->je; ++j) {
       for (int i = pmb->is; i <= pmb->ie; ++i) {
-        const Real erad_phys = std::max(pmb->prfld2->u_rad(k, j, i) * egas_unit, 0.0);
+        const Real erad_phys = std::max(pmb->prfld->u_rad(k, j, i) * egas_unit, 0.0);
         out = std::max(out, std::pow(erad_phys / kRadiationConst, 0.25));
       }
     }
@@ -152,8 +152,8 @@ Real HistoryPtotMax(MeshBlock *pmb, int iout) {
   for (int k = pmb->ks; k <= pmb->ke; ++k) {
     for (int j = pmb->js; j <= pmb->je; ++j) {
       for (int i = pmb->is; i <= pmb->ie; ++i) {
-        const Real pgas = gm1 * pmb->prfld2->u_gas(k, j, i) * egas_unit;
-        const Real prad = ONE_3RD * pmb->prfld2->u_rad(k, j, i) * egas_unit;
+        const Real pgas = gm1 * pmb->prfld->u_gas(k, j, i) * egas_unit;
+        const Real prad = ONE_3RD * pmb->prfld->u_rad(k, j, i) * egas_unit;
         out = std::max(out, pgas + prad);
       }
     }
@@ -167,8 +167,8 @@ Real HistoryPtotMin(MeshBlock *pmb, int iout) {
   for (int k = pmb->ks; k <= pmb->ke; ++k) {
     for (int j = pmb->js; j <= pmb->je; ++j) {
       for (int i = pmb->is; i <= pmb->ie; ++i) {
-        const Real pgas = gm1 * pmb->prfld2->u_gas(k, j, i) * egas_unit;
-        const Real prad = ONE_3RD * pmb->prfld2->u_rad(k, j, i) * egas_unit;
+        const Real pgas = gm1 * pmb->prfld->u_gas(k, j, i) * egas_unit;
+        const Real prad = ONE_3RD * pmb->prfld->u_rad(k, j, i) * egas_unit;
         out = std::min(out, pgas + prad);
       }
     }
@@ -189,7 +189,7 @@ Real HistoryTransverseTgasSpread(MeshBlock *pmb, int iout) {
     for (int k = pmb->ks; k <= pmb->ke; ++k) {
       for (int j = pmb->js; j <= pmb->je; ++j) {
         const Real tgas = TemperatureFromGasState(pmb->phydro->w(IDN, k, j, i),
-                                                  pmb->prfld2->u_gas(k, j, i));
+                                                  pmb->prfld->u_gas(k, j, i));
         tmin = std::min(tmin, tgas);
         tmax = std::max(tmax, tgas);
         tsum += tgas;
@@ -204,7 +204,7 @@ Real HistoryTransverseTgasSpread(MeshBlock *pmb, int iout) {
 
 void AdvectPulseOpacity(MeshBlock *pmb, AthenaArray<Real> &u_fld, AthenaArray<Real> &prim) {
   (void)u_fld;
-  FLD2 *prfld = pmb->prfld2;
+  FLD *prfld = pmb->prfld;
   int kl = pmb->ks;
   int ku = pmb->ke;
   int jl = pmb->js;
@@ -403,7 +403,7 @@ void MeshBlock::InitUserMeshBlockData(ParameterInput *pin) {
   SetUserOutputVariableName(11, "lambda");
   SetUserOutputVariableName(12, "sigma_P");
   SetUserOutputVariableName(13, "sigma_R");
-  prfld2->EnrollOpacityFunction(AdvectPulseOpacity);
+  prfld->EnrollOpacityFunction(AdvectPulseOpacity);
 }
 
 void MeshBlock::ProblemGenerator(ParameterInput *pin) {
@@ -476,8 +476,8 @@ void MeshBlock::ProblemGenerator(ParameterInput *pin) {
         if (NON_BAROTROPIC_EOS) {
           phydro->u(IEN, k, j, i) = egas_code + 0.5 * rho_code * SQR(vx0_code);
         }
-        prfld2->u_gas(k, j, i) = egas_code;
-        prfld2->u_rad(k, j, i) = erad_code;
+        prfld->u_gas(k, j, i) = egas_code;
+        prfld->u_rad(k, j, i) = erad_code;
 
         if (i >= is && i <= ie) {
           t_min = std::min(t_min, temp_phys);
@@ -569,8 +569,8 @@ void MeshBlock::UserWorkBeforeOutput(ParameterInput *pin) {
         Real vx_code = phydro->w(IVX, k, j, i);
         Real vy_code = phydro->w(IVY, k, j, i);
         Real vz_code = phydro->w(IVZ, k, j, i);
-        Real egas_code = prfld2->u_gas(k, j, i);
-        Real erad_code = prfld2->u_rad(k, j, i);
+        Real egas_code = prfld->u_gas(k, j, i);
+        Real erad_code = prfld->u_rad(k, j, i);
         Real rho_phys = rho_code * rho_unit;
         Real pgas_phys = gm1 * egas_code * egas_unit;
         Real prad_phys = erad_code * egas_unit * ONE_3RD;
@@ -592,8 +592,8 @@ void MeshBlock::UserWorkBeforeOutput(ParameterInput *pin) {
         user_out_var(9, k, j, i) = trad_phys;
         user_out_var(10, k, j, i) = erad_code * egas_unit;
         user_out_var(11, k, j, i) = lambda;
-        user_out_var(12, k, j, i) = prfld2->sigma_p(k, j, i) / leng_unit;
-        user_out_var(13, k, j, i) = prfld2->sigma_r(k, j, i) / leng_unit;
+        user_out_var(12, k, j, i) = prfld->sigma_p(k, j, i) / leng_unit;
+        user_out_var(13, k, j, i) = prfld->sigma_r(k, j, i) / leng_unit;
       }
     }
   }

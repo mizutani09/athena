@@ -138,7 +138,7 @@ void SetHydroStaticBoundary(AthenaArray<Real> &prim, int ngh, bool inner,
 }
 
 void ConstantOpacity(MeshBlock *pmb, AthenaArray<Real> &u_fld, AthenaArray<Real> &prim) {
-  FLD2 *prfld = pmb->prfld2;
+  FLD *prfld = pmb->prfld;
   int kl = pmb->ks - NGHOST, ku = pmb->ke + NGHOST;
   int jl = pmb->js - NGHOST, ju = pmb->je + NGHOST;
   int il = pmb->is - NGHOST, iu = pmb->ie + NGHOST;
@@ -154,14 +154,14 @@ void ConstantOpacity(MeshBlock *pmb, AthenaArray<Real> &u_fld, AthenaArray<Real>
 }
 }  // namespace
 
-void FLDFixedInnerX1(MeshBlock *pmb, Coordinates *pco, FLD2 *pfld,
+void FLDFixedInnerX1(MeshBlock *pmb, Coordinates *pco, FLD *pfld,
                      const AthenaArray<Real> &w, AthenaArray<Real> &u_rad_fld,
                      Real time, Real dt,
                      int is, int ie, int js, int je, int ks, int ke, int ngh) {
   SetInnerFluxBoundary(u_rad_fld, pco, is, ie, js, je, ks, ke, ngh);
 }
 
-void FLDFixedOuterX1(MeshBlock *pmb, Coordinates *pco, FLD2 *pfld,
+void FLDFixedOuterX1(MeshBlock *pmb, Coordinates *pco, FLD *pfld,
                      const AthenaArray<Real> &w, AthenaArray<Real> &u_rad_fld,
                      Real time, Real dt,
                      int is, int ie, int js, int je, int ks, int ke, int ngh) {
@@ -308,7 +308,7 @@ void MeshBlock::InitUserMeshBlockData(ParameterInput *pin) {
   SetUserOutputVariableName(5, "v");
   SetUserOutputVariableName(6, "T_gas");
   SetUserOutputVariableName(7, "T_rad");
-  prfld2->EnrollOpacityFunction(ConstantOpacity);
+  prfld->EnrollOpacityFunction(ConstantOpacity);
 }
 
 void MeshBlock::ProblemGenerator(ParameterInput *pin) {
@@ -325,8 +325,8 @@ void MeshBlock::ProblemGenerator(ParameterInput *pin) {
         phydro->u(IM2, k, j, i) = 0.0;
         phydro->u(IM3, k, j, i) = 0.0;
         if (NON_BAROTROPIC_EOS) phydro->u(IEN, k, j, i) = egas_init;
-        prfld2->u_gas(k, j, i) = egas_init;
-        prfld2->u_rad(k, j, i) = erad_floor;
+        prfld->u_gas(k, j, i) = egas_init;
+        prfld->u_rad(k, j, i) = erad_floor;
       }
     }
   }
@@ -420,8 +420,8 @@ void MeshBlock::UserWorkBeforeOutput(ParameterInput *pin) {
     for (int j = jl; j <= ju; ++j) {
       for (int i = il; i <= iu; ++i) {
         Real z_phys = pcoord->x1v(i) * leng_unit;
-        Real erad_phys = prfld2->u_rad(k, j, i) * egas_unit;
-        Real egas_phys = prfld2->u_gas(k, j, i) * egas_unit;
+        Real erad_phys = prfld->u_rad(k, j, i) * egas_unit;
+        Real egas_phys = prfld->u_gas(k, j, i) * egas_unit;
         user_out_var(0, k, j, i) = z_phys;
         user_out_var(1, k, j, i) = std::sqrt(3.0) * kappa_phys * z_phys;
         user_out_var(2, k, j, i) = erad_phys;
@@ -449,7 +449,7 @@ Real HistoryErMax(MeshBlock *pmb, int iout) {
   for (int k = pmb->ks; k <= pmb->ke; ++k) {
     for (int j = pmb->js; j <= pmb->je; ++j) {
       for (int i = pmb->is; i <= pmb->ie; ++i) {
-        out = std::max(out, pmb->prfld2->u_rad(k, j, i) * egas_unit);
+        out = std::max(out, pmb->prfld->u_rad(k, j, i) * egas_unit);
       }
     }
   }
@@ -461,7 +461,7 @@ Real HistoryEgMax(MeshBlock *pmb, int iout) {
   for (int k = pmb->ks; k <= pmb->ke; ++k) {
     for (int j = pmb->js; j <= pmb->je; ++j) {
       for (int i = pmb->is; i <= pmb->ie; ++i) {
-        out = std::max(out, pmb->prfld2->u_gas(k, j, i) * egas_unit);
+        out = std::max(out, pmb->prfld->u_gas(k, j, i) * egas_unit);
       }
     }
   }
@@ -473,7 +473,7 @@ Real HistoryErMin(MeshBlock *pmb, int iout) {
   for (int k = pmb->ks; k <= pmb->ke; ++k) {
     for (int j = pmb->js; j <= pmb->je; ++j) {
       for (int i = pmb->is; i <= pmb->ie; ++i) {
-        out = std::min(out, pmb->prfld2->u_rad(k, j, i) * egas_unit);
+        out = std::min(out, pmb->prfld->u_rad(k, j, i) * egas_unit);
       }
     }
   }
@@ -485,7 +485,7 @@ Real HistoryEgMin(MeshBlock *pmb, int iout) {
   for (int k = pmb->ks; k <= pmb->ke; ++k) {
     for (int j = pmb->js; j <= pmb->je; ++j) {
       for (int i = pmb->is; i <= pmb->ie; ++i) {
-        out = std::min(out, pmb->prfld2->u_gas(k, j, i) * egas_unit);
+        out = std::min(out, pmb->prfld->u_gas(k, j, i) * egas_unit);
       }
     }
   }
@@ -515,7 +515,7 @@ Real HistoryEall(MeshBlock *pmb, int iout) {
     for (int j = pmb->js; j <= pmb->je; ++j) {
       pmb->pcoord->CellVolume(k, j, pmb->is, pmb->ie, vol);
       for (int i = pmb->is; i <= pmb->ie; ++i) {
-        eall += (pmb->prfld2->u_gas(k, j, i) + pmb->prfld2->u_rad(k, j, i)) * vol(i);
+        eall += (pmb->prfld->u_gas(k, j, i) + pmb->prfld->u_rad(k, j, i)) * vol(i);
       }
     }
   }

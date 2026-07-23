@@ -34,7 +34,7 @@ class Coordinates;
 class FLDBoundaryValues;
 
 
-namespace RadFLD2 {
+namespace RadFLD {
   // constexpr int NTEMP=2, NMATRIX=15, NCOEFF=8, NOPACITY=2;
   constexpr int NOPACITY=2;
 //   enum VarIndex {GAS=0, RAD=1};
@@ -54,10 +54,10 @@ namespace RadFLD2 {
   }
 }
 
-class FLD2 {
+class FLD {
   public:
-  FLD2(MeshBlock *pmb, ParameterInput *pin);
-  ~FLD2();
+  FLD(MeshBlock *pmb, ParameterInput *pin);
+  ~FLD();
 
   MeshBlock* pmy_block;
 
@@ -66,7 +66,7 @@ class FLD2 {
   AthenaArray<Real> u_rad0, u_rad_fl_div;  // rkl2 STS memory registers;
   AthenaArray<Real> u_rad_flux[3];  // face-averaged flux vector
   // Reconstructed radiation energy and scalar FLD closure on hydro faces.  The
-  // first index is RadFLD2::RadiationFaceIndex.  HLLC-FLD consumes exactly
+  // first index is RadFLD::RadiationFaceIndex.  HLLC-FLD consumes exactly
   // these states, so radiation and gas use the same reconstruction order.
   AthenaArray<Real> rad_face_l[3], rad_face_r[3];
   // Godunov radiation energy selected by the hydro Riemann solver.  Explicit

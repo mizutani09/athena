@@ -283,10 +283,10 @@ void BoundaryValues::ProlongateFLDBoundaries(const Real time, const Real dt) {
   MeshBlock *pmb = pmy_block_;
   const int& mylevel = loc.level;
 
-  FLD2 *prfld=nullptr;
+  FLD *prfld=nullptr;
   CellCenteredBoundaryVariable *pfldbvar = nullptr;
   if (MGFLD_ENABLED || NRMGFLD_ENABLED) {
-    prfld = pmb->prfld2;
+    prfld = pmb->prfld;
     pfldbvar = &(prfld->u_rad_fldbvar);
   }
 
@@ -520,7 +520,7 @@ void BoundaryValues::RestrictFLDGhostCellsOnSameLevel(const NeighborBlock& nb, i
   }
 
   // for (auto cc_pair : pmr->pvars_cc_) {
-    FLD2 *prfld = pmb->prfld2;
+    FLD *prfld = pmb->prfld;
     auto cc_pair = pmr->pvars_cc_[prfld->refinement_idx];
     AthenaArray<Real> *var_cc = std::get<0>(cc_pair);
     AthenaArray<Real> *coarse_cc = std::get<1>(cc_pair);
@@ -711,7 +711,7 @@ void BoundaryValues::ApplyFLDPhysicalBoundariesOnCoarseLevel(
 
   // temporarily hardcode Hydro and Field array access:
   Hydro *ph = pmb->phydro;
-  FLD2 *prfld = prfld = pmb->prfld2;
+  FLD *prfld = prfld = pmb->prfld;
 
   if (nb.ni.ox1 == 0) {
     if (apply_bndry_fn_[BoundaryFace::inner_x1]) {
@@ -911,12 +911,12 @@ void BoundaryValues::ProlongateFLDGhostCells(const NeighborBlock& nb,
   MeshRefinement *pmr = pmb->pmr;
 
   if (MGFLD_ENABLED || NRMGFLD_ENABLED) {
-    FLD2 *prfld = pmb->prfld2;
+    FLD *prfld = pmb->prfld;
     pmr->pvars_cc_[prfld->refinement_idx] = std::make_tuple(&prfld->u_rad, &prfld->coarse_u_rad);
   }
 
   // for (auto cc_pair : pmr->pvars_cc_) {
-    auto cc_pair = pmr->pvars_cc_[pmb->prfld2->refinement_idx];
+    auto cc_pair = pmr->pvars_cc_[pmb->prfld->refinement_idx];
     AthenaArray<Real> *var_cc = std::get<0>(cc_pair);
     AthenaArray<Real> *coarse_cc = std::get<1>(cc_pair);
     int nu = var_cc->GetDim4() - 1;
@@ -925,7 +925,7 @@ void BoundaryValues::ProlongateFLDGhostCells(const NeighborBlock& nb,
   // }
 
   if (MGFLD_ENABLED || NRMGFLD_ENABLED) {
-    FLD2 *prfld = pmb->prfld2;
+    FLD *prfld = pmb->prfld;
     pmr->pvars_cc_[prfld->refinement_idx] = std::make_tuple(&prfld->u_rad, &prfld->coarse_u_rad);
   }
   return;

@@ -1742,7 +1742,7 @@ void Mesh::Initialize(int res_flag, ParameterInput *pin) {
       if (CRDIFFUSION_ENABLED)
         pmb->pcrdiff->crbvar.SetupPersistentMPI();
       if (MGFLD_ENABLED)
-        pmb->pmg_fld->mgfldbvar.SetupPersistentMPI();
+        pmb->prfld2->mgfldbvar.SetupPersistentMPI();
       if (NRMGFLD_ENABLED) {
         pmb->pnr->nrbvar.SetupPersistentMPI();
         pmb->pnr->delta_bvar.SetupPersistentMPI();
@@ -1795,11 +1795,11 @@ void Mesh::Initialize(int res_flag, ParameterInput *pin) {
           pmb->pscalars->sbvar.SendBoundaryBuffers();
         }
         if (MGFLD_ENABLED || NRMGFLD_ENABLED) {
-          pmb->prfld2->u_rad_fldbvar.var_cc = &(pmb->prfld2->u_rad);
+          pmb->prfld->u_rad_fldbvar.var_cc = &(pmb->prfld->u_rad);
           if (pmb->pmy_mesh->multilevel) {
-            pmb->prfld2->u_rad_fldbvar.coarse_buf = &(pmb->prfld2->coarse_u_rad);
+            pmb->prfld->u_rad_fldbvar.coarse_buf = &(pmb->prfld->coarse_u_rad);
           }
-          pmb->prfld2->u_rad_fldbvar.SendBoundaryBuffers();
+          pmb->prfld->u_rad_fldbvar.SendBoundaryBuffers();
         }
         if (NRMGFLD_ENABLED) {
           pmb->pnr->nrbvar.SendBoundaryBuffers();
@@ -1825,7 +1825,7 @@ void Mesh::Initialize(int res_flag, ParameterInput *pin) {
           pmb->pscalars->sbvar.ReceiveAndSetBoundariesWithWait();
 
         if (MGFLD_ENABLED || NRMGFLD_ENABLED) {
-          pmb->prfld2->u_rad_fldbvar.ReceiveAndSetBoundariesWithWait();
+          pmb->prfld->u_rad_fldbvar.ReceiveAndSetBoundariesWithWait();
         }
         if (NRMGFLD_ENABLED) {
           pmb->pnr->nrbvar.ReceiveAndSetBoundariesWithWait();
@@ -1889,7 +1889,7 @@ void Mesh::Initialize(int res_flag, ParameterInput *pin) {
             pmb->pscalars->sbvar.ReceiveAndSetBoundariesWithWait();
           }
           if (MGFLD_ENABLED || NRMGFLD_ENABLED) {
-            pmb->prfld2->u_rad_fldbvar.ReceiveAndSetBoundariesWithWait();
+            pmb->prfld->u_rad_fldbvar.ReceiveAndSetBoundariesWithWait();
           }
           if (NRMGFLD_ENABLED) {
             pmb->pnr->nrbvar.ReceiveAndSetBoundariesWithWait();
@@ -1906,9 +1906,9 @@ void Mesh::Initialize(int res_flag, ParameterInput *pin) {
             }
           }
           if (MGFLD_ENABLED || NRMGFLD_ENABLED) {
-            pmb->prfld2->u_rad_fldbvar.var_cc = &(pmb->prfld2->u_rad);
+            pmb->prfld->u_rad_fldbvar.var_cc = &(pmb->prfld->u_rad);
             if (pmb->pmy_mesh->multilevel) {
-              pmb->prfld2->u_rad_fldbvar.coarse_buf = &(pmb->prfld2->coarse_u_rad);
+              pmb->prfld->u_rad_fldbvar.coarse_buf = &(pmb->prfld->coarse_u_rad);
             }
           }
         }
@@ -1935,12 +1935,12 @@ void Mesh::Initialize(int res_flag, ParameterInput *pin) {
       Hydro *ph;
       Field *pf;
       PassiveScalars *ps;
-      FLD2 *prfld;
+      FLD *prfld;
 #pragma omp for private(pmb,pbval,ph,pf,ps)
       for (int i=0; i<nblocal; ++i) {
         pmb = my_blocks(i);
         pbval = pmb->pbval, ph = pmb->phydro, pf = pmb->pfield, ps = pmb->pscalars;
-        prfld = pmb->prfld2;
+        prfld = pmb->prfld;
         if (multilevel)
           pbval->ProlongateBoundaries(time, 0.0, pbval->bvars_main_int);
 
@@ -2049,7 +2049,7 @@ void Mesh::Initialize(int res_flag, ParameterInput *pin) {
       if (MGFLD_ENABLED || NRMGFLD_ENABLED) {
         for (int i=0; i<nblocal; ++i) {
           pmb = my_blocks(i); ph = pmb->phydro;
-          FLD2 *prfld = pmb->prfld2;
+          FLD *prfld = pmb->prfld;
           prfld->UpdateOpacity(pmb, prfld->u_rad, ph->w);
         }
       }
@@ -2325,7 +2325,7 @@ void Mesh::CorrectMidpointInitialCondition() {
       pmb->pcr->cr_bvar.SendBoundaryBuffers();
     
     if (NRMGFLD_ENABLED) {
-      // pmb->prfld2->u_rad_fldbvar.SendBoundaryBuffers();
+      // pmb->prfld->u_rad_fldbvar.SendBoundaryBuffers();
       pmb->pnr->nrbvar.SendBoundaryBuffers();
       pmb->pnr->delta_bvar.SendBoundaryBuffers();
     }
@@ -2354,7 +2354,7 @@ void Mesh::CorrectMidpointInitialCondition() {
     if (CR_ENABLED)
       pmb->pcr->cr_bvar.ReceiveAndSetBoundariesWithWait();
     if (NRMGFLD_ENABLED) {
-      // pmb->prfld2->u_rad_fldbvar.ReceiveAndSetBoundariesWithWait();
+      // pmb->prfld->u_rad_fldbvar.ReceiveAndSetBoundariesWithWait();
       pmb->pnr->nrbvar.ReceiveAndSetBoundariesWithWait();
       pmb->pnr->delta_bvar.ReceiveAndSetBoundariesWithWait();
     }

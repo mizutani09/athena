@@ -27,9 +27,9 @@ class FLDBoundaryValues;
 class MGFLD;
 class MGFLDDriver;
 class UserOpacityTable;
-class FLD2;
+class FLD;
 
-namespace RadFLD {
+namespace RadFLD2 {
   constexpr int NTEMP=2, NMATRIX=15, NCOEFF=9, NOPACITY=2;
   enum TempTndex {GAS=0, RAD=1};
   enum CoeffIndex {DXM=0, DXP=1, DYM=2, DYP=3, DZM=4, DZP=5, DSIGMAP=6, DCOUPLE=7, DPV=8};
@@ -40,15 +40,15 @@ namespace RadFLD {
   enum OpacityIndex {SIGMA_P=0, SIGMA_R=1};
 }
 
-//! \class MGFLDInterface
-//! \brief Bridge between FLD2 state and MGFLD multigrid solver
-class MGFLDInterface {
+//! \class FLD2
+//! \brief Bridge between FLD state and MGFLD multigrid solver
+class FLD2 {
  public:
-  MGFLDInterface(MeshBlock *pmb, ParameterInput *pin);
-  ~MGFLDInterface();
+  FLD2(MeshBlock *pmb, ParameterInput *pin);
+  ~FLD2();
 
   MeshBlock* pmy_block;
-  FLD2 *pfld2;
+  FLD *pfld;
   MGFLD *pmg;
 
   AthenaArray<Real> u, coarse_u;
@@ -58,8 +58,8 @@ class MGFLDInterface {
   CellCenteredBoundaryVariable mgfldbvar;
   bool output_defect;
 
-  void SyncFromFld2(const AthenaArray<Real> &w);
-  void SyncToFld2();
+  void SyncFromFld(const AthenaArray<Real> &w);
+  void SyncToFld();
   void CalculateCoefficients(const AthenaArray<Real> &w);
   void UpdateHydroVariables(AthenaArray<Real> &w, AthenaArray<Real> &hydro_u);
 

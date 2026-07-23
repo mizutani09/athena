@@ -267,12 +267,12 @@ MeshBlock::MeshBlock(int igid, int ilid, LogicalLocation iloc, RegionSize input_
   }
 
   if (MGFLD_ENABLED || NRMGFLD_ENABLED) {
-    prfld2 = new FLD2(this, pin);
+    prfld = new FLD(this, pin);
   }
   if (MGFLD_ENABLED) {
-    pmg_fld = new MGFLDInterface(this, pin);
+    prfld2 = new FLD2(this, pin);
   }
-  if (NRMGFLD_ENABLED) { // caution! NRFLD should be constructed after FLD2
+  if (NRMGFLD_ENABLED) { // caution! NRFLD should be constructed after FLD
     pnr = new NRFLD(this, pin);
   }
 
@@ -476,10 +476,10 @@ MeshBlock::MeshBlock(int igid, int ilid, Mesh *pm, ParameterInput *pin,
   }
 
   if (MGFLD_ENABLED || NRMGFLD_ENABLED) {
-    prfld2 = new FLD2(this, pin);
+    prfld = new FLD(this, pin);
   }
   if (MGFLD_ENABLED) {
-    pmg_fld = new MGFLDInterface(this, pin);
+    prfld2 = new FLD2(this, pin);
   }
   if (NRMGFLD_ENABLED) {
     pnr = new NRFLD(this, pin);
@@ -566,9 +566,9 @@ MeshBlock::MeshBlock(int igid, int ilid, Mesh *pm, ParameterInput *pin,
   }
 
   if (MGFLD_ENABLED) {
-    std::memcpy(pmg_fld->u.data(), &(mbdata[os]), pmg_fld->u.GetSizeInBytes());
-    os += pmg_fld->u.GetSizeInBytes();
-    pmg_fld->SyncToFld2();
+    std::memcpy(prfld2->u.data(), &(mbdata[os]), prfld2->u.GetSizeInBytes());
+    os += prfld2->u.GetSizeInBytes();
+    prfld2->SyncToFld();
   }
 
   if (NRMGFLD_ENABLED) {
@@ -657,16 +657,16 @@ MeshBlock::~MeshBlock() {
     delete pcrdiff;
   }
   if (MGFLD_ENABLED) {
-    if (trace_dtor) std::cout << "[DTOR] MeshBlock gid=" << gid << " delete pmg_fld" << std::endl;
-    delete pmg_fld;
+    if (trace_dtor) std::cout << "[DTOR] MeshBlock gid=" << gid << " delete prfld2" << std::endl;
+    delete prfld2;
   }
   if (NRMGFLD_ENABLED) {
     if (trace_dtor) std::cout << "[DTOR] MeshBlock gid=" << gid << " delete pnr" << std::endl;
     delete pnr;
   }
   if (MGFLD_ENABLED || NRMGFLD_ENABLED) {
-    if (trace_dtor) std::cout << "[DTOR] MeshBlock gid=" << gid << " delete prfld2" << std::endl;
-    delete prfld2;
+    if (trace_dtor) std::cout << "[DTOR] MeshBlock gid=" << gid << " delete prfld" << std::endl;
+    delete prfld;
   }
 
   // BoundaryValues should be destructed AFTER all BoundaryVariable objects are destroyed
@@ -790,7 +790,7 @@ std::size_t MeshBlock::GetBlockSizeInBytes() {
   if (CRDIFFUSION_ENABLED)
     size += pcrdiff->ecr.GetSizeInBytes();
   if (MGFLD_ENABLED)
-    size += pmg_fld->u.GetSizeInBytes();
+    size += prfld2->u.GetSizeInBytes();
   if (NRMGFLD_ENABLED) {
     size += pnr->u_.GetSizeInBytes();
     size += pnr->delta_u_.GetSizeInBytes();
@@ -832,7 +832,7 @@ std::size_t MeshBlock::GetBlockSizeInBytesGray() {
   if (CRDIFFUSION_ENABLED)
     size += pcrdiff->ecr.GetSizeInBytes();
   if (MGFLD_ENABLED)
-    size += pmg_fld->u.GetSizeInBytes();
+    size += prfld2->u.GetSizeInBytes();
   if (NRMGFLD_ENABLED) {
     size += pnr->u_.GetSizeInBytes();
     size += pnr->delta_u_.GetSizeInBytes();

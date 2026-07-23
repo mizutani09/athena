@@ -4,7 +4,7 @@
 // Licensed under the 3-clause BSD License, see LICENSE file for details
 //========================================================================================
 //! \file fld.cpp
-//! \brief implementation of functions in class FLD2
+//! \brief implementation of functions in class FLD
 
 // C headers
 
@@ -31,7 +31,7 @@
 
 inline void DefaultOpacity(MeshBlock *pmb, AthenaArray<Real> &u_fld,
               AthenaArray<Real> &prim) {
-  FLD2 *prfld = pmb->prfld2;
+  FLD *prfld = pmb->prfld;
   int kl=pmb->ks, ku=pmb->ke;
   int jl=pmb->js, ju=pmb->je;
   int il=pmb->is-NGHOST, iu=pmb->ie+NGHOST;
@@ -65,9 +65,9 @@ inline void DefaultOpacity(MeshBlock *pmb, AthenaArray<Real> &u_fld,
 }
 
 //----------------------------------------------------------------------------------------
-//! \fn FLD2::FLD2(MeshBlock *pmb, ParameterInput *pin)
-//! \brief FLD2 constructor
-FLD2::FLD2(MeshBlock *pmb, ParameterInput *pin) :
+//! \fn FLD::FLD(MeshBlock *pmb, ParameterInput *pin)
+//! \brief FLD constructor
+FLD::FLD(MeshBlock *pmb, ParameterInput *pin) :
     pmy_block(pmb),
     u_gas(pmb->ncells3, pmb->ncells2, pmb->ncells1),
     u_rad(pmb->ncells3, pmb->ncells2, pmb->ncells1),
@@ -132,29 +132,29 @@ FLD2::FLD2(MeshBlock *pmb, ParameterInput *pin) :
   u_radl_.NewAthenaArray(pmb->ncells1);
   u_radr_.NewAthenaArray(pmb->ncells1);
   u_radlb_.NewAthenaArray(pmb->ncells1);
-  rad_state_cc_.NewAthenaArray(RadFLD2::NRAD_FACE_STATE,
+  rad_state_cc_.NewAthenaArray(RadFLD::NRAD_FACE_STATE,
                                pmb->ncells3, pmb->ncells2, pmb->ncells1);
-  rad_statel_.NewAthenaArray(RadFLD2::NRAD_FACE_STATE, pmb->ncells1);
-  rad_stater_.NewAthenaArray(RadFLD2::NRAD_FACE_STATE, pmb->ncells1);
-  rad_statelb_.NewAthenaArray(RadFLD2::NRAD_FACE_STATE, pmb->ncells1);
-  rad_face_l[X1DIR].NewAthenaArray(RadFLD2::NRAD_FACE_STATE,
+  rad_statel_.NewAthenaArray(RadFLD::NRAD_FACE_STATE, pmb->ncells1);
+  rad_stater_.NewAthenaArray(RadFLD::NRAD_FACE_STATE, pmb->ncells1);
+  rad_statelb_.NewAthenaArray(RadFLD::NRAD_FACE_STATE, pmb->ncells1);
+  rad_face_l[X1DIR].NewAthenaArray(RadFLD::NRAD_FACE_STATE,
                                    pmb->ncells3, pmb->ncells2, pmb->ncells1+1);
-  rad_face_r[X1DIR].NewAthenaArray(RadFLD2::NRAD_FACE_STATE,
+  rad_face_r[X1DIR].NewAthenaArray(RadFLD::NRAD_FACE_STATE,
                                    pmb->ncells3, pmb->ncells2, pmb->ncells1+1);
   rad_face_g[X1DIR].NewAthenaArray(pmb->ncells3, pmb->ncells2,
                                   pmb->ncells1+1);
   if (pm->f2) {
-    rad_face_l[X2DIR].NewAthenaArray(RadFLD2::NRAD_FACE_STATE,
+    rad_face_l[X2DIR].NewAthenaArray(RadFLD::NRAD_FACE_STATE,
                                      pmb->ncells3, pmb->ncells2+1, pmb->ncells1);
-    rad_face_r[X2DIR].NewAthenaArray(RadFLD2::NRAD_FACE_STATE,
+    rad_face_r[X2DIR].NewAthenaArray(RadFLD::NRAD_FACE_STATE,
                                      pmb->ncells3, pmb->ncells2+1, pmb->ncells1);
     rad_face_g[X2DIR].NewAthenaArray(pmb->ncells3, pmb->ncells2+1,
                                     pmb->ncells1);
   }
   if (pm->f3) {
-    rad_face_l[X3DIR].NewAthenaArray(RadFLD2::NRAD_FACE_STATE,
+    rad_face_l[X3DIR].NewAthenaArray(RadFLD::NRAD_FACE_STATE,
                                      pmb->ncells3+1, pmb->ncells2, pmb->ncells1);
-    rad_face_r[X3DIR].NewAthenaArray(RadFLD2::NRAD_FACE_STATE,
+    rad_face_r[X3DIR].NewAthenaArray(RadFLD::NRAD_FACE_STATE,
                                      pmb->ncells3+1, pmb->ncells2, pmb->ncells1);
     rad_face_g[X3DIR].NewAthenaArray(pmb->ncells3+1, pmb->ncells2,
                                     pmb->ncells1);
@@ -189,7 +189,7 @@ FLD2::FLD2(MeshBlock *pmb, ParameterInput *pin) :
   Real leng_unit = pin->GetOrAddReal("hydro", "leng_unit", -1.0);
   if (time_unit < 0.0 && leng_unit < 0.0) {
     std::stringstream msg;
-    msg << "### FATAL ERROR in function [FLD2::FLD2]" << std::endl;
+    msg << "### FATAL ERROR in function [FLD::FLD]" << std::endl;
     msg << "time_unit or leng_unit must be specified in block 'hydro'.";
     ATHENA_ERROR(msg);
   } else if (time_unit > 0.0 && leng_unit > 0.0) {
@@ -216,22 +216,22 @@ FLD2::FLD2(MeshBlock *pmb, ParameterInput *pin) :
   // std::cout << "const_opacity in sim: " << const_opacity << std::endl;
 }
 
-void FLD2::EnrollOpacityFunction(FLDOpacityFunc MyOpacityFunction) {
+void FLD::EnrollOpacityFunction(FLDOpacityFunc MyOpacityFunction) {
   UpdateOpacity = MyOpacityFunction;
 }
 
 
 //----------------------------------------------------------------------------------------
-//! \fn FLD2::~FLD2()
-//! \brief FLD2 destructor
-FLD2::~FLD2() {
+//! \fn FLD::~FLD()
+//! \brief FLD destructor
+FLD::~FLD() {
 }
 
 
 //----------------------------------------------------------------------------------------
-//! \fn void FLD2::LoadHydroVariables(const AthenaArray<Real> &w, AthenaArray<Real> &u)
+//! \fn void FLD::LoadHydroVariables(const AthenaArray<Real> &w, AthenaArray<Real> &u)
 //! \brief Load hydro variables from conserved variables
-void FLD2::LoadHydroVariables(const AthenaArray<Real> &w, AthenaArray<Real> &fld_u_gas) {
+void FLD::LoadHydroVariables(const AthenaArray<Real> &w, AthenaArray<Real> &fld_u_gas) {
   if(only_rad && pmy_block->pmy_mesh->dt > 0.0) return;
   int il = pmy_block->is - NGHOST, iu = pmy_block->ie + NGHOST;
   int jl = pmy_block->js, ju = pmy_block->je;
@@ -259,10 +259,10 @@ void FLD2::LoadHydroVariables(const AthenaArray<Real> &w, AthenaArray<Real> &fld
 
 
 //----------------------------------------------------------------------------------------
-//! \fn void FLD2::UpdateHydroVariables(AthenaArray<Real> &w,
+//! \fn void FLD::UpdateHydroVariables(AthenaArray<Real> &w,
 //!               AthenaArray<Real> &hydro_u, const AthenaArray<Real> &fld_u)
 //! \brief Update conserved variables from hydro variables
-void FLD2::UpdateHydroVariables(AthenaArray<Real> &w, AthenaArray<Real> &hydro_u,
+void FLD::UpdateHydroVariables(AthenaArray<Real> &w, AthenaArray<Real> &hydro_u,
                                 const AthenaArray<Real> &fld_u_rad,
                                 const AthenaArray<Real> &fld_u_gas) {
   int il = pmy_block->is - NGHOST, iu = pmy_block->ie + NGHOST;

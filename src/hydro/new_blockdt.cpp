@@ -115,14 +115,14 @@ void Hydro::NewBlockTimeStep() {
               Real cs = pmb->peos->SoundSpeed(wi);
               Real cs1 = cs, cs2 = cs, cs3 = cs;
 #if NRMGFLD_ENABLED
-              if (!pmb->prfld2->only_rad
-                  && pmb->prfld2->include_radiation_force) {
+              if (!pmb->prfld->only_rad
+                  && pmb->prfld->include_radiation_force) {
                 cs1 = std::sqrt(SQR(cs)
-                    + pmb->prfld2->RadiationSoundSpeedSquared(k,j,i,X1DIR));
+                    + pmb->prfld->RadiationSoundSpeedSquared(k,j,i,X1DIR));
                 cs2 = std::sqrt(SQR(cs)
-                    + pmb->prfld2->RadiationSoundSpeedSquared(k,j,i,X2DIR));
+                    + pmb->prfld->RadiationSoundSpeedSquared(k,j,i,X2DIR));
                 cs3 = std::sqrt(SQR(cs)
-                    + pmb->prfld2->RadiationSoundSpeedSquared(k,j,i,X3DIR));
+                    + pmb->prfld->RadiationSoundSpeedSquared(k,j,i,X3DIR));
               }
 #endif
               Real speed1 = std::max(cspeed, (std::abs(wi[IVX]) + cs1));

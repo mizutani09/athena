@@ -183,9 +183,9 @@ void ReadAsciiOpacityTable(std::string fn, UserOpacityTable *puser_table, Parame
 void ReadHDF5OpacityTable(std::string fn, UserOpacityTable *puser_table, ParameterInput *pin) {
   #ifdef HDF5OUTPUT
   // Get number of variables to read from the table
-  int nvar = RadFLD2::NOPACITY;
+  int nvar = RadFLD::NOPACITY;
   std::string temp_path, x2_path;
-  std::string var_paths[RadFLD2::NOPACITY];
+  std::string var_paths[RadFLD::NOPACITY];
   bool values_are_log10 = false;
   UserOpacityTable::X2AxisKind x2_axis_kind = puser_table->x2_axis_kind;
 
@@ -225,28 +225,28 @@ void ReadHDF5OpacityTable(std::string fn, UserOpacityTable *puser_table, Paramet
         x2_candidates,
         "x2 axis");
 
-    var_paths[RadFLD2::SIGMA_P] = ResolveDatasetPath(
+    var_paths[RadFLD::SIGMA_P] = ResolveDatasetPath(
         file,
         GetOpacityStringOrDefault(pin, "opacity_table_planck_dataset", "auto"),
         {"kappa/log10_planck", "/kappa/log10_planck",
          "log10_planck", "/log10_planck",
-         opacity_var_names[RadFLD2::SIGMA_P],
+         opacity_var_names[RadFLD::SIGMA_P],
          "/planck_mean_opacity",
          "kappa/planck", "/kappa/planck", "planck", "/planck"},
         "Planck opacity");
 
-    var_paths[RadFLD2::SIGMA_R] = ResolveDatasetPath(
+    var_paths[RadFLD::SIGMA_R] = ResolveDatasetPath(
         file,
         GetOpacityStringOrDefault(pin, "opacity_table_rosseland_dataset", "auto"),
         {"kappa/log10_rosseland", "/kappa/log10_rosseland",
          "log10_rosseland", "/log10_rosseland",
-         opacity_var_names[RadFLD2::SIGMA_R],
+         opacity_var_names[RadFLD::SIGMA_R],
          "/rosseland_mean_opacity",
          "kappa/rosseland", "/kappa/rosseland", "rosseland", "/rosseland"},
         "Rosseland opacity");
 
-    values_are_log10 = PathLooksLikeLog10Opacity(var_paths[RadFLD2::SIGMA_P]) &&
-                       PathLooksLikeLog10Opacity(var_paths[RadFLD2::SIGMA_R]);
+    values_are_log10 = PathLooksLikeLog10Opacity(var_paths[RadFLD::SIGMA_P]) &&
+                       PathLooksLikeLog10Opacity(var_paths[RadFLD::SIGMA_R]);
 
     H5Fclose(file);
     H5Pclose(property_list_file);

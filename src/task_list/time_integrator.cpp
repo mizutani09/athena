@@ -1718,7 +1718,7 @@ void TimeIntegratorTaskList::StartupTaskList(MeshBlock *pmb, int stage) {
     }
 
     if (MGFLD_ENABLED || NRMGFLD_ENABLED) {
-      FLD2 *prfld = pmb->prfld2;
+      FLD *prfld = pmb->prfld;
       prfld->u_rad1.ZeroClear();
       if (integrator == "ssprk5_4")
         prfld->u_rad2 = prfld->u_rad;
@@ -1999,7 +1999,7 @@ TaskStatus TimeIntegratorTaskList::AddSourceTerms(MeshBlock *pmb, int stage) {
                                ph->u, ps->s);
       }
 #if NRMGFLD_ENABLED
-      pmb->prfld2->AddExplicitSourceTerms(dt,ph->w,ph->u);
+      pmb->prfld->AddExplicitSourceTerms(dt,ph->w,ph->u);
 #endif
     }
     return TaskStatus::next;
@@ -2296,7 +2296,7 @@ TaskStatus TimeIntegratorTaskList::Primitives(MeshBlock *pmb, int stage) {
   Hydro *ph = pmb->phydro;
   Field *pf = pmb->pfield;
   PassiveScalars *ps = pmb->pscalars;
-  FLD2 *prfld = pmb->prfld2;
+  FLD *prfld = pmb->prfld;
   BoundaryValues *pbval = pmb->pbval;
 
   int il = pmb->is, iu = pmb->ie, jl = pmb->js, ju = pmb->je, kl = pmb->ks, ku = pmb->ke;
@@ -3183,7 +3183,7 @@ TaskStatus TimeIntegratorTaskList::AddSourceTermsCRTC(MeshBlock *pmb, int stage)
 
 
 TaskStatus TimeIntegratorTaskList::CalculateRADFLDFlux(MeshBlock *pmb, int stage) {
-  FLD2 *prfld = pmb->prfld2;
+  FLD *prfld = pmb->prfld;
   if (stage <= nstages) {
     if (stage_wghts[stage-1].main_stage) {
       if ((integrator == "vl2") && (stage-stage_wghts[0].orbital_stage == 1)) {
@@ -3202,11 +3202,11 @@ TaskStatus TimeIntegratorTaskList::SendRADFLD(MeshBlock *pmb, int stage) {
   if (stage <= nstages) {
     // Swap FLD quantity in BoundaryVariable interface back to conserved var
     // formulation (also needed in SetBoundariesScalars() since the tasks are independent)
-    pmb->prfld2->u_rad_fldbvar.var_cc = &(pmb->prfld2->u_rad);
+    pmb->prfld->u_rad_fldbvar.var_cc = &(pmb->prfld->u_rad);
     if (pmb->pmy_mesh->multilevel) {
-      pmb->prfld2->u_rad_fldbvar.coarse_buf = &(pmb->prfld2->coarse_u_rad);
+      pmb->prfld->u_rad_fldbvar.coarse_buf = &(pmb->prfld->coarse_u_rad);
     }
-    pmb->prfld2->u_rad_fldbvar.SendBoundaryBuffers();
+    pmb->prfld->u_rad_fldbvar.SendBoundaryBuffers();
   } else {
     return TaskStatus::fail;
   }
@@ -3217,7 +3217,7 @@ TaskStatus TimeIntegratorTaskList::SendRADFLD(MeshBlock *pmb, int stage) {
 TaskStatus TimeIntegratorTaskList::ReceiveRADFLD(MeshBlock *pmb, int stage) {
   bool ret;
   if (stage <= nstages) {
-    ret = pmb->prfld2->u_rad_fldbvar.ReceiveBoundaryBuffers();
+    ret = pmb->prfld->u_rad_fldbvar.ReceiveBoundaryBuffers();
   } else {
     return TaskStatus::fail;
   }
@@ -3235,7 +3235,7 @@ TaskStatus TimeIntegratorTaskList::SendRADFLDFlux(MeshBlock *pmb, int stage) {
     if (stage_wghts[stage-1].main_stage ||
         pmb->pmy_mesh->sts_loc == TaskType::op_split_before ||
         pmb->pmy_mesh->sts_loc == TaskType::op_split_after) {
-      pmb->prfld2->u_rad_fldbvar.SendFluxCorrection();
+      pmb->prfld->u_rad_fldbvar.SendFluxCorrection();
     }
     return TaskStatus::success;
   }
@@ -3248,7 +3248,7 @@ TaskStatus TimeIntegratorTaskList::ReceiveRADFLDFlux(MeshBlock *pmb, int stage) 
     if (stage_wghts[stage-1].main_stage ||
         pmb->pmy_mesh->sts_loc == TaskType::op_split_before ||
         pmb->pmy_mesh->sts_loc == TaskType::op_split_after) {
-      if (pmb->prfld2->u_rad_fldbvar.ReceiveFluxCorrection()) {
+      if (pmb->prfld->u_rad_fldbvar.ReceiveFluxCorrection()) {
         return TaskStatus::next;
       } else {
         return TaskStatus::fail;
@@ -3264,14 +3264,14 @@ TaskStatus TimeIntegratorTaskList::ReceiveRADFLDFlux(MeshBlock *pmb, int stage) 
 TaskStatus TimeIntegratorTaskList::SetBoundariesRADFLD(MeshBlock *pmb, int stage) {
   if (stage <= nstages) {
     // Set FLD quantity in BoundaryVariable interface to cons var formulation
-    pmb->prfld2->u_rad_fldbvar.var_cc = &(pmb->prfld2->u_rad);
+    pmb->prfld->u_rad_fldbvar.var_cc = &(pmb->prfld->u_rad);
     if (pmb->pmy_mesh->multilevel) {
-      pmb->prfld2->u_rad_fldbvar.coarse_buf = &(pmb->prfld2->coarse_u_rad);
+      pmb->prfld->u_rad_fldbvar.coarse_buf = &(pmb->prfld->coarse_u_rad);
     }
-    pmb->prfld2->u_rad_fldbvar.SetBoundaries();
+    pmb->prfld->u_rad_fldbvar.SetBoundaries();
     // if (stage == nstages) {
-    //   pmb->prfld2->UpdateRadiationEnergy(pmb->prfld2->u, pmb->prfld2->u_rad);
-    //   pmb->prfld2->u_rad.SwapAthenaArray(pmb->prfld2->u_rad1);
+    //   pmb->prfld->UpdateRadiationEnergy(pmb->prfld->u, pmb->prfld->u_rad);
+    //   pmb->prfld->u_rad.SwapAthenaArray(pmb->prfld->u_rad1);
     // }
     return TaskStatus::success;
   }
@@ -3284,7 +3284,7 @@ TaskStatus TimeIntegratorTaskList::SetPhysicalBoundariesRADFLD(MeshBlock *pmb, i
   BoundaryValues *pbval = pmb->pbval;
 
   if (stage <= nstages) {
-    FLD2 *prfld = pmb->prfld2;
+    FLD *prfld = pmb->prfld;
     Real t_end_stage = pmb->pmy_mesh->time
                        + stage_wghts[(stage-1)].ebeta*pmb->pmy_mesh->dt;
     Real dt = (stage_wghts[(stage-1)].beta)*(pmb->pmy_mesh->dt);
@@ -3320,7 +3320,7 @@ TaskStatus TimeIntegratorTaskList::ProlongationRADFLD(MeshBlock *pmb, int stage)
 TaskStatus TimeIntegratorTaskList::IntegrateRADFLD(MeshBlock *pmb, int stage) {
   if (pmb->pmy_mesh->fluid_setup == FluidFormulation::fixed) return TaskStatus::next;
 
-  FLD2 *prfld = pmb->prfld2;
+  FLD *prfld = pmb->prfld;
 
   if (stage <= nstages) {
     if (stage_wghts[stage-1].main_stage) {

@@ -122,7 +122,7 @@ Real LocalGasTemperaturePhys(const MeshBlock *pmb, int k, int j, int i) {
 }
 
 Real LocalRadiationTemperaturePhys(const MeshBlock *pmb, int k, int j, int i) {
-  const Real erad_phys = std::max(pmb->prfld2->u_rad(k, j, i)*egas_unit, TINY_NUMBER);
+  const Real erad_phys = std::max(pmb->prfld->u_rad(k, j, i)*egas_unit, TINY_NUMBER);
   return std::pow(erad_phys/kRadiationConst, 0.25);
 }
 
@@ -137,7 +137,7 @@ void ConstantInverseLengthOpacity(MeshBlock *pmb, AthenaArray<Real> &u_fld,
                                   AthenaArray<Real> &prim) {
   (void)u_fld;
   (void)prim;
-  FLD2 *prfld = pmb->prfld2;
+  FLD *prfld = pmb->prfld;
   int kl = pmb->ks;
   int ku = pmb->ke;
   int jl = pmb->js;
@@ -224,7 +224,7 @@ void NROuterX1(MeshBlock *pmb, AthenaArray<Real> &u_rad, AthenaArray<Real> &u_ga
   SetNRFixedX1(u_rad, u_gas, false, is, ie, js, je, ks, ke, ngh);
 }
 
-void FLDInnerX1(MeshBlock *pmb, Coordinates *pco, FLD2 *pfld,
+void FLDInnerX1(MeshBlock *pmb, Coordinates *pco, FLD *pfld,
                 const AthenaArray<Real> &w, AthenaArray<Real> &u_rad_fld,
                 Real time, Real dt,
                 int is, int ie, int js, int je, int ks, int ke, int ngh) {
@@ -232,7 +232,7 @@ void FLDInnerX1(MeshBlock *pmb, Coordinates *pco, FLD2 *pfld,
   SetFLDFixedX1(u_rad_fld, true, is, ie, js, je, ks, ke, ngh);
 }
 
-void FLDOuterX1(MeshBlock *pmb, Coordinates *pco, FLD2 *pfld,
+void FLDOuterX1(MeshBlock *pmb, Coordinates *pco, FLD *pfld,
                 const AthenaArray<Real> &w, AthenaArray<Real> &u_rad_fld,
                 Real time, Real dt,
                 int is, int ie, int js, int je, int ks, int ke, int ngh) {
@@ -409,7 +409,7 @@ void MeshBlock::InitUserMeshBlockData(ParameterInput *pin) {
   SetUserOutputVariableName(6, "P_rad");
   SetUserOutputVariableName(7, "P_tot");
   SetUserOutputVariableName(8, "lambda");
-  prfld2->EnrollOpacityFunction(ConstantInverseLengthOpacity);
+  prfld->EnrollOpacityFunction(ConstantInverseLengthOpacity);
 }
 
 void MeshBlock::ProblemGenerator(ParameterInput *pin) {
@@ -433,8 +433,8 @@ void MeshBlock::ProblemGenerator(ParameterInput *pin) {
         if (NON_BAROTROPIC_EOS) {
           phydro->u(IEN, k, j, i) = s.egas + 0.5*s.rho*s.vel*s.vel;
         }
-        prfld2->u_gas(k, j, i) = s.egas;
-        prfld2->u_rad(k, j, i) = s.erad;
+        prfld->u_gas(k, j, i) = s.egas;
+        prfld->u_rad(k, j, i) = s.erad;
       }
     }
   }
@@ -447,7 +447,7 @@ void MeshBlock::ProblemGenerator(ParameterInput *pin) {
         const ShockState &s = (x_phys < x_discont_phys) ? left_state : right_state;
         prev(PREV_RHO, k, j, i) = phydro->u(IDN, k, j, i)*rho_unit;
         prev(PREV_TGAS, k, j, i) = s.temp*temp_unit;
-        prev(PREV_TRAD, k, j, i) = std::pow(std::max(prfld2->u_rad(k, j, i)*egas_unit,
+        prev(PREV_TRAD, k, j, i) = std::pow(std::max(prfld->u_rad(k, j, i)*egas_unit,
                                                      TINY_NUMBER)/kRadiationConst, 0.25);
       }
     }
@@ -529,7 +529,7 @@ void MeshBlock::UserWorkBeforeOutput(ParameterInput *pin) {
         const Real vx_code = phydro->w(IVX, k, j, i);
         const Real pgas_code = phydro->w(IPR, k, j, i);
         const Real egas_code = pgas_code/gm1;
-        const Real erad_code = std::max(prfld2->u_rad(k, j, i), TINY_NUMBER);
+        const Real erad_code = std::max(prfld->u_rad(k, j, i), TINY_NUMBER);
         const Real rho_phys = rho_code*rho_unit;
         const Real pgas_phys = pgas_code*egas_unit;
         const Real erad_phys = erad_code*egas_unit;
@@ -565,7 +565,7 @@ Real LocalFluxDiagnostic(MeshBlock *pmb, int k, int j, int i, FluxDiagnostic typ
   const Real rho = pmb->phydro->w(IDN, k, j, i)*rho_unit;
   const Real vx = pmb->phydro->w(IVX, k, j, i)*vel_unit;
   const Real pgas = pmb->phydro->w(IPR, k, j, i)*egas_unit;
-  const Real erad = pmb->prfld2->u_rad(k, j, i)*egas_unit;
+  const Real erad = pmb->prfld->u_rad(k, j, i)*egas_unit;
 
   if (type == FluxDiagnostic::mass) {
     return rho*vx;
@@ -575,7 +575,7 @@ Real LocalFluxDiagnostic(MeshBlock *pmb, int k, int j, int i, FluxDiagnostic typ
   }
 
   const Real egas = pgas/(gamma - 1.0);
-  const Real dErdx = (pmb->prfld2->u_rad(k, j, i+1) - pmb->prfld2->u_rad(k, j, i-1))
+  const Real dErdx = (pmb->prfld->u_rad(k, j, i+1) - pmb->prfld->u_rad(k, j, i-1))
                      *egas_unit/(pmb->pcoord->x1v(i+1) - pmb->pcoord->x1v(i-1))
                      /leng_unit;
   const Real rad_flux = -kLightSpeed*ONE_3RD*dErdx/std::max(chi_r_code/leng_unit,
@@ -698,7 +698,7 @@ Real HistoryTrMax(MeshBlock *pmb, int iout) {
   for (int k = pmb->ks; k <= pmb->ke; ++k) {
     for (int j = pmb->js; j <= pmb->je; ++j) {
       for (int i = pmb->is; i <= pmb->ie; ++i) {
-        const Real erad = std::max(pmb->prfld2->u_rad(k, j, i)*egas_unit, TINY_NUMBER);
+        const Real erad = std::max(pmb->prfld->u_rad(k, j, i)*egas_unit, TINY_NUMBER);
         out = std::max(out, std::pow(erad/kRadiationConst, 0.25));
       }
     }
@@ -738,7 +738,7 @@ Real HistoryErMax(MeshBlock *pmb, int iout) {
   for (int k = pmb->ks; k <= pmb->ke; ++k) {
     for (int j = pmb->js; j <= pmb->je; ++j) {
       for (int i = pmb->is; i <= pmb->ie; ++i) {
-        out = std::max(out, pmb->prfld2->u_rad(k, j, i)*egas_unit);
+        out = std::max(out, pmb->prfld->u_rad(k, j, i)*egas_unit);
       }
     }
   }
@@ -759,7 +759,7 @@ Real HistoryEall(MeshBlock *pmb, int iout) {
     for (int j = pmb->js; j <= pmb->je; ++j) {
       pmb->pcoord->CellVolume(k, j, pmb->is, pmb->ie, vol);
       for (int i = pmb->is; i <= pmb->ie; ++i) {
-        e += (pmb->phydro->u(IEN, k, j, i) + pmb->prfld2->u_rad(k, j, i))*vol(i);
+        e += (pmb->phydro->u(IEN, k, j, i) + pmb->prfld->u_rad(k, j, i))*vol(i);
       }
     }
   }

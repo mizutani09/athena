@@ -18,7 +18,7 @@ void Hydro::RiemannSolver(const int k, const int j, const int il, const int iu,
   (void)dxw;
   const int dir=ivx-IVX;
   const int ivy=IVX+(dir+1)%3, ivz=IVX+(dir+2)%3;
-  FLD2 *pfld=pmy_block->prfld2;
+  FLD *pfld=pmy_block->prfld;
   const bool coupled=pfld->is_couple && !pfld->only_rad
                      && pfld->include_radiation_force;
   AthenaArray<Real> &radl=pfld->rad_face_l[dir];
@@ -36,12 +36,12 @@ void Hydro::RiemannSolver(const int k, const int j, const int il, const int iu,
     wri[IDN]=wr(IDN,i); wri[IVX]=wr(ivx,i); wri[IVY]=wr(ivy,i);
     wri[IVZ]=wr(ivz,i); wri[IPR]=wr(IPR,i);
 
-    const Real erl=std::max(radl(RadFLD2::ERAD,k,j,i),TINY_NUMBER);
-    const Real err=std::max(radr(RadFLD2::ERAD,k,j,i),TINY_NUMBER);
-    const Real laml=std::max(radl(RadFLD2::LAMBDA,k,j,i),0.0);
-    const Real lamr=std::max(radr(RadFLD2::LAMBDA,k,j,i),0.0);
-    const Real arl=std::max(radl(RadFLD2::ARAD,k,j,i),0.0);
-    const Real arr=std::max(radr(RadFLD2::ARAD,k,j,i),0.0);
+    const Real erl=std::max(radl(RadFLD::ERAD,k,j,i),TINY_NUMBER);
+    const Real err=std::max(radr(RadFLD::ERAD,k,j,i),TINY_NUMBER);
+    const Real laml=std::max(radl(RadFLD::LAMBDA,k,j,i),0.0);
+    const Real lamr=std::max(radr(RadFLD::LAMBDA,k,j,i),0.0);
+    const Real arl=std::max(radl(RadFLD::ARAD,k,j,i),0.0);
+    const Real arr=std::max(radr(RadFLD::ARAD,k,j,i),0.0);
     const Real prl=coupled?laml*erl:0.0;
     const Real prr=coupled?lamr*err:0.0;
     const Real ptl=wli[IPR]+prl, ptr=wri[IPR]+prr;

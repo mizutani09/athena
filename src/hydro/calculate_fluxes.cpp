@@ -40,8 +40,8 @@ void Hydro::CalculateFluxes(AthenaArray<Real> &w, FaceField &b,
 #if NRMGFLD_ENABLED
   // HLLC-FLD uses the same spatial order as Hydro for E_rad and P_rad.
   // Refresh density-dependent opacities before constructing the limiter.
-  pmb->prfld2->UpdateOpacity(pmb, pmb->prfld2->u_rad, w);
-  pmb->prfld2->CalculateRadiationFaceStates(order);
+  pmb->prfld->UpdateOpacity(pmb, pmb->prfld->u_rad, w);
+  pmb->prfld->CalculateRadiationFaceStates(order);
 #endif
   int is = pmb->is; int js = pmb->js; int ks = pmb->ks;
   int ie = pmb->ie; int je = pmb->je; int ke = pmb->ke;

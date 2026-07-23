@@ -379,7 +379,7 @@ void CopyHydroBoundary(AthenaArray<Real> &prim, int axis, bool inner,
 void ThermalWaveOpacity(MeshBlock *pmb, AthenaArray<Real> &u_fld, AthenaArray<Real> &prim) {
   (void)u_fld;
   (void)prim;
-  FLD2 *prfld = pmb->prfld2;
+  FLD *prfld = pmb->prfld;
   int kl = pmb->ks;
   int ku = pmb->ke;
   int jl = pmb->js;
@@ -411,42 +411,42 @@ void ThermalWaveOpacity(MeshBlock *pmb, AthenaArray<Real> &u_fld, AthenaArray<Re
 }
 }  // namespace
 
-void FLDInnerX1(MeshBlock *pmb, Coordinates *pco, FLD2 *pfld,
+void FLDInnerX1(MeshBlock *pmb, Coordinates *pco, FLD *pfld,
                 const AthenaArray<Real> &w, AthenaArray<Real> &u_rad_fld,
                 Real time, Real dt,
                 int is, int ie, int js, int je, int ks, int ke, int ngh) {
   CopyFLDBoundary(u_rad_fld, 1, true, is, ie, js, je, ks, ke, ngh);
 }
 
-void FLDOuterX1(MeshBlock *pmb, Coordinates *pco, FLD2 *pfld,
+void FLDOuterX1(MeshBlock *pmb, Coordinates *pco, FLD *pfld,
                 const AthenaArray<Real> &w, AthenaArray<Real> &u_rad_fld,
                 Real time, Real dt,
                 int is, int ie, int js, int je, int ks, int ke, int ngh) {
   CopyFLDBoundary(u_rad_fld, 1, false, is, ie, js, je, ks, ke, ngh);
 }
 
-void FLDInnerX2(MeshBlock *pmb, Coordinates *pco, FLD2 *pfld,
+void FLDInnerX2(MeshBlock *pmb, Coordinates *pco, FLD *pfld,
                 const AthenaArray<Real> &w, AthenaArray<Real> &u_rad_fld,
                 Real time, Real dt,
                 int is, int ie, int js, int je, int ks, int ke, int ngh) {
   CopyFLDBoundary(u_rad_fld, 2, true, is, ie, js, je, ks, ke, ngh);
 }
 
-void FLDOuterX2(MeshBlock *pmb, Coordinates *pco, FLD2 *pfld,
+void FLDOuterX2(MeshBlock *pmb, Coordinates *pco, FLD *pfld,
                 const AthenaArray<Real> &w, AthenaArray<Real> &u_rad_fld,
                 Real time, Real dt,
                 int is, int ie, int js, int je, int ks, int ke, int ngh) {
   CopyFLDBoundary(u_rad_fld, 2, false, is, ie, js, je, ks, ke, ngh);
 }
 
-void FLDInnerX3(MeshBlock *pmb, Coordinates *pco, FLD2 *pfld,
+void FLDInnerX3(MeshBlock *pmb, Coordinates *pco, FLD *pfld,
                 const AthenaArray<Real> &w, AthenaArray<Real> &u_rad_fld,
                 Real time, Real dt,
                 int is, int ie, int js, int je, int ks, int ke, int ngh) {
   CopyFLDBoundary(u_rad_fld, 3, true, is, ie, js, je, ks, ke, ngh);
 }
 
-void FLDOuterX3(MeshBlock *pmb, Coordinates *pco, FLD2 *pfld,
+void FLDOuterX3(MeshBlock *pmb, Coordinates *pco, FLD *pfld,
                 const AthenaArray<Real> &w, AthenaArray<Real> &u_rad_fld,
                 Real time, Real dt,
                 int is, int ie, int js, int je, int ks, int ke, int ngh) {
@@ -711,7 +711,7 @@ void MeshBlock::InitUserMeshBlockData(ParameterInput *pin) {
   SetUserOutputVariableName(3, "etherm");
   SetUserOutputVariableName(4, "chiR");
   SetUserOutputVariableName(5, "amr_metric");
-  prfld2->EnrollOpacityFunction(ThermalWaveOpacity);
+  prfld->EnrollOpacityFunction(ThermalWaveOpacity);
 }
 
 void MeshBlock::ProblemGenerator(ParameterInput *pin) {
@@ -760,8 +760,8 @@ void MeshBlock::ProblemGenerator(ParameterInput *pin) {
         phydro->u(IM2, k, j, i) = 0.0;
         phydro->u(IM3, k, j, i) = 0.0;
         if (NON_BAROTROPIC_EOS) phydro->u(IEN, k, j, i) = egas_code;
-        prfld2->u_gas(k, j, i) = egas_code;
-        prfld2->u_rad(k, j, i) = erad_code;
+        prfld->u_gas(k, j, i) = egas_code;
+        prfld->u_rad(k, j, i) = erad_code;
 
         phydro->w(IDN, k, j, i) = rho0;
         phydro->w(IVX, k, j, i) = 0.0;
@@ -872,17 +872,17 @@ void MeshBlock::UserWorkBeforeOutput(ParameterInput *pin) {
       Real dy_phys = pcoord->dx2v(j) * leng_unit;
       for (int i = is; i <= ie; ++i) {
         Real dx_phys = pcoord->dx1v(i) * leng_unit;
-        Real temp_phys = TemperaturePhysFromGasEnergyCode(prfld2->u_gas(k, j, i));
-        Real erad_phys = prfld2->u_rad(k, j, i) * egas_unit;
-        Real egas_phys = prfld2->u_gas(k, j, i) * egas_unit;
+        Real temp_phys = TemperaturePhysFromGasEnergyCode(prfld->u_gas(k, j, i));
+        Real erad_phys = prfld->u_rad(k, j, i) * egas_unit;
+        Real egas_phys = prfld->u_gas(k, j, i) * egas_unit;
         Real chi_r_phys = RosselandOpacityPhysFromTemp(temp_phys);
 
-        Real temp_xm = TemperaturePhysFromGasEnergyCode(prfld2->u_gas(k, j, i - 1));
-        Real temp_xp = TemperaturePhysFromGasEnergyCode(prfld2->u_gas(k, j, i + 1));
-        Real temp_ym = TemperaturePhysFromGasEnergyCode(prfld2->u_gas(k, j - 1, i));
-        Real temp_yp = TemperaturePhysFromGasEnergyCode(prfld2->u_gas(k, j + 1, i));
-        Real temp_zm = TemperaturePhysFromGasEnergyCode(prfld2->u_gas(k - 1, j, i));
-        Real temp_zp = TemperaturePhysFromGasEnergyCode(prfld2->u_gas(k + 1, j, i));
+        Real temp_xm = TemperaturePhysFromGasEnergyCode(prfld->u_gas(k, j, i - 1));
+        Real temp_xp = TemperaturePhysFromGasEnergyCode(prfld->u_gas(k, j, i + 1));
+        Real temp_ym = TemperaturePhysFromGasEnergyCode(prfld->u_gas(k, j - 1, i));
+        Real temp_yp = TemperaturePhysFromGasEnergyCode(prfld->u_gas(k, j + 1, i));
+        Real temp_zm = TemperaturePhysFromGasEnergyCode(prfld->u_gas(k - 1, j, i));
+        Real temp_zp = TemperaturePhysFromGasEnergyCode(prfld->u_gas(k + 1, j, i));
         Real dtdx = 0.5 * (temp_xp - temp_xm) / std::max(dx_phys, TINY_NUMBER);
         Real dtdy = 0.5 * (temp_yp - temp_ym) / std::max(dy_phys, TINY_NUMBER);
         Real dtdz = 0.5 * (temp_zp - temp_zm) / std::max(dz_phys, TINY_NUMBER);
@@ -919,17 +919,17 @@ int RefinementCondition(MeshBlock *pmb) {
       Real dy_phys = pmb->pcoord->dx2v(j) * leng_unit;
       for (int i = pmb->is; i <= pmb->ie; ++i) {
         Real dx_phys = pmb->pcoord->dx1v(i) * leng_unit;
-        Real temp_phys = TemperaturePhysFromGasEnergyCode(pmb->prfld2->u_gas(k, j, i));
+        Real temp_phys = TemperaturePhysFromGasEnergyCode(pmb->prfld->u_gas(k, j, i));
         max_temp = std::max(max_temp, temp_phys);
         if (temp_phys <= amr_temp_floor_phys) {
           continue;
         }
-        Real temp_xm = TemperaturePhysFromGasEnergyCode(pmb->prfld2->u_gas(k, j, i - 1));
-        Real temp_xp = TemperaturePhysFromGasEnergyCode(pmb->prfld2->u_gas(k, j, i + 1));
-        Real temp_ym = TemperaturePhysFromGasEnergyCode(pmb->prfld2->u_gas(k, j - 1, i));
-        Real temp_yp = TemperaturePhysFromGasEnergyCode(pmb->prfld2->u_gas(k, j + 1, i));
-        Real temp_zm = TemperaturePhysFromGasEnergyCode(pmb->prfld2->u_gas(k - 1, j, i));
-        Real temp_zp = TemperaturePhysFromGasEnergyCode(pmb->prfld2->u_gas(k + 1, j, i));
+        Real temp_xm = TemperaturePhysFromGasEnergyCode(pmb->prfld->u_gas(k, j, i - 1));
+        Real temp_xp = TemperaturePhysFromGasEnergyCode(pmb->prfld->u_gas(k, j, i + 1));
+        Real temp_ym = TemperaturePhysFromGasEnergyCode(pmb->prfld->u_gas(k, j - 1, i));
+        Real temp_yp = TemperaturePhysFromGasEnergyCode(pmb->prfld->u_gas(k, j + 1, i));
+        Real temp_zm = TemperaturePhysFromGasEnergyCode(pmb->prfld->u_gas(k - 1, j, i));
+        Real temp_zp = TemperaturePhysFromGasEnergyCode(pmb->prfld->u_gas(k + 1, j, i));
         Real dtdx = 0.5 * (temp_xp - temp_xm) / std::max(dx_phys, TINY_NUMBER);
         Real dtdy = 0.5 * (temp_yp - temp_ym) / std::max(dy_phys, TINY_NUMBER);
         Real dtdz = 0.5 * (temp_zp - temp_zm) / std::max(dz_phys, TINY_NUMBER);
@@ -956,7 +956,7 @@ Real HistoryEall(MeshBlock *pmb, int iout) {
     for (int j = pmb->js; j <= pmb->je; ++j) {
       pmb->pcoord->CellVolume(k, j, pmb->is, pmb->ie, vol);
       for (int i = pmb->is; i <= pmb->ie; ++i) {
-        eall += (pmb->prfld2->u_gas(k, j, i) + pmb->prfld2->u_rad(k, j, i) - eambient)
+        eall += (pmb->prfld->u_gas(k, j, i) + pmb->prfld->u_rad(k, j, i) - eambient)
             * vol(i);
       }
     }
@@ -969,7 +969,7 @@ Real HistoryTmax(MeshBlock *pmb, int iout) {
   for (int k = pmb->ks; k <= pmb->ke; ++k) {
     for (int j = pmb->js; j <= pmb->je; ++j) {
       for (int i = pmb->is; i <= pmb->ie; ++i) {
-        out = std::max(out, TemperaturePhysFromGasEnergyCode(pmb->prfld2->u_gas(k, j, i)));
+        out = std::max(out, TemperaturePhysFromGasEnergyCode(pmb->prfld->u_gas(k, j, i)));
       }
     }
   }
@@ -981,7 +981,7 @@ Real HistoryTmin(MeshBlock *pmb, int iout) {
   for (int k = pmb->ks; k <= pmb->ke; ++k) {
     for (int j = pmb->js; j <= pmb->je; ++j) {
       for (int i = pmb->is; i <= pmb->ie; ++i) {
-        out = std::min(out, TemperaturePhysFromGasEnergyCode(pmb->prfld2->u_gas(k, j, i)));
+        out = std::min(out, TemperaturePhysFromGasEnergyCode(pmb->prfld->u_gas(k, j, i)));
       }
     }
   }
@@ -993,7 +993,7 @@ Real HistoryErMax(MeshBlock *pmb, int iout) {
   for (int k = pmb->ks; k <= pmb->ke; ++k) {
     for (int j = pmb->js; j <= pmb->je; ++j) {
       for (int i = pmb->is; i <= pmb->ie; ++i) {
-        out = std::max(out, pmb->prfld2->u_rad(k, j, i) * egas_unit);
+        out = std::max(out, pmb->prfld->u_rad(k, j, i) * egas_unit);
       }
     }
   }

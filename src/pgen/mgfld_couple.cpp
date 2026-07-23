@@ -67,8 +67,8 @@ void FLDFixedInnerX1(AthenaArray<Real> &dst, Real time, int nvar,
     for (int k=ks; k<=ke; k++) {
       for (int j=js; j<=je; j++) {
         for (int i=0; i<ngh; i++) {
-          dst(RadFLD::GAS,k,j,is-i-1) = Tg_0;
-          dst(RadFLD::RAD,k,j,is-i-1) = Tr_0;
+          dst(RadFLD2::GAS,k,j,is-i-1) = Tg_0;
+          dst(RadFLD2::RAD,k,j,is-i-1) = Tr_0;
         }
       }
     }
@@ -76,8 +76,8 @@ void FLDFixedInnerX1(AthenaArray<Real> &dst, Real time, int nvar,
     for (int k=ks; k<=ke; k++) {
       for (int j=js; j<=je; j++) {
         for (int i=0; i<ngh; i++) {
-          dst(RadFLD::GAS,k,j,is-i-1) = dst(RadFLD::GAS,k,j,is);
-          dst(RadFLD::RAD,k,j,is-i-1) = dst(RadFLD::RAD,k,j,is);
+          dst(RadFLD2::GAS,k,j,is-i-1) = dst(RadFLD2::GAS,k,j,is);
+          dst(RadFLD2::RAD,k,j,is-i-1) = dst(RadFLD2::RAD,k,j,is);
         }
       }
     }
@@ -92,8 +92,8 @@ void FLDFixedOuterX1(AthenaArray<Real> &dst, Real time, int nvar,
     for (int k=ks; k<=ke; k++) {
       for (int j=js; j<=je; j++) {
         for (int i=0; i<ngh; i++) {
-          dst(RadFLD::GAS,k,j,ie+i+1) = Tg_0;
-          dst(RadFLD::RAD,k,j,ie+i+1) = Tr_0;
+          dst(RadFLD2::GAS,k,j,ie+i+1) = Tg_0;
+          dst(RadFLD2::RAD,k,j,ie+i+1) = Tr_0;
         }
       }
     }
@@ -101,8 +101,8 @@ void FLDFixedOuterX1(AthenaArray<Real> &dst, Real time, int nvar,
     for (int k=ks; k<=ke; k++) {
       for (int j=js; j<=je; j++) {
         for (int i=0; i<ngh; i++) {
-          dst(RadFLD::GAS,k,j,ie+i+1) = dst(RadFLD::GAS,k,j,ie);
-          dst(RadFLD::RAD,k,j,ie+i+1) = dst(RadFLD::RAD,k,j,ie);
+          dst(RadFLD2::GAS,k,j,ie+i+1) = dst(RadFLD2::GAS,k,j,ie);
+          dst(RadFLD2::RAD,k,j,ie+i+1) = dst(RadFLD2::RAD,k,j,ie);
         }
       }
     }
@@ -117,8 +117,8 @@ void FLDFixedInnerX2(AthenaArray<Real> &dst, Real time, int nvar,
     for (int k=ks; k<=ke; k++) {
       for (int j=0; j<ngh; j++) {
         for (int i=is; i<=ie; i++) {
-          dst(RadFLD::GAS,k,js-j-1,i) = Tg_0;
-          dst(RadFLD::RAD,k,js-j-1,i) = Tr_0;
+          dst(RadFLD2::GAS,k,js-j-1,i) = Tg_0;
+          dst(RadFLD2::RAD,k,js-j-1,i) = Tr_0;
         }
       }
     }
@@ -126,8 +126,8 @@ void FLDFixedInnerX2(AthenaArray<Real> &dst, Real time, int nvar,
     for (int k=ks; k<=ke; k++) {
       for (int j=0; j<ngh; j++) {
         for (int i=is; i<=ie; i++) {
-          dst(RadFLD::GAS,k,js-j-1,i) = dst(RadFLD::GAS,k,js,i);
-          dst(RadFLD::RAD,k,js-j-1,i) = dst(RadFLD::RAD,k,js,i);
+          dst(RadFLD2::GAS,k,js-j-1,i) = dst(RadFLD2::GAS,k,js,i);
+          dst(RadFLD2::RAD,k,js-j-1,i) = dst(RadFLD2::RAD,k,js,i);
         }
       }
     }
@@ -142,8 +142,8 @@ void FLDFixedOuterX2(AthenaArray<Real> &dst, Real time, int nvar,
     for (int k=ks; k<=ke; k++) {
       for (int j=0; j<ngh; j++) {
         for (int i=is; i<=ie; i++) {
-          dst(RadFLD::GAS,k,je+j+1,i) = Tg_0;
-          dst(RadFLD::RAD,k,je+j+1,i) = Tr_0;
+          dst(RadFLD2::GAS,k,je+j+1,i) = Tg_0;
+          dst(RadFLD2::RAD,k,je+j+1,i) = Tr_0;
         }
       }
     }
@@ -151,8 +151,8 @@ void FLDFixedOuterX2(AthenaArray<Real> &dst, Real time, int nvar,
     for (int k=ks; k<=ke; k++) {
       for (int j=0; j<ngh; j++) {
         for (int i=is; i<=ie; i++) {
-          dst(RadFLD::GAS,k,je+j+1,i) = dst(RadFLD::GAS,k,je,i);
-          dst(RadFLD::RAD,k,je+j+1,i) = dst(RadFLD::RAD,k,je,i);
+          dst(RadFLD2::GAS,k,je+j+1,i) = dst(RadFLD2::GAS,k,je,i);
+          dst(RadFLD2::RAD,k,je+j+1,i) = dst(RadFLD2::RAD,k,je,i);
         }
       }
     }
@@ -167,8 +167,8 @@ void FLDFixedInnerX3(AthenaArray<Real> &dst, Real time, int nvar,
     for (int k=0; k<ngh; k++) {
       for (int j=js; j<=je; j++) {
         for (int i=is; i<=ie; i++) {
-          dst(RadFLD::GAS,ks-k-1,j,i) = Tg_0;
-          dst(RadFLD::RAD,ks-k-1,j,i) = Tr_0;
+          dst(RadFLD2::GAS,ks-k-1,j,i) = Tg_0;
+          dst(RadFLD2::RAD,ks-k-1,j,i) = Tr_0;
         }
       }
     }
@@ -176,8 +176,8 @@ void FLDFixedInnerX3(AthenaArray<Real> &dst, Real time, int nvar,
     for (int k=0; k<ngh; k++) {
       for (int j=js; j<=je; j++) {
         for (int i=is; i<=ie; i++) {
-          dst(RadFLD::GAS,ks-k-1,j,i) = dst(RadFLD::GAS,ks,j,i);
-          dst(RadFLD::RAD,ks-k-1,j,i) = dst(RadFLD::RAD,ks,j,i);
+          dst(RadFLD2::GAS,ks-k-1,j,i) = dst(RadFLD2::GAS,ks,j,i);
+          dst(RadFLD2::RAD,ks-k-1,j,i) = dst(RadFLD2::RAD,ks,j,i);
         }
       }
     }
@@ -192,8 +192,8 @@ void FLDFixedOuterX3(AthenaArray<Real> &dst, Real time, int nvar,
     for (int k=0; k<ngh; k++) {
       for (int j=js; j<=je; j++) {
         for (int i=is; i<=ie; i++) {
-          dst(RadFLD::GAS,ke+k+1,j,i) = Tg_0;
-          dst(RadFLD::RAD,ke+k+1,j,i) = Tr_0;
+          dst(RadFLD2::GAS,ke+k+1,j,i) = Tg_0;
+          dst(RadFLD2::RAD,ke+k+1,j,i) = Tr_0;
         }
       }
     }
@@ -201,8 +201,8 @@ void FLDFixedOuterX3(AthenaArray<Real> &dst, Real time, int nvar,
     for (int k=0; k<ngh; k++) {
       for (int j=js; j<=je; j++) {
         for (int i=is; i<=ie; i++) {
-          dst(RadFLD::GAS,ke+k+1,j,i) = dst(RadFLD::GAS,ke,j,i);
-          dst(RadFLD::RAD,ke+k+1,j,i) = dst(RadFLD::RAD,ke,j,i);
+          dst(RadFLD2::GAS,ke+k+1,j,i) = dst(RadFLD2::GAS,ke,j,i);
+          dst(RadFLD2::RAD,ke+k+1,j,i) = dst(RadFLD2::RAD,ke,j,i);
         }
       }
     }
@@ -335,8 +335,8 @@ void MeshBlock::ProblemGenerator(ParameterInput *pin) {
   for(int k=kl; k<=ku; ++k) {
     for(int j=jl; j<=ju; ++j) {
       for(int i=il; i<=iu; ++i) {
-        prfld2->u_gas(k,j,i) = eg_0;
-        prfld2->u_rad(k,j,i) = Er_0;
+        prfld->u_gas(k,j,i) = eg_0;
+        prfld->u_rad(k,j,i) = Er_0;
       }
     }
   }
@@ -369,10 +369,10 @@ void MeshBlock::UserWorkBeforeOutput(ParameterInput *pin) {
     for (int j=jl; j<=ju; j++) {
       for (int i=il; i<=iu; i++) {
         // assume cal in E
-        user_out_var(0,k,j,i) = prfld2->u_gas(k,j,i)*egas_unit;
-        user_out_var(1,k,j,i) = prfld2->u_rad(k,j,i)*egas_unit;
-        user_out_var(2,k,j,i) = prfld2->u_gas(k,j,i)/phydro->w(IDN,k,j,i)*temp_coef;
-        user_out_var(3,k,j,i) = std::pow(prfld2->u_rad(k,j,i)*egas_unit/a_r_dim, 0.25);
+        user_out_var(0,k,j,i) = prfld->u_gas(k,j,i)*egas_unit;
+        user_out_var(1,k,j,i) = prfld->u_rad(k,j,i)*egas_unit;
+        user_out_var(2,k,j,i) = prfld->u_gas(k,j,i)/phydro->w(IDN,k,j,i)*temp_coef;
+        user_out_var(3,k,j,i) = std::pow(prfld->u_rad(k,j,i)*egas_unit/a_r_dim, 0.25);
       }
     }
   }
@@ -389,7 +389,7 @@ Real HistoryTg(MeshBlock *pmb, int iout) {
   for (int k=ks; k<=ke; k++) {
     for (int j=js; j<=je; j++) {
       for (int i=is; i<=ie; i++) {
-        T += pmb->prfld2->u_gas(k,j,i)*gm1/pmb->phydro->w(IDN,k,j,i)*T_unit;
+        T += pmb->prfld->u_gas(k,j,i)*gm1/pmb->phydro->w(IDN,k,j,i)*T_unit;
         num++;
       }
     }
@@ -405,7 +405,7 @@ Real HistoryTr(MeshBlock *pmb, int iout) {
   for (int k=ks; k<=ke; k++) {
     for (int j=js; j<=je; j++) {
       for (int i=is; i<=ie; i++) {
-        T += std::pow(pmb->prfld2->u_rad(k,j,i)*egas_unit/a_r_dim, 0.25);
+        T += std::pow(pmb->prfld->u_rad(k,j,i)*egas_unit/a_r_dim, 0.25);
         num++;
       }
     }
@@ -423,7 +423,7 @@ Real HistoryEg(MeshBlock *pmb, int iout) {
   for (int k=ks; k<=ke; k++) {
     for (int j=js; j<=je; j++) {
       for (int i=is; i<=ie; i++) {
-        e += pmb->prfld2->u_gas(k,j,i);
+        e += pmb->prfld->u_gas(k,j,i);
         num++;
       }
     }
@@ -440,7 +440,7 @@ Real HistoryEr(MeshBlock *pmb, int iout) {
   for (int k=ks; k<=ke; k++) {
     for (int j=js; j<=je; j++) {
       for (int i=is; i<=ie; i++) {
-        E += pmb->prfld2->u_rad(k,j,i);
+        E += pmb->prfld->u_rad(k,j,i);
         num++;
       }
     }
@@ -457,7 +457,7 @@ Real HistoryaTg4(MeshBlock *pmb, int iout) {
   for (int k=ks; k<=ke; k++) {
     for (int j=js; j<=je; j++) {
       for (int i=is; i<=ie; i++) {
-        aT4 += std::pow(pmb->prfld2->u_gas(k,j,i)*gm1/pmb->phydro->w(IDN,k,j,i)*T_unit, 4);
+        aT4 += std::pow(pmb->prfld->u_gas(k,j,i)*gm1/pmb->phydro->w(IDN,k,j,i)*T_unit, 4);
         num++;
       }
     }
@@ -482,8 +482,8 @@ Real HistoryEall(MeshBlock *pmb, int iout) {
     for (int j=js; j<=je; j++) {
       pmb->pcoord->CellVolume(k, j, is, ie, vol);
       for (int i=is; i<=ie; i++) {
-        E += pmb->prfld2->u_gas(k,j,i)*vol(i);
-        E += pmb->prfld2->u_rad(k,j,i)*vol(i);
+        E += pmb->prfld->u_gas(k,j,i)*vol(i);
+        E += pmb->prfld->u_rad(k,j,i)*vol(i);
       }
     }
   }

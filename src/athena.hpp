@@ -55,7 +55,7 @@ class OrbitalAdvection;
 class NRRadiation;
 class IMRadiation;
 class CosmicRay;
-class FLD2;
+class FLD;
 
 //--------------------------------------------------------------------------------------
 //! \struct LogicalLocation
@@ -242,7 +242,7 @@ using CRSrcTermFunc = void (*)(
     MeshBlock *pmb, const Real time, const Real dt,
     const AthenaArray<Real> &prim, FaceField &b, AthenaArray<Real> &u_cr);
 using FLDBoundaryFunc = void (*)(
-     MeshBlock *pmb, Coordinates *pco, FLD2 *prfld,
+     MeshBlock *pmb, Coordinates *pco, FLD *prfld,
      const AthenaArray<Real> &w, AthenaArray<Real> &u_rad_fld,
      Real time, Real dt, int is, int ie, int js, int je, int ks, int ke, int ngh);
 using NRBoundaryFunc = void (*)(

@@ -39,16 +39,18 @@ void ReconstructX3(Reconstruction *precon, int order, int k, int j, int il, int 
 }
 }  // namespace
 
-void FLD2::CalculateRadiationFaceStates(const int order) {
+void FLD::CalculateRadiationFaceStates(const int order) {
   MeshBlock *pmb = pmy_block;
-  // PPM reads two cells on either side of every reconstruction index.  Since
-  // the reconstruction below is requested over [is-1,ie+1], its closure
-  // stencil reaches [is-3,ie+3].  Build the closure throughout every usable
-  // ghost cell (apart from the outermost layer needed by the centered
-  // gradient), rather than assuming the default NGHOST=2 layout.
-  const int il = pmb->is - NGHOST + 1, iu = pmb->ie + NGHOST - 1;
-  const int jl = pmb->js - NGHOST + 1, ju = pmb->je + NGHOST - 1;
-  const int kl = pmb->ks - NGHOST + 1, ku = pmb->ke + NGHOST - 1;
+  // Reconstruction is requested over [is-1,ie+1].  Donor-cell, PLM, and PPM
+  // therefore require one, two, and three closure-state ghost layers,
+  // respectively.  In particular PLM with the default NGHOST=2 must include
+  // the outermost ghost cell at a MeshBlock boundary.
+  const int stencil = (order <= 1) ? 1 : ((order == 2) ? 2 : 3);
+  const int il = pmb->is - stencil, iu = pmb->ie + stencil;
+  const int jl = pmb->pmy_mesh->f2 ? pmb->js-stencil : pmb->js;
+  const int ju = pmb->pmy_mesh->f2 ? pmb->je+stencil : pmb->je;
+  const int kl = pmb->pmy_mesh->f3 ? pmb->ks-stencil : pmb->ks;
+  const int ku = pmb->pmy_mesh->f3 ? pmb->ke+stencil : pmb->ke;
 
   // Reconstruct a compact, internally consistent state.  In particular total
   // pressure is not reconstructed independently: HLLC forms p_gas+lambda*E
@@ -56,23 +58,29 @@ void FLD2::CalculateRadiationFaceStates(const int order) {
   for (int k = kl; k <= ku; ++k) {
     for (int j = jl; j <= ju; ++j) {
       for (int i = il; i <= iu; ++i) {
-        const Real idx = 0.5 / pmb->pcoord->dx1f(i);
-        const Real idy = 0.5 / pmb->pcoord->dx2f(j);
-        const Real idz = 0.5 / pmb->pcoord->dx3f(k);
-        const Real gx = idx * (u_rad(k, j, i + 1) - u_rad(k, j, i - 1));
-        const Real gy = idy * (u_rad(k, j + 1, i) - u_rad(k, j - 1, i));
-        const Real gz = idz * (u_rad(k + 1, j, i) - u_rad(k - 1, j, i));
+        const int im = std::max(i-1, 0);
+        const int ip = std::min(i+1, pmb->ncells1-1);
+        const int jm = std::max(j-1, 0);
+        const int jp = std::min(j+1, pmb->ncells2-1);
+        const int km = std::max(k-1, 0);
+        const int kp = std::min(k+1, pmb->ncells3-1);
+        const Real idx = ((ip-im == 2) ? 0.5 : 1.0) / pmb->pcoord->dx1f(i);
+        const Real idy = ((jp-jm == 2) ? 0.5 : 1.0) / pmb->pcoord->dx2f(j);
+        const Real idz = ((kp-km == 2) ? 0.5 : 1.0) / pmb->pcoord->dx3f(k);
+        const Real gx = idx * (u_rad(k, j, ip) - u_rad(k, j, im));
+        const Real gy = idy * (u_rad(k, jp, i) - u_rad(k, jm, i));
+        const Real gz = idz * (u_rad(kp, j, i) - u_rad(km, j, i));
         const Real grad = std::sqrt(SQR(gx) + SQR(gy) + SQR(gz));
         const Real erad = std::max(u_rad(k, j, i), TINY_NUMBER);
         const Real sigma = std::max(sigma_r(k, j, i), TINY_NUMBER);
         const Real r = grad / (sigma * erad);
-        const Real lambda = RadFLD2::FluxLimiter(r, fixed_flux_limiter);
-        const Real chi = RadFLD2::EddingtonFactor(r, fixed_flux_limiter);
+        const Real lambda = RadFLD::FluxLimiter(r, fixed_flux_limiter);
+        const Real chi = RadFLD::EddingtonFactor(r, fixed_flux_limiter);
         const Real ar = 0.5*(3.0-chi);
 
-        rad_state_cc_(RadFLD2::ERAD, k, j, i) = erad;
-        rad_state_cc_(RadFLD2::LAMBDA, k, j, i) = lambda;
-        rad_state_cc_(RadFLD2::ARAD, k, j, i) = ar;
+        rad_state_cc_(RadFLD::ERAD, k, j, i) = erad;
+        rad_state_cc_(RadFLD::LAMBDA, k, j, i) = lambda;
+        rad_state_cc_(RadFLD::ARAD, k, j, i) = ar;
       }
     }
   }
@@ -84,7 +92,7 @@ void FLD2::CalculateRadiationFaceStates(const int order) {
                     rad_state_cc_,
                     rad_statel_, rad_stater_);
       for (int i = pmb->is; i <= pmb->ie + 1; ++i) {
-        for (int n = 0; n < RadFLD2::NRAD_FACE_STATE; ++n) {
+        for (int n = 0; n < RadFLD::NRAD_FACE_STATE; ++n) {
           rad_face_l[X1DIR](n, k, j, i) = rad_statel_(n, i);
           rad_face_r[X1DIR](n, k, j, i) = rad_stater_(n, i);
         }
@@ -102,7 +110,7 @@ void FLD2::CalculateRadiationFaceStates(const int order) {
         ReconstructX2(pmb->precon, order, k, j, pmb->is - 1, pmb->ie + 1,
                       rad_state_cc_, rad_statelb_, rad_stater_);
         for (int i = pmb->is; i <= pmb->ie; ++i) {
-          for (int n = 0; n < RadFLD2::NRAD_FACE_STATE; ++n) {
+          for (int n = 0; n < RadFLD::NRAD_FACE_STATE; ++n) {
             rad_face_l[X2DIR](n, k, j, i) = rad_statel_(n, i);
             rad_face_r[X2DIR](n, k, j, i) = rad_stater_(n, i);
           }
@@ -122,7 +130,7 @@ void FLD2::CalculateRadiationFaceStates(const int order) {
         ReconstructX3(pmb->precon, order, k, j, pmb->is - 1, pmb->ie + 1,
                       rad_state_cc_, rad_statelb_, rad_stater_);
         for (int i = pmb->is; i <= pmb->ie; ++i) {
-          for (int n = 0; n < RadFLD2::NRAD_FACE_STATE; ++n) {
+          for (int n = 0; n < RadFLD::NRAD_FACE_STATE; ++n) {
             rad_face_l[X3DIR](n, k, j, i) = rad_statel_(n, i);
             rad_face_r[X3DIR](n, k, j, i) = rad_stater_(n, i);
           }
@@ -133,7 +141,7 @@ void FLD2::CalculateRadiationFaceStates(const int order) {
   }
 }
 
-Real FLD2::RadiationSoundSpeedSquared(int k, int j, int i, int dir) const {
+Real FLD::RadiationSoundSpeedSquared(int k, int j, int i, int dir) const {
   MeshBlock *pmb = pmy_block;
   const Real gx = 0.5*(u_rad(k,j,i+1)-u_rad(k,j,i-1))/pmb->pcoord->dx1f(i);
   const Real gy = 0.5*(u_rad(k,j+1,i)-u_rad(k,j-1,i))/pmb->pcoord->dx2f(j);
@@ -141,7 +149,7 @@ Real FLD2::RadiationSoundSpeedSquared(int k, int j, int i, int dir) const {
   const Real grad = std::sqrt(SQR(gx)+SQR(gy)+SQR(gz));
   const Real erad = std::max(u_rad(k,j,i), TINY_NUMBER);
   const Real r = grad/(std::max(sigma_r(k,j,i), TINY_NUMBER)*erad);
-  const Real lambda = RadFLD2::FluxLimiter(r, fixed_flux_limiter);
+  const Real lambda = RadFLD::FluxLimiter(r, fixed_flux_limiter);
   (void)dir;
   const Real p = std::max(lambda*erad, 0.0);
   const Real rho = std::max(pmb->phydro->w(IDN,k,j,i), TINY_NUMBER);

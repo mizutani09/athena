@@ -155,7 +155,7 @@ void ATHDF5Output::WriteOutputFile(Mesh *pm, ParameterInput *pin, bool flag) {
 
     if(MGFLD_ENABLED) {
       num_variables[n_dataset] += 2;
-      if (pmb->pmg_fld->output_defect)
+      if (pmb->prfld2->output_defect)
         num_variables[n_dataset] += 1;
     }
 

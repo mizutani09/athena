@@ -175,7 +175,7 @@ namespace {
       for (int k = ks; k <= ke; ++k) {
         for (int j = js; j <= je; ++j) {
           for (int i = is; i <= ie; ++i) {
-            mean[i - is] += pmb->prfld2->u_rad(k, j, i);
+            mean[i - is] += pmb->prfld->u_rad(k, j, i);
           }
         }
       }
@@ -187,7 +187,7 @@ namespace {
       for (int k = ks; k <= ke; ++k) {
         for (int j = js; j <= je; ++j) {
           for (int i = is; i <= ie; ++i) {
-            mean[j - js] += pmb->prfld2->u_rad(k, j, i);
+            mean[j - js] += pmb->prfld->u_rad(k, j, i);
           }
         }
       }
@@ -199,7 +199,7 @@ namespace {
       for (int k = ks; k <= ke; ++k) {
         for (int j = js; j <= je; ++j) {
           for (int i = is; i <= ie; ++i) {
-            mean[k - ks] += pmb->prfld2->u_rad(k, j, i);
+            mean[k - ks] += pmb->prfld->u_rad(k, j, i);
           }
         }
       }
@@ -256,7 +256,7 @@ void NROuterX3(MeshBlock *pmb,
   return;
 }
 
-void FLDInnerX1(MeshBlock *pmb, Coordinates *pco, FLD2 *pfld,
+void FLDInnerX1(MeshBlock *pmb, Coordinates *pco, FLD *pfld,
                 const AthenaArray<Real> &w, AthenaArray<Real> &u_rad_fld,
                 Real time, Real dt,
                 int is, int ie, int js, int je, int ks, int ke, int ngh) {
@@ -264,7 +264,7 @@ void FLDInnerX1(MeshBlock *pmb, Coordinates *pco, FLD2 *pfld,
   return;
 }
 
-void FLDOuterX1(MeshBlock *pmb, Coordinates *pco, FLD2 *pfld,
+void FLDOuterX1(MeshBlock *pmb, Coordinates *pco, FLD *pfld,
                 const AthenaArray<Real> &w, AthenaArray<Real> &u_rad_fld,
                 Real time, Real dt,
                 int is, int ie, int js, int je, int ks, int ke, int ngh) {
@@ -272,7 +272,7 @@ void FLDOuterX1(MeshBlock *pmb, Coordinates *pco, FLD2 *pfld,
   return;
 }
 
-void FLDInnerX2(MeshBlock *pmb, Coordinates *pco, FLD2 *pfld,
+void FLDInnerX2(MeshBlock *pmb, Coordinates *pco, FLD *pfld,
                 const AthenaArray<Real> &w, AthenaArray<Real> &u_rad_fld,
                 Real time, Real dt,
                 int is, int ie, int js, int je, int ks, int ke, int ngh) {
@@ -280,7 +280,7 @@ void FLDInnerX2(MeshBlock *pmb, Coordinates *pco, FLD2 *pfld,
   return;
 }
 
-void FLDOuterX2(MeshBlock *pmb, Coordinates *pco, FLD2 *pfld,
+void FLDOuterX2(MeshBlock *pmb, Coordinates *pco, FLD *pfld,
                 const AthenaArray<Real> &w, AthenaArray<Real> &u_rad_fld,
                 Real time, Real dt,
                 int is, int ie, int js, int je, int ks, int ke, int ngh) {
@@ -288,7 +288,7 @@ void FLDOuterX2(MeshBlock *pmb, Coordinates *pco, FLD2 *pfld,
   return;
 }
 
-void FLDInnerX3(MeshBlock *pmb, Coordinates *pco, FLD2 *pfld,
+void FLDInnerX3(MeshBlock *pmb, Coordinates *pco, FLD *pfld,
                 const AthenaArray<Real> &w, AthenaArray<Real> &u_rad_fld,
                 Real time, Real dt,
                 int is, int ie, int js, int je, int ks, int ke, int ngh) {
@@ -296,7 +296,7 @@ void FLDInnerX3(MeshBlock *pmb, Coordinates *pco, FLD2 *pfld,
   return;
 }
 
-void FLDOuterX3(MeshBlock *pmb, Coordinates *pco, FLD2 *pfld,
+void FLDOuterX3(MeshBlock *pmb, Coordinates *pco, FLD *pfld,
                 const AthenaArray<Real> &w, AthenaArray<Real> &u_rad_fld,
                 Real time, Real dt,
                 int is, int ie, int js, int je, int ks, int ke, int ngh) {
@@ -482,7 +482,7 @@ void MeshBlock::InitUserMeshBlockData(ParameterInput *pin) {
   SetUserOutputVariableName(2, "T_gas");
   SetUserOutputVariableName(3, "T_rad");
 
-  // prfld2->EnrollOpacityFunction(NoCoupleOpacity);
+  // prfld->EnrollOpacityFunction(NoCoupleOpacity);
   return;
 }
 
@@ -550,9 +550,9 @@ void MeshBlock::ProblemGenerator(ParameterInput *pin) {
         for(int i=il; i<=iu; ++i) {
           Real x = pcoord->x1v(i);
           Real r_sq = SQR(x-0.5)+SQR(y-0.5)+SQR(z-0.5);
-          prfld2->u_gas(k,j,i) = p0*igm1;
+          prfld->u_gas(k,j,i) = p0*igm1;
           Real res = Er0/(8*std::pow(M_PI*chi*init_time, 1.5))*std::exp(-r_sq/(4*chi*init_time));
-          prfld2->u_rad(k,j,i) = res;
+          prfld->u_rad(k,j,i) = res;
         }
       }
     }
@@ -561,9 +561,9 @@ void MeshBlock::ProblemGenerator(ParameterInput *pin) {
       for (int j=jl; j<=ju; j++) {
         for (int i=il; i<=iu; i++) {
           Real r_sq = SQR(pcoord->x1v(i)-0.5)+SQR(pcoord->x2v(j)-0.5);
-          prfld2->u_gas(k,j,i) = p0*igm1;
+          prfld->u_gas(k,j,i) = p0*igm1;
           Real res = Er0/(4*M_PI*chi*init_time)*std::exp(-r_sq/(4*chi*init_time));
-          prfld2->u_rad(k,j,i) = res;
+          prfld->u_rad(k,j,i) = res;
         }
       }
     }
@@ -572,9 +572,9 @@ void MeshBlock::ProblemGenerator(ParameterInput *pin) {
       for (int j=jl; j<=ju; j++) {
         for (int i=il; i<=iu; i++) {
           Real r_sq = SQR(CoordAt(pcoord, i, j, k) - 0.5);
-          prfld2->u_gas(k,j,i) = p0*igm1;
+          prfld->u_gas(k,j,i) = p0*igm1;
           Real res = Er0/(2*std::sqrt(M_PI*chi*init_time))*std::exp(-r_sq/(4*chi*init_time));
-          prfld2->u_rad(k,j,i) = res;
+          prfld->u_rad(k,j,i) = res;
         }
       }
     }
@@ -597,10 +597,10 @@ void MeshBlock::UserWorkBeforeOutput(ParameterInput *pin) {
     for (int j=jl; j<=ju; j++) {
       for (int i=il; i<=iu; i++) {
         // assume cal in E
-        user_out_var(0,k,j,i) = prfld2->u_gas(k,j,i)*egas_unit;
-        user_out_var(1,k,j,i) = prfld2->u_rad(k,j,i)*egas_unit;
-        user_out_var(2,k,j,i) = prfld2->u_gas(k,j,i)/phydro->w(IDN,k,j,i)*temp_coef;
-        user_out_var(3,k,j,i) = std::pow(prfld2->u_rad(k,j,i)*egas_unit/a_r_dim, 0.25);
+        user_out_var(0,k,j,i) = prfld->u_gas(k,j,i)*egas_unit;
+        user_out_var(1,k,j,i) = prfld->u_rad(k,j,i)*egas_unit;
+        user_out_var(2,k,j,i) = prfld->u_gas(k,j,i)/phydro->w(IDN,k,j,i)*temp_coef;
+        user_out_var(3,k,j,i) = std::pow(prfld->u_rad(k,j,i)*egas_unit/a_r_dim, 0.25);
       }
     }
   }
@@ -617,7 +617,7 @@ Real HistoryTg(MeshBlock *pmb, int iout) {
   for (int k=ks; k<=ke; k++) {
     for (int j=js; j<=je; j++) {
       for (int i=is; i<=ie; i++) {
-        T += pmb->prfld2->u_gas(k,j,i)*gm1/pmb->phydro->w(IDN,k,j,i)*T_unit;
+        T += pmb->prfld->u_gas(k,j,i)*gm1/pmb->phydro->w(IDN,k,j,i)*T_unit;
         num++;
       }
     }
@@ -633,7 +633,7 @@ Real HistoryTr(MeshBlock *pmb, int iout) {
   for (int k=ks; k<=ke; k++) {
     for (int j=js; j<=je; j++) {
       for (int i=is; i<=ie; i++) {
-        T += std::pow(pmb->prfld2->u_rad(k,j,i)*egas_unit/a_r_dim, 0.25);
+        T += std::pow(pmb->prfld->u_rad(k,j,i)*egas_unit/a_r_dim, 0.25);
         num++;
       }
     }
@@ -654,7 +654,7 @@ Real HistoryEg(MeshBlock *pmb, int iout) {
     for (int j=js; j<=je; j++) {
       // pmb->pcoord->CellVolume(k, j, is, ie, vol);
       for (int i=is; i<=ie; i++) {
-        e += pmb->prfld2->u_gas(k,j,i);//*vol(i);
+        e += pmb->prfld->u_gas(k,j,i);//*vol(i);
         num++;
       }
     }
@@ -674,7 +674,7 @@ Real HistoryEr(MeshBlock *pmb, int iout) {
     for (int j=js; j<=je; j++) {
       // pmb->pcoord->CellVolume(k, j, is, ie, vol);
       for (int i=is; i<=ie; i++) {
-        E += pmb->prfld2->u_rad(k,j,i);//*vol(i);
+        E += pmb->prfld->u_rad(k,j,i);//*vol(i);
         num++;
       }
     }
@@ -691,7 +691,7 @@ Real HistoryaTg4(MeshBlock *pmb, int iout) {
   for (int k=ks; k<=ke; k++) {
     for (int j=js; j<=je; j++) {
       for (int i=is; i<=ie; i++) {
-        aT4 += std::pow(pmb->prfld2->u_gas(k,j,i)*gm1/pmb->phydro->w(IDN,k,j,i)*T_unit, 4);
+        aT4 += std::pow(pmb->prfld->u_gas(k,j,i)*gm1/pmb->phydro->w(IDN,k,j,i)*T_unit, 4);
         num++;
       }
     }
@@ -716,8 +716,8 @@ Real HistoryEall(MeshBlock *pmb, int iout) {
     for (int j=js; j<=je; j++) {
       pmb->pcoord->CellVolume(k, j, is, ie, vol);
       for (int i=is; i<=ie; i++) {
-        E += pmb->prfld2->u_gas(k,j,i)*vol(i);
-        E += pmb->prfld2->u_rad(k,j,i)*vol(i);
+        E += pmb->prfld->u_gas(k,j,i)*vol(i);
+        E += pmb->prfld->u_rad(k,j,i)*vol(i);
       }
     }
   }
@@ -736,7 +736,7 @@ Real HistoryL1norm(MeshBlock *pmb, int iout) {
           Real x = CoordAt(pmb->pcoord, i, j, k);
           Real r_sq = SQR(x-0.5);
           Real an = coef*std::exp(-r_sq/(4*chi_t));
-          L1norm += std::abs(pmb->prfld2->u_rad(k,j,i)-an);
+          L1norm += std::abs(pmb->prfld->u_rad(k,j,i)-an);
         }
       }
     }
@@ -759,7 +759,7 @@ Real HistoryL1normRel(MeshBlock *pmb, int iout) {
           Real x = CoordAt(pmb->pcoord, i, j, k);
           Real r_sq = SQR(x-0.5);
           Real an = coef*std::exp(-r_sq/(4*chi_t));
-          L1norm += std::abs(pmb->prfld2->u_rad(k,j,i)-an)/an;
+          L1norm += std::abs(pmb->prfld->u_rad(k,j,i)-an)/an;
         }
       }
     }
@@ -782,7 +782,7 @@ Real HistoryTransL1(MeshBlock *pmb, int iout) {
     for (int k = ks; k <= ke; ++k) {
       for (int j = js; j <= je; ++j) {
         for (int i = is; i <= ie; ++i) {
-          norm += std::abs(pmb->prfld2->u_rad(k, j, i) - mean[i - is]);
+          norm += std::abs(pmb->prfld->u_rad(k, j, i) - mean[i - is]);
         }
       }
     }
@@ -790,7 +790,7 @@ Real HistoryTransL1(MeshBlock *pmb, int iout) {
     for (int k = ks; k <= ke; ++k) {
       for (int j = js; j <= je; ++j) {
         for (int i = is; i <= ie; ++i) {
-          norm += std::abs(pmb->prfld2->u_rad(k, j, i) - mean[j - js]);
+          norm += std::abs(pmb->prfld->u_rad(k, j, i) - mean[j - js]);
         }
       }
     }
@@ -798,7 +798,7 @@ Real HistoryTransL1(MeshBlock *pmb, int iout) {
     for (int k = ks; k <= ke; ++k) {
       for (int j = js; j <= je; ++j) {
         for (int i = is; i <= ie; ++i) {
-          norm += std::abs(pmb->prfld2->u_rad(k, j, i) - mean[k - ks]);
+          norm += std::abs(pmb->prfld->u_rad(k, j, i) - mean[k - ks]);
         }
       }
     }
@@ -823,7 +823,7 @@ Real HistoryTransL1Rel(MeshBlock *pmb, int iout) {
       for (int j = js; j <= je; ++j) {
         for (int i = is; i <= ie; ++i) {
           Real denom = std::max(std::abs(mean[i - is]), static_cast<Real>(1.0e-30));
-          norm += std::abs(pmb->prfld2->u_rad(k, j, i) - mean[i - is]) / denom;
+          norm += std::abs(pmb->prfld->u_rad(k, j, i) - mean[i - is]) / denom;
         }
       }
     }
@@ -832,7 +832,7 @@ Real HistoryTransL1Rel(MeshBlock *pmb, int iout) {
       for (int j = js; j <= je; ++j) {
         for (int i = is; i <= ie; ++i) {
           Real denom = std::max(std::abs(mean[j - js]), static_cast<Real>(1.0e-30));
-          norm += std::abs(pmb->prfld2->u_rad(k, j, i) - mean[j - js]) / denom;
+          norm += std::abs(pmb->prfld->u_rad(k, j, i) - mean[j - js]) / denom;
         }
       }
     }
@@ -841,7 +841,7 @@ Real HistoryTransL1Rel(MeshBlock *pmb, int iout) {
       for (int j = js; j <= je; ++j) {
         for (int i = is; i <= ie; ++i) {
           Real denom = std::max(std::abs(mean[k - ks]), static_cast<Real>(1.0e-30));
-          norm += std::abs(pmb->prfld2->u_rad(k, j, i) - mean[k - ks]) / denom;
+          norm += std::abs(pmb->prfld->u_rad(k, j, i) - mean[k - ks]) / denom;
         }
       }
     }
@@ -866,7 +866,7 @@ Real HistoryTransMaxRel(MeshBlock *pmb, int iout) {
       for (int j = js; j <= je; ++j) {
         for (int i = is; i <= ie; ++i) {
           Real denom = std::max(std::abs(mean[i - is]), static_cast<Real>(1.0e-30));
-          norm = std::max(norm, std::abs(pmb->prfld2->u_rad(k, j, i) - mean[i - is]) / denom);
+          norm = std::max(norm, std::abs(pmb->prfld->u_rad(k, j, i) - mean[i - is]) / denom);
         }
       }
     }
@@ -875,7 +875,7 @@ Real HistoryTransMaxRel(MeshBlock *pmb, int iout) {
       for (int j = js; j <= je; ++j) {
         for (int i = is; i <= ie; ++i) {
           Real denom = std::max(std::abs(mean[j - js]), static_cast<Real>(1.0e-30));
-          norm = std::max(norm, std::abs(pmb->prfld2->u_rad(k, j, i) - mean[j - js]) / denom);
+          norm = std::max(norm, std::abs(pmb->prfld->u_rad(k, j, i) - mean[j - js]) / denom);
         }
       }
     }
@@ -884,7 +884,7 @@ Real HistoryTransMaxRel(MeshBlock *pmb, int iout) {
       for (int j = js; j <= je; ++j) {
         for (int i = is; i <= ie; ++i) {
           Real denom = std::max(std::abs(mean[k - ks]), static_cast<Real>(1.0e-30));
-          norm = std::max(norm, std::abs(pmb->prfld2->u_rad(k, j, i) - mean[k - ks]) / denom);
+          norm = std::max(norm, std::abs(pmb->prfld->u_rad(k, j, i) - mean[k - ks]) / denom);
         }
       }
     }

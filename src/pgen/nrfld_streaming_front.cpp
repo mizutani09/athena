@@ -59,7 +59,7 @@ Real HistoryFrontX(MeshBlock *pmb, int iout);
 void ConstantOpacity(MeshBlock *pmb, AthenaArray<Real> &u_fld, AthenaArray<Real> &prim) {
   (void)u_fld;
   (void)prim;
-  FLD2 *prfld = pmb->prfld2;
+  FLD *prfld = pmb->prfld;
   int kl = pmb->ks;
   int ku = pmb->ke;
   int jl = pmb->js;
@@ -133,12 +133,12 @@ Real CenteredGradX(const MeshBlock *pmb, int k, int j, int i) {
   const int ip = std::min(i + 1, pmb->ie + NGHOST);
   const Real dx = pmb->pcoord->x1v(ip) - pmb->pcoord->x1v(im);
   if (dx <= 0.0) return 0.0;
-  return (pmb->prfld2->u_rad(k, j, ip) - pmb->prfld2->u_rad(k, j, im))/dx;
+  return (pmb->prfld->u_rad(k, j, ip) - pmb->prfld->u_rad(k, j, im))/dx;
 }
 
 }  // namespace
 
-void FLDInnerX1(MeshBlock *pmb, Coordinates *pco, FLD2 *pfld,
+void FLDInnerX1(MeshBlock *pmb, Coordinates *pco, FLD *pfld,
                 const AthenaArray<Real> &w, AthenaArray<Real> &u_rad_fld,
                 Real time, Real dt,
                 int is, int ie, int js, int je, int ks, int ke, int ngh) {
@@ -146,7 +146,7 @@ void FLDInnerX1(MeshBlock *pmb, Coordinates *pco, FLD2 *pfld,
   SetRadiationDirichlet(u_rad_fld, true, is, ie, js, je, ks, ke, ngh);
 }
 
-void FLDOuterX1(MeshBlock *pmb, Coordinates *pco, FLD2 *pfld,
+void FLDOuterX1(MeshBlock *pmb, Coordinates *pco, FLD *pfld,
                 const AthenaArray<Real> &w, AthenaArray<Real> &u_rad_fld,
                 Real time, Real dt,
                 int is, int ie, int js, int je, int ks, int ke, int ngh) {
@@ -284,7 +284,7 @@ void MeshBlock::InitUserMeshBlockData(ParameterInput *pin) {
   SetUserOutputVariableName(3, "Rlim");
   SetUserOutputVariableName(4, "lambda");
   SetUserOutputVariableName(5, "Frad_x");
-  prfld2->EnrollOpacityFunction(ConstantOpacity);
+  prfld->EnrollOpacityFunction(ConstantOpacity);
 }
 
 void MeshBlock::ProblemGenerator(ParameterInput *pin) {
@@ -306,8 +306,8 @@ void MeshBlock::ProblemGenerator(ParameterInput *pin) {
         phydro->u(IM2, k, j, i) = 0.0;
         phydro->u(IM3, k, j, i) = 0.0;
         if (NON_BAROTROPIC_EOS) phydro->u(IEN, k, j, i) = egas_init;
-        prfld2->u_gas(k, j, i) = egas_init;
-        prfld2->u_rad(k, j, i) = erad;
+        prfld->u_gas(k, j, i) = egas_init;
+        prfld->u_rad(k, j, i) = erad;
       }
     }
   }
@@ -364,13 +364,13 @@ void MeshBlock::UserWorkBeforeOutput(ParameterInput *pin) {
   for (int k = kl; k <= ku; ++k) {
     for (int j = jl; j <= ju; ++j) {
       for (int i = il; i <= iu; ++i) {
-        const Real erad = std::max(prfld2->u_rad(k, j, i), TINY_NUMBER);
+        const Real erad = std::max(prfld->u_rad(k, j, i), TINY_NUMBER);
         const Real grad = CenteredGradX(this, k, j, i);
         const Real rlim = std::abs(grad)/(std::max(chi_r_code, TINY_NUMBER)*erad);
-        const Real lambda = RadFLD2::FluxLimiter(rlim, false);
-        const Real flux_code = -prfld2->c_ph*lambda*grad/std::max(chi_r_code, TINY_NUMBER);
+        const Real lambda = RadFLD::FluxLimiter(rlim, false);
+        const Real flux_code = -prfld->c_ph*lambda*grad/std::max(chi_r_code, TINY_NUMBER);
         user_out_var(0, k, j, i) = pcoord->x1v(i)*leng_unit;
-        user_out_var(1, k, j, i) = prfld2->u_rad(k, j, i)*egas_unit;
+        user_out_var(1, k, j, i) = prfld->u_rad(k, j, i)*egas_unit;
         user_out_var(2, k, j, i) = chi_r_phys;
         user_out_var(3, k, j, i) = rlim;
         user_out_var(4, k, j, i) = lambda;
@@ -392,7 +392,7 @@ Real HistoryErMax(MeshBlock *pmb, int iout) {
   for (int k = pmb->ks; k <= pmb->ke; ++k) {
     for (int j = pmb->js; j <= pmb->je; ++j) {
       for (int i = pmb->is; i <= pmb->ie; ++i) {
-        out = std::max(out, pmb->prfld2->u_rad(k, j, i)*egas_unit);
+        out = std::max(out, pmb->prfld->u_rad(k, j, i)*egas_unit);
       }
     }
   }
@@ -405,7 +405,7 @@ Real HistoryErMin(MeshBlock *pmb, int iout) {
   for (int k = pmb->ks; k <= pmb->ke; ++k) {
     for (int j = pmb->js; j <= pmb->je; ++j) {
       for (int i = pmb->is; i <= pmb->ie; ++i) {
-        out = std::min(out, pmb->prfld2->u_rad(k, j, i)*egas_unit);
+        out = std::min(out, pmb->prfld->u_rad(k, j, i)*egas_unit);
       }
     }
   }
@@ -436,7 +436,7 @@ Real HistoryFrontX(MeshBlock *pmb, int iout) {
   for (int k = pmb->ks; k <= pmb->ke; ++k) {
     for (int j = pmb->js; j <= pmb->je; ++j) {
       for (int i = pmb->is; i <= pmb->ie; ++i) {
-        if (pmb->prfld2->u_rad(k, j, i)*egas_unit > threshold) {
+        if (pmb->prfld->u_rad(k, j, i)*egas_unit > threshold) {
           out = std::max(out, pmb->pcoord->x1v(i)*leng_unit);
         }
       }
