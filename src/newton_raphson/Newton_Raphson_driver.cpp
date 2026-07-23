@@ -421,10 +421,7 @@ void NewtonRaphsonDriver::Solve_general(int stage, Real dt) {
 
   int n = 0;
   Real def = 0.0, defmax = 0.0;
-  for (int v = 0; v < nvar_; ++v) {
-    def += CalculateDefectNorm(NRNormType::l2, v);
-    defmax = std::max(defmax, CalculateDefectNorm(NRNormType::max, v));
-  }
+  CalculateDefectNorms(def, defmax);
 
   // std::cout << "epsilon for Newton-Raphson: " << eps_ << std::endl;
 
@@ -455,10 +452,7 @@ void NewtonRaphsonDriver::Solve_general(int stage, Real dt) {
       SolveOneCycle();
 
       def = 0.0, defmax = 0.0;
-      for (int v = 0; v < nvar_; ++v) {
-        def += CalculateDefectNorm(NRNormType::l2, v);
-        defmax = std::max(defmax, CalculateDefectNorm(NRNormType::max, v));
-      }
+      CalculateDefectNorms(def, defmax);
 
       if (fshowdef_ && Globals::my_rank == 0) {
         const Real conv = (olddef > 0.0 ? def/olddef : 0.0);
@@ -758,41 +752,46 @@ void NewtonRaphsonDriver::SolveOneCycle() {
 
 
 //----------------------------------------------------------------------------------------
-//! \fn Real NewtonRaphsonDriver::CalculateDefectNorm(NRNormType nrm, int n)
-//! \brief calculate the defect norm
+//! \fn void NewtonRaphsonDriver::CalculateDefectNorms(Real &l2_norm,
+//!                                                     Real &max_norm)
+//! \brief calculate each block defect once and accumulate both convergence norms
 
-Real NewtonRaphsonDriver::CalculateDefectNorm(NRNormType nrm, int n) {
-  Real norm=0.0;
+void NewtonRaphsonDriver::CalculateDefectNorms(Real &l2_norm, Real &max_norm) {
+  const int nblock = static_cast<int>(vnr_.size());
+  std::vector<Real> block_l2(nblock*nvar_, 0.0);
+  std::vector<Real> block_max(nblock*nvar_, 0.0);
 
-  if (nrm == NRNormType::max) {
-#pragma omp parallel for reduction(max : norm) num_threads(nthreads_)
-    for (auto itr = vnr_.begin(); itr < vnr_.end(); itr++) {
-      NewtonRaphson *pnr = *itr;
-      norm = std::max(norm, pnr->CalculateDefectNorm(nrm, n));
-    }
-  } else {
-#pragma omp parallel for reduction(+ : norm) num_threads(nthreads_)
-    for (auto itr = vnr_.begin(); itr < vnr_.end(); itr++) {
-      NewtonRaphson *pnr = *itr;
-      norm += pnr->CalculateDefectNorm(nrm, n);
+#pragma omp parallel for num_threads(nthreads_)
+  for (int b = 0; b < nblock; ++b) {
+    NewtonRaphson *pnr = vnr_[b];
+    pnr->CalculateDefectBlock();
+    for (int v = 0; v < nvar_; ++v) {
+      pnr->CalculateDefectNorms(v, block_l2[b*nvar_ + v],
+                                block_max[b*nvar_ + v]);
     }
   }
+
+  l2_norm = 0.0;
+  max_norm = 0.0;
+  const Real vol = (pmy_mesh_->mesh_size.x1max-pmy_mesh_->mesh_size.x1min)
+                 * (pmy_mesh_->mesh_size.x2max-pmy_mesh_->mesh_size.x2min)
+                 * (pmy_mesh_->mesh_size.x3max-pmy_mesh_->mesh_size.x3min);
+  for (int v = 0; v < nvar_; ++v) {
+    Real sum = 0.0;
+    Real maximum = 0.0;
+    for (int b = 0; b < nblock; ++b) {
+      sum += block_l2[b*nvar_ + v];
+      maximum = std::max(maximum, block_max[b*nvar_ + v]);
+    }
 #ifdef MPI_PARALLEL
-  if (nrm == NRNormType::max)
-    MPI_Allreduce(MPI_IN_PLACE,&norm,1,MPI_ATHENA_REAL,MPI_MAX,MPI_COMM_NEWTON_RAPHSON);
-  else
-    MPI_Allreduce(MPI_IN_PLACE,&norm,1,MPI_ATHENA_REAL,MPI_SUM,MPI_COMM_NEWTON_RAPHSON);
+    MPI_Allreduce(MPI_IN_PLACE, &sum, 1, MPI_ATHENA_REAL, MPI_SUM,
+                  MPI_COMM_NEWTON_RAPHSON);
+    MPI_Allreduce(MPI_IN_PLACE, &maximum, 1, MPI_ATHENA_REAL, MPI_MAX,
+                  MPI_COMM_NEWTON_RAPHSON);
 #endif
-  if (nrm != NRNormType::max) {
-    Real vol = (pmy_mesh_->mesh_size.x1max-pmy_mesh_->mesh_size.x1min)
-             * (pmy_mesh_->mesh_size.x2max-pmy_mesh_->mesh_size.x2min)
-             * (pmy_mesh_->mesh_size.x3max-pmy_mesh_->mesh_size.x3min);
-    norm /= vol;
+    l2_norm += std::sqrt(sum/vol);
+    max_norm = std::max(max_norm, maximum);
   }
-  if (nrm == NRNormType::l2)
-    norm = std::sqrt(norm);
-
-  return norm;
 }
 
 // //----------------------------------------------------------------------------------------

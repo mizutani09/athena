@@ -73,7 +73,7 @@ class NewtonRaphson {
   void RetrieveDefect(AthenaArray<Real> &dst, int ns, int ngh);
   void ZeroClearData();
   void CalculateDefectBlock();
-  Real CalculateDefectNorm(NRNormType nrm, int n);
+  void CalculateDefectNorms(int n, Real &l2_sum, Real &max_norm) const;
   // Real CalculateTotal(NRVariable type, int n);
 //   void SubtractAverage(NRVariable type, int n, Real ave);
   void StoreOldData();
@@ -186,7 +186,7 @@ class NewtonRaphsonDriver {
   // void SolveIterative();
   // void SolveIterativeFixedTimes();
 
-  Real CalculateDefectNorm(NRNormType nrm, int n);
+  void CalculateDefectNorms(Real &l2_norm, Real &max_norm);
   // void CalculateMatrix();
 
   // // small functions

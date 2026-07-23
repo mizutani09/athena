@@ -265,11 +265,13 @@ void NewtonRaphson::CalculateDefectBlock() {
 
 
 //----------------------------------------------------------------------------------------
-//! \fn Real NewtonRaphson::CalculateDefectNorm(MGNormType nrm, int n)
-//! \brief calculate the residual norm
+//! \fn void NewtonRaphson::CalculateDefectNorms(int n, Real &l2_sum,
+//!                                               Real &max_norm) const
+//! \brief calculate the squared L2 integral and maximum norm from the current defect
 
-Real NewtonRaphson::CalculateDefectNorm(NRNormType nrm, int n) {
-  AthenaArray<Real> &def=def_;
+void NewtonRaphson::CalculateDefectNorms(int n, Real &l2_sum,
+                                         Real &max_norm) const {
+  const AthenaArray<Real> &def = def_;
   int is = pmy_block_->is;
   int ie = pmy_block_->ie;
   int js = pmy_block_->js;
@@ -278,38 +280,20 @@ Real NewtonRaphson::CalculateDefectNorm(NRNormType nrm, int n) {
   int ke = pmy_block_->ke;
   Real dx=rdx_, dy=rdy_, dz=rdz_;
 
-  CalculateDefect(def_, u_, uold_,
-                  coeff_, def_coeff_,
-                  false);
-
-  Real norm=0.0;
-  if (nrm == NRNormType::max) {
-    for (int k=ks; k<=ke; ++k) {
-      for (int j=js; j<=je; ++j) {
-#pragma omp simd reduction(max: norm)
-        for (int i=is; i<=ie; ++i)
-          norm = std::max(norm, std::abs(def(n,k,j,i)));
-      }
-    }
-    return norm;
-  } else if (nrm == NRNormType::l1) {
-    for (int k=ks; k<=ke; ++k) {
-      for (int j=js; j<=je; ++j) {
-#pragma omp simd reduction(+: norm)
-        for (int i=is; i<=ie; ++i)
-          norm += std::abs(def(n,k,j,i));
-      }
-    }
-  } else { // L2 norm
-    for (int k=ks; k<=ke; ++k) {
-      for (int j=js; j<=je; ++j) {
-#pragma omp simd reduction(+: norm)
-        for (int i=is; i<=ie; ++i)
-          norm += SQR(def(n,k,j,i));
+  Real sum = 0.0;
+  Real maximum = 0.0;
+  for (int k=ks; k<=ke; ++k) {
+    for (int j=js; j<=je; ++j) {
+#pragma omp simd reduction(+: sum) reduction(max: maximum)
+      for (int i=is; i<=ie; ++i) {
+        const Real abs_def = std::abs(def(n,k,j,i));
+        sum += SQR(abs_def);
+        maximum = std::max(maximum, abs_def);
       }
     }
   }
-  return norm*dx*dy*dz*defscale_;
+  l2_sum = sum*dx*dy*dz*defscale_;
+  max_norm = maximum;
 }
 
 
