@@ -69,6 +69,9 @@ class FLD2 {
   // first index is RadFLD2::RadiationFaceIndex.  HLLC-FLD consumes exactly
   // these states, so radiation and gas use the same reconstruction order.
   AthenaArray<Real> rad_face_l[3], rad_face_r[3];
+  // Godunov radiation energy selected by the hydro Riemann solver.  Explicit
+  // mixed-frame terms use this state together with Hydro::vf.
+  AthenaArray<Real> rad_face_g[3];
   AthenaArray<Real> coarse_u_rad;
   int refinement_idx{-1}; // for r
 

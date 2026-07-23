@@ -1,6 +1,6 @@
 //========================================================================================
 //! \file hllc_fld.cpp
-//! \brief HLLC solver for the gas plus scalar mixed-frame FLD hyperbolic subsystem.
+//! \brief Gas HLLC solver using an FLD-modified signal speed.
 
 #include <algorithm>
 #include <cmath>
@@ -44,9 +44,6 @@ void Hydro::RiemannSolver(const int k, const int j, const int il, const int iu,
     const Real lamr = std::max(radr(RadFLD2::LAMBDA,k,j,i),0.0);
     const Real prl = coupled ? laml*erl : 0.0;
     const Real prr = coupled ? lamr*err : 0.0;
-    // Build total pressure on the face from the reconstructed components.
-    const Real ptl = wli[IPR]+prl;
-    const Real ptr = wri[IPR]+prr;
 
     const Real eil = GENERAL_EOS
         ? pmy_block->peos->EgasFromRhoP(wli[IDN],wli[IPR]) : wli[IPR]*igm1;
@@ -54,8 +51,8 @@ void Hydro::RiemannSolver(const int k, const int j, const int il, const int iu,
         ? pmy_block->peos->EgasFromRhoP(wri[IDN],wri[IPR]) : wri[IPR]*igm1;
     const Real kel = 0.5*wli[IDN]*(SQR(wli[IVX])+SQR(wli[IVY])+SQR(wli[IVZ]));
     const Real ker = 0.5*wri[IDN]*(SQR(wri[IVX])+SQR(wri[IVY])+SQR(wri[IVZ]));
-    const Real etl = eil+kel+(coupled ? erl : 0.0);
-    const Real etr = eir+ker+(coupled ? err : 0.0);
+    const Real etl = eil+kel;
+    const Real etr = eir+ker;
 
     const Real cgl = pmy_block->peos->SoundSpeed(wli);
     const Real cgr = pmy_block->peos->SoundSpeed(wri);
@@ -63,8 +60,12 @@ void Hydro::RiemannSolver(const int k, const int j, const int il, const int iu,
     const Real cr = std::sqrt(SQR(cgr)+(coupled ? lamr*(err+prr)/wri[IDN] : 0.0));
     const Real rhoa=0.5*(wli[IDN]+wri[IDN]);
     const Real ca=0.5*(cl+cr);
-    const Real pmid=0.5*(ptl+ptr+(wli[IVX]-wri[IVX])*rhoa*ca);
-    const Real umid=0.5*(wli[IVX]+wri[IVX]+(ptl-ptr)/(rhoa*ca));
+    // Radiation changes only the signal-speed estimate.  The HLLC pressure,
+    // star state, and returned hydro flux remain the ordinary gas quantities.
+    const Real pmid=0.5*(wli[IPR]+wri[IPR]
+                         +(wli[IVX]-wri[IVX])*rhoa*ca);
+    const Real umid=0.5*(wli[IVX]+wri[IVX]
+                         +(wli[IPR]-wri[IPR])/(rhoa*ca));
     const Real rhol=wli[IDN]+(wli[IVX]-umid)*rhoa/ca;
     const Real rhor=wri[IDN]+(umid-wri[IVX])*rhoa/ca;
 
@@ -74,28 +75,32 @@ void Hydro::RiemannSolver(const int k, const int j, const int il, const int iu,
                     /std::max(wli[IPR],TINY_NUMBER);
       const Real gr=pmy_block->peos->AsqFromRhoP(rhor,wri[IPR])*rhor
                     /std::max(wri[IPR],TINY_NUMBER);
-      ql=(pmid<=ptl)?1.0:std::sqrt(1.0+(gl+1.0)/(2.0*gl)*(pmid/ptl-1.0));
-      qr=(pmid<=ptr)?1.0:std::sqrt(1.0+(gr+1.0)/(2.0*gr)*(pmid/ptr-1.0));
+      ql=(pmid<=wli[IPR])?1.0:std::sqrt(1.0+(gl+1.0)/(2.0*gl)
+                                      *(pmid/wli[IPR]-1.0));
+      qr=(pmid<=wri[IPR])?1.0:std::sqrt(1.0+(gr+1.0)/(2.0*gr)
+                                      *(pmid/wri[IPR]-1.0));
     } else {
-      ql=(pmid<=ptl)?1.0:std::sqrt(1.0+(gamma+1.0)/(2.0*gamma)*(pmid/ptl-1.0));
-      qr=(pmid<=ptr)?1.0:std::sqrt(1.0+(gamma+1.0)/(2.0*gamma)*(pmid/ptr-1.0));
+      ql=(pmid<=wli[IPR])?1.0:std::sqrt(1.0+(gamma+1.0)/(2.0*gamma)
+                                      *(pmid/wli[IPR]-1.0));
+      qr=(pmid<=wri[IPR])?1.0:std::sqrt(1.0+(gamma+1.0)/(2.0*gamma)
+                                      *(pmid/wri[IPR]-1.0));
     }
     const Real al=wli[IVX]-cl*ql, ar=wri[IVX]+cr*qr;
     const Real bp=ar>0.0?ar:TINY_NUMBER, bm=al<0.0?al:-TINY_NUMBER;
     const Real vlbm=wli[IVX]-bm, vrbp=wri[IVX]-bp;
     const Real ml=wli[IDN]*(wli[IVX]-al), mr=-wri[IDN]*(wri[IVX]-ar);
-    const Real tl=ptl+(wli[IVX]-al)*wli[IDN]*wli[IVX];
-    const Real tr=ptr+(wri[IVX]-ar)*wri[IDN]*wri[IVX];
+    const Real tl=wli[IPR]+(wli[IVX]-al)*wli[IDN]*wli[IVX];
+    const Real tr=wri[IPR]+(wri[IVX]-ar)*wri[IDN]*wri[IVX];
     const Real am=(tl-tr)/(ml+mr);
     const Real cp=std::max((ml*tr+mr*tl)/(ml+mr),0.0);
 
     fl[IDN]=wli[IDN]*vlbm; fr[IDN]=wri[IDN]*vrbp;
-    fl[IVX]=wli[IDN]*wli[IVX]*vlbm+ptl;
-    fr[IVX]=wri[IDN]*wri[IVX]*vrbp+ptr;
+    fl[IVX]=wli[IDN]*wli[IVX]*vlbm+wli[IPR];
+    fr[IVX]=wri[IDN]*wri[IVX]*vrbp+wri[IPR];
     fl[IVY]=wli[IDN]*wli[IVY]*vlbm; fr[IVY]=wri[IDN]*wri[IVY]*vrbp;
     fl[IVZ]=wli[IDN]*wli[IVZ]*vlbm; fr[IVZ]=wri[IDN]*wri[IVZ]*vrbp;
-    fl[IEN]=etl*vlbm+ptl*wli[IVX];
-    fr[IEN]=etr*vrbp+ptr*wri[IVX];
+    fl[IEN]=etl*vlbm+wli[IPR]*wli[IVX];
+    fr[IEN]=etr*vrbp+wri[IPR]*wri[IVX];
 
     Real sl,sr,sm;
     if (am>=0.0) {sl=am/(am-bm); sr=0.0; sm=-bm/(am-bm);}
@@ -106,14 +111,16 @@ void Hydro::RiemannSolver(const int k, const int j, const int il, const int iu,
     fi[IVZ]=sl*fl[IVZ]+sr*fr[IVZ];
     fi[IEN]=sl*fl[IEN]+sr*fr[IEN]+sm*cp*am;
 
-    // Radiation and gas share the HLLC contact speed.  Subtracting the
-    // radiation part from the total-energy flux leaves the gas-energy flux.
+    // Use the upwind reconstructed radiation state as the interface Godunov
+    // state.  No radiation star state is constructed in this simplified
+    // solver.
+    const Real erg = am>=0.0 ? erl : err;
+    pfld->rad_face_g[dir](k,j,i)=erg;
     const Real fer = coupled
-        ? (am>=0.0 ? radl(RadFLD2::ARAD,k,j,i)*erl
-                   : radr(RadFLD2::ARAD,k,j,i)*err)*am
+        ? (am>=0.0 ? radl(RadFLD2::ARAD,k,j,i)
+                   : radr(RadFLD2::ARAD,k,j,i))*erg*am
         : sl*erl*vlbm+sr*err*vrbp;
     radflux(k,j,i)=fer;
-    if (coupled) fi[IEN]-=fer;
     flx(IDN,k,j,i)=fi[IDN]; flx(ivx,k,j,i)=fi[IVX];
     flx(ivy,k,j,i)=fi[IVY]; flx(ivz,k,j,i)=fi[IVZ];
     flx(IEN,k,j,i)=fi[IEN];
