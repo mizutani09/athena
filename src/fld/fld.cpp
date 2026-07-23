@@ -129,9 +129,6 @@ FLD::FLD(MeshBlock *pmb, ParameterInput *pin) :
 
   // Allocate memory for scratch arrays
   Mesh *pm = pmy_block->pmy_mesh;
-  u_radl_.NewAthenaArray(pmb->ncells1);
-  u_radr_.NewAthenaArray(pmb->ncells1);
-  u_radlb_.NewAthenaArray(pmb->ncells1);
   rad_state_cc_.NewAthenaArray(RadFLD::NRAD_FACE_STATE,
                                pmb->ncells3, pmb->ncells2, pmb->ncells1);
   rad_statel_.NewAthenaArray(RadFLD::NRAD_FACE_STATE, pmb->ncells1);

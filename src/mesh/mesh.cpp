@@ -56,7 +56,6 @@
 #include "../orbital_advection/orbital_advection.hpp"
 #include "../outputs/io_wrapper.hpp"
 #include "../parameter_input.hpp"
-#include "../mg_fld/mg_rad_fld.hpp"
 #include "../reconstruct/reconstruction.hpp"
 #include "../scalars/scalars.hpp"
 #include "../units/units.hpp"
@@ -131,13 +130,10 @@ Mesh::Mesh(ParameterInput *pin, int mesh_test) :
     MGCRDiffusionBoundaryFunction_{nullptr, nullptr, nullptr, nullptr, nullptr, nullptr},
     MGCRDiffusionCoeffBoundaryFunction_{nullptr, nullptr, nullptr,
                                         nullptr, nullptr, nullptr},
-    MGFLDBoundaryFunction_{nullptr, nullptr, nullptr, nullptr, nullptr, nullptr},
-    MGFLDCoeffBoundaryFunction_{nullptr, nullptr, nullptr, nullptr, nullptr, nullptr},
     LinearMGBoundaryFunction_{nullptr, nullptr, nullptr, nullptr, nullptr, nullptr},
     LinearMGCoeffBoundaryFunction_{nullptr, nullptr, nullptr, nullptr, nullptr, nullptr},
     MGGravitySourceMaskFunction_{}, MGCRDiffusionSourceMaskFunction_{},
-    MGCRDiffusionCoeffMaskFunction_{},
-    MGFLDSourceMaskFunction_{}, MGFLDCoeffMaskFunction_{} {
+    MGCRDiffusionCoeffMaskFunction_{} {
   std::stringstream msg;
   BoundaryFlag block_bcs[6];
   std::int64_t nbmax;
@@ -557,9 +553,6 @@ Mesh::Mesh(ParameterInput *pin, int mesh_test) :
     pimrad = new IMRadiation(this, pin);
   }
 
-  if (MGFLD_ENABLED)
-    pmfld = new MGFLDDriver(this, pin);
-
   if (NRMGFLD_ENABLED) {
     pmnr = new NRFLDDriver(this, pin);
   }
@@ -645,13 +638,10 @@ Mesh::Mesh(ParameterInput *pin, IOWrapper& resfile, int mesh_test) :
     MGCRDiffusionBoundaryFunction_{nullptr, nullptr, nullptr, nullptr, nullptr, nullptr},
     MGCRDiffusionCoeffBoundaryFunction_{nullptr, nullptr, nullptr,
                                         nullptr, nullptr, nullptr},
-    MGFLDBoundaryFunction_{nullptr, nullptr, nullptr, nullptr, nullptr, nullptr},
-    MGFLDCoeffBoundaryFunction_{nullptr, nullptr, nullptr, nullptr, nullptr, nullptr},
     LinearMGBoundaryFunction_{nullptr, nullptr, nullptr, nullptr, nullptr, nullptr},
     LinearMGCoeffBoundaryFunction_{nullptr, nullptr, nullptr, nullptr, nullptr, nullptr},
     MGGravitySourceMaskFunction_{}, MGCRDiffusionSourceMaskFunction_{},
-    MGCRDiffusionCoeffMaskFunction_{},
-    MGFLDSourceMaskFunction_{}, MGFLDCoeffMaskFunction_{} {
+    MGCRDiffusionCoeffMaskFunction_{} {
   std::stringstream msg;
   BoundaryFlag block_bcs[6];
   IOWrapperSizeT *offset{};
@@ -903,9 +893,6 @@ Mesh::Mesh(ParameterInput *pin, IOWrapper& resfile, int mesh_test) :
     pimrad = new IMRadiation(this, pin);
   }
 
-  if (MGFLD_ENABLED)
-    pmfld = new MGFLDDriver(this, pin);
-
   if (NRMGFLD_ENABLED) {
     pmnr = new NRFLDDriver(this, pin);
   }
@@ -989,7 +976,6 @@ Mesh::~Mesh() {
   else if (SELF_GRAVITY_ENABLED == 2) delete pmgrd;
   if (IM_RADIATION_ENABLED) delete pimrad;
   if (CRDIFFUSION_ENABLED) delete pmcrd;
-  if (MGFLD_ENABLED) delete pmfld;
   if (NRMGFLD_ENABLED){
     delete pmnr;
     // delete pmlinsolver;
@@ -1281,23 +1267,6 @@ void Mesh::EnrollUserMGCRDiffusionBoundaryFunction(BoundaryFace dir,
 
 
 //----------------------------------------------------------------------------------------
-//! \fn void Mesh::EnrollUserMGFLDBoundaryFunction(BoundaryFace dir,
-//!                                                        MGBoundaryFunc my_bc)
-//! \brief Enroll a user-defined Multigrid FLD boundary function
-
-void Mesh::EnrollUserMGFLDBoundaryFunction(BoundaryFace dir,
-                                                   MGBoundaryFunc my_bc) {
-  std::stringstream msg;
-  if (dir < 0 || dir > 5) {
-    msg << "### FATAL ERROR in EnrollUserMGFLDBoundaryFunction" << std::endl
-        << "dirName = " << dir << " not valid" << std::endl;
-    ATHENA_ERROR(msg);
-  }
-  MGFLDBoundaryFunction_[static_cast<int>(dir)] = my_bc;
-  return;
-}
-
-//----------------------------------------------------------------------------------------
 //! \fn void Mesh::EnrollUserLinearMGBoundaryFunction(BoundaryFace dir,
 //!                                                   MGBoundaryFunc my_bc)
 //! \brief Enroll a user-defined Linear Multigrid boundary function
@@ -1340,26 +1309,6 @@ void Mesh::EnrollUserMGCRDiffusionSourceMaskFunction(MGMaskFunc srcmask) {
 
 void Mesh::EnrollUserMGCRDiffusionCoefficientMaskFunction(MGMaskFunc coeffmask) {
   MGCRDiffusionCoeffMaskFunction_ = coeffmask;
-  return;
-}
-
-
-//----------------------------------------------------------------------------------------
-//! \fn void Mesh::EnrollUserMGFLDSourceMaskFunction(MGMaskFunc srcmask)
-//  \brief Enroll a user-defined Multigrid FLD source mask function
-
-void Mesh::EnrollUserMGFLDSourceMaskFunction(MGMaskFunc srcmask) {
-  MGFLDSourceMaskFunction_ = srcmask;
-  return;
-}
-
-
-//----------------------------------------------------------------------------------------
-//! \fn void Mesh::EnrollUserMGFLDCoefficientMaskFunction(MGMaskFunc coeffmask)
-//  \brief Enroll a user-defined Multigrid FLD coefficient mask function
-
-void Mesh::EnrollUserMGFLDCoefficientMaskFunction(MGMaskFunc coeffmask) {
-  MGFLDCoeffMaskFunction_ = coeffmask;
   return;
 }
 
@@ -1703,27 +1652,6 @@ void Mesh::Initialize(int res_flag, ParameterInput *pin) {
       }
     }
 
-    // initialize Opacity for MGFLD
-    // if (MGFLD_ENABLED) {
-    //   if (my_blocks(0)->prfld->pUserOpacityTable->use_tables) {
-    //     for (int i=0; i<nblocal; ++i) {
-    //       MeshBlock *pmb = my_blocks(i);
-    //       Hydro *ph = pmb->phydro;
-    //       Field *pf = pmb->pfield;
-    //       int il = pmb->is - NGHOST;
-    //       int iu = pmb->ie + NGHOST;
-    //       int jl = pmb->js - NGHOST;
-    //       int ju = pmb->je + NGHOST;
-    //       int kl = pmb->ks - NGHOST;
-    //       int ku = pmb->ke + NGHOST;
-    //       // pmb->peos->ConservedToPrimitive(ph->u, ph->w1, pf->b,
-    //       //                                 ph->w, pf->bcc, pmb->pcoord,
-    //       //                                 il, iu, jl, ju, kl, ku);
-    //       pmb->prfld->UpdateOpacity(pmb, pmb->prfld->u, pmb->phydro->w);
-    //     }
-    //   }
-    // }
-
     // Create send/recv MPI_Requests for all BoundaryData objects
 #pragma omp parallel for num_threads(nthreads)
     for (int i=0; i<nblocal; ++i) {
@@ -1741,8 +1669,6 @@ void Mesh::Initialize(int res_flag, ParameterInput *pin) {
         pmb->pnrrad->rad_bvar.SetupPersistentMPI();
       if (CRDIFFUSION_ENABLED)
         pmb->pcrdiff->crbvar.SetupPersistentMPI();
-      if (MGFLD_ENABLED)
-        pmb->prfld2->mgfldbvar.SetupPersistentMPI();
       if (NRMGFLD_ENABLED) {
         pmb->pnr->nrbvar.SetupPersistentMPI();
         pmb->pnr->delta_bvar.SetupPersistentMPI();
@@ -1794,7 +1720,7 @@ void Mesh::Initialize(int res_flag, ParameterInput *pin) {
           }
           pmb->pscalars->sbvar.SendBoundaryBuffers();
         }
-        if (MGFLD_ENABLED || NRMGFLD_ENABLED) {
+        if (NRMGFLD_ENABLED) {
           pmb->prfld->u_rad_fldbvar.var_cc = &(pmb->prfld->u_rad);
           if (pmb->pmy_mesh->multilevel) {
             pmb->prfld->u_rad_fldbvar.coarse_buf = &(pmb->prfld->coarse_u_rad);
@@ -1824,7 +1750,7 @@ void Mesh::Initialize(int res_flag, ParameterInput *pin) {
         if (NSCALARS > 0)
           pmb->pscalars->sbvar.ReceiveAndSetBoundariesWithWait();
 
-        if (MGFLD_ENABLED || NRMGFLD_ENABLED) {
+        if (NRMGFLD_ENABLED) {
           pmb->prfld->u_rad_fldbvar.ReceiveAndSetBoundariesWithWait();
         }
         if (NRMGFLD_ENABLED) {
@@ -1888,7 +1814,7 @@ void Mesh::Initialize(int res_flag, ParameterInput *pin) {
           if (NSCALARS > 0) {
             pmb->pscalars->sbvar.ReceiveAndSetBoundariesWithWait();
           }
-          if (MGFLD_ENABLED || NRMGFLD_ENABLED) {
+          if (NRMGFLD_ENABLED) {
             pmb->prfld->u_rad_fldbvar.ReceiveAndSetBoundariesWithWait();
           }
           if (NRMGFLD_ENABLED) {
@@ -1905,7 +1831,7 @@ void Mesh::Initialize(int res_flag, ParameterInput *pin) {
               pmb->pscalars->sbvar.coarse_buf = &(pmb->pscalars->coarse_s_);
             }
           }
-          if (MGFLD_ENABLED || NRMGFLD_ENABLED) {
+          if (NRMGFLD_ENABLED) {
             pmb->prfld->u_rad_fldbvar.var_cc = &(pmb->prfld->u_rad);
             if (pmb->pmy_mesh->multilevel) {
               pmb->prfld->u_rad_fldbvar.coarse_buf = &(pmb->prfld->coarse_u_rad);
@@ -1988,7 +1914,7 @@ void Mesh::Initialize(int res_flag, ParameterInput *pin) {
               ps->sbvar.coarse_buf = &(ps->coarse_r_);
             }
           }
-          if (MGFLD_ENABLED || NRMGFLD_ENABLED) {
+          if (NRMGFLD_ENABLED) {
             prfld->u_rad_fldbvar.var_cc = &(prfld->u_rad);
             if (pmb->pmy_mesh->multilevel) {
               prfld->u_rad_fldbvar.coarse_buf = &(prfld->coarse_u_rad);
@@ -2016,7 +1942,7 @@ void Mesh::Initialize(int res_flag, ParameterInput *pin) {
             ps->sbvar.coarse_buf = &(ps->coarse_r_);
           }
         }
-        if (MGFLD_ENABLED || NRMGFLD_ENABLED) {
+        if (NRMGFLD_ENABLED) {
           prfld->u_rad_fldbvar.var_cc = &(prfld->u_rad);
           if (pmb->pmy_mesh->multilevel) {
             prfld->u_rad_fldbvar.coarse_buf = &(prfld->coarse_u_rad);
@@ -2045,8 +1971,8 @@ void Mesh::Initialize(int res_flag, ParameterInput *pin) {
         }
       }
 
-      // calculate opacity for MGFLD
-      if (MGFLD_ENABLED || NRMGFLD_ENABLED) {
+      // Calculate opacity for NR-FLD.
+      if (NRMGFLD_ENABLED) {
         for (int i=0; i<nblocal; ++i) {
           pmb = my_blocks(i); ph = pmb->phydro;
           FLD *prfld = pmb->prfld;
@@ -2076,9 +2002,6 @@ void Mesh::Initialize(int res_flag, ParameterInput *pin) {
 
     if (CRDIFFUSION_ENABLED) // CR has to be processed after MHD boundaries
       pmcrd->Solve(1, 0.0);
-
-    if (MGFLD_ENABLED)  // MGFLD has to be processed after MHD boundaries (caution)
-      pmfld->Solve(1, 0.0);
 
     if (NRMGFLD_ENABLED)  // NRMGFLD has to be processed after MHD boundaries (caution)
       pmnr->Solve_general(1, 0.0);
@@ -2432,9 +2355,6 @@ void Mesh::ReserveMeshBlockPhysIDs() {
     ReserveTagPhysIDs(CellCenteredBoundaryVariable::max_phys_id);
   }
   if (CRDIFFUSION_ENABLED) {
-    ReserveTagPhysIDs(1);
-  }
-  if (MGFLD_ENABLED) {
     ReserveTagPhysIDs(1);
   }
   if (NRMGFLD_ENABLED) {

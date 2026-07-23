@@ -61,11 +61,6 @@ void ShowConfig() {
   } else {
     std::cout<<"  Cosmic Ray Diffusion:       OFF" << std::endl;
   }
-  if (MGFLD_ENABLED) {
-    std::cout<<"  FLD with Multigrid:         ON" << std::endl;
-  } else {
-    std::cout<<"  FLD with Multigrid:         OFF" << std::endl;
-  }
   if (NRMGFLD_ENABLED) {
     std::cout<<"  FLD with Newton-Raphson:    ON" << std::endl;
   } else {

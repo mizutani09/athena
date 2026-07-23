@@ -60,7 +60,6 @@ SRC_FILES := $(wildcard src/*.cpp) \
 	     $(wildcard src/hydro/hydro_diffusion/*.cpp) \
 		 $(wildcard src/linear_solver/*.cpp) \
 		 $(wildcard src/linear_solver/linearMG/*.cpp) \
-		 $(wildcard src/mg_fld/*.cpp) \
 		 $(wildcard src/newton_raphson/*.cpp) \
 		 $(wildcard src/nr_multigrid/*.cpp) \
 		 $(wildcard src/nr_radiation/*.cpp) \

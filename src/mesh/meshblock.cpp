@@ -41,7 +41,6 @@
 #include "../nr_radiation/radiation.hpp"
 #include "../orbital_advection/orbital_advection.hpp"
 #include "../parameter_input.hpp"
-#include "../mg_fld/rad_fld.hpp"
 #include "../fld/fld.hpp"
 #include "../reconstruct/reconstruction.hpp"
 #include "../scalars/scalars.hpp"
@@ -266,11 +265,8 @@ MeshBlock::MeshBlock(int igid, int ilid, LogicalLocation iloc, RegionSize input_
     // pbval->AdvanceCounterPhysID(CellCenteredBoundaryVariable::max_phys_id);
   }
 
-  if (MGFLD_ENABLED || NRMGFLD_ENABLED) {
+  if (NRMGFLD_ENABLED) {
     prfld = new FLD(this, pin);
-  }
-  if (MGFLD_ENABLED) {
-    prfld2 = new FLD2(this, pin);
   }
   if (NRMGFLD_ENABLED) { // caution! NRFLD should be constructed after FLD
     pnr = new NRFLD(this, pin);
@@ -475,11 +471,8 @@ MeshBlock::MeshBlock(int igid, int ilid, Mesh *pm, ParameterInput *pin,
     // pbval->AdvanceCounterPhysID(CellCenteredBoundaryVariable::max_phys_id);
   }
 
-  if (MGFLD_ENABLED || NRMGFLD_ENABLED) {
+  if (NRMGFLD_ENABLED) {
     prfld = new FLD(this, pin);
-  }
-  if (MGFLD_ENABLED) {
-    prfld2 = new FLD2(this, pin);
   }
   if (NRMGFLD_ENABLED) {
     pnr = new NRFLD(this, pin);
@@ -563,12 +556,6 @@ MeshBlock::MeshBlock(int igid, int ilid, Mesh *pm, ParameterInput *pin,
   if (CRDIFFUSION_ENABLED) {
     std::memcpy(pcrdiff->ecr.data(), &(mbdata[os]), pcrdiff->ecr.GetSizeInBytes());
     os += pcrdiff->ecr.GetSizeInBytes();
-  }
-
-  if (MGFLD_ENABLED) {
-    std::memcpy(prfld2->u.data(), &(mbdata[os]), prfld2->u.GetSizeInBytes());
-    os += prfld2->u.GetSizeInBytes();
-    prfld2->SyncToFld();
   }
 
   if (NRMGFLD_ENABLED) {
@@ -656,15 +643,11 @@ MeshBlock::~MeshBlock() {
     if (trace_dtor) std::cout << "[DTOR] MeshBlock gid=" << gid << " delete pcrdiff" << std::endl;
     delete pcrdiff;
   }
-  if (MGFLD_ENABLED) {
-    if (trace_dtor) std::cout << "[DTOR] MeshBlock gid=" << gid << " delete prfld2" << std::endl;
-    delete prfld2;
-  }
   if (NRMGFLD_ENABLED) {
     if (trace_dtor) std::cout << "[DTOR] MeshBlock gid=" << gid << " delete pnr" << std::endl;
     delete pnr;
   }
-  if (MGFLD_ENABLED || NRMGFLD_ENABLED) {
+  if (NRMGFLD_ENABLED) {
     if (trace_dtor) std::cout << "[DTOR] MeshBlock gid=" << gid << " delete prfld" << std::endl;
     delete prfld;
   }
@@ -789,8 +772,6 @@ std::size_t MeshBlock::GetBlockSizeInBytes() {
     size += pcr->u_cr.GetSizeInBytes();
   if (CRDIFFUSION_ENABLED)
     size += pcrdiff->ecr.GetSizeInBytes();
-  if (MGFLD_ENABLED)
-    size += prfld2->u.GetSizeInBytes();
   if (NRMGFLD_ENABLED) {
     size += pnr->u_.GetSizeInBytes();
     size += pnr->delta_u_.GetSizeInBytes();
@@ -831,8 +812,6 @@ std::size_t MeshBlock::GetBlockSizeInBytesGray() {
     size += pcr->u_cr.GetSizeInBytes();
   if (CRDIFFUSION_ENABLED)
     size += pcrdiff->ecr.GetSizeInBytes();
-  if (MGFLD_ENABLED)
-    size += prfld2->u.GetSizeInBytes();
   if (NRMGFLD_ENABLED) {
     size += pnr->u_.GetSizeInBytes();
     size += pnr->delta_u_.GetSizeInBytes();

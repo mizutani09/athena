@@ -919,13 +919,13 @@ TimeIntegratorTaskList::TimeIntegratorTaskList(ParameterInput *pin, Mesh *pm) {
         AddTask(DIFFUSE_SCLR,NONE);
         AddTask(CALC_SCLRFLX,(CALC_HYDFLX|DIFFUSE_SCLR));
       }
-      if (MGFLD_ENABLED || NRMGFLD_ENABLED)
+      if (NRMGFLD_ENABLED)
         AddTask(CALC_FLDADVFLX,CALC_HYDFLX); // MARK: 923
     } else { // STS enabled:
       AddTask(CALC_HYDFLX,NONE);
       if (NSCALARS > 0)
         AddTask(CALC_SCLRFLX,CALC_HYDFLX);
-      if (MGFLD_ENABLED || NRMGFLD_ENABLED)
+      if (NRMGFLD_ENABLED)
         AddTask(CALC_FLDADVFLX,CALC_HYDFLX);
     }
     if (pm->multilevel || SHEAR_PERIODIC) { // SMR or AMR or shear periodic
@@ -983,11 +983,11 @@ TimeIntegratorTaskList::TimeIntegratorTaskList(ParameterInput *pin, Mesh *pm) {
       fldadv_ready = PROLONG_FLDADV;
       // fldadv_ready = SETPHYSB_FLDADV | PROLONG_FLDADV;
     }
-    if (NSCALARS > 0 && (MGFLD_ENABLED || NRMGFLD_ENABLED)) {
+    if (NSCALARS > 0 && (NRMGFLD_ENABLED)) {
       AddTask(SRC_TERM,(INT_HYD|INT_SCLR|INT_CHM|fldadv_ready));
     } else if (NSCALARS > 0) {
       AddTask(SRC_TERM,(INT_HYD|INT_SCLR|INT_CHM));
-    } else if (MGFLD_ENABLED || NRMGFLD_ENABLED) {
+    } else if (NRMGFLD_ENABLED) {
       AddTask(SRC_TERM,(INT_HYD|fldadv_ready));
     } else {
       AddTask(SRC_TERM,INT_HYD);
@@ -1057,7 +1057,7 @@ TimeIntegratorTaskList::TimeIntegratorTaskList(ParameterInput *pin, Mesh *pm) {
       }
     }
 
-    if (MGFLD_ENABLED || NRMGFLD_ENABLED) {
+    if (NRMGFLD_ENABLED) {
       if (pm->multilevel) {
           AddTask(SEND_FLDADVFLX,CALC_FLDADVFLX);
           AddTask(RECV_FLDADVFLX,CALC_FLDADVFLX);
@@ -1117,11 +1117,11 @@ TimeIntegratorTaskList::TimeIntegratorTaskList(ParameterInput *pin, Mesh *pm) {
             setb=(setb|RECV_HYDSH|RECV_FLDSH);
           }
         } else {
-          if (NSCALARS > 0 && (MGFLD_ENABLED || NRMGFLD_ENABLED)) {
+          if (NSCALARS > 0 && (NRMGFLD_ENABLED)) {
             setb=(setb|SETB_HYD|SETB_FLD|SEND_SCLR|SETB_SCLR|SEND_FLDADV|PROLONG_FLDADV);
           } else if (NSCALARS > 0) {
             setb=(setb|SETB_HYD|SETB_FLD|SEND_SCLR|SETB_SCLR);
-          } else if (MGFLD_ENABLED || NRMGFLD_ENABLED) {
+          } else if (NRMGFLD_ENABLED) {
             setb=(setb|SETB_HYD|SETB_FLD|SEND_FLDADV|PROLONG_FLDADV);
           } else {
             setb=(setb|SETB_HYD|SETB_FLD);
@@ -1148,11 +1148,11 @@ TimeIntegratorTaskList::TimeIntegratorTaskList(ParameterInput *pin, Mesh *pm) {
             AddTask(CONS2PRIM,(RECV_HYDSH|RECV_FLDSH));
           }
         } else {
-          if (NSCALARS > 0 && (MGFLD_ENABLED || NRMGFLD_ENABLED)) {
+          if (NSCALARS > 0 && (NRMGFLD_ENABLED)) {
             AddTask(CONS2PRIM,(SETB_HYD|SETB_FLD|SETB_SCLR|SETPHYSB_FLDADV));
           } else if (NSCALARS > 0) {
             AddTask(CONS2PRIM,(SETB_HYD|SETB_FLD|SETB_SCLR));
-          } else if (MGFLD_ENABLED || NRMGFLD_ENABLED) {
+          } else if (NRMGFLD_ENABLED) {
             AddTask(CONS2PRIM,(SETB_HYD|SETB_FLD|SETPHYSB_FLDADV));
           } else {
             AddTask(CONS2PRIM,(SETB_HYD|SETB_FLD));
@@ -1170,11 +1170,11 @@ TimeIntegratorTaskList::TimeIntegratorTaskList(ParameterInput *pin, Mesh *pm) {
             setb=(setb|RECV_HYDSH);
           }
         } else {
-          if (NSCALARS > 0 && (MGFLD_ENABLED || NRMGFLD_ENABLED)) {
+          if (NSCALARS > 0 && (NRMGFLD_ENABLED)) {
             setb=(setb|SETB_HYD|SEND_SCLR|SETB_SCLR|SEND_FLDADV|PROLONG_FLDADV);
           } else if (NSCALARS > 0) {
             setb=(setb|SETB_HYD|SEND_SCLR|SETB_SCLR);
-          } else if (MGFLD_ENABLED || NRMGFLD_ENABLED) {
+          } else if (NRMGFLD_ENABLED) {
             setb=(setb|SETB_HYD|SEND_FLDADV|PROLONG_FLDADV);
           } else {
             setb=(setb|SETB_HYD);
@@ -1200,11 +1200,11 @@ TimeIntegratorTaskList::TimeIntegratorTaskList(ParameterInput *pin, Mesh *pm) {
             AddTask(CONS2PRIM,RECV_HYDSH);
           }
         } else {
-          if (NSCALARS > 0 && (MGFLD_ENABLED || NRMGFLD_ENABLED)) {
+          if (NSCALARS > 0 && (NRMGFLD_ENABLED)) {
             AddTask(CONS2PRIM,(SETB_HYD|SETB_SCLR|SETPHYSB_FLDADV));
           } else if (NSCALARS > 0) {
             AddTask(CONS2PRIM,(SETB_HYD|SETB_SCLR));
-          } else if (MGFLD_ENABLED || NRMGFLD_ENABLED) {
+          } else if (NRMGFLD_ENABLED) {
             AddTask(CONS2PRIM,(SETB_HYD|SETPHYSB_FLDADV));
           } else {
             AddTask(CONS2PRIM,SETB_HYD);
@@ -1717,7 +1717,7 @@ void TimeIntegratorTaskList::StartupTaskList(MeshBlock *pmb, int stage) {
         ps->s2 = ps->s;
     }
 
-    if (MGFLD_ENABLED || NRMGFLD_ENABLED) {
+    if (NRMGFLD_ENABLED) {
       FLD *prfld = pmb->prfld;
       prfld->u_rad1.ZeroClear();
       if (integrator == "ssprk5_4")
@@ -2351,7 +2351,7 @@ TaskStatus TimeIntegratorTaskList::Primitives(MeshBlock *pmb, int stage) {
           ps->sbvar.coarse_buf = &(ps->coarse_r_);
         }
       }
-      if (MGFLD_ENABLED || NRMGFLD_ENABLED) {
+      if (NRMGFLD_ENABLED) {
         prfld->u_rad_fldbvar.var_cc = &(prfld->u_rad);
         if (pmb->pmy_mesh->multilevel) {
           prfld->u_rad_fldbvar.coarse_buf = &(prfld->coarse_u_rad);

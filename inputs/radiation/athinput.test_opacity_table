@@ -4,7 +4,7 @@ reference       =
 configure       = --prob=test_opacity_table -nrmgfld -hdf5 -mpi
 
 <job>
-problem_id      = MGFLD # problem ID: basename of output filenames
+problem_id      = NRFLD # problem ID: basename of output filenames
 
 
 <time>

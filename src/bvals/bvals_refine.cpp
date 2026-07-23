@@ -285,7 +285,7 @@ void BoundaryValues::ProlongateFLDBoundaries(const Real time, const Real dt) {
 
   FLD *prfld=nullptr;
   CellCenteredBoundaryVariable *pfldbvar = nullptr;
-  if (MGFLD_ENABLED || NRMGFLD_ENABLED) {
+  if (NRMGFLD_ENABLED) {
     prfld = pmb->prfld;
     pfldbvar = &(prfld->u_rad_fldbvar);
   }
@@ -359,13 +359,13 @@ void BoundaryValues::ProlongateFLDBoundaries(const Real time, const Real dt) {
     } else if (nb.ni.ox3 > 0) { sk = pmb->cke + 1,  ek = pmb->cke + cn;}
     else              sk = pmb->cks-cn, ek = pmb->cks-1;
 
-    if (MGFLD_ENABLED || NRMGFLD_ENABLED)
+    if (NRMGFLD_ENABLED)
       pfldbvar->var_cc = &(prfld->coarse_u_rad);
 
     // Step 2. Re-apply physical boundaries on the coarse boundary:
     ApplyFLDPhysicalBoundariesOnCoarseLevel(nb, time, dt, si, ei, sj, ej, sk, ek);
 
-    if (MGFLD_ENABLED || NRMGFLD_ENABLED)
+    if (NRMGFLD_ENABLED)
       pfldbvar->var_cc = &(prfld->u_rad);
 
     // Step 3. Finally, the ghost-ghost zones are ready for prolongation:
@@ -910,7 +910,7 @@ void BoundaryValues::ProlongateFLDGhostCells(const NeighborBlock& nb,
   MeshBlock *pmb = pmy_block_;
   MeshRefinement *pmr = pmb->pmr;
 
-  if (MGFLD_ENABLED || NRMGFLD_ENABLED) {
+  if (NRMGFLD_ENABLED) {
     FLD *prfld = pmb->prfld;
     pmr->pvars_cc_[prfld->refinement_idx] = std::make_tuple(&prfld->u_rad, &prfld->coarse_u_rad);
   }
@@ -924,7 +924,7 @@ void BoundaryValues::ProlongateFLDGhostCells(const NeighborBlock& nb,
                                       si, ei, sj, ej, sk, ek);
   // }
 
-  if (MGFLD_ENABLED || NRMGFLD_ENABLED) {
+  if (NRMGFLD_ENABLED) {
     FLD *prfld = pmb->prfld;
     pmr->pvars_cc_[prfld->refinement_idx] = std::make_tuple(&prfld->u_rad, &prfld->coarse_u_rad);
   }

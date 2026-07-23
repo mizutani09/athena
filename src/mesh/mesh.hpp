@@ -51,10 +51,8 @@ class CosmicRay;
 class CRDiffusion;
 class MGCRDiffusionDriver;
 class FLD;
-class FLD2;
 // class LinearSolver;
 // class LinearSolverDriver;
-class MGFLDDriver;
 class NewtonRaphson;
 class NewtonRaphsonDriver;
 class linearMG;
@@ -138,7 +136,6 @@ class MeshBlock {
   NRRadiation *pnrrad;
   CosmicRay *pcr;
   CRDiffusion *pcrdiff;
-  FLD2 *prfld2;
   FLD *prfld;
   NewtonRaphson *pnr;
   linearMG *plmg;
@@ -240,7 +237,6 @@ class Mesh {
   friend class MultigridDriver;
   friend class MGGravityDriver;
   friend class MGCRDiffusionDriver;
-  friend class MGFLDDriver;
   friend class NewtonRaphsonDriver;
   // friend class LinearSolverDriver;
   friend class linearMGDriver;
@@ -293,7 +289,6 @@ class Mesh {
   FFTGravityDriver *pfgrd;
   MGGravityDriver *pmgrd;
   MGCRDiffusionDriver *pmcrd;
-  MGFLDDriver *pmfld;
   // LinearSolverDriver *pmlinsolver;
   NewtonRaphsonDriver *pmnr;
   linearMGDriver *pmlmd;
@@ -385,15 +380,11 @@ class Mesh {
   MGBoundaryFunc MGGravityBoundaryFunction_[6];
   MGBoundaryFunc MGCRDiffusionBoundaryFunction_[6];
   MGBoundaryFunc MGCRDiffusionCoeffBoundaryFunction_[6];
-  MGBoundaryFunc MGFLDBoundaryFunction_[6];
-  MGBoundaryFunc MGFLDCoeffBoundaryFunction_[6];
   MGBoundaryFunc LinearMGBoundaryFunction_[6];
   MGBoundaryFunc LinearMGCoeffBoundaryFunction_[6];
   MGMaskFunc MGGravitySourceMaskFunction_;
   MGMaskFunc MGCRDiffusionSourceMaskFunction_;
   MGMaskFunc MGCRDiffusionCoeffMaskFunction_;
-  MGMaskFunc MGFLDSourceMaskFunction_;
-  MGMaskFunc MGFLDCoeffMaskFunction_;
 
   void AllocateRealUserMeshDataField(int n);
   void AllocateIntUserMeshDataField(int n);
@@ -434,8 +425,6 @@ class Mesh {
   void EnrollUserMGGravitySourceMaskFunction(MGMaskFunc srcmask);
   void EnrollUserMGCRDiffusionSourceMaskFunction(MGMaskFunc srcmask);
   void EnrollUserMGCRDiffusionCoefficientMaskFunction(MGMaskFunc coeffmask);
-  void EnrollUserMGFLDSourceMaskFunction(MGMaskFunc srcmask);
-  void EnrollUserMGFLDCoefficientMaskFunction(MGMaskFunc coeffmask);
 
   void EnrollUserRadBoundaryFunction(BoundaryFace face, RadBoundaryFunc my_func);
   void EnrollUserCRBoundaryFunction(BoundaryFace face, CRBoundaryFunc my_func);
@@ -443,7 +432,6 @@ class Mesh {
   void EnrollUserNRBoundaryFunction(BoundaryFace face, NRBoundaryFunc my_func);
 
   void EnrollUserMGCRDiffusionBoundaryFunction(BoundaryFace dir, MGBoundaryFunc my_bc);
-  void EnrollUserMGFLDBoundaryFunction(BoundaryFace dir, MGBoundaryFunc my_bc);
   void EnrollUserLinearMGBoundaryFunction(BoundaryFace dir, MGBoundaryFunc my_bc);
 
   //! \deprecated (felker):

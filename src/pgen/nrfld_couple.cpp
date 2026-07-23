@@ -446,7 +446,6 @@ void MeshBlock::ProblemGenerator(ParameterInput *pin) {
   for(int k=kl; k<=ku; ++k) {
     for(int j=jl; j<=ju; ++j) {
       for(int i=il; i<=iu; ++i) {
-        // prfld->u(RadFLD2::GAS,k,j,i) = eg_0;
         prfld->u_gas(k,j,i) = eg_0;
         prfld->u_rad(k,j,i) = Er_0;
       }

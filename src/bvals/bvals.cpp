@@ -376,7 +376,7 @@ void BoundaryValues::CheckUserBoundaries() {
           ATHENA_ERROR(msg);
         }
       }
-      if (MGFLD_ENABLED || NRMGFLD_ENABLED) {
+      if (NRMGFLD_ENABLED) {
         if (pmy_mesh_->FLDBoundaryFunc_[i] == nullptr) {
           std::stringstream msg;
           msg << "### FATAL ERROR in BoundaryValues::CheckBoundary" << std::endl

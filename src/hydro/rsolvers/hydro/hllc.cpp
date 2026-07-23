@@ -37,7 +37,6 @@ void Hydro::RiemannSolver(const int k, const int j, const int il, const int iu,
   int ivz = IVX + ((ivx-IVX)+2)%3;
   Real wli[(NHYDRO)],wri[(NHYDRO)];
   Real flxi[(NHYDRO)],fl[(NHYDRO)],fr[(NHYDRO)];
-  Real vf;                        // Velocity at the cell face for MGFLD
   Real gamma;
   if (GENERAL_EOS) {
     gamma = std::nan("");
@@ -122,7 +121,6 @@ void Hydro::RiemannSolver(const int k, const int j, const int il, const int iu,
 
     // Determine the contact wave speed...
     Real am = (tl - tr)/(ml + mr);
-    // if (MGFLD_ENABLED) vf = am;
     // ...and the pressure at the contact surface
     Real cp = (ml*tr + mr*tl)/(ml + mr);
     cp = cp > 0.0 ? cp : 0.0;
@@ -170,15 +168,12 @@ void Hydro::RiemannSolver(const int k, const int j, const int il, const int iu,
     flxi[IVY] = sl*fl[IVY] + sr*fr[IVY];
     flxi[IVZ] = sl*fl[IVZ] + sr*fr[IVZ];
     flxi[IEN] = sl*fl[IEN] + sr*fr[IEN] + sm*cp*am;
-    vf = sl*wli[IVX] + sr*wri[IVX] + sm*am;
-
     flx(IDN,k,j,i) = flxi[IDN];
     flx(ivx,k,j,i) = flxi[IVX];
     flx(ivy,k,j,i) = flxi[IVY];
     flx(ivz,k,j,i) = flxi[IVZ];
     flx(IEN,k,j,i) = flxi[IEN];
 
-    if (MGFLD_ENABLED || NRMGFLD_ENABLED) pmy_block->phydro->vf[ivx-IVX](k,j,i) = vf;
   }
   return;
 }

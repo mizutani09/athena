@@ -36,7 +36,7 @@
 
 // Order of datafields for HDF5 opacity tables
 // These variable names should match the dataset names in your HDF5 opacity file
-// Order must match enum OpacityIndex {SIGMA_P=0, SIGMA_R=1} in rad_fld.hpp
+// Order must match RadFLD::OpacityIndex in fld.hpp.
 const char *opacity_var_names[] = {"planck_mean_opacity", "rosseland_mean_opacity"};
 
 #ifdef HDF5OUTPUT
@@ -206,7 +206,7 @@ void ReadHDF5OpacityTable(std::string fn, UserOpacityTable *puser_table, Paramet
   }
 
   // Resolve dataset paths. Axis kind is controlled by input parameter:
-  // nrfld/opacity_table_axis (or mgfld/opacity_table_axis) = tp, trho, tr
+  // fld/opacity_table_axis = tp, trho, tr
   {
     hid_t property_list_file = H5Pcreate(H5P_FILE_ACCESS);
     hid_t file = H5Fopen(fn.c_str(), H5F_ACC_RDONLY, property_list_file);
@@ -361,7 +361,7 @@ UserOpacityTable::UserOpacityTable(ParameterInput *pin) : InterpTable2D() {
   } else {
     std::stringstream msg;
     msg << "### FATAL ERROR in UserOpacityTable::UserOpacityTable" << std::endl
-        << "Unknown opacity_table_axis='" << axis_mode << "' in <nrfld>/<mgfld>." << std::endl
+        << "Unknown opacity_table_axis='" << axis_mode << "' in <fld>." << std::endl
         << "Options: tp, trho, tr." << std::endl;
     ATHENA_ERROR(msg);
   }
@@ -374,8 +374,8 @@ UserOpacityTable::UserOpacityTable(ParameterInput *pin) : InterpTable2D() {
   if (!OpacityParamExists(pin, "opacity_table_file")) {
     std::stringstream msg;
     msg << "### FATAL ERROR in UserOpacityTable::UserOpacityTable" << std::endl
-        << "Opacity table is enabled, but 'opacity_table_file' was not found in either "
-        << "<nrfld> or <mgfld> block." << std::endl;
+        << "Opacity table is enabled, but 'opacity_table_file' was not found in "
+        << "the <fld> block." << std::endl;
     ATHENA_ERROR(msg);
   }
   opacity_fn = GetOpacityStringOrDefault(pin, "opacity_table_file", "");

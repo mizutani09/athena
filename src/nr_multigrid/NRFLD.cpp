@@ -49,8 +49,6 @@ NRFLDDriver::NRFLDDriver(Mesh *pm, ParameterInput *pin)
   max_backtrack_ = pin->GetOrAddInteger("nrfld", "nr_backtrack_max", 4);
   backtrack_factor_ = pin->GetOrAddReal("nrfld", "nr_backtrack_factor", 0.5);
   min_step_scale_ = pin->GetOrAddReal("nrfld", "nr_min_step_scale", 0.05);
-//   omega_ = pin->GetOrAddReal("mgfld", "omega", 1.0);
-//   fshowdef_ = pin->GetOrAddBoolean("mgfld", "show_defect", fshowdef_);
   if (eps_ < 0.0 && niter_ < 0) {
     std::stringstream msg;
     msg << "### FATAL ERROR in NRFLDDriver::NRFLDDriver" << std::endl

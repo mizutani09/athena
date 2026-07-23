@@ -4,7 +4,7 @@ reference       =
 configure       = --prob=ps_test --nscalars=1
 
 <job>
-problem_id      = MGFLD # problem ID: basename of output filenames
+problem_id      = passive_scalars # problem ID: basename of output filenames
 
 <output1>
 file_type       = hst        # History data dump

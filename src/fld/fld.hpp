@@ -122,7 +122,6 @@ class FLD {
 
   // scratch space used to compute fluxes
   // 2D scratch arrays
-  AthenaArray<Real> u_radl_, u_radr_, u_radlb_;
   AthenaArray<Real> rad_state_cc_, rad_statel_, rad_stater_, rad_statelb_;
   // 1D scratch arrays
   AthenaArray<Real> x1face_area_, x2face_area_, x3face_area_;
@@ -130,11 +129,6 @@ class FLD {
   AthenaArray<Real> cell_volume_;
   AthenaArray<Real> dflx_;
 
-  void ComputeUpwindFlux(const int k, const int j, const int il,
-                         const int iu, // CoordinateDirection dir,
-                         AthenaArray<Real> &u_radl, AthenaArray<Real> &u_radr,
-                         AthenaArray<Real> &mass_flx,
-                         AthenaArray<Real> &flx_out);
 };
 
 #endif // FLD_FLD_HPP_

@@ -840,7 +840,6 @@ Real HistoryEall(MeshBlock *pmb, int iout) {
 //       for (int i=is; i<=ie; i++) {
 //         Real x = pmb->pcoord->x1v(i);
 //         Real an = slope*x + cons;
-//         L1norm += std::abs(pmb->prfld->u(RadFLD2::RAD,k,j,i) - an)/std::abs(an);
 //       }
 //     }
 //   }

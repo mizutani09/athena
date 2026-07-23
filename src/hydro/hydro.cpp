@@ -146,8 +146,8 @@ Hydro::Hydro(MeshBlock *pmb, ParameterInput *pin) :
 
   UserTimeStep_ = pmb->pmy_mesh->UserTimeStep_;
 
-  // START:: For MGFLD advection term
-  if (MGFLD_ENABLED || NRMGFLD_ENABLED) {
+  // Godunov face velocities used by the NR-FLD mixed-frame terms.
+  if (NRMGFLD_ENABLED) {
     vf[X1DIR].NewAthenaArray(pmb->ncells3,pmb->ncells2,pmb->ncells1+1);
     if (pmy_block->block_size.nx2 > 1)
       vf[X2DIR].NewAthenaArray(pmb->ncells3,pmb->ncells2+1,pmb->ncells1);
