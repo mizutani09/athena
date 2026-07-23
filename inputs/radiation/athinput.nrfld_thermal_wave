@@ -100,7 +100,7 @@ is_couple            = true
 only_rad             = true
 cut_diff             = false
 include_radiation_force = false
-fixed_flux_limitter  = true
+fixed_flux_limiter  = true
 
 <problem>
 rho0                 = 1.0

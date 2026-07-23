@@ -235,68 +235,6 @@ void AdvectPulseOpacity(MeshBlock *pmb, AthenaArray<Real> &u_fld, AthenaArray<Re
   }
 }
 
-void AddRadiativeForceAndWork(MeshBlock *pmb, const Real time, const Real dt,
-                              const AthenaArray<Real> &prim,
-                              const AthenaArray<Real> &prim_scalar,
-                              const AthenaArray<Real> &bcc,
-                              AthenaArray<Real> &cons,
-                              AthenaArray<Real> &cons_scalar) {
-  (void)time;
-  (void)prim_scalar;
-  (void)bcc;
-  (void)cons_scalar;
-  FLD2 *prfld = pmb->prfld2;
-  AthenaArray<Real> &erad = prfld->u_rad;
-  const Real idx1 = 1.0 / pmb->pcoord->dx1f(pmb->is);
-  const Real idy = (pmb->block_size.nx2 > 1
-                        ? 1.0 / pmb->pcoord->dx2f(pmb->js) : 0.0);
-  const Real idz = (pmb->block_size.nx3 > 1
-                        ? 1.0 / pmb->pcoord->dx3f(pmb->ks) : 0.0);
-
-#if NRMGFLD_ENABLED
-  // HLLC-FLD and the generic explicit FLD source contain these terms.
-  // HLLC-FLD and FLD2::AddExplicitSourceTerms supply these terms globally.
-  return;
-#endif
-
-  for (int k = pmb->ks; k <= pmb->ke; ++k) {
-    for (int j = pmb->js; j <= pmb->je; ++j) {
-      for (int i = pmb->is; i <= pmb->ie; ++i) {
-        // The test fixes lambda=1/3 and uses the post-NR radiation state.
-        const Real grad_prad = ONE_3RD * 0.5 * idx1
-            * (erad(k, j, i + 1) - erad(k, j, i - 1));
-        const Real force_x = -grad_prad;
-        const Real force_y = (pmb->block_size.nx2 > 1
-            ? -ONE_3RD * 0.5 * idy
-                * (erad(k, j + 1, i) - erad(k, j - 1, i)) : 0.0);
-        const Real force_z = (pmb->block_size.nx3 > 1
-            ? -ONE_3RD * 0.5 * idz
-                * (erad(k + 1, j, i) - erad(k - 1, j, i)) : 0.0);
-
-        const Real vx_old = prim(IVX, k, j, i);
-        const Real vy_old = prim(IVY, k, j, i);
-        const Real vz_old = prim(IVZ, k, j, i);
-        cons(IM1, k, j, i) += dt * force_x;
-        if (pmb->block_size.nx2 > 1) cons(IM2, k, j, i) += dt * force_y;
-        if (pmb->block_size.nx3 > 1) cons(IM3, k, j, i) += dt * force_z;
-        if (NON_BAROTROPIC_EOS) {
-          const Real rho = std::max(prim(IDN, k, j, i), TINY_NUMBER);
-          const Real vx_new = cons(IM1, k, j, i) / rho;
-          const Real vy_new = (pmb->block_size.nx2 > 1
-                                   ? cons(IM2, k, j, i) / rho : vy_old);
-          const Real vz_new = (pmb->block_size.nx3 > 1
-                                   ? cons(IM3, k, j, i) / rho : vz_old);
-          const Real work = 0.5 * (force_x * (vx_old + vx_new)
-                                   + force_y * (vy_old + vy_new)
-                                   + force_z * (vz_old + vz_new));
-          // Use the same momentum kick in the work term. This is the exact
-          // discrete kinetic-energy change for a constant force over dt.
-          cons(IEN, k, j, i) += dt * work;
-        }
-      }
-    }
-  }
-}
 
 void GlobalMinMax(Real &min_val, Real &max_val) {
 #ifdef MPI_PARALLEL
@@ -371,11 +309,11 @@ void Mesh::InitUserMeshData(ParameterInput *pin) {
   }
 
   force_lambda_one_third = pin->GetOrAddBoolean("problem", "force_lambda_one_third", true);
-  if (!force_lambda_one_third || !pin->GetBoolean("fld", "fixed_flux_limitter")) {
+  if (!force_lambda_one_third || !pin->GetBoolean("fld", "fixed_flux_limiter")) {
     std::stringstream msg;
     msg << "### FATAL ERROR in Mesh::InitUserMeshData" << std::endl
         << "This test requires force_lambda_one_third=true and "
-        << "fixed_flux_limitter=true so that lambda=1/3 everywhere.";
+        << "fixed_flux_limiter=true so that lambda=1/3 everywhere.";
     ATHENA_ERROR(msg);
   }
   if (!pin->GetBoolean("fld", "include_mixed_frame_terms")) {
@@ -446,7 +384,6 @@ void Mesh::InitUserMeshData(ParameterInput *pin) {
   EnrollUserHistoryOutput(6, HistoryTransverseTgasSpread, "Tgas_trans_rel",
                           UserHistoryOperation::max);
 
-  EnrollUserExplicitSourceFunction(AddRadiativeForceAndWork);
 }
 
 void MeshBlock::InitUserMeshBlockData(ParameterInput *pin) {

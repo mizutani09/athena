@@ -719,10 +719,6 @@ namespace {
   }
 }
 
-void AddRadiativeForceAndWork(MeshBlock *pmb, const Real time, const Real dt,
-  const AthenaArray<Real> &prim, const AthenaArray<Real> &prim_scalar,
-  const AthenaArray<Real> &bcc, AthenaArray<Real> &cons,
-  AthenaArray<Real> &cons_scalar);
 
 void NRInnerX3(MeshBlock *pmb,
                AthenaArray<Real> &u_rad, AthenaArray<Real> &u_gas,
@@ -1062,7 +1058,6 @@ void Mesh::InitUserMeshData(ParameterInput *pin) {
     EnrollUserNRBoundaryFunction(BoundaryFace::outer_x3, NRFixedOuterX3);
   }
 
-  EnrollUserExplicitSourceFunction(AddRadiativeForceAndWork);
 
   std::string integrator = pin->GetString("time","integrator");
   if (integrator == "rk3") {
@@ -1398,66 +1393,6 @@ void MeshBlock::UserWorkBeforeOutput(ParameterInput *pin) {
 }
 
 
-void AddRadiativeForceAndWork(MeshBlock *pmb, const Real time, const Real dt,
-  const AthenaArray<Real> &prim, const AthenaArray<Real> &prim_scalar,
-  const AthenaArray<Real> &bcc, AthenaArray<Real> &cons,
-  AthenaArray<Real> &cons_scalar) {
-  // if ((pmb->iuser_meshblock_data[TSTEP_COUNTER](0) + 1) % rk_cycle == 0) {
-    int il = pmb->is, iu = pmb->ie;
-    int jl = pmb->js, ju = pmb->je;
-    int kl = pmb->ks, ku = pmb->ke;
-    Real idx = 1.0/pmb->pcoord->dx1f(pmb->is);
-    Real hidx = 0.5*idx;
-    Real dEr[3]; // caution when you use simd
-
-    FLD2 *prfld = pmb->prfld2;
-    AthenaArray<Real> &fld_u = prfld->u_rad;
-
-#if !NRMGFLD_ENABLED
-    for (int k = kl; k <= ku; ++k) {
-      for (int j = jl; j <= ju; ++j) {
-        for (int i = il; i <= iu; ++i) {
-          for (int ii = 0; ii < 3; ++ii) {
-            int di = (ii == 0) ? 1 : 0;
-            int dj = (ii == 1) ? 1 : 0;
-            int dk = (ii == 2) ? 1 : 0;
-            dEr[ii] = hidx*(fld_u(k+dk,j+dj,i+di) - fld_u(k-dk,j-dj,i-di));
-          }
-          Real gradE = std::sqrt(SQR(dEr[0]) + SQR(dEr[1]) + SQR(dEr[2]));
-
-          Real R = gradE/(prfld->sigma_r(k,j,i)*fld_u(k,j,i)); // center
-          Real lambda = RadFLD2::FluxLimiter(R, false);
-
-          cons(IM1,k,j,i) += -lambda*dt*dEr[0];
-          cons(IM2,k,j,i) += -lambda*dt*dEr[1];
-          cons(IM3,k,j,i) += -lambda*dt*dEr[2];
-          Real nablaE_v = dEr[0]*prim(IVX,k,j,i) + dEr[1]*prim(IVY,k,j,i) + dEr[2]*prim(IVZ,k,j,i);
-          cons(IEN,k,j,i) += -lambda*dt*nablaE_v;
-        }
-      }
-    }
-
-    // HLLC-FLD supplies the radiation-stress momentum and energy fluxes.
-#endif
-
-    // for gravity
-    for (int k=pmb->ks; k<=pmb->ke; ++k) {
-      Real rho, press, temp, grav;
-      GetProfileAtHeight(pmb->pcoord->x3v(k), rho, press, temp, grav);
-      Real src_z_unit_mass = -grav*dt;
-      for (int j=pmb->js; j<=pmb->je; ++j) {
-        for (int i=pmb->is; i<=pmb->ie; ++i) {
-          const Real &den  = prim(IDN,k,j,i);
-          Real src_z = src_z_unit_mass*den;
-          cons(IM3,k,j,i) += src_z;
-          cons(IEN,k,j,i) += src_z*prim(IVZ,k,j,i);
-        }
-      }
-    }
-  // }
-  pmb->iuser_meshblock_data[TSTEP_COUNTER](0)++;
-  pmb->iuser_meshblock_data[TSTEP_COUNTER](0) %= rk_cycle;
-}
 
 namespace {
 

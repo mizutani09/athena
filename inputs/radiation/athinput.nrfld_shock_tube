@@ -91,7 +91,7 @@ ox3_bc          = periodic
 
 
 <fld>
-fixed_flux_limitter = false
+fixed_flux_limiter = false
 output_defect   = true
 const_opacity_P = 1e6   # in cm^-1 caution!
 const_opacity_R = 1e8     # in cm^-1 caution!

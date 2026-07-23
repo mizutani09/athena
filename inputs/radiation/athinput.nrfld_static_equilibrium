@@ -103,7 +103,7 @@ is_couple           = true
 only_rad            = false
 cut_diff            = false
 include_radiation_force = true
-fixed_flux_limitter = true
+fixed_flux_limiter = true
 include_mixed_frame_terms      = true
 
 <problem>

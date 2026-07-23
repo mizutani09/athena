@@ -137,7 +137,7 @@ ox3_bc          = user
 use_opacity_table = true
 opacity_table_file = path/to/your/opacity_table.h5
 opacity_table_file_type = hdf5
-fixed_flux_limitter = false
+fixed_flux_limiter = false
 
 <problem>
 poly_n          = 1.48
@@ -145,4 +145,3 @@ poly_n          = 1.48
 rho_top         = 2e-6
 T_top           = 5725
 grav_acc        = 2.74e4   # in cm s^-2
-

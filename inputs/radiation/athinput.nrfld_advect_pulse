@@ -109,7 +109,7 @@ is_couple           = true
 only_rad            = false
 cut_diff            = false
 include_radiation_force = true
-fixed_flux_limitter = true
+fixed_flux_limiter = true
 
 # Mixed-frame radiation-energy advection: 1 + 0.5 = 1.5 in the optically thick
 # limit used by this test. Radiation pressure is E_rad/3 everywhere.

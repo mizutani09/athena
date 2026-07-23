@@ -105,7 +105,7 @@ is_couple            = true
 only_rad             = false
 cut_diff             = false
 include_radiation_force = true
-fixed_flux_limitter  = true
+fixed_flux_limiter  = true
 
 <problem>
 problem_type  = mach2  # mach2 or mach5

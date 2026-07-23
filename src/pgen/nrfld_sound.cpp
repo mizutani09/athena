@@ -57,10 +57,6 @@ namespace {
   // Real HistoryL1norm(MeshBlock *pmb, int iout);
 }
 
-void AddRadiativeForceAndWork(MeshBlock *pmb, const Real time, const Real dt,
-  const AthenaArray<Real> &prim, const AthenaArray<Real> &prim_scalar,
-  const AthenaArray<Real> &bcc, AthenaArray<Real> &cons,
-  AthenaArray<Real> &cons_scalar);
 
 
 void ConstantOpacity(MeshBlock *pmb, AthenaArray<Real> &u_fld,
@@ -177,7 +173,6 @@ void Mesh::InitUserMeshData(ParameterInput *pin) {
   EnrollUserHistoryOutput(6, HistoryEall, "all-E", UserHistoryOperation::sum);
   // EnrollUserHistoryOutput(7, HistoryL1norm, "L1norm", UserHistoryOperation::sum);
 
-  EnrollUserExplicitSourceFunction(AddRadiativeForceAndWork);
 }
 
 
@@ -342,55 +337,6 @@ void MeshBlock::UserWorkBeforeOutput(ParameterInput *pin) {
 }
 
 
-void AddRadiativeForceAndWork(MeshBlock *pmb, const Real time, const Real dt,
-  const AthenaArray<Real> &prim, const AthenaArray<Real> &prim_scalar,
-  const AthenaArray<Real> &bcc, AthenaArray<Real> &cons,
-  AthenaArray<Real> &cons_scalar) {
-#if NRMGFLD_ENABLED
-  (void)pmb; (void)time; (void)dt; (void)prim; (void)prim_scalar;
-  (void)bcc; (void)cons; (void)cons_scalar;
-  return;
-#endif
-  std::cout << "Add radiative force and work" << std::endl;
-  Real gamma = pmb->peos->GetGamma();
-  Real gm1 = gamma - 1.0;
-  Real igm1 = 1.0 / gm1;
-
-  // if ((pmb->iuser_meshblock_data[TSTEP_COUNTER](0) + 1) % rk_cycle == 0) {
-    int il = pmb->is - NGHOST, iu = pmb->ie + NGHOST;
-    int jl = pmb->js - NGHOST, ju = pmb->je + NGHOST;
-    int kl = pmb->ks - NGHOST, ku = pmb->ke + NGHOST;
-    Real idx = 1.0/pmb->pcoord->dx1f(pmb->is);
-    Real hidx = 0.5*idx;
-
-    FLD2 *prfld = pmb->prfld2;
-    AthenaArray<Real> &fld_u = prfld->u_rad;
-
-    for (int k = kl; k <= ku; ++k) {
-      for (int j = jl; j <= ju; ++j) {
-        for (int i = il; i <= iu; ++i) {
-          Real lambda;
-          Real dEr[3];
-          dEr[0] = hidx*(fld_u(k,j,i+1) - fld_u(k,j,i-1));
-          dEr[1] = hidx*(fld_u(k,j+1,i) - fld_u(k,j-1,i));
-          dEr[2] = hidx*(fld_u(k+1,j,i) - fld_u(k-1,j,i));
-
-          Real gradE = std::sqrt(SQR(dEr[0]) + SQR(dEr[1]) + SQR(dEr[2]));
-          Real R = gradE/(prfld->sigma_r(k,j,i)*fld_u(k,j,i)); // center
-          lambda = RadFLD2::FluxLimiter(R, prfld->fixed_flux_limitter);
-
-          cons(IM1,k,j,i) += -lambda*dt*dEr[0];
-          cons(IM2,k,j,i) += -lambda*dt*dEr[1];
-          cons(IM3,k,j,i) += -lambda*dt*dEr[2];
-          Real nablaE_v = dEr[0]*prim(IVX,k,j,i) + dEr[1]*prim(IVY,k,j,i) + dEr[2]*prim(IVZ,k,j,i);
-          cons(IEN,k,j,i) += -lambda*dt*nablaE_v;
-        }
-      }
-    }
-  // }
-  // pmb->iuser_meshblock_data[TSTEP_COUNTER](0)++;
-  // pmb->iuser_meshblock_data[TSTEP_COUNTER](0) %= rk_cycle;
-}
 
 
 namespace {

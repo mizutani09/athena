@@ -61,8 +61,8 @@ void FLD2::CalculateRadiationFaceStates(const int order) {
         const Real erad = std::max(u_rad(k, j, i), TINY_NUMBER);
         const Real sigma = std::max(sigma_r(k, j, i), TINY_NUMBER);
         const Real r = grad / (sigma * erad);
-        const Real lambda = RadFLD2::FluxLimiter(r, fixed_flux_limitter);
-        const Real chi = RadFLD2::EddingtonFactor(r, fixed_flux_limitter);
+        const Real lambda = RadFLD2::FluxLimiter(r, fixed_flux_limiter);
+        const Real chi = RadFLD2::EddingtonFactor(r, fixed_flux_limiter);
         const Real ar = 0.5*(3.0-chi);
 
         rad_state_cc_(RadFLD2::ERAD, k, j, i) = erad;
@@ -133,7 +133,7 @@ Real FLD2::RadiationSoundSpeedSquared(int k, int j, int i, int dir) const {
   const Real grad = std::sqrt(SQR(gx)+SQR(gy)+SQR(gz));
   const Real erad = std::max(u_rad(k,j,i), TINY_NUMBER);
   const Real r = grad/(std::max(sigma_r(k,j,i), TINY_NUMBER)*erad);
-  const Real lambda = RadFLD2::FluxLimiter(r, fixed_flux_limitter);
+  const Real lambda = RadFLD2::FluxLimiter(r, fixed_flux_limiter);
   (void)dir;
   const Real p = std::max(lambda*erad, 0.0);
   const Real rho = std::max(pmb->phydro->w(IDN,k,j,i), TINY_NUMBER);

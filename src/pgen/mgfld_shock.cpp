@@ -196,12 +196,12 @@ void ConstantOpacity(MeshBlock *pmb, AthenaArray<Real> &u_fld,
 //========================================================================================
 
 void Mesh::InitUserMeshData(ParameterInput *pin) {
-  Real fixed_flux_limitter = pin->GetOrAddBoolean("mgfld", "fixed_flux_limitter", false);
-  if (!fixed_flux_limitter) {
+  Real fixed_flux_limiter = pin->GetOrAddBoolean("mgfld", "fixed_flux_limiter", false);
+  if (!fixed_flux_limiter) {
     std::stringstream msg;
     msg << "### FATAL ERROR in function [Mesh::InitUserMeshData]" << std::endl;
-    msg << "fixed_flux_limitter must be used in this problem." << std::endl;
-    msg << "Please set fixed_flux_limitter = true in block 'mgfld'.";
+    msg << "fixed_flux_limiter must be used in this problem." << std::endl;
+    msg << "Please set fixed_flux_limiter = true in block 'mgfld'.";
     ATHENA_ERROR(msg);
   }
   rho_unit = pin->GetReal("hydro", "rho_unit");

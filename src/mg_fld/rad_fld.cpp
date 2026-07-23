@@ -149,7 +149,7 @@ void MGFLDInterface::CalculateCoefficients(const AthenaArray<Real> &w) {
                          /(pfld2->sigma_r(k,j,i) + pfld2->sigma_r(k+dk,j+dj,i+di)),
                          2.0*TWO_3RD*idx));
           R = gradE/(sigma_rface*u(RadFLD::RAD,k,j,i));
-          lambda = RadFLD2::FluxLimiter(R, pfld2->fixed_flux_limitter);
+          lambda = RadFLD2::FluxLimiter(R, pfld2->fixed_flux_limiter);
           coeff(RadFLD::DXM+ii,k,j,i) = pfld2->c_ph*lambda/sigma_rface;
         }
 
@@ -157,8 +157,8 @@ void MGFLDInterface::CalculateCoefficients(const AthenaArray<Real> &w) {
         coeff(RadFLD::DCOUPLE,k,j,i) = gm1/w(IDN,k,j,i);
 
         R = gradE/(pfld2->sigma_r(k,j,i)*u(RadFLD::RAD,k,j,i));
-        lambda = RadFLD2::FluxLimiter(R, pfld2->fixed_flux_limitter);
-        Real chi = RadFLD2::EddingtonFactor(R, pfld2->fixed_flux_limitter);
+        lambda = RadFLD2::FluxLimiter(R, pfld2->fixed_flux_limiter);
+        Real chi = RadFLD2::EddingtonFactor(R, pfld2->fixed_flux_limiter);
 
         AthenaArray<Real> ngrad;
         ngrad.NewAthenaArray(3);

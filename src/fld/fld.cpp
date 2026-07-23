@@ -93,7 +93,7 @@ FLD2::FLD2(MeshBlock *pmb, ParameterInput *pin) :
   cut_diff = pin->GetOrAddBoolean("fld", "cut_diff", false);
   include_radiation_force =
       pin->GetOrAddBoolean("fld", "include_radiation_force", true);
-  fixed_flux_limitter = pin->GetOrAddBoolean("fld", "fixed_flux_limitter", false);
+  fixed_flux_limiter = pin->GetOrAddBoolean("fld", "fixed_flux_limiter", false);
   fixed_u_rad = pin->GetOrAddBoolean("fld", "fixed_u_rad", false);
   include_mixed_frame_terms =
       pin->GetOrAddBoolean("fld", "include_mixed_frame_terms", false);

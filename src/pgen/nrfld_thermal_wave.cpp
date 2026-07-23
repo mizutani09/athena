@@ -558,10 +558,10 @@ void Mesh::InitUserMeshData(ParameterInput *pin) {
     msg << "include_radiation_force must be false for this problem.";
     ATHENA_ERROR(msg);
   }
-  if (!pin->GetBoolean("fld", "fixed_flux_limitter")) {
+  if (!pin->GetBoolean("fld", "fixed_flux_limiter")) {
     std::stringstream msg;
     msg << "### FATAL ERROR in function [Mesh::InitUserMeshData]" << std::endl;
-    msg << "fixed_flux_limitter must be true for this problem.";
+    msg << "fixed_flux_limiter must be true for this problem.";
     ATHENA_ERROR(msg);
   }
   FluidFormulation fluid = GetFluidFormulation(pin->GetOrAddString("hydro", "active", "true"));

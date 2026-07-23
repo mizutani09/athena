@@ -221,11 +221,11 @@ void Mesh::InitUserMeshData(ParameterInput *pin) {
     ATHENA_ERROR(msg);
   }
 
-  // In this codebase fixed_flux_limitter=true forces lambda=1/3 everywhere.
-  if (!pin->GetBoolean("fld", "fixed_flux_limitter")) {
+  // In this codebase fixed_flux_limiter=true forces lambda=1/3 everywhere.
+  if (!pin->GetBoolean("fld", "fixed_flux_limiter")) {
     std::stringstream msg;
     msg << "### FATAL ERROR in function [Mesh::InitUserMeshData]" << std::endl;
-    msg << "fixed_flux_limitter must be true for this problem.";
+    msg << "fixed_flux_limiter must be true for this problem.";
     ATHENA_ERROR(msg);
   }
 

@@ -90,7 +90,7 @@ is_couple            = true
 only_rad             = true
 cut_diff             = false
 include_radiation_force = false
-fixed_flux_limitter  = false
+fixed_flux_limiter  = false
 
 <problem>
 kappa_P           = 0.0

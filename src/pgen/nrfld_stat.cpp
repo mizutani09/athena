@@ -314,7 +314,7 @@ void Mesh::InitUserMeshData(ParameterInput *pin) {
   only_rad        = true
   cut_diff        = false
   include_radiation_force = false
-  fixed_flux_limitter  = true
+  fixed_flux_limiter  = true
   */
   // check input
   if (pin->GetBoolean("fld", "is_couple")) {
@@ -345,10 +345,10 @@ void Mesh::InitUserMeshData(ParameterInput *pin) {
     ATHENA_ERROR(msg);
   }
 
-  if (!pin->GetBoolean("fld", "fixed_flux_limitter")) {
+  if (!pin->GetBoolean("fld", "fixed_flux_limiter")) {
     std::stringstream msg;
     msg << "### FATAL ERROR in function [Mesh::InitUserMeshData]" << std::endl;
-    msg << "fixed_flux_limitter must be true for this problem.";
+    msg << "fixed_flux_limiter must be true for this problem.";
     ATHENA_ERROR(msg);
   }
 

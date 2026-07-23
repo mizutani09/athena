@@ -80,7 +80,7 @@ class FLD2 {
   bool only_rad;
   bool cut_diff;
   bool include_radiation_force;
-  bool fixed_flux_limitter;
+  bool fixed_flux_limiter;
   bool fixed_u_rad;
   // Explicit O(v/c) mixed-frame energy exchange.
   bool include_mixed_frame_terms;

@@ -90,7 +90,7 @@ ox3_bc          = periodic
 
 
 <fld>
-fixed_flux_limitter  = true
+fixed_flux_limiter  = true
 output_defect   = true
 is_couple       = true
 only_rad        = false

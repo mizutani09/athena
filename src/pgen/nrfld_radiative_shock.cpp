@@ -209,11 +209,6 @@ void SetHydroFixedX1(AthenaArray<Real> &prim, bool inner,
 }
 }  // namespace
 
-void AddRadiativeForceAndWork(MeshBlock *pmb, const Real time, const Real dt,
-                              const AthenaArray<Real> &prim,
-                              const AthenaArray<Real> &prim_scalar,
-                              const AthenaArray<Real> &bcc, AthenaArray<Real> &cons,
-                              AthenaArray<Real> &cons_scalar);
 
 void NRInnerX1(MeshBlock *pmb, AthenaArray<Real> &u_rad, AthenaArray<Real> &u_gas,
                Coordinates *pco, const AthenaArray<Real> &w, Real time, Real dt,
@@ -284,10 +279,10 @@ void Mesh::InitUserMeshData(ParameterInput *pin) {
         << "include_radiation_force must be true for this problem.";
     ATHENA_ERROR(msg);
   }
-  if (!pin->GetBoolean("fld", "fixed_flux_limitter")) {
+  if (!pin->GetBoolean("fld", "fixed_flux_limiter")) {
     std::stringstream msg;
     msg << "### FATAL ERROR in Mesh::InitUserMeshData" << std::endl
-        << "fixed_flux_limitter must be true to force lambda=1/3.";
+        << "fixed_flux_limiter must be true to force lambda=1/3.";
     ATHENA_ERROR(msg);
   }
   if (!pin->GetOrAddBoolean("problem", "force_lambda_one_third", true)) {
@@ -377,7 +372,6 @@ void Mesh::InitUserMeshData(ParameterInput *pin) {
   EnrollUserNRBoundaryFunction(BoundaryFace::outer_x1, NROuterX1);
   EnrollUserBoundaryFunction(BoundaryFace::inner_x1, HydroInnerX1);
   EnrollUserBoundaryFunction(BoundaryFace::outer_x1, HydroOuterX1);
-  EnrollUserExplicitSourceFunction(AddRadiativeForceAndWork);
 
   AllocateUserHistoryOutput(15);
   EnrollUserHistoryOutput(0, HistoryTgMax, "Tgas_max", UserHistoryOperation::max);
@@ -553,48 +547,6 @@ void MeshBlock::UserWorkBeforeOutput(ParameterInput *pin) {
   }
 }
 
-void AddRadiativeForceAndWork(MeshBlock *pmb, const Real time, const Real dt,
-                              const AthenaArray<Real> &prim,
-                              const AthenaArray<Real> &prim_scalar,
-                              const AthenaArray<Real> &bcc, AthenaArray<Real> &cons,
-                              AthenaArray<Real> &cons_scalar) {
-#if NRMGFLD_ENABLED
-  // HLLC-FLD includes radiation stress and work in the face fluxes.
-  (void)pmb; (void)time; (void)dt; (void)prim; (void)prim_scalar;
-  (void)bcc; (void)cons; (void)cons_scalar;
-  return;
-#endif
-  (void)time; (void)prim_scalar; (void)bcc; (void)cons_scalar;
-  FLD2 *prfld = pmb->prfld2;
-  AthenaArray<Real> &erad = prfld->u_rad;
-
-  const int il = pmb->is;
-  const int iu = pmb->ie;
-  const int jl = pmb->js;
-  const int ju = pmb->je;
-  const int kl = pmb->ks;
-  const int ku = pmb->ke;
-  const Real hidx1 = 0.5/pmb->pcoord->dx1f(pmb->is);
-  const Real hidx2 = (pmb->block_size.nx2 > 1) ? 0.5/pmb->pcoord->dx2f(pmb->js) : 0.0;
-  const Real hidx3 = (pmb->block_size.nx3 > 1) ? 0.5/pmb->pcoord->dx3f(pmb->ks) : 0.0;
-
-  for (int k = kl; k <= ku; ++k) {
-    for (int j = jl; j <= ju; ++j) {
-      for (int i = il; i <= iu; ++i) {
-        const Real dEr1 = hidx1*(erad(k, j, i+1) - erad(k, j, i-1));
-        const Real dEr2 = hidx2*(erad(k, j+1, i) - erad(k, j-1, i));
-        const Real dEr3 = hidx3*(erad(k+1, j, i) - erad(k-1, j, i));
-        cons(IM1, k, j, i) += -ONE_3RD*dt*dEr1;
-        cons(IM2, k, j, i) += -ONE_3RD*dt*dEr2;
-        cons(IM3, k, j, i) += -ONE_3RD*dt*dEr3;
-        const Real nabla_e_dot_v = dEr1*prim(IVX, k, j, i)
-                                    + dEr2*prim(IVY, k, j, i)
-                                    + dEr3*prim(IVZ, k, j, i);
-        cons(IEN, k, j, i) += -ONE_3RD*dt*nabla_e_dot_v;
-      }
-    }
-  }
-}
 
 namespace {
 enum class FluxDiagnostic {

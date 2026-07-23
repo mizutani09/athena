@@ -16,7 +16,7 @@ void FLD2::AddExplicitSourceTerms(const Real dt, const AthenaArray<Real> &prim,
   if (!is_couple || only_rad) return;
   MeshBlock *pmb=pmy_block;
   // For a fixed limiter grad(lambda E)-lambda grad(E) vanishes identically.
-  const bool do_force=include_radiation_force && !fixed_flux_limitter;
+  const bool do_force=include_radiation_force && !fixed_flux_limiter;
   const bool do_mixed=include_mixed_frame_terms;
   if (!do_force && !do_mixed) return;
 
