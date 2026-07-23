@@ -41,9 +41,14 @@ void ReconstructX3(Reconstruction *precon, int order, int k, int j, int il, int 
 
 void FLD2::CalculateRadiationFaceStates(const int order) {
   MeshBlock *pmb = pmy_block;
-  const int il = pmb->is - 1, iu = pmb->ie + 1;
-  const int jl = pmb->js - 1, ju = pmb->je + 1;
-  const int kl = pmb->ks - 1, ku = pmb->ke + 1;
+  // PPM reads two cells on either side of every reconstruction index.  Since
+  // the reconstruction below is requested over [is-1,ie+1], its closure
+  // stencil reaches [is-3,ie+3].  Build the closure throughout every usable
+  // ghost cell (apart from the outermost layer needed by the centered
+  // gradient), rather than assuming the default NGHOST=2 layout.
+  const int il = pmb->is - NGHOST + 1, iu = pmb->ie + NGHOST - 1;
+  const int jl = pmb->js - NGHOST + 1, ju = pmb->je + NGHOST - 1;
+  const int kl = pmb->ks - NGHOST + 1, ku = pmb->ke + NGHOST - 1;
 
   // Reconstruct a compact, internally consistent state.  In particular total
   // pressure is not reconstructed independently: HLLC forms p_gas+lambda*E
@@ -75,7 +80,8 @@ void FLD2::CalculateRadiationFaceStates(const int order) {
   // x1 faces
   for (int k = pmb->ks; k <= pmb->ke; ++k) {
     for (int j = pmb->js; j <= pmb->je; ++j) {
-      ReconstructX1(pmb->precon, order, k, j, il, iu, rad_state_cc_,
+      ReconstructX1(pmb->precon, order, k, j, pmb->is - 1, pmb->ie + 1,
+                    rad_state_cc_,
                     rad_statel_, rad_stater_);
       for (int i = pmb->is; i <= pmb->ie + 1; ++i) {
         for (int n = 0; n < RadFLD2::NRAD_FACE_STATE; ++n) {
@@ -89,10 +95,11 @@ void FLD2::CalculateRadiationFaceStates(const int order) {
   // x2 faces
   if (pmb->pmy_mesh->f2) {
     for (int k = pmb->ks; k <= pmb->ke; ++k) {
-      ReconstructX2(pmb->precon, order, k, pmb->js - 1, il, iu,
+      ReconstructX2(pmb->precon, order, k, pmb->js - 1,
+                    pmb->is - 1, pmb->ie + 1,
                     rad_state_cc_, rad_statel_, rad_stater_);
       for (int j = pmb->js; j <= pmb->je + 1; ++j) {
-        ReconstructX2(pmb->precon, order, k, j, il, iu,
+        ReconstructX2(pmb->precon, order, k, j, pmb->is - 1, pmb->ie + 1,
                       rad_state_cc_, rad_statelb_, rad_stater_);
         for (int i = pmb->is; i <= pmb->ie; ++i) {
           for (int n = 0; n < RadFLD2::NRAD_FACE_STATE; ++n) {
@@ -108,10 +115,11 @@ void FLD2::CalculateRadiationFaceStates(const int order) {
   // x3 faces
   if (pmb->pmy_mesh->f3) {
     for (int j = pmb->js; j <= pmb->je; ++j) {
-      ReconstructX3(pmb->precon, order, pmb->ks - 1, j, il, iu,
+      ReconstructX3(pmb->precon, order, pmb->ks - 1, j,
+                    pmb->is - 1, pmb->ie + 1,
                     rad_state_cc_, rad_statel_, rad_stater_);
       for (int k = pmb->ks; k <= pmb->ke + 1; ++k) {
-        ReconstructX3(pmb->precon, order, k, j, il, iu,
+        ReconstructX3(pmb->precon, order, k, j, pmb->is - 1, pmb->ie + 1,
                       rad_state_cc_, rad_statelb_, rad_stater_);
         for (int i = pmb->is; i <= pmb->ie; ++i) {
           for (int n = 0; n < RadFLD2::NRAD_FACE_STATE; ++n) {

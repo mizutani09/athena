@@ -1086,7 +1086,7 @@ void CellCenteredBoundaryVariable::ClearBoundary(BoundaryCommSubset phase) {
 
 //----------------------------------------------------------------------------------------
 //! \fn void CellCenteredBoundaryVariable::ExpandPhysicalBoundaries()
-//! \brief Expand physical boundary values to NGHOST = 2 and to edges/corners.
+//! \brief Expand physical boundary values to all ghost layers and to edges/corners.
 void CellCenteredBoundaryVariable::ExpandPhysicalBoundaries() {
   int is = pmy_block_->is, ie = pmy_block_->ie,
       js = pmy_block_->js, je = pmy_block_->je,
@@ -1338,6 +1338,35 @@ void CellCenteredBoundaryVariable::ExpandPhysicalBoundaries() {
       u(n, ke+2, je+1, ie+2) = p;
       u(n, ke+2, je+2, ie+1) = p;
       u(n, ke+2, je+2, ie+2) = p;
+    }
+
+    // The physical values supplied by linearMG occupy its first ghost layer,
+    // and the code above constructs the historical NGHOST=2 face/edge/corner
+    // extension.  Extend that fully initialized two-layer shell when Athena++
+    // is configured with additional ghost cells (e.g. PPM).  Do not touch a
+    // direction having a real/periodic neighbor: its full ghost region was
+    // supplied by boundary communication.
+    if (NGHOST > 2) {
+      const bool ix = (pmy_block_->pbval->nblevel[1][1][0] < 0);
+      const bool ox = (pmy_block_->pbval->nblevel[1][1][2] < 0);
+      const bool iy = (pmy_block_->pbval->nblevel[1][0][1] < 0);
+      const bool oy = (pmy_block_->pbval->nblevel[1][2][1] < 0);
+      const bool iz = (pmy_block_->pbval->nblevel[0][1][1] < 0);
+      const bool oz = (pmy_block_->pbval->nblevel[2][1][1] < 0);
+      for (int k = ks-NGHOST; k <= ke+NGHOST; ++k) {
+        for (int j = js-NGHOST; j <= je+NGHOST; ++j) {
+          for (int i = is-NGHOST; i <= ie+NGHOST; ++i) {
+            int si = i, sj = j, sk = k;
+            if (ix && i < is-2) si = is-2;
+            if (ox && i > ie+2) si = ie+2;
+            if (iy && j < js-2) sj = js-2;
+            if (oy && j > je+2) sj = je+2;
+            if (iz && k < ks-2) sk = ks-2;
+            if (oz && k > ke+2) sk = ke+2;
+            if (si != i || sj != j || sk != k) u(n,k,j,i) = u(n,sk,sj,si);
+          }
+        }
+      }
     }
   }
 
