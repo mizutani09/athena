@@ -108,18 +108,13 @@ ox3_bc = periodic
 is_couple           = true
 only_rad            = false
 cut_diff            = false
-cut_Pnablav         = false
+include_radiation_force = true
 fixed_flux_limitter = true
 
 # Mixed-frame radiation-energy advection: 1 + 0.5 = 1.5 in the optically thick
 # limit used by this test. Radiation pressure is E_rad/3 everywhere.
-include_rad_pressure_advection = true
-rad_pressure_advection_factor  = 0.5
-
-# Keep O(v/c) energy exchange explicit, with P:nabla-v excluded from the NR solve.
+# Keep the O(v/c) energy exchange in the explicit FLD source.
 include_mixed_frame_terms = true
-mixed_frame_terms_explicit = true
-implicit_pnablav = false
 
 <problem>
 # Changeable problem parameters:

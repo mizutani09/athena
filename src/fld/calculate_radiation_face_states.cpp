@@ -1,6 +1,6 @@
 //========================================================================================
 //! \file calculate_radiation_face_states.cpp
-//! \brief Reconstruct FLD radiation energy and pressure tensor on hydro faces.
+//! \brief Reconstruct the scalar FLD closure used by HLLC on hydro faces.
 
 #include <algorithm>
 #include <cmath>
@@ -45,9 +45,9 @@ void FLD2::CalculateRadiationFaceStates(const int order) {
   const int jl = pmb->js - 1, ju = pmb->je + 1;
   const int kl = pmb->ks - 1, ku = pmb->ke + 1;
 
-  // Use the same Levermore-Pomraning limiter and Eddington tensor as NRFLD:
-  //   lambda=(2+R)/(6+3R+R^2), chi=lambda+(lambda R)^2,
-  //   P_ij/E = (1-chi)delta_ij/2 + (3chi-1)n_i n_j/2.
+  // Reconstruct a compact, internally consistent state.  In particular total
+  // pressure is not reconstructed independently: HLLC forms p_gas+lambda*E
+  // from the gas and radiation face states.
   for (int k = kl; k <= ku; ++k) {
     for (int j = jl; j <= ju; ++j) {
       for (int i = il; i <= iu; ++i) {
@@ -63,25 +63,11 @@ void FLD2::CalculateRadiationFaceStates(const int order) {
         const Real r = grad / (sigma * erad);
         const Real lambda = RadFLD2::FluxLimiter(r, fixed_flux_limitter);
         const Real chi = RadFLD2::EddingtonFactor(r, fixed_flux_limitter);
-        const Real inv_grad = 1.0 / std::max(grad, TINY_NUMBER);
-        const Real n[3] = {gx*inv_grad, gy*inv_grad, gz*inv_grad};
-        const Real diag = 0.5 * (1.0 - chi);
-        const Real beam = 0.5 * (3.0*chi - 1.0);
+        const Real ar = 0.5*(3.0-chi);
 
         rad_state_cc_(RadFLD2::ERAD, k, j, i) = erad;
-        for (int a = 0; a < 3; ++a) {
-          for (int b = 0; b < 3; ++b) {
-            const int nvar = 1 + 3*a + b;
-            const Real eddington = (a == b ? diag : 0.0) + beam*n[a]*n[b];
-            rad_state_cc_(nvar, k, j, i) = erad*eddington;
-          }
-          // Reconstruct total normal pressure itself. Reconstructing gas and
-          // radiation pressure independently does not preserve a cell-wise
-          // constant total pressure when Hydro uses characteristic variables.
-          rad_state_cc_(RadFLD2::PTOT1 + a, k, j, i) =
-              pmb->phydro->w(IPR, k, j, i)
-              + rad_state_cc_(1 + 3*a + a, k, j, i);
-        }
+        rad_state_cc_(RadFLD2::LAMBDA, k, j, i) = lambda;
+        rad_state_cc_(RadFLD2::ARAD, k, j, i) = ar;
       }
     }
   }
@@ -148,11 +134,8 @@ Real FLD2::RadiationSoundSpeedSquared(int k, int j, int i, int dir) const {
   const Real erad = std::max(u_rad(k,j,i), TINY_NUMBER);
   const Real r = grad/(std::max(sigma_r(k,j,i), TINY_NUMBER)*erad);
   const Real lambda = RadFLD2::FluxLimiter(r, fixed_flux_limitter);
-  const Real chi = RadFLD2::EddingtonFactor(r, fixed_flux_limitter);
-  const Real g[3] = {gx, gy, gz};
-  const Real nd = g[dir]/std::max(grad, TINY_NUMBER);
-  const Real f = 0.5*(1.0-chi) + 0.5*(3.0*chi-1.0)*SQR(nd);
-  const Real pnn = std::max(f*erad, 0.0);
+  (void)dir;
+  const Real p = std::max(lambda*erad, 0.0);
   const Real rho = std::max(pmb->phydro->w(IDN,k,j,i), TINY_NUMBER);
-  return std::max(f, 0.0)*(erad+pnn)/rho;
+  return std::max(lambda, 0.0)*(erad+p)/rho;
 }

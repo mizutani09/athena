@@ -253,65 +253,11 @@ void AddRadiativeForceAndWork(MeshBlock *pmb, const Real time, const Real dt,
   const Real idz = (pmb->block_size.nx3 > 1
                         ? 1.0 / pmb->pcoord->dx3f(pmb->ks) : 0.0);
 
-  // The static-diffusion algorithm treats the mixed-frame v dot grad(E)
-  // exchange explicitly, alongside the force and radiation advection terms.
-  // The gas and radiation updates are equal and opposite.
-  if (prfld->include_mixed_frame_terms && prfld->mixed_frame_terms_explicit) {
-    for (int k = pmb->ks; k <= pmb->ke; ++k) {
-      for (int j = pmb->js; j <= pmb->je; ++j) {
-        for (int i = pmb->is; i <= pmb->ie; ++i) {
-          const Real grad_ex = 0.5 * idx1
-              * (erad(k, j, i + 1) - erad(k, j, i - 1));
-          const Real grad_ey = (pmb->block_size.nx2 > 1
-              ? 0.5 * idy * (erad(k, j + 1, i) - erad(k, j - 1, i)) : 0.0);
-          const Real grad_ez = (pmb->block_size.nx3 > 1
-              ? 0.5 * idz * (erad(k + 1, j, i) - erad(k - 1, j, i)) : 0.0);
-          const Real opacity_ratio = prfld->sigma_p(k, j, i)
-              / std::max(prfld->sigma_r(k, j, i), TINY_NUMBER);
-          const Real mixed_factor = ONE_3RD * (2.0 * opacity_ratio - 1.0);
-          const Real mixed_gas = mixed_factor
-              * (prim(IVX, k, j, i) * grad_ex
-                 + prim(IVY, k, j, i) * grad_ey
-                 + prim(IVZ, k, j, i) * grad_ez);
-          if (NON_BAROTROPIC_EOS) cons(IEN, k, j, i) += dt * mixed_gas;
-          erad(k, j, i) -= dt * mixed_gas;
-          erad(k, j, i) = std::max(erad(k, j, i), TINY_NUMBER);
-        }
-      }
-    }
-  }
-
 #if NRMGFLD_ENABLED
-  // HLLC-FLD includes div(P_rad) in momentum.  This test uses the
-  // well-balanced enthalpy-flux mode with implicit_pnablav=false, so the
-  // legacy centered force and work below would double count those terms.
-  // Keep only the separately derived mixed-frame O(v/c) exchange above.
+  // HLLC-FLD and the generic explicit FLD source contain these terms.
+  // HLLC-FLD and FLD2::AddExplicitSourceTerms supply these terms globally.
   return;
 #endif
-
-  // P:nabla-v is an explicit radiation-energy source when the implicit NR
-  // operator is configured with fld/implicit_pnablav=false.  Applying it here
-  // keeps its velocity gradient at the same RK stage as the hydro source.
-  if (!prfld->implicit_pnablav) {
-    for (int k = pmb->ks; k <= pmb->ke; ++k) {
-      for (int j = pmb->js; j <= pmb->je; ++j) {
-        for (int i = pmb->is; i <= pmb->ie; ++i) {
-          Real div_v = 0.5 * idx1 *
-              (prim(IVX, k, j, i + 1) - prim(IVX, k, j, i - 1));
-          if (pmb->block_size.nx2 > 1) {
-            div_v += 0.5 * idy *
-                (prim(IVY, k, j + 1, i) - prim(IVY, k, j - 1, i));
-          }
-          if (pmb->block_size.nx3 > 1) {
-            div_v += 0.5 * idz *
-                (prim(IVZ, k + 1, j, i) - prim(IVZ, k - 1, j, i));
-          }
-          erad(k, j, i) -= dt * ONE_3RD * erad(k, j, i) * div_v;
-          erad(k, j, i) = std::max(erad(k, j, i), TINY_NUMBER);
-        }
-      }
-    }
-  }
 
   for (int k = pmb->ks; k <= pmb->ke; ++k) {
     for (int j = pmb->js; j <= pmb->je; ++j) {
@@ -394,10 +340,10 @@ void Mesh::InitUserMeshData(ParameterInput *pin) {
         << "cut_diff must be false for the advecting radiation pulse test.";
     ATHENA_ERROR(msg);
   }
-  if (pin->GetBoolean("fld", "cut_Pnablav")) {
+  if (!pin->GetBoolean("fld", "include_radiation_force")) {
     std::stringstream msg;
     msg << "### FATAL ERROR in Mesh::InitUserMeshData" << std::endl
-        << "cut_Pnablav must be false for the advecting radiation pulse test.";
+        << "include_radiation_force must be true for this test.";
     ATHENA_ERROR(msg);
   }
   if (pin->GetString("mesh", "ix1_bc") != "periodic"
@@ -432,15 +378,7 @@ void Mesh::InitUserMeshData(ParameterInput *pin) {
         << "fixed_flux_limitter=true so that lambda=1/3 everywhere.";
     ATHENA_ERROR(msg);
   }
-  if (pin->GetBoolean("fld", "implicit_pnablav")) {
-    std::stringstream msg;
-    msg << "### FATAL ERROR in Mesh::InitUserMeshData" << std::endl
-        << "This test requires fld/implicit_pnablav=false for its "
-        << "well-balanced radiation-enthalpy flux.";
-    ATHENA_ERROR(msg);
-  }
-  if (!pin->GetBoolean("fld", "include_mixed_frame_terms")
-      || !pin->GetBoolean("fld", "mixed_frame_terms_explicit")) {
+  if (!pin->GetBoolean("fld", "include_mixed_frame_terms")) {
     std::stringstream msg;
     msg << "### FATAL ERROR in Mesh::InitUserMeshData" << std::endl
         << "This test requires explicit mixed-frame terms in the fld block.";

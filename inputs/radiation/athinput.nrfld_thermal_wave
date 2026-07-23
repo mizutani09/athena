@@ -99,7 +99,7 @@ output_defect        = true
 is_couple            = true
 only_rad             = true
 cut_diff             = false
-cut_Pnablav          = true
+include_radiation_force = false
 fixed_flux_limitter  = true
 
 <problem>

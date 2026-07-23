@@ -1984,9 +1984,7 @@ TaskStatus TimeIntegratorTaskList::AddSourceTerms(MeshBlock *pmb, int stage) {
   Field *pf = pmb->pfield;
   PassiveScalars *ps = pmb->pscalars;
 
-  // return if there are no source terms to be added
-  if (!(ph->hsrc.hydro_sourceterms_defined)
-      || pmb->pmy_mesh->fluid_setup != FluidFormulation::evolve) return TaskStatus::next;
+  if (pmb->pmy_mesh->fluid_setup != FluidFormulation::evolve) return TaskStatus::next;
 
   if (stage <= nstages) {
     if (stage_wghts[stage-1].main_stage) {
@@ -1996,8 +1994,13 @@ TaskStatus TimeIntegratorTaskList::AddSourceTerms(MeshBlock *pmb, int stage) {
       // Scaled coefficient for RHS update
       Real dt = (stage_wghts[(stage-1)].beta)*(pmb->pmy_mesh->dt);
       // Evaluate the source terms at the time at the beginning of the stage
-      ph->hsrc.AddSourceTerms(t_start_stage, dt, ph->flux, ph->w, ps->r, pf->bcc,
-                                   ph->u, ps->s);
+      if (ph->hsrc.hydro_sourceterms_defined) {
+        ph->hsrc.AddSourceTerms(t_start_stage, dt, ph->flux, ph->w, ps->r, pf->bcc,
+                               ph->u, ps->s);
+      }
+#if NRMGFLD_ENABLED
+      pmb->prfld2->AddExplicitSourceTerms(dt,ph->w,ph->u);
+#endif
     }
     return TaskStatus::next;
   }

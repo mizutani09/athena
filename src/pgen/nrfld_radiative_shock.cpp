@@ -278,10 +278,10 @@ void Mesh::InitUserMeshData(ParameterInput *pin) {
         << "cut_diff must be false for this diffusion shock.";
     ATHENA_ERROR(msg);
   }
-  if (pin->GetBoolean("fld", "cut_Pnablav")) {
+  if (!pin->GetBoolean("fld", "include_radiation_force")) {
     std::stringstream msg;
     msg << "### FATAL ERROR in Mesh::InitUserMeshData" << std::endl
-        << "cut_Pnablav must be false so radiation pressure work is retained.";
+        << "include_radiation_force must be true for this problem.";
     ATHENA_ERROR(msg);
   }
   if (!pin->GetBoolean("fld", "fixed_flux_limitter")) {

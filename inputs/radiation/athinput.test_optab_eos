@@ -101,7 +101,7 @@ output_defect   = true
 is_couple       = true
 only_rad        = false
 cut_diff        = false
-cut_Pnablav     = false
+include_radiation_force = true
 
 use_opacity_table       = true
 opacity_table_file      = path/to/your/opacity_table.h5

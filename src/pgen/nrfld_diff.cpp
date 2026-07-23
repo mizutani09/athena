@@ -350,7 +350,7 @@ void Mesh::InitUserMeshData(ParameterInput *pin) {
   is_couple       = false
   only_rad        = true
   cut_diff        = false
-  cut_Pnablav     = true
+  include_radiation_force = false
   */
   // check input
   if (pin->GetBoolean("fld", "is_couple")) {
@@ -374,10 +374,10 @@ void Mesh::InitUserMeshData(ParameterInput *pin) {
     ATHENA_ERROR(msg);
   }
 
-  if (!pin->GetBoolean("fld", "cut_Pnablav")) {
+  if (pin->GetBoolean("fld", "include_radiation_force")) {
     std::stringstream msg;
     msg << "### FATAL ERROR in function [Mesh::InitUserMeshData]" << std::endl;
-    msg << "cut_Pnablav must be true for this problem.";
+    msg << "include_radiation_force must be false for this problem.";
     ATHENA_ERROR(msg);
   }
 

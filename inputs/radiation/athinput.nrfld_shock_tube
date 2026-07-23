@@ -98,8 +98,7 @@ const_opacity_R = 1e8     # in cm^-1 caution!
 is_couple       = true
 only_rad        = false
 cut_diff        = false
-cut_Pnablav     = false
-implicit_pnablav = true  # paired gas/radiation work used by HLLC-FLD
+include_radiation_force = true
 
 <problem>
 dir             = 1

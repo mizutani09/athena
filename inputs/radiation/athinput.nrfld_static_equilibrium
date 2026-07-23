@@ -102,13 +102,9 @@ ox3_bc = periodic
 is_couple           = true
 only_rad            = false
 cut_diff            = false
-cut_Pnablav         = false
+include_radiation_force = true
 fixed_flux_limitter = true
-include_rad_pressure_advection = true
-rad_pressure_advection_factor  = 0.5
 include_mixed_frame_terms      = true
-mixed_frame_terms_explicit     = true
-implicit_pnablav               = false
 
 <problem>
 problem_type         = static_equilibrium_2d

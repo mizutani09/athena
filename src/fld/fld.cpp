@@ -86,25 +86,17 @@ FLD2::FLD2(MeshBlock *pmb, ParameterInput *pin) :
     },
     u_rad_fldbvar(pmb, &u_rad, &coarse_u_rad, u_rad_flux, 1, true),
     refinement_idx_(),
-    is_couple(), only_rad(), cut_diff(), cut_Pnablav(), fixed_u_rad(),
-    implicit_pnablav()
+    is_couple(), only_rad(), cut_diff(), include_radiation_force(), fixed_u_rad()
     {
   is_couple = pin->GetOrAddBoolean("fld", "is_couple", true);
   only_rad = pin->GetOrAddBoolean("fld", "only_rad", false);
   cut_diff = pin->GetOrAddBoolean("fld", "cut_diff", false);
-  cut_Pnablav = pin->GetOrAddBoolean("fld", "cut_Pnablav", false);
+  include_radiation_force =
+      pin->GetOrAddBoolean("fld", "include_radiation_force", true);
   fixed_flux_limitter = pin->GetOrAddBoolean("fld", "fixed_flux_limitter", false);
   fixed_u_rad = pin->GetOrAddBoolean("fld", "fixed_u_rad", false);
-  include_rad_pressure_advection =
-      pin->GetOrAddBoolean("fld", "include_rad_pressure_advection", false);
-  rad_pressure_advection_factor =
-      pin->GetOrAddReal("fld", "rad_pressure_advection_factor", 0.0);
   include_mixed_frame_terms =
       pin->GetOrAddBoolean("fld", "include_mixed_frame_terms", false);
-  mixed_frame_terms_explicit =
-      pin->GetOrAddBoolean("fld", "mixed_frame_terms_explicit", false);
-  implicit_pnablav =
-      pin->GetOrAddBoolean("fld", "implicit_pnablav", true);
 
   pmb->RegisterMeshBlockData(u_gas);
   pmb->RegisterMeshBlockData(u_rad);

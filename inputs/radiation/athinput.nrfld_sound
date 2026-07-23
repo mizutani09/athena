@@ -95,7 +95,7 @@ output_defect   = true
 is_couple       = true
 only_rad        = false
 cut_diff        = false
-cut_Pnablav     = false
+include_radiation_force = true
 
 <problem>
 # all in code units

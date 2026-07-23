@@ -208,7 +208,7 @@ void MGFLDInterface::CalculateCoefficients(const AthenaArray<Real> &w) {
     }
   }
 
-  if (pfld2->cut_Pnablav) {
+  if (!pfld2->include_radiation_force) {
     for (int k = kl; k <= ku; ++k) {
       for (int j = jl; j <= ju; ++j) {
         for (int i = il; i <= iu; ++i) {

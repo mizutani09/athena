@@ -39,10 +39,8 @@ namespace RadFLD2 {
   constexpr int NOPACITY=2;
 //   enum VarIndex {GAS=0, RAD=1};
   enum OpacityIndex {SIGMA_P=0, SIGMA_R=1};
-  constexpr int NRAD_FACE_STATE = 13;
-  enum RadiationFaceIndex {ERAD=0, P11=1, P12=2, P13=3,
-                           P21=4, P22=5, P23=6, P31=7, P32=8, P33=9,
-                           PTOT1=10, PTOT2=11, PTOT3=12};
+  constexpr int NRAD_FACE_STATE = 3;
+  enum RadiationFaceIndex {ERAD=0, LAMBDA=1, ARAD=2};
 
   // Levermore-Pomraning FLD closure shared by every radiation operator.
   inline Real FluxLimiter(const Real r, const bool fixed) {
@@ -67,7 +65,7 @@ class FLD2 {
   AthenaArray<Real> u_rad, u_rad1, u_rad2;  // (no more than MAX_NREGISTER allowed)
   AthenaArray<Real> u_rad0, u_rad_fl_div;  // rkl2 STS memory registers;
   AthenaArray<Real> u_rad_flux[3];  // face-averaged flux vector
-  // Reconstructed radiation energy and pressure tensor on hydro faces.  The
+  // Reconstructed radiation energy and scalar FLD closure on hydro faces.  The
   // first index is RadFLD2::RadiationFaceIndex.  HLLC-FLD consumes exactly
   // these states, so radiation and gas use the same reconstruction order.
   AthenaArray<Real> rad_face_l[3], rad_face_r[3];
@@ -81,21 +79,11 @@ class FLD2 {
   bool is_couple;
   bool only_rad;
   bool cut_diff;
-  bool cut_Pnablav;
+  bool include_radiation_force;
   bool fixed_flux_limitter;
   bool fixed_u_rad;
-  // Optional mixed-frame correction for radiation-energy advection. When enabled,
-  // the advective flux is (E_rad + P_rad) v instead of the passive-scalar flux.
-  bool include_rad_pressure_advection;
-  Real rad_pressure_advection_factor;
-  // O(v/c) mixed-frame energy exchange term, with coefficients frozen during
-  // each NR solve. This is needed together with the radiation enthalpy flux.
+  // Explicit O(v/c) mixed-frame energy exchange.
   bool include_mixed_frame_terms;
-  // Move the mixed-frame v dot grad(E) term to the explicit stage source.
-  bool mixed_frame_terms_explicit;
-  // When false, P:nabla-v is supplied by an explicit stage source instead of
-  // being included in the frozen-coefficient NR solve.
-  bool implicit_pnablav;
 
   // for interaction with Hydro
   void LoadHydroVariables(const AthenaArray<Real> &w, AthenaArray<Real> &fld_u_gas);
@@ -110,6 +98,8 @@ class FLD2 {
   void CalculateRadiationFaceStates(const int order);
   Real RadiationSoundSpeedSquared(int k, int j, int i, int dir) const;
   void AddFluxDivergence(const Real wght, AthenaArray<Real> &u_out);
+  void AddExplicitSourceTerms(const Real dt, const AthenaArray<Real> &prim,
+                              AthenaArray<Real> &hydro_u);
 
   // Function in problem generators to update opacity
   void EnrollOpacityFunction(FLDOpacityFunc MyOpacityFunction);
