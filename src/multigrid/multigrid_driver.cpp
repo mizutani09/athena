@@ -1219,11 +1219,17 @@ void MultigridDriver::SolveIterative() {
   while (def > eps_) {
     // Keep the best finest-grid iterate.  A V-cycle that increases the
     // residual must not be returned to the caller as the linear solution.
+    // This protection is needed for coarse/fine corrections on SMR/AMR
+    // meshes.  Avoid copying the complete solution before every V-cycle on
+    // uniform meshes, where the original MG path has no such correction.
+    const bool protect_iteration = pmy_mesh_->multilevel;
+    if (protect_iteration) {
 #pragma omp parallel for num_threads(nthreads_)
-    for (auto itr = vmg_.begin(); itr < vmg_.end(); ++itr) {
-      Multigrid *pmg = *itr;
-      AthenaArray<Real> &u = pmg->u_[pmg->current_level_];
-      std::memcpy(pmg->iteration_backup_.data(), u.data(), u.GetSizeInBytes());
+      for (auto itr = vmg_.begin(); itr < vmg_.end(); ++itr) {
+        Multigrid *pmg = *itr;
+        AthenaArray<Real> &u = pmg->u_[pmg->current_level_];
+        std::memcpy(pmg->iteration_backup_.data(), u.data(), u.GetSizeInBytes());
+      }
     }
     SolveVCycle(npresmooth_, npostsmooth_);
     if (matrixmode_ == 1)
@@ -1243,18 +1249,20 @@ void MultigridDriver::SolveIterative() {
                   << ", convergence factor = " << def/olddef << "." << std::endl;
       if (def/olddef > 1.0) {
         const Real rejected_def = def;
+        if (protect_iteration) {
 #pragma omp parallel for num_threads(nthreads_)
-        for (auto itr = vmg_.begin(); itr < vmg_.end(); ++itr) {
-          Multigrid *pmg = *itr;
-          AthenaArray<Real> &u = pmg->u_[pmg->current_level_];
-          std::memcpy(u.data(), pmg->iteration_backup_.data(), u.GetSizeInBytes());
+          for (auto itr = vmg_.begin(); itr < vmg_.end(); ++itr) {
+            Multigrid *pmg = *itr;
+            AthenaArray<Real> &u = pmg->u_[pmg->current_level_];
+            std::memcpy(u.data(), pmg->iteration_backup_.data(), u.GetSizeInBytes());
+          }
+          def = olddef;
         }
         if (Globals::my_rank == 0)
           std::cout << "### Warning in MultigridDriver::SolveIterative" << std::endl
                     << "Rejecting divergent V-cycle: defect norm = " << rejected_def
                     << ", convergence factor = " << rejected_def/olddef
                     << ", and niter = " << n << "." << std::endl;
-        def = olddef;
         break;
       }
       if (eps_ == 0.0) break;
