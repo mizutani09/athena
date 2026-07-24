@@ -11,6 +11,7 @@
 // C++ headers
 #include <algorithm>
 #include <cmath>
+#include <cstring>    // memcpy
 #include <cstdlib>    // abs
 #include <iomanip>    // setprecision
 #include <iostream>   // endl
@@ -711,7 +712,10 @@ void MultigridDriver::RestrictInitialData() {
     Multigrid *pmg = *itr;
     pmg->RestrictInitialData();
   }
-  TransferFromBlocksToRoot(false);
+  // Initialize both source and solution on refined octets/root.  The linear
+  // correction scheme needs this even with FAS disabled; otherwise octet u
+  // contains uninitialized or stale corrections.
+  TransferFromBlocksToRoot(false, true);
   if (nreflevel_ > 0) {
     const int &ngh = mgroot_->ngh_;
     for (int l = nreflevel_ - 1; l >= 1; --l) {
@@ -761,15 +765,16 @@ void MultigridDriver::RestrictInitialData() {
 //! \fn void MultigridDriver::TransferFromBlocksToRoot(bool initflag)
 //! \brief collect the coarsest data and transfer to the root grid
 
-void MultigridDriver::TransferFromBlocksToRoot(bool initflag) {
-  int nv = nvar_, ngh = mgroot_->ngh_;
-  if (ffas_ && !initflag) nv*=2;
+void MultigridDriver::TransferFromBlocksToRoot(bool initflag, bool transfer_u) {
+  const bool send_u = (ffas_ && !initflag) || transfer_u;
+  int nv = send_u ? 2*nvar_ : nvar_;
+  int ngh = mgroot_->ngh_;
 #pragma omp parallel for num_threads(nthreads_)
   for (auto itr = vmg_.begin(); itr < vmg_.end(); itr++) {
     Multigrid *pmg = *itr;
     for (int v = 0; v < nvar_; ++v)
       rootbuf_[pmg->pmy_block_->gid*nv+v]=pmg->GetCoarsestData(MGVariable::src, v);
-    if (ffas_ && !initflag) {
+    if (send_u) {
       for (int v = 0; v < nvar_; ++v)
         rootbuf_[pmg->pmy_block_->gid*nv+nvar_+v]=pmg->GetCoarsestData(MGVariable::u, v);
     }
@@ -780,7 +785,7 @@ void MultigridDriver::TransferFromBlocksToRoot(bool initflag) {
     MPI_Allgather(MPI_IN_PLACE, nb_rank_*nv, MPI_ATHENA_REAL,
                   rootbuf_, nb_rank_*nv, MPI_ATHENA_REAL, MPI_COMM_MULTIGRID);
   } else {
-    if (ffas_ && !initflag)
+    if (send_u)
       MPI_Allgatherv(MPI_IN_PLACE, nblist_[Globals::my_rank]*nv, MPI_ATHENA_REAL,
                      rootbuf_, nvlist_, nvslist_, MPI_ATHENA_REAL, MPI_COMM_MULTIGRID);
     else
@@ -801,7 +806,7 @@ void MultigridDriver::TransferFromBlocksToRoot(bool initflag) {
       int rk = k + mgroot_->ngh_;
       for (int v = 0; v < nvar_; ++v)
         mgroot_->src_[mgroot_->nlevel_-1](v, rk, rj, ri) = rootbuf_[n*nv+v];
-      if (ffas_ && !initflag) {
+      if (send_u) {
         for (int v = 0; v < nvar_; ++v)
           mgroot_->u_[mgroot_->nlevel_-1](v, rk, rj, ri) = rootbuf_[n*nv+nvar_+v];
       }
@@ -819,7 +824,7 @@ void MultigridDriver::TransferFromBlocksToRoot(bool initflag) {
       MGOctet &oct = octets_[olev][oid];
       for (int v = 0; v < nvar_; ++v)
         oct.src(v,ok,oj,oi) = rootbuf_[n*nv+v];
-      if (ffas_ && !initflag) {
+      if (send_u) {
         for (int v = 0; v < nvar_; ++v)
           oct.u(v,ok,oj,oi) = rootbuf_[n*nv+nvar_+v];
       }
@@ -1212,6 +1217,14 @@ void MultigridDriver::SolveIterative() {
   def /= source_norm;
 
   while (def > eps_) {
+    // Keep the best finest-grid iterate.  A V-cycle that increases the
+    // residual must not be returned to the caller as the linear solution.
+#pragma omp parallel for num_threads(nthreads_)
+    for (auto itr = vmg_.begin(); itr < vmg_.end(); ++itr) {
+      Multigrid *pmg = *itr;
+      AthenaArray<Real> &u = pmg->u_[pmg->current_level_];
+      std::memcpy(pmg->iteration_backup_.data(), u.data(), u.GetSizeInBytes());
+    }
     SolveVCycle(npresmooth_, npostsmooth_);
     if (matrixmode_ == 1)
       CalculateMatrixAll();
@@ -1224,18 +1237,27 @@ void MultigridDriver::SolveIterative() {
     def /= source_norm;
     
     if (def/olddef > 0.9) {
-      if (eps_ == 0.0) break;
       if (Globals::my_rank == 0)
         std::cout << "### Warning in MultigridDriver::SolveIterative" << std::endl
                   << "Slow multigrid convergence : defect norm = " << def
                   << ", convergence factor = " << def/olddef << "." << std::endl;
       if (def/olddef > 1.0) {
+        const Real rejected_def = def;
+#pragma omp parallel for num_threads(nthreads_)
+        for (auto itr = vmg_.begin(); itr < vmg_.end(); ++itr) {
+          Multigrid *pmg = *itr;
+          AthenaArray<Real> &u = pmg->u_[pmg->current_level_];
+          std::memcpy(u.data(), pmg->iteration_backup_.data(), u.GetSizeInBytes());
+        }
         if (Globals::my_rank == 0)
           std::cout << "### Warning in MultigridDriver::SolveIterative" << std::endl
-                    << "Multigrid is diverging: defect norm = " << def
-                    << ", convergence factor = " << def/olddef << ", and niter = " << n << "." << std::endl;
+                    << "Rejecting divergent V-cycle: defect norm = " << rejected_def
+                    << ", convergence factor = " << rejected_def/olddef
+                    << ", and niter = " << n << "." << std::endl;
+        def = olddef;
         break;
       }
+      if (eps_ == 0.0) break;
     }
     // if (n > 100) {
     if (n > 30) {
@@ -1400,9 +1422,9 @@ Real MultigridDriver::CalculateSourceNorm(int n) {
 //! \brief return the Multigrid whose gid is tgid
 
 Multigrid* MultigridDriver::FindMultigrid(int tgid) {
-  int first = vmg_[0]->pmy_block_->gid;
-  if (tgid > nblist_[Globals::my_rank] + first)
-    return nullptr;
+  const int first = vmg_[0]->pmy_block_->gid;
+  const int end = first + nblist_[Globals::my_rank];
+  if (tgid < first || tgid >= end) return nullptr;
   return vmg_[tgid-first];
 }
 

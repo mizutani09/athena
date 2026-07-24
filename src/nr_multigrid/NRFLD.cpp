@@ -155,7 +155,12 @@ NRFLD::NRFLD(MeshBlock *pmb, ParameterInput *pin) :
     u_gas_(pmb->ncells3, pmb->ncells2, pmb->ncells1),
     u_gas_iter_backup_(pmb->ncells3, pmb->ncells2, pmb->ncells1),
     ngh_(NGHOST),
-    max_update_fraction_(pin->GetOrAddReal("nrfld", "max_update_fraction", 0.2)),
+    // A cell-by-cell cap destroys the spatial structure of the correction
+    // returned by the linear solve, especially across SMR/AMR interfaces.
+    // Positivity and nonlinear globalization are handled by the floors and
+    // the driver-wide Newton backtracking, respectively.  Keep the local cap
+    // available only as an explicitly requested diagnostic safeguard.
+    max_update_fraction_(pin->GetOrAddReal("nrfld", "max_update_fraction", -1.0)),
     fixed_linear_coefficients_initialized_(false)
     {
     last_delta_rad_.NewAthenaArray(2, pmb->ncells3, pmb->ncells2, pmb->ncells1);
@@ -644,6 +649,13 @@ void NRFLD::AddDifference(AthenaArray<Real> &u_rad,
   int ks = pmy_block_->ks;
   int ke = pmy_block_->ke;
   FLD *pfld = pmy_block_->prfld;
+
+  if (pmy_driver_->fshowdef_) {
+    for (int k = 0; k < delta_u.GetDim3(); ++k)
+      for (int j = 0; j < delta_u.GetDim2(); ++j)
+        for (int i = 0; i < delta_u.GetDim1(); ++i)
+          last_delta_rad_(0,k,j,i) = last_delta_rad_(1,k,j,i) = delta_u(k,j,i);
+  }
 
   for (int k=ks; k<=ke; ++k) {
     for (int j=js; j<=je; ++j) {

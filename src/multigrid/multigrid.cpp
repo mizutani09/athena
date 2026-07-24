@@ -149,6 +149,8 @@ Multigrid::Multigrid(MultigridDriver *pmd, MeshBlock *pmb, int nghost) :
     ccoord_[l].AllocateMGCoordinates(ncx,ncy,ncz);
     ccoord_[l].CalculateMGCoordinates(size_, ll+1, ngh_);
   }
+  iteration_backup_.NewAthenaArray(nvar_, size_.nx3 + 2*ngh_,
+                                   size_.nx2 + 2*ngh_, size_.nx1 + 2*ngh_);
 }
 
 

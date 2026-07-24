@@ -133,8 +133,28 @@ TaskStatus LinearMGBoundaryTaskList::ProlongateLinearMGBoundary(MeshBlock *pmb,
 }
 
 TaskStatus LinearMGBoundaryTaskList::PhysicalBoundary(MeshBlock *pmb, int stage) {
-  // std::cout << "Apply PhysicalBoundary" << std::endl;
-  pmb->pnr->delta_bvar.ExpandPhysicalBoundaries();
-  // std::cout << "End PhysicalBoundary" << std::endl;
+  AthenaArray<Real> &delta = pmb->pnr->delta_u_;
+  const int is = pmb->is, ie = pmb->ie;
+  const int js = pmb->js, je = pmb->je;
+  const int ks = pmb->ks, ke = pmb->ke;
+  const BoundaryFlag *bc = pmb->pbval->block_bcs;
+  if (bc[inner_x1] != BoundaryFlag::block && bc[inner_x1] != BoundaryFlag::periodic)
+    for (int k=0; k<delta.GetDim3(); ++k) for (int j=0; j<delta.GetDim2(); ++j)
+      for (int i=0; i<is; ++i) delta(k,j,i) = 0.0;
+  if (bc[outer_x1] != BoundaryFlag::block && bc[outer_x1] != BoundaryFlag::periodic)
+    for (int k=0; k<delta.GetDim3(); ++k) for (int j=0; j<delta.GetDim2(); ++j)
+      for (int i=ie+1; i<delta.GetDim1(); ++i) delta(k,j,i) = 0.0;
+  if (bc[inner_x2] != BoundaryFlag::block && bc[inner_x2] != BoundaryFlag::periodic)
+    for (int k=0; k<delta.GetDim3(); ++k) for (int j=0; j<js; ++j)
+      for (int i=0; i<delta.GetDim1(); ++i) delta(k,j,i) = 0.0;
+  if (bc[outer_x2] != BoundaryFlag::block && bc[outer_x2] != BoundaryFlag::periodic)
+    for (int k=0; k<delta.GetDim3(); ++k) for (int j=je+1; j<delta.GetDim2(); ++j)
+      for (int i=0; i<delta.GetDim1(); ++i) delta(k,j,i) = 0.0;
+  if (bc[inner_x3] != BoundaryFlag::block && bc[inner_x3] != BoundaryFlag::periodic)
+    for (int k=0; k<ks; ++k) for (int j=0; j<delta.GetDim2(); ++j)
+      for (int i=0; i<delta.GetDim1(); ++i) delta(k,j,i) = 0.0;
+  if (bc[outer_x3] != BoundaryFlag::block && bc[outer_x3] != BoundaryFlag::periodic)
+    for (int k=ke+1; k<delta.GetDim3(); ++k) for (int j=0; j<delta.GetDim2(); ++j)
+      for (int i=0; i<delta.GetDim1(); ++i) delta(k,j,i) = 0.0;
   return TaskStatus::next;
 }

@@ -25,7 +25,7 @@
 NRBoundaryVariable::NRBoundaryVariable(
     MeshBlock *pmb, AthenaArray<Real> *var_nr, AthenaArray<Real> *coarse_var,
     AthenaArray<Real> *var_flux, int num_phys) :
-    CellCenteredBoundaryVariable(pmb, var_nr, coarse_var, var_flux, num_phys, true) {
+    CellCenteredBoundaryVariable(pmb, var_nr, coarse_var, var_flux, num_phys, false) {
 }
 
 //----------------------------------------------------------------------------------------

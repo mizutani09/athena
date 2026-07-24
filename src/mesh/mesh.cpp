@@ -1699,7 +1699,6 @@ void Mesh::Initialize(int res_flag, ParameterInput *pin) {
           pmb->pnrrad->rad_bvar.StartReceiving(BoundaryCommSubset::radiation);
         if (NRMGFLD_ENABLED) {
           pmb->pnr->nrbvar.StartReceiving(BoundaryCommSubset::all);
-          pmb->pnr->delta_bvar.StartReceiving(BoundaryCommSubset::all);
         }
       }
 
@@ -1729,7 +1728,6 @@ void Mesh::Initialize(int res_flag, ParameterInput *pin) {
         }
         if (NRMGFLD_ENABLED) {
           pmb->pnr->nrbvar.SendBoundaryBuffers();
-          pmb->pnr->delta_bvar.SendBoundaryBuffers();
         }
 
 
@@ -1755,7 +1753,6 @@ void Mesh::Initialize(int res_flag, ParameterInput *pin) {
         }
         if (NRMGFLD_ENABLED) {
           pmb->pnr->nrbvar.ReceiveAndSetBoundariesWithWait();
-          pmb->pnr->delta_bvar.ReceiveAndSetBoundariesWithWait();
         }
 
         if (NR_RADIATION_ENABLED || IM_RADIATION_ENABLED)
@@ -1776,7 +1773,6 @@ void Mesh::Initialize(int res_flag, ParameterInput *pin) {
         
         if (NRMGFLD_ENABLED) {
           pmb->pnr->nrbvar.ClearBoundary(BoundaryCommSubset::all);
-          pmb->pnr->delta_bvar.ClearBoundary(BoundaryCommSubset::all);
         }
       }
 
@@ -1813,13 +1809,6 @@ void Mesh::Initialize(int res_flag, ParameterInput *pin) {
           pmb->phydro->hbvar.ReceiveAndSetBoundariesWithWait();
           if (NSCALARS > 0) {
             pmb->pscalars->sbvar.ReceiveAndSetBoundariesWithWait();
-          }
-          if (NRMGFLD_ENABLED) {
-            pmb->prfld->u_rad_fldbvar.ReceiveAndSetBoundariesWithWait();
-          }
-          if (NRMGFLD_ENABLED) {
-            pmb->pnr->nrbvar.ReceiveAndSetBoundariesWithWait();
-            pmb->pnr->delta_bvar.ReceiveAndSetBoundariesWithWait();
           }
           pbval->ClearBoundarySubset(BoundaryCommSubset::gr_amr,
                                      pbval->bvars_main_int);
@@ -2223,6 +2212,8 @@ void Mesh::CorrectMidpointInitialCondition() {
 
     if (IM_RADIATION_ENABLED)
       pmb->pnrrad->rad_bvar.StartReceiving(BoundaryCommSubset::radiation);
+    if (NRMGFLD_ENABLED)
+      pmb->pnr->nrbvar.StartReceiving(BoundaryCommSubset::all);
   }
 
 #pragma omp for private(pmb,pbval)
@@ -2250,7 +2241,6 @@ void Mesh::CorrectMidpointInitialCondition() {
     if (NRMGFLD_ENABLED) {
       // pmb->prfld->u_rad_fldbvar.SendBoundaryBuffers();
       pmb->pnr->nrbvar.SendBoundaryBuffers();
-      pmb->pnr->delta_bvar.SendBoundaryBuffers();
     }
   }
 
@@ -2279,7 +2269,6 @@ void Mesh::CorrectMidpointInitialCondition() {
     if (NRMGFLD_ENABLED) {
       // pmb->prfld->u_rad_fldbvar.ReceiveAndSetBoundariesWithWait();
       pmb->pnr->nrbvar.ReceiveAndSetBoundariesWithWait();
-      pmb->pnr->delta_bvar.ReceiveAndSetBoundariesWithWait();
     }
 
 
@@ -2294,6 +2283,8 @@ void Mesh::CorrectMidpointInitialCondition() {
     if (IM_RADIATION_ENABLED) {
       pmb->pnrrad->rad_bvar.ClearBoundary(BoundaryCommSubset::radiation);
     }
+    if (NRMGFLD_ENABLED)
+      pmb->pnr->nrbvar.ClearBoundary(BoundaryCommSubset::all);
   } // end second exchange of ghost cells
   return;
 }
@@ -2358,7 +2349,8 @@ void Mesh::ReserveMeshBlockPhysIDs() {
     ReserveTagPhysIDs(1);
   }
   if (NRMGFLD_ENABLED) {
-    ReserveTagPhysIDs(2); // for advection and NewtonRaphson
+    ReserveTagPhysIDs(CellCenteredBoundaryVariable::max_phys_id); // FLD advection
+    ReserveTagPhysIDs(1); // Newton-Raphson state
     ReserveTagPhysIDs(1); // for linearMG
   }
 

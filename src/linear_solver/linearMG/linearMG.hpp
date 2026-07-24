@@ -91,6 +91,8 @@ class linearMGDriver: public MultigridDriver {
   bool fsteady_;
   bool cache_coefficient_hierarchy_;
   bool coefficient_hierarchy_cached_;
+  int npostsolve_smooth_;
+  int nsmoothing_only_sweeps_;
 };
 
 

@@ -183,6 +183,7 @@ class Multigrid {
   Real rdx_, rdy_, rdz_;
   Real defscale_;
   AthenaArray<Real> *u_, *def_, *src_, *uold_, *coeff_, *matrix_;
+  AthenaArray<Real> iteration_backup_;
   MGCoordinates *coord_, *ccoord_;
 
  private:
@@ -222,7 +223,7 @@ class MultigridDriver {
   void SetupCoefficients();
   void SetupCoefficient(int n);
   void RestrictInitialData();
-  void TransferFromBlocksToRoot(bool initflag);
+  void TransferFromBlocksToRoot(bool initflag, bool transfer_u = false);
   void TransferFromRootToBlocks(bool folddata);
   void TransferCoefficientFromBlocksToRoot();
   void TransferCoefficientFromBlocksToRoot(int n);
@@ -385,7 +386,11 @@ inline void RestrictLinearCoefficientsCell(AthenaArray<Real> &dst,
   dst(linearSolver::DYPF, ck, cj, ci) = dyp_f;
   dst(linearSolver::DZMF, ck, cj, ci) = dzm_f;
   dst(linearSolver::DZPF, ck, cj, ci) = dzp_f;
-  dst(linearSolver::DCCF, ck, cj, ci) = dxm_f + dxp_f + dym_f + dyp_f + dzm_f + dzp_f;
+  // Diffusion off-diagonal coefficients are negative, while DCCF stores the
+  // corresponding positive diagonal contribution.  Preserve the row-sum
+  // relation on every coarse level.
+  dst(linearSolver::DCCF, ck, cj, ci) =
+      -(dxm_f + dxp_f + dym_f + dyp_f + dzm_f + dzp_f);
 
   dst(linearSolver::DCCS, ck, cj, ci) = RestrictOne(src, linearSolver::DCCS, fi, fj, fk);
   dst(linearSolver::DXMS, ck, cj, ci) = RestrictFaceX1Minus(src, linearSolver::DXMS,

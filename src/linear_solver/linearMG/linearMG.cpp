@@ -49,7 +49,8 @@ linearMGDriver::linearMGDriver(Mesh *pm, ParameterInput *pin, NewtonRaphsonDrive
                           nullptr,
                           1, linearSolver::NCOEFF, linearSolver::NMATRIX),
       pnrd_(pnrd), cache_coefficient_hierarchy_(true),
-      coefficient_hierarchy_cached_(false) {
+      coefficient_hierarchy_cached_(false), npostsolve_smooth_(0),
+      nsmoothing_only_sweeps_(256) {
   eps_ = pin->GetOrAddReal("nrfld", "threshold", -1.0);
   niter_ = pin->GetOrAddInteger("nrfld", "niteration", -1);
   ffas_ = pin->GetOrAddBoolean("nrfld", "fas", ffas_);
@@ -63,6 +64,16 @@ linearMGDriver::linearMGDriver(Mesh *pm, ParameterInput *pin, NewtonRaphsonDrive
       pin->GetOrAddBoolean("nrfld", "cache_coefficient_hierarchy", true);
   relative_defect_ = true;
   coarse_corr_scale_ = pin->GetOrAddReal("nrfld", "coarse_correction_scale", 1.0);
+  npostsolve_smooth_ = pin->GetOrAddInteger(
+      "nrfld", "post_mg_smooth", pm->multilevel ? 16 : 0);
+  nsmoothing_only_sweeps_ = pin->GetOrAddInteger(
+      "nrfld", "smoothing_only_sweeps", 256);
+  if (nsmoothing_only_sweeps_ <= 0) {
+    std::stringstream msg;
+    msg << "### FATAL ERROR in linearMGDriver::linearMGDriver" << std::endl
+        << "The nrfld/smoothing_only_sweeps parameter must be positive." << std::endl;
+    ATHENA_ERROR(msg);
+  }
   std::string smoother = pin->GetOrAddString("nrfld", "smoother", "jacobi-rb");
 //   matrixmode_ = 1;
   matrixmode_ = 0; // caution!
@@ -241,7 +252,16 @@ void linearMGDriver::Solve(int stage, Real dt) {
     CalculateMatrixAll();
   }
   // std::cout << "setup done at " << Globals::my_rank << std::endl;
-  if (mode_ == 0) {
+  if (smoothing_only_) {
+    // The NR globalization fallback must not use any coarse-grid correction.
+    // Start from a neutral correction and solve with the same fine-grid
+    // boundary operator that is used when the Newton residual is evaluated.
+#pragma omp parallel for num_threads(nthreads_)
+    for (auto itr = vmg_.begin(); itr < vmg_.end(); ++itr) {
+      linearMG *pmg = static_cast<linearMG*>(*itr);
+      pmg->pnr_->delta_u_.ZeroClear();
+    }
+  } else if (mode_ == 0) {
     SolveFMGCycle();
   } else {
     // Interpret threshold == 0.0 with niteration >= 0 as a fixed-count solve.
@@ -271,6 +291,71 @@ void linearMGDriver::Solve(int stage, Real dt) {
 
   // std::cout << "Result retrieved from linearMG at " << Globals::my_rank << std::endl;
   linmgtlist_->DoTaskListOneStage(pmy_mesh_, stage);
+  // MG and MeshRefinement use slightly different coarse/fine ghost
+  // interpolation.  Polish the returned correction with the exact
+  // MeshBlock boundary operator used by NRFLD, so the Newton step satisfies
+  // the same discrete Jacobian that will be used to evaluate the residual.
+  const int fine_sweeps = smoothing_only_
+                                           ? std::max(npostsolve_smooth_,
+                                                      nsmoothing_only_sweeps_)
+                                           : npostsolve_smooth_;
+  for (int sweep = 0; sweep < fine_sweeps; ++sweep) {
+#pragma omp parallel for num_threads(nthreads_)
+    for (auto itr = vmg_.begin(); itr < vmg_.end(); ++itr) {
+      linearMG *pmg = static_cast<linearMG*>(*itr);
+      NewtonRaphson *pnr = pmg->pnr_;
+      MeshBlock *pmb = pmg->pmy_block_;
+      AthenaArray<Real> &work = pmg->iteration_backup_;
+      const AthenaArray<Real> &delta = pnr->delta_u_;
+      const AthenaArray<Real> &coeff = pnr->coeff_;
+      const AthenaArray<Real> &src = pnr->src_;
+      const Real fac = dt_/SQR(pmb->pcoord->dx1f(pmb->is));
+      for (int k = pmb->ks; k <= pmb->ke; ++k) {
+        const int mk = k - pmb->ks + pmg->ngh_;
+        for (int j = pmb->js; j <= pmb->je; ++j) {
+          const int mj = j - pmb->js + pmg->ngh_;
+#pragma omp simd
+          for (int i = pmb->is; i <= pmb->ie; ++i) {
+            const int mi = i - pmb->is + pmg->ngh_;
+            const Real diag = fac*coeff(linearSolver::DCCF,k,j,i)
+                            + coeff(linearSolver::DCCS,k,j,i);
+            Real offdiag = (fac*coeff(linearSolver::DXMF,k,j,i)
+                              + coeff(linearSolver::DXMS,k,j,i))*delta(k,j,i-1);
+            offdiag += (fac*coeff(linearSolver::DXPF,k,j,i)
+                              + coeff(linearSolver::DXPS,k,j,i))*delta(k,j,i+1);
+            offdiag += (fac*coeff(linearSolver::DYMF,k,j,i)
+                              + coeff(linearSolver::DYMS,k,j,i))*delta(k,j-1,i);
+            offdiag += (fac*coeff(linearSolver::DYPF,k,j,i)
+                              + coeff(linearSolver::DYPS,k,j,i))*delta(k,j+1,i);
+            offdiag += (fac*coeff(linearSolver::DZMF,k,j,i)
+                              + coeff(linearSolver::DZMS,k,j,i))*delta(k-1,j,i);
+            offdiag += (fac*coeff(linearSolver::DZPF,k,j,i)
+                              + coeff(linearSolver::DZPS,k,j,i))*delta(k+1,j,i);
+            work(0,mk,mj,mi) = (src(k,j,i) - offdiag)/diag;
+          }
+        }
+      }
+    }
+#pragma omp parallel for num_threads(nthreads_)
+    for (auto itr = vmg_.begin(); itr < vmg_.end(); ++itr) {
+      linearMG *pmg = static_cast<linearMG*>(*itr);
+      NewtonRaphson *pnr = pmg->pnr_;
+      MeshBlock *pmb = pmg->pmy_block_;
+      const AthenaArray<Real> &work = pmg->iteration_backup_;
+      for (int k = pmb->ks; k <= pmb->ke; ++k) {
+        const int mk = k - pmb->ks + pmg->ngh_;
+        for (int j = pmb->js; j <= pmb->je; ++j) {
+          const int mj = j - pmb->js + pmg->ngh_;
+#pragma omp simd
+          for (int i = pmb->is; i <= pmb->ie; ++i) {
+            const int mi = i - pmb->is + pmg->ngh_;
+            pnr->delta_u_(k,j,i) = work(0,mk,mj,mi);
+          }
+        }
+      }
+    }
+    linmgtlist_->DoTaskListOneStage(pmy_mesh_, stage);
+  }
   // std::cout << "linearMG boundary conditions applied." << std::endl;
 // #pragma omp parallel for num_threads(nthreads_)
 //   for (auto itr = vmg_.begin(); itr < vmg_.end(); itr++) {

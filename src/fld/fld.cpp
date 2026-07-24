@@ -84,7 +84,8 @@ FLD::FLD(MeshBlock *pmb, ParameterInput *pin) :
              (pmb->pmy_mesh->f3 ? AthenaArray<Real>::DataStatus::allocated :
               AthenaArray<Real>::DataStatus::empty)}
     },
-    u_rad_fldbvar(pmb, &u_rad, &coarse_u_rad, u_rad_flux, 1, true),
+    u_rad_fldbvar(pmb, &u_rad, &coarse_u_rad, u_rad_flux,
+                  CellCenteredBoundaryVariable::max_phys_id, true),
     refinement_idx_(),
     is_couple(), only_rad(), cut_diff(), include_radiation_force(), fixed_u_rad()
     {
