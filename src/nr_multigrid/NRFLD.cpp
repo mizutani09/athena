@@ -504,16 +504,37 @@ void NRFLD::CalculateCoefficients(const AthenaArray<Real> &u_rad_old,
             coeff(linearSolver::DZPF,k,j,i) =
                 -derivetive(NewtonRaphsonFLD::dFr_dEr_zp,k,j,i);
           }
+          // Eliminate the gas-energy correction from the two-equation
+          // Newton system.  Since thermal exchange enters the gas and
+          // radiation equations with equal and opposite signs,
+          //
+          //   dFr/deg = 1 - dFg/deg
+          //
+          // for the local (non-diffusive) terms.  Writing the resulting
+          // Schur complement directly as
+          //
+          //   (1 + C) - B*C/(1 + B)
+          //
+          // loses all useful digits when the matter-radiation coupling is
+          // very stiff (B,C >> 1).  In the static-equilibrium test C can be
+          // O(1e20), which previously produced spurious values such as
+          // -65536, -256, or zero for this positive diagonal.  Use the
+          // algebraically identical forms
+          //
+          //   1 - (dFg/dEr)/(dFg/deg)
+          //   -(Fr + Fg) + Fg/(dFg/deg)
+          //
+          // for the local diagonal and reduced right-hand side.  These also
+          // preserve the exact cancellation of equal-and-opposite exchange
+          // residuals without subtracting two O(C) quantities.
+          const Real inv_dFg_deg =
+              1.0/derivetive(NewtonRaphsonFLD::dFg_deg,k,j,i);
           coeff(linearSolver::DCCS,k,j,i) =
-              1.0 + dt*pfld->c_ph*pfld->sigma_p(k,j,i);
-          coeff(linearSolver::DCCS,k,j,i) +=
-              -(derivetive(NewtonRaphsonFLD::dFr_deg,k,j,i)
-                /derivetive(NewtonRaphsonFLD::dFg_deg,k,j,i))
-              *derivetive(NewtonRaphsonFLD::dFg_dEr,k,j,i);
-          src(k,j,i) = -derivetive(NewtonRaphsonFLD::Fr,k,j,i)
-              + (derivetive(NewtonRaphsonFLD::dFr_deg,k,j,i)
-                 /derivetive(NewtonRaphsonFLD::dFg_deg,k,j,i))
-              *derivetive(NewtonRaphsonFLD::Fg,k,j,i);
+              1.0 - derivetive(NewtonRaphsonFLD::dFg_dEr,k,j,i)*inv_dFg_deg;
+          src(k,j,i) =
+              -(derivetive(NewtonRaphsonFLD::Fr,k,j,i)
+                + derivetive(NewtonRaphsonFLD::Fg,k,j,i))
+              + derivetive(NewtonRaphsonFLD::Fg,k,j,i)*inv_dFg_deg;
         }
 
         // output
