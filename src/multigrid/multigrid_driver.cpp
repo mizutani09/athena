@@ -49,7 +49,7 @@ MultigridDriver::MultigridDriver(Mesh *pm, MGBoundaryFunc *MGBoundary,
     coeffmask_(MGCoeffMask), pmy_mesh_(pm), fsubtract_average_(false),
     ffas_(pm->multilevel), redblack_(true), needinit_(true), fshowdef_(false),
     smoothing_only_(false), relative_defect_(false),
-    eps_(-1.0), dt_(0.0), coarse_corr_scale_(1.0), niter_(-1), npresmooth_(1),
+    eps_(-1.0), dt_(0.0), coarse_corr_scale_(1.0), niter_(-1),
     npostsmooth_(1),
     coffset_(0), fprolongation_(0), mporder_(-1), nmpcoeff_(0), mpo_(3), autompo_(false),
     nodipole_(false), nb_rank_(0) {
@@ -1243,7 +1243,7 @@ void MultigridDriver::SolveIterative() {
     def /= source_norm;
     
     if (def/olddef > 0.9) {
-      if (Globals::my_rank == 0)
+      if (fshowdef_ && Globals::my_rank == 0)
         std::cout << "### Warning in MultigridDriver::SolveIterative" << std::endl
                   << "Slow multigrid convergence : defect norm = " << def
                   << ", convergence factor = " << def/olddef << "." << std::endl;

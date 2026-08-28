@@ -1002,14 +1002,6 @@ void MGBoundaryValues::SetMultigridBoundaryFromFiner(const Real *buf,
 bool MGBoundaryValues::ReceiveMultigridBoundaryBuffers(BoundaryQuantity type,
                                                        bool folddata) {
   bool bflag = true;
-  int r; MPI_Comm_rank(MPI_COMM_WORLD, &r);
-  auto log_comm = [&](const char* where, int e, int peer, int tag, int cnt, MPI_Request req){
-    MPI_Fint req_f = MPI_Request_c2f(req);
-    fprintf(stderr,"[r%02d] %s e=%d peer=%d tag=%d cnt=%d req_f=%ld t=%.6f\n",
-            r, where, e, peer, tag, cnt, static_cast<long>(req_f), MPI_Wtime());
-  };
-
-  // log_comm("ReceiveMultigridBoundaryBuffers", 1, 0, 0, 0, MPI_REQUEST_NULL);
 
   for (int n = 0; n < nneighbor; ++n) {
     NeighborBlock& nb = neighbor[n];
@@ -1059,7 +1051,6 @@ bool MGBoundaryValues::ReceiveMultigridBoundaryBuffers(BoundaryQuantity type,
     }
     bdata_[bcolor_].flag[nb.bufid] = BoundaryStatus::completed; // completed
   }
-  // log_comm("ReceiveMultigridBoundaryBuffers", 0, 0, 0, 0, MPI_REQUEST_NULL);
 
   return bflag;
 }
