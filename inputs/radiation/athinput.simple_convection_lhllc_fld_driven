@@ -1,0 +1,145 @@
+# Smoothly seeded, more strongly superadiabatic LHLLC-FLD convection test.
+# Configure with: --prob=simple_convection_lhllc_fld --eos=adiabatic --flux=lhllc -nrmgfld -hdf5 -mpi
+
+<job>
+problem_id      = simple_convection_lhllc_fld_driven
+
+<output1>
+file_type       = hst
+dt              = 0.01
+
+<output2>
+file_type       = hdf5
+id              = prim_xz_slice
+variable        = prim
+dt              = 0.05
+x2_slice        = 1.536
+ghost_zones     = false
+
+<output3>
+file_type       = hdf5
+id              = uov_xz_slice
+variable        = uov
+dt              = 0.05
+x2_slice        = 1.536
+ghost_zones     = false
+
+<output4>
+file_type       = hdf5
+id              = prim_xy_slice
+variable        = prim
+dt              = 0.5
+x3_slice        = 1.536
+ghost_zones     = false
+
+<output5>
+file_type       = hdf5
+id              = uov_xy_slice
+variable        = uov
+dt              = 0.5
+x3_slice        = 1.536
+ghost_zones     = false
+
+<time>
+cfl_number      = 0.3
+tlim            = 1.0e60
+nlim            = 1
+integrator      = rk2
+xorder          = 2
+ncycle_out      = 10
+
+<mesh>
+nx1             = 64
+x1min           = 0.0
+x1max           = 3.072
+ix1_bc          = periodic
+ox1_bc          = periodic
+nx2             = 64
+x2min           = 0.0
+x2max           = 3.072
+ix2_bc          = periodic
+ox2_bc          = periodic
+nx3             = 64
+x3min           = 0.0
+x3max           = 3.072
+ix3_bc          = user
+ox3_bc          = user
+
+<meshblock>
+nx1             = 16
+nx2             = 16
+nx3             = 16
+
+<hydro>
+gamma           = 1.66666666666667
+rho_unit        = 1.0e-7
+egas_unit       = 5.0e5
+leng_unit       = 1.0e8
+mu              = 1.0
+
+<nrfld>
+mgmode          = FMG
+smoother        = jacobi-rb
+npresmooth      = 2
+npostsmooth     = 2
+omega           = 1.0
+threshold       = 1e-10
+# niteration      = 10
+nr_threshold    = 1e-10
+nr_niteration   = 40
+max_update_fraction = 1.0
+show_defect     = false
+ix1_bc          = periodic
+ox1_bc          = periodic
+ix2_bc          = periodic
+ox2_bc          = periodic
+ix3_bc          = user
+ox3_bc          = user
+linearMG_ix3_bc = zerograd
+linearMG_ox3_bc = zerograd
+
+<fld>
+is_couple               = true
+include_radiation_force = true
+only_rad                = false
+use_opacity_table       = true
+opacity_table_file      = opacity_table_rhoT_3p0_6p3.h5
+opacity_table_file_type = hdf5
+opacity_table_axis      = trho
+opacity_table_temperature_dataset = axes/log10_temperature
+opacity_table_x2_dataset = axes/log10_density
+opacity_table_planck_dataset = kappa/log10_planck
+opacity_table_rosseland_dataset = kappa/log10_rosseland
+fixed_flux_limiter      = false
+cut_diff                = false
+cut_Pnablav             = false
+reduced_c_factor        = 1.0e-2
+
+<problem>
+poly_n           = 1.4
+rho_top          = 1.0e-7
+T_top            = 5.772e3
+grav_acc         = 2.74e4
+z_ref            = 3.072
+temp_noise_amp   = 1e-3
+smooth_temp_noise = false
+profile_output   = simple_convection_initial_profiles.txt
+profile_zmax     = 0.0
+profile_tau_target_z = 2.0
+profile_tau_target   = 1.0
+rad_flux_cgs     = 6.3e10
+rad_top_alpha    = 0.5
+rad_top_erad_ext = 0.0
+mass_balance_on  = true
+mass_balance_relax_time = 0.75
+mass_balance_gain = 60.0
+mass_balance_rate_gain = 60.0
+mass_balance_min_scale = 0.7
+mass_balance_max_scale = 2.5
+PBND             = 0.0
+Cdmp             = 0.95
+s_in_from_profile = false
+s_in             = -1.90
+top_bc_mode      = rempel_outflow
+top_impenetrable = false
+top_outflow_only = true

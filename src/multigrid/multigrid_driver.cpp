@@ -1202,6 +1202,8 @@ void MultigridDriver::SolveFMGCycle() {
 
 void MultigridDriver::SolveIterative() {
   int n = 0;
+  int slow_count = 0;
+  Real slow_worst_factor = 0.0;
   Real def = 0.0, defmax = 0.0;
   Real source_norm = 1.0;
   if (relative_defect_) {
@@ -1219,17 +1221,15 @@ void MultigridDriver::SolveIterative() {
   while (def > eps_) {
     // Keep the best finest-grid iterate.  A V-cycle that increases the
     // residual must not be returned to the caller as the linear solution.
-    // This protection is needed for coarse/fine corrections on SMR/AMR
-    // meshes.  Avoid copying the complete solution before every V-cycle on
-    // uniform meshes, where the original MG path has no such correction.
-    const bool protect_iteration = pmy_mesh_->multilevel;
-    if (protect_iteration) {
+    // This protection is required whenever a V-cycle can temporarily
+    // increase the residual.  Uniform meshes with a physical Robin/Marshak
+    // boundary can do this as well as SMR/AMR meshes, so never discard the
+    // rollback state merely because the mesh is uniform.
 #pragma omp parallel for num_threads(nthreads_)
-      for (auto itr = vmg_.begin(); itr < vmg_.end(); ++itr) {
-        Multigrid *pmg = *itr;
-        AthenaArray<Real> &u = pmg->u_[pmg->current_level_];
-        std::memcpy(pmg->iteration_backup_.data(), u.data(), u.GetSizeInBytes());
-      }
+    for (auto itr = vmg_.begin(); itr < vmg_.end(); ++itr) {
+      Multigrid *pmg = *itr;
+      AthenaArray<Real> &u = pmg->u_[pmg->current_level_];
+      std::memcpy(pmg->iteration_backup_.data(), u.data(), u.GetSizeInBytes());
     }
     SolveVCycle(npresmooth_, npostsmooth_);
     if (matrixmode_ == 1)
@@ -1243,21 +1243,17 @@ void MultigridDriver::SolveIterative() {
     def /= source_norm;
     
     if (def/olddef > 0.9) {
-      if (Globals::my_rank == 0)
-        std::cout << "### Warning in MultigridDriver::SolveIterative" << std::endl
-                  << "Slow multigrid convergence : defect norm = " << def
-                  << ", convergence factor = " << def/olddef << "." << std::endl;
+      ++slow_count;
+      slow_worst_factor = std::max(slow_worst_factor, def/olddef);
       if (def/olddef > 1.0) {
         const Real rejected_def = def;
-        if (protect_iteration) {
 #pragma omp parallel for num_threads(nthreads_)
-          for (auto itr = vmg_.begin(); itr < vmg_.end(); ++itr) {
-            Multigrid *pmg = *itr;
-            AthenaArray<Real> &u = pmg->u_[pmg->current_level_];
-            std::memcpy(u.data(), pmg->iteration_backup_.data(), u.GetSizeInBytes());
-          }
-          def = olddef;
+        for (auto itr = vmg_.begin(); itr < vmg_.end(); ++itr) {
+          Multigrid *pmg = *itr;
+          AthenaArray<Real> &u = pmg->u_[pmg->current_level_];
+          std::memcpy(u.data(), pmg->iteration_backup_.data(), u.GetSizeInBytes());
         }
+        def = olddef;
         if (Globals::my_rank == 0)
           std::cout << "### Warning in MultigridDriver::SolveIterative" << std::endl
                     << "Rejecting divergent V-cycle: defect norm = " << rejected_def
@@ -1267,12 +1263,17 @@ void MultigridDriver::SolveIterative() {
       }
       if (eps_ == 0.0) break;
     }
-    // if (n > 100) {
-    if (n > 30) {
+    // Robin/Marshak radiation boundaries can require substantially more
+    // V-cycles than the old fixed limit of 30.  Stopping there returns a
+    // meshblock-dependent approximate solution, because the local MG
+    // hierarchy changes with the meshblock size.
+    constexpr int max_vcycles = 100;
+    if (n > max_vcycles) {
       if (Globals::my_rank == 0) {
         std::cout
             << "### Warning in MultigridDriver::SolveIterative" << std::endl
-            << "Aborting because the # iterations is too large, n > 30." << std::endl
+            << "Aborting because the # iterations is too large, n > "
+            << max_vcycles << "." << std::endl
             << "Check the solution as it may not be accurate enough." << std::endl;
       }
       break;
@@ -1281,6 +1282,13 @@ void MultigridDriver::SolveIterative() {
   }
   if (fsubtract_average_)
     SubtractAverage(MGVariable::u);
+  if (slow_count > 0 && Globals::my_rank == 0) {
+    std::cout << "### Warning in MultigridDriver::SolveIterative" << std::endl
+              << "Slow multigrid convergence occurred " << slow_count
+              << " times in this solve; worst convergence factor = "
+              << slow_worst_factor << ", final defect norm = " << def << "."
+              << std::endl;
+  }
   return;
 }
 

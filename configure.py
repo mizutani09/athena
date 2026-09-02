@@ -388,12 +388,15 @@ if args['flux'] == 'default':
 # standard HLLC implementation used by non-FLD configurations.
 if args['nrmgfld']:
     if args['b']:
-        raise SystemExit('### CONFIGURE ERROR: HLLC-FLD does not support MHD')
+        raise SystemExit('### CONFIGURE ERROR: HLLC/LHLLC-FLD does not support MHD')
     if args['eos'] == 'isothermal':
-        raise SystemExit('### CONFIGURE ERROR: HLLC-FLD requires an energy equation')
+        raise SystemExit('### CONFIGURE ERROR: HLLC/LHLLC-FLD requires an energy equation')
     if args['s'] or args['g']:
-        raise SystemExit('### CONFIGURE ERROR: HLLC-FLD is Newtonian only')
-    args['flux'] = 'hllc_fld'
+        raise SystemExit('### CONFIGURE ERROR: HLLC/LHLLC-FLD is Newtonian only')
+    if args['flux'] == 'lhllc':
+        args['flux'] = 'lhllc_fld'
+    else:
+        args['flux'] = 'hllc_fld'
 
 # Check Riemann solver compatibility
 if args['flux'] == 'hllc' and args['eos'] == 'isothermal':
@@ -434,7 +437,7 @@ if args['eos'][:8] == 'general/':
     if args['s'] or args['g']:
         raise SystemExit('### CONFIGURE ERROR: '
                          + 'General EOS is incompatible with relativity')
-    if args['flux'] not in ['hllc', 'hllc_fld', 'hlld']:
+    if args['flux'] not in ['hllc', 'hllc_fld', 'lhllc_fld', 'hlld']:
         raise SystemExit('### CONFIGURE ERROR: '
                          + 'General EOS is incompatible with flux ' + args['flux'])
 

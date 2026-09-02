@@ -87,8 +87,11 @@ FLD::FLD(MeshBlock *pmb, ParameterInput *pin) :
     u_rad_fldbvar(pmb, &u_rad, &coarse_u_rad, u_rad_flux,
                   CellCenteredBoundaryVariable::max_phys_id, true),
     refinement_idx_(),
-    is_couple(), only_rad(), cut_diff(), include_radiation_force(), fixed_u_rad()
+    is_couple(), only_rad(), cut_diff(), include_radiation_force(), fixed_u_rad(),
+    hydro_top_outflow_diode(false),
+    marshak_top_boundary(), marshak_top_alpha(0.5), marshak_top_erad_ext(0.0)
     {
+  marshak_dface.NewAthenaArray(pmb->ncells3, pmb->ncells2, pmb->ncells1);
   is_couple = pin->GetOrAddBoolean("fld", "is_couple", true);
   only_rad = pin->GetOrAddBoolean("fld", "only_rad", false);
   cut_diff = pin->GetOrAddBoolean("fld", "cut_diff", false);

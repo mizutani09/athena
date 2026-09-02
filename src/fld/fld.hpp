@@ -87,6 +87,13 @@ class FLD {
   bool fixed_u_rad;
   // Explicit O(v/c) mixed-frame energy exchange.
   bool include_mixed_frame_terms;
+  // Optional hydrodynamic diode used by an outflow-only physical upper
+  // boundary.  It is consumed only by the LHLLC-FLD Riemann solver.
+  bool hydro_top_outflow_diode;
+  bool marshak_top_boundary;
+  Real marshak_top_alpha;
+  Real marshak_top_erad_ext;
+  AthenaArray<Real> marshak_dface;
 
   // for interaction with Hydro
   void LoadHydroVariables(const AthenaArray<Real> &w, AthenaArray<Real> &fld_u_gas);

@@ -48,6 +48,12 @@ meshtest.dat
 *~
 *.swp
 
+# Local experiment and editor artifacts
+.vscode/
+work_runs/
+build*.log
+__pycache__/
+
 # Gcov: GCC coverage testing tool- data files
 *.gcno
 *.gcda

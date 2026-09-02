@@ -374,6 +374,12 @@ void NRFLD::CalculateCoefficientsOnce(const AthenaArray<Real> &u_pre,
         R_face = gradE_face/(sigma_rface*E_face);
         lambda_face = RadFLD::FluxLimiter(R_face, pfld->fixed_flux_limiter);
         derivetive(NewtonRaphsonFLD::dFr_dEr_zp,k,j,i) = pfld->c_ph*lambda_face/sigma_rface;
+        // Preserve the lagged upper-face diffusion coefficient used by this
+        // Newton solve.  The Marshak residual/Jacobian and diagnostics must
+        // use this exact coefficient rather than an uninitialized side array
+        // or an independently reconstructed approximation.
+        pfld->marshak_dface(k,j,i) =
+            derivetive(NewtonRaphsonFLD::dFr_dEr_zp,k,j,i);
 
       }
     }
@@ -388,6 +394,7 @@ void NRFLD::CalculateCoefficientsOnce(const AthenaArray<Real> &u_pre,
           for (int n = 0; n < 6; n++) {
             derivetive(NewtonRaphsonFLD::dFr_dEr_xm+n,k,j,i) = 0.0;
           }
+          pfld->marshak_dface(k,j,i) = 0.0;
         }
       }
     }
@@ -425,6 +432,10 @@ void NRFLD::CalculateCoefficients(const AthenaArray<Real> &u_rad_old,
   int ks = pmy_block_->ks, ke = pmy_block_->ke;
   Real dx = pmy_block_->pcoord->dx1f(is);
   Real idx2 = 1.0/(dx*dx);
+  // Apply the Marshak radiation condition only on the physical upper
+  // boundary, never on the upper face of an interior z meshblock.
+  const bool physical_top =
+      pmy_block_->block_size.x3max == pmy_block_->pmy_mesh->mesh_size.x3max;
 
 
   for (int k=ks; k<=ke; k++) {
@@ -457,7 +468,22 @@ void NRFLD::CalculateCoefficients(const AthenaArray<Real> &u_rad_old,
         diff_term += derivetive(NewtonRaphsonFLD::dFr_dEr_ym,k,j,i)*(u_rad_new(k,j-1,i) - u_rad_new(k,j,i));
         diff_term += derivetive(NewtonRaphsonFLD::dFr_dEr_yp,k,j,i)*(u_rad_new(k,j+1,i) - u_rad_new(k,j,i));
         diff_term += derivetive(NewtonRaphsonFLD::dFr_dEr_zm,k,j,i)*(u_rad_new(k-1,j,i) - u_rad_new(k,j,i));
-        diff_term += derivetive(NewtonRaphsonFLD::dFr_dEr_zp,k,j,i)*(u_rad_new(k+1,j,i) - u_rad_new(k,j,i));
+        Real marshak_dflux_dE = 0.0;
+        if (pfld->marshak_top_boundary && physical_top && k == ke) {
+          const Real dface = std::max(pfld->marshak_dface(k,j,i), TINY_NUMBER);
+          const Real acoef = pfld->marshak_top_alpha*pfld->c_ph*0.5*dx;
+          const Real eb = (dface*u_rad_new(k,j,i)
+                           + acoef*pfld->marshak_top_erad_ext)
+                          /std::max(dface + acoef, TINY_NUMBER);
+          const Real ftop = pfld->marshak_top_alpha*pfld->c_ph
+                          *(eb - pfld->marshak_top_erad_ext);
+          diff_term += -ftop*dx;
+          marshak_dflux_dE = pfld->marshak_top_alpha*pfld->c_ph*dface
+                           /std::max(dface + acoef, TINY_NUMBER);
+        } else {
+          diff_term += derivetive(NewtonRaphsonFLD::dFr_dEr_zp,k,j,i)
+                     *(u_rad_new(k+1,j,i) - u_rad_new(k,j,i));
+        }
         diff_term *= idx2;
 
         // The implicit subsystem contains only matter-radiation thermal
@@ -471,8 +497,13 @@ void NRFLD::CalculateCoefficients(const AthenaArray<Real> &u_rad_old,
         derivetive(NewtonRaphsonFLD::dFg_deg,k,j,i) = 1.0 + 4.0*dt*c_sigma_p*pfld->a_r*std::pow(T_gas_new,3)*def_coeff(NewtonRaphsonFLD::DCOUPLE,k,j,i);
         derivetive(NewtonRaphsonFLD::dFg_dEr,k,j,i) = -dt*c_sigma_p;
         derivetive(NewtonRaphsonFLD::dFr_deg,k,j,i) = -4.0*dt*c_sigma_p*pfld->a_r*std::pow(T_gas_new,3)*def_coeff(NewtonRaphsonFLD::DCOUPLE,k,j,i);
+        Real boundary_coeff = sum_dcp;
+        if (pfld->marshak_top_boundary && physical_top && k == ke &&
+            !fixed_linear_coefficients_initialized_)
+          boundary_coeff = sum_dcp - derivetive(NewtonRaphsonFLD::dFr_dEr_zp,k,j,i)
+                         + dx*marshak_dflux_dE;
         derivetive(NewtonRaphsonFLD::dFr_dEr,k,j,i) =
-            1.0 + dt*(c_sigma_p + idx2*sum_dcp);
+            1.0 + dt*(c_sigma_p + idx2*boundary_coeff);
 
 
         if (pfld->fixed_u_rad) {
@@ -490,7 +521,7 @@ void NRFLD::CalculateCoefficients(const AthenaArray<Real> &u_rad_old,
           src(k,j,i) = 0.0;
         } else {
           if (!fixed_linear_coefficients_initialized_) {
-            coeff(linearSolver::DCCF,k,j,i) = sum_dcp;
+            coeff(linearSolver::DCCF,k,j,i) = boundary_coeff;
             coeff(linearSolver::DXMF,k,j,i) =
                 -derivetive(NewtonRaphsonFLD::dFr_dEr_xm,k,j,i);
             coeff(linearSolver::DXPF,k,j,i) =
@@ -502,7 +533,8 @@ void NRFLD::CalculateCoefficients(const AthenaArray<Real> &u_rad_old,
             coeff(linearSolver::DZMF,k,j,i) =
                 -derivetive(NewtonRaphsonFLD::dFr_dEr_zm,k,j,i);
             coeff(linearSolver::DZPF,k,j,i) =
-                -derivetive(NewtonRaphsonFLD::dFr_dEr_zp,k,j,i);
+                (pfld->marshak_top_boundary && physical_top && k == ke) ? 0.0
+                : -derivetive(NewtonRaphsonFLD::dFr_dEr_zp,k,j,i);
           }
           coeff(linearSolver::DCCS,k,j,i) =
               1.0 + dt*pfld->c_ph*pfld->sigma_p(k,j,i);
@@ -593,7 +625,20 @@ void NRFLD::CalculateDefect(AthenaArray<Real> &def, const AthenaArray<Real> &u,
         diff_term += -coeff(linearSolver::DYMF,k,j,i)*(u(k,j-1,i) - u(k,j,i));
         diff_term += -coeff(linearSolver::DYPF,k,j,i)*(u(k,j+1,i) - u(k,j,i));
         diff_term += -coeff(linearSolver::DZMF,k,j,i)*(u(k-1,j,i) - u(k,j,i));
-        diff_term += -coeff(linearSolver::DZPF,k,j,i)*(u(k+1,j,i) - u(k,j,i));
+        const bool physical_top =
+            pmb->block_size.x3max == pmb->pmy_mesh->mesh_size.x3max;
+        if (pfld->marshak_top_boundary && physical_top && k == ku) {
+          const Real dface = std::max(pfld->marshak_dface(k,j,i), TINY_NUMBER);
+          const Real acoef = pfld->marshak_top_alpha*pfld->c_ph*0.5*dx;
+          const Real eb = (dface*u(k,j,i) + acoef*pfld->marshak_top_erad_ext)
+                        /std::max(dface + acoef, TINY_NUMBER);
+          const Real ftop = pfld->marshak_top_alpha*pfld->c_ph
+                          *(eb - pfld->marshak_top_erad_ext);
+          diff_term += -ftop*dx;
+        } else {
+          diff_term += -coeff(linearSolver::DZPF,k,j,i)
+                     *(u(k+1,j,i) - u(k,j,i));
+        }
         diff_term *= idx2;
 
         Real Fg = (u_gas(k,j,i) - pfld->u_gas(k,j,i)) + dt*src_term;
