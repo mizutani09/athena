@@ -1,0 +1,120 @@
+<comment>
+problem   = 10 Msun, 510 Rsun composite modified-Lane-Emden RSG with NR-FLD
+configure = --prob=nrfld_conv_star --eos=adiabatic -nrmgfld -mpi -hdf5
+
+<job>
+problem_id = nrfld_conv_star
+
+<output1>
+file_type = hst
+dcycle    = 1
+
+<output2>
+file_type = hdf5
+variable  = prim
+dt        = 0.05
+
+<output3>
+file_type = hdf5
+variable  = uov
+dt        = 0.05
+
+<time>
+cfl_number = 0.2
+nlim       = -1
+tlim       = 1.0
+integrator = rk2
+xorder     = 2
+ncycle_out = 10
+
+<mesh>
+nx1 = 64
+x1min = -1.5
+x1max =  1.5
+ix1_bc = outflow
+ox1_bc = outflow
+nx2 = 64
+x2min = -1.5
+x2max =  1.5
+ix2_bc = outflow
+ox2_bc = outflow
+nx3 = 64
+x3min = -1.5
+x3max =  1.5
+ix3_bc = outflow
+ox3_bc = outflow
+
+<meshblock>
+nx1 = 32
+nx2 = 32
+nx3 = 32
+
+<hydro>
+gamma     = 1.6666666666666667
+rho_unit  = 6.23925895e-5
+egas_unit = 5.52235370e9
+leng_unit = 3.54807000e13
+mu        = 0.62
+dfloor    = 1.0e-8
+pfloor    = 1.0e-8
+
+<nrfld>
+mgmode       = FMG
+smoother     = jacobi-rb
+prolongation = trilinear
+npresmooth   = 2
+npostsmooth  = 2
+omega        = 1.0
+threshold    = 1.0e-12
+niteration   = 10
+nr_threshold = 1.0e-8
+nr_niteration = 50
+ix1_bc = outflow
+ox1_bc = outflow
+ix2_bc = outflow
+ox2_bc = outflow
+ix3_bc = outflow
+ox3_bc = outflow
+
+<fld>
+is_couple              = true
+only_rad               = false
+cut_diff               = false
+include_radiation_force = true
+include_mixed_frame_terms = true
+fixed_flux_limiter     = false
+fixed_u_rad            = false
+use_opacity_table      = false
+use_profile_opacity    = true
+# Mass opacities in cm^2 g^-1.  The pgen converts kappa*rho to code inverse length.
+const_opacity_P = 1.0e-2
+const_opacity_R = 1.0e-2
+
+<problem>
+stellar_profile_file = inputs/radiation/rsg10_modified_le.dat
+stellar_hse_profile_file = stellar_hse_profile.dat
+rstar_cgs            = 3.54807000e13
+mstar_cgs            = 1.98847000e34
+# 10^4 Lsun; set to zero for a pure hydrostatic commissioning run.
+luminosity_cgs       = 3.828e37
+heat_radius_fraction = 0.20
+velocity_perturb_fraction = 1.0e-3
+# Balance the initial gas+radiation pressure with the fixed gravity on the
+# Cartesian finite-volume mesh. Set false for the analytic radial gravity.
+discrete_hse_gravity = true
+# Dampen Cartesian mapping transients first, then ramp the core luminosity on.
+relaxation_end       = 2.00
+relaxation_timescale = 0.05
+heating_start        = 2.00
+heating_ramp         = 1.00
+# The softened point-mass region is not a resolved stellar core on the
+# commissioning mesh. Anchor it to the 1-D equilibrium and taper smoothly.
+core_anchor_radius_fraction = 0.15
+core_anchor_width_fraction  = 0.05
+core_anchor_timescale       = 0.01
+core_anchor_thermodynamics  = false
+# Transparent numerical atmosphere: remove radiation accumulated by the
+# zero-gradient multigrid boundary without altering the stellar envelope.
+atmosphere_anchor_radius_fraction = 1.05
+atmosphere_anchor_width_fraction  = 0.10
+atmosphere_anchor_timescale       = 0.01

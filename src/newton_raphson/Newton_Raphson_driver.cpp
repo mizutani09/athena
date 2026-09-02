@@ -543,7 +543,10 @@ void NewtonRaphsonDriver::Solve_general(int stage, Real dt) {
         pnr->RestoreIterate();
       }
 
-      if (!base_smoothing_only && !use_smoothing_retry
+      // Coarse-correction damping is a safeguard for coarse/fine MG
+      // coupling.  On a uniform mesh it only repeats the same Newton solve.
+      if (pmy_mesh_->multilevel
+          && !base_smoothing_only && !use_smoothing_retry
           && ncoarse_retry < mg_coarse_retry_max_
           && coarse_corr_trial_scale*mg_coarse_retry_factor_
                  >= mg_coarse_retry_min_scale_) {
@@ -561,7 +564,10 @@ void NewtonRaphsonDriver::Solve_general(int stage, Real dt) {
         continue;
       }
 
-      if (use_mg_smoothing_fallback_ && !base_smoothing_only && !use_smoothing_retry) {
+      // The fine-grid-only fallback corrects an SMR/AMR transfer mismatch;
+      // it is redundant (and expensive) when no refinement levels exist.
+      if (pmy_mesh_->multilevel && use_mg_smoothing_fallback_
+          && !base_smoothing_only && !use_smoothing_retry) {
         use_smoothing_retry = true;
         if (fshowdef_ && Globals::my_rank == 0) {
           std::cout << "### Warning in NewtonRaphsonDriver::SolveIterative" << std::endl

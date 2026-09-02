@@ -39,7 +39,6 @@
 // Order must match RadFLD::OpacityIndex in fld.hpp.
 const char *opacity_var_names[] = {"planck_mean_opacity", "rosseland_mean_opacity"};
 
-#ifdef HDF5OUTPUT
 namespace {
 constexpr const char *kOpacityBlockPrimary = "fld";
 
@@ -63,6 +62,7 @@ bool GetOpacityBoolOrDefault(ParameterInput *pin, const std::string &name,
   return default_value;
 }
 
+#ifdef HDF5OUTPUT
 bool FindExistingDataset(hid_t file, const std::vector<std::string> &candidates,
                          std::string *found_path) {
   for (const auto &path : candidates) {
@@ -155,8 +155,8 @@ void Read2DDatasetShape(const std::string &fn, const std::string &dataset_path,
   H5Fclose(file);
   H5Pclose(property_list_file);
 }
-}  // namespace
 #endif
+}  // namespace
 
 //----------------------------------------------------------------------------------------
 //! \fn void ReadAsciiOpacityTable(std::string fn, UserOpacityTable *puser_table, ParameterInput *pin)

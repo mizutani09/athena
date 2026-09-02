@@ -1,0 +1,132 @@
+# The timestep is limited to CFL=0.1 so that the variable-coefficient FLD
+# Jacobian remains in the robust convergence range of the standard FMG
+# V-cycle.  No fine-grid-only smoothing is used.  MeshBlock=16 is the more
+# efficient default; MeshBlock=8 is also supported for decomposition tests.
+# The linear solve uses an inexact-Newton relative tolerance of 0.2, while
+# the nonlinear NR residual is still converged to 1e-7.  Driving every linear
+# correction to 1e-8 is unnecessary and stalls on low-frequency SMR errors.
+
+<comment>
+problem = 10 Msun RSG NR-FLD; domain +/-2.56 with one SMR level inside +/-1.28
+
+<job>
+problem_id = nrfld_conv_star_smr
+
+<output1>
+file_type = hst
+dcycle    = 1
+
+<output2>
+file_type = hdf5
+variable  = prim
+dt        = 0.05
+
+<output3>
+file_type = hdf5
+variable  = uov
+dt        = 0.05
+
+<time>
+cfl_number = 0.1
+nlim       = -1
+tlim       = 1.0
+integrator = rk2
+xorder     = 2
+ncycle_out = 10
+
+<mesh>
+refinement = static
+nx1 = 64
+x1min = -2.56
+x1max =  2.56
+ix1_bc = outflow
+ox1_bc = outflow
+nx2 = 64
+x2min = -2.56
+x2max =  2.56
+ix2_bc = outflow
+ox2_bc = outflow
+nx3 = 64
+x3min = -2.56
+x3max =  2.56
+ix3_bc = outflow
+ox3_bc = outflow
+
+<meshblock>
+nx1 = 16
+nx2 = 16
+nx3 = 16
+
+<refinement1>
+level = 1
+x1min = -1.28
+x1max =  1.28
+x2min = -1.28
+x2max =  1.28
+x3min = -1.28
+x3max =  1.28
+
+<hydro>
+gamma     = 1.6666666666666667
+rho_unit  = 6.23925895e-5
+egas_unit = 5.52235370e9
+leng_unit = 3.54807000e13
+mu        = 0.62
+dfloor    = 1.0e-8
+pfloor    = 1.0e-8
+
+<nrfld>
+show_defect = false
+mgmode       = FMG
+smoother     = jacobi-rb
+prolongation = trilinear
+npresmooth   = 2
+npostsmooth  = 2
+smoothing_only = false
+smoothing_only_sweeps = 256
+post_mg_smooth = 0
+omega        = 1.0
+threshold    = 2.0e-1
+niteration   = 10
+nr_threshold = 1.0e-7
+nr_niteration = 50
+ix1_bc = outflow
+ox1_bc = outflow
+ix2_bc = outflow
+ox2_bc = outflow
+ix3_bc = outflow
+ox3_bc = outflow
+
+<fld>
+is_couple               = true
+only_rad                = false
+cut_diff                = false
+include_radiation_force = true
+include_mixed_frame_terms = true
+fixed_flux_limiter      = false
+fixed_u_rad             = false
+use_opacity_table       = false
+use_profile_opacity     = true
+const_opacity_P = 1.0e-2
+const_opacity_R = 1.0e-2
+
+<problem>
+stellar_profile_file = inputs/radiation/rsg10_modified_le.dat
+stellar_hse_profile_file = stellar_hse_profile.dat
+rstar_cgs            = 3.54807000e13
+mstar_cgs            = 1.98847000e34
+luminosity_cgs       = 3.828e37
+heat_radius_fraction = 0.20
+velocity_perturb_fraction = 1.0e-3
+discrete_hse_gravity = true
+relaxation_end       = 2.00
+relaxation_timescale = 0.05
+heating_start        = 2.00
+heating_ramp         = 1.00
+core_anchor_radius_fraction = 0.15
+core_anchor_width_fraction  = 0.05
+core_anchor_timescale       = 0.01
+core_anchor_thermodynamics  = false
+atmosphere_anchor_radius_fraction = 1.05
+atmosphere_anchor_width_fraction  = 0.10
+atmosphere_anchor_timescale       = 0.01
