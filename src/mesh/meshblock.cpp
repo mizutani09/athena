@@ -563,6 +563,10 @@ MeshBlock::MeshBlock(int igid, int ilid, Mesh *pm, ParameterInput *pin,
     os += pnr->u_.GetSizeInBytes();
     std::memcpy(pnr->delta_u_.data(), &(mbdata[os]), pnr->delta_u_.GetSizeInBytes());
     os += pnr->delta_u_.GetSizeInBytes();
+    // FLD::u_rad is the state used by transport and by NRFLD::LoadVariables().
+    // Restore it before mesh initialization exchanges its ghost zones;
+    // otherwise the first post-restart NR solve starts from zero radiation.
+    prfld->u_rad = pnr->u_;
   }
 
   // (conserved variable) Passive scalars:

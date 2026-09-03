@@ -11,6 +11,7 @@
 // C++ headers
 #include <algorithm>
 #include <cmath>
+#include <cstddef>    // std::size_t
 #include <cstring>    // memset, memcpy
 #include <iostream>
 #include <sstream>    // stringstream
@@ -113,20 +114,33 @@ Multigrid::Multigrid(MultigridDriver *pmd, MeshBlock *pmb, int nghost) :
     }
   }
 
+  // Both the root-grid and MeshBlock paths must produce at least one level.
+  // Validate the signed value before it is converted to the size_type used by
+  // new[].  Besides catching malformed grid metadata, this gives LTO's value-
+  // range analysis an explicit bound and avoids a spurious allocation-size
+  // warning with recent GCC releases.
+  if (nlevel_ <= 0 || nlevel_ > 20) {
+    std::stringstream msg;
+    msg << "### FATAL ERROR in Multigrid::Multigrid" << std::endl
+        << "Invalid number of multigrid levels: " << nlevel_ << std::endl;
+    ATHENA_ERROR(msg);
+    return;
+  }
+  const std::size_t nlevel = static_cast<std::size_t>(nlevel_);
   current_level_ = nlevel_-1;
 
   // allocate arrays
-  u_ = new AthenaArray<Real>[nlevel_];
-  src_ = new AthenaArray<Real>[nlevel_];
-  def_ = new AthenaArray<Real>[nlevel_];
-  coord_ = new MGCoordinates[nlevel_];
-  ccoord_ = new MGCoordinates[nlevel_];
-  coeff_ = new AthenaArray<Real>[nlevel_];
-  matrix_ = new AthenaArray<Real>[nlevel_];
+  u_ = new AthenaArray<Real>[nlevel];
+  src_ = new AthenaArray<Real>[nlevel];
+  def_ = new AthenaArray<Real>[nlevel];
+  coord_ = new MGCoordinates[nlevel];
+  ccoord_ = new MGCoordinates[nlevel];
+  coeff_ = new AthenaArray<Real>[nlevel];
+  matrix_ = new AthenaArray<Real>[nlevel];
   if (pmy_block_ == nullptr)
-    uold_ = new AthenaArray<Real>[nlevel_];
+    uold_ = new AthenaArray<Real>[nlevel];
   else
-    uold_ = new AthenaArray<Real>[nlevel_];
+    uold_ = new AthenaArray<Real>[nlevel];
   for (int l = 0; l < nlevel_; l++) {
     int ll=nlevel_-1-l;
     int ncx=(size_.nx1>>ll)+2*ngh_;

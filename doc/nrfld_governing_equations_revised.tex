@@ -1,0 +1,295 @@
+% Replacement text prepared from the implementation at commit 6a82c276.
+% The bibliography keys Krumholz2007 and Zhang2011 should be replaced by the
+% corresponding keys in the main manuscript bibliography if they differ.
+
+\section{Governing Equations and FLD Closure}
+\label{sec:basic_equations}
+
+\subsection{Mixed-frame grey radiation hydrodynamics}
+\label{sec:rhd_equations}
+
+We solve the non-relativistic, frequency-integrated grey
+radiation-hydrodynamics equations without magnetic fields or gravity.  The
+material variables are the mass density $\rho$, velocity $\bm v$, gas pressure
+$P_{\rm gas}$, and total gas energy density
+\begin{align}
+    e_{\rm gas,tot}
+    = e_{\rm gas}+\frac{1}{2}\rho |\bm v|^2,
+    \label{eq:gas_total_energy_definition}
+\end{align}
+where $e_{\rm gas}$ is the gas internal energy density.  The radiation field
+is represented by the lab-frame radiation energy density $E_{\rm rad}$.  The
+opacities, on the other hand, are evaluated in the frame comoving with the
+gas.  Thus, the formulation is a mixed-frame FLD system
+\citep{Krumholz2007,Zhang2011}.
+
+The implementation evolves the following reduced system:
+\begin{align}
+    \frac{\partial \rho}{\partial t}
+    +\nabla\cdot(\rho\bm v)
+    &=0,
+    \label{eq:rhd_mass}\\
+    \frac{\partial(\rho\bm v)}{\partial t}
+    +\nabla\cdot
+    \left(\rho\bm v\bm v+P_{\rm gas}{\sf I}\right)
+    &=-\lambda\nabla E_{\rm rad},
+    \label{eq:rhd_momentum}\\
+    \frac{\partial e_{\rm gas,tot}}{\partial t}
+    +\nabla\cdot
+    \left[(e_{\rm gas,tot}+P_{\rm gas})\bm v\right]
+    &=-Q_{\rm th}+W_{\rm mf},
+    \label{eq:rhd_gas_energy}\\
+    \frac{\partial E_{\rm rad}}{\partial t}
+    +\nabla\cdot\left(\zeta E_{\rm rad}\bm v\right)
+    &=\nabla\cdot\left(D\nabla E_{\rm rad}\right)
+      +Q_{\rm th}-W_{\rm mf}.
+    \label{eq:rhd_radiation_energy}
+\end{align}
+Here
+\begin{align}
+    D&=\frac{c\lambda}{\sigma_{\rm R}},
+    \label{eq:fld_diffusion_coefficient}\\
+    \zeta&=\frac{3-\chi}{2},
+    \label{eq:radiation_advection_factor}\\
+    Q_{\rm th}
+    &=c\sigma_{\rm P}
+      \left(aT_{\rm gas}^{4}-E_{\rm rad}\right),
+    \label{eq:thermal_coupling}\\
+    W_{\rm mf}
+    &=\lambda\left(\frac{2\sigma_{\rm P}}{\sigma_{\rm R}}-1\right)
+      \bm v\cdot\nabla E_{\rm rad}.
+    \label{eq:mixed_frame_work}
+\end{align}
+A positive $Q_{\rm th}$ transfers energy from the gas to the radiation field.
+The term $W_{\rm mf}$ is the explicit $O(v/c)$ mixed-frame energy correction;
+it contains both diffusion work and the Lorentz-transformation correction to
+emission and absorption.  It is applied with equal and opposite signs to the
+gas and radiation energies.  The lab-frame radiation flux represented by
+Equation~\eqref{eq:rhd_radiation_energy} is therefore
+\begin{align}
+    \bm F_{\rm rad}
+    =-D\nabla E_{\rm rad}+\zeta E_{\rm rad}\bm v.
+    \label{eq:lab_frame_radiation_flux}
+\end{align}
+The second term is the advective radiation-enthalpy flux.  In particular,
+$\zeta\rightarrow4/3$ in the optically thick limit and
+$\zeta\rightarrow1$ in the streaming limit.
+
+The exchange terms cancel exactly upon adding
+Equations~\eqref{eq:rhd_gas_energy} and
+\eqref{eq:rhd_radiation_energy}.  In the absence of boundary fluxes, the
+continuum equations consequently conserve the sum of gas and radiation
+energies.  In contrast, FLD does not evolve an independent radiation momentum
+density.  The radiation force in Equation~\eqref{eq:rhd_momentum} is therefore
+included as a source in the gas momentum equation rather than as an exchange
+with an evolved radiation momentum equation.
+
+For an ideal gas,
+\begin{align}
+    e_{\rm gas}
+    &=\frac{\rho k_{\rm B}T_{\rm gas}}
+            {(\gamma-1)\mu m_{\rm H}},
+    \label{eq:ideal_gas_internal_energy}\\
+    P_{\rm gas}&=(\gamma-1)e_{\rm gas}.
+    \label{eq:ideal_gas_pressure}
+\end{align}
+The code also supports a general, tabulated equation of state, in which case
+$T_{\rm gas}=T(\rho,e_{\rm gas})$ and
+$P_{\rm gas}=P(\rho,e_{\rm gas})$ are supplied by the equation-of-state
+module.  The radiation temperature is defined by
+\begin{align}
+    E_{\rm rad}=aT_{\rm rad}^{4}.
+    \label{eq:radiation_temperature}
+\end{align}
+
+\subsection{FLD closure}
+\label{sec:fld_equations}
+
+We distinguish the mass opacities, $\kappa_{\rm P}$ and $\kappa_{\rm R}$,
+from the corresponding interaction coefficients per unit length:
+\begin{align}
+    \sigma_{\rm P}=\rho\kappa_{\rm P},
+    \qquad
+    \sigma_{\rm R}=\rho\kappa_{\rm R}.
+    \label{eq:opacity_definitions}
+\end{align}
+The quantities $\kappa_{\rm P}$ and $\kappa_{\rm R}$ have units of
+${\rm cm^2\,g^{-1}}$, whereas $\sigma_{\rm P}$ and $\sigma_{\rm R}$ have
+units of ${\rm cm^{-1}}$.  The comoving-frame diffusive flux is
+\begin{align}
+    \bm F_{\rm rad}^{\rm diff}
+    =-\frac{c\lambda}{\sigma_{\rm R}}\nabla E_{\rm rad}.
+    \label{eq:fld_flux}
+\end{align}
+We use the Levermore--Pomraning flux limiter
+\citep{Levermore1981-wp},
+\begin{align}
+    \lambda(R)&=\frac{2+R}{6+3R+R^2},
+    \label{eq:flux_limiter}\\
+    R&=\frac{|\nabla E_{\rm rad}|}
+             {\sigma_{\rm R}E_{\rm rad}},
+    \label{eq:flux_limiter_argument}\\
+    \chi&=\lambda+(\lambda R)^2.
+    \label{eq:eddington_factor}
+\end{align}
+In the optically thick limit, $R\rightarrow0$,
+$\lambda\rightarrow1/3$, and $\chi\rightarrow1/3$.  This gives the ordinary
+diffusion coefficient $D\rightarrow c/(3\sigma_{\rm R})$.  In the optically
+thin limit, $\lambda\rightarrow1/R$ and $\chi\rightarrow1$, so that the
+diffusive flux is limited by
+$|\bm F_{\rm rad}^{\rm diff}|\rightarrow cE_{\rm rad}$.
+
+The full Levermore closure may be written as
+\begin{align}
+    {\sf P}_{\rm rad}
+    &={\sf f}E_{\rm rad},\\
+    {\sf f}
+    &=\frac{1-\chi}{2}{\sf I}
+      +\frac{3\chi-1}{2}\hat{\bm n}\hat{\bm n},\\
+    \hat{\bm n}
+    &=\frac{\nabla E_{\rm rad}}{|\nabla E_{\rm rad}|}.
+    \label{eq:levermore_eddington_tensor}
+\end{align}
+However, the present reduced solver neither constructs this tensor nor
+evolves a radiation momentum equation.  It uses $\chi$ only in the advection
+factor $\zeta$ and uses the scalar FLD pressure $\lambda E_{\rm rad}$ in the
+HLLC wave construction.  The corresponding radiation force is evaluated as
+\begin{align}
+    \frac{\sigma_{\rm R}}{c}\bm F_{\rm rad}^{\rm diff}
+    =-\lambda\nabla E_{\rm rad},
+    \label{eq:radiation_force}
+\end{align}
+which is the source appearing in Equation~\eqref{eq:rhd_momentum}.
+
+For tests in which a fixed limiter is requested, the implementation sets both
+$\lambda$ and $\chi$ to $1/3$ everywhere.  The radiation-force coupling and
+the mixed-frame correction can also be disabled independently.  Unless
+otherwise stated, Equations~\eqref{eq:rhd_mass}--
+\eqref{eq:rhd_radiation_energy} refer to the fully coupled choice in which
+both terms are retained.
+
+\subsection{Operator splitting used by the implementation}
+\label{sec:fld_operator_split}
+
+The update is split into an explicit hyperbolic part and an implicit
+diffusion--thermal-coupling part.  In the current driver, one implicit NRFLD
+substep is taken at the beginning of each global timestep, followed by the
+stages of the explicit hydrodynamic integrator.  The explicit subsystem is
+\begin{align}
+    \frac{\partial \rho}{\partial t}
+    +\nabla\cdot(\rho\bm v)&=0,\\
+    \frac{\partial(\rho\bm v)}{\partial t}
+    +\nabla\cdot
+      \left(\rho\bm v\bm v+P_{\rm gas}{\sf I}\right)
+      &=-\lambda\nabla E_{\rm rad},\\
+    \frac{\partial e_{\rm gas,tot}}{\partial t}
+    +\nabla\cdot
+      \left[(e_{\rm gas,tot}+P_{\rm gas})\bm v\right]
+      &=W_{\rm mf},\\
+    \frac{\partial E_{\rm rad}}{\partial t}
+    +\nabla\cdot(\zeta E_{\rm rad}\bm v)
+      &=-W_{\rm mf}.
+    \label{eq:explicit_subsystem}
+\end{align}
+Gas and radiation face states are reconstructed at the same spatial order.
+The HLLC-FLD Riemann solver uses
+\begin{align}
+    P_{\rm tot}=P_{\rm gas}+\lambda E_{\rm rad}
+    \label{eq:hllc_total_pressure}
+\end{align}
+to construct the common Godunov state and estimates the acoustic speed as
+\begin{align}
+    c_{\rm eff}^{2}
+    =c_{\rm gas}^{2}
+     +\frac{\lambda(E_{\rm rad}+\lambda E_{\rm rad})}{\rho}.
+    \label{eq:radiation_modified_sound_speed}
+\end{align}
+This wave-speed estimate corresponds to the approximate characteristic
+relation $\zeta\simeq1+\lambda$, which is exact in both the diffusion and
+streaming limits and remains close for the adopted limiter.  Internally, the
+Riemann solver first constructs an HLLC total-energy flux using
+$e_{\rm gas,tot}+E_{\rm rad}$ and $P_{\rm tot}$.  It assigns
+$\zeta E_{\rm rad}\bm v$ to the radiation energy and returns the remainder as
+the gas-energy flux, so that the gas and radiation updates share one
+conservative interface flux.
+
+The scalar radiation-pressure contribution is subsequently removed from the
+returned gas momentum flux, and the equivalent force
+$-\lambda\nabla E_{\rm rad}$ is applied explicitly using the Godunov
+radiation energies on the cell faces.  The radiation advection flux uses the
+same HLLC contact speed and is
+$\zeta E_{\rm rad}\bm v$.
+
+During the implicit substep, $\rho$ and $\bm v$ are fixed and only
+$e_{\rm gas}$ and $E_{\rm rad}$ are updated:
+\begin{align}
+    \frac{\partial e_{\rm gas}}{\partial t}
+    &=-Q_{\rm th},
+    \label{eq:implicit_gas_energy}\\
+    \frac{\partial E_{\rm rad}}{\partial t}
+    &=\nabla\cdot(D\nabla E_{\rm rad})+Q_{\rm th}.
+    \label{eq:implicit_radiation_energy}
+\end{align}
+Thus, neither ${\sf P}_{\rm rad}:\nabla\bm v$ nor $W_{\rm mf}$ is part of the
+current Newton--multigrid solve.  The former is represented by the explicit
+radiation-enthalpy transport and radiation-force coupling, whereas the latter
+is applied directly as an explicit, equal-and-opposite gas--radiation energy
+exchange.
+
+
+\section{Method}
+\label{sec:method}
+
+We implemented the above FLD system in the open-source astrophysical
+hydrodynamics code Athena++ \citep{Stone2020-np}.  The current NRFLD
+configuration is Newtonian and non-magnetic, and uses the dedicated HLLC-FLD
+Riemann solver.  The Newton--multigrid diffusion solve currently requires a
+three-dimensional uniform mesh and logically cubic MeshBlocks; static mesh
+refinement and adaptive mesh refinement are supported through the multilevel
+boundary and multigrid operators.
+
+\subsection{Implicit FLD update}
+\label{sec:method_overview}
+
+Let the superscript $-$ denote the state entering an implicit substep and the
+superscript $+$ the state leaving it.  A backward-Euler update solves for
+$e_{\rm gas}^{+}$ and $E_{\rm rad}^{+}$.  The nonlinear residuals implemented
+in the code are
+\begin{align}
+    F_{\rm gas}
+    &=e_{\rm gas}^{+}-e_{\rm gas}^{-}
+      +\Delta t\,c\sigma_{\rm P}
+       \left[aT^4(e_{\rm gas}^{+},\rho)-E_{\rm rad}^{+}\right],
+    \label{eq:Fgas_residual}\\
+    F_{\rm rad}
+    &=E_{\rm rad}^{+}-E_{\rm rad}^{-}
+      -\Delta t\Bigg\{
+       c\sigma_{\rm P}
+       \left[aT^4(e_{\rm gas}^{+},\rho)-E_{\rm rad}^{+}\right]
+       +\nabla\cdot\left(D^{-}\nabla E_{\rm rad}^{+}\right)
+       \Bigg\}.
+    \label{eq:Frad_residual}
+\end{align}
+The Planck and Rosseland interaction coefficients and the face-centered
+diffusion coefficient $D^{-}$ are frozen at the beginning of the implicit
+substep.  In particular, $R$, $\lambda$, and the face diffusion coefficients
+are evaluated from the pre-update radiation field and are not recomputed
+during the Newton iterations.  The thermal source remains nonlinear through
+$T(e_{\rm gas}^{+},\rho)^4$.
+
+For a Newton correction $(\delta e_{\rm gas},\delta E_{\rm rad})$, the local
+gas-energy correction is eliminated analytically:
+\begin{align}
+    \delta e_{\rm gas}
+    =-\frac{F_{\rm gas}
+       +(\partial F_{\rm gas}/\partial E_{\rm rad})\delta E_{\rm rad}}
+      {\partial F_{\rm gas}/\partial e_{\rm gas}}.
+    \label{eq:local_gas_elimination}
+\end{align}
+The resulting scalar elliptic equation for $\delta E_{\rm rad}$ is solved by
+the linear multigrid solver.  Its default smoother is red--black weighted
+Jacobi (the input value \texttt{jacobi-rb}), with trilinear prolongation.
+After each linear solve, the Newton update is subject to positivity floors and
+a global backtracking line search when needed.  The converged radiation and
+gas internal energies are then copied back to the radiation and hydrodynamic
+state variables.

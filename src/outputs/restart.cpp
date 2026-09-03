@@ -25,9 +25,11 @@
 #include "../cr/cr.hpp"
 #include "../crdiffusion/crdiffusion.hpp"
 #include "../field/field.hpp"
+#include "../fld/fld.hpp"
 #include "../globals.hpp"
 #include "../hydro/hydro.hpp"
 #include "../mesh/mesh.hpp"
+#include "../nr_multigrid/NRFLD.hpp"
 #include "../nr_radiation/radiation.hpp"
 #include "../parameter_input.hpp"
 #include "../scalars/scalars.hpp"
@@ -194,6 +196,21 @@ void RestartOutput::WriteOutputFile(Mesh *pm, ParameterInput *pin, bool force_wr
     if (CRDIFFUSION_ENABLED) {
       std::memcpy(pdata,pmb->pcrdiff->ecr.data(),pmb->pcrdiff->ecr.GetSizeInBytes());
       pdata += pmb->pcrdiff->ecr.GetSizeInBytes();
+    }
+
+    // NR-FLD iterate and correction.  MeshBlock::GetBlockSizeInBytes() and the
+    // restart constructor have always reserved/read these arrays, so omitting
+    // them here shifted all following user MeshBlock data and left the restart
+    // radiation state uninitialized.
+    if (NRMGFLD_ENABLED) {
+      // The transport state is FLD::u_rad. NRFLD::u_ is a work iterate and can
+      // lag it between implicit solves, so serialize the physical state in the
+      // slot that the restart constructor loads into NRFLD::u_.
+      std::memcpy(pdata, pmb->prfld->u_rad.data(), pmb->pnr->u_.GetSizeInBytes());
+      pdata += pmb->pnr->u_.GetSizeInBytes();
+      std::memcpy(pdata, pmb->pnr->delta_u_.data(),
+                  pmb->pnr->delta_u_.GetSizeInBytes());
+      pdata += pmb->pnr->delta_u_.GetSizeInBytes();
     }
 
     // (conserved variable) Passive scalars:
