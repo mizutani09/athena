@@ -1,0 +1,141 @@
+<comment>
+problem = HPC commissioning of a 10 Msun, 510 Rsun mildly convective NR-FLD RSG
+configure = --prob=nrfld_conv_star --eos=adiabatic -nrmgfld -mpi -hdf5 --cxx=g++-simd
+# Default: 256^3 pilot on 256-512 MPI ranks.  Override nx1-3=512 for the
+# 1024-rank production-resolution relaxation after this pilot passes.
+
+<job>
+problem_id = nrfld_conv_star
+
+<output1>
+file_type = hst
+dcycle    = 10
+
+<output2>
+file_type = hdf5
+variable  = prim
+dt        = 1.00
+
+<output3>
+file_type = hdf5
+variable  = uov
+dt        = 1.00
+
+<output4>
+file_type = rst
+dt        = 2.0
+
+<time>
+cfl_number = 0.3
+nlim       = -1
+tlim       = 16.0
+integrator = rk2
+xorder     = 2
+ncycle_out = 100
+
+<mesh>
+num_threads = 1
+nx1 = 256
+x1min = -1.28
+x1max =  1.28
+ix1_bc = outflow
+ox1_bc = outflow
+nx2 = 256
+x2min = -1.28
+x2max =  1.28
+ix2_bc = outflow
+ox2_bc = outflow
+nx3 = 256
+x3min = -1.28
+x3max =  1.28
+ix3_bc = outflow
+ox3_bc = outflow
+
+<meshblock>
+nx1 = 32
+nx2 = 32
+nx3 = 32
+
+<hydro>
+gamma     = 1.6666666666666667
+rho_unit  = 6.23925895e-5
+egas_unit = 5.52235370e9
+leng_unit = 3.54807000e13
+mu        = 0.62
+dfloor    = 1.0e-8
+pfloor    = 1.0e-8
+
+<nrfld>
+show_defect = false
+mgmode       = MGI
+smoother     = jacobi-rb
+prolongation = trilinear
+npresmooth   = 1
+npostsmooth  = 1
+cache_coefficient_hierarchy = true
+post_mg_smooth = 0
+omega        = 1.0
+threshold    = 2.0e-1
+niteration   = 10
+nr_threshold = 1.0e-4
+nr_niteration = 50
+ix1_bc = outflow
+ox1_bc = outflow
+ix2_bc = outflow
+ox2_bc = outflow
+ix3_bc = outflow
+ox3_bc = outflow
+
+<fld>
+is_couple                = true
+only_rad                 = false
+cut_diff                 = false
+include_radiation_force  = true
+include_mixed_frame_terms = true
+fixed_flux_limiter       = false
+fixed_u_rad              = false
+use_opacity_table        = false
+use_profile_opacity      = true
+const_opacity_P = 1.0e-2
+const_opacity_R = 1.0e-2
+
+<problem>
+# Override with an absolute path when the run directory is outside the source tree.
+stellar_profile_file = inputs/radiation/rsg10_modified_le_mild.dat
+stellar_hse_profile_file = stellar_hse_profile.dat
+rstar_cgs            = 3.54807000e13
+mstar_cgs            = 1.98847000e34
+luminosity_cgs       = 3.828e37
+heat_radius_fraction = 0.20
+velocity_perturb_fraction = 1.0e-3
+discrete_hse_gravity = true
+hse_correction_radius_fraction = 0.95
+hse_correction_width_fraction  = 0.10
+hse_correction_max_fraction    = 0.10
+
+# Keep the luminosity on from t=0.  Release the unresolved-core velocity
+# anchor first, while strong global damping can absorb the launch transient.
+core_anchor_radius_fraction = 0.15
+core_anchor_width_fraction  = 0.10
+core_anchor_timescale       = 0.01
+core_anchor_thermodynamics  = false
+core_anchor_density         = false
+core_anchor_gas_energy      = false
+core_anchor_radiation       = false
+core_anchor_follow_relaxation = true
+core_anchor_end               = 4.0
+core_anchor_ramp              = 4.0
+
+# Hold global velocity damping through the core release and remove it over
+# four additional code times.  t=16 leaves two code times for free evolution.
+relaxation_end       = 10.0
+relaxation_ramp      = 4.0
+relaxation_timescale = 0.05
+heating_start        = 0.0
+heating_ramp         = 0.0
+
+atmosphere_anchor_radius_fraction = 1.05
+atmosphere_anchor_width_fraction  = 0.10
+atmosphere_anchor_timescale       = 0.01
+atmosphere_velocity_damping_timescale = 0.05
+atmosphere_velocity_density_limit     = 1.0e-4

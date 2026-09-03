@@ -125,6 +125,10 @@ $(EXECUTABLE) : $(OBJ_FILES)
 $(OBJ_DIR)%.o : %.cpp
 	$(CXX) $(CPPFLAGS) $(CXXFLAGS) -c $< -o $@
 
+# The CE problem generator selects CE-only code and includes the common RSG
+# implementation directly. Rebuild it whenever the common implementation changes.
+$(OBJ_DIR)nrfld_conv_star_ce.o : src/pgen/nrfld_conv_star.cpp
+
 # Process .gcno and .gcda files from obj/ into .cpp.gcov files (and .hpp.gcov, .h.gcov) in root directory
 # Rerun Gcov on all files if a single .gcda changes. Other options to consider: --preserve-paths -abcu
 ./%.cpp.gcov : %.cpp $(OBJ_DIR)/%.gcno $(GCDA_FILES)

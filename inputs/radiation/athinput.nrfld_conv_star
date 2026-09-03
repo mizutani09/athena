@@ -1,6 +1,15 @@
 <comment>
 problem   = 10 Msun, 510 Rsun composite modified-Lane-Emden RSG with NR-FLD
-configure = --prob=nrfld_conv_star --eos=adiabatic -nrmgfld -mpi -hdf5
+configure = --prob=nrfld_conv_star --eos=adiabatic -nrmgfld -mpi -hdf5 --cxx=g++-simd
+# g++-simd is a per-machine native build. Reconfigure on the machine where the
+# executable will run; use plain --cxx=g++ when strict IEEE portability is needed.
+# Uniform-grid production settings use CFL=0.3 and inexact Newton solves.
+# This 64^3 file is a local smoke-test input.  Use
+# athinput.nrfld_conv_star_hpc for resolved relaxation/production runs.
+# At 64^3 these settings reproduced the same-CFL strict solution to
+# O(1e-7) or better in the evolved fields, while reducing the measured runtime
+# by about a factor of six.  The larger difference from CFL=0.1 is the normal
+# RK2 time-discretization error, not an implicit-solver error.
 
 <job>
 problem_id = nrfld_conv_star
@@ -12,15 +21,19 @@ dcycle    = 1
 <output2>
 file_type = hdf5
 variable  = prim
-dt        = 0.05
+dt        = 0.10
 
 <output3>
 file_type = hdf5
 variable  = uov
-dt        = 0.05
+dt        = 0.10
+
+<output4>
+file_type = rst
+dt        = 0.5
 
 <time>
-cfl_number = 0.2
+cfl_number = 0.3
 nlim       = -1
 tlim       = 1.0
 integrator = rk2
@@ -28,6 +41,7 @@ xorder     = 2
 ncycle_out = 10
 
 <mesh>
+num_threads = 1
 nx1 = 64
 x1min = -1.5
 x1max =  1.5
@@ -59,15 +73,18 @@ dfloor    = 1.0e-8
 pfloor    = 1.0e-8
 
 <nrfld>
-mgmode       = FMG
+show_defect = false
+mgmode       = MGI
 smoother     = jacobi-rb
 prolongation = trilinear
-npresmooth   = 2
-npostsmooth  = 2
+npresmooth   = 1
+npostsmooth  = 1
+cache_coefficient_hierarchy = true
+post_mg_smooth = 0
 omega        = 1.0
-threshold    = 1.0e-12
+threshold    = 2.0e-1
 niteration   = 10
-nr_threshold = 1.0e-8
+nr_threshold = 1.0e-4
 nr_niteration = 50
 ix1_bc = outflow
 ox1_bc = outflow
@@ -91,6 +108,8 @@ const_opacity_P = 1.0e-2
 const_opacity_R = 1.0e-2
 
 <problem>
+# Relative paths are resolved from the directory where athena is launched.
+# When launching elsewhere, override this with an absolute path on the command line.
 stellar_profile_file = inputs/radiation/rsg10_modified_le.dat
 stellar_hse_profile_file = stellar_hse_profile.dat
 rstar_cgs            = 3.54807000e13
@@ -99,22 +118,43 @@ mstar_cgs            = 1.98847000e34
 luminosity_cgs       = 3.828e37
 heat_radius_fraction = 0.20
 velocity_perturb_fraction = 1.0e-3
-# Balance the initial gas+radiation pressure with the fixed gravity on the
-# Cartesian finite-volume mesh. Set false for the analytic radial gravity.
+# Add a capped, smoothly tapered acceleration correction for the Cartesian
+# truncation error while retaining the physical rho*g radial gravity force.
+# Set false to use the analytic radial gravity without this correction.
 discrete_hse_gravity = true
-# Dampen Cartesian mapping transients first, then ramp the core luminosity on.
+hse_correction_radius_fraction = 0.95
+hse_correction_width_fraction  = 0.10
+hse_correction_max_fraction    = 0.10
+# The opacity column transports this luminosity in the initial model, so apply
+# the matching core heating from t=0.  Turning it off during relaxation cools
+# and contracts the star.  Velocity damping is smoothly released afterwards.
 relaxation_end       = 2.00
+relaxation_ramp      = 2.00
 relaxation_timescale = 0.05
-heating_start        = 2.00
-heating_ramp         = 1.00
+heating_start        = 0.00
+heating_ramp         = 0.00
 # The softened point-mass region is not a resolved stellar core on the
 # commissioning mesh. Anchor it to the 1-D equilibrium and taper smoothly.
 core_anchor_radius_fraction = 0.15
 core_anchor_width_fraction  = 0.05
 core_anchor_timescale       = 0.01
 core_anchor_thermodynamics  = false
+core_anchor_density        = false
+core_anchor_gas_energy     = false
+core_anchor_radiation      = false
+# Release the numerical core before the global mapping damping.  The remaining
+# global damping absorbs the release transient instead of letting a narrow
+# core-anchor boundary launch a persistent radial wave.  Omitting end/ramp
+# makes them follow relaxation_end/relaxation_ramp for backward compatibility.
+core_anchor_follow_relaxation = true
+core_anchor_end               = 2.00
+core_anchor_ramp              = 1.00
 # Transparent numerical atmosphere: remove radiation accumulated by the
 # zero-gradient multigrid boundary without altering the stellar envelope.
 atmosphere_anchor_radius_fraction = 1.05
 atmosphere_anchor_width_fraction  = 0.10
 atmosphere_anchor_timescale       = 0.01
+# Optional commissioning aid: damp only very low-density exterior gas that
+# would otherwise dominate the global CFL step. Zero leaves the hydro untouched.
+atmosphere_velocity_damping_timescale = 0.0
+atmosphere_velocity_density_limit     = 1.0e-6
