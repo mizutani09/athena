@@ -4,6 +4,7 @@
 
 #include <algorithm>
 #include <cmath>
+#include <cstdlib>
 
 #include "../../../athena.hpp"
 #include "../../../athena_arrays.hpp"
@@ -21,6 +22,14 @@ void Hydro::RiemannSolver(const int k, const int j, const int il, const int iu,
   FLD *pfld=pmy_block->prfld;
   const bool coupled=pfld->is_couple && !pfld->only_rad
                      && pfld->include_radiation_force;
+  // Diagnostic-only alternative selected at runtime.  The default keeps the
+  // radiation pressure force as an explicit source.  When this environment
+  // variable is present, retain radiation pressure in the returned HLLC
+  // momentum flux instead, while leaving all other FLD terms unchanged.
+  const bool radiation_pressure_in_flux =
+      std::getenv("ATHENA_FLD_PRESSURE_IN_FLUX") != nullptr;
+  const bool disable_mixed_frame =
+      std::getenv("ATHENA_FLD_DISABLE_MIXED_FRAME") != nullptr;
   AthenaArray<Real> &radl=pfld->rad_face_l[dir];
   AthenaArray<Real> &radr=pfld->rad_face_r[dir];
   AthenaArray<Real> &radflux=pfld->u_rad_flux[dir];
@@ -111,13 +120,15 @@ void Hydro::RiemannSolver(const int k, const int j, const int il, const int iu,
     const Real lambdag=left?laml:lamr;
     const Real ag=left?arl:arr;
     const Real fer=ag*erg*am;
-    radflux(k,j,i)=fer;
+    radflux(k,j,i)=disable_mixed_frame ? 0.0 : fer;
     pfld->rad_face_g[dir](k,j,i)=erg;
-    if (coupled) {
+    if (coupled && !radiation_pressure_in_flux) {
       // Radiation pressure participated in the HLLC state construction, but
       // the returned gas momentum flux excludes it because the matching
       // -lambda grad(E_r) force is applied explicitly from Godunov faces.
       fi[IVX]-=lambdag*erg;
+    }
+    if (coupled) {
       fi[IEN]-=fer;
     }
     flx(IDN,k,j,i)=fi[IDN]; flx(ivx,k,j,i)=fi[IVX];
