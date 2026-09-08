@@ -40,8 +40,6 @@
 #   --mpiccmd=name    use name as the command to call the MPI C++ compiler
 #   --gcovcmd=name    use name as the command to call the gcov utility
 #   --cflag=string    append string whenever invoking compiler/linker
-#   --no-ipo          omit Intel interprocedural optimization from default flags
-#   --no-simd         disable processing of OpenMP SIMD directives
 #   --include=path    use -Ipath when compiling
 #   --lib_path=path   use -Lpath when linking
 #   --lib=xxx         use -lxxx when linking
@@ -345,16 +343,6 @@ parser.add_argument('--gcovcmd',
 parser.add_argument('--cflag',
                     default=None,
                     help='additional string of flags to append to compiler/linker calls')
-
-parser.add_argument('--no-ipo',
-                    action='store_true',
-                    default=False,
-                    help='omit Intel interprocedural optimization (-ipo) from default flags')
-
-parser.add_argument('--no-simd',
-                    action='store_true',
-                    default=False,
-                    help='disable processing of OpenMP SIMD directives')
 
 # --include=[name] arguments
 parser.add_argument(
@@ -990,27 +978,6 @@ if args['h5double']:
     definitions['H5_DOUBLE_PRECISION_ENABLED'] = '1'
 else:
     definitions['H5_DOUBLE_PRECISION_ENABLED'] = '0'
-
-# --no-ipo argument
-# Remove -ipo instead of appending a conflicting -fno-lto option.  In particular,
-# icpx may otherwise defer OpenMP SIMD clone generation to IPO and then fail to
-# resolve those clones when LTO is disabled only at the end of the command line.
-if args['no_ipo']:
-    compiler_flags = makefile_options['COMPILER_FLAGS'].split()
-    makefile_options['COMPILER_FLAGS'] = ' '.join(
-        flag for flag in compiler_flags if flag != '-ipo')
-
-# --no-simd argument
-# Without IPO, icpx 2025.1 may emit calls to cross-translation-unit OpenMP
-# declare-simd clones without emitting their definitions.  Keep this switch
-# independent so IPO and SIMD can also be isolated separately.
-if args['no_simd']:
-    compiler_flags = makefile_options['COMPILER_FLAGS'].split()
-    makefile_options['COMPILER_FLAGS'] = ' '.join(
-        flag for flag in compiler_flags
-        if flag not in ('-qopenmp-simd', '-fiopenmp-simd', '-fopenmp-simd'))
-    if args['cxx'] in ('icpx', 'icpc', 'icpc-debug', 'icpc-phi'):
-        makefile_options['COMPILER_FLAGS'] += ' -qno-openmp-simd'
 
 # --cflag=[string] argument
 if args['cflag'] is not None:
