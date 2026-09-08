@@ -20,8 +20,14 @@ void Hydro::RiemannSolver(const int k, const int j, const int il, const int iu,
   const int dir=ivx-IVX;
   const int ivy=IVX+(dir+1)%3, ivz=IVX+(dir+2)%3;
   FLD *pfld=pmy_block->prfld;
+  // In the normal HLLC-FLD path radiation pressure participates in the wave
+  // construction.  This opt-in diagnostic selects a genuinely source-only
+  // formulation: gas HLLC waves plus the explicit radiation force below.
+  const bool gas_hllc_source_only =
+      std::getenv("ATHENA_FLD_GAS_HLLC_SOURCE_ONLY") != nullptr;
   const bool coupled=pfld->is_couple && !pfld->only_rad
-                     && pfld->include_radiation_force;
+                     && pfld->include_radiation_force
+                     && !gas_hllc_source_only;
   // Diagnostic-only alternative selected at runtime.  The default keeps the
   // radiation pressure force as an explicit source.  When this environment
   // variable is present, retain radiation pressure in the returned HLLC

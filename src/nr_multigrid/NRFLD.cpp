@@ -14,6 +14,7 @@
 #include <cstdlib>
 #include <cstring>    // memset, memcpy
 #include <iostream>
+#include <limits>
 #include <sstream>    // stringstream
 #include <stdexcept>  // runtime_error
 #include <string>     // c_str()
@@ -28,7 +29,22 @@
 #include "NRFLD.hpp"
 
 
+namespace {
 
+// In the optically thick LTE limit, the Newton solve can only place a*T^4 and
+// Er on adjacent floating-point numbers.  Their subtraction then changes sign
+// from one Newton iteration to the next, and c*sigma amplifies that irreducible
+// roundoff into a large, grid-dependent source.  Treat differences within the
+// rounding error of the temperature-to-energy conversion as zero.  The factor
+// allows for the multiply chain T = DCOUPLE*egas and a*T*T*T*T.
+inline Real ResolvableThermalDifference(Real equilibrium_rad, Real u_rad) {
+  const Real difference = equilibrium_rad - u_rad;
+  const Real scale = std::max(std::abs(equilibrium_rad), std::abs(u_rad));
+  const Real roundoff = 32.0*std::numeric_limits<Real>::epsilon()*scale;
+  return (std::abs(difference) <= roundoff) ? 0.0 : difference;
+}
+
+}  // namespace
 
 //----------------------------------------------------------------------------------------
 //! \fn NRFLDDriver::NRFLDDriver(Mesh *pm, ParameterInput *pin)
@@ -485,7 +501,9 @@ void NRFLD::CalculateCoefficients(const AthenaArray<Real> &u_rad_old,
         const Real T_gas_new2 = T_gas_new*T_gas_new;
         const Real T_gas_new3 = T_gas_new2*T_gas_new;
         const Real T_gas_new4 = T_gas_new2*T_gas_new2;
-        Real src_term = c_sigma_p*(pfld->a_r*T_gas_new4 - u_rad_new(k,j,i));
+        const Real equilibrium_rad = pfld->a_r*T_gas_new4;
+        Real src_term = c_sigma_p*ResolvableThermalDifference(
+            equilibrium_rad, u_rad_new(k,j,i));
         Real diff_term = 0.0;
         diff_term += derivetive(NewtonRaphsonFLD::dFr_dEr_xm,k,j,i)*(u_rad_new(k,j,i-1) - u_rad_new(k,j,i));
         diff_term += derivetive(NewtonRaphsonFLD::dFr_dEr_xp,k,j,i)*(u_rad_new(k,j,i+1) - u_rad_new(k,j,i));
@@ -666,8 +684,9 @@ void NRFLD::CalculateDefect(AthenaArray<Real> &def, const AthenaArray<Real> &u,
         T_gas = def_coeff(NewtonRaphsonFLD::DCOUPLE,k,j,i)*u_gas(k,j,i);
 #endif
         const Real T_gas2 = T_gas*T_gas;
+        const Real equilibrium_rad = pfld->a_r*T_gas2*T_gas2;
         Real src_term = pfld->c_ph*pfld->sigma_p(k,j,i)
-            *(pfld->a_r*T_gas2*T_gas2 - u(k,j,i));
+            *ResolvableThermalDifference(equilibrium_rad, u(k,j,i));
         Real diff_term = 0.0;
         diff_term += -coeff(linearSolver::DXMF,k,j,i)*(u(k,j,i-1) - u(k,j,i));
         diff_term += -coeff(linearSolver::DXPF,k,j,i)*(u(k,j,i+1) - u(k,j,i));

@@ -430,7 +430,13 @@ void NewtonRaphsonDriver::Solve_general(int stage, Real dt) {
 
   if (fshowdef_ && Globals::my_rank == 0)
     std::cout << "initial defect " << def << " max " << defmax << std::endl;
-  while (def > eps_) {
+  // A zero input threshold requests automatic convergence control.  Do not
+  // launch multigrid cycles for a relative defect already below floating-point
+  // resolution; such cycles cannot improve the state and can instead toggle
+  // stiff LTE variables between adjacent representable values.
+  const Real stopping_defect = (eps_ == 0.0)
+      ? 64.0*std::numeric_limits<Real>::epsilon() : eps_;
+  while (def > stopping_defect) {
     // if (matrixmode_ == 1)
     //   CalculateMatrix();
     Real olddef = def, oldmax = defmax;
