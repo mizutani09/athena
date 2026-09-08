@@ -41,6 +41,7 @@
 #   --gcovcmd=name    use name as the command to call the gcov utility
 #   --cflag=string    append string whenever invoking compiler/linker
 #   --no-ipo          omit Intel interprocedural optimization from default flags
+#   --no-simd         disable processing of OpenMP SIMD directives
 #   --include=path    use -Ipath when compiling
 #   --lib_path=path   use -Lpath when linking
 #   --lib=xxx         use -lxxx when linking
@@ -349,6 +350,11 @@ parser.add_argument('--no-ipo',
                     action='store_true',
                     default=False,
                     help='omit Intel interprocedural optimization (-ipo) from default flags')
+
+parser.add_argument('--no-simd',
+                    action='store_true',
+                    default=False,
+                    help='disable processing of OpenMP SIMD directives')
 
 # --include=[name] arguments
 parser.add_argument(
@@ -993,6 +999,18 @@ if args['no_ipo']:
     compiler_flags = makefile_options['COMPILER_FLAGS'].split()
     makefile_options['COMPILER_FLAGS'] = ' '.join(
         flag for flag in compiler_flags if flag != '-ipo')
+
+# --no-simd argument
+# Without IPO, icpx 2025.1 may emit calls to cross-translation-unit OpenMP
+# declare-simd clones without emitting their definitions.  Keep this switch
+# independent so IPO and SIMD can also be isolated separately.
+if args['no_simd']:
+    compiler_flags = makefile_options['COMPILER_FLAGS'].split()
+    makefile_options['COMPILER_FLAGS'] = ' '.join(
+        flag for flag in compiler_flags
+        if flag not in ('-qopenmp-simd', '-fiopenmp-simd', '-fopenmp-simd'))
+    if args['cxx'] in ('icpx', 'icpc', 'icpc-debug', 'icpc-phi'):
+        makefile_options['COMPILER_FLAGS'] += ' -qno-openmp-simd'
 
 # --cflag=[string] argument
 if args['cflag'] is not None:
