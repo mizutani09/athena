@@ -79,6 +79,7 @@ omega           = 1.0
 # threshold       = 0.0
 niteration      = 10
 nr_threshold    = 0.0
+nr_max_iterations = 100
 # nr_niteration   = 100
 ix1_bc          = user
 ox1_bc          = user

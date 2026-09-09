@@ -1993,7 +1993,7 @@ void Mesh::Initialize(int res_flag, ParameterInput *pin) {
       pmcrd->Solve(1, 0.0);
 
     if (NRMGFLD_ENABLED)  // NRMGFLD has to be processed after MHD boundaries (caution)
-      pmnr->Solve_general(1, 0.0);
+      pmnr->HandleSolveResult(pmnr->Solve_general(1, 0.0));
 
     if (!res_flag && adaptive) {
       iflag = false;

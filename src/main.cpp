@@ -489,7 +489,8 @@ int main(int argc, char *argv[]) {
     }
 
     if (NRMGFLD_ENABLED) {
-      pmesh->pmnr->Solve_general(0, pmesh->dt);
+      const NewtonSolveResult nr_result = pmesh->pmnr->Solve_general(0, pmesh->dt);
+      pmesh->pmnr->HandleSolveResult(nr_result);
     }
 
     // chemistry with radiation

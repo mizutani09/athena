@@ -54,6 +54,7 @@ NRFLDDriver::NRFLDDriver(Mesh *pm, ParameterInput *pin)
     : NewtonRaphsonDriver(pm, 1, linearSolver::NCOEFF, linearSolver::NMATRIX) {
   eps_ = pin->GetOrAddReal("nrfld", "nr_threshold", -1.0);
   niter_ = pin->GetOrAddInteger("nrfld", "nr_niteration", -1);
+  nr_max_iterations_ = pin->GetOrAddInteger("nrfld", "nr_max_iterations", 100);
   fshowdef_ = pin->GetOrAddBoolean("nrfld", "show_defect", fshowdef_);
   use_mg_smoothing_fallback_ =
       pin->GetOrAddBoolean("nrfld", "nr_use_mg_smoothing_fallback", true);
@@ -68,10 +69,28 @@ NRFLDDriver::NRFLDDriver(Mesh *pm, ParameterInput *pin)
   if (eps_ < 0.0 && niter_ < 0) {
     std::stringstream msg;
     msg << "### FATAL ERROR in NRFLDDriver::NRFLDDriver" << std::endl
-        << "Either \"threshold\" or \"niteration\" parameter must be set "
+        << "Either \"nr_threshold\" or \"nr_niteration\" parameter must be set "
         << "in the <nrfld> block." << std::endl
-      << "When both parameters are specified, \"niteration\" is ignored." << std::endl  
-        << "Set \"threshold = 0.0\" for automatic convergence control." << std::endl;
+        << "When both parameters are specified, \"nr_niteration\" is ignored." << std::endl
+        << "Set \"nr_threshold = 0.0\" for automatic convergence control." << std::endl;
+    ATHENA_ERROR(msg);
+  }
+  if (niter_ < -1) {
+    std::stringstream msg;
+    msg << "### FATAL ERROR in NRFLDDriver::NRFLDDriver" << std::endl
+        << "\"nr_niteration\" must be >= 0 or omitted." << std::endl;
+    ATHENA_ERROR(msg);
+  }
+  if (!std::isfinite(eps_)) {
+    std::stringstream msg;
+    msg << "### FATAL ERROR in NRFLDDriver::NRFLDDriver" << std::endl
+        << "\"nr_threshold\" must be finite." << std::endl;
+    ATHENA_ERROR(msg);
+  }
+  if (nr_max_iterations_ <= 0) {
+    std::stringstream msg;
+    msg << "### FATAL ERROR in NRFLDDriver::NRFLDDriver" << std::endl
+        << "\"nr_max_iterations\" must be positive." << std::endl;
     ATHENA_ERROR(msg);
   }
   if (max_backtrack_ < 0) {

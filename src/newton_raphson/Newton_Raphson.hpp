@@ -39,6 +39,35 @@ class NewtonRaphsonTaskList;
 enum class NRVariable {src, u, coeff};
 enum class NRNormType {max, l1, l2};
 
+//! rief Reason why a Newton solve stopped.
+enum class NewtonSolveReason {
+  converged,
+  fixed_iterations_complete,
+  dt_zero_initialization,
+  initial_nonfinite,
+  final_nonfinite,
+  stagnation,
+  backtracking_exhausted,
+  max_iterations
+};
+
+//! rief Result of one nonlinear Newton solve.
+struct NewtonSolveResult {
+  NewtonSolveReason reason{NewtonSolveReason::initial_nonfinite};
+  int iterations{0};
+  Real initial_norm{0.0};
+  Real initial_max_norm{0.0};
+  Real final_norm{0.0};
+  Real final_max_norm{0.0};
+  bool committed{false};
+
+  bool IsSuccess() const {
+    return committed;
+  }
+};
+
+const char *NewtonSolveReasonName(NewtonSolveReason reason);
+
 // constexpr int minth_ = 8;
 
 // //! \fn inline std::int64_t rotl(std::int64_t i, int s)
@@ -170,7 +199,8 @@ class NewtonRaphsonDriver {
   // pure virtual function
   // virtual void Solve(int step, Real dt = 0.0) = 0;
 
-  void Solve_general(int step, Real dt = 0.0);
+  NewtonSolveResult Solve_general(int step, Real dt = 0.0);
+  void HandleSolveResult(const NewtonSolveResult &result) const;
 
   friend class NewtonRaphson;
   friend class NewtonRaphsonTaskList;
@@ -186,7 +216,7 @@ class NewtonRaphsonDriver {
   // void SolveIterative();
   // void SolveIterativeFixedTimes();
 
-  void CalculateDefectNorms(Real &l2_norm, Real &max_norm);
+  void CalculateDefectNorms(Real &l2_norm, Real &max_norm, bool &finite);
   // void CalculateMatrix();
 
   // // small functions
@@ -208,7 +238,7 @@ class NewtonRaphsonDriver {
   Real mg_coarse_retry_factor_, mg_coarse_retry_min_scale_;
   Real step_scale_, backtrack_factor_, min_step_scale_;
   int stage_;
-  int niter_, max_backtrack_, mg_coarse_retry_max_;
+  int niter_, nr_max_iterations_, max_backtrack_, mg_coarse_retry_max_;
   int os_, oe_;
   NewtonRaphsonTaskList *nrtlist_coeff_;
   NewtonRaphsonTaskList *nrtlist_post_;

@@ -79,6 +79,7 @@ omega           = 1.0
 threshold       = 1e-10
 # nr_niteration   = 1
 nr_threshold   = 1e-10
+nr_max_iterations = 100
 ix1_bc          = outflow
 ox1_bc          = outflow
 ix2_bc          = outflow

@@ -40,6 +40,23 @@
 #include <omp.h>
 #endif
 
+const char *NewtonSolveReasonName(NewtonSolveReason reason) {
+  switch (reason) {
+    case NewtonSolveReason::converged: return "converged";
+    case NewtonSolveReason::fixed_iterations_complete:
+      return "fixed_iterations_complete";
+    case NewtonSolveReason::dt_zero_initialization:
+      return "dt_zero_initialization";
+    case NewtonSolveReason::initial_nonfinite: return "initial_nonfinite";
+    case NewtonSolveReason::final_nonfinite: return "final_nonfinite";
+    case NewtonSolveReason::stagnation: return "stagnation";
+    case NewtonSolveReason::backtracking_exhausted:
+      return "backtracking_exhausted";
+    case NewtonSolveReason::max_iterations: return "max_iterations";
+  }
+  return "unknown";
+}
+
 namespace {
 
 void PrintMaxDefectStencil(NewtonRaphson *pnr, int k, int j, int i, Real signed_defect) {
@@ -138,7 +155,8 @@ NewtonRaphsonDriver::NewtonRaphsonDriver(Mesh *pm,
     pmy_mesh_(pm),
     needinit_(true), fshowdef_(false), use_mg_smoothing_fallback_(false),
     eps_(-1.0), dt_(0.0), step_scale_(1.0),
-    backtrack_factor_(0.5), min_step_scale_(0.05), niter_(-1), max_backtrack_(0)
+    backtrack_factor_(0.5), min_step_scale_(0.05), niter_(-1),
+    nr_max_iterations_(100), max_backtrack_(0)
     // nb_rank_(0)
     {
   std::cout << std::scientific << std::setprecision(15);
@@ -390,10 +408,13 @@ void NewtonRaphsonDriver::CheckBoundaryFunctions() {
 }
 
 
-void NewtonRaphsonDriver::Solve_general(int stage, Real dt) {
+NewtonSolveResult NewtonRaphsonDriver::Solve_general(int stage, Real dt) {
   // std::cout << "In NewtonRaphsonDriver::Solve_general" << std::endl;
   stage_ = stage;
   dt_ = dt;
+  NewtonSolveResult result;
+  const bool fixed_mode = (eps_ <= 0.0 && niter_ >= 0);
+  const bool initialization_step = (pmy_mesh_->ncycle == 0 && dt_ == 0.0);
   // Construct the NewtonRaphson array
   vnr_.clear();
   for (int i = 0; i < pmy_mesh_->nblocal; ++i)
@@ -424,19 +445,39 @@ void NewtonRaphsonDriver::Solve_general(int stage, Real dt) {
 
   int n = 0;
   Real def = 0.0, defmax = 0.0;
-  CalculateDefectNorms(def, defmax);
+  bool finite = true;
+  CalculateDefectNorms(def, defmax, finite);
+  result.initial_norm = def;
+  result.initial_max_norm = defmax;
 
   // std::cout << "epsilon for Newton-Raphson: " << eps_ << std::endl;
 
   if (fshowdef_ && Globals::my_rank == 0)
     std::cout << "initial defect " << def << " max " << defmax << std::endl;
+  if (!finite) {
+    result.reason = NewtonSolveReason::initial_nonfinite;
+    result.final_norm = def;
+    result.final_max_norm = defmax;
+    if (Globals::my_rank == 0) {
+      std::cout << "[NR] status=" << NewtonSolveReasonName(result.reason)
+                << " iterations=0 initial_defect=" << def
+                << " final_defect=" << def << std::endl;
+    }
+    return result;
+  }
   // A zero input threshold requests automatic convergence control.  Do not
   // launch multigrid cycles for a relative defect already below floating-point
   // resolution; such cycles cannot improve the state and can instead toggle
   // stiff LTE variables between adjacent representable values.
   const Real stopping_defect = (eps_ == 0.0)
       ? 64.0*std::numeric_limits<Real>::epsilon() : eps_;
-  while (def > stopping_defect) {
+  if (!fixed_mode && def <= stopping_defect) {
+    result.reason = initialization_step ? NewtonSolveReason::dt_zero_initialization
+                                        : NewtonSolveReason::converged;
+    result.committed = true;
+  }
+  while (result.committed == false
+         && (fixed_mode ? n < niter_ : def > stopping_defect)) {
     // if (matrixmode_ == 1)
     //   CalculateMatrix();
     Real olddef = def, oldmax = defmax;
@@ -461,7 +502,7 @@ void NewtonRaphsonDriver::Solve_general(int stage, Real dt) {
       SolveOneCycle();
 
       def = 0.0, defmax = 0.0;
-      CalculateDefectNorms(def, defmax);
+      CalculateDefectNorms(def, defmax, finite);
 
       if (fshowdef_ && Globals::my_rank == 0) {
         const Real conv = (olddef > 0.0 ? def/olddef : 0.0);
@@ -539,7 +580,7 @@ void NewtonRaphsonDriver::Solve_general(int stage, Real dt) {
         }
       }
 
-      if (std::isfinite(def) && def <= olddef) {
+      if (finite && def <= olddef) {
         accepted = true;
         break;
       }
@@ -598,6 +639,9 @@ void NewtonRaphsonDriver::Solve_general(int stage, Real dt) {
         }
         def = olddef;
         defmax = oldmax;
+        result.reason = !finite
+            ? NewtonSolveReason::final_nonfinite
+            : NewtonSolveReason::backtracking_exhausted;
         break;
       }
 
@@ -617,65 +661,82 @@ void NewtonRaphsonDriver::Solve_general(int stage, Real dt) {
 
     if (!accepted) break;
 
-    if (pmy_mesh_->ncycle == 0 && dt_ == 0.0) break; // only for the first time: caution! ncycle=0 is also used after the calculation started (but dt > 0.0).
-    if (!std::isfinite(def)) {
-      for (auto itr = vnr_.begin(); itr < vnr_.end(); itr++) {
-        NewtonRaphson *pnr = *itr;
-        pnr->RestoreIterate();
+    ++n;
+    if (initialization_step) {
+      result.reason = NewtonSolveReason::dt_zero_initialization;
+      result.committed = true;
+      break;
+    }
+    if (fixed_mode) {
+      if (n >= niter_) {
+        result.reason = NewtonSolveReason::fixed_iterations_complete;
+        result.committed = true;
+        break;
       }
-      if (fshowdef_ && Globals::my_rank == 0)
-        std::cout << "### Warning in NewtonRaphsonDriver::SolveIterative" << std::endl
-                  << "Rolling back Newton-Raphson iterate: defect norm = " << def
-                  << ", previous defect norm = " << olddef
-                  << ", convergence factor = " << def/olddef
-                  << ", and niter = " << n << "." << std::endl;
+      continue;
+    }
+
+    if (def <= stopping_defect) {
+      result.reason = NewtonSolveReason::converged;
+      result.committed = true;
+      break;
+    }
+    const Real convergence_factor = def/olddef;
+    if (convergence_factor > 0.9) {
+      if (n > 1 && (convergence_factor > 1.0
+                    || std::abs(def - olddef) < 1e-12
+                    || eps_ == 0.0)) {
+        for (auto itr = vnr_.begin(); itr < vnr_.end(); itr++) {
+          (*itr)->RestoreIterate();
+        }
+        def = olddef;
+        defmax = oldmax;
+        result.reason = NewtonSolveReason::stagnation;
+        break;
+      }
+    }
+    if (n >= nr_max_iterations_) {
+      for (auto itr = vnr_.begin(); itr < vnr_.end(); itr++) {
+        (*itr)->RestoreIterate();
+      }
       def = olddef;
       defmax = oldmax;
+      result.reason = NewtonSolveReason::max_iterations;
       break;
     }
-    if (def/olddef > 0.9) {
-      if (n > 1 && eps_ == 0.0) break;
-      if (fshowdef_ && Globals::my_rank == 0)
-        std::cout << "### Warning in NewtonRaphsonDriver::SolveIterative" << std::endl
-                  << "Slow Newton-Raphson convergence : defect norm = " << def
-                  << ", convergence factor = " << def/olddef << "." << std::endl;
-      if (n > 1 && def/olddef > 1.0) {
-        if (fshowdef_ && Globals::my_rank == 0)
-          std::cout << "### Warning in NewtonRaphsonDriver::SolveIterative" << std::endl
-                    << "NewtonRaphson is diverging: defect norm = " << def
-                    << ", convergence factor = " << def/olddef << ", and niter = " << n << "." << std::endl;
-        break;
-      }
-      if (n > 1 && std::abs(def - olddef) < 1e-12) {
-        if (fshowdef_ && Globals::my_rank == 0)
-          std::cout << "### Warning in NewtonRaphsonDriver::SolveIterative" << std::endl
-                    << "NewtonRaphson is not converging: defect norm = " << def
-                    << ", convergence factor = " << def/olddef << ", and niter = " << n << "." << std::endl;
-        break;
-      }
-    }
-    // When a positive NR threshold is supplied, convergence is controlled by
-    // the residual tolerance.  The constructor documents nr_niteration as
-    // ignored in this mode; do not apply the iteration cap here as well.
-    // Applying it despite that contract caused otherwise converging solves to
-    // emit a warning and return an unnecessarily truncated Newton state.
-    if (eps_ <= 0.0 && niter_ != -1 && n > niter_) {
-      if (Globals::my_rank == 0) {
-        std::cout
-            << "### Warning in NewtonRaphsonDriver::SolveIterative" << std::endl
-            << "Aborting because the # iterations is too large, n > " << niter_ << "." << std::endl
-            << "Check the solution as it may not be accurate enough." << std::endl;
-      }
-      break;
-    }
-    n++;
   }
 
-  // return the results to hydro variables
-  for (auto itr = vnr_.begin(); itr < vnr_.end(); itr++) {
-    NewtonRaphson *pnr = *itr;
-    pnr->UpdateHydroVariables();
+  if (!result.committed && result.reason == NewtonSolveReason::initial_nonfinite) {
+    result.reason = fixed_mode ? NewtonSolveReason::fixed_iterations_complete
+                                : NewtonSolveReason::converged;
+    result.committed = true;
   }
+  result.iterations = n;
+  result.final_norm = def;
+  result.final_max_norm = defmax;
+  if (result.committed) {
+    for (auto itr = vnr_.begin(); itr < vnr_.end(); itr++) {
+      (*itr)->UpdateHydroVariables();
+    }
+  }
+  if (Globals::my_rank == 0) {
+    std::cout << "[NR] status=" << NewtonSolveReasonName(result.reason)
+              << " iterations=" << result.iterations
+              << " initial_defect=" << result.initial_norm
+              << " final_defect=" << result.final_norm << std::endl;
+  }
+  return result;
+}
+
+void NewtonRaphsonDriver::HandleSolveResult(const NewtonSolveResult &result) const {
+  if (result.IsSuccess()) return;
+  std::stringstream msg;
+  msg << "### FATAL ERROR in NewtonRaphsonDriver::Solve_general" << std::endl
+      << "Newton-Raphson solve failed: " << NewtonSolveReasonName(result.reason)
+      << ", iterations=" << result.iterations
+      << ", initial_defect=" << result.initial_norm
+      << ", final_defect=" << result.final_norm << std::endl;
+  ATHENA_ERROR(msg);
 }
 
 
@@ -776,10 +837,12 @@ void NewtonRaphsonDriver::SolveOneCycle() {
 //!                                                     Real &max_norm)
 //! \brief calculate each block defect once and accumulate both convergence norms
 
-void NewtonRaphsonDriver::CalculateDefectNorms(Real &l2_norm, Real &max_norm) {
+void NewtonRaphsonDriver::CalculateDefectNorms(Real &l2_norm, Real &max_norm,
+                                               bool &finite) {
   const int nblock = static_cast<int>(vnr_.size());
   std::vector<Real> block_l2(nblock*nvar_, 0.0);
   std::vector<Real> block_max(nblock*nvar_, 0.0);
+  std::vector<int> block_finite(nblock, 1);
 
 #pragma omp parallel for num_threads(nthreads_)
   for (int b = 0; b < nblock; ++b) {
@@ -788,11 +851,25 @@ void NewtonRaphsonDriver::CalculateDefectNorms(Real &l2_norm, Real &max_norm) {
     for (int v = 0; v < nvar_; ++v) {
       pnr->CalculateDefectNorms(v, block_l2[b*nvar_ + v],
                                 block_max[b*nvar_ + v]);
+      if (!std::isfinite(block_l2[b*nvar_ + v])
+          || !std::isfinite(block_max[b*nvar_ + v])) {
+        block_finite[b] = 0;
+      }
     }
   }
 
   l2_norm = 0.0;
   max_norm = 0.0;
+  finite = true;
+  for (int b = 0; b < nblock; ++b) {
+    finite = finite && (block_finite[b] != 0);
+  }
+#ifdef MPI_PARALLEL
+  int finite_int = finite ? 1 : 0;
+  MPI_Allreduce(MPI_IN_PLACE, &finite_int, 1, MPI_INT, MPI_MIN,
+                MPI_COMM_NEWTON_RAPHSON);
+  finite = (finite_int != 0);
+#endif
   const Real vol = (pmy_mesh_->mesh_size.x1max-pmy_mesh_->mesh_size.x1min)
                  * (pmy_mesh_->mesh_size.x2max-pmy_mesh_->mesh_size.x2min)
                  * (pmy_mesh_->mesh_size.x3max-pmy_mesh_->mesh_size.x3min);
@@ -812,6 +889,13 @@ void NewtonRaphsonDriver::CalculateDefectNorms(Real &l2_norm, Real &max_norm) {
     l2_norm += std::sqrt(sum/vol);
     max_norm = std::max(max_norm, maximum);
   }
+  if (!std::isfinite(l2_norm) || !std::isfinite(max_norm)) finite = false;
+#ifdef MPI_PARALLEL
+  int finite_int_final = finite ? 1 : 0;
+  MPI_Allreduce(MPI_IN_PLACE, &finite_int_final, 1, MPI_INT, MPI_MIN,
+                MPI_COMM_NEWTON_RAPHSON);
+  finite = (finite_int_final != 0);
+#endif
 }
 
 // //----------------------------------------------------------------------------------------
