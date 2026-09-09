@@ -39,7 +39,7 @@
 #   --ccmd=name       use name as the command to call the (non-MPI) C++ compiler
 #   --mpiccmd=name    use name as the command to call the MPI C++ compiler
 #   --gcovcmd=name    use name as the command to call the gcov utility
-#   --cflag=string    append string whenever invoking compiler/linker
+#   --cflag=string    append string whenever invoking compiler/linker (after defaults)
 #   --include=path    use -Ipath when compiling
 #   --lib_path=path   use -Lpath when linking
 #   --lib=xxx         use -lxxx when linking
@@ -286,10 +286,12 @@ parser.add_argument('-nrmgfld',
 # compiler version and/or predefined sets of compiler options. The C++ compiler front ends
 # are the main supported/documented options and are invoked on the command line, but the C
 # front ends are also acceptable selections and are mapped to the matching C++ front end:
-# gcc -> g++, clang -> clang++, icc-> icpc
+# gcc -> g++, clang -> clang++, icc-> icpc.  g++-simd is finite-safe; the
+# explicitly opt-in g++-simd-fast preset retains the legacy unsafe math flags.
 cxx_choices = [
     'g++',
     'g++-simd',
+    'g++-simd-fast',
     'icpx',
     'icpc',
     'icpc-debug',
@@ -322,7 +324,8 @@ parser.add_argument(
     default='g++',
     type=c_to_cpp,
     choices=cxx_choices,
-    help='select C++ compiler and default set of flags (works w/ or w/o -mpi)')
+    help=('select C++ compiler and default flags; g++-simd is finite-safe and '
+          'g++-simd-fast enables unsafe fast math'))
 
 # --ccmd=[name] argument
 parser.add_argument('--ccmd',
@@ -608,14 +611,16 @@ if args['cxx'] == 'g++':
     makefile_options['COMPILER_FLAGS'] = '-O3 -std=c++11'
     makefile_options['LINKER_FLAGS'] = ''
     makefile_options['LIBRARY_FLAGS'] = ''
-if args['cxx'] == 'g++-simd':
+if args['cxx'] in ('g++-simd', 'g++-simd-fast'):
     # GCC version >= 4.9, for OpenMP 4.0; version >= 6.1 for OpenMP 4.5 support
-    definitions['COMPILER_CHOICE'] = 'g++-simd'
+    definitions['COMPILER_CHOICE'] = args['cxx']
     definitions['COMPILER_COMMAND'] = makefile_options['COMPILER_COMMAND'] = 'g++'
     makefile_options['PREPROCESSOR_FLAGS'] = ''
+    fast_math_flags = '-ffast-math ' if args['cxx'] == 'g++-simd-fast' else ''
     makefile_options['COMPILER_FLAGS'] = (
-        '-O3 -std=c++11 -fopenmp-simd -fwhole-program -flto=auto -ffast-math '
-        '-march=native -fprefetch-loop-arrays'
+        '-O3 -std=c++11 -fopenmp-simd -fwhole-program -flto=auto '
+        + fast_math_flags
+        + '-march=native -fprefetch-loop-arrays'
         # -march=skylake-avx512, skylake, core-avx2
         # -mprefer-vector-width=128  # available in gcc-8, but not gcc-7
         # -mtune=native, generic, broadwell
@@ -813,7 +818,7 @@ if args['debug']:
     definitions['DEBUG_OPTION'] = '1'
     # Completely replace the --cxx= sets of default compiler flags, disable optimization,
     # and emit debug symbols in the compiled binaries
-    if (args['cxx'] == 'g++' or args['cxx'] == 'g++-simd'
+    if (args['cxx'] == 'g++' or args['cxx'] in ('g++-simd', 'g++-simd-fast')
             or args['cxx'] == 'icpx'
             or args['cxx'] == 'icpc' or args['cxx'] == 'icpc-debug'
             or args['cxx'] == 'clang++' or args['cxx'] == 'clang++-simd'
@@ -834,7 +839,7 @@ if args['coverage']:
     # For now, append new compiler flags and don't override --cxx set, but set code to be
     # unoptimized (-O0 instead of -O3) to get useful statement annotations. Should we add
     # '-g -fopenmp-simd', by default? Don't combine lines when writing source code!
-    if (args['cxx'] == 'g++' or args['cxx'] == 'g++-simd'):
+    if args['cxx'] == 'g++' or args['cxx'] in ('g++-simd', 'g++-simd-fast'):
         makefile_options['COMPILER_FLAGS'] += (
             ' -O0 -fprofile-arcs -ftest-coverage'
             ' -fno-inline -fno-exceptions -fno-elide-constructors'
@@ -873,7 +878,8 @@ if args['mpi']:
     definitions['MPI_OPTION'] = 'MPI_PARALLEL'
     if (args['cxx'] == 'g++' or args['cxx'] == 'icpc' or args['cxx'] == 'icpc-debug'
             or args['cxx'] == 'icpx'
-            or args['cxx'] == 'icpc-phi' or args['cxx'] == 'g++-simd'
+            or args['cxx'] == 'icpc-phi'
+            or args['cxx'] in ('g++-simd', 'g++-simd-fast')
             or args['cxx'] == 'clang++' or args['cxx'] == 'clang++-simd'
             or args['cxx'] == 'clang++-apple'):
         definitions['COMPILER_COMMAND'] = makefile_options['COMPILER_COMMAND'] = 'mpicxx'
@@ -890,7 +896,8 @@ else:
 # -omp argument
 if args['omp']:
     definitions['OPENMP_OPTION'] = 'OPENMP_PARALLEL'
-    if (args['cxx'] == 'g++' or args['cxx'] == 'g++-simd' or args['cxx'] == 'clang++'
+    if (args['cxx'] == 'g++'
+            or args['cxx'] in ('g++-simd', 'g++-simd-fast') or args['cxx'] == 'clang++'
             or args['cxx'] == 'clang++-simd'):
         makefile_options['COMPILER_FLAGS'] += ' -fopenmp'
     if (args['cxx'] == 'clang++-apple'):
@@ -954,7 +961,7 @@ if args['hdf5']:
         makefile_options['PREPROCESSOR_FLAGS'] += ' -I{0}/include'.format(
             args['hdf5_path'])
         makefile_options['LINKER_FLAGS'] += ' -L{0}/lib'.format(args['hdf5_path'])
-    if (args['cxx'] == 'g++' or args['cxx'] == 'g++-simd'
+    if (args['cxx'] == 'g++' or args['cxx'] in ('g++-simd', 'g++-simd-fast')
             or args['cxx'] == 'cray' or args['cxx'] == 'icpc'
             or args['cxx'] == 'icpx'
             or args['cxx'] == 'icpc-debug' or args['cxx'] == 'icpc-phi'
@@ -982,6 +989,32 @@ else:
 # --cflag=[string] argument
 if args['cflag'] is not None:
     makefile_options['COMPILER_FLAGS'] += ' '+args['cflag']
+
+# NR-FLD explicitly relies on runtime NaN/Inf checks.  Keep SIMD and other
+# optimizations available, but reject compiler options that allow the compiler
+# to assume all floating-point values are finite.  User flags are appended
+# above, so this check covers both the compiler preset and --cflag overrides.
+if args['nrmgfld']:
+    unsafe_fp_patterns = (
+        r'(^|\s)-ffast-math(?:\s|$)',
+        r'(^|\s)-ffinite-math-only(?:\s|$)',
+        r'(^|\s)-funsafe-math-optimizations(?:\s|$)',
+        r'(^|\s)-fassociative-math(?:\s|$)',
+        r'(^|\s)-freciprocal-math(?:\s|$)',
+        r'(^|\s)-fno-signed-zeros(?:\s|$)',
+        r'(^|\s)-fno-trapping-math(?:\s|$)',
+        r'(^|\s)-Ofast(?:\s|$)',
+        r'(^|\s)-fp-model\s+fast(?:=\S*)?(?:\s|$)',
+        r'(^|\s)-fp-model=fast(?:=\S*)?(?:\s|$)',
+    )
+    unsafe_fp_flags = [
+        pattern for pattern in unsafe_fp_patterns
+        if re.search(pattern, makefile_options['COMPILER_FLAGS'])
+    ]
+    if unsafe_fp_flags:
+        raise SystemExit(
+            '### CONFIGURE ERROR: NR-FLD requires finite-safe floating-point flags; '
+            'remove unsafe math options (for example -ffast-math) from --cxx/--cflag')
 
 # --include=[name] arguments
 for include_path in args['include']:

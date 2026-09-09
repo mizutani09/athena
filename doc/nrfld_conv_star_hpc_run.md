@@ -47,7 +47,10 @@ chosen with storage in mind.
 
 ## Build
 
-Run on the target CPU because `g++-simd` enables native optimization.
+Run on the target CPU because `g++-simd` enables native optimization.  This
+SIMD preset does not enable `-ffast-math`, so the finite-value checks used by
+NR-FLD remain valid.  The explicitly named `g++-simd-fast` preset retains the
+old unsafe floating-point assumptions and is rejected for `-nrmgfld` builds.
 
 ```bash
 cd /path/to/athena
@@ -56,7 +59,9 @@ python3 configure.py --prob=nrfld_conv_star --eos=adiabatic \
 make -j 32
 ```
 
-For a portable rather than CPU-native build, use `--cxx=g++`.
+For a portable rather than CPU-native build, use `--cxx=g++`.  Any
+`--cflag=...` options are appended after compiler defaults; in an NR-FLD build,
+finite-assumption flags such as `-ffast-math` are rejected by `configure.py`.
 
 ## Isolated-star sequence
 

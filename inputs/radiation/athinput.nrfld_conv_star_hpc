@@ -1,6 +1,7 @@
 <comment>
 problem = HPC commissioning of a 10 Msun, 510 Rsun mildly convective NR-FLD RSG
 configure = --prob=nrfld_conv_star --eos=adiabatic -nrmgfld -mpi -hdf5 --cxx=g++-simd
+# g++-simd keeps finite-value checks enabled; do not use g++-simd-fast for NR-FLD.
 # Default: 256^3 pilot on 256-512 MPI ranks.  Override nx1-3=512 for the
 # 1024-rank production-resolution relaxation after this pilot passes.
 

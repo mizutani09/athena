@@ -1,8 +1,9 @@
 <comment>
 problem   = 10 Msun, 510 Rsun composite modified-Lane-Emden RSG with NR-FLD
 configure = --prob=nrfld_conv_star --eos=adiabatic -nrmgfld -mpi -hdf5 --cxx=g++-simd
-# g++-simd is a per-machine native build. Reconfigure on the machine where the
-# executable will run; use plain --cxx=g++ when strict IEEE portability is needed.
+# g++-simd enables native SIMD/LTO optimization while retaining finite-value checks.
+# Reconfigure on the machine where the executable will run. The explicit
+# g++-simd-fast preset is not valid with -nrmgfld because it enables -ffast-math.
 # Uniform-grid production settings use CFL=0.3 and inexact Newton solves.
 # This 64^3 file is a local smoke-test input.  Use
 # athinput.nrfld_conv_star_hpc for resolved relaxation/production runs.
