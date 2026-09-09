@@ -189,6 +189,7 @@ NRFLD::NRFLD(MeshBlock *pmb, ParameterInput *pin) :
     pmy_block_(pmb),
     u_gas_(pmb->ncells3, pmb->ncells2, pmb->ncells1),
     u_gas_iter_backup_(pmb->ncells3, pmb->ncells2, pmb->ncells1),
+    gas_defect_(pmb->ncells3, pmb->ncells2, pmb->ncells1),
     ngh_(NGHOST),
     // A cell-by-cell cap destroys the spatial structure of the correction
     // returned by the linear solve, especially across SMR/AMR interfaces.
@@ -741,19 +742,24 @@ void NRFLD::CalculateDefect(AthenaArray<Real> &def, const AthenaArray<Real> &u,
         Real Fg = (u_gas(k,j,i) - pfld->u_gas(k,j,i)) + dt*src_term;
         Real Fr = (u(k,j,i)     - u_old(k,j,i))
             - dt*(src_term + diff_term);
+        // Normalize each equation by its local transient/source scale, with
+        // the current and old state as a floor.  This makes gas and radiation
+        // residuals dimensionless without letting a nearly-zero update hide
+        // an absolute residual near a floor.
         Real unsteady = u(k,j,i) - u_old(k,j,i);
         Real scale = std::abs(unsteady)
                    + dt*(std::abs(src_term) + std::abs(diff_term));
         scale = std::max(scale, std::max(std::abs(u(k,j,i)), std::abs(u_old(k,j,i))));
         scale = std::max(scale, static_cast<Real>(1.0e-30));
+        Real gas_scale = std::abs(u_gas(k,j,i) - pfld->u_gas(k,j,i))
+                       + dt*std::abs(src_term);
+        gas_scale = std::max(gas_scale,
+                             std::max(std::abs(u_gas(k,j,i)),
+                                      std::abs(pfld->u_gas(k,j,i))));
+        gas_scale = std::max(gas_scale, static_cast<Real>(1.0e-30));
+        gas_defect_(k,j,i) = Fg/gas_scale;
         if (pfld->fixed_u_rad) {
-          Real gas_scale = std::abs(u_gas(k,j,i) - pfld->u_gas(k,j,i))
-                         + dt*std::abs(src_term);
-          gas_scale = std::max(gas_scale,
-                               std::max(std::abs(u_gas(k,j,i)),
-                                        std::abs(pfld->u_gas(k,j,i))));
-          gas_scale = std::max(gas_scale, static_cast<Real>(1.0e-30));
-          def(k,j,i) = Fg/gas_scale;
+          def(k,j,i) = gas_defect_(k,j,i);
         } else {
           def(k,j,i) = Fr/scale;
         }
@@ -776,6 +782,49 @@ void NRFLD::CalculateDefect(AthenaArray<Real> &def, const AthenaArray<Real> &u,
   }
 
   return;
+}
+
+
+void NRFLD::CalculateAdditionalDefectNorms(Real &l2_sum, Real &max_norm,
+                                           bool &active, bool &finite) const {
+  const FLD *fld = pmy_block_->prfld;
+  // The gas correction is eliminated locally from the one-variable radiation
+  // solve.  In the ordinary coupled mode it is nevertheless an independent
+  // nonlinear residual and must participate in convergence control.  It is
+  // not an unknown equation in only_rad mode, while fixed_u_rad makes it the
+  // primary (and only) residual instead.
+  active = !fld->fixed_u_rad && !fld->only_rad;
+  l2_sum = 0.0;
+  max_norm = 0.0;
+  finite = true;
+  if (!active) return;
+
+  const int il = pmy_block_->is, iu = pmy_block_->ie;
+  const int jl = pmy_block_->js, ju = pmy_block_->je;
+  const int kl = pmy_block_->ks, ku = pmy_block_->ke;
+  const Real dx = pmy_block_->pcoord->dx1f(il);
+  const Real dy = pmy_block_->pcoord->dx2f(jl);
+  const Real dz = pmy_block_->pcoord->dx3f(kl);
+  Real sum = 0.0;
+  Real maximum = 0.0;
+  for (int k = kl; k <= ku; ++k) {
+    for (int j = jl; j <= ju; ++j) {
+#pragma omp simd reduction(+: sum) reduction(max: maximum)
+      for (int i = il; i <= iu; ++i) {
+        const Real value = gas_defect_(k,j,i);
+        const Real abs_value = std::abs(value);
+        sum += SQR(abs_value);
+        maximum = std::max(maximum, abs_value);
+      }
+    }
+  }
+  l2_sum = sum*dx*dy*dz;
+  max_norm = maximum;
+  finite = std::isfinite(l2_sum) && std::isfinite(max_norm);
+}
+
+bool NRFLD::PrimaryDefectIsGas() const {
+  return pmy_block_->prfld->fixed_u_rad;
 }
 
 

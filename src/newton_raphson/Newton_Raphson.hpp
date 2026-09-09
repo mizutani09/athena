@@ -39,6 +39,17 @@ class NewtonRaphsonTaskList;
 enum class NRVariable {src, u, coeff};
 enum class NRNormType {max, l1, l2};
 
+//! \brief Aggregated normalized residual norms for one Newton state.
+struct NewtonResidualNorms {
+  Real l2_norm{0.0};
+  Real max_norm{0.0};
+  Real gas_l2_norm{0.0};
+  Real gas_max_norm{0.0};
+  Real radiation_l2_norm{0.0};
+  Real radiation_max_norm{0.0};
+  bool finite{true};
+};
+
 //! rief Reason why a Newton solve stopped.
 enum class NewtonSolveReason {
   converged,
@@ -59,6 +70,14 @@ struct NewtonSolveResult {
   Real initial_max_norm{0.0};
   Real final_norm{0.0};
   Real final_max_norm{0.0};
+  Real initial_gas_l2_norm{0.0};
+  Real initial_gas_max_norm{0.0};
+  Real initial_radiation_l2_norm{0.0};
+  Real initial_radiation_max_norm{0.0};
+  Real final_gas_l2_norm{0.0};
+  Real final_gas_max_norm{0.0};
+  Real final_radiation_l2_norm{0.0};
+  Real final_radiation_max_norm{0.0};
   bool committed{false};
 
   bool IsSuccess() const {
@@ -132,6 +151,9 @@ class NewtonRaphson {
                                const AthenaArray<Real> &coeff,
                                const AthenaArray<Real> &def_coeff,
                                bool th) = 0;
+  virtual void CalculateAdditionalDefectNorms(Real &l2_sum, Real &max_norm,
+                                              bool &active, bool &finite) const;
+  virtual bool PrimaryDefectIsGas() const { return false; }
   virtual void ApplyPhysicalBoundary() = 0;
   virtual void PrintCellPhysicsDebug(int k, int j, int i) {}
   void CalculateCoefficientsTask(Real dt);
@@ -216,7 +238,7 @@ class NewtonRaphsonDriver {
   // void SolveIterative();
   // void SolveIterativeFixedTimes();
 
-  void CalculateDefectNorms(Real &l2_norm, Real &max_norm, bool &finite);
+  void CalculateDefectNorms(NewtonResidualNorms &norms);
   // void CalculateMatrix();
 
   // // small functions

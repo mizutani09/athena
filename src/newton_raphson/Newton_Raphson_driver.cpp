@@ -444,20 +444,41 @@ NewtonSolveResult NewtonRaphsonDriver::Solve_general(int stage, Real dt) {
   }
 
   int n = 0;
-  Real def = 0.0, defmax = 0.0;
-  bool finite = true;
-  CalculateDefectNorms(def, defmax, finite);
-  result.initial_norm = def;
-  result.initial_max_norm = defmax;
+  NewtonResidualNorms norms;
+  CalculateDefectNorms(norms);
+  Real def = norms.l2_norm;
+  Real defmax = norms.max_norm;
+  auto store_result_norms = [&result](const NewtonResidualNorms &values,
+                                      bool initial) {
+    if (initial) {
+      result.initial_norm = values.l2_norm;
+      result.initial_max_norm = values.max_norm;
+      result.initial_gas_l2_norm = values.gas_l2_norm;
+      result.initial_gas_max_norm = values.gas_max_norm;
+      result.initial_radiation_l2_norm = values.radiation_l2_norm;
+      result.initial_radiation_max_norm = values.radiation_max_norm;
+    } else {
+      result.final_norm = values.l2_norm;
+      result.final_max_norm = values.max_norm;
+      result.final_gas_l2_norm = values.gas_l2_norm;
+      result.final_gas_max_norm = values.gas_max_norm;
+      result.final_radiation_l2_norm = values.radiation_l2_norm;
+      result.final_radiation_max_norm = values.radiation_max_norm;
+    }
+  };
+  store_result_norms(norms, true);
 
   // std::cout << "epsilon for Newton-Raphson: " << eps_ << std::endl;
 
   if (fshowdef_ && Globals::my_rank == 0)
-    std::cout << "initial defect " << def << " max " << defmax << std::endl;
-  if (!finite) {
+    std::cout << "initial defect l2 " << def << " max " << defmax
+              << " gas_l2 " << norms.gas_l2_norm
+              << " gas_max " << norms.gas_max_norm
+              << " radiation_l2 " << norms.radiation_l2_norm
+              << " radiation_max " << norms.radiation_max_norm << std::endl;
+  if (!norms.finite) {
     result.reason = NewtonSolveReason::initial_nonfinite;
-    result.final_norm = def;
-    result.final_max_norm = defmax;
+    store_result_norms(norms, false);
     if (Globals::my_rank == 0) {
       std::cout << "[NR] status=" << NewtonSolveReasonName(result.reason)
                 << " iterations=0 initial_defect=" << def
@@ -471,15 +492,23 @@ NewtonSolveResult NewtonRaphsonDriver::Solve_general(int stage, Real dt) {
   // stiff LTE variables between adjacent representable values.
   const Real stopping_defect = (eps_ == 0.0)
       ? 64.0*std::numeric_limits<Real>::epsilon() : eps_;
-  if (!fixed_mode && def <= stopping_defect) {
+  const auto meets_stopping = [&norms, stopping_defect]() {
+    // The combined L2 norm controls the nonlinear merit function.  Requiring
+    // the combined max norm as well prevents a localized residual from being
+    // hidden by averaging over a large mesh.
+    return norms.l2_norm <= stopping_defect
+        && norms.max_norm <= stopping_defect;
+  };
+  if (!fixed_mode && meets_stopping()) {
     result.reason = initialization_step ? NewtonSolveReason::dt_zero_initialization
                                         : NewtonSolveReason::converged;
     result.committed = true;
   }
   while (result.committed == false
-         && (fixed_mode ? n < niter_ : def > stopping_defect)) {
+         && (fixed_mode ? n < niter_ : !meets_stopping())) {
     // if (matrixmode_ == 1)
     //   CalculateMatrix();
+    const NewtonResidualNorms old_norms = norms;
     Real olddef = def, oldmax = defmax;
     Real trial_scale = 1.0;
     bool accepted = false;
@@ -501,15 +530,20 @@ NewtonSolveResult NewtonRaphsonDriver::Solve_general(int stage, Real dt) {
       plmgd_->SetCoarseCorrectionScale(coarse_corr_trial_scale);
       SolveOneCycle();
 
-      def = 0.0, defmax = 0.0;
-      CalculateDefectNorms(def, defmax, finite);
+      CalculateDefectNorms(norms);
+      def = norms.l2_norm;
+      defmax = norms.max_norm;
 
       if (fshowdef_ && Globals::my_rank == 0) {
         const Real conv = (olddef > 0.0 ? def/olddef : 0.0);
         const Real convmax = (oldmax > 0.0 ? defmax/oldmax : 0.0);
         std::cout << "[debug in NR] niter " << n << " step_scale " << step_scale_
                   << " def " << def << " convergence factor " << conv
-                  << " defmax  " << defmax << " cf " << convmax << std::endl;
+                  << " defmax  " << defmax << " cf " << convmax
+                  << " gas_l2 " << norms.gas_l2_norm
+                  << " gas_max " << norms.gas_max_norm
+                  << " radiation_l2 " << norms.radiation_l2_norm
+                  << " radiation_max " << norms.radiation_max_norm << std::endl;
       }
       if (fshowdef_) {
         Real local_absmax = -1.0;
@@ -580,7 +614,10 @@ NewtonSolveResult NewtonRaphsonDriver::Solve_general(int stage, Real dt) {
         }
       }
 
-      if (finite && def <= olddef) {
+      // Line search acceptance uses the combined L2 merit function.  The
+      // maximum norm remains a hard stopping gate and is reported every
+      // iteration, but need not be monotone while a localized defect moves.
+      if (norms.finite && def <= olddef) {
         accepted = true;
         break;
       }
@@ -629,6 +666,7 @@ NewtonSolveResult NewtonRaphsonDriver::Solve_general(int stage, Real dt) {
 
       if (nback >= max_backtrack_ ||
           trial_scale*backtrack_factor_ < min_step_scale_) {
+        const bool trial_finite = norms.finite;
         if (fshowdef_ && Globals::my_rank == 0) {
           std::cout << "### Warning in NewtonRaphsonDriver::SolveIterative" << std::endl
                     << "Rejecting Newton-Raphson iterate after backtracking attempts: "
@@ -637,9 +675,10 @@ NewtonSolveResult NewtonRaphsonDriver::Solve_general(int stage, Real dt) {
                     << ", last step scale = " << trial_scale
                     << ", niter = " << n << "." << std::endl;
         }
-        def = olddef;
-        defmax = oldmax;
-        result.reason = !finite
+        norms = old_norms;
+        def = norms.l2_norm;
+        defmax = norms.max_norm;
+        result.reason = !trial_finite
             ? NewtonSolveReason::final_nonfinite
             : NewtonSolveReason::backtracking_exhausted;
         break;
@@ -676,7 +715,7 @@ NewtonSolveResult NewtonRaphsonDriver::Solve_general(int stage, Real dt) {
       continue;
     }
 
-    if (def <= stopping_defect) {
+    if (meets_stopping()) {
       result.reason = NewtonSolveReason::converged;
       result.committed = true;
       break;
@@ -689,8 +728,9 @@ NewtonSolveResult NewtonRaphsonDriver::Solve_general(int stage, Real dt) {
         for (auto itr = vnr_.begin(); itr < vnr_.end(); itr++) {
           (*itr)->RestoreIterate();
         }
-        def = olddef;
-        defmax = oldmax;
+        norms = old_norms;
+        def = norms.l2_norm;
+        defmax = norms.max_norm;
         result.reason = NewtonSolveReason::stagnation;
         break;
       }
@@ -699,8 +739,9 @@ NewtonSolveResult NewtonRaphsonDriver::Solve_general(int stage, Real dt) {
       for (auto itr = vnr_.begin(); itr < vnr_.end(); itr++) {
         (*itr)->RestoreIterate();
       }
-      def = olddef;
-      defmax = oldmax;
+      norms = old_norms;
+      def = norms.l2_norm;
+      defmax = norms.max_norm;
       result.reason = NewtonSolveReason::max_iterations;
       break;
     }
@@ -712,8 +753,7 @@ NewtonSolveResult NewtonRaphsonDriver::Solve_general(int stage, Real dt) {
     result.committed = true;
   }
   result.iterations = n;
-  result.final_norm = def;
-  result.final_max_norm = defmax;
+  store_result_norms(norms, false);
   if (result.committed) {
     for (auto itr = vnr_.begin(); itr < vnr_.end(); itr++) {
       (*itr)->UpdateHydroVariables();
@@ -722,8 +762,19 @@ NewtonSolveResult NewtonRaphsonDriver::Solve_general(int stage, Real dt) {
   if (Globals::my_rank == 0) {
     std::cout << "[NR] status=" << NewtonSolveReasonName(result.reason)
               << " iterations=" << result.iterations
-              << " initial_defect=" << result.initial_norm
-              << " final_defect=" << result.final_norm << std::endl;
+              << " initial_l2=" << result.initial_norm
+              << " initial_max=" << result.initial_max_norm
+              << " initial_gas_l2=" << result.initial_gas_l2_norm
+              << " initial_gas_max=" << result.initial_gas_max_norm
+              << " initial_radiation_l2=" << result.initial_radiation_l2_norm
+              << " initial_radiation_max=" << result.initial_radiation_max_norm
+              << " final_l2=" << result.final_norm
+              << " final_max=" << result.final_max_norm
+              << " final_gas_l2=" << result.final_gas_l2_norm
+              << " final_gas_max=" << result.final_gas_max_norm
+              << " final_radiation_l2=" << result.final_radiation_l2_norm
+              << " final_radiation_max=" << result.final_radiation_max_norm
+              << std::endl;
   }
   return result;
 }
@@ -734,8 +785,14 @@ void NewtonRaphsonDriver::HandleSolveResult(const NewtonSolveResult &result) con
   msg << "### FATAL ERROR in NewtonRaphsonDriver::Solve_general" << std::endl
       << "Newton-Raphson solve failed: " << NewtonSolveReasonName(result.reason)
       << ", iterations=" << result.iterations
-      << ", initial_defect=" << result.initial_norm
-      << ", final_defect=" << result.final_norm << std::endl;
+      << ", initial_l2=" << result.initial_norm
+      << ", initial_max=" << result.initial_max_norm
+      << ", final_l2=" << result.final_norm
+      << ", final_max=" << result.final_max_norm
+      << ", final_gas_l2=" << result.final_gas_l2_norm
+      << ", final_gas_max=" << result.final_gas_max_norm
+      << ", final_radiation_l2=" << result.final_radiation_l2_norm
+      << ", final_radiation_max=" << result.final_radiation_max_norm << std::endl;
   ATHENA_ERROR(msg);
 }
 
@@ -833,36 +890,66 @@ void NewtonRaphsonDriver::SolveOneCycle() {
 
 
 //----------------------------------------------------------------------------------------
-//! \fn void NewtonRaphsonDriver::CalculateDefectNorms(Real &l2_norm,
-//!                                                     Real &max_norm)
-//! \brief calculate each block defect once and accumulate both convergence norms
+//! \fn void NewtonRaphsonDriver::CalculateDefectNorms(NewtonResidualNorms &norms)
+//! \brief calculate each block defect once and accumulate all active residual norms
 
-void NewtonRaphsonDriver::CalculateDefectNorms(Real &l2_norm, Real &max_norm,
-                                               bool &finite) {
+void NewtonRaphsonDriver::CalculateDefectNorms(NewtonResidualNorms &norms) {
   const int nblock = static_cast<int>(vnr_.size());
-  std::vector<Real> block_l2(nblock*nvar_, 0.0);
-  std::vector<Real> block_max(nblock*nvar_, 0.0);
+  std::vector<Real> block_primary_l2(nblock*nvar_, 0.0);
+  std::vector<Real> block_primary_max(nblock*nvar_, 0.0);
+  std::vector<Real> block_gas_l2(nblock, 0.0);
+  std::vector<Real> block_gas_max(nblock, 0.0);
+  std::vector<int> block_primary_is_gas(nblock, 0);
+  std::vector<int> block_gas_active(nblock, 0);
   std::vector<int> block_finite(nblock, 1);
 
 #pragma omp parallel for num_threads(nthreads_)
   for (int b = 0; b < nblock; ++b) {
     NewtonRaphson *pnr = vnr_[b];
     pnr->CalculateDefectBlock();
+    block_primary_is_gas[b] = pnr->PrimaryDefectIsGas() ? 1 : 0;
     for (int v = 0; v < nvar_; ++v) {
-      pnr->CalculateDefectNorms(v, block_l2[b*nvar_ + v],
-                                block_max[b*nvar_ + v]);
-      if (!std::isfinite(block_l2[b*nvar_ + v])
-          || !std::isfinite(block_max[b*nvar_ + v])) {
+      pnr->CalculateDefectNorms(v, block_primary_l2[b*nvar_ + v],
+                                block_primary_max[b*nvar_ + v]);
+      if (!std::isfinite(block_primary_l2[b*nvar_ + v])
+          || !std::isfinite(block_primary_max[b*nvar_ + v])) {
         block_finite[b] = 0;
       }
     }
+    bool gas_active = false;
+    bool gas_finite = true;
+    pnr->CalculateAdditionalDefectNorms(block_gas_l2[b], block_gas_max[b],
+                                        gas_active,
+                                        gas_finite);
+    block_gas_active[b] = gas_active ? 1 : 0;
+    if (gas_finite && gas_active
+        && (!std::isfinite(block_gas_l2[b])
+            || !std::isfinite(block_gas_max[b]))) {
+      gas_finite = false;
+    }
+    if (!gas_finite) block_finite[b] = 0;
   }
 
-  l2_norm = 0.0;
-  max_norm = 0.0;
-  finite = true;
+  Real gas_sum = 0.0;
+  Real radiation_sum = 0.0;
+  Real gas_max = 0.0;
+  Real radiation_max = 0.0;
+  bool finite = true;
   for (int b = 0; b < nblock; ++b) {
     finite = finite && (block_finite[b] != 0);
+    for (int v = 0; v < nvar_; ++v) {
+      if (block_primary_is_gas[b] != 0) {
+        gas_sum += block_primary_l2[b*nvar_ + v];
+        gas_max = std::max(gas_max, block_primary_max[b*nvar_ + v]);
+      } else {
+        radiation_sum += block_primary_l2[b*nvar_ + v];
+        radiation_max = std::max(radiation_max, block_primary_max[b*nvar_ + v]);
+      }
+    }
+    if (block_gas_active[b] != 0) {
+      gas_sum += block_gas_l2[b];
+      gas_max = std::max(gas_max, block_gas_max[b]);
+    }
   }
 #ifdef MPI_PARALLEL
   int finite_int = finite ? 1 : 0;
@@ -873,29 +960,39 @@ void NewtonRaphsonDriver::CalculateDefectNorms(Real &l2_norm, Real &max_norm,
   const Real vol = (pmy_mesh_->mesh_size.x1max-pmy_mesh_->mesh_size.x1min)
                  * (pmy_mesh_->mesh_size.x2max-pmy_mesh_->mesh_size.x2min)
                  * (pmy_mesh_->mesh_size.x3max-pmy_mesh_->mesh_size.x3min);
-  for (int v = 0; v < nvar_; ++v) {
-    Real sum = 0.0;
-    Real maximum = 0.0;
-    for (int b = 0; b < nblock; ++b) {
-      sum += block_l2[b*nvar_ + v];
-      maximum = std::max(maximum, block_max[b*nvar_ + v]);
-    }
+  for (Real *value : {&gas_sum, &radiation_sum}) {
 #ifdef MPI_PARALLEL
-    MPI_Allreduce(MPI_IN_PLACE, &sum, 1, MPI_ATHENA_REAL, MPI_SUM,
-                  MPI_COMM_NEWTON_RAPHSON);
-    MPI_Allreduce(MPI_IN_PLACE, &maximum, 1, MPI_ATHENA_REAL, MPI_MAX,
+    MPI_Allreduce(MPI_IN_PLACE, value, 1, MPI_ATHENA_REAL, MPI_SUM,
                   MPI_COMM_NEWTON_RAPHSON);
 #endif
-    l2_norm += std::sqrt(sum/vol);
-    max_norm = std::max(max_norm, maximum);
   }
-  if (!std::isfinite(l2_norm) || !std::isfinite(max_norm)) finite = false;
+  for (Real *value : {&gas_max, &radiation_max}) {
+#ifdef MPI_PARALLEL
+    MPI_Allreduce(MPI_IN_PLACE, value, 1, MPI_ATHENA_REAL, MPI_MAX,
+                  MPI_COMM_NEWTON_RAPHSON);
+#endif
+  }
+  norms.gas_l2_norm = std::sqrt(gas_sum/vol);
+  norms.radiation_l2_norm = std::sqrt(radiation_sum/vol);
+  norms.gas_max_norm = gas_max;
+  norms.radiation_max_norm = radiation_max;
+  norms.l2_norm = std::sqrt((gas_sum + radiation_sum)/vol);
+  norms.max_norm = std::max(gas_max, radiation_max);
+  if (!std::isfinite(norms.gas_l2_norm)
+      || !std::isfinite(norms.radiation_l2_norm)
+      || !std::isfinite(norms.l2_norm)
+      || !std::isfinite(norms.gas_max_norm)
+      || !std::isfinite(norms.radiation_max_norm)
+      || !std::isfinite(norms.max_norm)) {
+    finite = false;
+  }
 #ifdef MPI_PARALLEL
   int finite_int_final = finite ? 1 : 0;
   MPI_Allreduce(MPI_IN_PLACE, &finite_int_final, 1, MPI_INT, MPI_MIN,
                 MPI_COMM_NEWTON_RAPHSON);
   finite = (finite_int_final != 0);
 #endif
+  norms.finite = finite;
 }
 
 // //----------------------------------------------------------------------------------------

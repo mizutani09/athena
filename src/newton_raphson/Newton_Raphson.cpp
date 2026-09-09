@@ -296,6 +296,16 @@ void NewtonRaphson::CalculateDefectNorms(int n, Real &l2_sum,
   max_norm = maximum;
 }
 
+void NewtonRaphson::CalculateAdditionalDefectNorms(Real &l2_sum,
+                                                   Real &max_norm,
+                                                   bool &active,
+                                                   bool &finite) const {
+  l2_sum = 0.0;
+  max_norm = 0.0;
+  active = false;
+  finite = true;
+}
+
 
 // //----------------------------------------------------------------------------------------
 // //! \fn Real NewtonRaphson::CalculateTotal(NRVariable type, int n)

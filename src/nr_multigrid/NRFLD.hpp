@@ -157,6 +157,9 @@ class NRFLD : public NewtonRaphson {
                        const AthenaArray<Real> &u_old, const AthenaArray<Real> &coeff,
                        const AthenaArray<Real> &def_coeff,
                        bool th) final;
+  void CalculateAdditionalDefectNorms(Real &l2_sum, Real &max_norm,
+                                      bool &active, bool &finite) const final;
+  bool PrimaryDefectIsGas() const final;
   // void CalculateFASRHS(AthenaArray<Real> &def, const AthenaArray<Real> &src,
   //                const AthenaArray<Real> &coeff, const AthenaArray<Real> &matrix,
   //                int rlev, int il, int iu, int jl, int ju, int kl, int ku, bool th) final;
@@ -192,6 +195,7 @@ class NRFLD : public NewtonRaphson {
   // AthenaArray<Real> *u_, *def_, *src_, *uold_, *coeff_, *matrix_;
   // AthenaArray<Real> delta_u_;
   AthenaArray<Real> u_gas_, u_gas_iter_backup_;
+  AthenaArray<Real> gas_defect_;
   AthenaArray<Real> last_delta_rad_;
   // MGCoordinates *coord_, *ccoord_;
 
