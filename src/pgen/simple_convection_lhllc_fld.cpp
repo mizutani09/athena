@@ -24,6 +24,7 @@
 #include <sstream>    // stringstream
 #include <stdexcept>  // runtime_error
 #include <string>     // c_str()
+#include <unordered_map>
 #include <vector>
 
 // Athena++ headers
@@ -53,6 +54,12 @@ namespace {
   UserOpacityTable *puser_table = nullptr;
   Real T0;
   Real a_r_sim, poly_n, grav_acc, z_ref, rho_ref, T_ref, gamma_gas;
+  bool use_initial_profile = false;
+  std::string initial_profile_file;
+  std::vector<Real> initial_profile_z;
+  std::vector<Real> initial_profile_rho;
+  std::vector<Real> initial_profile_pres;
+  std::vector<Real> initial_profile_erad;
   Real noise_lx, noise_ly;
   Real bottom_inflow_speed;
   std::string profile_output;
@@ -64,6 +71,8 @@ namespace {
   std::string bottom_bc_mode;
   Real bottom_pbnd = 0.0;
   Real bottom_s_in = 0.0;
+  bool bottom_s_in_from_profile = true;
+  Real eos_dens_pow = -1.0;
   Real bottom_cdmp = 0.95;
   Real hd2_pbar1 = 0.0;
   Real hd2_pbar2 = 0.0;
@@ -78,6 +87,8 @@ namespace {
   Real hd2_mass_balance_min_scale = 0.7;
   Real hd2_mass_balance_max_scale = 1.5;
   Real hd2_pressure_scale = 1.0;
+  long long hd2_eos_clamps = 0;
+  unsigned long long hd2_entropy_pressure_adjustments = 0;
   Real hd2_initial_mass = -1.0;
   Real hd2_current_mass = -1.0;
   Real hd2_mass_rate = 0.0;
@@ -130,7 +141,104 @@ void AddRadiativeForceAndWork(MeshBlock *pmb, const Real time, const Real dt,
   const AthenaArray<Real> &bcc, AthenaArray<Real> &cons,
   AthenaArray<Real> &cons_scalar);
 
+static void LoadInitialProfile(const std::string &path) {
+  std::ifstream input(path);
+  if (!input) {
+    std::stringstream msg;
+    msg << "### FATAL ERROR: could not open initial 1D profile '" << path << "'.";
+    ATHENA_ERROR(msg);
+  }
+
+  std::vector<std::string> names;
+  std::vector<std::vector<Real>> rows;
+  std::string line;
+  while (std::getline(input, line)) {
+    if (line.empty()) continue;
+    if (line[0] == '#') {
+      if (line.find("pressure") != std::string::npos &&
+          line.find("temperature") != std::string::npos &&
+          line.find("rho") != std::string::npos &&
+          line.find("z") != std::string::npos) {
+        std::istringstream header(line.substr(1));
+        std::string name;
+        names.clear();
+        while (header >> name) names.push_back(name);
+      }
+      continue;
+    }
+    std::istringstream values(line);
+    std::vector<Real> row;
+    Real value;
+    while (values >> value) row.push_back(value);
+    if (!row.empty()) rows.push_back(row);
+  }
+  if (names.empty() || rows.size() < 2) {
+    std::stringstream msg;
+    msg << "### FATAL ERROR: invalid initial 1D profile '" << path << "'.";
+    ATHENA_ERROR(msg);
+  }
+
+  std::unordered_map<std::string, std::size_t> column;
+  for (std::size_t n = 0; n < names.size(); ++n) column[names[n]] = n;
+  for (const char *required : {"z", "rho", "pressure", "erad"}) {
+    if (column.count(required) == 0) {
+      std::stringstream msg;
+      msg << "### FATAL ERROR: initial profile '" << path
+          << "' has no '" << required << "' column.";
+      ATHENA_ERROR(msg);
+    }
+  }
+
+  initial_profile_z.clear();
+  initial_profile_rho.clear();
+  initial_profile_pres.clear();
+  initial_profile_erad.clear();
+  for (const auto &row : rows) {
+    if (row.size() != names.size()) {
+      std::stringstream msg;
+      msg << "### FATAL ERROR: malformed row in in initial profile '"
+          << path << "'.";
+      ATHENA_ERROR(msg);
+    }
+    initial_profile_z.push_back(row[column["z"]]);
+    initial_profile_rho.push_back(row[column["rho"]]/rho_unit);
+    initial_profile_pres.push_back(row[column["pressure"]]/egas_unit);
+    initial_profile_erad.push_back(row[column["erad"]]/egas_unit);
+  }
+  for (std::size_t n = 0; n < initial_profile_z.size(); ++n) {
+    if ((n > 0 && !(initial_profile_z[n] > initial_profile_z[n-1])) ||
+        !(initial_profile_rho[n] > 0.0) ||
+        !(initial_profile_pres[n] > 0.0) ||
+        !(initial_profile_erad[n] > 0.0)) {
+      std::stringstream msg;
+      msg << "### FATAL ERROR: initial profile must be positive and strictly "
+             "increasing in z; bad row " << n << ".";
+      ATHENA_ERROR(msg);
+    }
+  }
+}
+
+static Real InterpolateInitialProfile(const std::vector<Real> &values,
+                                      const Real z) {
+  if (z <= initial_profile_z.front()) return values.front();
+  if (z >= initial_profile_z.back()) return values.back();
+  const auto upper = std::upper_bound(initial_profile_z.begin(),
+                                      initial_profile_z.end(), z);
+  const std::size_t hi = static_cast<std::size_t>(
+      std::distance(initial_profile_z.begin(), upper));
+  const std::size_t lo = hi - 1;
+  const Real weight = (z - initial_profile_z[lo])
+                    / (initial_profile_z[hi] - initial_profile_z[lo]);
+  return (1.0 - weight)*values[lo] + weight*values[hi];
+}
+
 static void SimplePolytrope(const Real z, Real &rho, Real &pres, Real &erad) {
+  if (use_initial_profile) {
+    rho = InterpolateInitialProfile(initial_profile_rho, z);
+    pres = InterpolateInitialProfile(initial_profile_pres, z);
+    erad = InterpolateInitialProfile(initial_profile_erad, z);
+    return;
+  }
   const Real temp = T_ref - grav_acc*(z - z_ref)/(poly_n + 1.0);
   const Real theta = temp/std::max(T_ref, TINY_NUMBER);
   rho = rho_ref*std::pow(std::max(theta, 1.0e-6), poly_n);
@@ -171,10 +279,208 @@ static Real SimpleEntropyProxy(const Real rho, const Real pres) {
   return std::log(pres) - gamma_gas*std::log(rho);
 }
 
+// Keep the simple benchmark usable with the ideal EOS while routing all
+// thermodynamic reconstruction through the selected EOS when a table is
+// enabled.  The table interface uses code units at this boundary.
+static Real GasEgasFromRhoP(EquationOfState *peos, const Real rho,
+                            const Real pres) {
+#if GENERAL_EOS
+  const Real rho_safe = std::max(rho, peos->GetDensityFloor());
+  const Real pres_safe = std::max(pres, peos->GetPressureFloor());
+  Real egas = peos->EgasFromRhoP(rho_safe, pres_safe);
+  // Forward and inverse fields are interpolated independently in the EOS
+  // table.  Refine the inverse result so the reconstructed pressure used by
+  // the hydro solver matches the requested profile/boundary pressure.
+  Real best_egas = egas;
+  Real best_error = std::numeric_limits<Real>::infinity();
+  constexpr Real log_step = 1.0e-3;
+  for (int n = 0; n < 8; ++n) {
+    const Real reconstructed = peos->PresFromRhoEg(rho_safe, egas);
+    if (!std::isfinite(reconstructed) || reconstructed <= TINY_NUMBER) break;
+    const Real error = std::abs(reconstructed/pres_safe - 1.0);
+    if (error < best_error) {
+      best_error = error;
+      best_egas = egas;
+    }
+    if (error < 1.0e-10) break;
+    const Real p_lo = peos->PresFromRhoEg(
+        rho_safe, egas*std::exp(-log_step));
+    const Real p_hi = peos->PresFromRhoEg(
+        rho_safe, egas*std::exp(log_step));
+    if (!std::isfinite(p_lo) || !std::isfinite(p_hi) ||
+        p_lo <= TINY_NUMBER || p_hi <= TINY_NUMBER) break;
+    const Real slope = (std::log(p_hi) - std::log(p_lo))/(2.0*log_step);
+    if (!std::isfinite(slope) || slope <= 0.05) break;
+    const Real correction = std::min(std::max(
+        -std::log(reconstructed/pres_safe)/slope,
+        static_cast<Real>(-0.25)), static_cast<Real>(0.25));
+    egas *= std::exp(correction);
+  }
+  return best_egas;
+#else
+  (void)peos;
+  return pres/std::max(gamma_gas - 1.0, TINY_NUMBER);
+#endif
+}
+
+static Real GasPresFromRhoEg(EquationOfState *peos, const Real rho,
+                             const Real egas) {
+#if GENERAL_EOS
+  return peos->PresFromRhoEg(std::max(rho, peos->GetDensityFloor()),
+                             std::max(egas, TINY_NUMBER));
+#else
+  (void)peos;
+  return (gamma_gas - 1.0)*egas;
+#endif
+}
+
+static Real GasTempFromRhoEg(EquationOfState *peos, const Real rho,
+                             const Real egas) {
+#if GENERAL_EOS
+  return peos->TempFromRhoEg(std::max(rho, peos->GetDensityFloor()),
+                             std::max(egas, TINY_NUMBER));
+#else
+  (void)peos;
+  return (gamma_gas - 1.0)*egas/std::max(rho, TINY_NUMBER);
+#endif
+}
+
+static bool GasHasEntropyTable(EquationOfState *peos) {
+#if EOS_TABLE_ENABLED
+  return peos != nullptr && peos->HasEntropyTable();
+#else
+  (void)peos;
+  return false;
+#endif
+}
+
+static Real GasEntropyFromRhoEg(EquationOfState *peos, const Real rho,
+                                const Real egas) {
+#if EOS_TABLE_ENABLED
+  if (GasHasEntropyTable(peos)) {
+    return peos->EntropyFromRhoEg(std::max(rho, peos->GetDensityFloor()),
+                                  std::max(egas, TINY_NUMBER));
+  }
+#else
+  (void)peos;
+#endif
+  return SimpleEntropyProxy(rho, GasPresFromRhoEg(peos, rho, egas));
+}
+
+static Real GasEntropyFromRhoP(EquationOfState *peos, const Real rho,
+                               const Real pres) {
+#if EOS_TABLE_ENABLED
+  if (GasHasEntropyTable(peos)) {
+    return peos->EntropyFromRhoP(std::max(rho, peos->GetDensityFloor()),
+                                 std::max(pres, peos->GetPressureFloor()));
+  }
+#else
+  (void)peos;
+#endif
+  return SimpleEntropyProxy(rho, pres);
+}
+
+static Real GasNablaAdFromRhoP(EquationOfState *peos, const Real rho,
+                               const Real pres) {
+#if GENERAL_EOS
+  const Real rho_safe = std::max(rho, peos->GetDensityFloor());
+  const Real p_safe = std::max(pres, peos->GetPressureFloor());
+  const Real asq = peos->AsqFromRhoP(rho_safe, p_safe);
+  const Real gamma1 = asq*rho_safe/p_safe;
+  if (std::isfinite(gamma1) && gamma1 > 1.0)
+    return (gamma1 - 1.0)/gamma1;
+#else
+  (void)peos;
+#endif
+  return (gamma_gas - 1.0)/std::max(gamma_gas, TINY_NUMBER);
+}
+
+// Fallback safety path for old four-field EOS tables.  New NATA tables carry
+// entropy explicitly and use RhoFromPEntropy below; this proxy is retained so
+// old tables and ideal-EOS debug runs remain usable.
+static void ClampHD2StateToEosTable(EquationOfState *peos, const Real entropy,
+                                    Real &rho, Real &pres) {
+#if EOS_TABLE_ENABLED
+  if (peos->ptable == nullptr) return;
+  const Real rho_unit = std::max(peos->ptable->rhoUnit, TINY_NUMBER);
+  const Real e_unit = std::max(peos->ptable->eUnit, TINY_NUMBER);
+  const Real ratio = std::max(peos->ptable->EosRatios(1), TINY_NUMBER);
+  const Real rho_lo = std::max(
+      peos->GetDensityFloor(),
+      std::pow(10.0, peos->ptable->logRhoMin)/rho_unit);
+  const Real rho_hi = std::pow(10.0, peos->ptable->logRhoMax)/rho_unit;
+  const Real log_rho_lo = std::log(std::max(rho_lo, TINY_NUMBER));
+  const Real log_rho_hi = std::log(std::max(rho_hi, rho_lo));
+  Real log_rho = std::log(std::max(rho, rho_lo));
+  const Real log_pres = std::log(std::max(pres, TINY_NUMBER));
+  const Real target_log_rho = (log_pres - entropy)/
+                              std::max(gamma_gas, TINY_NUMBER);
+
+  // x2 = log10(P * ratio * eUnit) + dens_pow*log10(rho*rhoUnit).
+  // Along constant proxy entropy, x2 is monotone in rho with coefficient
+  // gamma_gas + dens_pow.  Restrict rho to the part of that curve covered by
+  // the table, then reconstruct pressure from the same entropy proxy.
+  const Real coeff = gamma_gas + eos_dens_pow;
+  if (std::abs(coeff) > 1.0e-12) {
+    const Real c = entropy + std::log(ratio*e_unit)
+                   + eos_dens_pow*std::log(rho_unit);
+    Real a = (peos->ptable->logEgasMin*std::log(10.0) - c)/coeff;
+    Real b = (peos->ptable->logEgasMax*std::log(10.0) - c)/coeff;
+    if (a > b) std::swap(a, b);
+    const Real allowed_lo = std::max(log_rho_lo, a);
+    const Real allowed_hi = std::min(log_rho_hi, b);
+    if (allowed_lo <= allowed_hi) {
+      log_rho = std::min(std::max(target_log_rho, allowed_lo), allowed_hi);
+    } else {
+      log_rho = std::min(std::max(target_log_rho, log_rho_lo), log_rho_hi);
+    }
+  } else {
+    log_rho = std::min(std::max(target_log_rho, log_rho_lo), log_rho_hi);
+  }
+
+  const Real rho_new = std::exp(log_rho);
+  const Real pres_new = std::exp(entropy + gamma_gas*log_rho);
+  if (std::abs(log_rho - target_log_rho) > 1.0e-12 ||
+      std::abs(std::log(std::max(pres, TINY_NUMBER)) -
+               std::log(std::max(pres_new, TINY_NUMBER))) > 1.0e-12) {
+    ++hd2_eos_clamps;
+  }
+  rho = std::max(rho_new, rho_lo);
+  pres = std::max(pres_new, TINY_NUMBER);
+#else
+  (void)peos;
+  (void)entropy;
+  (void)rho;
+  (void)pres;
+#endif
+}
+
+#if EOS_TABLE_ENABLED
+static Real EosTableX2(EquationOfState *peos, const int kout,
+                       const Real var, const Real rho) {
+  const Real rho_phys = std::max(rho*peos->ptable->rhoUnit, TINY_NUMBER);
+  const Real var_phys = std::max(var*peos->ptable->eUnit, TINY_NUMBER);
+  return std::log10(var_phys*peos->ptable->EosRatios(kout))
+       + eos_dens_pow*std::log10(rho_phys);
+}
+
+static bool EosTablePressureInRange(EquationOfState *peos, const Real rho,
+                                    const Real pres) {
+  if (peos == nullptr || peos->ptable == nullptr ||
+      !std::isfinite(rho) || !std::isfinite(pres) || rho <= 0.0 ||
+      pres <= 0.0 || !GasHasEntropyTable(peos)) return false;
+  const Real x1 = std::log10(std::max(rho*peos->ptable->rhoUnit,
+                                      TINY_NUMBER));
+  const Real x2 = EosTableX2(peos, 5, pres, rho);
+  return x1 >= peos->ptable->logRhoMin && x1 <= peos->ptable->logRhoMax &&
+         x2 >= peos->ptable->logEgasMin && x2 <= peos->ptable->logEgasMax;
+}
+#endif
+
 static void SetHydroGhostConserved(MeshBlock *pmb, const int k, const int j,
                                    const int i, const Real rho, const Real pres,
                                    const Real vx, const Real vy, const Real vz,
-                                   const Real egas) {
+                                   const Real egas, const Real temp) {
   pmb->phydro->u(IDN, k, j, i) = rho;
   pmb->phydro->u(IM1, k, j, i) = rho*vx;
   pmb->phydro->u(IM2, k, j, i) = rho*vy;
@@ -183,8 +489,7 @@ static void SetHydroGhostConserved(MeshBlock *pmb, const int k, const int j,
       egas + 0.5*rho*(vx*vx + vy*vy + vz*vz);
   pmb->prfld->u_gas(k, j, i) = egas;
   // This is the FLD-specific LTE extension; HD2 itself is hydrodynamic.
-  pmb->prfld->u_rad(k, j, i) = a_r_sim*std::pow((gamma_gas - 1.0)*egas/
-                                                 std::max(rho, TINY_NUMBER), 4);
+  pmb->prfld->u_rad(k, j, i) = a_r_sim*std::pow(temp, 4);
   (void)pres;
 }
 
@@ -202,16 +507,19 @@ static void SimpleHD2Bottom(MeshBlock *pmb, AthenaArray<Real> &prim,
                        std::max(pbar1*pbar2, TINY_NUMBER);
   const Real p_floor = std::max(pmb->peos->GetPressureFloor(), TINY_NUMBER);
   const Real rho_floor = std::max(pmb->peos->GetDensityFloor(), TINY_NUMBER);
-  const Real gm1 = std::max(gamma_gas - 1.0, TINY_NUMBER);
 
   for (int j = js; j <= je; ++j) {
     for (int i = is; i <= ie; ++i) {
       const Real rho1 = std::max(prim(IDN, ks, j, i), rho_floor);
       const Real rho2 = std::max(prim(IDN, ks + 1, j, i), rho_floor);
-      const Real p1 = std::max(prim(IPR, ks, j, i), p_floor);
-      const Real p2 = std::max(prim(IPR, ks + 1, j, i), p_floor);
-      const Real s1 = SimpleEntropyProxy(rho1, p1);
-      const Real s2 = SimpleEntropyProxy(rho2, p2);
+      const Real p1 = std::isfinite(prim(IPR, ks, j, i))
+          ? std::max(prim(IPR, ks, j, i), p_floor) : p_floor;
+      const Real p2 = std::isfinite(prim(IPR, ks + 1, j, i))
+          ? std::max(prim(IPR, ks + 1, j, i), p_floor) : p_floor;
+      const Real egas1 = std::max(pmb->prfld->u_gas(ks, j, i), TINY_NUMBER);
+      const Real egas2 = std::max(pmb->prfld->u_gas(ks + 1, j, i), TINY_NUMBER);
+      const Real s1 = GasEntropyFromRhoEg(pmb->peos, rho1, egas1);
+      const Real s2 = GasEntropyFromRhoEg(pmb->peos, rho2, egas2);
       const Real vz1 = prim(IVZ, ks, j, i);
       const bool upflow = vz1 > 0.0;
       for (int n = 1; n <= ngh; ++n) {
@@ -227,13 +535,54 @@ static void SimpleHD2Bottom(MeshBlock *pmb, AthenaArray<Real> &prim,
           p_g = p_floor;
         }
         const Real s_target = upflow ? bottom_s_in : ((n == 1) ? s1 : s2);
-        const Real log_rho = (std::log(p_g) - s_target)/gamma_gas;
-        Real rho_g = std::exp(log_rho);
+        Real rho_g;
+        if (GasHasEntropyTable(pmb->peos)) {
+          // Rempel HD2 thermodynamics for a tabulated EOS: pressure is set by
+          // the HD2 pressure decomposition and density is inverted from the
+          // actual tabulated entropy.  No ideal-gas proxy is used here.
+          // Do not allow eos_table_clamp to turn an out-of-range pressure into
+          // a false successful inversion.  First project the pressure onto
+          // the same tabulated isentrope at the adjacent-cell density.
+          if (!EosTablePressureInRange(pmb->peos, rho_a, p_g)) {
+            const Real p_compatible = pmb->peos->PresFromRhoEntropy(
+                rho_a, s_target, p_g);
+            if (std::isfinite(p_compatible) && p_compatible > p_floor) {
+              p_g = p_compatible;
+              ++hd2_entropy_pressure_adjustments;
+            }
+          }
+          rho_g = pmb->peos->RhoFromPEntropy(p_g, s_target, rho_a);
+          if (!std::isfinite(rho_g) || rho_g <= rho_floor) {
+            // A strongly disturbed pressure fluctuation can produce a
+            // positive but table-incompatible P_g.  Return to the nearest
+            // pressure on the same EOS isentrope before retrying the HD2
+            // (P,s) reconstruction.
+            const Real p_compatible = pmb->peos->PresFromRhoEntropy(
+                rho_a, s_target, p_g);
+            if (std::isfinite(p_compatible) && p_compatible > p_floor) {
+              p_g = p_compatible;
+              ++hd2_entropy_pressure_adjustments;
+              rho_g = pmb->peos->RhoFromPEntropy(p_g, s_target, rho_a);
+            }
+          }
+        } else {
+          const Real log_rho = (std::log(p_g) - s_target)/gamma_gas;
+          rho_g = std::exp(log_rho);
+          if (!std::isfinite(rho_g) || rho_g <= rho_floor) {
+            ++hd2_density_floors;
+            rho_g = rho_floor;
+          }
+          ClampHD2StateToEosTable(pmb->peos, s_target, rho_g, p_g);
+        }
         if (!std::isfinite(rho_g) || rho_g <= rho_floor) {
           ++hd2_density_floors;
-          rho_g = rho_floor;
+          std::stringstream msg;
+          msg << "### FATAL ERROR in Rempel HD2 lower boundary: entropy "
+              << "inversion failed at i=" << i << " j=" << j << " k=" << kg
+              << " P=" << p_g << " s=" << s_target << " rho_guess=" << rho_a;
+          ATHENA_ERROR(msg);
         }
-        const Real egas_g = p_g/gm1;
+        const Real egas_g = GasEgasFromRhoP(pmb->peos, rho_g, p_g);
         if (!std::isfinite(egas_g) || egas_g <= TINY_NUMBER) {
           ++hd2_energy_floors;
           std::stringstream msg;
@@ -250,7 +599,7 @@ static void SimpleHD2Bottom(MeshBlock *pmb, AthenaArray<Real> &prim,
         const Real vx_g = velocity_ratio*vx_a;
         const Real vy_g = velocity_ratio*vy_a;
         const Real vz_g = velocity_ratio*vz_a;
-        const Real temp_g = gm1*egas_g/std::max(rho_g, rho_floor);
+        const Real temp_g = GasTempFromRhoEg(pmb->peos, rho_g, egas_g);
         if (!std::isfinite(temp_g) || temp_g <= TINY_NUMBER ||
             !std::isfinite(rho_g) || rho_g <= 0.0 ||
             !std::isfinite(p_g) || p_g <= 0.0) {
@@ -267,7 +616,7 @@ static void SimpleHD2Bottom(MeshBlock *pmb, AthenaArray<Real> &prim,
         prim(IVY, kg, j, i) = vy_g;
         prim(IVZ, kg, j, i) = vz_g;
         SetHydroGhostConserved(pmb, kg, j, i, rho_g, p_g, vx_g, vy_g,
-                               vz_g, egas_g);
+                               vz_g, egas_g, temp_g);
       }
     }
   }
@@ -403,7 +752,7 @@ static void UpdateHD2MassBalance(Mesh *pm) {
   hd2_pressure_scale += relax*(target - hd2_pressure_scale);
 }
 
-static void WriteInitialProfiles(ParameterInput *pin) {
+static void WriteInitialProfiles(ParameterInput *pin, EquationOfState *peos) {
   if (profile_output.empty()) return;
   const int nz = pin->GetInteger("mesh", "nx3");
   const Real zmin = pin->GetReal("mesh", "x3min");
@@ -412,14 +761,35 @@ static void WriteInitialProfiles(ParameterInput *pin) {
   const Real target_z = profile_tau_target_z;
   const Real target_tau = profile_tau_target;
   const Real dz = (zmax - zmin)/static_cast<Real>(nz);
-  const Real nabla_ad = (gamma_gas - 1.0)/gamma_gas;
   std::vector<Real> z(nz), rho(nz), press(nz), temp(nz), sigma(nz);
-  std::vector<Real> tau(nz), nabla(nz), entropy(nz);
+  std::vector<Real> tau(nz), nabla(nz), nabla_ad(nz), entropy(nz);
+  Real min_x1 = std::numeric_limits<Real>::infinity();
+  Real max_x1 = -std::numeric_limits<Real>::infinity();
+  Real min_x2 = std::numeric_limits<Real>::infinity();
+  Real max_x2 = -std::numeric_limits<Real>::infinity();
+  Real max_pressure_mismatch = 0.0;
   for (int k = 0; k < nz; ++k) {
     z[k] = zmin + (static_cast<Real>(k) + 0.5)*dz;
     Real erad;
     SimplePolytrope(z[k], rho[k], press[k], erad);
-    temp[k] = press[k]/std::max(rho[k], TINY_NUMBER);
+    const Real target_press = press[k];
+    const Real egas = GasEgasFromRhoP(peos, rho[k], target_press);
+    press[k] = GasPresFromRhoEg(peos, rho[k], egas);
+    const Real pressure_mismatch = std::abs(press[k] - target_press)
+                                 / std::max(target_press, TINY_NUMBER);
+    max_pressure_mismatch = std::max(max_pressure_mismatch, pressure_mismatch);
+#if EOS_TABLE_ENABLED
+    if (peos->ptable != nullptr) {
+      const Real x1 = std::log10(std::max(
+          rho[k]*peos->ptable->rhoUnit, TINY_NUMBER));
+      const Real x2 = EosTableX2(peos, 3, egas, rho[k]);
+      min_x1 = std::min(min_x1, x1);
+      max_x1 = std::max(max_x1, x1);
+      min_x2 = std::min(min_x2, x2);
+      max_x2 = std::max(max_x2, x2);
+    }
+#endif
+    temp[k] = GasTempFromRhoEg(peos, rho[k], egas);
     sigma[k] = 0.0;
     if (puser_table != nullptr) {
       const Real kap = puser_table->GetOpacity(
@@ -440,6 +810,7 @@ static void WriteInitialProfiles(ParameterInput *pin) {
     const Real dlnP = std::log(std::max(press[kp], TINY_NUMBER))
                     - std::log(std::max(press[km], TINY_NUMBER));
     nabla[k] = (std::abs(dlnP) > TINY_NUMBER) ? dlnT/dlnP : 0.0;
+    nabla_ad[k] = GasNablaAdFromRhoP(peos, rho[k], press[k]);
   }
 
   // Recompute optical depth using an extended 1D atmosphere when requested.
@@ -454,7 +825,8 @@ static void WriteInitialProfiles(ParameterInput *pin) {
         const Real za = ztop - (static_cast<Real>(n) + 0.5)*de;
         Real rr, pp, ee;
         SimplePolytrope(za, rr, pp, ee);
-        const Real tt = std::max(pp/std::max(rr, TINY_NUMBER), TINY_NUMBER);
+        const Real ecode = GasEgasFromRhoP(peos, rr, pp);
+        const Real tt = std::max(GasTempFromRhoEg(peos, rr, ecode), TINY_NUMBER);
         const Real kap = puser_table != nullptr
             ? puser_table->GetOpacity(RadFLD::SIGMA_R,
                                       rr*rho_unit, tt*T_unit) : 0.0;
@@ -484,7 +856,8 @@ static void WriteInitialProfiles(ParameterInput *pin) {
           const Real za = zmax - (static_cast<Real>(n) + 0.5)*dzs;
           Real rr, pp, ee;
           SimplePolytrope(za, rr, pp, ee);
-          const Real tt = std::max(pp/std::max(rr, TINY_NUMBER), TINY_NUMBER);
+          const Real ecode = GasEgasFromRhoP(peos, rr, pp);
+          const Real tt = std::max(GasTempFromRhoEg(peos, rr, ecode), TINY_NUMBER);
           const Real kap = puser_table != nullptr
               ? puser_table->GetOpacity(RadFLD::SIGMA_R,
                                         rr*rho_unit, tt*T_unit) : 0.0;
@@ -509,8 +882,22 @@ static void WriteInitialProfiles(ParameterInput *pin) {
   out.precision(16);
   for (int k = 0; k < nz; ++k) {
     out << z[k] << " " << rho[k] << " " << press[k] << " " << temp[k]
-        << " " << tau[k] << " " << nabla[k] << " " << nabla_ad << " "
-        << nabla[k] - nabla_ad << " " << entropy[k] << " " << sigma[k] << "\n";
+        << " " << tau[k] << " " << nabla[k] << " " << nabla_ad[k] << " "
+        << nabla[k] - nabla_ad[k] << " " << entropy[k] << " " << sigma[k] << "\n";
+  }
+  if (std::isfinite(min_x1)) {
+    std::cout << "EOS initial profile coordinates logRho=[" << min_x1 << ","
+              << max_x1 << "] logU=[" << min_x2 << "," << max_x2
+              << "] max_pressure_roundtrip_rel=" << max_pressure_mismatch
+              << "\n";
+#if EOS_TABLE_ENABLED
+    if (peos->ptable != nullptr &&
+        (min_x1 < peos->ptable->logRhoMin || max_x1 > peos->ptable->logRhoMax ||
+         min_x2 < peos->ptable->logEgasMin || max_x2 > peos->ptable->logEgasMax)) {
+      std::cout << "### WARNING: part of the initial EOS profile is outside "
+                   "the EOS table; interpolation is extrapolating.\n";
+    }
+#endif
   }
 }
 
@@ -549,12 +936,22 @@ static void SimpleHydroOuter(MeshBlock *pmb, Coordinates *pco,
     const Real e_floor = TINY_NUMBER;
     for (int n = 1; n <= ngh; ++n) {
       const int kg = ke + n;
-      const int ka = std::max(ke - (n - 1), pmb->ks);
+      // A zero-normal-gradient boundary copies the nearest active state into
+      // every ghost layer.  Mirroring ke-1 into the second ghost introduces
+      // a curvature that is visible to second-order reconstruction.
+      const int ka = ke;
       for (int j = js; j <= je; ++j) {
         for (int i = is; i <= ie; ++i) {
           const Real rho = std::max(prim(IDN, ka, j, i), rho_floor);
-          const Real pres = std::max(prim(IPR, ka, j, i), p_floor);
           const Real egas = std::max(pmb->prfld->u_gas(ka, j, i), e_floor);
+          // After an implicit radiation solve, u_gas is the authoritative
+          // thermodynamic state. Reconstruct pressure from (rho,u_gas)
+          // before copying the Rempel zero-gradient state. This prevents a
+          // stale/non-finite primitive pressure from entering ghost cells.
+          const Real pres_eos = GasPresFromRhoEg(pmb->peos, rho, egas);
+          const Real pres = std::isfinite(pres_eos)
+              ? std::max(pres_eos, p_floor)
+              : std::numeric_limits<Real>::quiet_NaN();
           const Real vx = prim(IVX, ka, j, i);
           const Real vy = prim(IVY, ka, j, i);
           const Real vz = std::max(prim(IVZ, ka, j, i), 0.0);
@@ -567,6 +964,7 @@ static void SimpleHydroOuter(MeshBlock *pmb, Coordinates *pco,
                 << " egas=" << egas;
             ATHENA_ERROR(msg);
           }
+          prim(IPR, ka, j, i) = pres;
           prim(IDN, kg, j, i) = rho;
           prim(IPR, kg, j, i) = pres;
           prim(IVX, kg, j, i) = vx;
@@ -938,6 +1336,19 @@ void Mesh::InitUserMeshData(ParameterInput *pin) {
   T_ref = pin->GetReal("problem", "T_top")/T_unit;
   grav_acc = pin->GetReal("problem", "grav_acc")/(leng_unit/(time_unit*time_unit));
   z_ref = pin->GetOrAddReal("problem", "z_ref", 0.0);
+  use_initial_profile = pin->GetOrAddBoolean(
+      "problem", "use_initial_profile", false);
+  initial_profile_file = pin->GetOrAddString(
+      "problem", "initial_profile_file", "");
+  if (use_initial_profile) {
+    if (initial_profile_file.empty()) {
+      std::stringstream msg;
+      msg << "### FATAL ERROR: problem/initial_profile_file is required when "
+             "problem/use_initial_profile=true.";
+      ATHENA_ERROR(msg);
+    }
+    LoadInitialProfile(initial_profile_file);
+  }
   top_outflow_only = pin->GetOrAddBoolean("problem", "top_outflow_only", true);
   top_impenetrable = pin->GetOrAddBoolean("problem", "top_impenetrable", false);
   top_bc_mode = pin->GetOrAddString("problem", "top_bc_mode", "rempel_outflow");
@@ -949,8 +1360,9 @@ void Mesh::InitUserMeshData(ParameterInput *pin) {
   profile_tau_target_z = pin->GetOrAddReal("problem", "profile_tau_target_z", -1.0);
   profile_tau_target = pin->GetOrAddReal("problem", "profile_tau_target", 1.0);
   profile_pin = pin;
+  eos_dens_pow = pin->GetOrAddReal("hydro", "dens_pow", -1.0);
   bottom_cdmp = pin->GetOrAddReal("problem", "Cdmp", 0.95);
-  const bool s_in_from_profile = pin->GetOrAddBoolean(
+  bottom_s_in_from_profile = pin->GetOrAddBoolean(
       "problem", "s_in_from_profile", true);
   bottom_s_in = pin->GetOrAddReal("problem", "s_in", 0.0);
   bottom_pbnd = pin->GetOrAddReal("problem", "PBND", 0.0);
@@ -971,18 +1383,17 @@ void Mesh::InitUserMeshData(ParameterInput *pin) {
     msg << "### FATAL ERROR: invalid mass-balance PBND scale limits.";
     ATHENA_ERROR(msg);
   }
-  Real rho_b, p_b, erad_b;
-  SimplePolytrope(pin->GetReal("mesh", "x3min"), rho_b, p_b, erad_b);
-  if (!std::isfinite(bottom_pbnd) || bottom_pbnd <= 0.0) bottom_pbnd = p_b;
-  if (s_in_from_profile)
-    bottom_s_in = SimpleEntropyProxy(rho_b, bottom_pbnd);
+  // The default PBND is finalized in ProblemGenerator, where the selected
+  // EOS object is available.  Keeping it zero here avoids using the ideal
+  // polytropic pressure as a general-EOS boundary pressure.
+  if (!std::isfinite(bottom_pbnd) || bottom_pbnd < 0.0) bottom_pbnd = 0.0;
   if (!std::isfinite(bottom_s_in)) {
     std::stringstream msg;
     msg << "### FATAL ERROR: problem/s_in must be finite.";
     ATHENA_ERROR(msg);
   }
-  hd2_pbar1 = bottom_pbnd;
-  hd2_pbar2 = bottom_pbnd;
+  hd2_pbar1 = TINY_NUMBER;
+  hd2_pbar2 = TINY_NUMBER;
   rad_flux_cgs = pin->GetOrAddReal("problem", "rad_flux_cgs", 6.3e10);
   rad_top_alpha = pin->GetOrAddReal("problem", "rad_top_alpha", 0.5);
   rad_top_erad_ext = pin->GetOrAddReal("problem", "rad_top_erad_ext", 0.0);
@@ -1073,12 +1484,13 @@ void MeshBlock::InitUserMeshBlockData(ParameterInput *pin) {
 void MeshBlock::ProblemGenerator(ParameterInput *pin) {
   const Real temp_noise_amp = pin->GetOrAddReal("problem", "temp_noise_amp", 1.0e-3);
   const bool smooth_temp_noise = pin->GetOrAddBoolean("problem", "smooth_temp_noise", true);
-  const Real igm1 = 1.0/(pin->GetReal("hydro", "gamma") - 1.0);
   if (gid == 0) {
     std::cout << "### NR-FLD simple convection (LHLLC-FLD, opacity table)\n"
               << "poly_n=" << poly_n << " rho_top=" << rho_ref
               << " T_top=" << T_ref << " grav=" << grav_acc
               << " opacity=external_table"
+              << " initial_profile="
+              << (use_initial_profile ? initial_profile_file : "polytrope")
               << " temp_noise_amp=" << temp_noise_amp
               << " smooth_temp_noise=" << smooth_temp_noise
               << " top_outflow_only=" << top_outflow_only
@@ -1094,6 +1506,48 @@ void MeshBlock::ProblemGenerator(ParameterInput *pin) {
               << " mass_balance_gain=" << hd2_mass_balance_gain
               << " mass_balance_rate_gain=" << hd2_mass_balance_rate_gain
               << " rad_flux_cgs=" << rad_flux_cgs << "\n";
+#if EOS_TABLE_ENABLED
+    if (peos->ptable != nullptr) {
+      std::cout << "EOS table logU=[" << peos->ptable->logEgasMin
+                << "," << peos->ptable->logEgasMax << "] logRho=["
+                << peos->ptable->logRhoMin << ","
+                << peos->ptable->logRhoMax << "] nU="
+                << peos->ptable->nEgas << " nRho="
+                << peos->ptable->nRho << "\n";
+      const Real table_rho_floor =
+          std::pow(10.0, peos->ptable->logRhoMin) / peos->ptable->rhoUnit;
+      const Real hydro_rho_floor = peos->GetDensityFloor();
+      std::cout << "EOS table-compatible density floor(code) = "
+                << table_rho_floor << " configured dfloor = "
+                << hydro_rho_floor << "\n";
+      if (!std::isfinite(table_rho_floor) ||
+          !std::isfinite(hydro_rho_floor) ||
+          hydro_rho_floor < table_rho_floor) {
+        std::stringstream msg;
+        msg << "### FATAL ERROR: hydro/dfloor=" << hydro_rho_floor
+            << " is below the EOS table density range. Set hydro/dfloor >= "
+            << table_rho_floor << " or regenerate the EOS table with a lower "
+               "logRho_min.";
+        ATHENA_ERROR(msg);
+      }
+    }
+#endif
+  }
+
+  // Convert the default lower-boundary state to the selected EOS before the
+  // first HD2 ghost fill.  Only physical lower-boundary blocks may update
+  // these rank-local shared values; using ks from every z-block makes s_in
+  // depend on meshblock ordering and MPI decomposition.
+  if (block_size.x3min == pmy_mesh->mesh_size.x3min) {
+    Real rho_b, p_b, erad_b;
+    SimplePolytrope(pcoord->x3v(ks), rho_b, p_b, erad_b);
+    const Real egas_b = GasEgasFromRhoP(peos, rho_b, p_b);
+    const Real eos_p_b = GasPresFromRhoEg(peos, rho_b, egas_b);
+    if (bottom_pbnd <= 0.0) bottom_pbnd = eos_p_b;
+    if (bottom_s_in_from_profile)
+      bottom_s_in = GasEntropyFromRhoP(peos, rho_b, bottom_pbnd);
+    hd2_pbar1 = bottom_pbnd;
+    hd2_pbar2 = bottom_pbnd;
   }
 
   int kl = ks-NGHOST;
@@ -1117,9 +1571,17 @@ void MeshBlock::ProblemGenerator(ParameterInput *pin) {
                                              : SimpleCellNoise(x, y, pcoord->x3v(k));
         const Real delta_T = temp_noise_amp*noise
             *std::max(0.0, envelope);
-        const Real T = (p/rho)*(1.0 + delta_T);
-        p = rho*T;
-        const Real egas = p*igm1;
+        p *= (1.0 + delta_T);
+        const Real egas = GasEgasFromRhoP(peos, rho, p);
+        const Real T = GasTempFromRhoEg(peos, rho, egas);
+        if (!std::isfinite(egas) || egas <= TINY_NUMBER ||
+            !std::isfinite(T) || T <= TINY_NUMBER) {
+          std::stringstream msg;
+          msg << "### FATAL ERROR: invalid initial EOS state at k=" << k
+              << " j=" << j << " i=" << i << " rho=" << rho
+              << " P=" << p << " egas=" << egas << " T=" << T;
+          ATHENA_ERROR(msg);
+        }
 
         phydro->u(IDN,k,j,i) = rho;
         phydro->u(IM1,k,j,i) = 0.0;
@@ -1127,7 +1589,10 @@ void MeshBlock::ProblemGenerator(ParameterInput *pin) {
         phydro->u(IM3,k,j,i) = 0.0;
         phydro->u(IEN,k,j,i) = egas;
         prfld->u_gas(k,j,i) = egas;
-        prfld->u_rad(k,j,i) = a_r_sim*std::pow(T, 4);
+        // Keep the imported 1D radiation profile horizontally smooth while
+        // perturbing only the gas temperature to seed convection.
+        prfld->u_rad(k,j,i) = use_initial_profile
+            ? erad : a_r_sim*std::pow(T, 4);
       }
     }
   }
@@ -1137,7 +1602,40 @@ void MeshBlock::ProblemGenerator(ParameterInput *pin) {
     std::cout << "simple initial sample rho=" << phydro->u(IDN,ks,js,is)
               << " egas=" << phydro->u(IEN,ks,js,is)
               << " u_gas=" << prfld->u_gas(ks,js,is)
-              << " u_rad=" << prfld->u_rad(ks,js,is) << "\n";
+              << " u_rad=" << prfld->u_rad(ks,js,is)
+              << " P_EOS=" << GasPresFromRhoEg(
+                   peos, phydro->u(IDN,ks,js,is), phydro->u(IEN,ks,js,is))
+              << " T_EOS=" << GasTempFromRhoEg(
+                   peos, phydro->u(IDN,ks,js,is), phydro->u(IEN,ks,js,is))
+              << "\n";
+    Real rho_target, p_target, erad_target;
+    SimplePolytrope(pcoord->x3v(ks), rho_target, p_target, erad_target);
+    const Real egas_target = GasEgasFromRhoP(peos, rho_target, p_target);
+    const Real p_roundtrip = GasPresFromRhoEg(peos, rho_target, egas_target);
+    std::cout << "initial EOS pressure target=" << p_target
+              << " reconstructed=" << p_roundtrip
+              << " ratio=" << p_roundtrip/std::max(p_target, TINY_NUMBER)
+              << " PBND=" << bottom_pbnd << " s_in=" << bottom_s_in
+              << " entropy_table=" << GasHasEntropyTable(peos) << "\n";
+#if EOS_TABLE_ENABLED
+    if (peos->ptable != nullptr) {
+      const Real x1 = std::log10(std::max(
+          phydro->u(IDN,ks,js,is)*peos->ptable->rhoUnit, TINY_NUMBER));
+      const Real x2 = EosTableX2(peos, 3, phydro->u(IEN,ks,js,is),
+                                 phydro->u(IDN,ks,js,is));
+      const bool outside = x1 < peos->ptable->logRhoMin ||
+                           x1 > peos->ptable->logRhoMax ||
+                           x2 < peos->ptable->logEgasMin ||
+                           x2 > peos->ptable->logEgasMax;
+      std::cout << "EOS initial coordinates logRho=" << x1
+                << " logU=" << x2 << " outside_table=" << outside << "\n";
+      if (outside) {
+        std::cout << "### WARNING: initial general-EOS state uses table "
+                     "extrapolation; regenerate a wider EOS table before "
+                     "quantitative runs.\n";
+      }
+    }
+#endif
   }
   for (int k=ks; k<=ke; k++) {
     for (int j=js; j<=je; j++) {
@@ -1159,7 +1657,8 @@ void Mesh::UserWorkInLoop() {
   UpdateHD2PressureMeans(this);
   UpdateHD2MassBalance(this);
   if (!profile_written) {
-    WriteInitialProfiles(profile_pin);
+    if (Globals::my_rank == 0 && nblocal > 0)
+      WriteInitialProfiles(profile_pin, my_blocks(0)->peos);
     profile_written = true;
   }
   if (Globals::my_rank == 0 && bottom_bc_mode == "rempel_hd2" &&
@@ -1173,15 +1672,16 @@ void Mesh::UserWorkInLoop() {
               << " Cdmp=" << bottom_cdmp
               << " pressure_floors=" << hd2_pressure_floors
               << " density_floors=" << hd2_density_floors
-              << " energy_floors=" << hd2_energy_floors << "\n";
+              << " energy_floors=" << hd2_energy_floors
+              << " eos_clamps=" << hd2_eos_clamps
+              << " entropy_pressure_adjustments="
+              << hd2_entropy_pressure_adjustments << "\n";
     hd2_diagnostic_printed = true;
   }
 }
 
 
 void MeshBlock::UserWorkBeforeOutput(ParameterInput *pin) {
-  Real gm1 = gamma_gas - 1.0;
-  Real temp_coef = gm1*mu/Rgas*egas_unit/rho_unit;
   int kl = ks-NGHOST;
   int ku = ke+NGHOST;
   int jl = js-NGHOST;
@@ -1194,13 +1694,12 @@ void MeshBlock::UserWorkBeforeOutput(ParameterInput *pin) {
         // assume cal in E
         user_out_var(0,k,j,i) = prfld->u_gas(k,j,i)*egas_unit;
         user_out_var(1,k,j,i) = prfld->u_rad(k,j,i)*egas_unit;
-        user_out_var(2,k,j,i) = prfld->u_gas(k,j,i)/phydro->w(IDN,k,j,i)*temp_coef;
+        const Real temp_code = GasTempFromRhoEg(
+            peos, phydro->w(IDN,k,j,i), prfld->u_gas(k,j,i));
+        user_out_var(2,k,j,i) = temp_code*T_unit;
         user_out_var(3,k,j,i) = std::pow(prfld->u_rad(k,j,i)*egas_unit/a_r_dim, 0.25);
-        const Real temp = prfld->u_gas(k,j,i)
-                        / std::max(phydro->w(IDN,k,j,i), TINY_NUMBER)
-                        * (gamma_gas - 1.0);
         const Real qrad = prfld->c_ph*prfld->sigma_p(k,j,i)
-                        * (a_r_sim*std::pow(std::max(temp, TINY_NUMBER), 4)
+                        * (a_r_sim*std::pow(std::max(temp_code, TINY_NUMBER), 4)
                            - prfld->u_rad(k,j,i));
         user_out_var(4,k,j,i) = qrad*egas_unit/time_unit;
       }
@@ -1237,14 +1736,14 @@ void AddRadiativeForceAndWork(MeshBlock *pmb, const Real time, const Real dt,
 namespace {
 
 Real HistoryTg(MeshBlock *pmb, int iout) {
-  const Real gm1  = gamma_gas - 1.0;
   int is = pmb->is, ie = pmb->ie, js = pmb->js, je = pmb->je, ks = pmb->ks, ke = pmb->ke;
   int num = 0;
   Real T = 0;
   for (int k=ks; k<=ke; k++) {
     for (int j=js; j<=je; j++) {
       for (int i=is; i<=ie; i++) {
-        T += pmb->prfld->u_gas(k,j,i)*gm1/pmb->phydro->w(IDN,k,j,i)*T_unit;
+        T += GasTempFromRhoEg(pmb->peos, pmb->phydro->w(IDN,k,j,i),
+                              pmb->prfld->u_gas(k,j,i))*T_unit;
         num++;
       }
     }
@@ -1271,7 +1770,6 @@ Real HistoryTr(MeshBlock *pmb, int iout) {
 
 // caution! this is for a mean of gas energy density.
 Real HistoryEg(MeshBlock *pmb, int iout) {
-  const Real gm1  = gamma_gas - 1.0;
   int is = pmb->is, ie = pmb->ie, js = pmb->js, je = pmb->je, ks = pmb->ks, ke = pmb->ke;
   int num = 0;
   Real e = 0;
@@ -1311,14 +1809,15 @@ Real HistoryEr(MeshBlock *pmb, int iout) {
 }
 
 Real HistoryaTg4(MeshBlock *pmb, int iout) {
-  const Real gm1  = gamma_gas - 1.0;
   int is = pmb->is, ie = pmb->ie, js = pmb->js, je = pmb->je, ks = pmb->ks, ke = pmb->ke;
   int num = 0;
   Real aT4 = 0;
   for (int k=ks; k<=ke; k++) {
     for (int j=js; j<=je; j++) {
       for (int i=is; i<=ie; i++) {
-        aT4 += std::pow(pmb->prfld->u_gas(k,j,i)*gm1/pmb->phydro->w(IDN,k,j,i)*T_unit, 4);
+        const Real temp = GasTempFromRhoEg(
+            pmb->peos, pmb->phydro->w(IDN,k,j,i), pmb->prfld->u_gas(k,j,i));
+        aT4 += std::pow(temp*T_unit, 4);
         num++;
       }
     }
@@ -1545,8 +2044,9 @@ Real HistoryBottomEntropyExcess(MeshBlock *pmb, int iout) {
   const int k = pmb->ks;
   for (int j=pmb->js; j<=pmb->je; ++j) {
     for (int i=pmb->is; i<=pmb->ie; ++i) {
-      sum += SimpleEntropyProxy(pmb->phydro->w(IDN,k,j,i),
-                                pmb->phydro->w(IPR,k,j,i)) - bottom_s_in;
+      const Real rho = pmb->phydro->w(IDN,k,j,i);
+      const Real egas = std::max(pmb->prfld->u_gas(k,j,i), TINY_NUMBER);
+      sum += GasEntropyFromRhoEg(pmb->peos, rho, egas) - bottom_s_in;
     }
   }
   const auto &ms = pmb->pmy_mesh->mesh_size;

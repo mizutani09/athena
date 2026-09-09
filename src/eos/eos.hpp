@@ -147,6 +147,16 @@ class EquationOfState {
   Real AsqFromRhoP(Real rho, Real pres);
   Real TempFromRhoEg(Real rho, Real egas);
   Real DlnTDlnEgasFromRhoEg(Real rho, Real egas);
+#if EOS_TABLE_ENABLED
+  // Optional NATA entropy fields used by tabulated thermodynamic boundaries.
+  // The methods are available only for the EOS-table build; other general-EOS
+  // implementations retain their existing interfaces.
+  bool HasEntropyTable() const;
+  Real EntropyFromRhoEg(Real rho, Real egas);
+  Real EntropyFromRhoP(Real rho, Real pres);
+  Real PresFromRhoEntropy(Real rho, Real entropy, Real pres_guess);
+  Real RhoFromPEntropy(Real pres, Real entropy, Real rho_guess);
+#endif
   Real GetIsoSoundSpeed() const {return iso_sound_speed_;}
   Real GetDensityFloor() const {return density_floor_;}
   Real GetPressureFloor() const {return pressure_floor_;}

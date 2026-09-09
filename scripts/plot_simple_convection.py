@@ -151,7 +151,9 @@ def plot_snapshot(outdir):
     plt.close(fig)
 
 
-def make_movie(outdir, fps=6):
+def make_movie(outdir, fps=6, scale_zmax=None, color_percentile=100.0,
+               vz_fluctuation=False, temp_fluctuation=False, plot_zmax=None,
+               movie_name="simple_convection_xz.mp4"):
     moviedir = Path(outdir) / "movies"
     moviedir.mkdir(parents=True, exist_ok=True)
     prim_paths = sorted(Path(outdir).glob("*.prim_xz_slice.*.athdf"))
@@ -164,21 +166,41 @@ def make_movie(outdir, fps=6):
             frames.append((prim[4], uov[2], prim_path.name))
     if not frames:
         raise RuntimeError("No finite xz-slice frames were found")
-    vmax = max(np.nanmax(np.abs(frame[0])) for frame in frames)
+    scale_mask = np.ones_like(z, dtype=bool)
+    if scale_zmax is not None:
+        scale_mask = z <= scale_zmax
+        if not np.any(scale_mask):
+            raise ValueError("scale_zmax excludes every vertical cell")
+    if vz_fluctuation:
+        frames = [(vz - np.nanmean(vz, axis=1)[:, None], temp, name)
+                  for vz, temp, name in frames]
+    vz_scale_values = np.concatenate(
+        [np.abs(frame[0][scale_mask]).ravel() for frame in frames])
+    vmax = max(np.nanpercentile(vz_scale_values, color_percentile), 1.0e-12)
     t0, _, _ = read_slice(uov_paths[0], "user_out_var")
     t0 = np.nanmean(t0[2], axis=1)
     dtemp_frames = [(vz, (temp - t0[:, None]) / t0[:, None], name)
                     for vz, temp, name in frames]
-    tmin, tmax = np.nanpercentile(
-        np.concatenate([frame[1].ravel() for frame in dtemp_frames]), [1, 99])
-    tlim = max(abs(tmin), abs(tmax), 1.0e-12)
+    if temp_fluctuation:
+        dtemp_frames = [
+            (vz, dtemp - np.nanmean(dtemp, axis=1)[:, None], name)
+            for vz, dtemp, name in dtemp_frames]
+    temp_scale_values = np.concatenate(
+        [np.abs(frame[1][scale_mask]).ravel() for frame in dtemp_frames])
+    tlim = max(np.nanpercentile(temp_scale_values, color_percentile), 1.0e-12)
     fig, axes = plt.subplots(1, 2, figsize=(12, 4), constrained_layout=True)
     im_vz = axes[0].pcolormesh(x, z, frames[0][0], shading="auto", cmap="RdBu_r",
                                vmin=-vmax, vmax=vmax)
     im_t = axes[1].pcolormesh(x, z, dtemp_frames[0][1], shading="auto", cmap="RdBu_r",
                               vmin=-tlim, vmax=tlim)
-    axes[0].set(xlabel="x", ylabel="z", title="vz")
-    axes[1].set(xlabel="x", ylabel="z", title="(Tgas - T0) / T0")
+    vz_title = "vz - horizontal mean" if vz_fluctuation else "vz"
+    axes[0].set(xlabel="x", ylabel="z", title=vz_title)
+    temp_title = "dT/T0 - horizontal mean" if temp_fluctuation \
+        else "(Tgas - T0) / T0"
+    axes[1].set(xlabel="x", ylabel="z", title=temp_title)
+    if plot_zmax is not None:
+        axes[0].set_ylim(z[0], plot_zmax)
+        axes[1].set_ylim(z[0], plot_zmax)
     fig.colorbar(im_vz, ax=axes[0]); fig.colorbar(im_t, ax=axes[1])
     title = fig.suptitle(frames[0][2])
 
@@ -190,10 +212,12 @@ def make_movie(outdir, fps=6):
 
     animation = FuncAnimation(fig, update, frames=len(frames), interval=1000/fps,
                               blit=False)
-    animation.save(moviedir / "simple_convection_xz.mp4",
+    animation.save(moviedir / movie_name,
                    writer=FFMpegWriter(fps=fps, bitrate=1800))
     plt.close(fig)
     print(f"Movie frames: {len(frames)} finite / {len(prim_paths)} total")
+    print(f"Movie color limits: |vz|={vmax:.6g}, |dT/T0|={tlim:.6g}; "
+          f"scale_zmax={scale_zmax}, percentile={color_percentile}")
 
 
 def main():
@@ -201,11 +225,32 @@ def main():
     parser.add_argument("output_dir", type=Path)
     parser.add_argument("--movie", action="store_true")
     parser.add_argument("--fps", type=int, default=6)
+    parser.add_argument(
+        "--scale-zmax", type=float,
+        help="derive movie color limits using cells at or below this height")
+    parser.add_argument(
+        "--color-percentile", type=float, default=100.0,
+        help="percentile of absolute values used for symmetric movie limits")
+    parser.add_argument(
+        "--vz-fluctuation", action="store_true",
+        help="show vertical velocity after subtracting its horizontal mean")
+    parser.add_argument(
+        "--temp-fluctuation", action="store_true",
+        help="subtract the horizontal mean from the relative temperature")
+    parser.add_argument(
+        "--plot-zmax", type=float,
+        help="limit the displayed movie height without changing input data")
+    parser.add_argument("--movie-name", default="simple_convection_xz.mp4")
     args = parser.parse_args()
+    if not 0.0 < args.color_percentile <= 100.0:
+        parser.error("--color-percentile must be in (0, 100]")
     plot_history(args.output_dir)
     plot_snapshot(args.output_dir)
     if args.movie:
-        make_movie(args.output_dir, args.fps)
+        make_movie(args.output_dir, args.fps, args.scale_zmax,
+                   args.color_percentile, args.vz_fluctuation,
+                   args.temp_fluctuation,
+                   args.plot_zmax, args.movie_name)
     print(f"Wrote plots to {args.output_dir}")
 
 

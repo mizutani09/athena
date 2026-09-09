@@ -274,25 +274,18 @@ void FLD::UpdateHydroVariables(AthenaArray<Real> &w, AthenaArray<Real> &hydro_u,
   if (pmy_block->pmy_mesh->f3)
     kl -= NGHOST, ku += NGHOST;
   
-  // first, update FLD quantities
-  for (int k = kl; k <= ku; ++k) {
-    for (int j = jl; j <= ju; ++j) {
-      for (int i = il; i <= iu; ++i) {
-        if (!fixed_u_rad)
-          u_rad(k,j,i) = fld_u_rad(k,j,i);
-        u_gas(k,j,i) = fld_u_gas(k,j,i);
-      }
-    }
-  }
-
-  // then, update hydro variables
+  // Update the hydro energy using the gas energy saved before the Newton
+  // solve.  In the general-EOS case, reconstructing the old energy from
+  // w(IPR) here is unsafe: w(IPR) is updated in the same loop and may already
+  // contain a non-finite trial value.  The cached u_gas is the authoritative
+  // old thermodynamic state for the radiation coupling.
   if (!only_rad) {
     for (int k = kl; k <= ku; ++k) {
       for (int j = jl; j <= ju; ++j) {
         for (int i = il; i <= iu; ++i) {
 #if GENERAL_EOS
           Real rho = w(IDN,k,j,i);
-          Real egas_old = pmy_block->peos->EgasFromRhoP(rho, w(IPR,k,j,i));
+          Real egas_old = u_gas(k,j,i);
           Real pres_new = pmy_block->peos->PresFromRhoEg(rho, fld_u_gas(k,j,i));
           hydro_u(IEN,k,j,i) += (fld_u_gas(k,j,i) - egas_old);
           w(IPR,k,j,i) = pres_new;
@@ -303,6 +296,18 @@ void FLD::UpdateHydroVariables(AthenaArray<Real> &w, AthenaArray<Real> &hydro_u,
           w(IPR,k,j,i) = gm1*fld_u_gas(k,j,i);
 #endif
         }
+      }
+    }
+  }
+
+  // Commit the new radiation and gas states only after the energy update has
+  // consumed the old cached gas energy.
+  for (int k = kl; k <= ku; ++k) {
+    for (int j = jl; j <= ju; ++j) {
+      for (int i = il; i <= iu; ++i) {
+        if (!fixed_u_rad)
+          u_rad(k,j,i) = fld_u_rad(k,j,i);
+        u_gas(k,j,i) = fld_u_gas(k,j,i);
       }
     }
   }

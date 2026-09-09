@@ -1282,7 +1282,10 @@ void MultigridDriver::SolveIterative() {
   }
   if (fsubtract_average_)
     SubtractAverage(MGVariable::u);
-  if (slow_count > 0 && Globals::my_rank == 0) {
+  // A temporarily slow V-cycle is not a failed solve when subsequent cycles
+  // reach the requested tolerance.  Reporting those cases as warnings made
+  // otherwise successful NR-FLD runs produce thousands of misleading lines.
+  if (slow_count > 0 && def > eps_ && Globals::my_rank == 0) {
     std::cout << "### Warning in MultigridDriver::SolveIterative" << std::endl
               << "Slow multigrid convergence occurred " << slow_count
               << " times in this solve; worst convergence factor = "

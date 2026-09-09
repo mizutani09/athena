@@ -208,6 +208,7 @@ NRFLD::NRFLD(MeshBlock *pmb, ParameterInput *pin) :
     }
  }
 
+
 NRFLD::~NRFLD() {
   const bool trace_dtor = (std::getenv("ATHENA_TRACE_DTOR") != nullptr);
   if (NRMGFLD_ENABLED) {
@@ -544,10 +545,12 @@ void NRFLD::CalculateCoefficients(const AthenaArray<Real> &u_rad_old,
         Real boundary_coeff = sum_dcp;
         if (pfld->marshak_top_boundary && physical_top && k == ke &&
             !fixed_linear_coefficients_initialized_)
-          boundary_coeff = sum_dcp - derivetive(NewtonRaphsonFLD::dFr_dEr_zp,k,j,i)
-                         + dx*marshak_dflux_dE;
+          boundary_coeff = sum_dcp
+                         - derivetive(NewtonRaphsonFLD::dFr_dEr_zp,k,j,i);
         derivetive(NewtonRaphsonFLD::dFr_dEr,k,j,i) =
-            1.0 + dt*(c_sigma_p + idx2*boundary_coeff);
+            1.0 + dt*(c_sigma_p + idx2*(boundary_coeff
+                + ((pfld->marshak_top_boundary && physical_top && k == ke)
+                   ? dx*marshak_dflux_dE : 0.0)));
 
 
         if (pfld->fixed_u_rad) {
@@ -606,7 +609,14 @@ void NRFLD::CalculateCoefficients(const AthenaArray<Real> &u_rad_old,
           const Real inv_dFg_deg =
               1.0/derivetive(NewtonRaphsonFLD::dFg_deg,k,j,i);
           coeff(linearSolver::DCCS,k,j,i) =
-              1.0 - derivetive(NewtonRaphsonFLD::dFg_dEr,k,j,i)*inv_dFg_deg;
+              1.0 - derivetive(NewtonRaphsonFLD::dFg_dEr,k,j,i)*inv_dFg_deg
+              // The Robin boundary is a local face-reaction term in the
+              // matrix, dt*(dF/dE)/dx.  Keep it in DCCS rather than DCCF:
+              // DCCF is rescaled by dt/dx^2 at every MG level, which would
+              // otherwise discard or incorrectly scale the boundary term
+              // during coefficient restriction.
+              + ((pfld->marshak_top_boundary && physical_top && k == ke)
+                 ? dt*marshak_dflux_dE/dx : 0.0);
           src(k,j,i) =
               -(derivetive(NewtonRaphsonFLD::Fr,k,j,i)
                 + derivetive(NewtonRaphsonFLD::Fg,k,j,i))

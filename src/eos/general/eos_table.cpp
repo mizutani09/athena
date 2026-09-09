@@ -13,6 +13,7 @@
 #include <cmath>   // sqrt()
 #include <fstream>
 #include <iostream> // ifstream
+#include <limits>
 #include <sstream>
 #include <stdexcept> // std::invalid_argument
 #include <string>
@@ -28,16 +29,23 @@
 
 namespace {
 Real dens_pow = -1.0;
+bool clamp_to_table = false;
 constexpr int kPresOverEgas = 0;
 constexpr int kEgasOverPres = 1;
 constexpr int kAsqRhoOverPres = 2;
 constexpr int kTemperature = 3;
-constexpr int kDlnTDlnEgas = 4;
+constexpr int kEntropyRhoEg = 4;
+constexpr int kEntropyRhoP = 5;
+Real derivative_log_step = 1.0e-3;
 
 inline void GetEosCoordinates(EosTable *ptable, int kOut, Real var, Real rho,
                               Real &x2, Real &x1) {
   x1 = std::log10(rho * ptable->rhoUnit);
   x2 = std::log10(var * ptable->EosRatios(kOut) * ptable->eUnit) + dens_pow * x1;
+  if (clamp_to_table) {
+    x1 = std::min(std::max(x1, ptable->logRhoMin), ptable->logRhoMax);
+    x2 = std::min(std::max(x2, ptable->logEgasMin), ptable->logEgasMax);
+  }
 }
 
 //----------------------------------------------------------------------------------------
@@ -48,6 +56,13 @@ inline Real GetEosData(EosTable *ptable, int kOut, Real var, Real rho) {
   Real x1, x2;
   GetEosCoordinates(ptable, kOut, var, rho, x2, x1);
   return std::pow((Real)10, ptable->table.interpolate(kOut, x2, x1));
+}
+
+inline Real GetEntropyData(EosTable *ptable, const int kOut, const Real var,
+                           const Real rho) {
+  Real x1, x2;
+  GetEosCoordinates(ptable, kOut, var, rho, x2, x1);
+  return std::pow(10.0, ptable->table.interpolate(kOut, x2, x1));
 }
 } // namespace
 
@@ -92,21 +107,221 @@ Real EquationOfState::TempFromRhoEg(Real rho, Real egas) {
 
 //----------------------------------------------------------------------------------------
 //! \fn Real EquationOfState::DlnTDlnEgasFromRhoEg(Real rho, Real egas)
-//! \brief Return interpolated d ln(T) / d ln(egas) at constant density
+//! \brief Numerically evaluate d ln(T) / d ln(egas) at constant density
 Real EquationOfState::DlnTDlnEgasFromRhoEg(Real rho, Real egas) {
-  if (ptable->nVar <= kDlnTDlnEgas) {
-    // Fallback for legacy 4-field tables that do not store d ln(T) / d ln(egas).
-    const Real eps = 1.0e-3;
-    Real eg_lo = std::max(egas*(1.0 - eps), TINY_NUMBER);
-    Real eg_hi = std::max(egas*(1.0 + eps), eg_lo*(1.0 + eps));
-    Real t_lo = TempFromRhoEg(rho, eg_lo);
-    Real t_hi = TempFromRhoEg(rho, eg_hi);
-    if (t_lo <= TINY_NUMBER || t_hi <= TINY_NUMBER) return 0.0;
-    return (std::log(t_hi) - std::log(t_lo))/(std::log(eg_hi) - std::log(eg_lo));
+  // Differentiate the interpolated temperature itself instead of requiring a
+  // derivative field in the table.  A symmetric perturbation in ln(egas)
+  // gives the logarithmic derivative directly and remains well scaled across
+  // the many decades covered by typical stellar EOS tables.
+  const Real eg_center = std::max(egas, TINY_NUMBER);
+  const Real eg_lo = eg_center*std::exp(-derivative_log_step);
+  const Real eg_hi = eg_center*std::exp( derivative_log_step);
+  const Real t_lo = TempFromRhoEg(rho, eg_lo);
+  const Real t_hi = TempFromRhoEg(rho, eg_hi);
+  if (!std::isfinite(t_lo) || !std::isfinite(t_hi)
+      || t_lo <= TINY_NUMBER || t_hi <= TINY_NUMBER) return 0.0;
+  return (std::log(t_hi) - std::log(t_lo))/(2.0*derivative_log_step);
+}
+
+//----------------------------------------------------------------------------------------
+//! \fn bool EquationOfState::HasEntropyTable() const
+//! \brief Return whether both NATA entropy representations are present.
+bool EquationOfState::HasEntropyTable() const {
+  return ptable != nullptr && ptable->nVar > kEntropyRhoP;
+}
+
+//----------------------------------------------------------------------------------------
+//! \fn Real EquationOfState::EntropyFromRhoEg(Real rho, Real egas)
+//! \brief Return specific entropy from the forward (rho, e_spec) field.
+Real EquationOfState::EntropyFromRhoEg(Real rho, Real egas) {
+  if (!HasEntropyTable()) return std::numeric_limits<Real>::quiet_NaN();
+  return GetEntropyData(ptable, kEntropyRhoEg, egas, rho);
+}
+
+//----------------------------------------------------------------------------------------
+//! \fn Real EquationOfState::EntropyFromRhoP(Real rho, Real pres)
+//! \brief Return specific entropy from the inverse (rho, P/rho) field.
+Real EquationOfState::EntropyFromRhoP(Real rho, Real pres) {
+  if (!HasEntropyTable()) return std::numeric_limits<Real>::quiet_NaN();
+  return GetEntropyData(ptable, kEntropyRhoP, pres, rho);
+}
+
+//----------------------------------------------------------------------------------------
+//! \fn Real EquationOfState::PresFromRhoEntropy(Real rho, Real entropy,
+//!                                                Real pres_guess)
+//! \brief Invert the tabulated entropy at fixed density in log(P/rho).
+Real EquationOfState::PresFromRhoEntropy(Real rho, Real entropy,
+                                          Real pres_guess) {
+  if (!HasEntropyTable() || !std::isfinite(rho) || !std::isfinite(entropy)
+      || rho <= 0.0 || entropy <= 0.0) {
+    return std::numeric_limits<Real>::quiet_NaN();
   }
-  Real x1, x2;
-  GetEosCoordinates(ptable, kDlnTDlnEgas, egas, rho, x2, x1);
-  return ptable->table.interpolate(kDlnTDlnEgas, x2, x1);
+
+  const Real rho_safe = std::min(std::max(rho, density_floor_),
+      std::pow(10.0, ptable->logRhoMax)/std::max(ptable->rhoUnit, TINY_NUMBER));
+  Real x1 = std::log10(std::max(rho_safe*ptable->rhoUnit, TINY_NUMBER));
+  x1 = std::min(std::max(x1, ptable->logRhoMin), ptable->logRhoMax);
+  const Real x2_lo = ptable->logEgasMin;
+  const Real x2_hi = ptable->logEgasMax;
+  const Real target = std::log(std::max(entropy, TINY_NUMBER));
+  const int nscan = 128;
+
+  auto pressure_from_x2 = [&](const Real x2) {
+    const Real logvar_phys = x2 - dens_pow*x1
+        - std::log10(std::max(ptable->EosRatios(kEntropyRhoP)
+                              * ptable->eUnit, TINY_NUMBER));
+    return std::pow(10.0, logvar_phys);
+  };
+  auto residual = [&](const Real x2) {
+    const Real s = GetEntropyData(ptable, kEntropyRhoP,
+                                  pressure_from_x2(x2), rho_safe);
+    return (std::isfinite(s) && s > 0.0)
+        ? std::log(s) - target : std::numeric_limits<Real>::quiet_NaN();
+  };
+
+  const Real pguess = std::max(pres_guess, TINY_NUMBER);
+  const Real x2_guess = std::log10(pguess*ptable->EosRatios(kEntropyRhoP)
+                                   *ptable->eUnit)
+                        + dens_pow*x1;
+  const Real guess = std::min(std::max(x2_guess, x2_lo), x2_hi);
+  Real best_x = 0.5*(x2_lo + x2_hi);
+  Real best_abs = std::numeric_limits<Real>::infinity();
+  Real best_a = 0.0;
+  Real best_b = 0.0;
+  Real best_fa = 0.0;
+  Real best_distance = std::numeric_limits<Real>::infinity();
+  bool have_bracket = false;
+  Real left = x2_lo;
+  Real fleft = residual(left);
+  for (int n = 0; n <= nscan; ++n) {
+    const Real x = x2_lo + (x2_hi - x2_lo)*static_cast<Real>(n)/nscan;
+    const Real fx = residual(x);
+    if (std::isfinite(fx) && std::abs(fx) < best_abs) {
+      best_abs = std::abs(fx);
+      best_x = x;
+    }
+    if (n > 0 && std::isfinite(fleft) && std::isfinite(fx)
+        && (fleft == 0.0 || fx == 0.0 || fleft*fx < 0.0)) {
+      const Real distance = std::abs(0.5*(left + x) - guess);
+      if (distance < best_distance) {
+        best_a = left;
+        best_b = x;
+        best_fa = fleft;
+        best_distance = distance;
+        have_bracket = true;
+      }
+    }
+    left = x;
+    fleft = fx;
+  }
+
+  if (have_bracket) {
+    Real a = best_a;
+    Real b = best_b;
+    Real fa = best_fa;
+    for (int iter = 0; iter < 60; ++iter) {
+      const Real mid = 0.5*(a + b);
+      const Real fm = residual(mid);
+      if (!std::isfinite(fm)) break;
+      if (std::abs(fm) < 1.0e-10 || (b - a) < 1.0e-11)
+        return pressure_from_x2(mid);
+      if (fa*fm <= 0.0) {
+        b = mid;
+      } else {
+        a = mid;
+        fa = fm;
+      }
+    }
+    return pressure_from_x2(0.5*(a + b));
+  }
+  if (best_abs < 1.0e-6) return pressure_from_x2(best_x);
+  return std::numeric_limits<Real>::quiet_NaN();
+}
+
+//----------------------------------------------------------------------------------------
+//! \fn Real EquationOfState::RhoFromPEntropy(Real pres, Real entropy,
+//!                                            Real rho_guess)
+//! \brief Invert the tabulated entropy at fixed pressure in log density.
+Real EquationOfState::RhoFromPEntropy(Real pres, Real entropy, Real rho_guess) {
+  if (!HasEntropyTable() || !std::isfinite(pres) || !std::isfinite(entropy)
+      || pres <= 0.0 || entropy <= 0.0) {
+    return std::numeric_limits<Real>::quiet_NaN();
+  }
+
+  const Real rho_table_lo =
+      std::pow(10.0, ptable->logRhoMin)/std::max(ptable->rhoUnit, TINY_NUMBER);
+  const Real rho_table_hi =
+      std::pow(10.0, ptable->logRhoMax)/std::max(ptable->rhoUnit, TINY_NUMBER);
+  const Real rho_lo = std::max(density_floor_, rho_table_lo);
+  const Real rho_hi = std::max(rho_lo, rho_table_hi);
+  const Real log_lo = std::log(rho_lo);
+  const Real log_hi = std::log(rho_hi);
+  const Real target = std::log(std::max(entropy, TINY_NUMBER));
+  const int nscan = 128;
+
+  auto residual = [&](const Real logrho) {
+    const Real rho = std::exp(logrho);
+    const Real s = EntropyFromRhoP(rho, pres);
+    return (std::isfinite(s) && s > 0.0)
+        ? std::log(s) - target : std::numeric_limits<Real>::quiet_NaN();
+  };
+
+  Real best_log = 0.5*(log_lo + log_hi);
+  Real best_abs = std::numeric_limits<Real>::infinity();
+  Real best_a = 0.0;
+  Real best_b = 0.0;
+  Real best_fa = 0.0;
+  Real best_bracket_distance = std::numeric_limits<Real>::infinity();
+  bool have_bracket = false;
+  const Real guess_log = std::min(std::max(
+      std::log(std::max(rho_guess, rho_lo)), log_lo), log_hi);
+  Real left = log_lo;
+  Real fleft = residual(left);
+  for (int n = 0; n <= nscan; ++n) {
+    const Real x = log_lo + (log_hi - log_lo)*static_cast<Real>(n)/nscan;
+    const Real fx = residual(x);
+    if (std::isfinite(fx) && std::abs(fx) < best_abs) {
+      best_abs = std::abs(fx);
+      best_log = x;
+    }
+    if (n > 0 && std::isfinite(fleft) && std::isfinite(fx)
+        && (fleft == 0.0 || fx == 0.0 || fleft*fx < 0.0)) {
+      const Real distance = std::abs(0.5*(left + x) - guess_log);
+      if (distance < best_bracket_distance) {
+        best_a = left;
+        best_b = x;
+        best_fa = fleft;
+        best_bracket_distance = distance;
+        have_bracket = true;
+      }
+    }
+    left = x;
+    fleft = fx;
+  }
+
+  if (have_bracket) {
+    Real a = best_a;
+    Real b = best_b;
+    Real fa = best_fa;
+    for (int iter = 0; iter < 60; ++iter) {
+      const Real mid = 0.5*(a + b);
+      const Real fm = residual(mid);
+      if (!std::isfinite(fm)) break;
+      if (std::abs(fm) < 1.0e-10 || (b - a) < 1.0e-11) return std::exp(mid);
+      if (fa*fm <= 0.0) {
+        b = mid;
+      } else {
+        a = mid;
+        fa = fm;
+      }
+    }
+    return std::exp(0.5*(a + b));
+  }
+
+  // A nearest tabulated point is only acceptable for roundoff-level misses.
+  // Otherwise the requested (P,s) pair is outside the supplied EOS domain.
+  if (best_abs < 1.0e-6) return std::exp(best_log);
+  return std::numeric_limits<Real>::quiet_NaN();
 }
 
 //----------------------------------------------------------------------------------------
@@ -114,5 +329,14 @@ Real EquationOfState::DlnTDlnEgasFromRhoEg(Real rho, Real egas) {
 //! \brief Initialize constants for EOS
 void EquationOfState::InitEosConstants(ParameterInput* pin) {
   dens_pow = pin->GetOrAddReal("hydro", "dens_pow", dens_pow);
+  clamp_to_table = pin->GetOrAddBoolean("hydro", "eos_table_clamp", false);
+  derivative_log_step =
+      pin->GetOrAddReal("hydro", "eos_derivative_log_step", derivative_log_step);
+  if (!std::isfinite(derivative_log_step) || derivative_log_step <= 0.0) {
+    std::stringstream msg;
+    msg << "### FATAL ERROR in EquationOfState::InitEosConstants" << std::endl
+        << "hydro/eos_derivative_log_step must be finite and positive." << std::endl;
+    ATHENA_ERROR(msg);
+  }
   return;
 }

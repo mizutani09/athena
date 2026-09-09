@@ -95,6 +95,16 @@ void EquationOfState::ConservedToPrimitive(
         u_d = (u_d > density_floor_) ?  u_d : density_floor_;
         w_d = u_d;
 
+        // A failed implicit coupling update must not turn a single invalid
+        // conserved momentum into NaN primitive velocities.  The previous
+        // primitive state is the only local finite fallback available here.
+        if (!std::isfinite(u_m1))
+          u_m1 = u_d*prim_old(IVX,k,j,i);
+        if (!std::isfinite(u_m2))
+          u_m2 = u_d*prim_old(IVY,k,j,i);
+        if (!std::isfinite(u_m3))
+          u_m3 = u_d*prim_old(IVZ,k,j,i);
+
         Real di = 1.0/u_d;
         w_vx = u_m1*di;
         w_vy = u_m2*di;
@@ -103,10 +113,22 @@ void EquationOfState::ConservedToPrimitive(
         Real ke = 0.5*di*(SQR(u_m1) + SQR(u_m2) + SQR(u_m3));
 
         // apply pressure/energy floor, correct total energy
-        u_e = (u_e - ke > energy_floor_) ?  u_e : energy_floor_ + ke;
+        u_e = (std::isfinite(u_e) && std::isfinite(ke)
+               && u_e - ke > energy_floor_)
+            ? u_e : energy_floor_ + ke;
         // MSBC: if ke >> energy_floor_ then u_e - ke may still be zero at this point due
         //       to floating point errors/catastrophic cancellation
         w_p = PresFromRhoEg(u_d, u_e - ke);
+        if (!std::isfinite(w_p) || w_p <= pressure_floor_) {
+          // Keep the conserved and primitive thermodynamic state positive
+          // even when the table is sampled outside its useful range.
+          w_p = std::max(pressure_floor_, TINY_NUMBER);
+          const Real e_from_p = EgasFromRhoP(u_d, w_p);
+          if (std::isfinite(e_from_p) && e_from_p > energy_floor_)
+            u_e = e_from_p + ke;
+          else
+            u_e = energy_floor_ + ke;
+        }
       }
     }
   }

@@ -654,7 +654,12 @@ void NewtonRaphsonDriver::Solve_general(int stage, Real dt) {
         break;
       }
     }
-    if (niter_ != -1 && n > niter_) {
+    // When a positive NR threshold is supplied, convergence is controlled by
+    // the residual tolerance.  The constructor documents nr_niteration as
+    // ignored in this mode; do not apply the iteration cap here as well.
+    // Applying it despite that contract caused otherwise converging solves to
+    // emit a warning and return an unnecessarily truncated Newton state.
+    if (eps_ <= 0.0 && niter_ != -1 && n > niter_) {
       if (Globals::my_rank == 0) {
         std::cout
             << "### Warning in NewtonRaphsonDriver::SolveIterative" << std::endl

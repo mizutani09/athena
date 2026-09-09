@@ -118,18 +118,29 @@ linearMGDriver::linearMGDriver(Mesh *pm, ParameterInput *pin, NewtonRaphsonDrive
         << "a fixed number of V-cycles." << std::endl;
     ATHENA_ERROR(msg);
   }
-  mg_mesh_bcs_[inner_x1] = GetMGBoundaryFlag(pin->GetString("mesh", "ix1_bc") == "periodic" ?
-                                              "periodic" : "zerofixed");
-  mg_mesh_bcs_[outer_x1] = GetMGBoundaryFlag(pin->GetString("mesh", "ox1_bc") == "periodic" ?
-                                              "periodic" : "zerofixed");
-  mg_mesh_bcs_[inner_x2] = GetMGBoundaryFlag(pin->GetString("mesh", "ix2_bc") == "periodic" ?
-                                              "periodic" : "zerofixed");
-  mg_mesh_bcs_[outer_x2] = GetMGBoundaryFlag(pin->GetString("mesh", "ox2_bc") == "periodic" ?
-                                              "periodic" : "zerofixed");
-  mg_mesh_bcs_[inner_x3] = GetMGBoundaryFlag(pin->GetString("mesh", "ix3_bc") == "periodic" ?
-                                              "periodic" : "zerofixed");
-  mg_mesh_bcs_[outer_x3] = GetMGBoundaryFlag(pin->GetString("mesh", "ox3_bc") == "periodic" ?
-                                              "periodic" : "zerofixed");
+  // The linear solve acts on Newton corrections, so its physical boundary
+  // condition need not be the same type as the full-state hydro/NR boundary.
+  // In particular, a prescribed FLD flux has a homogeneous zero-gradient
+  // correction.  Honor the dedicated input values instead of silently
+  // replacing every non-periodic boundary with a zero-value correction.
+  mg_mesh_bcs_[inner_x1] = GetMGBoundaryFlag(
+      pin->GetString("mesh", "ix1_bc") == "periodic" ? "periodic" :
+      pin->GetOrAddString("nrfld", "linearMG_ix1_bc", "zerofixed"));
+  mg_mesh_bcs_[outer_x1] = GetMGBoundaryFlag(
+      pin->GetString("mesh", "ox1_bc") == "periodic" ? "periodic" :
+      pin->GetOrAddString("nrfld", "linearMG_ox1_bc", "zerofixed"));
+  mg_mesh_bcs_[inner_x2] = GetMGBoundaryFlag(
+      pin->GetString("mesh", "ix2_bc") == "periodic" ? "periodic" :
+      pin->GetOrAddString("nrfld", "linearMG_ix2_bc", "zerofixed"));
+  mg_mesh_bcs_[outer_x2] = GetMGBoundaryFlag(
+      pin->GetString("mesh", "ox2_bc") == "periodic" ? "periodic" :
+      pin->GetOrAddString("nrfld", "linearMG_ox2_bc", "zerofixed"));
+  mg_mesh_bcs_[inner_x3] = GetMGBoundaryFlag(
+      pin->GetString("mesh", "ix3_bc") == "periodic" ? "periodic" :
+      pin->GetOrAddString("nrfld", "linearMG_ix3_bc", "zerofixed"));
+  mg_mesh_bcs_[outer_x3] = GetMGBoundaryFlag(
+      pin->GetString("mesh", "ox3_bc") == "periodic" ? "periodic" :
+      pin->GetOrAddString("nrfld", "linearMG_ox3_bc", "zerofixed"));
 
   // mg_mesh_bcs_[inner_x1] = GetMGBoundaryFlag("zerofixed");
   // mg_mesh_bcs_[outer_x1] = GetMGBoundaryFlag("zerofixed");

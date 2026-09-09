@@ -1,0 +1,173 @@
+# General-EOS NR-FLD solar convection production setup for about 1024 MPI ranks.
+# Run from a directory containing data/ with the EOS, opacity, and profile files.
+# Configure with: --prob=simple_convection_lhllc_fld --coord=cartesian
+#                 --eos=general/eos_table --flux=lhllc -nrmgfld -mpi -hdf5
+
+<job>
+problem_id      = simple_convection_general_hpc256
+
+<output1>
+file_type       = hst
+dt              = 0.1
+
+<output2>
+file_type       = hdf5
+id              = prim_xz_slice
+variable        = prim
+dt              = 0.5
+x2_slice        = 1.536
+ghost_zones     = false
+
+<output3>
+file_type       = hdf5
+id              = uov_xz_slice
+variable        = uov
+dt              = 0.5
+x2_slice        = 1.536
+ghost_zones     = false
+
+<output4>
+file_type       = hdf5
+id              = prim_xy_slice
+variable        = prim
+dt              = 1.0
+x3_slice        = 1.536
+ghost_zones     = false
+
+<output5>
+file_type       = hdf5
+id              = uov_xy_slice
+variable        = uov
+dt              = 1.0
+x3_slice        = 1.536
+ghost_zones     = false
+
+<output6>
+file_type       = rst
+dt              = 10.0
+
+<time>
+cfl_number      = 0.3
+tlim            = 100.0
+nlim            = 1000000
+integrator      = rk2
+xorder          = 2
+ncycle_out      = 100
+
+<mesh>
+nx1             = 256
+x1min           = 0.0
+x1max           = 3.072
+ix1_bc          = periodic
+ox1_bc          = periodic
+nx2             = 256
+x2min           = 0.0
+x2max           = 3.072
+ix2_bc          = periodic
+ox2_bc          = periodic
+nx3             = 256
+x3min           = 0.0
+x3max           = 3.072
+ix3_bc          = user
+ox3_bc          = user
+
+<meshblock>
+nx1             = 16
+nx2             = 16
+nx3             = 16
+
+<hydro>
+gamma                   = 1.66666666666667
+rho_unit                = 1.0e-7
+egas_unit               = 5.0e5
+leng_unit               = 5.0e7
+mu                      = 1.0
+T_unit                  = 6.0135835e4
+dens_pow                = -1.0
+eos_table_clamp         = true
+dfloor                  = 8.0e-4
+eos_file_name           = data/AthenaNataEosTable_solar_wide.tab
+eos_file_type           = ascii
+eos_read_ratios         = true
+eos_rho_unit            = 1.0e-7
+eos_egas_unit           = 5.0e5
+eos_temp_unit           = 6.0135835e4
+eos_derivative_log_step = 1.0e-3
+
+<nrfld>
+mgmode          = MGI
+smoother        = jacobi-rb
+prolongation    = trilinear
+npresmooth      = 2
+npostsmooth     = 2
+omega           = 1.0
+coarse_correction_scale = 1.0
+threshold       = 0.0
+niteration      = 10
+smoothing_only  = false
+smoothing_only_sweeps = 128
+post_mg_smooth  = 0
+cache_coefficient_hierarchy = true
+nr_use_mg_smoothing_fallback = true
+max_update_fraction = 0.2
+nr_threshold    = 1e-6
+nr_niteration   = 40
+show_defect     = false
+ix1_bc          = periodic
+ox1_bc          = periodic
+ix2_bc          = periodic
+ox2_bc          = periodic
+ix3_bc          = user
+ox3_bc          = user
+linearMG_ix3_bc = zerograd
+# The Marshak/Robin term is assembled directly into the top matrix row.
+linearMG_ox3_bc = zerofixed
+
+<fld>
+is_couple               = true
+include_radiation_force = true
+only_rad                = false
+use_opacity_table       = true
+opacity_table_file      = data/opacity_table_rhoT_3p0_6p3.h5
+opacity_table_file_type = hdf5
+opacity_table_axis      = trho
+opacity_table_temperature_dataset = axes/log10_temperature
+opacity_table_x2_dataset = axes/log10_density
+opacity_table_planck_dataset = kappa/log10_planck
+opacity_table_rosseland_dataset = kappa/log10_rosseland
+fixed_flux_limiter      = false
+cut_diff                = false
+cut_Pnablav             = false
+reduced_c_factor        = 1.0e-2
+
+<problem>
+poly_n           = 1.4
+rho_top          = 3.480090258e-9
+T_top            = 4.850985260e3
+grav_acc         = 2.74e4
+z_ref            = 3.072
+use_initial_profile = true
+initial_profile_file = data/solar_initial_profile.dat
+temp_noise_amp   = 1e-3
+smooth_temp_noise = false
+profile_output   = simple_convection_general_initial_profiles.txt
+profile_zmax     = 0.0
+profile_tau_target_z = -1.0
+profile_tau_target   = 1.0
+# The HD2 enthalpy flux supplies the non-radiative part of the solar flux.
+rad_flux_cgs     = 9.81981111e6
+rad_top_alpha    = 0.5
+rad_top_erad_ext = 0.0
+mass_balance_on  = true
+mass_balance_relax_time = 10.0
+mass_balance_gain = 10.0
+mass_balance_rate_gain = 10.0
+mass_balance_min_scale = 0.7
+mass_balance_max_scale = 1.5
+PBND             = 0.0
+Cdmp             = 0.95
+s_in_from_profile = true
+s_in             = 0.0
+top_bc_mode      = rempel_outflow
+top_impenetrable = false
+top_outflow_only = true
