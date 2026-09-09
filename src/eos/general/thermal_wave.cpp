@@ -63,6 +63,16 @@ Real EquationOfState::DlnTDlnEgasFromRhoEg(Real rho, Real egas) {
 }
 
 //----------------------------------------------------------------------------------------
+//! \fn Real EquationOfState::NablaAdFromRhoP(Real rho, Real pres)
+//! \brief Return the temperature-pressure slope of the thermal-wave closure
+Real EquationOfState::NablaAdFromRhoP(Real rho, Real pres) {
+  (void)rho;
+  (void)pres;
+  // Both P and T are proportional to egas in this artificial closure.
+  return 1.0;
+}
+
+//----------------------------------------------------------------------------------------
 //! \fn void EquationOfState::InitEosConstants(ParameterInput *pin)
 //! \brief Initialize constants for the thermal-wave EOS.
 void EquationOfState::InitEosConstants(ParameterInput *pin) {

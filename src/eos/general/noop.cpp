@@ -12,6 +12,7 @@
 #include <cmath>   // sqrt()
 #include <fstream>
 #include <iostream> // ifstream
+#include <limits>
 #include <sstream>
 #include <stdexcept> // std::invalid_argument
 #include <string>
@@ -53,6 +54,13 @@ Real EquationOfState::DlnTDlnEgasFromRhoEg(Real rho, Real egas) {
       << "Function should not be called with current configuration." << std::endl;
   ATHENA_ERROR(msg);
   return -1.0;
+}
+Real EquationOfState::NablaAdFromRhoP(Real rho, Real pres) {
+  std::stringstream msg;
+  msg << "### FATAL ERROR in EquationOfState::NablaAdFromRhoP" << std::endl
+      << "Function should not be called with current configuration." << std::endl;
+  ATHENA_ERROR(msg);
+  return std::numeric_limits<Real>::quiet_NaN();
 }
 
 //----------------------------------------------------------------------------------------

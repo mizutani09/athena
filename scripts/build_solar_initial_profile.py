@@ -26,7 +26,7 @@ def flux_limiter(reduced_gradient):
 class AthenaEosTable:
     """Minimal reader for the Athena general-EOS ASCII table."""
 
-    def __init__(self, path: Path):
+    def __init__(self, path: Path, derivative_log_step: float = 1.0e-3):
         tokens = []
         with path.open() as stream:
             for line in stream:
@@ -41,6 +41,16 @@ class AthenaEosTable:
         self.logx2_min, self.logx2_max = float(next(values)), float(next(values))
         self.logrho_min, self.logrho_max = float(next(values)), float(next(values))
         self.ratios = np.array([float(next(values)) for _ in range(self.nvar)])
+        if not np.all(np.isfinite(self.ratios)) or np.any(self.ratios <= 0.0):
+            raise ValueError("EOS field ratios must be finite and positive")
+        if self.nvar < 4:
+            raise ValueError(
+                "Solar profile generation needs either a direct nabla_ad "
+                "field or the standard P, Gamma1, and T fields"
+            )
+        if not np.isfinite(derivative_log_step) or derivative_log_step <= 0.0:
+            raise ValueError("EOS derivative log step must be finite and positive")
+        self.derivative_log_step = derivative_log_step
         raw = np.fromiter((float(value) for value in values), dtype=float)
         expected = self.nvar * self.nx2 * self.nrho
         if raw.size != expected:
@@ -58,29 +68,99 @@ class AthenaEosTable:
     def _field(self, index: int, logx2: float, logrho: float) -> float:
         return float(self.interp[index]((logx2, logrho)))
 
+    def _coordinate(self, index: int, log_specific_value: float) -> float:
+        """Map a physical specific-energy-like variable to a field's x2 axis."""
+        return log_specific_value + np.log10(self.ratios[index])
+
+    def _partial(self, index: int, logx2: float, logrho: float, axis: int) -> float:
+        """Derivative of a log10 field, one-sided at a table boundary."""
+        center = (logx2, logrho)[axis]
+        bounds = (
+            (self.logx2_min, self.logx2_max),
+            (self.logrho_min, self.logrho_max),
+        )[axis]
+        step = self.derivative_log_step / np.log(10.0)
+        lower = center - step
+        upper = center + step
+        if bounds[0] <= center <= bounds[1]:
+            lower = max(lower, bounds[0])
+            upper = min(upper, bounds[1])
+        point_lower = [logx2, logrho]
+        point_upper = [logx2, logrho]
+        point_lower[axis] = lower
+        point_upper[axis] = upper
+        return (
+            self._field(index, *point_upper)
+            - self._field(index, *point_lower)
+        ) / (upper - lower)
+
+    def nabla_ad_from_log_state(self, logrho: float, logu: float) -> float:
+        """Return (d ln T/d ln P)_s at a forward (rho, u) table state.
+
+        A seventh field is interpreted as the source EOS's direct positive
+        nabla_ad.  Otherwise Gamma1 is combined with derivatives of the
+        forward log(P/e) and log(T) fields, matching the C++ EOS API.
+        """
+        if self.nvar >= 7:
+            return 10.0 ** self._field(
+                6, self._coordinate(6, logu), logrho
+            )
+
+        coordinates = {index: self._coordinate(index, logu) for index in (0, 3)}
+        p_x2 = self._partial(0, coordinates[0], logrho, 0) + 1.0
+        p_x1 = self._partial(0, coordinates[0], logrho, 1) + 1.0
+        t_x2 = self._partial(3, coordinates[3], logrho, 0)
+        t_x1 = self._partial(3, coordinates[3], logrho, 1)
+        if not np.isfinite(t_x2) or abs(t_x2) <= np.finfo(float).tiny:
+            raise ValueError(
+                f"Cannot derive nabla_ad where dlnT/dlnu={t_x2}"
+            )
+        logp = self._field(0, coordinates[0], logrho) + logrho + logu
+        logq = logp - logrho
+        gamma1 = 10.0 ** self._field(
+            2, self._coordinate(2, logq), logrho
+        )
+        chi_rho = p_x1 - p_x2 * t_x1 / t_x2
+        chi_t = p_x2 / t_x2
+        nabla_ad = (gamma1 - chi_rho) / (gamma1 * chi_t)
+        if not np.isfinite(nabla_ad) or nabla_ad <= 0.0:
+            raise ValueError(
+                f"Invalid nabla_ad={nabla_ad} at logRho={logrho}, logU={logu}"
+            )
+        return nabla_ad
+
     def state_from_rho_temperature(self, rho: float, temperature: float):
         logrho = np.log10(rho)
         if not self.logrho_min <= logrho <= self.logrho_max:
             raise ValueError(f"logRho={logrho:.6g} is outside the EOS table")
 
-        def temperature_error(logu):
-            return self._field(3, logu, logrho) - np.log10(temperature)
+        logu_min = self.logx2_min - np.log10(self.ratios[3])
+        logu_max = self.logx2_max - np.log10(self.ratios[3])
 
-        fmin = temperature_error(self.logx2_min)
-        fmax = temperature_error(self.logx2_max)
+        def temperature_error(logu):
+            return self._field(
+                3, self._coordinate(3, logu), logrho
+            ) - np.log10(temperature)
+
+        fmin = temperature_error(logu_min)
+        fmax = temperature_error(logu_max)
         if fmin * fmax > 0.0:
             raise ValueError(
                 f"T={temperature:.6g} K at logRho={logrho:.6g} is outside "
                 "the EOS logU range"
             )
-        logu = brentq(temperature_error, self.logx2_min, self.logx2_max)
-        pressure = 10.0 ** self._field(0, logu, logrho) * rho * 10.0**logu
+        logu = brentq(temperature_error, logu_min, logu_max)
+        pressure = (
+            10.0 ** self._field(0, self._coordinate(0, logu), logrho)
+            * rho * 10.0**logu
+        )
         logq = np.log10(pressure / rho)
-        gamma1 = 10.0 ** self._field(2, logq, logrho)
+        gamma1 = 10.0 ** self._field(
+            2, self._coordinate(2, logq), logrho
+        )
         entropy = (
-            10.0 ** self._field(4, logu, logrho)
-            if self.nvar >= 5
-            else np.nan
+            10.0 ** self._field(4, self._coordinate(4, logu), logrho)
+            if self.nvar >= 5 else np.nan
         )
         return pressure, 10.0**logu, gamma1, entropy, logu
 
@@ -143,7 +223,7 @@ class ProfileBuilder:
         reduced_gradient = 3.0 * flux_factor
         dlogp_dd = rho * self.args.gravity / pressure
         dlogt_rad_dd = 0.25 * kappa * rho * reduced_gradient
-        nabla_ad = (gamma1 - 1.0) / gamma1
+        nabla_ad = self.eos.nabla_ad_from_log_state(np.log10(rho), logu)
         nabla_rad = dlogt_rad_dd / dlogp_dd
         nabla_cap = nabla_ad + self.args.superadiabatic_excess
         blend = 0.5 * (
@@ -243,11 +323,15 @@ def sample_profile(builder, fine, args):
     gamma1 = np.empty(args.nz)
     entropy = np.empty(args.nz)
     kappa = np.empty(args.nz)
+    nabla_ad = np.empty(args.nz)
     for index in range(args.nz):
         state = builder.eos.state_from_pressure_temperature(
             columns["pressure"][index], columns["temperature"][index]
         )
         rho[index], specific_u[index], gamma1[index], entropy[index], _ = state
+        nabla_ad[index] = builder.eos.nabla_ad_from_log_state(
+            np.log10(rho[index]), np.log10(specific_u[index])
+        )
         kappa[index] = builder.opacity.rosseland(rho[index], columns["temperature"][index])
     columns.update(
         rho=rho,
@@ -268,7 +352,6 @@ def sample_profile(builder, fine, args):
     reduced_gradient = np.abs(dE_dz) / np.maximum(sigma * erad, 1.0e-300)
     flux = -CLIGHT * flux_limiter(reduced_gradient) * dE_dz / sigma
     nabla = dlnt_dz / dlnp_dz
-    nabla_ad = (gamma1 - 1.0) / gamma1
     hse = np.gradient(pressure, z_cm, edge_order=2) + rho * args.gravity
     hse_relative = hse / np.maximum(rho * args.gravity, 1.0e-300)
     columns.update(
@@ -420,6 +503,7 @@ def parse_args():
     parser.add_argument("--superadiabatic-excess", type=float, default=1.0e-2)
     parser.add_argument("--gradient-blend-width", type=float, default=2.0e-2)
     parser.add_argument("--minimum-eos-margin", type=float, default=0.2)
+    parser.add_argument("--eos-derivative-log-step", type=float, default=1.0e-3)
     parser.add_argument("--tune-steps", type=int, default=256)
     parser.add_argument("--integration-steps", type=int, default=8192)
     return parser.parse_args()
@@ -432,7 +516,7 @@ def main():
     if args.top_alpha <= 0.0:
         raise ValueError("--top-alpha must be positive")
     args.output_dir.mkdir(parents=True, exist_ok=True)
-    eos = AthenaEosTable(args.eos_table)
+    eos = AthenaEosTable(args.eos_table, args.eos_derivative_log_step)
     opacity = OpacityTable(args.opacity_table)
     builder = ProfileBuilder(args, eos, opacity)
     logrho_top = builder.find_top_density()

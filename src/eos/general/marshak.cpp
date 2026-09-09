@@ -71,6 +71,16 @@ Real EquationOfState::DlnTDlnEgasFromRhoEg(Real rho, Real egas) {
 }
 
 //----------------------------------------------------------------------------------------
+//! \fn Real EquationOfState::NablaAdFromRhoP(Real rho, Real pres)
+//! \brief Return the temperature-pressure slope of the artificial Marshak closure
+Real EquationOfState::NablaAdFromRhoP(Real rho, Real pres) {
+  (void)rho;
+  (void)pres;
+  // P is proportional to egas and T is proportional to egas^(1/4).
+  return 0.25;
+}
+
+//----------------------------------------------------------------------------------------
 //! \fn void EquationOfState::InitEosConstants(ParameterInput* pin)
 //! \brief Initialize constants for EOS
 void EquationOfState::InitEosConstants(ParameterInput *pin) {

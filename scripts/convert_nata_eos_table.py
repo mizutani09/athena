@@ -16,6 +16,7 @@ COMMENTS = (
     "Log T(e_spec,rho)",
     "Log S_cgs(e_spec,rho)",
     "Log S_cgs(p/rho,rho)",
+    "Log nabla_ad(e_spec,rho) = Log (dlnT/dlnP)_S",
 )
 
 
@@ -28,6 +29,12 @@ def parse_args():
     parser.add_argument("--logx2-min", type=float, default=11.2)
     parser.add_argument("--logx2-max", type=float, default=14.5)
     parser.add_argument("--dlogx2", type=float, default=0.02)
+    parser.add_argument(
+        "--nabla-ad-column", type=int,
+        help=("zero-based input column containing the source EOS's positive "
+              "nabla_ad; when omitted, the Athena table retains the six-field "
+              "entropy schema and derives nabla_ad from its interpolants")
+    )
     return parser.parse_args()
 
 
@@ -70,7 +77,10 @@ def convert(args):
     ierr_column = 6
     entropy_column = 5
     gamma1_column = 12 if table.shape[2] >= 13 else 7
-    output = np.empty((6, logx2.size, logrho.size))
+    has_nabla_ad = args.nabla_ad_column is not None
+    if has_nabla_ad and not 0 <= args.nabla_ad_column < table.shape[2]:
+        raise ValueError("--nabla-ad-column is outside the input table")
+    output = np.empty((7 if has_nabla_ad else 6, logx2.size, logrho.size))
 
     for density_index, density in enumerate(logrho):
         column = table[density_index]
@@ -86,6 +96,11 @@ def convert(args):
             & (column[:, entropy_column] > 0.0)
             & (column[:, gamma1_column] > 0.0)
         )
+        if has_nabla_ad:
+            valid &= (
+                np.isfinite(column[:, args.nabla_ad_column])
+                & (column[:, args.nabla_ad_column] > 0.0)
+            )
         if np.count_nonzero(valid) < 2:
             raise RuntimeError(f"Insufficient valid data at logRho={density}")
 
@@ -103,6 +118,11 @@ def convert(args):
         output[4, :, density_index] = np.interp(
             logx2, logu, np.log10(entropy)
         )
+        if has_nabla_ad:
+            output[6, :, density_index] = np.interp(
+                logx2, logu,
+                np.log10(column[valid, args.nabla_ad_column])
+            )
 
         logq = logp - density
         order = np.argsort(logq)
@@ -130,13 +150,13 @@ def write_table(path, logrho, logx2, data):
     with path.open("w") as stream:
         stream.write("# Entries must be space separated.\n")
         stream.write("# n_var, n_x2, n_x1\n")
-        stream.write(f"6 {logx2.size} {logrho.size}\n")
+        stream.write(f"{data.shape[0]} {logx2.size} {logrho.size}\n")
         stream.write("# Log x2 limits\n")
         stream.write(f"{logx2[0]:.16e} {logx2[-1]:.16e}\n")
         stream.write("# Log rho limits\n")
         stream.write(f"{logrho[0]:.16e} {logrho[-1]:.16e}\n")
         stream.write("# Ratios\n")
-        stream.write("1.0 1.0 1.0 1.0 1.0 1.0\n")
+        stream.write(" ".join(["1.0"] * data.shape[0]) + "\n")
         for comment, field in zip(COMMENTS, data):
             stream.write(f"# {comment}\n")
             for row in field:

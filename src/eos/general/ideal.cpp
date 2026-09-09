@@ -50,6 +50,15 @@ Real EquationOfState::DlnTDlnEgasFromRhoEg(Real rho, Real egas) {
 }
 
 //----------------------------------------------------------------------------------------
+//! \fn Real EquationOfState::NablaAdFromRhoP(Real rho, Real pres)
+//! \brief Return (d ln T / d ln P)_s for a calorically ideal gas
+Real EquationOfState::NablaAdFromRhoP(Real rho, Real pres) {
+  (void)rho;
+  (void)pres;
+  return (gamma_ - 1.0)/gamma_;
+}
+
+//----------------------------------------------------------------------------------------
 //! \fn void EquationOfState::InitEosConstants(ParameterInput* pin)
 //! \brief Initialize constants for EOS
 void EquationOfState::InitEosConstants(ParameterInput *pin) {

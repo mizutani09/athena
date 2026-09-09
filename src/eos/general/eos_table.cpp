@@ -36,6 +36,7 @@ constexpr int kAsqRhoOverPres = 2;
 constexpr int kTemperature = 3;
 constexpr int kEntropyRhoEg = 4;
 constexpr int kEntropyRhoP = 5;
+constexpr int kNablaAdRhoEg = 6;
 Real derivative_log_step = 1.0e-3;
 
 inline void GetEosCoordinates(EosTable *ptable, int kOut, Real var, Real rho,
@@ -63,6 +64,31 @@ inline Real GetEntropyData(EosTable *ptable, const int kOut, const Real var,
   Real x1, x2;
   GetEosCoordinates(ptable, kOut, var, rho, x2, x1);
   return std::pow(10.0, ptable->table.interpolate(kOut, x2, x1));
+}
+
+// Differentiate a log10(table field) with respect to one of the table's
+// logarithmic coordinates.  At an in-domain edge this becomes a one-sided
+// derivative, avoiding the half-slope produced by clamped central samples.
+inline Real LogTablePartial(EosTable *ptable, const int kOut, const Real x2,
+                            const Real x1, const bool along_x2) {
+  const Real center = along_x2 ? x2 : x1;
+  const Real lower_bound = along_x2 ? ptable->logEgasMin : ptable->logRhoMin;
+  const Real upper_bound = along_x2 ? ptable->logEgasMax : ptable->logRhoMax;
+  const Real step = derivative_log_step/std::log(10.0);
+  Real lower = center - step;
+  Real upper = center + step;
+  if (center >= lower_bound && center <= upper_bound) {
+    lower = std::max(lower, lower_bound);
+    upper = std::min(upper, upper_bound);
+  }
+  if (!(upper > lower)) return std::numeric_limits<Real>::quiet_NaN();
+  const Real f_lower = along_x2
+      ? ptable->table.interpolate(kOut, lower, x1)
+      : ptable->table.interpolate(kOut, x2, lower);
+  const Real f_upper = along_x2
+      ? ptable->table.interpolate(kOut, upper, x1)
+      : ptable->table.interpolate(kOut, x2, upper);
+  return (f_upper - f_lower)/(upper - lower);
 }
 } // namespace
 
@@ -121,6 +147,64 @@ Real EquationOfState::DlnTDlnEgasFromRhoEg(Real rho, Real egas) {
   if (!std::isfinite(t_lo) || !std::isfinite(t_hi)
       || t_lo <= TINY_NUMBER || t_hi <= TINY_NUMBER) return 0.0;
   return (std::log(t_hi) - std::log(t_lo))/(2.0*derivative_log_step);
+}
+
+//----------------------------------------------------------------------------------------
+//! \fn Real EquationOfState::NablaAdFromRhoP(Real rho, Real pres)
+//! \brief Return (d ln T / d ln P)_s from the tabulated thermodynamic closure
+Real EquationOfState::NablaAdFromRhoP(Real rho, Real pres) {
+  if (ptable == nullptr || !std::isfinite(rho) || !std::isfinite(pres)
+      || rho <= 0.0 || pres <= 0.0) {
+    return std::numeric_limits<Real>::quiet_NaN();
+  }
+
+  const Real egas = EgasFromRhoP(rho, pres);
+  if (!std::isfinite(egas) || egas <= 0.0)
+    return std::numeric_limits<Real>::quiet_NaN();
+
+  // A seventh forward (rho,e_spec) field, when present, is the source EOS's
+  // direct nabla_ad=(d ln T/d ln P)_s and is preferred to reconstructed
+  // derivatives.  Like all Athena EOS fields it stores log10 of a positive
+  // value; its ratio only shifts the log-energy coordinate.
+  if (ptable->nVar > kNablaAdRhoEg) {
+    const Real nabla_ad = GetEosData(ptable, kNablaAdRhoEg, egas, rho);
+    return (std::isfinite(nabla_ad) && nabla_ad > 0.0)
+        ? nabla_ad : std::numeric_limits<Real>::quiet_NaN();
+  }
+
+  // The indirect identity below needs the standard pressure, Gamma1, and
+  // temperature fields.  Older three-field tables have no temperature and
+  // therefore cannot provide a thermodynamic temperature gradient.
+  if (ptable->nVar <= kTemperature)
+    return std::numeric_limits<Real>::quiet_NaN();
+
+  // For the four/six-field schemas, combine the source EOS's tabulated
+  // Gamma1=(d ln P/d ln rho)_s with derivatives of the interpolated P(rho,u)
+  // and T(rho,u).  At constant T,
+  //   chi_rho = P_1 - P_2 T_1/T_2,  chi_T = P_2/T_2,
+  // and the exact thermodynamic identities
+  //   Gamma1 = chi_rho + chi_T (Gamma3-1),
+  //   nabla_ad = (Gamma3-1)/Gamma1
+  // give the result.  This avoids treating independently interpolated entropy
+  // as an exact potential.  Constants from cgs/code units and field ratios
+  // vanish under differentiation.
+  Real p_x2, p_x1, t_x2, t_x1;
+  Real x2, x1;
+  GetEosCoordinates(ptable, kPresOverEgas, egas, rho, x2, x1);
+  p_x2 = LogTablePartial(ptable, kPresOverEgas, x2, x1, true) + 1.0;
+  p_x1 = LogTablePartial(ptable, kPresOverEgas, x2, x1, false) - dens_pow;
+  GetEosCoordinates(ptable, kTemperature, egas, rho, x2, x1);
+  t_x2 = LogTablePartial(ptable, kTemperature, x2, x1, true);
+  t_x1 = LogTablePartial(ptable, kTemperature, x2, x1, false);
+  const Real gamma1 = AsqFromRhoP(rho, pres)*rho/pres;
+  if (!std::isfinite(gamma1) || gamma1 <= 0.0
+      || !std::isfinite(t_x2) || std::abs(t_x2) <= TINY_NUMBER)
+    return std::numeric_limits<Real>::quiet_NaN();
+  const Real chi_rho = p_x1 - p_x2*t_x1/t_x2;
+  const Real chi_t = p_x2/t_x2;
+  const Real nabla_ad = (gamma1 - chi_rho)/(gamma1*chi_t);
+  return (std::isfinite(nabla_ad) && nabla_ad > 0.0)
+      ? nabla_ad : std::numeric_limits<Real>::quiet_NaN();
 }
 
 //----------------------------------------------------------------------------------------

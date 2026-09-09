@@ -1,0 +1,110 @@
+# Focused regression input for the general-EOS adiabatic temperature gradient.
+# The test runs one step so the pgen writes its EOS-derived initial profile.
+
+<job>
+problem_id = adiabatic_gradient
+
+<output1>
+file_type = hst
+dt        = 1.0
+
+<time>
+cfl_number = 0.1
+tlim       = 1.0e-8
+nlim       = 1
+integrator = rk2
+xorder     = 2
+
+<mesh>
+nx1    = 4
+x1min  = 0.0
+x1max  = 1.0
+ix1_bc = periodic
+ox1_bc = periodic
+nx2    = 4
+x2min  = 0.0
+x2max  = 1.0
+ix2_bc = periodic
+ox2_bc = periodic
+nx3    = 4
+x3min  = 0.0
+x3max  = 1.0
+ix3_bc = user
+ox3_bc = user
+
+<meshblock>
+nx1 = 4
+nx2 = 4
+nx3 = 4
+
+<hydro>
+gamma     = 1.6666666666666667
+rho_unit  = 1.0
+egas_unit = 1.0
+leng_unit = 1.0
+mu        = 8.31451e7
+T_unit    = 1.0
+dfloor    = 1.0e-2
+pfloor    = 1.0e-8
+dens_pow  = -1.0
+eos_table_clamp = true
+eos_derivative_log_step = 1.0e-3
+eos_file_name   = adiabatic_gradient_nonideal.tab
+eos_file_type   = ascii
+eos_read_ratios = true
+eos_rho_unit    = 1.0
+eos_egas_unit   = 1.0
+eos_temp_unit   = 1.0
+
+<nrfld>
+mgmode          = MGI
+smoother        = jacobi-rb
+npresmooth      = 2
+npostsmooth     = 2
+omega           = 1.0
+threshold       = 0.0
+niteration      = 4
+nr_threshold    = 1.0e-10
+nr_niteration   = 4
+show_defect     = false
+ix1_bc          = periodic
+ox1_bc          = periodic
+ix2_bc          = periodic
+ox2_bc          = periodic
+ix3_bc          = user
+ox3_bc          = user
+linearMG_ix3_bc = zerograd
+linearMG_ox3_bc = zerograd
+
+<fld>
+is_couple               = true
+include_radiation_force = false
+only_rad                = false
+use_opacity_table       = true
+opacity_table_file      = adiabatic_gradient_opacity.h5
+opacity_table_file_type = hdf5
+opacity_table_axis      = trho
+opacity_table_temperature_dataset = axes/log10_temperature
+opacity_table_x2_dataset = axes/log10_density
+opacity_table_planck_dataset = kappa/log10_planck
+opacity_table_rosseland_dataset = kappa/log10_rosseland
+fixed_flux_limiter      = false
+cut_diff                = false
+cut_Pnablav             = false
+
+<problem>
+poly_n                    = 1.0
+rho_top                   = 1.0
+T_top                     = 1.0
+grav_acc                  = 0.0
+z_ref                     = 1.0
+use_initial_profile       = false
+temp_noise_amp            = 0.0
+profile_output            = adiabatic_gradient_profile.txt
+profile_tau_target_z      = -1.0
+top_bc_mode               = fixed
+bottom_bc_mode            = fixed
+top_outflow_only          = false
+top_impenetrable          = true
+mass_balance_on           = false
+rad_flux_cgs              = 0.0

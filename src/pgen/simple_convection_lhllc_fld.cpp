@@ -397,10 +397,14 @@ static Real GasNablaAdFromRhoP(EquationOfState *peos, const Real rho,
 #if GENERAL_EOS
   const Real rho_safe = std::max(rho, peos->GetDensityFloor());
   const Real p_safe = std::max(pres, peos->GetPressureFloor());
-  const Real asq = peos->AsqFromRhoP(rho_safe, p_safe);
-  const Real gamma1 = asq*rho_safe/p_safe;
-  if (std::isfinite(gamma1) && gamma1 > 1.0)
-    return (gamma1 - 1.0)/gamma1;
+  const Real nabla_ad = peos->NablaAdFromRhoP(rho_safe, p_safe);
+  if (std::isfinite(nabla_ad) && nabla_ad > 0.0) return nabla_ad;
+  std::stringstream msg;
+  msg << "### FATAL ERROR: selected general EOS cannot evaluate "
+         "nabla_ad=(d ln T/d ln P)_s at rho=" << rho_safe
+      << " P=" << p_safe << ". A tabulated EOS needs either a direct "
+         "nabla_ad field or the standard P, Gamma1, and T fields.";
+  ATHENA_ERROR(msg);
 #else
   (void)peos;
 #endif
@@ -1540,6 +1544,16 @@ void MeshBlock::InitUserMeshBlockData(ParameterInput *pin) {
 void MeshBlock::ProblemGenerator(ParameterInput *pin) {
   const Real temp_noise_amp = pin->GetOrAddReal("problem", "temp_noise_amp", 1.0e-3);
   const bool smooth_temp_noise = pin->GetOrAddBoolean("problem", "smooth_temp_noise", true);
+#if EOS_TABLE_ENABLED
+  if (peos->ptable == nullptr || peos->ptable->nVar < 4) {
+    std::stringstream msg;
+    msg << "### FATAL ERROR: simple_convection_lhllc_fld requires an EOS "
+           "table with P, inverse energy, Gamma1, and temperature fields. "
+           "The selected table has "
+        << (peos->ptable == nullptr ? 0 : peos->ptable->nVar) << " fields.";
+    ATHENA_ERROR(msg);
+  }
+#endif
   if (gid == 0) {
     std::cout << "### NR-FLD simple convection (LHLLC-FLD, opacity table)\n"
               << "poly_n=" << poly_n << " rho_top=" << rho_ref

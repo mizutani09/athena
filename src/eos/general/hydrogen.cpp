@@ -188,6 +188,40 @@ Real EquationOfState::DlnTDlnEgasFromRhoEg(Real rho, Real egas) {
 }
 
 //----------------------------------------------------------------------------------------
+//! \fn Real EquationOfState::NablaAdFromRhoP(Real rho, Real pres)
+//! \brief Return (d ln T / d ln P)_s for the analytic hydrogen EOS
+Real EquationOfState::NablaAdFromRhoP(Real rho, Real pres) {
+  if (!std::isfinite(rho) || !std::isfinite(pres)
+      || rho <= 0.0 || pres <= 0.0) {
+    return std::numeric_limits<Real>::quiet_NaN();
+  }
+  const Real rho_phys = rho*rho_unit_;
+  const Real pres_phys = pres*egas_unit_;
+  const Real ps = pres_phys/rho_phys;
+  const Real temperature = invert(*P_of_rho_T, rho_phys, pres_phys,
+                                  0.5*ps, float_1pe*ps);
+  constexpr Real log_step = 1.0e-5;
+  const Real fac = std::exp(log_step);
+  const Real chi_rho = (std::log(P_of_rho_T(rho_phys*fac, temperature))
+                       -std::log(P_of_rho_T(rho_phys/fac, temperature)))
+                      /(2.0*log_step);
+  const Real chi_t = (std::log(P_of_rho_T(rho_phys, temperature*fac))
+                     -std::log(P_of_rho_T(rho_phys, temperature/fac)))
+                    /(2.0*log_step);
+  const Real gamma1 = asq_(rho_phys, temperature)*rho_phys/pres_phys;
+  // Gamma1 = chi_rho + chi_T (Gamma3 - 1), while
+  // nabla_ad = (Gamma3 - 1)/Gamma1.
+  if (!std::isfinite(gamma1) || !std::isfinite(chi_rho)
+      || !std::isfinite(chi_t) || gamma1 <= 0.0
+      || std::abs(chi_t) <= TINY_NUMBER) {
+    return std::numeric_limits<Real>::quiet_NaN();
+  }
+  const Real nabla_ad = (gamma1 - chi_rho)/(gamma1*chi_t);
+  return (std::isfinite(nabla_ad) && nabla_ad > 0.0)
+      ? nabla_ad : std::numeric_limits<Real>::quiet_NaN();
+}
+
+//----------------------------------------------------------------------------------------
 //! \fn void EquationOfState::InitEosConstants(ParameterInput* pin)
 //! \brief Initialize constants for EOS
 void EquationOfState::InitEosConstants(ParameterInput* pin) {

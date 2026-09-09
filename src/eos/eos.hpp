@@ -147,6 +147,10 @@ class EquationOfState {
   Real AsqFromRhoP(Real rho, Real pres);
   Real TempFromRhoEg(Real rho, Real egas);
   Real DlnTDlnEgasFromRhoEg(Real rho, Real egas);
+  // Adiabatic temperature gradient (d ln T / d ln P)_s.  General-EOS
+  // implementations must use their thermodynamic closure rather than infer
+  // this from Gamma1, which is only sufficient for a calorically ideal gas.
+  Real NablaAdFromRhoP(Real rho, Real pres);
 #if EOS_TABLE_ENABLED
   // Optional NATA entropy fields used by tabulated thermodynamic boundaries.
   // The methods are available only for the EOS-table build; other general-EOS
