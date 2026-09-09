@@ -95,6 +95,7 @@ namespace {
   bool top_outflow_only;
   bool top_impenetrable;
   std::string top_bc_mode;
+  bool verify_opacity_temperature = false;
   Real rad_flux_cgs;
   Real rad_top_alpha;
   Real rad_top_erad_ext;
@@ -345,6 +346,17 @@ static Real GasTempFromRhoEg(EquationOfState *peos, const Real rho,
 #endif
 }
 
+// Opacity is updated from primitive variables, so recover the internal energy
+// belonging to that primitive pressure before asking the selected EOS for T.
+// In particular, P/rho is not a temperature for a non-ideal EOS.  Reusing the
+// refined rho-P inversion also makes this definition agree with profile and
+// boundary initialization when the forward and inverse EOS table fields have
+// small interpolation inconsistencies.
+static Real GasTempFromRhoP(EquationOfState *peos, const Real rho,
+                            const Real pres) {
+  return GasTempFromRhoEg(peos, rho, GasEgasFromRhoP(peos, rho, pres));
+}
+
 static bool GasHasEntropyTable(EquationOfState *peos) {
 #if EOS_TABLE_ENABLED
   return peos != nullptr && peos->HasEntropyTable();
@@ -536,7 +548,10 @@ static void SimpleHD2Bottom(MeshBlock *pmb, AthenaArray<Real> &prim,
         }
         const Real s_target = upflow ? bottom_s_in : ((n == 1) ? s1 : s2);
         Real rho_g;
+        bool used_tabulated_entropy = false;
+#if EOS_TABLE_ENABLED
         if (GasHasEntropyTable(pmb->peos)) {
+          used_tabulated_entropy = true;
           // Rempel HD2 thermodynamics for a tabulated EOS: pressure is set by
           // the HD2 pressure decomposition and density is inverted from the
           // actual tabulated entropy.  No ideal-gas proxy is used here.
@@ -565,7 +580,9 @@ static void SimpleHD2Bottom(MeshBlock *pmb, AthenaArray<Real> &prim,
               rho_g = pmb->peos->RhoFromPEntropy(p_g, s_target, rho_a);
             }
           }
-        } else {
+        }
+#endif
+        if (!used_tabulated_entropy) {
           const Real log_rho = (std::log(p_g) - s_target)/gamma_gas;
           rho_g = std::exp(log_rho);
           if (!std::isfinite(rho_g) || rho_g <= rho_floor) {
@@ -1229,6 +1246,7 @@ static void SimpleFLDOuter(MeshBlock *pmb, Coordinates *pco, FLD *pfld,
 
 void TableOpacity(MeshBlock *pmb, AthenaArray<Real> &u_fld,
                   AthenaArray<Real> &prim) {
+  (void)u_fld;
   FLD *prfld = pmb->prfld;
   int kl=pmb->ks, ku=pmb->ke;
   int jl=pmb->js, ju=pmb->je;
@@ -1246,8 +1264,9 @@ void TableOpacity(MeshBlock *pmb, AthenaArray<Real> &u_fld,
 #pragma omp simd
       for(int i=il; i<=iu; ++i) {
         const Real rho_code = std::max(prim(IDN,k,j,i), TINY_NUMBER);
-        const Real temp_code = std::max(prim(IPR,k,j,i)/rho_code,
-                                         TINY_NUMBER);
+        const Real pres_code = std::max(prim(IPR,k,j,i), TINY_NUMBER);
+        const Real temp_code = std::max(
+            GasTempFromRhoP(pmb->peos, rho_code, pres_code), TINY_NUMBER);
         const Real rho_cgs = rho_code*rho_unit;
         const Real temp_cgs = temp_code*T_unit;
         const Real kap_p = puser_table->GetOpacity(RadFLD::SIGMA_P,
@@ -1258,6 +1277,41 @@ void TableOpacity(MeshBlock *pmb, AthenaArray<Real> &u_fld,
         prfld->sigma_r(k,j,i) = kap_r*rho_cgs*leng_unit;
       }
     }
+  }
+
+  // Keep the production loop free of per-cell diagnostic branches.  This
+  // opt-in pass is used by the focused regression test; a temperature-
+  // dependent table makes the legacy P/rho expression fail this comparison.
+  if (!verify_opacity_temperature) return;
+  Real max_opacity_error = 0.0;
+  for (int k=kl; k<=ku; ++k) {
+    for (int j=jl; j<=ju; ++j) {
+#pragma omp simd reduction(max:max_opacity_error)
+      for (int i=il; i<=iu; ++i) {
+        const Real rho_code = std::max(prim(IDN,k,j,i), TINY_NUMBER);
+        const Real pres_code = std::max(prim(IPR,k,j,i), TINY_NUMBER);
+        const Real temp_code = std::max(
+            GasTempFromRhoP(pmb->peos, rho_code, pres_code), TINY_NUMBER);
+        const Real rho_cgs = rho_code*rho_unit;
+        const Real scale = rho_cgs*leng_unit;
+        const Real ref_sigma_p = puser_table->GetOpacity(
+            RadFLD::SIGMA_P, rho_cgs, temp_code*T_unit)*scale;
+        const Real ref_sigma_r = puser_table->GetOpacity(
+            RadFLD::SIGMA_R, rho_cgs, temp_code*T_unit)*scale;
+        max_opacity_error = std::max(max_opacity_error,
+            std::max(std::abs(prfld->sigma_p(k,j,i)
+                              /std::max(ref_sigma_p, TINY_NUMBER) - 1.0),
+                     std::abs(prfld->sigma_r(k,j,i)
+                              /std::max(ref_sigma_r, TINY_NUMBER) - 1.0)));
+      }
+    }
+  }
+  if (!std::isfinite(max_opacity_error) || max_opacity_error > 1.0e-12) {
+    std::stringstream msg;
+    msg << "### FATAL ERROR: opacity temperature does not match the selected EOS"
+        << " for the current primitive state (max relative opacity error="
+        << max_opacity_error << ").";
+    ATHENA_ERROR(msg);
   }
 }
 
@@ -1352,6 +1406,8 @@ void Mesh::InitUserMeshData(ParameterInput *pin) {
   top_outflow_only = pin->GetOrAddBoolean("problem", "top_outflow_only", true);
   top_impenetrable = pin->GetOrAddBoolean("problem", "top_impenetrable", false);
   top_bc_mode = pin->GetOrAddString("problem", "top_bc_mode", "rempel_outflow");
+  verify_opacity_temperature = pin->GetOrAddBoolean(
+      "problem", "verify_opacity_temperature", false);
   bottom_inflow_speed = pin->GetOrAddReal("problem", "bottom_inflow_speed", 0.0);
   bottom_bc_mode = pin->GetOrAddString("problem", "bottom_bc_mode", "rempel_hd2");
   profile_output = pin->GetOrAddString("problem", "profile_output",
