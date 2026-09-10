@@ -76,6 +76,12 @@ opacity_table_axis      = tp
 #   tp   : x2 = log10(pressure[cgs])
 #   trho : x2 = log10(density[cgs])
 #   tr   : x2 = OPAL logR = log10(rho) - 3*log10(T) + 18
+# Domain policy options: error, clamp, extrapolate. The default is extrapolate
+# to preserve legacy inputs. All policies reject non-finite/non-positive inputs
+# and non-finite/non-positive returned opacity rather than applying a floor.
+opacity_table_domain_policy = extrapolate
+# TP<->rhoT conversion uses the fixed hydro/mu ideal-gas relation; it does not
+# query a general EOS. Prefer a trho table when that assumption is unsuitable.
 # Optional dataset overrides (default=auto):
 opacity_table_temperature_dataset = auto
 opacity_table_x2_dataset = auto
@@ -91,3 +97,4 @@ opacity_table_rosseland_format = auto
 <problem>
 rho             = 1e-10 # in g cm^-3
 temp            = 1e4   # in K
+opacity_probe_repetitions = 1 # test-only repeated lookup count

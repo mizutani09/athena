@@ -138,7 +138,7 @@ void MeshBlock::InitUserMeshBlockData(ParameterInput *pin) {
 //   Er0_R = a_r_sim*std::pow(T0_R, 4);
 //   egas0_L = p0_L*igm1;
 //   egas0_R = p0_R*igm1;
-  puser_table = new UserOpacityTable(pin);
+  if (puser_table == nullptr) puser_table = new UserOpacityTable(pin);
 
 
   prfld->EnrollOpacityFunction(ConstantOpacity);
@@ -179,14 +179,30 @@ void MeshBlock::ProblemGenerator(ParameterInput *pin) {
     std::cout << "Temperature: " << temp << " K" << std::endl;
     std::cout << "Pressure: " << press << " erg cm^-3" << std::endl;
 
-    // GetOpacity now expects physical density and temperature for log-scale tables
-    sigma_P = puser_table->GetOpacity(RadFLD::SIGMA_P, rho, temp);
-    sigma_R = puser_table->GetOpacity(RadFLD::SIGMA_R, rho, temp);
+    // Repeat the same lookup so the regression suite can exercise thread-safe
+    // diagnostic counters without running a time integration.
+    const int repetitions = pin->GetOrAddInteger("problem", "opacity_probe_repetitions", 1);
+    if (repetitions < 1) {
+      std::stringstream msg;
+      msg << "### FATAL ERROR in function [MeshBlock::ProblemGenerator]" << std::endl
+          << "problem/opacity_probe_repetitions must be positive." << std::endl;
+      ATHENA_ERROR(msg);
+    }
+#pragma omp parallel for
+    for (int probe = 0; probe < repetitions; ++probe) {
+      const Real planck = puser_table->GetOpacity(RadFLD::SIGMA_P, rho, temp);
+      const Real rosseland = puser_table->GetOpacity(RadFLD::SIGMA_R, rho, temp);
+      if (probe == 0) {
+        sigma_P = planck;
+        sigma_R = rosseland;
+      }
+    }
     // std::cout << "opacity_unit: " << opacity_unit << " cm^2/g" << std::endl;
 
     std::cout << "Rosseland opacity: " << sigma_R << " cm^2/g" << std::endl;
     std::cout << "Planck opacity: " << sigma_P << " cm^2/g" << std::endl;
     std::cout << "----------------------------------------" << std::endl;
+    puser_table->ReportDiagnostics(std::cout);
   // }
 
   std::stringstream msg;

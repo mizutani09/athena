@@ -1128,7 +1128,7 @@ void MeshBlock::InitUserMeshBlockData(ParameterInput *pin) {
 
   use_opacity_table = pin->GetBoolean("fld", "use_opacity_table");
   if (use_opacity_table) {
-    puser_table = new UserOpacityTable(pin);
+    if (puser_table == nullptr) puser_table = new UserOpacityTable(pin);
     prfld->EnrollOpacityFunction(GetOpacityFromUserTable);
   } else {
     sigma_P = pin->GetReal("fld", "const_opacity_P"); // in code unit
@@ -1594,3 +1594,8 @@ Real HistoryEkinConv(MeshBlock *pmb, int iout) {
 // }
 
 } // namespace
+
+void Mesh::UserWorkAfterLoop(ParameterInput *pin) {
+  (void)pin;
+  if (puser_table != nullptr) puser_table->ReportDiagnostics(std::cout);
+}

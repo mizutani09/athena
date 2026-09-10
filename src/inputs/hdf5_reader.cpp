@@ -36,6 +36,35 @@
 #define H5T_REAL H5T_NATIVE_DOUBLE
 #endif
 
+namespace {
+class HDF5Handle {
+ public:
+  using CloseFunction = herr_t (*)(hid_t);
+
+  HDF5Handle(hid_t id, CloseFunction close) : id_(id), close_(close) {}
+  ~HDF5Handle() {
+    if (id_ >= 0) close_(id_);
+  }
+  HDF5Handle(const HDF5Handle &) = delete;
+  HDF5Handle &operator=(const HDF5Handle &) = delete;
+  operator hid_t() const { return id_; }
+  bool valid() const { return id_ >= 0; }
+
+ private:
+  hid_t id_;
+  CloseFunction close_;
+};
+
+void HDF5ReadError(const char *filename, const char *dataset_name,
+                   const std::string &operation) {
+  std::stringstream msg;
+  msg << "### FATAL ERROR in HDF5ReadRealArray" << std::endl
+      << operation << " for HDF5 dataset '" << dataset_name << "' in file '"
+      << filename << "'." << std::endl;
+  ATHENA_ERROR(msg);
+}
+}  // namespace
+
 //----------------------------------------------------------------------------------------
 //! \fn void HDF5ReadArray(const char *filename, const char *dataset_name, int rank_file,
 //!     const int *start_file, const int *count_file, int rank_mem, const int *start_mem,
@@ -87,54 +116,81 @@ void HDF5ReadRealArray(const char *filename, const char *dataset_name, int rank_
   hsize_t *dims_mem = dims_mem_base + 5 - rank_mem;
 
   // Open data file
-  hid_t property_list_file = H5Pcreate(H5P_FILE_ACCESS);
+  HDF5Handle property_list_file(H5Pcreate(H5P_FILE_ACCESS), H5Pclose);
+  if (!property_list_file.valid()) {
+    HDF5ReadError(filename, dataset_name, "Could not create a file-access property list");
+  }
 #ifdef MPI_PARALLEL
   {
     if (collective) {
-      H5Pset_fapl_mpio(property_list_file, MPI_COMM_WORLD, MPI_INFO_NULL);
+      if (H5Pset_fapl_mpio(property_list_file, MPI_COMM_WORLD, MPI_INFO_NULL) < 0) {
+        HDF5ReadError(filename, dataset_name,
+                      "Could not configure collective file access");
+      }
     }
   }
 #endif
-  hid_t file = H5Fopen(filename, H5F_ACC_RDONLY, property_list_file);
-  H5Pclose(property_list_file);
-  if (file < 0) {
+  HDF5Handle file(H5Fopen(filename, H5F_ACC_RDONLY, property_list_file), H5Fclose);
+  if (!file.valid()) {
     std::stringstream msg;
-    msg << "### FATAL ERROR\nCould not open " << filename << std::endl;
+    msg << "### FATAL ERROR in HDF5ReadRealArray" << std::endl
+        << "Could not open HDF5 file '" << filename << "' while reading dataset '"
+        << dataset_name << "'." << std::endl;
     ATHENA_ERROR(msg);
   }
-  hid_t property_list_transfer = H5Pcreate(H5P_DATASET_XFER);
+  HDF5Handle property_list_transfer(H5Pcreate(H5P_DATASET_XFER), H5Pclose);
+  if (!property_list_transfer.valid()) {
+    HDF5ReadError(filename, dataset_name,
+                  "Could not create a dataset-transfer property list");
+  }
 #ifdef MPI_PARALLEL
   {
     if (collective) {
-      H5Pset_dxpl_mpio(property_list_transfer, H5FD_MPIO_COLLECTIVE);
+      if (H5Pset_dxpl_mpio(property_list_transfer, H5FD_MPIO_COLLECTIVE) < 0) {
+        HDF5ReadError(filename, dataset_name,
+                      "Could not configure collective dataset transfer");
+      }
     }
   }
 #endif
 
   // Read dataset into array
-  hid_t dataset = H5Dopen(file, dataset_name, H5P_DEFAULT);
-  hid_t dataspace_file = H5Dget_space(dataset);
-  if (noop) {
-    H5Sselect_none(dataspace_file);
+  HDF5Handle dataset(H5Dopen(file, dataset_name, H5P_DEFAULT), H5Dclose);
+  if (!dataset.valid()) {
+    std::stringstream msg;
+    msg << "### FATAL ERROR in HDF5ReadRealArray" << std::endl
+        << "Could not open HDF5 dataset '" << dataset_name << "' in file '"
+        << filename << "'." << std::endl;
+    ATHENA_ERROR(msg);
   }
-  H5Sselect_hyperslab(dataspace_file, H5S_SELECT_SET, start_file_hid, NULL,
-                      count_file_hid, NULL);
-  hid_t dataspace_mem = H5Screate_simple(rank_mem, dims_mem, NULL);
-  if (noop) {
-    H5Sselect_none(dataspace_mem);
+  HDF5Handle dataspace_file(H5Dget_space(dataset), H5Sclose);
+  if (!dataspace_file.valid()) {
+    HDF5ReadError(filename, dataset_name, "Could not get the file dataspace");
   }
-  H5Sselect_hyperslab(dataspace_mem, H5S_SELECT_SET, start_mem_hid, NULL, count_mem_hid,
-                      NULL);
-  H5Dread(dataset, H5T_REAL, dataspace_mem, dataspace_file, property_list_transfer,
-          array.data());
-  H5Dclose(dataset);
-  H5Sclose(dataspace_file);
-  H5Sclose(dataspace_mem);
-
-  // Close data file
-  H5Pclose(property_list_transfer);
-  H5Fclose(file);
-  return;
+  if (noop) {
+    if (H5Sselect_none(dataspace_file) < 0) {
+      HDF5ReadError(filename, dataset_name, "Could not select an empty file region");
+    }
+  } else if (H5Sselect_hyperslab(dataspace_file, H5S_SELECT_SET, start_file_hid, NULL,
+                                 count_file_hid, NULL) < 0) {
+    HDF5ReadError(filename, dataset_name, "Could not select the requested file region");
+  }
+  HDF5Handle dataspace_mem(H5Screate_simple(rank_mem, dims_mem, NULL), H5Sclose);
+  if (!dataspace_mem.valid()) {
+    HDF5ReadError(filename, dataset_name, "Could not create the memory dataspace");
+  }
+  if (noop) {
+    if (H5Sselect_none(dataspace_mem) < 0) {
+      HDF5ReadError(filename, dataset_name, "Could not select an empty memory region");
+    }
+  } else if (H5Sselect_hyperslab(dataspace_mem, H5S_SELECT_SET, start_mem_hid, NULL,
+                                 count_mem_hid, NULL) < 0) {
+    HDF5ReadError(filename, dataset_name, "Could not select the requested memory region");
+  }
+  if (H5Dread(dataset, H5T_REAL, dataspace_mem, dataspace_file, property_list_transfer,
+              array.data()) < 0) {
+    HDF5ReadError(filename, dataset_name, "Could not read data");
+  }
 }
 
 
@@ -146,37 +202,85 @@ void HDF5ReadRealArray(const char *filename, const char *dataset_name, int rank_
 void HDF5TableLoader(const char *filename, InterpTable2D* ptable, const int nvar,
                      const char **var_names, const char *x2lim_name,
                      const char *x1lim_name) {
+  if (nvar < 1) {
+    std::stringstream msg;
+    msg << "### FATAL ERROR in HDF5TableLoader" << std::endl
+        << "At least one data field is required for HDF5 file '" << filename << "'."
+        << std::endl;
+    ATHENA_ERROR(msg);
+  }
   hsize_t dims[2];
   int tmp[2];
   int count_file[2];
-  hid_t dataset, dspace;
-  hid_t property_list_file = H5Pcreate(H5P_FILE_ACCESS);
-  hid_t file = H5Fopen(filename, H5F_ACC_RDONLY, property_list_file);
-  for (int i = 0; i < nvar; ++i) {
-    dataset = H5Dopen(file, var_names[i], H5P_DEFAULT);
-    dspace = H5Dget_space(dataset);
-    int ndims = H5Sget_simple_extent_ndims(dspace);
-    if (ndims != 2) {
+  {
+    HDF5Handle property_list_file(H5Pcreate(H5P_FILE_ACCESS), H5Pclose);
+    if (!property_list_file.valid()) {
       std::stringstream msg;
       msg << "### FATAL ERROR in HDF5TableLoader" << std::endl
-          << "Rank of data field '" << var_names[i] << "' in file '" << filename
-          << "' must be 2. Rank is " << ndims << "." << std::endl;
+          << "Could not create a file-access property list for HDF5 file '"
+          << filename << "'." << std::endl;
       ATHENA_ERROR(msg);
     }
-    H5Sget_simple_extent_dims(dspace, dims, NULL);
-    tmp[0] = static_cast<int>(dims[0]);
-    tmp[1] = static_cast<int>(dims[1]);
-    if (i == 0) {
-      count_file[0] = tmp[0];
-      count_file[1] = tmp[1];
-    } else if (count_file[0]!=tmp[0] || count_file[1]!=tmp[1]) {
+    HDF5Handle file(H5Fopen(filename, H5F_ACC_RDONLY, property_list_file), H5Fclose);
+    if (!file.valid()) {
       std::stringstream msg;
       msg << "### FATAL ERROR in HDF5TableLoader" << std::endl
-          << "Inconsistent data field shape in file '" << filename << "'." << std::endl;
+          << "Could not open HDF5 file '" << filename << "'." << std::endl;
       ATHENA_ERROR(msg);
+    }
+    for (int i = 0; i < nvar; ++i) {
+      HDF5Handle dataset(H5Dopen(file, var_names[i], H5P_DEFAULT), H5Dclose);
+      if (!dataset.valid()) {
+        std::stringstream msg;
+        msg << "### FATAL ERROR in HDF5TableLoader" << std::endl
+            << "Could not open HDF5 dataset '" << var_names[i] << "' in file '"
+            << filename << "'." << std::endl;
+        ATHENA_ERROR(msg);
+      }
+      HDF5Handle dspace(H5Dget_space(dataset), H5Sclose);
+      if (!dspace.valid()) {
+        std::stringstream msg;
+        msg << "### FATAL ERROR in HDF5TableLoader" << std::endl
+            << "Could not get the dataspace for HDF5 dataset '" << var_names[i]
+            << "' in file '" << filename << "'." << std::endl;
+        ATHENA_ERROR(msg);
+      }
+      int ndims = H5Sget_simple_extent_ndims(dspace);
+      if (ndims < 0) {
+        std::stringstream msg;
+        msg << "### FATAL ERROR in HDF5TableLoader" << std::endl
+            << "Could not read the rank of HDF5 dataset '" << var_names[i]
+            << "' in file '" << filename << "'." << std::endl;
+        ATHENA_ERROR(msg);
+      }
+      if (ndims != 2) {
+        std::stringstream msg;
+        msg << "### FATAL ERROR in HDF5TableLoader" << std::endl
+            << "Rank of data field '" << var_names[i] << "' in file '" << filename
+            << "' must be 2. Rank is " << ndims << "." << std::endl;
+        ATHENA_ERROR(msg);
+      }
+      if (H5Sget_simple_extent_dims(dspace, dims, NULL) < 0) {
+        std::stringstream msg;
+        msg << "### FATAL ERROR in HDF5TableLoader" << std::endl
+            << "Could not read the shape of HDF5 dataset '" << var_names[i]
+            << "' in file '" << filename << "'." << std::endl;
+        ATHENA_ERROR(msg);
+      }
+      tmp[0] = static_cast<int>(dims[0]);
+      tmp[1] = static_cast<int>(dims[1]);
+      if (i == 0) {
+        count_file[0] = tmp[0];
+        count_file[1] = tmp[1];
+      } else if (count_file[0]!=tmp[0] || count_file[1]!=tmp[1]) {
+        std::stringstream msg;
+        msg << "### FATAL ERROR in HDF5TableLoader" << std::endl
+            << "Inconsistent data field shape in file '" << filename << "'."
+            << std::endl;
+        ATHENA_ERROR(msg);
+      }
     }
   }
-  H5Fclose(file);
   ptable->SetSize(nvar, count_file[0], count_file[1]);
   int start_file[2];
   start_file[0] = 0;

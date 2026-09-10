@@ -958,3 +958,8 @@ void MeshBlock::UserWorkBeforeOutput(ParameterInput *pin) {
 #endif
   }
 }
+
+void Mesh::UserWorkAfterLoop(ParameterInput *pin) {
+  (void)pin;
+  if (opacity_table != nullptr) opacity_table->ReportDiagnostics(std::cout);
+}

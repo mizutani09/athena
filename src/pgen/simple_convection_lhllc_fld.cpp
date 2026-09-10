@@ -2280,3 +2280,8 @@ Real HistoryTopTotalFluxCgs(MeshBlock *pmb, int iout) {
 // }
 
 } // namespace
+
+void Mesh::UserWorkAfterLoop(ParameterInput *pin) {
+  (void)pin;
+  if (puser_table != nullptr) puser_table->ReportDiagnostics(std::cout);
+}

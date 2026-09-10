@@ -10,7 +10,9 @@
 // C headers
 
 // C++ headers
+#include <algorithm>
 #include <cmath>   // sqrt()
+#include <cstddef>
 #include <fstream>
 #include <iostream> // ifstream
 #include <limits>
@@ -24,6 +26,7 @@
 #include "../athena_arrays.hpp"
 #include "../coordinates/coordinates.hpp"
 #include "../field/field.hpp"
+#include "../globals.hpp"
 #include "../inputs/ascii_table_reader.hpp"
 #include "../inputs/hdf5_reader.hpp"
 #include "../parameter_input.hpp"
@@ -33,6 +36,9 @@
 
 #ifdef HDF5OUTPUT
 #include <hdf5.h>
+#endif
+#ifdef MPI_PARALLEL
+#include <mpi.h>
 #endif
 
 // Order of datafields for HDF5 opacity tables
@@ -61,6 +67,21 @@ bool GetOpacityBoolOrDefault(ParameterInput *pin, const std::string &name,
     return pin->GetBoolean(kOpacityBlockPrimary, name);
   }
   return default_value;
+}
+
+UserOpacityTable::DomainPolicy ParseDomainPolicy(ParameterInput *pin) {
+  const std::string policy =
+      GetOpacityStringOrDefault(pin, "opacity_table_domain_policy", "extrapolate");
+  if (policy == "error") return UserOpacityTable::DomainPolicy::error;
+  if (policy == "clamp") return UserOpacityTable::DomainPolicy::clamp;
+  if (policy == "extrapolate") return UserOpacityTable::DomainPolicy::extrapolate;
+
+  std::stringstream msg;
+  msg << "### FATAL ERROR in UserOpacityTable::UserOpacityTable" << std::endl
+      << "fld/opacity_table_domain_policy must be 'error', 'clamp', or "
+      << "'extrapolate', got '" << policy << "'." << std::endl;
+  ATHENA_ERROR(msg);
+  return UserOpacityTable::DomainPolicy::extrapolate;
 }
 
 bool ParseExplicitOpacityFormat(ParameterInput *pin, const std::string &parameter,
@@ -116,11 +137,70 @@ void ValidateAsciiOpacitySchema(const std::string &filename, UserOpacityTable *t
   }
 }
 
+const char *OpacityFieldName(int field) {
+  return field == RadFLD::SIGMA_P ? "Planck" : "Rosseland";
+}
+
+void ValidateOpacityFields(const std::string &filename, UserOpacityTable *table) {
+  for (int field = 0; field < table->nVar; ++field) {
+    for (int j = 0; j < table->nPressure; ++j) {
+      for (int i = 0; i < table->nTemp; ++i) {
+        const Real stored = table->data(field, j, i);
+        Real decoded = stored;
+        if (table->values_are_log10[field] && std::isfinite(stored)) {
+          decoded = std::pow(static_cast<Real>(10.0), stored);
+        }
+        if (!std::isfinite(stored) || !std::isfinite(decoded) || decoded <= 0.0) {
+          std::stringstream msg;
+          msg << "### FATAL ERROR in UserOpacityTable table validation" << std::endl
+              << OpacityFieldName(field) << " opacity field in '" << filename
+              << "' contains an invalid value at [x2=" << j << ", temperature=" << i
+              << "]: stored=" << stored;
+          if (table->values_are_log10[field]) msg << ", decoded=" << decoded;
+          msg << ". Every stored value must be finite and every decoded opacity "
+              << "must be finite and positive." << std::endl;
+          ATHENA_ERROR(msg);
+        }
+      }
+    }
+  }
+}
+
 #ifdef HDF5OUTPUT
+class HDF5Handle {
+ public:
+  using CloseFunction = herr_t (*)(hid_t);
+
+  HDF5Handle(hid_t id, CloseFunction close) : id_(id), close_(close) {}
+  ~HDF5Handle() {
+    if (id_ >= 0) close_(id_);
+  }
+  HDF5Handle(const HDF5Handle &) = delete;
+  HDF5Handle &operator=(const HDF5Handle &) = delete;
+  operator hid_t() const { return id_; }
+  bool valid() const { return id_ >= 0; }
+
+ private:
+  hid_t id_;
+  CloseFunction close_;
+};
+
+void CheckHDF5Link(htri_t status, const std::string &filename,
+                   const std::string &dataset_path) {
+  if (status < 0) {
+    std::stringstream msg;
+    msg << "### FATAL ERROR in ReadHDF5OpacityTable" << std::endl
+        << "Failed while checking HDF5 dataset '" << dataset_path
+        << "' in file '" << filename << "'." << std::endl;
+    ATHENA_ERROR(msg);
+  }
+}
+
 bool FindExistingDataset(hid_t file, const std::vector<std::string> &candidates,
-                         std::string *found_path) {
+                         const std::string &filename, std::string *found_path) {
   for (const auto &path : candidates) {
     htri_t exists = H5Lexists(file, path.c_str(), H5P_DEFAULT);
+    CheckHDF5Link(exists, filename, path);
     if (exists > 0) {
       *found_path = path;
       return true;
@@ -203,43 +283,84 @@ void ValidateUniformAxis(const AthenaArray<Real> &axis, int size,
 
 std::string ResolveDatasetPath(hid_t file, const std::string &configured_name,
                                const std::vector<std::string> &fallback_candidates,
-                               const std::string &dataset_purpose) {
+                               const std::string &dataset_purpose,
+                               const std::string &filename) {
   if (configured_name != "auto") {
-    if (H5Lexists(file, configured_name.c_str(), H5P_DEFAULT) > 0) {
+    htri_t exists = H5Lexists(file, configured_name.c_str(), H5P_DEFAULT);
+    CheckHDF5Link(exists, filename, configured_name);
+    if (exists > 0) {
       return configured_name;
     }
     if (!configured_name.empty() && configured_name[0] != '/') {
       std::string with_slash = "/" + configured_name;
-      if (H5Lexists(file, with_slash.c_str(), H5P_DEFAULT) > 0) {
+      exists = H5Lexists(file, with_slash.c_str(), H5P_DEFAULT);
+      CheckHDF5Link(exists, filename, with_slash);
+      if (exists > 0) {
         return with_slash;
       }
     }
     std::stringstream msg;
     msg << "### FATAL ERROR in ReadHDF5OpacityTable" << std::endl
         << "Configured dataset for " << dataset_purpose << " ('"
-        << configured_name << "') was not found in the HDF5 file." << std::endl;
+        << configured_name << "') was not found in HDF5 file '" << filename
+        << "'." << std::endl;
     ATHENA_ERROR(msg);
   }
 
   std::string detected_path;
-  if (FindExistingDataset(file, fallback_candidates, &detected_path)) {
+  if (FindExistingDataset(file, fallback_candidates, filename, &detected_path)) {
     return detected_path;
   }
 
   std::stringstream msg;
   msg << "### FATAL ERROR in ReadHDF5OpacityTable" << std::endl
-      << "Could not auto-detect dataset for " << dataset_purpose << "." << std::endl;
+      << "Could not auto-detect dataset for " << dataset_purpose
+      << " in HDF5 file '" << filename << "'." << std::endl;
   ATHENA_ERROR(msg);
   return "";
 }
 
 int Read1DDatasetSize(const std::string &fn, const std::string &dataset_path,
                       Real *storage_epsilon) {
-  hid_t property_list_file = H5Pcreate(H5P_FILE_ACCESS);
-  hid_t file = H5Fopen(fn.c_str(), H5F_ACC_RDONLY, property_list_file);
-  hid_t dataset = H5Dopen(file, dataset_path.c_str(), H5P_DEFAULT);
-  hid_t dspace = H5Dget_space(dataset);
+  HDF5Handle property_list_file(H5Pcreate(H5P_FILE_ACCESS), H5Pclose);
+  if (!property_list_file.valid()) {
+    std::stringstream msg;
+    msg << "### FATAL ERROR in ReadHDF5OpacityTable" << std::endl
+        << "Could not create an HDF5 file-access property list for '" << fn << "'."
+        << std::endl;
+    ATHENA_ERROR(msg);
+  }
+  HDF5Handle file(H5Fopen(fn.c_str(), H5F_ACC_RDONLY, property_list_file), H5Fclose);
+  if (!file.valid()) {
+    std::stringstream msg;
+    msg << "### FATAL ERROR in ReadHDF5OpacityTable" << std::endl
+        << "Could not open HDF5 file '" << fn << "'." << std::endl;
+    ATHENA_ERROR(msg);
+  }
+  HDF5Handle dataset(H5Dopen(file, dataset_path.c_str(), H5P_DEFAULT), H5Dclose);
+  if (!dataset.valid()) {
+    std::stringstream msg;
+    msg << "### FATAL ERROR in ReadHDF5OpacityTable" << std::endl
+        << "Could not open HDF5 dataset '" << dataset_path << "' in file '"
+        << fn << "'." << std::endl;
+    ATHENA_ERROR(msg);
+  }
+  HDF5Handle dspace(H5Dget_space(dataset), H5Sclose);
+  if (!dspace.valid()) {
+    std::stringstream msg;
+    msg << "### FATAL ERROR in ReadHDF5OpacityTable" << std::endl
+        << "Could not get the dataspace for HDF5 dataset '" << dataset_path
+        << "' in file '" << fn << "'." << std::endl;
+    ATHENA_ERROR(msg);
+  }
   int ndims = H5Sget_simple_extent_ndims(dspace);
+  if (ndims < 0) {
+    std::stringstream msg;
+    msg << "### FATAL ERROR in ReadHDF5OpacityTable" << std::endl
+        << "Could not read the rank of HDF5 dataset '" << dataset_path
+        << "' in file '" << fn << "'." << std::endl;
+    ATHENA_ERROR(msg);
+  }
   if (ndims != 1) {
     std::stringstream msg;
     msg << "### FATAL ERROR in ReadHDF5OpacityTable" << std::endl
@@ -247,28 +368,79 @@ int Read1DDatasetSize(const std::string &fn, const std::string &dataset_path,
     ATHENA_ERROR(msg);
   }
   hsize_t dims[1];
-  H5Sget_simple_extent_dims(dspace, dims, NULL);
-  hid_t datatype = H5Dget_type(dataset);
+  if (H5Sget_simple_extent_dims(dspace, dims, NULL) < 0) {
+    std::stringstream msg;
+    msg << "### FATAL ERROR in ReadHDF5OpacityTable" << std::endl
+        << "Could not read the shape of HDF5 dataset '" << dataset_path
+        << "' in file '" << fn << "'." << std::endl;
+    ATHENA_ERROR(msg);
+  }
+  HDF5Handle datatype(H5Dget_type(dataset), H5Tclose);
+  if (!datatype.valid()) {
+    std::stringstream msg;
+    msg << "### FATAL ERROR in ReadHDF5OpacityTable" << std::endl
+        << "Could not get the datatype for HDF5 dataset '" << dataset_path
+        << "' in file '" << fn << "'." << std::endl;
+    ATHENA_ERROR(msg);
+  }
+  const H5T_class_t datatype_class = H5Tget_class(datatype);
+  const std::size_t datatype_size = H5Tget_size(datatype);
+  if (datatype_class == H5T_NO_CLASS || datatype_size == 0) {
+    std::stringstream msg;
+    msg << "### FATAL ERROR in ReadHDF5OpacityTable" << std::endl
+        << "Could not inspect the datatype of HDF5 dataset '" << dataset_path
+        << "' in file '" << fn << "'." << std::endl;
+    ATHENA_ERROR(msg);
+  }
   *storage_epsilon = std::numeric_limits<Real>::epsilon();
-  if (H5Tget_class(datatype) == H5T_FLOAT && H5Tget_size(datatype) <= sizeof(float) &&
+  if (datatype_class == H5T_FLOAT && datatype_size <= sizeof(float) &&
       std::numeric_limits<float>::epsilon() > *storage_epsilon) {
     *storage_epsilon = std::numeric_limits<float>::epsilon();
   }
-  H5Tclose(datatype);
-  H5Sclose(dspace);
-  H5Dclose(dataset);
-  H5Fclose(file);
-  H5Pclose(property_list_file);
   return static_cast<int>(dims[0]);
 }
 
 void Read2DDatasetShape(const std::string &fn, const std::string &dataset_path,
                         hsize_t dims_out[2]) {
-  hid_t property_list_file = H5Pcreate(H5P_FILE_ACCESS);
-  hid_t file = H5Fopen(fn.c_str(), H5F_ACC_RDONLY, property_list_file);
-  hid_t dataset = H5Dopen(file, dataset_path.c_str(), H5P_DEFAULT);
-  hid_t dspace = H5Dget_space(dataset);
+  HDF5Handle property_list_file(H5Pcreate(H5P_FILE_ACCESS), H5Pclose);
+  if (!property_list_file.valid()) {
+    std::stringstream msg;
+    msg << "### FATAL ERROR in ReadHDF5OpacityTable" << std::endl
+        << "Could not create an HDF5 file-access property list for '" << fn << "'."
+        << std::endl;
+    ATHENA_ERROR(msg);
+  }
+  HDF5Handle file(H5Fopen(fn.c_str(), H5F_ACC_RDONLY, property_list_file), H5Fclose);
+  if (!file.valid()) {
+    std::stringstream msg;
+    msg << "### FATAL ERROR in ReadHDF5OpacityTable" << std::endl
+        << "Could not open HDF5 file '" << fn << "'." << std::endl;
+    ATHENA_ERROR(msg);
+  }
+  HDF5Handle dataset(H5Dopen(file, dataset_path.c_str(), H5P_DEFAULT), H5Dclose);
+  if (!dataset.valid()) {
+    std::stringstream msg;
+    msg << "### FATAL ERROR in ReadHDF5OpacityTable" << std::endl
+        << "Could not open HDF5 dataset '" << dataset_path << "' in file '"
+        << fn << "'." << std::endl;
+    ATHENA_ERROR(msg);
+  }
+  HDF5Handle dspace(H5Dget_space(dataset), H5Sclose);
+  if (!dspace.valid()) {
+    std::stringstream msg;
+    msg << "### FATAL ERROR in ReadHDF5OpacityTable" << std::endl
+        << "Could not get the dataspace for HDF5 dataset '" << dataset_path
+        << "' in file '" << fn << "'." << std::endl;
+    ATHENA_ERROR(msg);
+  }
   int ndims = H5Sget_simple_extent_ndims(dspace);
+  if (ndims < 0) {
+    std::stringstream msg;
+    msg << "### FATAL ERROR in ReadHDF5OpacityTable" << std::endl
+        << "Could not read the rank of HDF5 dataset '" << dataset_path
+        << "' in file '" << fn << "'." << std::endl;
+    ATHENA_ERROR(msg);
+  }
   if (ndims != 2) {
     std::stringstream msg;
     msg << "### FATAL ERROR in ReadHDF5OpacityTable" << std::endl
@@ -276,11 +448,13 @@ void Read2DDatasetShape(const std::string &fn, const std::string &dataset_path,
         << ndims << "D." << std::endl;
     ATHENA_ERROR(msg);
   }
-  H5Sget_simple_extent_dims(dspace, dims_out, NULL);
-  H5Sclose(dspace);
-  H5Dclose(dataset);
-  H5Fclose(file);
-  H5Pclose(property_list_file);
+  if (H5Sget_simple_extent_dims(dspace, dims_out, NULL) < 0) {
+    std::stringstream msg;
+    msg << "### FATAL ERROR in ReadHDF5OpacityTable" << std::endl
+        << "Could not read the shape of HDF5 dataset '" << dataset_path
+        << "' in file '" << fn << "'." << std::endl;
+    ATHENA_ERROR(msg);
+  }
 }
 #endif
 }  // namespace
@@ -299,6 +473,7 @@ void ReadAsciiOpacityTable(std::string fn, UserOpacityTable *puser_table, Parame
   puser_table->GetX1lim(puser_table->tempMin, puser_table->tempMax);
   ValidateAsciiOpacitySchema(fn, puser_table);
   SetAsciiOpacityFormats(pin, puser_table);
+  ValidateOpacityFields(fn, puser_table);
 
   if (!puser_table->use_tables) {
     puser_table->OpacityTables.NewAthenaArray(puser_table->nVar);
@@ -336,8 +511,21 @@ void ReadHDF5OpacityTable(std::string fn, UserOpacityTable *puser_table, Paramet
   // Resolve dataset paths. Axis kind is controlled by input parameter:
   // fld/opacity_table_axis = tp, trho, tr
   {
-    hid_t property_list_file = H5Pcreate(H5P_FILE_ACCESS);
-    hid_t file = H5Fopen(fn.c_str(), H5F_ACC_RDONLY, property_list_file);
+    HDF5Handle property_list_file(H5Pcreate(H5P_FILE_ACCESS), H5Pclose);
+    if (!property_list_file.valid()) {
+      std::stringstream msg;
+      msg << "### FATAL ERROR in ReadHDF5OpacityTable" << std::endl
+          << "Could not create an HDF5 file-access property list for '" << fn << "'."
+          << std::endl;
+      ATHENA_ERROR(msg);
+    }
+    HDF5Handle file(H5Fopen(fn.c_str(), H5F_ACC_RDONLY, property_list_file), H5Fclose);
+    if (!file.valid()) {
+      std::stringstream msg;
+      msg << "### FATAL ERROR in ReadHDF5OpacityTable" << std::endl
+          << "Could not open HDF5 file '" << fn << "'." << std::endl;
+      ATHENA_ERROR(msg);
+    }
 
     temp_path = ResolveDatasetPath(
         file,
@@ -345,13 +533,13 @@ void ReadHDF5OpacityTable(std::string fn, UserOpacityTable *puser_table, Paramet
         {"log_temperature", "/log_temperature",
          "axes/log10_temperature", "/axes/log10_temperature",
          "log10_temperature", "/log10_temperature"},
-        "temperature axis");
+        "temperature axis", fn);
 
     x2_path = ResolveDatasetPath(
         file,
         GetOpacityStringOrDefault(pin, "opacity_table_x2_dataset", "auto"),
         x2_candidates,
-        "x2 axis");
+        "x2 axis", fn);
 
     var_paths[RadFLD::SIGMA_P] = ResolveDatasetPath(
         file,
@@ -361,7 +549,7 @@ void ReadHDF5OpacityTable(std::string fn, UserOpacityTable *puser_table, Paramet
          opacity_var_names[RadFLD::SIGMA_P],
          "/planck_mean_opacity",
          "kappa/planck", "/kappa/planck", "planck", "/planck"},
-        "Planck opacity");
+        "Planck opacity", fn);
 
     var_paths[RadFLD::SIGMA_R] = ResolveDatasetPath(
         file,
@@ -371,15 +559,13 @@ void ReadHDF5OpacityTable(std::string fn, UserOpacityTable *puser_table, Paramet
          opacity_var_names[RadFLD::SIGMA_R],
          "/rosseland_mean_opacity",
          "kappa/rosseland", "/kappa/rosseland", "rosseland", "/rosseland"},
-        "Rosseland opacity");
+        "Rosseland opacity", fn);
 
     puser_table->values_are_log10[RadFLD::SIGMA_P] = InferHDF5OpacityFormat(
         pin, "opacity_table_planck_format", var_paths[RadFLD::SIGMA_P], RadFLD::SIGMA_P);
     puser_table->values_are_log10[RadFLD::SIGMA_R] = InferHDF5OpacityFormat(
         pin, "opacity_table_rosseland_format", var_paths[RadFLD::SIGMA_R], RadFLD::SIGMA_R);
 
-    H5Fclose(file);
-    H5Pclose(property_list_file);
   }
 
   // Read 2D grid format: separate 1D coordinate arrays and 2D opacity grids
@@ -468,6 +654,8 @@ void ReadHDF5OpacityTable(std::string fn, UserOpacityTable *puser_table, Paramet
     opacity_2d.DeleteAthenaArray();
   }
 
+  ValidateOpacityFields(fn, puser_table);
+
   // Clean up coordinate arrays
   temp_array.DeleteAthenaArray();
   x2_array.DeleteAthenaArray();
@@ -509,6 +697,15 @@ UserOpacityTable::UserOpacityTable(ParameterInput *pin) : InterpTable2D() {
 
   use_tables = GetOpacityBoolOrDefault(pin, "use_opacity_table", false);
   if (!use_tables) return;
+  domain_policy = ParseDomainPolicy(pin);
+  if (!std::isfinite(mean_molecular_weight) || mean_molecular_weight <= 0.0) {
+    std::stringstream msg;
+    msg << "### FATAL ERROR in UserOpacityTable::UserOpacityTable" << std::endl
+        << "hydro/mu must be finite and positive because FLD opacity TP<->rhoT "
+        << "conversion uses a fixed-mu ideal-gas relation. Received mu="
+        << mean_molecular_weight << "." << std::endl;
+    ATHENA_ERROR(msg);
+  }
   std::string opacity_fn, opacity_file_type;
 
   // Get file name and type from parameters
@@ -579,16 +776,25 @@ Real UserOpacityTable::GetOpacityFromPT(int var_index, Real pressure, Real tempe
     ATHENA_ERROR(msg);
   }
 
-  if (pressure <= 0.0 || temperature <= 0.0) {
+  if (!std::isfinite(pressure) || !std::isfinite(temperature) ||
+      pressure <= 0.0 || temperature <= 0.0) {
     std::stringstream msg;
     msg << "### FATAL ERROR in UserOpacityTable::GetOpacityFromPT" << std::endl
-        << "Pressure and temperature must be positive. Received P=" << pressure
+        << "Pressure and temperature must be finite and positive. Received P=" << pressure
         << ", T=" << temperature << std::endl;
     ATHENA_ERROR(msg);
   }
 
   constexpr Real r_gas_cgs = 8.314462618e7;
   Real density = pressure*mean_molecular_weight/(r_gas_cgs*temperature);
+  if (!std::isfinite(density) || density <= 0.0) {
+    std::stringstream msg;
+    msg << "### FATAL ERROR in UserOpacityTable::GetOpacityFromPT" << std::endl
+        << "Fixed-mu ideal-gas conversion produced invalid density rho=" << density
+        << " from P=" << pressure << ", T=" << temperature
+        << ", mu=" << mean_molecular_weight << "." << std::endl;
+    ATHENA_ERROR(msg);
+  }
   return GetOpacityFromRhoT(var_index, density, temperature);
 }
 
@@ -601,10 +807,19 @@ Real UserOpacityTable::GetOpacityFromRhoT(int var_index, Real density, Real temp
     ATHENA_ERROR(msg);
   }
 
-  if (density <= 0.0 || temperature <= 0.0) {
+  if (var_index < 0 || var_index >= nVar) {
     std::stringstream msg;
     msg << "### FATAL ERROR in UserOpacityTable::GetOpacityFromRhoT" << std::endl
-        << "Density and temperature must be positive. Received rho=" << density
+        << "Opacity field index " << var_index << " is outside [0," << nVar - 1
+        << "]." << std::endl;
+    ATHENA_ERROR(msg);
+  }
+
+  if (!std::isfinite(density) || !std::isfinite(temperature) ||
+      density <= 0.0 || temperature <= 0.0) {
+    std::stringstream msg;
+    msg << "### FATAL ERROR in UserOpacityTable::GetOpacityFromRhoT" << std::endl
+        << "Density and temperature must be finite and positive. Received rho=" << density
         << ", T=" << temperature << std::endl;
     ATHENA_ERROR(msg);
   }
@@ -620,19 +835,108 @@ Real UserOpacityTable::GetOpacityFromRhoT(int var_index, Real density, Real temp
   } else {
     log_x2 = std::log10(density) - 3.0*log_temperature + 18.0;
   }
+  if (!std::isfinite(log_temperature) || !std::isfinite(log_x2)) {
+    std::stringstream msg;
+    msg << "### FATAL ERROR in UserOpacityTable::GetOpacityFromRhoT" << std::endl
+        << "Opacity coordinates must be finite after conversion. Received rho="
+        << density << ", T=" << temperature << ", resulting log10(T)="
+        << log_temperature << ", x2=" << log_x2 << "." << std::endl;
+    ATHENA_ERROR(msg);
+  }
+
+  const bool outside = log_temperature < tempMin || log_temperature > tempMax ||
+                       log_x2 < pressureMin || log_x2 > pressureMax;
+  if (outside) {
+    out_of_domain_count_.fetch_add(1, std::memory_order_relaxed);
+    if (domain_policy == DomainPolicy::error) {
+      std::stringstream msg;
+      msg << "### FATAL ERROR in UserOpacityTable::GetOpacityFromRhoT" << std::endl
+          << OpacityFieldName(var_index) << " opacity lookup is outside the table domain: "
+          << "log10(T)=" << log_temperature << " (valid [" << tempMin << ","
+          << tempMax << "]), x2=" << log_x2 << " (valid [" << pressureMin << ","
+          << pressureMax << "]). fld/opacity_table_domain_policy=error."
+          << std::endl;
+      ATHENA_ERROR(msg);
+    }
+    if (domain_policy == DomainPolicy::clamp) {
+      log_temperature = std::max(tempMin, std::min(tempMax, log_temperature));
+      log_x2 = std::max(pressureMin, std::min(pressureMax, log_x2));
+      clamped_count_.fetch_add(1, std::memory_order_relaxed);
+    }
+  }
+
   Real result = interpolate(var_index, log_x2, log_temperature);
+  if (!std::isfinite(result)) {
+    nonfinite_result_count_.fetch_add(1, std::memory_order_relaxed);
+    std::stringstream msg;
+    msg << "### FATAL ERROR in UserOpacityTable::GetOpacityFromRhoT" << std::endl
+        << OpacityFieldName(var_index) << " opacity interpolation returned a non-finite "
+        << "stored value at x2=" << log_x2 << ", log10(T)=" << log_temperature
+        << "." << std::endl;
+    ATHENA_ERROR(msg);
+  }
   if (values_are_log10[var_index]) {
     result = std::pow(static_cast<Real>(10.0), result);
   }
+  if (!std::isfinite(result)) {
+    nonfinite_result_count_.fetch_add(1, std::memory_order_relaxed);
+    std::stringstream msg;
+    msg << "### FATAL ERROR in UserOpacityTable::GetOpacityFromRhoT" << std::endl
+        << OpacityFieldName(var_index) << " opacity is non-finite after decoding at x2="
+        << log_x2 << ", log10(T)=" << log_temperature << "." << std::endl;
+    ATHENA_ERROR(msg);
+  }
   if (result < 0.0) {
-    result = TINY_NUMBER;
-    std::cerr << "Warning: Negative opacity value encountered. Returning TINY_NUMBER instead."
-              << std::endl;
-    std::cerr << "log_x2: " << log_x2 << ", log_temperature: " << log_temperature
-              << std::endl;
-    std::cerr << "Interpolated result: " << result << std::endl;
+    const std::uint64_t negative_count =
+        negative_result_count_.fetch_add(1, std::memory_order_relaxed) + 1;
+    std::stringstream msg;
+    msg << "### FATAL ERROR in UserOpacityTable::GetOpacityFromRhoT" << std::endl
+        << OpacityFieldName(var_index) << " opacity extrapolation returned a negative "
+        << "value " << result << " at x2=" << log_x2 << ", log10(T)="
+        << log_temperature << ". Negative results are not replaced by a floor. "
+        << "Local negative-result count=" << negative_count << "." << std::endl;
+    ATHENA_ERROR(msg);
+  }
+  if (result == 0.0) {
+    zero_result_count_.fetch_add(1, std::memory_order_relaxed);
+    std::stringstream msg;
+    msg << "### FATAL ERROR in UserOpacityTable::GetOpacityFromRhoT" << std::endl
+        << OpacityFieldName(var_index) << " opacity is zero at x2=" << log_x2
+        << ", log10(T)=" << log_temperature
+        << ". Opacity must be strictly positive." << std::endl;
+    ATHENA_ERROR(msg);
   }
   return result;
+}
+
+UserOpacityTable::Diagnostics UserOpacityTable::GetLocalDiagnostics() const {
+  Diagnostics diagnostics;
+  diagnostics.out_of_domain = out_of_domain_count_.load(std::memory_order_relaxed);
+  diagnostics.clamped = clamped_count_.load(std::memory_order_relaxed);
+  diagnostics.negative_results = negative_result_count_.load(std::memory_order_relaxed);
+  diagnostics.zero_results = zero_result_count_.load(std::memory_order_relaxed);
+  diagnostics.nonfinite_results = nonfinite_result_count_.load(std::memory_order_relaxed);
+  return diagnostics;
+}
+
+void UserOpacityTable::ReportDiagnostics(std::ostream &stream) const {
+  const Diagnostics local = GetLocalDiagnostics();
+  unsigned long long counts[5] = {
+      static_cast<unsigned long long>(local.out_of_domain),
+      static_cast<unsigned long long>(local.clamped),
+      static_cast<unsigned long long>(local.negative_results),
+      static_cast<unsigned long long>(local.zero_results),
+      static_cast<unsigned long long>(local.nonfinite_results)};
+#ifdef MPI_PARALLEL
+  MPI_Allreduce(MPI_IN_PLACE, counts, 5, MPI_UNSIGNED_LONG_LONG, MPI_SUM, MPI_COMM_WORLD);
+#endif
+  if (Globals::my_rank == 0) {
+    stream << "FLD_OPACITY_DIAGNOSTICS out_of_domain=" << counts[0]
+           << " clamped=" << counts[1]
+           << " negative_results=" << counts[2]
+           << " zero_results=" << counts[3]
+           << " nonfinite_results=" << counts[4] << std::endl;
+  }
 }
 
 //----------------------------------------------------------------------------------------
