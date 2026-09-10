@@ -292,3 +292,36 @@ IOWrapperSizeT IOWrapper::GetPosition() {
   return ftell(fh_);
 #endif
 }
+
+//----------------------------------------------------------------------------------------
+//! \fn IOWrapperSizeT IOWrapper::GetSize()
+//! \brief return the size of the open file without changing the current position
+
+IOWrapperSizeT IOWrapper::GetSize() {
+#ifdef MPI_PARALLEL
+  MPI_Offset size;
+  if (MPI_File_get_size(fh_, &size) != MPI_SUCCESS) {
+    std::stringstream msg;
+    msg << "### FATAL ERROR in function [IOWrapper::GetSize]"
+        << std::endl << "Could not determine the file size." << std::endl;
+    ATHENA_ERROR(msg);
+  }
+  return static_cast<IOWrapperSizeT>(size);
+#else
+  const long current = std::ftell(fh_);
+  if (current < 0 || std::fseek(fh_, 0, SEEK_END) != 0) {
+    std::stringstream msg;
+    msg << "### FATAL ERROR in function [IOWrapper::GetSize]"
+        << std::endl << "Could not determine the file size." << std::endl;
+    ATHENA_ERROR(msg);
+  }
+  const long size = std::ftell(fh_);
+  if (size < 0 || std::fseek(fh_, current, SEEK_SET) != 0) {
+    std::stringstream msg;
+    msg << "### FATAL ERROR in function [IOWrapper::GetSize]"
+        << std::endl << "Could not restore the file position." << std::endl;
+    ATHENA_ERROR(msg);
+  }
+  return static_cast<IOWrapperSizeT>(size);
+#endif
+}

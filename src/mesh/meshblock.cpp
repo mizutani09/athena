@@ -489,6 +489,23 @@ MeshBlock::MeshBlock(int igid, int ilid, Mesh *pm, ParameterInput *pin,
   // load hydro and field data
   std::memcpy(phydro->u.data(), &(mbdata[os]), phydro->u.GetSizeInBytes());
   os += phydro->u.GetSizeInBytes();
+  if (NRMGFLD_ENABLED) {
+    // FLD::u_gas is derived from hydro total energy and is not serialized.
+    // Restore it before the first post-restart boundary operation; HD2 uses it
+    // to reconstruct the entropy of the adjacent interior cells.
+    for (int k=ks; k<=ke; ++k) {
+      for (int j=js; j<=je; ++j) {
+        for (int i=is; i<=ie; ++i) {
+          const Real rho = std::max(phydro->u(IDN,k,j,i), TINY_NUMBER);
+          const Real kinetic = 0.5*(phydro->u(IM1,k,j,i)*phydro->u(IM1,k,j,i)
+                                   +phydro->u(IM2,k,j,i)*phydro->u(IM2,k,j,i)
+                                   +phydro->u(IM3,k,j,i)*phydro->u(IM3,k,j,i))/rho;
+          prfld->u_gas(k,j,i) = std::max(phydro->u(IEN,k,j,i) - kinetic,
+                                         TINY_NUMBER);
+        }
+      }
+    }
+  }
   if (GENERAL_RELATIVITY) {
     std::memcpy(phydro->w.data(), &(mbdata[os]), phydro->w.GetSizeInBytes());
     os += phydro->w.GetSizeInBytes();

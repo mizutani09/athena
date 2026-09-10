@@ -53,6 +53,7 @@ class IOWrapper {
   int Close();
   int Seek(IOWrapperSizeT offset);
   IOWrapperSizeT GetPosition();
+  IOWrapperSizeT GetSize();
 
  private:
   IOWrapperFile fh_;

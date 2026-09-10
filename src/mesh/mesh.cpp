@@ -767,7 +767,34 @@ Mesh::Mesh(ParameterInput *pin, IOWrapper& resfile, int mesh_test) :
     udsize += iuser_mesh_data[n].GetSizeInBytes();
   for (int n=0; n<nreal_user_mesh_data_; n++)
     udsize += ruser_mesh_data[n].GetSizeInBytes();
-  if (udsize != 0) {
+  // The original restart layout did not record the size or schema of user Mesh data.
+  // Compare complete-file sizes before reading it so a newly registered field cannot
+  // consume the old ID list as user data.  A file matching neither layout is rejected
+  // below rather than guessed at.
+  listsize = sizeof(LogicalLocation)+sizeof(double);
+  const IOWrapperSizeT data_offset = headeroffset + headersize;
+  const IOWrapperSizeT block_data_size = datasize*nbtotal;
+  const IOWrapperSizeT legacy_file_size = data_offset + listsize*nbtotal
+                                          + block_data_size;
+  const IOWrapperSizeT current_file_size = data_offset + udsize
+                                           + listsize*nbtotal + block_data_size;
+  const IOWrapperSizeT file_size = resfile.GetSize();
+  IOWrapperSizeT restart_udsize = udsize;
+  if (udsize != 0 && file_size == legacy_file_size) {
+    restart_udsize = 0;
+    if (Globals::my_rank == 0) {
+      std::cout << "### WARNING: restart file has no user Mesh data; "
+                   "HD2 feedback state will be initialized." << std::endl;
+    }
+  } else if (file_size != current_file_size) {
+    msg << "### FATAL ERROR in Mesh constructor" << std::endl
+        << "The restart file layout cannot be identified safely: expected "
+        << current_file_size << " bytes for the current user Mesh data or "
+        << legacy_file_size << " bytes for the legacy layout, got "
+        << file_size << "." << std::endl;
+    ATHENA_ERROR(msg);
+  }
+  if (restart_udsize != 0) {
     char *userdata = new char[udsize];
     if (Globals::my_rank == 0) { // only the master process reads the ID list
       if (resfile.Read(userdata, 1, udsize) != udsize) {
@@ -824,7 +851,7 @@ Mesh::Mesh(ParameterInput *pin, IOWrapper& resfile, int mesh_test) :
   if (!adaptive) max_level = current_level;
 
   // calculate the header offset and seek
-  headeroffset += headersize + udsize + listsize*nbtotal;
+  headeroffset += headersize + restart_udsize + listsize*nbtotal;
   if (Globals::my_rank != 0)
     resfile.Seek(headeroffset);
 

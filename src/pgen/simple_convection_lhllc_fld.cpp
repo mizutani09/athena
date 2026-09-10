@@ -74,8 +74,6 @@ namespace {
   bool bottom_s_in_from_profile = true;
   Real eos_dens_pow = -1.0;
   Real bottom_cdmp = 0.95;
-  Real hd2_pbar1 = 0.0;
-  Real hd2_pbar2 = 0.0;
   unsigned long long hd2_pressure_floors = 0;
   unsigned long long hd2_density_floors = 0;
   unsigned long long hd2_energy_floors = 0;
@@ -86,10 +84,8 @@ namespace {
   Real hd2_mass_balance_rate_gain = 10.0;
   Real hd2_mass_balance_min_scale = 0.7;
   Real hd2_mass_balance_max_scale = 1.5;
-  Real hd2_pressure_scale = 1.0;
   long long hd2_eos_clamps = 0;
   unsigned long long hd2_entropy_pressure_adjustments = 0;
-  Real hd2_initial_mass = -1.0;
   Real hd2_current_mass = -1.0;
   Real hd2_mass_rate = 0.0;
   bool top_outflow_only;
@@ -136,6 +132,17 @@ namespace {
 // an internal z-meshblock face must remain an ordinary zero-gradient
 // interface for the local ghost fill.
 static bool IsPhysicalUpperBoundary(const MeshBlock *pmb);
+
+enum HD2StateIndex {
+  kHD2PressureScale = 0,
+  kHD2InitialMass = 1,
+  kHD2PressureMean1 = 2,
+  kHD2PressureMean2 = 3
+};
+
+static Real &HD2State(Mesh *pm, const HD2StateIndex index) {
+  return pm->GetRealUserMeshData()[0](index);
+}
 
 void AddRadiativeForceAndWork(MeshBlock *pmb, const Real time, const Real dt,
   const AthenaArray<Real> &prim, const AthenaArray<Real> &prim_scalar,
@@ -392,6 +399,27 @@ static Real GasEntropyFromRhoP(EquationOfState *peos, const Real rho,
   return SimpleEntropyProxy(rho, pres);
 }
 
+static void InitializeHD2BoundaryState(MeshBlock *pmb) {
+  if (bottom_bc_mode != "rempel_hd2" ||
+      pmb->block_size.x3min != pmb->pmy_mesh->mesh_size.x3min) return;
+
+  Real rho_b, p_b, erad_b;
+  SimplePolytrope(pmb->pcoord->x3v(pmb->ks), rho_b, p_b, erad_b);
+  const Real egas_b = GasEgasFromRhoP(pmb->peos, rho_b, p_b);
+  const Real eos_p_b = GasPresFromRhoEg(pmb->peos, rho_b, egas_b);
+  if (bottom_pbnd <= 0.0) bottom_pbnd = eos_p_b;
+  if (bottom_s_in_from_profile)
+    bottom_s_in = GasEntropyFromRhoP(pmb->peos, rho_b, bottom_pbnd);
+
+  // Pressure means are dynamic state: retain them on restart, while using the
+  // initial boundary pressure only for a new run or a legacy restart without
+  // the HD2 state extension.
+  Real &pbar1 = HD2State(pmb->pmy_mesh, kHD2PressureMean1);
+  Real &pbar2 = HD2State(pmb->pmy_mesh, kHD2PressureMean2);
+  if (!(pbar1 > 0.0)) pbar1 = bottom_pbnd;
+  if (!(pbar2 > 0.0)) pbar2 = bottom_pbnd;
+}
+
 static Real GasNablaAdFromRhoP(EquationOfState *peos, const Real rho,
                                const Real pres) {
 #if GENERAL_EOS
@@ -509,13 +537,34 @@ static void SetHydroGhostConserved(MeshBlock *pmb, const int k, const int j,
   (void)pres;
 }
 
+static Real HD2GasEnergyAt(MeshBlock *pmb, const int k, const int j,
+                           const int i) {
+  const Real stored = pmb->prfld->u_gas(k, j, i);
+  if (std::isfinite(stored) && stored > TINY_NUMBER) return stored;
+
+  // u_gas is a derived FLD work array and older restart files do not contain
+  // it.  Reconstruct it from the hydro conserved state for the first boundary
+  // application after such a restart.
+  const Real rho = std::max(pmb->phydro->u(IDN, k, j, i), TINY_NUMBER);
+  const Real kinetic = 0.5*(pmb->phydro->u(IM1, k, j, i)
+                            *pmb->phydro->u(IM1, k, j, i)
+                            +pmb->phydro->u(IM2, k, j, i)
+                            *pmb->phydro->u(IM2, k, j, i)
+                            +pmb->phydro->u(IM3, k, j, i)
+                            *pmb->phydro->u(IM3, k, j, i))/rho;
+  return std::max(pmb->phydro->u(IEN, k, j, i) - kinetic, TINY_NUMBER);
+}
+
 static void SimpleHD2Bottom(MeshBlock *pmb, AthenaArray<Real> &prim,
                             int is, int ie, int js, int je, int ks, int ke,
                             int ngh) {
   (void)ke;
-  const Real pbar1 = std::max(hd2_pbar1, TINY_NUMBER);
-  const Real pbar2 = std::max(hd2_pbar2, TINY_NUMBER);
-  const Real pbnd = std::max(bottom_pbnd*hd2_pressure_scale, TINY_NUMBER);
+  const Real pbar1 = std::max(
+      HD2State(pmb->pmy_mesh, kHD2PressureMean1), TINY_NUMBER);
+  const Real pbar2 = std::max(
+      HD2State(pmb->pmy_mesh, kHD2PressureMean2), TINY_NUMBER);
+  const Real pbnd = std::max(
+      bottom_pbnd*HD2State(pmb->pmy_mesh, kHD2PressureScale), TINY_NUMBER);
   const Real denom = std::max(std::sqrt(std::max(pbar1*pbar2, TINY_NUMBER)),
                               TINY_NUMBER);
   const Real pbar_g1 = pbar1*pbnd/denom;
@@ -532,8 +581,8 @@ static void SimpleHD2Bottom(MeshBlock *pmb, AthenaArray<Real> &prim,
           ? std::max(prim(IPR, ks, j, i), p_floor) : p_floor;
       const Real p2 = std::isfinite(prim(IPR, ks + 1, j, i))
           ? std::max(prim(IPR, ks + 1, j, i), p_floor) : p_floor;
-      const Real egas1 = std::max(pmb->prfld->u_gas(ks, j, i), TINY_NUMBER);
-      const Real egas2 = std::max(pmb->prfld->u_gas(ks + 1, j, i), TINY_NUMBER);
+      const Real egas1 = HD2GasEnergyAt(pmb, ks, j, i);
+      const Real egas2 = HD2GasEnergyAt(pmb, ks + 1, j, i);
       const Real s1 = GasEntropyFromRhoEg(pmb->peos, rho1, egas1);
       const Real s2 = GasEntropyFromRhoEg(pmb->peos, rho2, egas2);
       const Real vz1 = prim(IVZ, ks, j, i);
@@ -692,8 +741,8 @@ static void UpdateHD2PressureMeans(Mesh *pm) {
   MPI_Allreduce(MPI_IN_PLACE, &count, 1, MPI_ATHENA_REAL, MPI_SUM, MPI_COMM_WORLD);
 #endif
   if (count > 0.0) {
-    hd2_pbar1 = std::max(sum1/count, TINY_NUMBER);
-    hd2_pbar2 = std::max(sum2/count, TINY_NUMBER);
+    HD2State(pm, kHD2PressureMean1) = std::max(sum1/count, TINY_NUMBER);
+    HD2State(pm, kHD2PressureMean2) = std::max(sum2/count, TINY_NUMBER);
   }
 }
 
@@ -754,8 +803,10 @@ static void UpdateHD2MassBalance(Mesh *pm) {
   if (bottom_bc_mode != "rempel_hd2") return;
   hd2_current_mass = TotalDomainMassCode(pm);
   hd2_mass_rate = TotalDomainMassRateCode(pm);
-  if (!(hd2_initial_mass > 0.0)) {
-    hd2_initial_mass = hd2_current_mass;
+  Real &initial_mass = HD2State(pm, kHD2InitialMass);
+  Real &pressure_scale = HD2State(pm, kHD2PressureScale);
+  if (!(initial_mass > 0.0)) {
+    initial_mass = hd2_current_mass;
     return;
   }
   if (!hd2_mass_balance_on || !(hd2_mass_balance_relax_time > 0.0)) return;
@@ -763,14 +814,14 @@ static void UpdateHD2MassBalance(Mesh *pm) {
   // Rempel HD2 preserves local mass-flux symmetry. This optional extension
   // automatically calibrates the otherwise fixed PBND. Proportional mass
   // feedback plus a measured-flux damping term avoids integral wind-up.
-  const Real drift = (hd2_current_mass - hd2_initial_mass)/hd2_initial_mass;
-  const Real fractional_rate = hd2_mass_rate/hd2_initial_mass;
+  const Real drift = (hd2_current_mass - initial_mass)/initial_mass;
+  const Real fractional_rate = hd2_mass_rate/initial_mass;
   Real target = 1.0 - hd2_mass_balance_gain*drift
                       - hd2_mass_balance_rate_gain*fractional_rate;
   target = std::max(hd2_mass_balance_min_scale,
                     std::min(hd2_mass_balance_max_scale, target));
   const Real relax = 1.0 - std::exp(-pm->dt/hd2_mass_balance_relax_time);
-  hd2_pressure_scale += relax*(target - hd2_pressure_scale);
+  pressure_scale += relax*(target - pressure_scale);
 }
 
 static void WriteInitialProfiles(ParameterInput *pin, EquationOfState *peos) {
@@ -1420,6 +1471,12 @@ void Mesh::InitUserMeshData(ParameterInput *pin) {
   profile_tau_target_z = pin->GetOrAddReal("problem", "profile_tau_target_z", -1.0);
   profile_tau_target = pin->GetOrAddReal("problem", "profile_tau_target", 1.0);
   profile_pin = pin;
+  AllocateRealUserMeshDataField(1);
+  ruser_mesh_data[0].NewAthenaArray(4);
+  ruser_mesh_data[0](kHD2PressureScale) = 1.0;
+  ruser_mesh_data[0](kHD2InitialMass) = -1.0;
+  ruser_mesh_data[0](kHD2PressureMean1) = 0.0;
+  ruser_mesh_data[0](kHD2PressureMean2) = 0.0;
   eos_dens_pow = pin->GetOrAddReal("hydro", "dens_pow", -1.0);
   bottom_cdmp = pin->GetOrAddReal("problem", "Cdmp", 0.95);
   bottom_s_in_from_profile = pin->GetOrAddBoolean(
@@ -1452,8 +1509,6 @@ void Mesh::InitUserMeshData(ParameterInput *pin) {
     msg << "### FATAL ERROR: problem/s_in must be finite.";
     ATHENA_ERROR(msg);
   }
-  hd2_pbar1 = TINY_NUMBER;
-  hd2_pbar2 = TINY_NUMBER;
   rad_flux_cgs = pin->GetOrAddReal("problem", "rad_flux_cgs", 6.3e10);
   rad_top_alpha = pin->GetOrAddReal("problem", "rad_top_alpha", 0.5);
   rad_top_erad_ext = pin->GetOrAddReal("problem", "rad_top_erad_ext", 0.0);
@@ -1532,6 +1587,7 @@ void MeshBlock::InitUserMeshBlockData(ParameterInput *pin) {
   prfld->marshak_top_boundary = (top_bc_mode == "rempel_outflow");
   prfld->marshak_top_alpha = rad_top_alpha;
   prfld->marshak_top_erad_ext = rad_top_erad_ext;
+  InitializeHD2BoundaryState(this);
   return;
 }
 
@@ -1608,17 +1664,7 @@ void MeshBlock::ProblemGenerator(ParameterInput *pin) {
   // first HD2 ghost fill.  Only physical lower-boundary blocks may update
   // these rank-local shared values; using ks from every z-block makes s_in
   // depend on meshblock ordering and MPI decomposition.
-  if (block_size.x3min == pmy_mesh->mesh_size.x3min) {
-    Real rho_b, p_b, erad_b;
-    SimplePolytrope(pcoord->x3v(ks), rho_b, p_b, erad_b);
-    const Real egas_b = GasEgasFromRhoP(peos, rho_b, p_b);
-    const Real eos_p_b = GasPresFromRhoEg(peos, rho_b, egas_b);
-    if (bottom_pbnd <= 0.0) bottom_pbnd = eos_p_b;
-    if (bottom_s_in_from_profile)
-      bottom_s_in = GasEntropyFromRhoP(peos, rho_b, bottom_pbnd);
-    hd2_pbar1 = bottom_pbnd;
-    hd2_pbar2 = bottom_pbnd;
-  }
+  InitializeHD2BoundaryState(this);
 
   int kl = ks-NGHOST;
   int ku = ke+NGHOST;
@@ -1735,9 +1781,9 @@ void Mesh::UserWorkInLoop() {
       !hd2_diagnostic_printed) {
     std::cout << "### Rempel HD2 lower boundary diagnostics"
               << " PBND=" << bottom_pbnd
-              << " PBNDScale=" << hd2_pressure_scale
-              << " Pbar1=" << hd2_pbar1
-              << " Pbar2=" << hd2_pbar2
+              << " PBNDScale=" << HD2State(this, kHD2PressureScale)
+              << " Pbar1=" << HD2State(this, kHD2PressureMean1)
+              << " Pbar2=" << HD2State(this, kHD2PressureMean2)
               << " s_in=" << bottom_s_in
               << " Cdmp=" << bottom_cdmp
               << " pressure_floors=" << hd2_pressure_floors
@@ -2044,19 +2090,22 @@ Real HistoryTopOutflow(MeshBlock *pmb, int iout) {
 
 Real HistoryMassDrift(MeshBlock *pmb, int iout) {
   (void)iout;
-  if (pmb->gid != 0 || !(hd2_initial_mass > 0.0)) return 0.0;
-  return (hd2_current_mass - hd2_initial_mass)/hd2_initial_mass;
+  const Real initial_mass = HD2State(pmb->pmy_mesh, kHD2InitialMass);
+  if (pmb->gid != 0 || !(initial_mass > 0.0)) return 0.0;
+  return (hd2_current_mass - initial_mass)/initial_mass;
 }
 
 Real HistoryPBNDScale(MeshBlock *pmb, int iout) {
   (void)iout;
-  return (pmb->gid == 0) ? hd2_pressure_scale : 0.0;
+  return (pmb->gid == 0)
+      ? HD2State(pmb->pmy_mesh, kHD2PressureScale) : 0.0;
 }
 
 Real HistoryMassRate(MeshBlock *pmb, int iout) {
   (void)iout;
-  return (pmb->gid == 0 && hd2_initial_mass > 0.0)
-      ? hd2_mass_rate/hd2_initial_mass : 0.0;
+  const Real initial_mass = HD2State(pmb->pmy_mesh, kHD2InitialMass);
+  return (pmb->gid == 0 && initial_mass > 0.0)
+      ? hd2_mass_rate/initial_mass : 0.0;
 }
 
 Real HistoryBottomUpflow(MeshBlock *pmb, int iout) {

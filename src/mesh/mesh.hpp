@@ -258,6 +258,7 @@ class Mesh {
 
   // accessors
   int GetNumMeshThreads() const {return num_mesh_threads_;}
+  AthenaArray<Real> *GetRealUserMeshData() {return ruser_mesh_data;}
   std::int64_t GetTotalCells() {return static_cast<std::int64_t> (nbtotal)*
   my_blocks(0)->block_size.nx1*my_blocks(0)->block_size.nx2*my_blocks(0)->block_size.nx3;}
 
