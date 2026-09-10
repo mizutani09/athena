@@ -50,7 +50,7 @@ struct NewtonResidualNorms {
   bool finite{true};
 };
 
-//! rief Reason why a Newton solve stopped.
+//! \brief Reason why a Newton solve stopped.
 enum class NewtonSolveReason {
   converged,
   fixed_iterations_complete,
@@ -62,7 +62,7 @@ enum class NewtonSolveReason {
   max_iterations
 };
 
-//! rief Result of one nonlinear Newton solve.
+//! \brief Result of one nonlinear Newton solve.
 struct NewtonSolveResult {
   NewtonSolveReason reason{NewtonSolveReason::initial_nonfinite};
   int iterations{0};
