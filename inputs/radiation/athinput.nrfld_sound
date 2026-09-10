@@ -96,6 +96,7 @@ is_couple       = true
 only_rad        = false
 cut_diff        = false
 include_radiation_force = true
+pressure_coupling = source
 
 <problem>
 # all in code units

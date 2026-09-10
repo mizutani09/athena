@@ -4,7 +4,6 @@
 
 #include <algorithm>
 #include <cmath>
-#include <cstdlib>
 
 #include "../../../athena.hpp"
 #include "../../../athena_arrays.hpp"
@@ -20,22 +19,10 @@ void Hydro::RiemannSolver(const int k, const int j, const int il, const int iu,
   const int dir=ivx-IVX;
   const int ivy=IVX+(dir+1)%3, ivz=IVX+(dir+2)%3;
   FLD *pfld=pmy_block->prfld;
-  // In the normal HLLC-FLD path radiation pressure participates in the wave
-  // construction.  This opt-in diagnostic selects a genuinely source-only
-  // formulation: gas HLLC waves plus the explicit radiation force below.
-  const bool gas_hllc_source_only =
-      std::getenv("ATHENA_FLD_GAS_HLLC_SOURCE_ONLY") != nullptr;
-  const bool coupled=pfld->is_couple && !pfld->only_rad
-                     && pfld->include_radiation_force
-                     && !gas_hllc_source_only;
-  // Diagnostic-only alternative selected at runtime.  The default keeps the
-  // radiation pressure force as an explicit source.  When this environment
-  // variable is present, retain radiation pressure in the returned HLLC
-  // momentum flux instead, while leaving all other FLD terms unchanged.
-  const bool radiation_pressure_in_flux =
-      std::getenv("ATHENA_FLD_PRESSURE_IN_FLUX") != nullptr;
-  const bool disable_mixed_frame =
-      std::getenv("ATHENA_FLD_DISABLE_MIXED_FRAME") != nullptr;
+  const bool coupled = pfld->pressure_coupling_mode
+      != RadFLD::PressureCouplingMode::kOff;
+  const bool radiation_pressure_in_flux = pfld->pressure_coupling_mode
+      == RadFLD::PressureCouplingMode::kFlux;
   AthenaArray<Real> &radl=pfld->rad_face_l[dir];
   AthenaArray<Real> &radr=pfld->rad_face_r[dir];
   AthenaArray<Real> &radflux=pfld->u_rad_flux[dir];
@@ -126,7 +113,7 @@ void Hydro::RiemannSolver(const int k, const int j, const int il, const int iu,
     const Real lambdag=left?laml:lamr;
     const Real ag=left?arl:arr;
     const Real fer=ag*erg*am;
-    radflux(k,j,i)=disable_mixed_frame ? 0.0 : fer;
+    radflux(k,j,i)=pfld->mixed_frame_transport ? fer : 0.0;
     pfld->rad_face_g[dir](k,j,i)=erg;
     if (coupled && !radiation_pressure_in_flux) {
       // Radiation pressure participated in the HLLC state construction, but

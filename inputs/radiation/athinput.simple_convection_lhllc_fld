@@ -86,6 +86,8 @@ linearMG_ox3_bc = zerograd
 <fld>
 is_couple               = true
 include_radiation_force = true
+pressure_coupling        = source
+mixed_frame_transport    = true
 only_rad                = false
 use_opacity_table       = true
 opacity_table_file      = opacity_table_rhoT_3p0_6p3.h5

@@ -42,6 +42,20 @@ namespace RadFLD {
   constexpr int NRAD_FACE_STATE = 3;
   enum RadiationFaceIndex {ERAD=0, LAMBDA=1, ARAD=2};
 
+  // The radiation-pressure force has exactly one owner in a coupled update:
+  // either the gas Riemann flux or the explicit source term.  The mode is
+  // resolved once by FLD and shared by both HLLC variants and the source.
+  enum class PressureCouplingMode { kOff, kSource, kFlux };
+
+  inline const char *PressureCouplingModeName(const PressureCouplingMode mode) {
+    switch (mode) {
+      case PressureCouplingMode::kSource: return "source";
+      case PressureCouplingMode::kFlux: return "flux";
+      case PressureCouplingMode::kOff: return "off";
+    }
+    return "invalid";
+  }
+
   // Levermore-Pomraning FLD closure shared by every radiation operator.
   inline Real FluxLimiter(const Real r, const bool fixed) {
     return fixed ? ONE_3RD : (2.0 + r)/(6.0 + 3.0*r + r*r);
@@ -83,10 +97,15 @@ class FLD {
   bool only_rad;
   bool cut_diff;
   bool include_radiation_force;
+  RadFLD::PressureCouplingMode pressure_coupling_mode;
   bool fixed_flux_limiter;
   bool fixed_u_rad;
   // Explicit O(v/c) mixed-frame energy exchange.
   bool include_mixed_frame_terms;
+  // Radiation-energy transport and explicit mixed-frame source are separate
+  // switches.  Both are resolved once at startup; the legacy environment
+  // variable only overrides the transport switch when the input omits it.
+  bool mixed_frame_transport;
   // Optional hydrodynamic diode used by an outflow-only physical upper
   // boundary.  It is consumed only by the LHLLC-FLD Riemann solver.
   bool hydro_top_outflow_diode;

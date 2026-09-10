@@ -20,14 +20,9 @@ void FLD::AddExplicitSourceTerms(const Real dt, const AthenaArray<Real> &prim,
                                   AthenaArray<Real> &hydro_u) {
   if (!is_couple || only_rad) return;
   MeshBlock *pmb=pmy_block;
-  // Keep the existing source formulation as the default.  The opt-in
-  // diagnostic mode puts the same face radiation pressure in the HLLC
-  // momentum flux and must therefore suppress this explicit force.
-  const bool radiation_pressure_in_flux =
-      std::getenv("ATHENA_FLD_PRESSURE_IN_FLUX") != nullptr;
-  const bool do_force=include_radiation_force && !radiation_pressure_in_flux;
-  const bool do_mixed=include_mixed_frame_terms
-      && std::getenv("ATHENA_FLD_DISABLE_MIXED_FRAME") == nullptr;
+  const bool do_force =
+      pressure_coupling_mode == RadFLD::PressureCouplingMode::kSource;
+  const bool do_mixed=include_mixed_frame_terms && mixed_frame_transport;
   if (!do_force && !do_mixed) return;
 
   // Optional, read-only diagnostic for comparing the two terms in the
