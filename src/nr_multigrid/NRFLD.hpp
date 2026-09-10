@@ -197,6 +197,7 @@ class NRFLD : public NewtonRaphson {
   AthenaArray<Real> u_gas_, u_gas_iter_backup_;
   AthenaArray<Real> gas_defect_;
   AthenaArray<Real> last_delta_rad_;
+  std::vector<std::uint64_t> user_diagnostic_counters_iter_backup_;
   // MGCoordinates *coord_, *ccoord_;
 
 

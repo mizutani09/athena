@@ -256,6 +256,7 @@ class NewtonRaphsonDriver {
 
   std::vector<NewtonRaphson*> vnr_;
   bool needinit_, fshowdef_, use_mg_smoothing_fallback_;
+  int diagnostic_verbosity_;
   Real eps_, dt_;
   Real mg_coarse_retry_factor_, mg_coarse_retry_min_scale_;
   Real step_scale_, backtrack_factor_, min_step_scale_;

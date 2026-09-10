@@ -300,6 +300,9 @@ class Mesh {
 
   AthenaArray<Real> *ruser_mesh_data;
   AthenaArray<int> *iuser_mesh_data;
+  // Process-local user diagnostic state.  This is deliberately not restart data:
+  // a restarted executable begins a new diagnostic interval.
+  bool user_diagnostic_summary_printed = false;
 
   // functions
   void Initialize(int res_flag, ParameterInput *pin);

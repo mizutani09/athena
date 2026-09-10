@@ -114,6 +114,12 @@ class FLD {
   Real marshak_top_erad_ext;
   AthenaArray<Real> marshak_dface;
 
+  // Problem generators may keep inexpensive diagnostic counters here.  The
+  // storage belongs to the MeshBlock's FLD object, so block-parallel boundary
+  // callbacks never update shared namespace state.  Diagnostics are not
+  // restart state: a reconstructed block starts a new one-shot interval.
+  std::vector<std::uint64_t> user_diagnostic_counters;
+
   // for interaction with Hydro
   void LoadHydroVariables(const AthenaArray<Real> &w, AthenaArray<Real> &fld_u_gas);
   void UpdateHydroVariables(AthenaArray<Real> &w,
@@ -157,7 +163,13 @@ class FLD {
   AthenaArray<Real> cell_volume_;
   AthenaArray<Real> dflx_;
   FLDOpacityFunc opacity_function_{nullptr};
+  void EmitForceDiagnostic(const Real dt, const AthenaArray<Real> &prim,
+                           const AthenaArray<Real> &hydro_u);
   bool opacity_contract_diagnostic_printed_{false};
+  bool force_diagnostic_printed_{false};
+  int force_diagnostic_verbosity_{0};
+  int force_diagnostic_rank_{0};
+  int force_diagnostic_gid_{0};
 
 };
 

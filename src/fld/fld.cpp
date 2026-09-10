@@ -27,6 +27,7 @@
 #include "../bvals/cc/bvals_cc.hpp"
 #include "../coordinates/coordinates.hpp"
 #include "../eos/eos.hpp"
+#include "../globals.hpp"
 #include "../mesh/mesh.hpp"
 #include "../parameter_input.hpp"
 #include "../utils/buffer_utils.hpp"
@@ -149,6 +150,30 @@ FLD::FLD(MeshBlock *pmb, ParameterInput *pin) :
   fixed_u_rad = pin->GetOrAddBoolean("fld", "fixed_u_rad", false);
   include_mixed_frame_terms =
       pin->GetOrAddBoolean("fld", "include_mixed_frame_terms", false);
+  const EnvironmentFlag force_diagnostics =
+      ReadEnvironmentFlag("ATHENA_FLD_FORCE_DIAGNOSTICS");
+  if (!force_diagnostics.valid) {
+    std::stringstream msg;
+    msg << "### FATAL ERROR in function [FLD::FLD]" << std::endl
+        << "ATHENA_FLD_FORCE_DIAGNOSTICS accepts 0/1 (also false/true, "
+        << "no/yes, off/on).";
+    ATHENA_ERROR(msg);
+  }
+  force_diagnostic_verbosity_ = pin->GetOrAddInteger(
+      "fld", "force_diagnostic_verbosity", force_diagnostics.value ? 2 : 0);
+  force_diagnostic_rank_ =
+      pin->GetOrAddInteger("fld", "force_diagnostic_rank", 0);
+  force_diagnostic_gid_ =
+      pin->GetOrAddInteger("fld", "force_diagnostic_gid", 0);
+  if (force_diagnostic_verbosity_ < 0 || force_diagnostic_verbosity_ > 2 ||
+      force_diagnostic_rank_ < 0 || force_diagnostic_rank_ >= Globals::nranks ||
+      force_diagnostic_gid_ < 0 || force_diagnostic_gid_ >= pmb->pmy_mesh->nbtotal) {
+    std::stringstream msg;
+    msg << "### FATAL ERROR in function [FLD::FLD]" << std::endl
+        << "fld/force_diagnostic_verbosity must be 0 (off), 1 (summary), "
+        << "or 2 (profile), and the selected rank/gid must exist.";
+    ATHENA_ERROR(msg);
+  }
   // FLD is constructed once per MeshBlock, while ParameterInput is shared by
   // all blocks.  GetOrAdd* adds defaults on the first construction, so keep
   // the original "was explicitly present" state for all later blocks.

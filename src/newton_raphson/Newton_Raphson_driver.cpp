@@ -154,6 +154,7 @@ NewtonRaphsonDriver::NewtonRaphsonDriver(Mesh *pm,
     // nrbx1_(pm->nrbx1), nrbx2_(pm->nrbx2), nrbx3_(pm->nrbx3),
     pmy_mesh_(pm),
     needinit_(true), fshowdef_(false), use_mg_smoothing_fallback_(false),
+    diagnostic_verbosity_(0),
     eps_(-1.0), dt_(0.0), step_scale_(1.0),
     backtrack_factor_(0.5), min_step_scale_(0.05), niter_(-1),
     nr_max_iterations_(100), max_backtrack_(0)
@@ -470,12 +471,12 @@ NewtonSolveResult NewtonRaphsonDriver::Solve_general(int stage, Real dt) {
 
   // std::cout << "epsilon for Newton-Raphson: " << eps_ << std::endl;
 
-  if (fshowdef_ && Globals::my_rank == 0)
-    std::cout << "initial defect l2 " << def << " max " << defmax
-              << " gas_l2 " << norms.gas_l2_norm
-              << " gas_max " << norms.gas_max_norm
-              << " radiation_l2 " << norms.radiation_l2_norm
-              << " radiation_max " << norms.radiation_max_norm << std::endl;
+  if (diagnostic_verbosity_ >= 1 && Globals::my_rank == 0)
+    std::cout << "[NR_INITIAL] l2=" << def << " max=" << defmax
+              << " gas_l2=" << norms.gas_l2_norm
+              << " gas_max=" << norms.gas_max_norm
+              << " radiation_l2=" << norms.radiation_l2_norm
+              << " radiation_max=" << norms.radiation_max_norm << std::endl;
   if (!norms.finite) {
     result.reason = NewtonSolveReason::initial_nonfinite;
     store_result_norms(norms, false);
@@ -518,6 +519,7 @@ NewtonSolveResult NewtonRaphsonDriver::Solve_general(int stage, Real dt) {
     Real coarse_corr_trial_scale = base_coarse_corr_scale;
     int nback = 0;
     int ncoarse_retry = 0;
+    int trial_attempt = 0;
 
     while (true) {
       for (auto itr = vnr_.begin(); itr < vnr_.end(); itr++) {
@@ -534,18 +536,27 @@ NewtonSolveResult NewtonRaphsonDriver::Solve_general(int stage, Real dt) {
       def = norms.l2_norm;
       defmax = norms.max_norm;
 
-      if (fshowdef_ && Globals::my_rank == 0) {
+      const bool trial_accepted = norms.finite && def <= olddef;
+      const int current_trial = trial_attempt++;
+      if (diagnostic_verbosity_ >= 1 && Globals::my_rank == 0) {
         const Real conv = (olddef > 0.0 ? def/olddef : 0.0);
         const Real convmax = (oldmax > 0.0 ? defmax/oldmax : 0.0);
-        std::cout << "[debug in NR] niter " << n << " step_scale " << step_scale_
-                  << " def " << def << " convergence factor " << conv
-                  << " defmax  " << defmax << " cf " << convmax
-                  << " gas_l2 " << norms.gas_l2_norm
-                  << " gas_max " << norms.gas_max_norm
-                  << " radiation_l2 " << norms.radiation_l2_norm
-                  << " radiation_max " << norms.radiation_max_norm << std::endl;
+        std::cout << "[NR_TRIAL] iteration=" << n
+                  << " trial=" << current_trial
+                  << " accepted=" << trial_accepted
+                  << " finite=" << norms.finite
+                  << " step_scale=" << step_scale_
+                  << " coarse_correction_scale=" << coarse_corr_trial_scale
+                  << " smoothing_only="
+                  << (base_smoothing_only || use_smoothing_retry)
+                  << " l2=" << def << " l2_factor=" << conv
+                  << " max=" << defmax << " max_factor=" << convmax
+                  << " gas_l2=" << norms.gas_l2_norm
+                  << " gas_max=" << norms.gas_max_norm
+                  << " radiation_l2=" << norms.radiation_l2_norm
+                  << " radiation_max=" << norms.radiation_max_norm << std::endl;
       }
-      if (fshowdef_) {
+      if (diagnostic_verbosity_ >= 2) {
         Real local_absmax = -1.0;
         Real local_signed = 0.0;
         Real local_x1 = 0.0, local_x2 = 0.0, local_x3 = 0.0;
@@ -601,6 +612,12 @@ NewtonSolveResult NewtonRaphsonDriver::Solve_general(int stage, Real dt) {
                     << " signed=" << max_info[0]
                     << " abs=" << global_absmax << std::endl;
         }
+#ifdef MPI_PARALLEL
+        // Keep the rank-0 location line and the selected owner's stencil as
+        // one ordered diagnostic record in launchers that merge rank output.
+        std::cout.flush();
+        MPI_Barrier(MPI_COMM_NEWTON_RAPHSON);
+#endif
         if (Globals::my_rank == owner_rank) {
           for (auto itr = vnr_.begin(); itr < vnr_.end(); itr++) {
             NewtonRaphson *pnr = *itr;
@@ -612,12 +629,16 @@ NewtonSolveResult NewtonRaphsonDriver::Solve_general(int stage, Real dt) {
             }
           }
         }
+#ifdef MPI_PARALLEL
+        std::cout.flush();
+        MPI_Barrier(MPI_COMM_NEWTON_RAPHSON);
+#endif
       }
 
       // Line search acceptance uses the combined L2 merit function.  The
       // maximum norm remains a hard stopping gate and is reported every
       // iteration, but need not be monotone while a localized defect moves.
-      if (norms.finite && def <= olddef) {
+      if (trial_accepted) {
         accepted = true;
         break;
       }
@@ -636,7 +657,7 @@ NewtonSolveResult NewtonRaphsonDriver::Solve_general(int stage, Real dt) {
                  >= mg_coarse_retry_min_scale_) {
         coarse_corr_trial_scale *= mg_coarse_retry_factor_;
         ++ncoarse_retry;
-        if (fshowdef_ && Globals::my_rank == 0) {
+        if (diagnostic_verbosity_ >= 1 && Globals::my_rank == 0) {
           std::cout << "### Warning in NewtonRaphsonDriver::SolveIterative" << std::endl
                     << "Retrying Newton-Raphson iterate with damped coarse correction: "
                     << "previous defect norm = " << olddef
@@ -653,7 +674,7 @@ NewtonSolveResult NewtonRaphsonDriver::Solve_general(int stage, Real dt) {
       if (pmy_mesh_->multilevel && use_mg_smoothing_fallback_
           && !base_smoothing_only && !use_smoothing_retry) {
         use_smoothing_retry = true;
-        if (fshowdef_ && Globals::my_rank == 0) {
+        if (diagnostic_verbosity_ >= 1 && Globals::my_rank == 0) {
           std::cout << "### Warning in NewtonRaphsonDriver::SolveIterative" << std::endl
                     << "Retrying Newton-Raphson iterate with smoothing-only linear MG: "
                     << "previous defect norm = " << olddef
@@ -667,7 +688,7 @@ NewtonSolveResult NewtonRaphsonDriver::Solve_general(int stage, Real dt) {
       if (nback >= max_backtrack_ ||
           trial_scale*backtrack_factor_ < min_step_scale_) {
         const bool trial_finite = norms.finite;
-        if (fshowdef_ && Globals::my_rank == 0) {
+        if (diagnostic_verbosity_ >= 1 && Globals::my_rank == 0) {
           std::cout << "### Warning in NewtonRaphsonDriver::SolveIterative" << std::endl
                     << "Rejecting Newton-Raphson iterate after backtracking attempts: "
                     << "defect norm = " << def
@@ -686,7 +707,7 @@ NewtonSolveResult NewtonRaphsonDriver::Solve_general(int stage, Real dt) {
 
       trial_scale *= backtrack_factor_;
       ++nback;
-      if (fshowdef_ && Globals::my_rank == 0) {
+      if (diagnostic_verbosity_ >= 1 && Globals::my_rank == 0) {
         std::cout << "### Warning in NewtonRaphsonDriver::SolveIterative" << std::endl
                   << "Backtracking Newton-Raphson iterate: new step scale = "
                   << trial_scale << ", previous defect norm = " << olddef

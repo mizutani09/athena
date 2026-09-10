@@ -55,7 +55,15 @@ NRFLDDriver::NRFLDDriver(Mesh *pm, ParameterInput *pin)
   eps_ = pin->GetOrAddReal("nrfld", "nr_threshold", -1.0);
   niter_ = pin->GetOrAddInteger("nrfld", "nr_niteration", -1);
   nr_max_iterations_ = pin->GetOrAddInteger("nrfld", "nr_max_iterations", 100);
+  const bool verbosity_in_input =
+      pin->DoesParameterExist("nrfld", "diagnostic_verbosity") != 0;
   fshowdef_ = pin->GetOrAddBoolean("nrfld", "show_defect", fshowdef_);
+  diagnostic_verbosity_ = pin->GetOrAddInteger(
+      "nrfld", "diagnostic_verbosity", fshowdef_ ? 2 : 0);
+  // show_defect remains a compatibility alias for the former all-or-nothing
+  // diagnostics.  An explicit verbosity setting takes precedence.
+  if (!verbosity_in_input && fshowdef_) diagnostic_verbosity_ = 2;
+  fshowdef_ = diagnostic_verbosity_ > 0;
   use_mg_smoothing_fallback_ =
       pin->GetOrAddBoolean("nrfld", "nr_use_mg_smoothing_fallback", true);
   mg_coarse_retry_max_ = pin->GetOrAddInteger("nrfld", "nr_mg_coarse_retry_max", 4);
@@ -73,6 +81,13 @@ NRFLDDriver::NRFLDDriver(Mesh *pm, ParameterInput *pin)
         << "in the <nrfld> block." << std::endl
         << "When both parameters are specified, \"nr_niteration\" is ignored." << std::endl
         << "Set \"nr_threshold = 0.0\" for automatic convergence control." << std::endl;
+    ATHENA_ERROR(msg);
+  }
+  if (diagnostic_verbosity_ < 0 || diagnostic_verbosity_ > 2) {
+    std::stringstream msg;
+    msg << "### FATAL ERROR in NRFLDDriver::NRFLDDriver" << std::endl
+        << "\"diagnostic_verbosity\" must be 0 (off), 1 (iteration "
+        << "summary), or 2 (maximum-cell stencil)." << std::endl;
     ATHENA_ERROR(msg);
   }
   if (niter_ < -1) {
@@ -201,7 +216,6 @@ NRFLD::NRFLD(MeshBlock *pmb, ParameterInput *pin) :
     {
     last_delta_rad_.NewAthenaArray(2, pmb->ncells3, pmb->ncells2, pmb->ncells1);
     last_delta_rad_.ZeroClear();
-    if (pmy_driver_->fshowdef_ && pmy_block_->gid == 0) std::cout << ngh_ << std::endl;
 
     // check pointer
     if (pmy_driver_ == nullptr) {
@@ -289,11 +303,15 @@ void NRFLD::UpdateHydroVariables() {
 void NRFLD::StoreIterate() {
   NewtonRaphson::StoreIterate();
   u_gas_iter_backup_ = u_gas_;
+  user_diagnostic_counters_iter_backup_ =
+      pmy_block_->prfld->user_diagnostic_counters;
 }
 
 void NRFLD::RestoreIterate() {
   NewtonRaphson::RestoreIterate();
   u_gas_ = u_gas_iter_backup_;
+  pmy_block_->prfld->user_diagnostic_counters =
+      user_diagnostic_counters_iter_backup_;
 }
 
 void NRFLD::CalculateCoefficientsOnce(const AthenaArray<Real> &u_pre,
@@ -443,8 +461,6 @@ void NRFLD::CalculateCoefficientsOnce(const AthenaArray<Real> &u_pre,
   }
 
   if (pfld->cut_diff) {
-    if (pmy_driver_->fshowdef_ && pmy_block_->gid == 0)
-      std::cout << "Cutting diffusion term coefficients to zero." << std::endl;
     for (int k=ks; k<=ke; k++) {
       for (int j=js; j<=je; j++) {
         for (int i=is; i<=ie; i++) {
@@ -455,19 +471,6 @@ void NRFLD::CalculateCoefficientsOnce(const AthenaArray<Real> &u_pre,
         }
       }
     }
-  }
-
-  if (pmy_driver_->fshowdef_ && pmy_block_->gid == 0) {
-    // print everything
-    int i = (is + ie) / 2;
-    int j = (js + je) / 2;
-    int k = (ks + ke) / 2;
-    std::cout << "At (k,j,i) = (" << k << "," << j << "," << i << "):" << std::endl;
-    std::cout << "  sigma_p = " << pfld->sigma_p(k,j,i) << ", sigma_r = " << pfld->sigma_r(k,j,i) << std::endl;
-    std::cout << "  def_coeff.DCOUPLE = "
-              << def_coeff(NewtonRaphsonFLD::DCOUPLE,k,j,i) << std::endl;
-    for (int ii = 0; ii < 6; ++ii)
-      std::cout << "  derivetive.dFr_dEr_xm+"<< ii <<" = " << derivetive(NewtonRaphsonFLD::dFr_dEr_xm+ii,k,j,i) << std::endl;
   }
 }
 
@@ -643,44 +646,6 @@ void NRFLD::CalculateCoefficients(const AthenaArray<Real> &u_rad_old,
               + derivetive(NewtonRaphsonFLD::Fg,k,j,i)*inv_dFg_deg;
         }
 
-        // output
-        if (pmy_driver_->fshowdef_ && pmy_block_->gid == 0 &&
-            k == (ks+ke) / 2 && j == (js+je) / 2 && i == (is+ie) / 2) {
-          Real T_gas_old;
-#if GENERAL_EOS
-          T_gas_old = pmy_block_->peos->TempFromRhoEg(def_coeff(NewtonRaphsonFLD::DRHO,k,j,i), u_gas_old(k,j,i));
-#else
-          T_gas_old = def_coeff(NewtonRaphsonFLD::DCOUPLE,k,j,i)*u_gas_old(k,j,i);
-#endif
-          Real T_rad_new = std::pow(u_rad_new(k,j,i)/pfld->a_r, 0.25);
-          Real T_rad_old = std::pow(u_rad_old(k,j,i)/pfld->a_r, 0.25);
-          std::cout << "At (" << k << "," << j << "," << i << "):" << std::endl;
-          std::cout << "  dt = " << dt << std::endl;
-          std::cout << "  u_gas_new = " << u_gas_new(k,j,i) << ", u_gas_old = " << u_gas_old(k,j,i) << std::endl;
-          std::cout << "  u_rad_new = " << u_rad_new(k,j,i) << ", u_rad_old = " << u_rad_old(k,j,i) << std::endl;
-          std::cout << "  T_gas_new = " << T_gas_new << ", T_gas_old = " << T_gas_old << std::endl;
-          std::cout << "  T_rad_new = " << T_rad_new << ", T_rad_old = " << T_rad_old << std::endl; 
-          std::cout << "  src_term = " << src_term
-                    << ", diff_term = " << diff_term << std::endl;
-          std::cout << "  derivetive.Fg = " << derivetive(NewtonRaphsonFLD::Fg,k,j,i)
-                    << ", derivetive.Fr = " << derivetive(NewtonRaphsonFLD::Fr,k,j,i) << std::endl;
-          std::cout << "  derivetive.dFg_deg = " << derivetive(NewtonRaphsonFLD::dFg_deg,k,j,i)
-                    << ", derivetive.dFg_dEr = " << derivetive(NewtonRaphsonFLD::dFg_dEr,k,j,i) << std::endl;
-          std::cout << "  sum_dcp = " << sum_dcp << std::endl;
-          std::cout << "  derivetive.dFr_deg = " << derivetive(NewtonRaphsonFLD::dFr_deg,k,j,i)
-                    << ", derivetive.dFr_dEr = " << derivetive(NewtonRaphsonFLD::dFr_dEr,k,j,i) << std::endl;
-          std::cout << "  coeff.DCCF = " << coeff(linearSolver::DCCF,k,j,i)
-                    << ", coeff.DCCS = " << coeff(linearSolver::DCCS,k,j,i) << std::endl;
-          // for (int n = 0; n < 6; ++n) {
-          //   std::cout << "  coeff.DXMF+"<< n <<" = " << coeff(linearSolver::DXMF+n,k,j,i) << std::endl;
-          //   std::cout << "  coeff.DXMS+"<< n <<" = " << coeff(linearSolver::DXMS+n,k,j,i) << std::endl;
-          // }
-          std::cout << "  i-face coeffs: " << coeff(linearSolver::DXMF,k,j,i) << ", " << coeff(linearSolver::DXPF,k,j,i) << std::endl;
-          std::cout << "  j-face coeffs: " << coeff(linearSolver::DYMF,k,j,i) << ", " << coeff(linearSolver::DYPF,k,j,i) << std::endl;
-          std::cout << "  k-face coeffs: " << coeff(linearSolver::DZMF,k,j,i) << ", " << coeff(linearSolver::DZPF,k,j,i) << std::endl;
-          std::cout << "  src = " << src(k,j,i) << std::endl;
-          std::cout << "  delta_u = " << delta_u_(k,j,i) << std::endl;
-        }
       }
     }
   }
@@ -764,19 +729,6 @@ void NRFLD::CalculateDefect(AthenaArray<Real> &def, const AthenaArray<Real> &u,
           def(k,j,i) = Fr/scale;
         }
 
-        if (pmy_driver_->fshowdef_ && pmy_block_->gid == 0 &&
-            k==(kl+ku)/2 && j==(jl+ju)/2 && i==(il+iu)/2) {
-          Real T_rad = std::pow(u(k,j,i)/pfld->a_r, 0.25);
-          std::cout << "At (" << k << "," << j << "," << i << "):" << std::endl;
-          std::cout << "  u_gas = " << u_gas(k,j,i) << ", pfld->u_gas = " << pfld->u_gas(k,j,i) << std::endl;
-          std::cout << "  u_rad = " << u(k,j,i) << ", u_rad_old = " << u_old(k,j,i) << std::endl;
-          std::cout << "  T_gas = " << T_gas << ", T_rad = " << T_rad << std::endl;
-          std::cout << "  src_term = " << src_term
-                    << ", diff_term = " << diff_term << std::endl;
-          std::cout << "  Fg = " << Fg << ", Fr = " << Fr << std::endl;
-          std::cout << "  defect_scale = " << scale << std::endl;
-          std::cout << "  defect = " << def(k,j,i) << std::endl;
-        }
       }
     }
   }
@@ -841,7 +793,7 @@ void NRFLD::AddDifference(AthenaArray<Real> &u_rad,
   int ke = pmy_block_->ke;
   FLD *pfld = pmy_block_->prfld;
 
-  if (pmy_driver_->fshowdef_) {
+  if (pmy_driver_->diagnostic_verbosity_ >= 2) {
     for (int k = 0; k < delta_u.GetDim3(); ++k)
       for (int j = 0; j < delta_u.GetDim2(); ++j)
         for (int i = 0; i < delta_u.GetDim1(); ++i)

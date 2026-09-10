@@ -74,18 +74,13 @@ namespace {
   bool bottom_s_in_from_profile = true;
   Real eos_dens_pow = -1.0;
   Real bottom_cdmp = 0.95;
-  unsigned long long hd2_pressure_floors = 0;
-  unsigned long long hd2_density_floors = 0;
-  unsigned long long hd2_energy_floors = 0;
-  bool hd2_diagnostic_printed = false;
+  int boundary_diagnostic_verbosity = 0;
   bool hd2_mass_balance_on = true;
   Real hd2_mass_balance_relax_time = 10.0;
   Real hd2_mass_balance_gain = 10.0;
   Real hd2_mass_balance_rate_gain = 10.0;
   Real hd2_mass_balance_min_scale = 0.7;
   Real hd2_mass_balance_max_scale = 1.5;
-  long long hd2_eos_clamps = 0;
-  unsigned long long hd2_entropy_pressure_adjustments = 0;
   Real hd2_current_mass = -1.0;
   Real hd2_mass_rate = 0.0;
   bool top_outflow_only;
@@ -95,9 +90,6 @@ namespace {
   Real rad_flux_cgs;
   Real rad_top_alpha;
   Real rad_top_erad_ext;
-  unsigned long long marshak_floor_count = 0;
-  unsigned long long marshak_aux_fallback_count = 0;
-  bool marshak_diagnostic_printed = false;
   Real HistoryTg(MeshBlock *pmb, int iout);
   Real HistoryTr(MeshBlock *pmb, int iout);
   Real HistoryEg(MeshBlock *pmb, int iout);
@@ -125,6 +117,23 @@ namespace {
   Real HistoryTopHydroFluxCgs(MeshBlock *pmb, int iout);
   Real HistoryTopTotalFluxCgs(MeshBlock *pmb, int iout);
   // Real HistoryL1norm(MeshBlock *pmb, int iout);
+}
+
+enum BoundaryDiagnosticCounter {
+  kHD2PressureFloors = 0,
+  kHD2DensityFloors,
+  kHD2EnergyFloors,
+  kHD2EosClamps,
+  kHD2EntropyPressureAdjustments,
+  kMarshakRadiationFloors,
+  kMarshakAuxFallbacks,
+  kBoundaryDiagnosticCount
+};
+
+static void IncrementBoundaryDiagnostic(MeshBlock *pmb,
+                                        BoundaryDiagnosticCounter counter) {
+  if (boundary_diagnostic_verbosity == 0) return;
+  ++pmb->prfld->user_diagnostic_counters[static_cast<int>(counter)];
 }
 
 // User boundary callbacks can be invoked on every meshblock face.  The
@@ -442,9 +451,10 @@ static Real GasNablaAdFromRhoP(EquationOfState *peos, const Real rho,
 // Fallback safety path for old four-field EOS tables.  New NATA tables carry
 // entropy explicitly and use RhoFromPEntropy below; this proxy is retained so
 // old tables and ideal-EOS debug runs remain usable.
-static void ClampHD2StateToEosTable(EquationOfState *peos, const Real entropy,
+static void ClampHD2StateToEosTable(MeshBlock *pmb, const Real entropy,
                                     Real &rho, Real &pres) {
 #if EOS_TABLE_ENABLED
+  EquationOfState *peos = pmb->peos;
   if (peos->ptable == nullptr) return;
   const Real rho_unit = std::max(peos->ptable->rhoUnit, TINY_NUMBER);
   const Real e_unit = std::max(peos->ptable->eUnit, TINY_NUMBER);
@@ -487,12 +497,12 @@ static void ClampHD2StateToEosTable(EquationOfState *peos, const Real entropy,
   if (std::abs(log_rho - target_log_rho) > 1.0e-12 ||
       std::abs(std::log(std::max(pres, TINY_NUMBER)) -
                std::log(std::max(pres_new, TINY_NUMBER))) > 1.0e-12) {
-    ++hd2_eos_clamps;
+    IncrementBoundaryDiagnostic(pmb, kHD2EosClamps);
   }
   rho = std::max(rho_new, rho_lo);
   pres = std::max(pres_new, TINY_NUMBER);
 #else
-  (void)peos;
+  (void)pmb;
   (void)entropy;
   (void)rho;
   (void)pres;
@@ -596,7 +606,7 @@ static void SimpleHD2Bottom(MeshBlock *pmb, AthenaArray<Real> &prim,
         Real p_raw = pbar_g + std::pow(bottom_cdmp, static_cast<Real>(n))*pprime1;
         Real p_g = p_raw;
         if (!std::isfinite(p_g) || p_g <= p_floor) {
-          ++hd2_pressure_floors;
+          IncrementBoundaryDiagnostic(pmb, kHD2PressureFloors);
           p_g = p_floor;
         }
         const Real s_target = upflow ? bottom_s_in : ((n == 1) ? s1 : s2);
@@ -616,7 +626,7 @@ static void SimpleHD2Bottom(MeshBlock *pmb, AthenaArray<Real> &prim,
                 rho_a, s_target, p_g);
             if (std::isfinite(p_compatible) && p_compatible > p_floor) {
               p_g = p_compatible;
-              ++hd2_entropy_pressure_adjustments;
+              IncrementBoundaryDiagnostic(pmb, kHD2EntropyPressureAdjustments);
             }
           }
           rho_g = pmb->peos->RhoFromPEntropy(p_g, s_target, rho_a);
@@ -629,7 +639,7 @@ static void SimpleHD2Bottom(MeshBlock *pmb, AthenaArray<Real> &prim,
                 rho_a, s_target, p_g);
             if (std::isfinite(p_compatible) && p_compatible > p_floor) {
               p_g = p_compatible;
-              ++hd2_entropy_pressure_adjustments;
+              IncrementBoundaryDiagnostic(pmb, kHD2EntropyPressureAdjustments);
               rho_g = pmb->peos->RhoFromPEntropy(p_g, s_target, rho_a);
             }
           }
@@ -639,13 +649,13 @@ static void SimpleHD2Bottom(MeshBlock *pmb, AthenaArray<Real> &prim,
           const Real log_rho = (std::log(p_g) - s_target)/gamma_gas;
           rho_g = std::exp(log_rho);
           if (!std::isfinite(rho_g) || rho_g <= rho_floor) {
-            ++hd2_density_floors;
+            IncrementBoundaryDiagnostic(pmb, kHD2DensityFloors);
             rho_g = rho_floor;
           }
-          ClampHD2StateToEosTable(pmb->peos, s_target, rho_g, p_g);
+          ClampHD2StateToEosTable(pmb, s_target, rho_g, p_g);
         }
         if (!std::isfinite(rho_g) || rho_g <= rho_floor) {
-          ++hd2_density_floors;
+          IncrementBoundaryDiagnostic(pmb, kHD2DensityFloors);
           std::stringstream msg;
           msg << "### FATAL ERROR in Rempel HD2 lower boundary: entropy "
               << "inversion failed at i=" << i << " j=" << j << " k=" << kg
@@ -654,7 +664,7 @@ static void SimpleHD2Bottom(MeshBlock *pmb, AthenaArray<Real> &prim,
         }
         const Real egas_g = GasEgasFromRhoP(pmb->peos, rho_g, p_g);
         if (!std::isfinite(egas_g) || egas_g <= TINY_NUMBER) {
-          ++hd2_energy_floors;
+          IncrementBoundaryDiagnostic(pmb, kHD2EnergyFloors);
           std::stringstream msg;
           msg << "### FATAL ERROR in Rempel HD2 lower boundary: invalid "
               << "internal energy at i=" << i << " j=" << j << " k=" << kg
@@ -1198,20 +1208,17 @@ static Real MarshakBoundaryEnergy(MeshBlock *pmb, AthenaArray<Real> &u_rad,
   Real eb = (D*ei + rad_top_alpha*pmb->prfld->c_ph*dx_half*rad_top_erad_ext)
             / std::max(denom, TINY_NUMBER);
   if (!std::isfinite(eb) || eb <= TINY_NUMBER) {
-    ++marshak_floor_count;
+    IncrementBoundaryDiagnostic(pmb, kMarshakRadiationFloors);
     eb = TINY_NUMBER;
   }
   return eb;
 }
 
 static void SimpleRadiationMarshak(MeshBlock *pmb, AthenaArray<Real> &u_rad,
-                                    int is, int ie, int js, int je, int ks,
-                                    int ke, int ngh) {
-  Real eb_min = std::numeric_limits<Real>::max();
-  Real eb_max = 0.0;
+                                    int is, int ie, int js, int je, int ke,
+                                    int ngh) {
   for (int n = 1; n <= ngh; ++n) {
     const int kg = ke + n;
-    const int kc = std::max(ke - (n - 1), ks);
     for (int j = js; j <= je; ++j) {
       for (int i = is; i <= ie; ++i) {
         const Real eb = MarshakBoundaryEnergy(pmb, u_rad, ke, j, i);
@@ -1221,28 +1228,17 @@ static void SimpleRadiationMarshak(MeshBlock *pmb, AthenaArray<Real> &u_rad,
           // If the linear auxiliary extrapolation is non-positive, use the
           // positive face value rather than injecting a TINY_NUMBER spike
           // into individual top meshblocks.
-          ++marshak_aux_fallback_count;
+          IncrementBoundaryDiagnostic(pmb, kMarshakAuxFallbacks);
           u_rad(kg, j, i) = std::max(eb, TINY_NUMBER);
         } else {
           u_rad(kg, j, i) = (n == 1) ? eg : 2.0*u_rad(kg-1, j, i) - u_rad(kg-2, j, i);
           if (!std::isfinite(u_rad(kg, j, i)) || u_rad(kg, j, i) <= TINY_NUMBER) {
-            ++marshak_aux_fallback_count;
+            IncrementBoundaryDiagnostic(pmb, kMarshakAuxFallbacks);
             u_rad(kg, j, i) = std::max(eb, TINY_NUMBER);
           }
         }
-        eb_min = std::min(eb_min, eb);
-        eb_max = std::max(eb_max, eb);
       }
     }
-  }
-  if (Globals::my_rank == 0 && pmb->gid == 0 &&
-      !marshak_diagnostic_printed) {
-    marshak_diagnostic_printed = true;
-    std::cout << "### Marshak upper radiation boundary alpha=" << rad_top_alpha
-              << " Erad_ext=" << rad_top_erad_ext
-              << " Erad_b_min=" << eb_min << " Erad_b_max=" << eb_max
-              << " radiation_floors=" << marshak_floor_count
-              << " auxiliary_fallbacks=" << marshak_aux_fallback_count << "\n";
   }
 }
 
@@ -1265,7 +1261,7 @@ static void SimpleNROuter(MeshBlock *pmb, AthenaArray<Real> &u_rad,
   if (!IsPhysicalUpperBoundary(pmb)) {
     CopyUpperRadiationGhost(pmb, u_rad, is, ie, js, je, ke, ngh);
   } else if (top_bc_mode == "rempel_outflow") {
-    SimpleRadiationMarshak(pmb, u_rad, is, ie, js, je, ks, ke, ngh);
+    SimpleRadiationMarshak(pmb, u_rad, is, ie, js, je, ke, ngh);
   } else {
     SimpleRadiationBoundary(pmb, u_rad, u_gas, is, ie, js, je, ks, ke, ngh,
                             false);
@@ -1291,7 +1287,7 @@ static void SimpleFLDOuter(MeshBlock *pmb, Coordinates *pco, FLD *pfld,
   if (!IsPhysicalUpperBoundary(pmb)) {
     CopyUpperRadiationGhost(pmb, u_rad, is, ie, js, je, ke, ngh);
   } else if (top_bc_mode == "rempel_outflow") {
-    SimpleRadiationMarshak(pmb, u_rad, is, ie, js, je, ks, ke, ngh);
+    SimpleRadiationMarshak(pmb, u_rad, is, ie, js, je, ke, ngh);
   } else {
     SimpleRadiationBoundary(pmb, u_rad, pmb->prfld->u_gas, is, ie, js, je,
                             ks, ke, ngh, false);
@@ -1403,6 +1399,7 @@ void Mesh::InitUserMeshData(ParameterInput *pin) {
   //   ATHENA_ERROR(msg);
   // }
 
+  user_diagnostic_summary_printed = false;
   rho_unit = pin->GetReal("hydro", "rho_unit");
   egas_unit = pin->GetReal("hydro", "egas_unit");
   time_unit = pin->GetOrAddReal("hydro", "time_unit", -1.0);
@@ -1471,6 +1468,14 @@ void Mesh::InitUserMeshData(ParameterInput *pin) {
   ruser_mesh_data[0](kHD2PressureMean2) = 0.0;
   eos_dens_pow = pin->GetOrAddReal("hydro", "dens_pow", -1.0);
   bottom_cdmp = pin->GetOrAddReal("problem", "Cdmp", 0.95);
+  boundary_diagnostic_verbosity = pin->GetOrAddInteger(
+      "problem", "boundary_diagnostic_verbosity", 0);
+  if (boundary_diagnostic_verbosity < 0 || boundary_diagnostic_verbosity > 1) {
+    std::stringstream msg;
+    msg << "### FATAL ERROR: problem/boundary_diagnostic_verbosity must be "
+        << "0 (off) or 1 (one-shot summary).";
+    ATHENA_ERROR(msg);
+  }
   bottom_s_in_from_profile = pin->GetOrAddBoolean(
       "problem", "s_in_from_profile", true);
   bottom_s_in = pin->GetOrAddReal("problem", "s_in", 0.0);
@@ -1573,6 +1578,7 @@ void MeshBlock::InitUserMeshBlockData(ParameterInput *pin) {
 
   AllocateRealUserMeshBlockDataField(1);
   ruser_meshblock_data[0].NewAthenaArray(2, ncells3, ncells2, ncells1);
+  prfld->user_diagnostic_counters.assign(kBoundaryDiagnosticCount, 0);
   if (puser_table == nullptr) puser_table = new UserOpacityTable(pin);
   prfld->EnrollOpacityFunction(TableOpacity);
   prfld->hydro_top_outflow_diode = (top_bc_mode == "rempel_outflow");
@@ -1769,22 +1775,45 @@ void Mesh::UserWorkInLoop() {
       WriteInitialProfiles(profile_pin, my_blocks(0)->peos);
     profile_written = true;
   }
-  if (Globals::my_rank == 0 && bottom_bc_mode == "rempel_hd2" &&
-      !hd2_diagnostic_printed) {
-    std::cout << "### Rempel HD2 lower boundary diagnostics"
-              << " PBND=" << bottom_pbnd
-              << " PBNDScale=" << HD2State(this, kHD2PressureScale)
-              << " Pbar1=" << HD2State(this, kHD2PressureMean1)
-              << " Pbar2=" << HD2State(this, kHD2PressureMean2)
-              << " s_in=" << bottom_s_in
-              << " Cdmp=" << bottom_cdmp
-              << " pressure_floors=" << hd2_pressure_floors
-              << " density_floors=" << hd2_density_floors
-              << " energy_floors=" << hd2_energy_floors
-              << " eos_clamps=" << hd2_eos_clamps
-              << " entropy_pressure_adjustments="
-              << hd2_entropy_pressure_adjustments << "\n";
-    hd2_diagnostic_printed = true;
+  if (boundary_diagnostic_verbosity > 0 && !user_diagnostic_summary_printed) {
+    unsigned long long counts[kBoundaryDiagnosticCount] = {};
+    for (int nb = 0; nb < nblocal; ++nb) {
+      const std::vector<std::uint64_t> &block_counts =
+          my_blocks(nb)->prfld->user_diagnostic_counters;
+      for (int n = 0; n < kBoundaryDiagnosticCount; ++n) {
+        counts[n] += block_counts[n];
+      }
+    }
+#ifdef MPI_PARALLEL
+    MPI_Allreduce(MPI_IN_PLACE, counts, kBoundaryDiagnosticCount,
+                  MPI_UNSIGNED_LONG_LONG, MPI_SUM, MPI_COMM_WORLD);
+#endif
+    if (Globals::my_rank == 0) {
+      std::cout << "FLD_BOUNDARY_DIAGNOSTICS phase=accepted_cycle"
+                << " cycle=" << ncycle
+                << " pressure_floors=" << counts[kHD2PressureFloors]
+                << " density_floors=" << counts[kHD2DensityFloors]
+                << " energy_floors=" << counts[kHD2EnergyFloors]
+                << " eos_clamps=" << counts[kHD2EosClamps]
+                << " entropy_pressure_adjustments="
+                << counts[kHD2EntropyPressureAdjustments]
+                << " marshak_radiation_floors="
+                << counts[kMarshakRadiationFloors]
+                << " marshak_aux_fallbacks="
+                << counts[kMarshakAuxFallbacks];
+      if (bottom_bc_mode == "rempel_hd2") {
+        std::cout << " PBND=" << bottom_pbnd
+                  << " PBNDScale=" << HD2State(this, kHD2PressureScale)
+                  << " Pbar1=" << HD2State(this, kHD2PressureMean1)
+                  << " Pbar2=" << HD2State(this, kHD2PressureMean2)
+                  << " s_in=" << bottom_s_in << " Cdmp=" << bottom_cdmp;
+      }
+      std::cout << "\n";
+    }
+    // Mesh::UserWorkInLoop is serialized after all block tasks.  This flag is
+    // process-local on purpose, so a restarted executable emits one new
+    // summary while AMR gid reuse cannot suppress a block's counters.
+    user_diagnostic_summary_printed = true;
   }
 }
 
