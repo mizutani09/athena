@@ -132,7 +132,9 @@ class FLD {
 
   // Function in problem generators to update opacity
   void EnrollOpacityFunction(FLDOpacityFunc MyOpacityFunction);
-  FLDOpacityFunc UpdateOpacity;
+  // Apply the enrolled callback and then enforce the FLD opacity contract.
+  void UpdateOpacity(MeshBlock *pmb, AthenaArray<Real> &u_rad_fld,
+                     AthenaArray<Real> &prim);
 
   // Function for Newton Raphson solver
   void CalculateDefect(AthenaArray<Real> &def, const AthenaArray<Real> &u,
@@ -154,6 +156,8 @@ class FLD {
   AthenaArray<Real> x2face_area_p1_, x3face_area_p1_;
   AthenaArray<Real> cell_volume_;
   AthenaArray<Real> dflx_;
+  FLDOpacityFunc opacity_function_{nullptr};
+  bool opacity_contract_diagnostic_printed_{false};
 
 };
 

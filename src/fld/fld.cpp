@@ -9,6 +9,8 @@
 // C headers
 
 // C++ headers
+#include <algorithm>  // max()
+#include <cmath>      // abs()
 #include <iostream>
 #include <sstream>    // sstream
 #include <stdexcept>  // runtime_error
@@ -95,15 +97,6 @@ inline void DefaultOpacity(MeshBlock *pmb, AthenaArray<Real> &u_fld,
     }
   }
 
-  if (!prfld->is_couple) {
-    for(int k=kl; k<=ku; ++k) {
-      for(int j=jl; j<=ju; ++j) {
-        for(int i=il; i<=iu; ++i) {
-          prfld->sigma_p(k,j,i) = 0.0;
-        }
-      }
-    }
-  }
 }
 
 //----------------------------------------------------------------------------------------
@@ -135,6 +128,17 @@ FLD::FLD(MeshBlock *pmb, ParameterInput *pin) :
     hydro_top_outflow_diode(false),
     marshak_top_boundary(), marshak_top_alpha(0.5), marshak_top_erad_ext(0.0)
     {
+  const char *removed_parameters[] = {"reduced_c_factor", "cut_Pnablav"};
+  for (const char *name : removed_parameters) {
+    if (pin->DoesParameterExist("fld", name)) {
+      std::stringstream msg;
+      msg << "### FATAL ERROR in function [FLD::FLD]" << std::endl
+          << "fld/" << name << " is no longer supported and must be removed."
+          << " The reduced speed of light and the old P.nabla.v switch are not"
+          << " implemented by NR-FLD.";
+      ATHENA_ERROR(msg);
+    }
+  }
   marshak_dface.NewAthenaArray(pmb->ncells3, pmb->ncells2, pmb->ncells1);
   is_couple = pin->GetOrAddBoolean("fld", "is_couple", true);
   only_rad = pin->GetOrAddBoolean("fld", "only_rad", false);
@@ -321,7 +325,7 @@ FLD::FLD(MeshBlock *pmb, ParameterInput *pin) :
   dflx_.NewAthenaArray(pmb->ncells1);
 
   // set a default opacity function
-  UpdateOpacity = DefaultOpacity;
+  opacity_function_ = DefaultOpacity;
 
   // set constants
   Real c_ph_dim = 2.99792458e10; // speed of light in cm s^-1
@@ -366,7 +370,41 @@ FLD::FLD(MeshBlock *pmb, ParameterInput *pin) :
 }
 
 void FLD::EnrollOpacityFunction(FLDOpacityFunc MyOpacityFunction) {
-  UpdateOpacity = MyOpacityFunction;
+  opacity_function_ = MyOpacityFunction;
+}
+
+void FLD::UpdateOpacity(MeshBlock *pmb, AthenaArray<Real> &u_rad_fld,
+                        AthenaArray<Real> &prim) {
+  if (opacity_function_ == nullptr) {
+    std::stringstream msg;
+    msg << "### FATAL ERROR in function [FLD::UpdateOpacity]" << std::endl
+        << "No opacity callback has been enrolled.";
+    ATHENA_ERROR(msg);
+  }
+  opacity_function_(pmb, u_rad_fld, prim);
+
+  // Opacity callbacks own the physical opacity model, but not this switch.
+  // sigma_P controls thermal exchange; sigma_R remains available for
+  // radiation transport when coupling is disabled.
+  if (!is_couple) sigma_p.ZeroClear();
+
+  if (!opacity_contract_diagnostic_printed_ && pmb->gid == 0 &&
+      std::getenv("ATHENA_FLD_OPACITY_DIAGNOSTICS") != nullptr) {
+    Real max_sigma_p = 0.0;
+    Real max_sigma_r = 0.0;
+    for (int k = 0; k < sigma_p.GetDim3(); ++k) {
+      for (int j = 0; j < sigma_p.GetDim2(); ++j) {
+        for (int i = 0; i < sigma_p.GetDim1(); ++i) {
+          max_sigma_p = std::max(max_sigma_p, std::abs(sigma_p(k,j,i)));
+          max_sigma_r = std::max(max_sigma_r, std::abs(sigma_r(k,j,i)));
+        }
+      }
+    }
+    std::cout << "FLD_OPACITY_CONTRACT is_couple=" << is_couple
+              << " sigma_p_max=" << max_sigma_p
+              << " sigma_r_max=" << max_sigma_r << std::endl;
+    opacity_contract_diagnostic_printed_ = true;
+  }
 }
 
 

@@ -111,8 +111,6 @@ opacity_table_planck_dataset = kappa/log10_planck
 opacity_table_rosseland_dataset = kappa/log10_rosseland
 fixed_flux_limiter      = false
 cut_diff                = false
-cut_Pnablav             = false
-reduced_c_factor        = 1.0e-2
 
 <problem>
 poly_n           = 1.4

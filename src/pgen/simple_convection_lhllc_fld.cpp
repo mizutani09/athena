@@ -1380,7 +1380,6 @@ void Mesh::InitUserMeshData(ParameterInput *pin) {
   is_couple       = true
   only_rad        = false
   cut_diff        = false
-  cut_Pnablav     = true
   */
   // // check input
   // if (!pin->GetBoolean("fld", "is_couple")) {
@@ -1401,13 +1400,6 @@ void Mesh::InitUserMeshData(ParameterInput *pin) {
   //   std::stringstream msg;
   //   msg << "### FATAL ERROR in function [Mesh::InitUserMeshData]" << std::endl;
   //   msg << "cut_diff must be false for this problem.";
-  //   ATHENA_ERROR(msg);
-  // }
-
-  // if (!pin->GetBoolean("fld", "cut_Pnablav")) {
-  //   std::stringstream msg;
-  //   msg << "### FATAL ERROR in function [Mesh::InitUserMeshData]" << std::endl;
-  //   msg << "cut_Pnablav must be true for this problem.";
   //   ATHENA_ERROR(msg);
   // }
 

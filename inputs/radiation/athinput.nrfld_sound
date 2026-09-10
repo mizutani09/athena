@@ -97,6 +97,7 @@ only_rad        = false
 cut_diff        = false
 include_radiation_force = true
 pressure_coupling = source
+fixed_u_rad     = false
 
 <problem>
 # all in code units
