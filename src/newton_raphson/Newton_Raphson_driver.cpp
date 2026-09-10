@@ -536,7 +536,15 @@ NewtonSolveResult NewtonRaphsonDriver::Solve_general(int stage, Real dt) {
       def = norms.l2_norm;
       defmax = norms.max_norm;
 
-      const bool trial_accepted = norms.finite && def <= olddef;
+      // Accept a trial only when the nonlinear merit function decreases by
+      // more than roundoff.  Accepting an exactly unchanged defect can make
+      // a large Newton step appear successful even though it has overshot the
+      // root; this is especially visible for fixed-radiation, stiff coupling.
+      const Real merit_tol =
+          32.0 * std::numeric_limits<Real>::epsilon()
+          * std::max(std::abs(olddef), static_cast<Real>(1.0e-30));
+      const bool trial_accepted =
+          norms.finite && def < olddef - merit_tol;
       const int current_trial = trial_attempt++;
       if (diagnostic_verbosity_ >= 1 && Globals::my_rank == 0) {
         const Real conv = (olddef > 0.0 ? def/olddef : 0.0);
