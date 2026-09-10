@@ -9,6 +9,7 @@ import os
 import shutil
 import subprocess
 import sys
+import time
 import traceback
 from datetime import datetime
 from pathlib import Path
@@ -21,6 +22,10 @@ from nrfld_validation.io import find_repo_root, read_history  # noqa: E402
 from nrfld_validation.manifest import (  # noqa: E402
     base_manifest,
     command_string,
+    input_file_references,
+    sha256_file,
+    tool_version,
+    tree_sha256,
     utc_now,
     write_manifest,
 )
@@ -34,6 +39,18 @@ RADIATIVE_SHOCK_CASES = ("radiative_shock_mach2", "radiative_shock_mach5")
 CASES = DEFAULT_CASES + RADIATIVE_SHOCK_CASES
 
 
+class CommandExecutionError(RuntimeError):
+    """A command failed or timed out, with a manifest-ready execution record."""
+
+    def __init__(self, message: str, record: dict[str, Any]):
+        super().__init__(message)
+        self.record = record
+
+
+def default_max_cores() -> int:
+    return min(4, max(1, os.cpu_count() or 1))
+
+
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--case", action="append", choices=CASES, dest="cases")
@@ -45,8 +62,8 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--max-cores",
         type=int,
-        default=max(1, os.cpu_count() or 1),
-        help="Upper bound for make jobs and MPI ranks.",
+        default=default_max_cores(),
+        help="Upper bound for make jobs and MPI ranks (default: at most 4).",
     )
     parser.add_argument("--mpi-ranks", type=int, default=None)
     parser.add_argument("--diffusion-resolution", type=int, default=16)
@@ -68,24 +85,87 @@ def parse_args() -> argparse.Namespace:
         help="Optional cycle limit for an explicitly requested local shock run.",
     )
     parser.add_argument("--no-build", action="store_true")
+    parser.add_argument(
+        "--binary",
+        type=Path,
+        default=None,
+        help="Existing binary for --no-build; its compiled pgen is checked with -c.",
+    )
+    parser.add_argument("--build-timeout", type=float, default=300.0)
+    parser.add_argument("--run-timeout", type=float, default=300.0)
+    parser.add_argument("--config-timeout", type=float, default=30.0)
     parser.add_argument("--no-plots", action="store_true")
     parser.add_argument("--run-name", default=None)
     return parser.parse_args()
 
 
-def checked(command: list[str], cwd: Path, log: Path) -> None:
+def checked(
+    command: list[str], cwd: Path, log: Path, timeout: float, phase: str
+) -> dict[str, Any]:
+    started = utc_now()
+    started_monotonic = time.monotonic()
+    record: dict[str, Any] = {
+        "phase": phase,
+        "command": command_string(command),
+        "cwd": str(cwd),
+        "log": str(log),
+        "timeout_seconds": timeout,
+        "started_at": started,
+        "finished_at": None,
+        "elapsed_seconds": None,
+        "status": "running",
+        "returncode": None,
+    }
     log.parent.mkdir(parents=True, exist_ok=True)
     with log.open("w", encoding="utf-8") as handle:
-        process = subprocess.run(
-            command,
-            cwd=cwd,
-            text=True,
-            stdout=handle,
-            stderr=subprocess.STDOUT,
-            check=False,
-        )
+        try:
+            process = subprocess.run(
+                command,
+                cwd=cwd,
+                text=True,
+                stdout=handle,
+                stderr=subprocess.STDOUT,
+                check=False,
+                timeout=timeout,
+            )
+        except subprocess.TimeoutExpired as error:
+            record.update(
+                {
+                    "status": "timeout",
+                    "finished_at": utc_now(),
+                    "elapsed_seconds": time.monotonic() - started_monotonic,
+                }
+            )
+            raise CommandExecutionError(
+                f"{phase} timed out after {timeout:g}s: {command_string(command)}",
+                record,
+            ) from error
+        except OSError as error:
+            record.update(
+                {
+                    "status": "failed_to_start",
+                    "finished_at": utc_now(),
+                    "elapsed_seconds": time.monotonic() - started_monotonic,
+                }
+            )
+            raise CommandExecutionError(
+                f"could not start {phase}: {error}", record
+            ) from error
+    record.update(
+        {
+            "status": "passed" if process.returncode == 0 else "failed",
+            "returncode": process.returncode,
+            "finished_at": utc_now(),
+            "elapsed_seconds": time.monotonic() - started_monotonic,
+        }
+    )
     if process.returncode != 0:
-        raise subprocess.CalledProcessError(process.returncode, command)
+        raise CommandExecutionError(
+            f"{phase} failed with exit code {process.returncode}: "
+            f"{command_string(command)}",
+            record,
+        )
+    return record
 
 
 def configure_command(repo: Path, problem: str) -> list[str]:
@@ -100,12 +180,53 @@ def configure_command(repo: Path, problem: str) -> list[str]:
     ]
 
 
-def build_case(repo: Path, case_dir: Path, problem: str, max_cores: int) -> dict[str, str]:
+def prepare_build_source(repo: Path, build_source: Path) -> None:
+    """Copy only the source needed by configure/make, including dirty files."""
+    build_source.mkdir(parents=True, exist_ok=False)
+    for filename in ("configure.py", "Makefile.in"):
+        shutil.copy2(repo / filename, build_source / filename)
+    # defs.hpp is a generated configuration file, not part of the source snapshot.
+    shutil.copytree(
+        repo / "src",
+        build_source / "src",
+        ignore=shutil.ignore_patterns("defs.hpp"),
+    )
+
+
+def build_case(
+    repo: Path,
+    case_dir: Path,
+    problem: str,
+    max_cores: int,
+    timeout: float,
+    command_records: list[dict[str, Any]],
+) -> dict[str, Any]:
+    build_source = case_dir / "build_source"
+    prepare_build_source(repo, build_source)
     configure = configure_command(repo, problem)
     make = ["make", f"-j{max_cores}"]
-    checked(configure, repo, case_dir / "configure.log")
-    checked(make, repo, case_dir / "build.log")
-    return {"configure": command_string(configure), "build": command_string(make)}
+    source_sha256 = tree_sha256(build_source)
+    configure[1] = str(build_source / "configure.py")
+    try:
+        configure_record = checked(
+            configure, build_source, case_dir / "configure.log", timeout, "configure"
+        )
+    except CommandExecutionError as error:
+        command_records.append(error.record)
+        raise
+    command_records.append(configure_record)
+    try:
+        build_record = checked(make, build_source, case_dir / "build.log", timeout, "build")
+    except CommandExecutionError as error:
+        command_records.append(error.record)
+        raise
+    command_records.append(build_record)
+    return {
+        "configure": command_string(configure),
+        "build": command_string(make),
+        "build_source": build_source,
+        "build_source_sha256": source_sha256,
+    }
 
 
 def case_parameters(case: str, args: argparse.Namespace) -> dict[str, Any]:
@@ -166,26 +287,141 @@ def case_parameters(case: str, args: argparse.Namespace) -> dict[str, Any]:
     }
 
 
-def run_case(repo: Path, case_dir: Path, case: str, args: argparse.Namespace) -> dict[str, Any]:
+def binary_configuration(
+    executable: Path,
+    case_dir: Path,
+    timeout: float,
+    command_records: list[dict[str, Any]],
+) -> dict[str, str]:
+    command = [str(executable), "-c"]
+    try:
+        record = checked(command, case_dir, case_dir / "config.log", timeout, "binary_config")
+    except CommandExecutionError as error:
+        command_records.append(error.record)
+        raise
+    command_records.append(record)
+    configuration: dict[str, str] = {}
+    for line in (case_dir / "config.log").read_text(encoding="utf-8").splitlines():
+        if ":" not in line:
+            continue
+        key, value = line.strip().split(":", 1)
+        configuration[key.strip().lower().replace(" ", "_")] = value.strip()
+    return configuration
+
+
+def validate_binary_configuration(
+    configuration: dict[str, str], expected_problem: str, executable: Path
+) -> None:
+    expected = {
+        "problem_generator": expected_problem,
+        "coordinate_system": "cartesian",
+        "equation_of_state": "adiabatic",
+        "riemann_solver": "hllc_fld",
+        "fld_with_newton-raphson": "ON",
+        "mpi_parallelism": "ON",
+        "hdf5_output": "ON",
+    }
+    mismatches = {
+        key: {"expected": value, "actual": configuration.get(key)}
+        for key, value in expected.items()
+        if configuration.get(key) != value
+    }
+    if mismatches:
+        raise ValueError(
+            f"binary configuration mismatch for {executable}: {mismatches}"
+        )
+
+
+def effective_settings(input_path: Path, overrides: list[str]) -> dict[str, Any]:
+    settings: dict[str, str] = {}
+    section = ""
+    for raw_line in input_path.read_text(encoding="utf-8").splitlines():
+        line = raw_line.split("#", 1)[0].strip()
+        if not line:
+            continue
+        if line.startswith("<") and line.endswith(">"):
+            section = line[1:-1].strip()
+        elif "=" in line:
+            key, value = [part.strip() for part in line.split("=", 1)]
+            settings[f"{section}/{key}" if section else key] = value
+    for override in overrides:
+        key, value = override.split("=", 1)
+        settings[key] = value
+    return settings
+
+
+def reached_cycle(output_dir: Path, log: Path | None = None) -> int | None:
+    if log is not None and log.is_file():
+        import re
+
+        matches = re.findall(r"(?:^|\s)cycle=(\d+)", log.read_text(encoding="utf-8"))
+        if matches:
+            return int(matches[-1])
+    try:
+        history = read_history(output_dir)
+    except (FileNotFoundError, OSError, ValueError):
+        return None
+    for key in ("ncycle", "cycle", "cycle_number"):
+        if key in history and len(history[key]):
+            return int(history[key][-1])
+    return None
+
+
+def reached_time(output_dir: Path, log: Path | None = None) -> float | None:
+    if log is not None and log.is_file():
+        import re
+
+        matches = re.findall(
+            r"(?:^|\s)time=([0-9.eE+-]+)", log.read_text(encoding="utf-8")
+        )
+        if matches:
+            return float(matches[-1])
+    try:
+        history = read_history(output_dir)
+    except (FileNotFoundError, OSError, ValueError):
+        return None
+    if "time" in history and len(history["time"]):
+        return float(history["time"][-1])
+    return None
+
+
+def run_case(
+    repo: Path,
+    case_dir: Path,
+    case: str,
+    args: argparse.Namespace,
+    executable: Path,
+    timeout: float,
+    command_records: list[dict[str, Any]],
+) -> dict[str, Any]:
     parameters = case_parameters(case, args)
     output_dir = case_dir / "output"
     output_dir.mkdir(parents=True, exist_ok=True)
     input_path = repo / parameters["input"]
     shutil.copy2(input_path, case_dir / "input.used")
-    source_executable = repo / "bin" / "athena"
-    executable = case_dir / "athena"
-    shutil.copy2(source_executable, executable)
     command = []
     if parameters["ranks"] > 1:
         command.extend(["mpirun", "-np", str(parameters["ranks"])])
     command.extend(
-        [str(executable), "-i", str(input_path), "-d", str(output_dir), *parameters["overrides"]]
+        [
+            str(executable),
+            "-i",
+            str(case_dir / "input.used"),
+            "-d",
+            str(output_dir),
+            *parameters["overrides"],
+        ]
     )
-    checked(command, case_dir, case_dir / "run.log")
+    try:
+        record = checked(command, case_dir, case_dir / "run.log", timeout, "run")
+    except CommandExecutionError as error:
+        command_records.append(error.record)
+        raise
+    command_records.append(record)
     return {
         "run": command_string(command),
         "ranks": parameters["ranks"],
-        "input": str(input_path),
+        "input": str(case_dir / "input.used"),
         "overrides": parameters["overrides"],
         "output_dir": output_dir,
         "executable": executable,
@@ -241,12 +477,77 @@ def copy_download_metadata(source_dir: Path, case_dir: Path) -> dict[str, str]:
     for source in candidates:
         if not source.is_file():
             continue
-        destination = case_dir / ("input.used" if source.name.startswith("athinput") else source.name)
+        destination = case_dir / (
+            "input.used" if source.name.startswith("athinput") else source.name
+        )
         if destination.exists():
             continue
         shutil.copy2(source, destination)
         archived[source.name] = str(destination)
     return archived
+
+
+def configured_compiler(build_source: Path | None, configuration: dict[str, str]) -> str | None:
+    if build_source is not None:
+        makefile = build_source / "Makefile"
+        if makefile.is_file():
+            for line in makefile.read_text(encoding="utf-8").splitlines():
+                if line.startswith("CXX :="):
+                    return line.split(":=", 1)[1].strip().split()[0]
+    command = configuration.get("compilation_command", "")
+    return command.split()[0] if command else None
+
+
+def update_toolchain(
+    manifest: dict[str, Any], build_source: Path | None, configuration: dict[str, str]
+) -> None:
+    compiler = configured_compiler(build_source, configuration)
+    manifest["toolchain"] = {
+        "compiler": tool_version(compiler),
+        "mpi_launcher": tool_version("mpirun"),
+        "binary_configuration": configuration,
+    }
+
+
+def downloaded_calculation_provenance(source_dir: Path) -> dict[str, Any]:
+    metadata: dict[str, Any] = {
+        "source": "downloaded_run",
+        "run_directory": str(source_dir),
+        "manifest": None,
+        "git": None,
+    }
+    downloaded_binary = source_dir / "athena"
+    if downloaded_binary.is_file():
+        metadata["binary"] = {
+            "path": str(downloaded_binary),
+            "sha256": sha256_file(downloaded_binary),
+        }
+    source_manifest = source_dir / "manifest.json"
+    if not source_manifest.is_file():
+        return metadata
+    metadata["manifest"] = {
+        "path": str(source_manifest),
+        "sha256": sha256_file(source_manifest),
+    }
+    try:
+        downloaded = json.loads(source_manifest.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return metadata
+    provenance = downloaded.get("provenance", {})
+    metadata["git"] = (
+        provenance.get("calculation", {}).get("git")
+        if isinstance(provenance.get("calculation"), dict)
+        else downloaded.get("git")
+    )
+    return metadata
+
+
+def error_reason(error: Exception) -> str:
+    if isinstance(error, CommandExecutionError):
+        return str(error.record.get("status", "failed"))
+    if isinstance(error, FileNotFoundError):
+        return "reference_missing"
+    return "failed"
 
 
 def np_all_finite(history: dict[str, Any]) -> bool:
@@ -261,18 +562,29 @@ def main() -> int:
         raise ValueError("--max-cores must be positive")
     if args.mpi_ranks is not None and args.mpi_ranks < 1:
         raise ValueError("--mpi-ranks must be positive")
+    if args.build_timeout <= 0 or args.run_timeout <= 0 or args.config_timeout <= 0:
+        raise ValueError("command timeouts must be positive")
     cases = args.cases or list(DEFAULT_CASES)
     cases_requiring_build = [
         case for case in cases
         if case not in RADIATIVE_SHOCK_CASES or args.run_radiative_shock
     ]
     if args.no_build and len(cases_requiring_build) > 1:
-        raise ValueError("--no-build requires exactly one --case because cases use different pgens")
+        raise ValueError(
+            "--no-build requires exactly one --case because cases use different pgens"
+        )
     repo = find_repo_root(SCRIPT_DIR)
+    if args.no_build and cases_requiring_build and args.binary is not None:
+        args.binary = args.binary.expanduser().resolve()
     run_name = args.run_name or datetime.now().strftime("%Y%m%d_%H%M%S")
     suite_dir = args.output_root.expanduser().resolve() / run_name
     suite_dir.mkdir(parents=True, exist_ok=False)
-    summary: dict[str, Any] = {"run": run_name, "cases": {}, "max_cores": args.max_cores}
+    summary: dict[str, Any] = {
+        "run": run_name,
+        "cases": {},
+        "max_cores": args.max_cores,
+        "started_at": utc_now(),
+    }
 
     failed = False
     for case in cases:
@@ -280,6 +592,8 @@ def main() -> int:
         case_dir.mkdir()
         manifest_path = case_dir / "manifest.json"
         manifest = base_manifest(repo, case, args.max_cores)
+        command_records: list[dict[str, Any]] = []
+        manifest["commands"]["records"] = command_records
         write_manifest(manifest_path, manifest)
         try:
             if case in RADIATIVE_SHOCK_CASES and not args.run_radiative_shock:
@@ -293,9 +607,27 @@ def main() -> int:
                 if not source_dir.is_dir():
                     raise FileNotFoundError(source_dir)
                 archived = copy_download_metadata(source_dir, case_dir)
-                manifest["input"] = {"downloaded_run_dir": str(source_dir)}
+                manifest["input"] = {
+                    "downloaded_run_dir": str(source_dir),
+                    "metadata_files": [
+                        {
+                            "path": str(source_dir / name),
+                            "sha256": sha256_file(source_dir / name),
+                        }
+                        for name in ("athena", "problem_parameters.txt")
+                        if (source_dir / name).is_file()
+                    ],
+                }
                 manifest["resources"]["mode"] = "plot-only"
+                manifest["provenance"]["calculation"] = downloaded_calculation_provenance(
+                    source_dir
+                )
                 manifest["artifacts"].update(archived)
+                manifest["artifacts"]["metadata_sha256"] = {
+                    name: sha256_file(source_dir / name)
+                    for name in archived
+                    if (source_dir / name).is_file()
+                }
                 figure = case_dir / "figures" / f"{case}.png"
                 metrics = plot_radiative_shock(
                     source_dir,
@@ -310,24 +642,105 @@ def main() -> int:
                     archived_analytic = reference_dir / analytic_file.name
                     shutil.copy2(analytic_file, archived_analytic)
                     manifest["artifacts"]["analytic_profile"] = str(archived_analytic)
+                    manifest["artifacts"]["analytic_profile_sha256"] = sha256_file(
+                        analytic_file
+                    )
                 manifest["metrics"] = metrics
                 manifest["artifacts"]["plot"] = str(figure)
                 manifest["status"] = "passed" if metrics["passed"] else "failed"
+                manifest["termination"] = {
+                    "reason": "completed" if metrics["passed"] else "validation_failed",
+                    "reached_cycle": None,
+                    "reached_time": None,
+                }
                 continue
 
             parameters = case_parameters(case, args)
             manifest["resources"]["mpi_ranks"] = parameters["ranks"]
+            omp_threads = int(os.environ.get("OMP_NUM_THREADS", "1"))
+            input_source = repo / parameters["input"]
+            input_hash = sha256_file(input_source)
             manifest["input"] = {
-                "path": str(repo / parameters["input"]),
+                "source_path": str(input_source),
+                "sha256": input_hash,
                 "overrides": parameters["overrides"],
+                "effective_settings": effective_settings(input_source, parameters["overrides"]),
+                "external_files": input_file_references(input_source, repo),
             }
+            manifest["resources"]["omp_threads"] = omp_threads
+            manifest["resources"]["mode"] = "no-build" if args.no_build else "isolated-build"
+            build_source: Path | None = None
             if not args.no_build:
-                manifest["commands"].update(
-                    build_case(repo, case_dir, parameters["problem"], args.max_cores)
+                build_info = build_case(
+                    repo,
+                    case_dir,
+                    parameters["problem"],
+                    args.max_cores,
+                    args.build_timeout,
+                    command_records,
                 )
-            run_info = run_case(repo, case_dir, case, args)
+                build_source = build_info["build_source"]
+                manifest["commands"].update(
+                    {
+                        "configure": build_info["configure"],
+                        "build": build_info["build"],
+                    }
+                )
+                executable = build_source / "bin" / "athena"
+                manifest["provenance"]["calculation"] = {
+                    "source": "local_isolated_build",
+                    "repository": str(repo),
+                    "git": manifest["git"],
+                    "build_source": str(build_source),
+                    "source_sha256": build_info["build_source_sha256"],
+                    "configured_files": {
+                        name: {
+                            "path": str(build_source / name),
+                            "sha256": sha256_file(build_source / name),
+                        }
+                        for name in ("Makefile", "src/defs.hpp", "configure.log")
+                    },
+                }
+            else:
+                executable = args.binary or (repo / "bin" / "athena")
+                executable = executable.expanduser().resolve()
+                if not executable.is_file():
+                    raise FileNotFoundError(
+                        f"--no-build binary does not exist: {executable}"
+                    )
+                manifest["provenance"]["calculation"] = {
+                    "source": "existing_binary",
+                    "path": str(executable),
+                    "sha256": sha256_file(executable),
+                    "git": None,
+                }
+            configuration = binary_configuration(
+                executable, case_dir, args.config_timeout, command_records
+            )
+            validate_binary_configuration(configuration, parameters["problem"], executable)
+            if (
+                configuration.get("openmp_parallelism") == "ON"
+                and parameters["ranks"] * omp_threads > args.max_cores
+            ):
+                raise ValueError(
+                    "MPI ranks multiplied by OMP_NUM_THREADS exceeds --max-cores: "
+                    f"{parameters['ranks']} * {omp_threads} > {args.max_cores}"
+                )
+            update_toolchain(manifest, build_source, configuration)
+            manifest["provenance"]["calculation"]["binary_configuration"] = configuration
+            manifest["provenance"]["calculation"]["binary_sha256"] = sha256_file(executable)
+            run_info = run_case(
+                repo, case_dir, case, args, executable, args.run_timeout, command_records
+            )
             manifest["commands"]["run"] = run_info["run"]
-            manifest["artifacts"]["executable"] = str(run_info["executable"])
+            manifest["artifacts"]["executable"] = {
+                "path": str(run_info["executable"]),
+                "sha256": sha256_file(run_info["executable"]),
+            }
+            manifest["artifacts"]["input.used"] = {
+                "path": str(case_dir / "input.used"),
+                "sha256": sha256_file(case_dir / "input.used"),
+            }
             if case in RADIATIVE_SHOCK_CASES:
                 mach, _, analytic = shock_case_options(case, args)
                 figure = case_dir / "figures" / f"{case}.png"
@@ -341,6 +754,11 @@ def main() -> int:
             else:
                 metrics = analyse_case(case, run_info["output_dir"])
             manifest["metrics"] = metrics
+            manifest["input"]["used_path"] = str(case_dir / "input.used")
+            manifest["input"]["used_sha256"] = sha256_file(case_dir / "input.used")
+            manifest["input"]["external_files"] = input_file_references(
+                case_dir / "input.used", repo
+            )
             if not args.no_plots:
                 figure = case_dir / "figures" / f"{case}.png"
                 if case == "diffusion":
@@ -359,7 +777,30 @@ def main() -> int:
             failed = True
             manifest["status"] = "failed"
             manifest["error"] = {"message": str(error), "traceback": traceback.format_exc()}
+            if isinstance(error, CommandExecutionError) and error.record not in command_records:
+                command_records.append(error.record)
+            manifest["termination"] = {
+                "reason": error_reason(error),
+                "reached_cycle": reached_cycle(case_dir / "output", case_dir / "run.log"),
+                "reached_time": reached_time(case_dir / "output", case_dir / "run.log"),
+            }
         finally:
+            if manifest["status"] == "created":
+                manifest["status"] = "failed"
+                manifest["termination"] = {
+                    "reason": "failed",
+                    "reached_cycle": reached_cycle(case_dir / "output", case_dir / "run.log"),
+                    "reached_time": reached_time(case_dir / "output", case_dir / "run.log"),
+                }
+            manifest["commands"]["records"] = command_records
+            if manifest["termination"]["reason"] == "created":
+                manifest["termination"] = {
+                    "reason": (
+                        "completed" if manifest["status"] == "passed" else "validation_failed"
+                    ),
+                    "reached_cycle": reached_cycle(case_dir / "output", case_dir / "run.log"),
+                    "reached_time": reached_time(case_dir / "output", case_dir / "run.log"),
+                }
             manifest["finished_at"] = utc_now()
             write_manifest(manifest_path, manifest)
             summary["cases"][case] = {
@@ -371,7 +812,8 @@ def main() -> int:
                 failed = True
 
     (suite_dir / "summary.json").write_text(
-        json.dumps(summary, indent=2, sort_keys=True) + "\n", encoding="utf-8"
+        json.dumps({**summary, "finished_at": utc_now()}, indent=2, sort_keys=True) + "\n",
+        encoding="utf-8",
     )
     print(json.dumps(summary, indent=2, sort_keys=True))
     return 1 if failed else 0
