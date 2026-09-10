@@ -56,7 +56,7 @@ npresmooth      = 2
 npostsmooth     = 2
 omega           = 1.0
 niteration      = 10
-nr_iteration    = 10
+nr_niteration   = 10
 # threshold       = 0.00001
 # nr_threshold    = 1e-10
 output_defect   = true
@@ -67,6 +67,7 @@ ox2_bc          = periodic
 ix3_bc          = periodic
 ox3_bc          = periodic
 
+<fld>
 use_opacity_table       = true
 opacity_table_file      = path/to/your/opacity_table.h5
 opacity_table_file_type = hdf5
@@ -76,10 +77,16 @@ opacity_table_axis      = tp
 #   trho : x2 = log10(density[cgs])
 #   tr   : x2 = OPAL logR = log10(rho) - 3*log10(T) + 18
 # Optional dataset overrides (default=auto):
-# opacity_table_temperature_dataset = auto
-# opacity_table_x2_dataset = auto
-# opacity_table_planck_dataset = auto
-# opacity_table_rosseland_dataset = auto
+opacity_table_temperature_dataset = auto
+opacity_table_x2_dataset = auto
+opacity_table_planck_dataset = auto
+opacity_table_rosseland_dataset = auto
+# Per-field value encodings: auto, linear, or log10. HDF5 auto accepts the
+# standard planck/rosseland and log10_planck/log10_rosseland dataset names;
+# ASCII auto retains the historical linear-value convention. Custom HDF5
+# dataset names must set these explicitly.
+opacity_table_planck_format = auto
+opacity_table_rosseland_format = auto
 
 <problem>
 rho             = 1e-10 # in g cm^-3

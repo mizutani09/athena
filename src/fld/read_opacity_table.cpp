@@ -13,6 +13,7 @@
 #include <cmath>   // sqrt()
 #include <fstream>
 #include <iostream> // ifstream
+#include <limits>
 #include <sstream>
 #include <stdexcept> // std::invalid_argument
 #include <string>
@@ -62,6 +63,59 @@ bool GetOpacityBoolOrDefault(ParameterInput *pin, const std::string &name,
   return default_value;
 }
 
+bool ParseExplicitOpacityFormat(ParameterInput *pin, const std::string &parameter,
+                                bool *is_auto) {
+  std::string format = GetOpacityStringOrDefault(pin, parameter, "auto");
+  if (format == "auto") {
+    *is_auto = true;
+    return false;
+  }
+  *is_auto = false;
+  if (format == "linear") return false;
+  if (format == "log10") return true;
+
+  std::stringstream msg;
+  msg << "### FATAL ERROR in UserOpacityTable::UserOpacityTable" << std::endl
+      << "fld/" << parameter << " must be 'auto', 'linear', or 'log10', got '"
+      << format << "'." << std::endl;
+  ATHENA_ERROR(msg);
+  return false;
+}
+
+void SetAsciiOpacityFormats(ParameterInput *pin, UserOpacityTable *table) {
+  bool is_auto = false;
+  table->values_are_log10[RadFLD::SIGMA_P] =
+      ParseExplicitOpacityFormat(pin, "opacity_table_planck_format", &is_auto);
+  // The historical ASCII opacity format stores linear values and has no
+  // metadata from which to infer another representation.
+  if (is_auto) table->values_are_log10[RadFLD::SIGMA_P] = false;
+
+  table->values_are_log10[RadFLD::SIGMA_R] =
+      ParseExplicitOpacityFormat(pin, "opacity_table_rosseland_format", &is_auto);
+  if (is_auto) table->values_are_log10[RadFLD::SIGMA_R] = false;
+}
+
+void ValidateAsciiOpacitySchema(const std::string &filename, UserOpacityTable *table) {
+  if (table->nVar != RadFLD::NOPACITY) {
+    std::stringstream msg;
+    msg << "### FATAL ERROR in ReadAsciiOpacityTable" << std::endl
+        << "Opacity table shape must contain exactly " << RadFLD::NOPACITY
+        << " fields (Planck, Rosseland), found " << table->nVar << " in '"
+        << filename << "'." << std::endl;
+    ATHENA_ERROR(msg);
+  }
+  if (table->nTemp < 2 || table->nPressure < 2 ||
+      !std::isfinite(table->tempMin) || !std::isfinite(table->tempMax) ||
+      !std::isfinite(table->pressureMin) || !std::isfinite(table->pressureMax) ||
+      table->tempMin >= table->tempMax || table->pressureMin >= table->pressureMax) {
+    std::stringstream msg;
+    msg << "### FATAL ERROR in ReadAsciiOpacityTable" << std::endl
+        << "Opacity axes must have at least two points and finite, increasing limits in '"
+        << filename << "'." << std::endl;
+    ATHENA_ERROR(msg);
+  }
+}
+
 #ifdef HDF5OUTPUT
 bool FindExistingDataset(hid_t file, const std::vector<std::string> &candidates,
                          std::string *found_path) {
@@ -75,11 +129,76 @@ bool FindExistingDataset(hid_t file, const std::vector<std::string> &candidates,
   return false;
 }
 
-bool PathLooksLikeLog10Opacity(const std::string &path) {
-  return (path.find("log10_planck") != std::string::npos ||
-          path.find("log10_rosseland") != std::string::npos ||
-          path.find("log_planck") != std::string::npos ||
-          path.find("log_rosseland") != std::string::npos);
+std::string DatasetBasename(const std::string &path) {
+  std::string::size_type separator = path.find_last_of('/');
+  return separator == std::string::npos ? path : path.substr(separator + 1);
+}
+
+bool InferHDF5OpacityFormat(ParameterInput *pin, const std::string &parameter,
+                           const std::string &path, int opacity_index) {
+  bool is_auto = false;
+  bool values_are_log10 = ParseExplicitOpacityFormat(pin, parameter, &is_auto);
+  if (!is_auto) return values_are_log10;
+
+  const std::string name = DatasetBasename(path);
+  const bool is_planck = (opacity_index == RadFLD::SIGMA_P);
+  const std::string field = is_planck ? "planck" : "rosseland";
+  if (name == "log10_" + field || name == "log_" + field) return true;
+  if (name == field || name == field + "_mean_opacity") return false;
+
+  std::stringstream msg;
+  msg << "### FATAL ERROR in ReadHDF5OpacityTable" << std::endl
+      << "Cannot infer whether " << field << " dataset '" << path
+      << "' stores linear or log10 values. Set fld/" << parameter
+      << " explicitly to 'linear' or 'log10'." << std::endl;
+  ATHENA_ERROR(msg);
+  return false;
+}
+
+void ValidateUniformAxis(const AthenaArray<Real> &axis, int size,
+                         const std::string &dataset_path, Real storage_epsilon) {
+  if (size < 2) {
+    std::stringstream msg;
+    msg << "### FATAL ERROR in ReadHDF5OpacityTable" << std::endl
+        << "Axis dataset '" << dataset_path << "' must contain at least two points, found "
+        << size << "." << std::endl;
+    ATHENA_ERROR(msg);
+  }
+
+  for (int i = 0; i < size; ++i) {
+    if (!std::isfinite(axis(i))) {
+      std::stringstream msg;
+      msg << "### FATAL ERROR in ReadHDF5OpacityTable" << std::endl
+          << "Axis dataset '" << dataset_path << "' contains a non-finite value at index "
+          << i << "." << std::endl;
+      ATHENA_ERROR(msg);
+    }
+    if (i > 0 && axis(i) <= axis(i - 1)) {
+      std::stringstream msg;
+      msg << "### FATAL ERROR in ReadHDF5OpacityTable" << std::endl
+          << "Axis dataset '" << dataset_path
+          << "' must be strictly increasing; values at indices " << i - 1 << " and " << i
+          << " are " << axis(i - 1) << " and " << axis(i) << "." << std::endl;
+      ATHENA_ERROR(msg);
+    }
+  }
+
+  const Real spacing = (axis(size - 1) - axis(0))/static_cast<Real>(size - 1);
+  Real scale = std::abs(axis(0));
+  if (std::abs(axis(size - 1)) > scale) scale = std::abs(axis(size - 1));
+  if (std::abs(spacing) > scale) scale = std::abs(spacing);
+  const Real tolerance = 64.0*storage_epsilon*scale;
+  for (int i = 1; i < size - 1; ++i) {
+    const Real expected = axis(0) + static_cast<Real>(i)*spacing;
+    if (std::abs(axis(i) - expected) > tolerance) {
+      std::stringstream msg;
+      msg << "### FATAL ERROR in ReadHDF5OpacityTable" << std::endl
+          << "Axis dataset '" << dataset_path
+          << "' is not uniformly spaced; index " << i << " has value " << axis(i)
+          << ", expected " << expected << "." << std::endl;
+      ATHENA_ERROR(msg);
+    }
+  }
 }
 
 std::string ResolveDatasetPath(hid_t file, const std::string &configured_name,
@@ -114,7 +233,8 @@ std::string ResolveDatasetPath(hid_t file, const std::string &configured_name,
   return "";
 }
 
-int Read1DDatasetSize(const std::string &fn, const std::string &dataset_path) {
+int Read1DDatasetSize(const std::string &fn, const std::string &dataset_path,
+                      Real *storage_epsilon) {
   hid_t property_list_file = H5Pcreate(H5P_FILE_ACCESS);
   hid_t file = H5Fopen(fn.c_str(), H5F_ACC_RDONLY, property_list_file);
   hid_t dataset = H5Dopen(file, dataset_path.c_str(), H5P_DEFAULT);
@@ -128,6 +248,13 @@ int Read1DDatasetSize(const std::string &fn, const std::string &dataset_path) {
   }
   hsize_t dims[1];
   H5Sget_simple_extent_dims(dspace, dims, NULL);
+  hid_t datatype = H5Dget_type(dataset);
+  *storage_epsilon = std::numeric_limits<Real>::epsilon();
+  if (H5Tget_class(datatype) == H5T_FLOAT && H5Tget_size(datatype) <= sizeof(float) &&
+      std::numeric_limits<float>::epsilon() > *storage_epsilon) {
+    *storage_epsilon = std::numeric_limits<float>::epsilon();
+  }
+  H5Tclose(datatype);
   H5Sclose(dspace);
   H5Dclose(dataset);
   H5Fclose(file);
@@ -170,6 +297,8 @@ void ReadAsciiOpacityTable(std::string fn, UserOpacityTable *puser_table, Parame
   puser_table->GetSize(puser_table->nVar, puser_table->nPressure, puser_table->nTemp);
   puser_table->GetX2lim(puser_table->pressureMin, puser_table->pressureMax);
   puser_table->GetX1lim(puser_table->tempMin, puser_table->tempMax);
+  ValidateAsciiOpacitySchema(fn, puser_table);
+  SetAsciiOpacityFormats(pin, puser_table);
 
   if (!puser_table->use_tables) {
     puser_table->OpacityTables.NewAthenaArray(puser_table->nVar);
@@ -186,7 +315,6 @@ void ReadHDF5OpacityTable(std::string fn, UserOpacityTable *puser_table, Paramet
   int nvar = RadFLD::NOPACITY;
   std::string temp_path, x2_path;
   std::string var_paths[RadFLD::NOPACITY];
-  bool values_are_log10 = false;
   UserOpacityTable::X2AxisKind x2_axis_kind = puser_table->x2_axis_kind;
 
   std::vector<std::string> x2_candidates;
@@ -245,8 +373,10 @@ void ReadHDF5OpacityTable(std::string fn, UserOpacityTable *puser_table, Paramet
          "kappa/rosseland", "/kappa/rosseland", "rosseland", "/rosseland"},
         "Rosseland opacity");
 
-    values_are_log10 = PathLooksLikeLog10Opacity(var_paths[RadFLD::SIGMA_P]) &&
-                       PathLooksLikeLog10Opacity(var_paths[RadFLD::SIGMA_R]);
+    puser_table->values_are_log10[RadFLD::SIGMA_P] = InferHDF5OpacityFormat(
+        pin, "opacity_table_planck_format", var_paths[RadFLD::SIGMA_P], RadFLD::SIGMA_P);
+    puser_table->values_are_log10[RadFLD::SIGMA_R] = InferHDF5OpacityFormat(
+        pin, "opacity_table_rosseland_format", var_paths[RadFLD::SIGMA_R], RadFLD::SIGMA_R);
 
     H5Fclose(file);
     H5Pclose(property_list_file);
@@ -255,8 +385,17 @@ void ReadHDF5OpacityTable(std::string fn, UserOpacityTable *puser_table, Paramet
   // Read 2D grid format: separate 1D coordinate arrays and 2D opacity grids
   AthenaArray<Real> temp_array, x2_array;
 
-  int temp_size = Read1DDatasetSize(fn, temp_path);
-  int pressure_size = Read1DDatasetSize(fn, x2_path);
+  Real temp_storage_epsilon, x2_storage_epsilon;
+  int temp_size = Read1DDatasetSize(fn, temp_path, &temp_storage_epsilon);
+  int pressure_size = Read1DDatasetSize(fn, x2_path, &x2_storage_epsilon);
+
+  if (temp_size < 2 || pressure_size < 2) {
+    std::stringstream msg;
+    msg << "### FATAL ERROR in ReadHDF5OpacityTable" << std::endl
+        << "Opacity axes must each contain at least two points; '" << temp_path << "' has "
+        << temp_size << " and '" << x2_path << "' has " << pressure_size << "." << std::endl;
+    ATHENA_ERROR(msg);
+  }
 
   // Set up proper 2D table structure
   puser_table->SetSize(nvar, pressure_size, temp_size);  // nvar, nx2=pressure_size, nx1=temp_size
@@ -264,7 +403,6 @@ void ReadHDF5OpacityTable(std::string fn, UserOpacityTable *puser_table, Paramet
   puser_table->nTemp = temp_size;
   puser_table->nPressure = pressure_size;
   puser_table->x2_axis_kind = x2_axis_kind;
-  puser_table->values_are_log10 = values_are_log10;
 
   // Read coordinate arrays
   temp_array.NewAthenaArray(temp_size);
@@ -279,6 +417,9 @@ void ReadHDF5OpacityTable(std::string fn, UserOpacityTable *puser_table, Paramet
                     1, start_mem, count_temp, temp_array);
   HDF5ReadRealArray(fn.c_str(), x2_path.c_str(), 1, start_file, count_pressure,
                     1, start_mem, count_pressure, x2_array);
+
+  ValidateUniformAxis(temp_array, temp_size, temp_path, temp_storage_epsilon);
+  ValidateUniformAxis(x2_array, pressure_size, x2_path, x2_storage_epsilon);
 
   // Set coordinate limits in physical units
   puser_table->tempMin = temp_array(0);
@@ -480,7 +621,7 @@ Real UserOpacityTable::GetOpacityFromRhoT(int var_index, Real density, Real temp
     log_x2 = std::log10(density) - 3.0*log_temperature + 18.0;
   }
   Real result = interpolate(var_index, log_x2, log_temperature);
-  if (values_are_log10) {
+  if (values_are_log10[var_index]) {
     result = std::pow(static_cast<Real>(10.0), result);
   }
   if (result < 0.0) {
