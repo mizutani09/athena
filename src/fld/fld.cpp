@@ -413,6 +413,33 @@ void FLD::UpdateOpacity(MeshBlock *pmb, AthenaArray<Real> &u_rad_fld,
   // radiation transport when coupling is disabled.
   if (!is_couple) sigma_p.ZeroClear();
 
+  // Transparent material is a supported FLD limit, but a negative or
+  // non-finite opacity has no meaningful closure interpretation.  Check the
+  // callback output here so the error identifies the producing cell instead
+  // of surfacing later as a NaN in a face coefficient.
+  for (int k = 0; k < sigma_r.GetDim3(); ++k) {
+    for (int j = 0; j < sigma_r.GetDim2(); ++j) {
+      for (int i = 0; i < sigma_r.GetDim1(); ++i) {
+        if (!std::isfinite(sigma_r(k,j,i)) || sigma_r(k,j,i) < 0.0) {
+          std::stringstream msg;
+          msg << "### FATAL ERROR in FLD opacity callback" << std::endl
+              << "Rosseland opacity at (k,j,i)=(" << k << "," << j << ","
+              << i << ") is " << sigma_r(k,j,i)
+              << "; opacity must be finite and non-negative." << std::endl;
+          ATHENA_ERROR(msg);
+        }
+        if (!std::isfinite(sigma_p(k,j,i)) || sigma_p(k,j,i) < 0.0) {
+          std::stringstream msg;
+          msg << "### FATAL ERROR in FLD opacity callback" << std::endl
+              << "Planck opacity at (k,j,i)=(" << k << "," << j << ","
+              << i << ") is " << sigma_p(k,j,i)
+              << "; opacity must be finite and non-negative." << std::endl;
+          ATHENA_ERROR(msg);
+        }
+      }
+    }
+  }
+
   if (!opacity_contract_diagnostic_printed_ && pmb->gid == 0 &&
       std::getenv("ATHENA_FLD_OPACITY_DIAGNOSTICS") != nullptr) {
     Real max_sigma_p = 0.0;

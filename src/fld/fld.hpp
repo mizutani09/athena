@@ -11,9 +11,11 @@
 // C headers
 
 // C++ headers
+#include <algorithm>
 #include <cstdint>  // std::int64_t
 #include <cstdio> // std::size_t
 #include <iostream>
+#include <limits>
 #include <unordered_map>
 #include <vector>
 
@@ -57,14 +59,152 @@ namespace RadFLD {
   }
 
   // Levermore-Pomraning FLD closure shared by every radiation operator.
+  struct ClosureValues {
+    Real lambda;
+    Real lambda_r;
+    Real chi;
+    // This is lambda/sigma.  Evaluating it directly is singular for a
+    // transparent face, while lambda_r*E/|grad E| has a finite streaming
+    // limit.
+    Real lambda_over_opacity;
+    bool valid;
+  };
+
+  inline bool IsValidClosureGradient(const Real gradient) {
+    // +Inf is the well-defined streaming limit.  NaN and negative gradients
+    // indicate corrupted state or arithmetic upstream of the closure.
+    return gradient >= 0.0 && !std::isnan(gradient);
+  }
+
+  inline bool IsValidClosureInput(const Real opacity, const Real erad,
+                                  const Real gradient) {
+    return std::isfinite(opacity) && opacity >= 0.0
+        && std::isfinite(erad) && erad >= 0.0
+        && IsValidClosureGradient(gradient);
+  }
+
+  inline Real InvalidClosureValue() {
+    return std::numeric_limits<Real>::quiet_NaN();
+  }
+
   inline Real FluxLimiter(const Real r, const bool fixed) {
-    return fixed ? ONE_3RD : (2.0 + r)/(6.0 + 3.0*r + r*r);
+    if (fixed) return ONE_3RD;
+    if (std::isnan(r) || r < 0.0) return InvalidClosureValue();
+    if (std::isinf(r)) return 0.0;
+    if (r <= 1.0) return (2.0 + r)/(6.0 + 3.0*r + r*r);
+
+    // Multiply numerator and denominator by 1/r^2.  The original
+    // expression overflows at r ~ sqrt(max(Real)) even though the closure
+    // itself is already close to its streaming limit.
+    const Real inv_r = 1.0/r;
+    const Real inv_r2 = inv_r*inv_r;
+    return (inv_r + 2.0*inv_r2)/(1.0 + 3.0*inv_r + 6.0*inv_r2);
+  }
+
+  inline Real FluxLimiterTimesR(const Real r, const bool fixed) {
+    if (fixed) {
+      if (std::isnan(r) || r < 0.0) return InvalidClosureValue();
+      if (std::isinf(r)) return std::numeric_limits<Real>::max();
+      const Real maximum = std::numeric_limits<Real>::max();
+      return r > maximum/3.0 ? maximum : r/3.0;
+    }
+    if (std::isnan(r) || r < 0.0) return InvalidClosureValue();
+    if (std::isinf(r)) return 1.0;
+    if (r <= 1.0) return r*FluxLimiter(r, false);
+
+    const Real inv_r = 1.0/r;
+    const Real inv_r2 = inv_r*inv_r;
+    return (1.0 + 2.0*inv_r)/(1.0 + 3.0*inv_r + 6.0*inv_r2);
   }
 
   inline Real EddingtonFactor(const Real r, const bool fixed) {
     if (fixed) return ONE_3RD;
     const Real lambda = FluxLimiter(r, false);
-    return lambda + (lambda*r)*(lambda*r);
+    const Real lambda_r = FluxLimiterTimesR(r, false);
+    return lambda + lambda_r*lambda_r;
+  }
+
+  inline Real SaturatingNonnegativeQuotient(const Real numerator,
+                                            const Real denominator) {
+    const long double value = static_cast<long double>(numerator)
+                            / static_cast<long double>(denominator);
+    const long double maximum =
+        static_cast<long double>(std::numeric_limits<Real>::max());
+    return static_cast<Real>(value >= maximum ? maximum : value);
+  }
+
+  inline ClosureValues EvaluateClosure(const Real gradient, const Real opacity,
+                                       const Real erad, const bool fixed) {
+    const Real invalid = InvalidClosureValue();
+    ClosureValues result{invalid, invalid, invalid, invalid, false};
+    if (!IsValidClosureInput(opacity, erad, gradient)) return result;
+
+    // A fixed limiter retains lambda=1/3 by definition.  At zero opacity a
+    // nonzero gradient would require an infinite diffusion coefficient, so
+    // that combination is outside the finite-coefficient fixed-limiter
+    // contract and must be diagnosed by the caller.
+    if (fixed && opacity == 0.0) return result;
+
+    Real r = 0.0;
+    if (gradient > 0.0 && opacity > 0.0 && erad > 0.0) {
+      // long double avoids an intermediate underflow/overflow when the three
+      // finite inputs span much of the Real range.  Conversion back to Real
+      // intentionally maps an out-of-range ratio to the corresponding
+      // streaming/diffusion limit.
+      const long double ratio = static_cast<long double>(gradient)
+                              / static_cast<long double>(opacity)
+                              / static_cast<long double>(erad);
+      r = static_cast<Real>(ratio);
+    } else if (gradient > 0.0 && (opacity == 0.0 || erad == 0.0)) {
+      r = std::numeric_limits<Real>::infinity();
+    }
+
+    result.lambda = FluxLimiter(r, fixed);
+    result.lambda_r = fixed
+        ? (std::isinf(r) ? std::numeric_limits<Real>::max()
+                         : SaturatingNonnegativeQuotient(r, static_cast<Real>(3.0)))
+        : FluxLimiterTimesR(r, false);
+    result.chi = fixed ? ONE_3RD : result.lambda + result.lambda_r*result.lambda_r;
+    if (gradient == 0.0 || fixed) {
+      result.lambda_over_opacity = (opacity == 0.0)
+          ? 0.0 : SaturatingNonnegativeQuotient(result.lambda, opacity);
+    } else if (std::isinf(gradient)) {
+      result.lambda_over_opacity = 0.0;
+    } else {
+      // lambda/sigma = (lambda R)*E/|grad E|.  This remains finite when
+      // sigma is zero and avoids the 0*Inf product in the streaming limit.
+      const long double value = static_cast<long double>(result.lambda_r)
+                              * static_cast<long double>(erad)
+                              / static_cast<long double>(gradient);
+      const long double maximum =
+          static_cast<long double>(std::numeric_limits<Real>::max());
+      result.lambda_over_opacity = static_cast<Real>(value >= maximum ? maximum : value);
+    }
+    result.valid = std::isfinite(result.lambda)
+                && std::isfinite(result.lambda_r)
+                && std::isfinite(result.chi)
+                && std::isfinite(result.lambda_over_opacity);
+    return result;
+  }
+
+  inline Real FaceOpacity(const Real left, const Real right,
+                          const Real inverse_width) {
+    if (!std::isfinite(left) || left < 0.0 || !std::isfinite(right)
+        || right < 0.0 || !std::isfinite(inverse_width)
+        || inverse_width <= 0.0) {
+      return InvalidClosureValue();
+    }
+
+    // Preserve the Howell-Greenough cap, but avoid both 0/0 and overflow in
+    // the arithmetic/harmonic means.  For zero opacity on both sides the
+    // harmonic mean is explicitly zero.
+    const Real arithmetic = 0.5*left + 0.5*right;
+    const Real larger = std::max(left, right);
+    const Real smaller = std::min(left, right);
+    const Real harmonic = (larger == 0.0)
+        ? 0.0 : smaller*(2.0/(1.0 + smaller/larger));
+    const Real cap = 2.0*TWO_3RD*inverse_width;
+    return std::min(arithmetic, std::max(harmonic, cap));
   }
 }
 

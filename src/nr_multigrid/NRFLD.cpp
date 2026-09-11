@@ -44,6 +44,35 @@ inline Real ResolvableThermalDifference(Real equilibrium_rad, Real u_rad) {
   return (std::abs(difference) <= roundoff) ? 0.0 : difference;
 }
 
+inline RadFLD::ClosureValues RequireFaceClosure(const Real gradient,
+                                                const Real opacity,
+                                                const Real erad,
+                                                const bool fixed,
+                                                const char *face, const int k,
+                                                const int j, const int i) {
+  const RadFLD::ClosureValues closure =
+      RadFLD::EvaluateClosure(gradient, opacity, erad, fixed);
+  if (!closure.valid) {
+    std::stringstream msg;
+    msg << "### FATAL ERROR in NR-FLD face closure at " << face
+        << " cell (k,j,i)=(" << k << "," << j << "," << i << ")"
+        << ": gradient=" << gradient << " opacity=" << opacity
+        << " Er=" << erad
+        << ". Opacity and Er must be finite and non-negative;"
+        << " fixed limiter with zero opacity and nonzero gradient is unsupported.\n";
+    ATHENA_ERROR(msg);
+  }
+  return closure;
+}
+
+inline Real FaceGradient(const Real gx, const Real gy, const Real gz) {
+  return std::hypot(gx, std::hypot(gy, gz));
+}
+
+inline Real FaceEnergy(const Real left, const Real right) {
+  return 0.5*left + 0.5*right;
+}
+
 }  // namespace
 
 //----------------------------------------------------------------------------------------
@@ -329,6 +358,26 @@ void NRFLD::CalculateCoefficientsOnce(const AthenaArray<Real> &u_pre,
   Real idx = 1.0/dx;
   Real idy = 1.0/dy;
   Real idz = 1.0/dz;
+  const int check_il = std::max(0, is-1);
+  const int check_iu = std::min(u_pre.GetDim1()-1, ie+1);
+  const int check_jl = std::max(0, js-1);
+  const int check_ju = std::min(u_pre.GetDim2()-1, je+1);
+  const int check_kl = std::max(0, ks-1);
+  const int check_ku = std::min(u_pre.GetDim3()-1, ke+1);
+  for (int k=check_kl; k<=check_ku; ++k) {
+    for (int j=check_jl; j<=check_ju; ++j) {
+      for (int i=check_il; i<=check_iu; ++i) {
+        if (!std::isfinite(u_pre(k,j,i)) || u_pre(k,j,i) < 0.0) {
+          std::stringstream msg;
+          msg << "### FATAL ERROR in NR-FLD radiation energy" << std::endl
+              << "Er at (k,j,i)=(" << k << "," << j << "," << i << ") is "
+              << u_pre(k,j,i)
+              << "; radiation energy must be finite and non-negative.\n";
+          ATHENA_ERROR(msg);
+        }
+      }
+    }
+  }
   for (int k=ks; k<=ke; k++) {
     for (int j=js; j<=je; j++) {
       // The lower x-face reuses the upper face from i-1 below.  This loop has
@@ -351,7 +400,7 @@ void NRFLD::CalculateCoefficientsOnce(const AthenaArray<Real> &u_pre,
         // not to use loop for better performance
         // compute derivetive at faces and store in derivetive array
 
-        Real sigma_rface, R_face, lambda_face;
+        Real sigma_rface;
         Real gx, gy, gz, gradE_face, E_face;
 
         // The + face of the previous active cell is exactly the - face of
@@ -359,96 +408,96 @@ void NRFLD::CalculateCoefficientsOnce(const AthenaArray<Real> &u_pre,
         // needs a separate stencil evaluation.
         if (i == is) {
           // for i-1/2 face
-          sigma_rface = std::min(0.5*(sigma_r(k,j,i) + sigma_r(k,j,i-1)),
-                      std::max(2.0*sigma_r(k,j,i)*sigma_r(k,j,i-1)/(sigma_r(k,j,i) + sigma_r(k,j,i-1)),
-                      2.0*TWO_3RD*idx)); // Howell & Greenough 2002 (after eq. 15)
+          sigma_rface = RadFLD::FaceOpacity(sigma_r(k,j,i), sigma_r(k,j,i-1), idx);
           gx = (u_pre(k,j,i-1) - u_pre(k,j,i))*idx;
           gy = 0.25*idy*((u_pre(k,j+1,i-1) - u_pre(k,j-1,i-1)) + (u_pre(k,j+1,i) - u_pre(k,j-1,i)));
           gz = 0.25*idz*((u_pre(k+1,j,i-1) - u_pre(k-1,j,i-1)) + (u_pre(k+1,j,i) - u_pre(k-1,j,i)));
-          gradE_face = std::sqrt(SQR(gx) + SQR(gy) + SQR(gz));
-          E_face = 0.5*(u_pre(k,j,i) + u_pre(k,j,i-1));
-          R_face = gradE_face/(sigma_rface*E_face);
-          lambda_face = RadFLD::FluxLimiter(R_face, pfld->fixed_flux_limiter);
-          derivetive(NewtonRaphsonFLD::dFr_dEr_xm,k,j,i) = pfld->c_ph*lambda_face/sigma_rface;
+          gradE_face = FaceGradient(gx, gy, gz);
+          E_face = FaceEnergy(u_pre(k,j,i), u_pre(k,j,i-1));
+          const RadFLD::ClosureValues closure = RequireFaceClosure(
+              gradE_face, sigma_rface, E_face, pfld->fixed_flux_limiter,
+              "x-", k, j, i);
+          derivetive(NewtonRaphsonFLD::dFr_dEr_xm,k,j,i) =
+              pfld->c_ph*closure.lambda_over_opacity;
         } else {
           derivetive(NewtonRaphsonFLD::dFr_dEr_xm,k,j,i) =
               derivetive(NewtonRaphsonFLD::dFr_dEr_xp,k,j,i-1);
         }
 
          // for i+1/2 face
-        sigma_rface = std::min(0.5*(sigma_r(k,j,i) + sigma_r(k,j,i+1)),
-                      std::max(2.0*sigma_r(k,j,i)*sigma_r(k,j,i+1)/(sigma_r(k,j,i) + sigma_r(k,j,i+1)),
-                      2.0*TWO_3RD*idx)); // Howell & Greenough 2002 (after eq. 15)
+        sigma_rface = RadFLD::FaceOpacity(sigma_r(k,j,i), sigma_r(k,j,i+1), idx);
         gx = (u_pre(k,j,i+1) - u_pre(k,j,i))*idx;
         gy = 0.25*idy*((u_pre(k,j+1,i+1) - u_pre(k,j-1,i+1)) + (u_pre(k,j+1,i) - u_pre(k,j-1,i)));
         gz = 0.25*idz*((u_pre(k+1,j,i+1) - u_pre(k-1,j,i+1)) + (u_pre(k+1,j,i) - u_pre(k-1,j,i)));
-        gradE_face = std::sqrt(SQR(gx) + SQR(gy) + SQR(gz));
-        E_face = 0.5*(u_pre(k,j,i) + u_pre(k,j,i+1));
-        R_face = gradE_face/(sigma_rface*E_face);
-        lambda_face = RadFLD::FluxLimiter(R_face, pfld->fixed_flux_limiter);
-        derivetive(NewtonRaphsonFLD::dFr_dEr_xp,k,j,i) = pfld->c_ph*lambda_face/sigma_rface;
+        gradE_face = FaceGradient(gx, gy, gz);
+        E_face = FaceEnergy(u_pre(k,j,i), u_pre(k,j,i+1));
+        const RadFLD::ClosureValues closure_xp = RequireFaceClosure(
+            gradE_face, sigma_rface, E_face, pfld->fixed_flux_limiter,
+            "x+", k, j, i);
+        derivetive(NewtonRaphsonFLD::dFr_dEr_xp,k,j,i) =
+            pfld->c_ph*closure_xp.lambda_over_opacity;
 
         if (j == js) {
           // for j-1/2 face
-          sigma_rface = std::min(0.5*(sigma_r(k,j,i) + sigma_r(k,j-1,i)),
-                      std::max(2.0*sigma_r(k,j,i)*sigma_r(k,j-1,i)/(sigma_r(k,j,i) + sigma_r(k,j-1,i)),
-                      2.0*TWO_3RD*idx)); // Howell & Greenough 2002 (after eq. 15)
+          sigma_rface = RadFLD::FaceOpacity(sigma_r(k,j,i), sigma_r(k,j-1,i), idx);
           gx = 0.25*idx*((u_pre(k,j-1,i+1) - u_pre(k,j-1,i-1)) + (u_pre(k,j,i+1) - u_pre(k,j,i-1)));
           gy = (u_pre(k,j-1,i) - u_pre(k,j,i))*idy;
           gz = 0.25*idz*((u_pre(k+1,j-1,i) - u_pre(k-1,j-1,i)) + (u_pre(k+1,j,i) - u_pre(k-1,j,i)));
-          gradE_face = std::sqrt(SQR(gx) + SQR(gy) + SQR(gz));
-          E_face = 0.5*(u_pre(k,j,i) + u_pre(k,j-1,i));
-          R_face = gradE_face/(sigma_rface*E_face);
-          lambda_face = RadFLD::FluxLimiter(R_face, pfld->fixed_flux_limiter);
-          derivetive(NewtonRaphsonFLD::dFr_dEr_ym,k,j,i) = pfld->c_ph*lambda_face/sigma_rface;
+          gradE_face = FaceGradient(gx, gy, gz);
+          E_face = FaceEnergy(u_pre(k,j,i), u_pre(k,j-1,i));
+          const RadFLD::ClosureValues closure_ym = RequireFaceClosure(
+              gradE_face, sigma_rface, E_face, pfld->fixed_flux_limiter,
+              "y-", k, j, i);
+          derivetive(NewtonRaphsonFLD::dFr_dEr_ym,k,j,i) =
+              pfld->c_ph*closure_ym.lambda_over_opacity;
         } else {
           derivetive(NewtonRaphsonFLD::dFr_dEr_ym,k,j,i) =
               derivetive(NewtonRaphsonFLD::dFr_dEr_yp,k,j-1,i);
         }
 
         // for j+1/2 face
-        sigma_rface = std::min(0.5*(sigma_r(k,j,i) + sigma_r(k,j+1,i)),
-                      std::max(2.0*sigma_r(k,j,i)*sigma_r(k,j+1,i)/(sigma_r(k,j,i) + sigma_r(k,j+1,i)),
-                      2.0*TWO_3RD*idx)); // Howell & Greenough 2002 (after eq. 15)
+        sigma_rface = RadFLD::FaceOpacity(sigma_r(k,j,i), sigma_r(k,j+1,i), idx);
         gx = 0.25*idx*((u_pre(k,j+1,i+1) - u_pre(k,j+1,i-1)) + (u_pre(k,j,i+1) - u_pre(k,j,i-1)));
         gy = (u_pre(k,j+1,i) - u_pre(k,j,i))*idy;
         gz = 0.25*idz*((u_pre(k+1,j+1,i) - u_pre(k-1,j+1,i)) + (u_pre(k+1,j,i) - u_pre(k-1,j,i)));
-        gradE_face = std::sqrt(SQR(gx) + SQR(gy) + SQR(gz));
-        E_face = 0.5*(u_pre(k,j,i) + u_pre(k,j+1,i));
-        R_face = gradE_face/(sigma_rface*E_face);
-        lambda_face = RadFLD::FluxLimiter(R_face, pfld->fixed_flux_limiter);
-        derivetive(NewtonRaphsonFLD::dFr_dEr_yp,k,j,i) = pfld->c_ph*lambda_face/sigma_rface;
+        gradE_face = FaceGradient(gx, gy, gz);
+        E_face = FaceEnergy(u_pre(k,j,i), u_pre(k,j+1,i));
+        const RadFLD::ClosureValues closure_yp = RequireFaceClosure(
+            gradE_face, sigma_rface, E_face, pfld->fixed_flux_limiter,
+            "y+", k, j, i);
+        derivetive(NewtonRaphsonFLD::dFr_dEr_yp,k,j,i) =
+            pfld->c_ph*closure_yp.lambda_over_opacity;
 
         if (k == ks) {
           // for k-1/2 face
-          sigma_rface = std::min(0.5*(sigma_r(k,j,i) + sigma_r(k-1,j,i)),
-                      std::max(2.0*sigma_r(k,j,i)*sigma_r(k-1,j,i)/(sigma_r(k,j,i) + sigma_r(k-1,j,i)),
-                      2.0*TWO_3RD*idx)); // Howell & Greenough 2002 (after eq. 15)
+          sigma_rface = RadFLD::FaceOpacity(sigma_r(k,j,i), sigma_r(k-1,j,i), idx);
           gx = 0.25*idx*((u_pre(k-1,j,i+1) - u_pre(k-1,j,i-1)) + (u_pre(k,j,i+1) - u_pre(k,j,i-1)));
           gy = 0.25*idy*((u_pre(k-1,j+1,i) - u_pre(k-1,j-1,i)) + (u_pre(k,j+1,i) - u_pre(k,j-1,i)));
           gz = (u_pre(k-1,j,i) - u_pre(k,j,i))*idz;
-          gradE_face = std::sqrt(SQR(gx) + SQR(gy) + SQR(gz));
-          E_face = 0.5*(u_pre(k,j,i) + u_pre(k-1,j,i));
-          R_face = gradE_face/(sigma_rface*E_face);
-          lambda_face = RadFLD::FluxLimiter(R_face, pfld->fixed_flux_limiter);
-          derivetive(NewtonRaphsonFLD::dFr_dEr_zm,k,j,i) = pfld->c_ph*lambda_face/sigma_rface;
+          gradE_face = FaceGradient(gx, gy, gz);
+          E_face = FaceEnergy(u_pre(k,j,i), u_pre(k-1,j,i));
+          const RadFLD::ClosureValues closure_zm = RequireFaceClosure(
+              gradE_face, sigma_rface, E_face, pfld->fixed_flux_limiter,
+              "z-", k, j, i);
+          derivetive(NewtonRaphsonFLD::dFr_dEr_zm,k,j,i) =
+              pfld->c_ph*closure_zm.lambda_over_opacity;
         } else {
           derivetive(NewtonRaphsonFLD::dFr_dEr_zm,k,j,i) =
               derivetive(NewtonRaphsonFLD::dFr_dEr_zp,k-1,j,i);
         }
 
         // for k+1/2 face
-        sigma_rface = std::min(0.5*(sigma_r(k,j,i) + sigma_r(k+1,j,i)),
-                      std::max(2.0*sigma_r(k,j,i)*sigma_r(k+1,j,i)/(sigma_r(k,j,i) + sigma_r(k+1,j,i)),
-                      2.0*TWO_3RD*idx)); // Howell & Greenough 2002 (after eq. 15)
+        sigma_rface = RadFLD::FaceOpacity(sigma_r(k,j,i), sigma_r(k+1,j,i), idx);
         gx = 0.25*idx*((u_pre(k+1,j,i+1) - u_pre(k+1,j,i-1)) + (u_pre(k,j,i+1) - u_pre(k,j,i-1)));
         gy = 0.25*idy*((u_pre(k+1,j+1,i) - u_pre(k+1,j-1,i)) + (u_pre(k,j+1,i) - u_pre(k,j-1,i)));
         gz = (u_pre(k+1,j,i) - u_pre(k,j,i))*idz;
-        gradE_face = std::sqrt(SQR(gx) + SQR(gy) + SQR(gz));
-        E_face = 0.5*(u_pre(k,j,i) + u_pre(k+1,j,i));
-        R_face = gradE_face/(sigma_rface*E_face);
-        lambda_face = RadFLD::FluxLimiter(R_face, pfld->fixed_flux_limiter);
-        derivetive(NewtonRaphsonFLD::dFr_dEr_zp,k,j,i) = pfld->c_ph*lambda_face/sigma_rface;
+        gradE_face = FaceGradient(gx, gy, gz);
+        E_face = FaceEnergy(u_pre(k,j,i), u_pre(k+1,j,i));
+        const RadFLD::ClosureValues closure_zp = RequireFaceClosure(
+            gradE_face, sigma_rface, E_face, pfld->fixed_flux_limiter,
+            "z+", k, j, i);
+        derivetive(NewtonRaphsonFLD::dFr_dEr_zp,k,j,i) =
+            pfld->c_ph*closure_zp.lambda_over_opacity;
         // Preserve the lagged upper-face diffusion coefficient used by this
         // Newton solve.  The Marshak residual/Jacobian and diagnostics must
         // use this exact coefficient rather than an uninitialized side array
@@ -918,77 +967,73 @@ void NRFLD::PrintCellPhysicsDebug(int k, int j, int i) {
 
   auto print_face = [&](const char *label, Real sigma_face, Real gx, Real gy, Real gz,
                         Real e_face, Real coeff_face) {
-    const Real grad_face = std::sqrt(SQR(gx) + SQR(gy) + SQR(gz));
-    const Real r_face = grad_face/(std::max(sigma_face*e_face, TINY_NUMBER));
-    const Real lambda_face = RadFLD::FluxLimiter(
-        r_face, pfld->fixed_flux_limiter);
+    const Real grad_face = FaceGradient(gx, gy, gz);
+    const RadFLD::ClosureValues closure = RequireFaceClosure(
+        grad_face, sigma_face, e_face, pfld->fixed_flux_limiter,
+        label, k, j, i);
+    Real r_face = 0.0;
+    if (grad_face > 0.0 && (sigma_face == 0.0 || e_face == 0.0)) {
+      r_face = std::numeric_limits<Real>::infinity();
+    } else if (grad_face > 0.0) {
+      r_face = static_cast<Real>(static_cast<long double>(grad_face)
+          / static_cast<long double>(sigma_face)
+          / static_cast<long double>(e_face));
+    }
     std::cout << "      " << label
               << " sigma_face=" << sigma_face
               << " E_face=" << e_face
               << " gradE_face=" << grad_face
               << " R_face=" << r_face
-              << " lambda_face=" << lambda_face
+              << " lambda_face=" << closure.lambda
               << " dFr_coeff=" << coeff_face
               << std::endl;
   };
 
-  Real sigma_face = std::min(0.5*(sigma_r(k,j,i) + sigma_r(k,j,i-1)),
-                    std::max(2.0*sigma_r(k,j,i)*sigma_r(k,j,i-1)/(sigma_r(k,j,i) + sigma_r(k,j,i-1)),
-                    2.0*TWO_3RD*idx));
+  Real sigma_face = RadFLD::FaceOpacity(sigma_r(k,j,i), sigma_r(k,j,i-1), idx);
   Real gx = (u_pre(k,j,i-1) - u_pre(k,j,i))*idx;
   Real gy = 0.25*idy*((u_pre(k,j+1,i-1) - u_pre(k,j-1,i-1)) + (u_pre(k,j+1,i) - u_pre(k,j-1,i)));
   Real gz = 0.25*idz*((u_pre(k+1,j,i-1) - u_pre(k-1,j,i-1)) + (u_pre(k+1,j,i) - u_pre(k-1,j,i)));
-  Real e_face = 0.5*(u_pre(k,j,i) + u_pre(k,j,i-1));
+  Real e_face = FaceEnergy(u_pre(k,j,i), u_pre(k,j,i-1));
   print_face("face_xm", sigma_face, gx, gy, gz, e_face,
              derivetive_(NewtonRaphsonFLD::dFr_dEr_xm, k, j, i));
 
-  sigma_face = std::min(0.5*(sigma_r(k,j,i) + sigma_r(k,j,i+1)),
-               std::max(2.0*sigma_r(k,j,i)*sigma_r(k,j,i+1)/(sigma_r(k,j,i) + sigma_r(k,j,i+1)),
-               2.0*TWO_3RD*idx));
+  sigma_face = RadFLD::FaceOpacity(sigma_r(k,j,i), sigma_r(k,j,i+1), idx);
   gx = (u_pre(k,j,i+1) - u_pre(k,j,i))*idx;
   gy = 0.25*idy*((u_pre(k,j+1,i+1) - u_pre(k,j-1,i+1)) + (u_pre(k,j+1,i) - u_pre(k,j-1,i)));
   gz = 0.25*idz*((u_pre(k+1,j,i+1) - u_pre(k-1,j,i+1)) + (u_pre(k+1,j,i) - u_pre(k-1,j,i)));
-  e_face = 0.5*(u_pre(k,j,i) + u_pre(k,j,i+1));
+  e_face = FaceEnergy(u_pre(k,j,i), u_pre(k,j,i+1));
   print_face("face_xp", sigma_face, gx, gy, gz, e_face,
              derivetive_(NewtonRaphsonFLD::dFr_dEr_xp, k, j, i));
 
-  sigma_face = std::min(0.5*(sigma_r(k,j,i) + sigma_r(k,j-1,i)),
-               std::max(2.0*sigma_r(k,j,i)*sigma_r(k,j-1,i)/(sigma_r(k,j,i) + sigma_r(k,j-1,i)),
-               2.0*TWO_3RD*idx));
+  sigma_face = RadFLD::FaceOpacity(sigma_r(k,j,i), sigma_r(k,j-1,i), idx);
   gx = 0.25*idx*((u_pre(k,j-1,i+1) - u_pre(k,j-1,i-1)) + (u_pre(k,j,i+1) - u_pre(k,j,i-1)));
   gy = (u_pre(k,j-1,i) - u_pre(k,j,i))*idy;
   gz = 0.25*idz*((u_pre(k+1,j-1,i) - u_pre(k-1,j-1,i)) + (u_pre(k+1,j,i) - u_pre(k-1,j,i)));
-  e_face = 0.5*(u_pre(k,j,i) + u_pre(k,j-1,i));
+  e_face = FaceEnergy(u_pre(k,j,i), u_pre(k,j-1,i));
   print_face("face_ym", sigma_face, gx, gy, gz, e_face,
              derivetive_(NewtonRaphsonFLD::dFr_dEr_ym, k, j, i));
 
-  sigma_face = std::min(0.5*(sigma_r(k,j,i) + sigma_r(k,j+1,i)),
-               std::max(2.0*sigma_r(k,j,i)*sigma_r(k,j+1,i)/(sigma_r(k,j,i) + sigma_r(k,j+1,i)),
-               2.0*TWO_3RD*idx));
+  sigma_face = RadFLD::FaceOpacity(sigma_r(k,j,i), sigma_r(k,j+1,i), idx);
   gx = 0.25*idx*((u_pre(k,j+1,i+1) - u_pre(k,j+1,i-1)) + (u_pre(k,j,i+1) - u_pre(k,j,i-1)));
   gy = (u_pre(k,j+1,i) - u_pre(k,j,i))*idy;
   gz = 0.25*idz*((u_pre(k+1,j+1,i) - u_pre(k-1,j+1,i)) + (u_pre(k+1,j,i) - u_pre(k-1,j,i)));
-  e_face = 0.5*(u_pre(k,j,i) + u_pre(k,j+1,i));
+  e_face = FaceEnergy(u_pre(k,j,i), u_pre(k,j+1,i));
   print_face("face_yp", sigma_face, gx, gy, gz, e_face,
              derivetive_(NewtonRaphsonFLD::dFr_dEr_yp, k, j, i));
 
-  sigma_face = std::min(0.5*(sigma_r(k,j,i) + sigma_r(k-1,j,i)),
-               std::max(2.0*sigma_r(k,j,i)*sigma_r(k-1,j,i)/(sigma_r(k,j,i) + sigma_r(k-1,j,i)),
-               2.0*TWO_3RD*idx));
+  sigma_face = RadFLD::FaceOpacity(sigma_r(k,j,i), sigma_r(k-1,j,i), idx);
   gx = 0.25*idx*((u_pre(k-1,j,i+1) - u_pre(k-1,j,i-1)) + (u_pre(k,j,i+1) - u_pre(k,j,i-1)));
   gy = 0.25*idy*((u_pre(k-1,j+1,i) - u_pre(k-1,j-1,i)) + (u_pre(k,j+1,i) - u_pre(k,j-1,i)));
   gz = (u_pre(k-1,j,i) - u_pre(k,j,i))*idz;
-  e_face = 0.5*(u_pre(k,j,i) + u_pre(k-1,j,i));
+  e_face = FaceEnergy(u_pre(k,j,i), u_pre(k-1,j,i));
   print_face("face_zm", sigma_face, gx, gy, gz, e_face,
              derivetive_(NewtonRaphsonFLD::dFr_dEr_zm, k, j, i));
 
-  sigma_face = std::min(0.5*(sigma_r(k,j,i) + sigma_r(k+1,j,i)),
-               std::max(2.0*sigma_r(k,j,i)*sigma_r(k+1,j,i)/(sigma_r(k,j,i) + sigma_r(k+1,j,i)),
-               2.0*TWO_3RD*idx));
+  sigma_face = RadFLD::FaceOpacity(sigma_r(k,j,i), sigma_r(k+1,j,i), idx);
   gx = 0.25*idx*((u_pre(k+1,j,i+1) - u_pre(k+1,j,i-1)) + (u_pre(k,j,i+1) - u_pre(k,j,i-1)));
   gy = 0.25*idy*((u_pre(k+1,j+1,i) - u_pre(k+1,j-1,i)) + (u_pre(k,j+1,i) - u_pre(k,j-1,i)));
   gz = (u_pre(k+1,j,i) - u_pre(k,j,i))*idz;
-  e_face = 0.5*(u_pre(k,j,i) + u_pre(k+1,j,i));
+  e_face = FaceEnergy(u_pre(k,j,i), u_pre(k+1,j,i));
   print_face("face_zp", sigma_face, gx, gy, gz, e_face,
              derivetive_(NewtonRaphsonFLD::dFr_dEr_zp, k, j, i));
 

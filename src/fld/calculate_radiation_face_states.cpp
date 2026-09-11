@@ -4,6 +4,7 @@
 
 #include <algorithm>
 #include <cmath>
+#include <sstream>
 
 #include "../athena.hpp"
 #include "../athena_arrays.hpp"
@@ -37,6 +38,25 @@ void ReconstructX3(Reconstruction *precon, int order, int k, int j, int il, int 
   else if (order == 2) precon->PiecewiseLinearX3(k, j, il, iu, q, ql, qr);
   else precon->PiecewiseParabolicX3(k, j, il, iu, q, ql, qr);
 }
+
+RadFLD::ClosureValues RequireClosure(const Real gradient, const Real opacity,
+                                     const Real erad, const bool fixed,
+                                     const char *context, const int k,
+                                     const int j, const int i) {
+  const RadFLD::ClosureValues closure =
+      RadFLD::EvaluateClosure(gradient, opacity, erad, fixed);
+  if (!closure.valid) {
+    std::stringstream msg;
+    msg << "### FATAL ERROR in FLD closure at " << context
+        << " cell (k,j,i)=(" << k << "," << j << "," << i << ")"
+        << ": gradient=" << gradient << " opacity=" << opacity
+        << " Er=" << erad
+        << ". Opacity and Er must be finite and non-negative;"
+        << " fixed limiter with zero opacity and nonzero gradient is unsupported.\n";
+    ATHENA_ERROR(msg);
+  }
+  return closure;
+}
 }  // namespace
 
 void FLD::CalculateRadiationFaceStates(const int order) {
@@ -51,6 +71,24 @@ void FLD::CalculateRadiationFaceStates(const int order) {
   const int ju = pmb->pmy_mesh->f2 ? pmb->je+stencil : pmb->je;
   const int kl = pmb->pmy_mesh->f3 ? pmb->ks-stencil : pmb->ks;
   const int ku = pmb->pmy_mesh->f3 ? pmb->ke+stencil : pmb->ke;
+
+  // Check the complete reconstruction stencil before taking differences.
+  // Otherwise a negative/non-finite neighbor could be hidden by a finite
+  // face average and only appear much later in the Riemann solve.
+  for (int k = kl; k <= ku; ++k) {
+    for (int j = jl; j <= ju; ++j) {
+      for (int i = il; i <= iu; ++i) {
+        if (!std::isfinite(u_rad(k,j,i)) || u_rad(k,j,i) < 0.0) {
+          std::stringstream msg;
+          msg << "### FATAL ERROR in FLD radiation energy" << std::endl
+              << "Er at (k,j,i)=(" << k << "," << j << "," << i << ") is "
+              << u_rad(k,j,i)
+              << "; radiation energy must be finite and non-negative.\n";
+          ATHENA_ERROR(msg);
+        }
+      }
+    }
+  }
 
   // Reconstruct a compact, internally consistent state.  In particular total
   // pressure is not reconstructed independently: HLLC forms p_gas+lambda*E
@@ -70,12 +108,14 @@ void FLD::CalculateRadiationFaceStates(const int order) {
         const Real gx = idx * (u_rad(k, j, ip) - u_rad(k, j, im));
         const Real gy = idy * (u_rad(k, jp, i) - u_rad(k, jm, i));
         const Real gz = idz * (u_rad(kp, j, i) - u_rad(km, j, i));
-        const Real grad = std::sqrt(SQR(gx) + SQR(gy) + SQR(gz));
-        const Real erad = std::max(u_rad(k, j, i), TINY_NUMBER);
-        const Real sigma = std::max(sigma_r(k, j, i), TINY_NUMBER);
-        const Real r = grad / (sigma * erad);
-        const Real lambda = RadFLD::FluxLimiter(r, fixed_flux_limiter);
-        const Real chi = RadFLD::EddingtonFactor(r, fixed_flux_limiter);
+        const Real grad = std::hypot(gx, std::hypot(gy, gz));
+        const Real erad = u_rad(k, j, i);
+        const Real sigma = sigma_r(k, j, i);
+        const RadFLD::ClosureValues closure = RequireClosure(
+            grad, sigma, erad, fixed_flux_limiter, "CalculateRadiationFaceStates",
+            k, j, i);
+        const Real lambda = closure.lambda;
+        const Real chi = closure.chi;
         const Real ar = 0.5*(3.0-chi);
 
         rad_state_cc_(RadFLD::ERAD, k, j, i) = erad;
@@ -146,10 +186,12 @@ Real FLD::RadiationSoundSpeedSquared(int k, int j, int i, int dir) const {
   const Real gx = 0.5*(u_rad(k,j,i+1)-u_rad(k,j,i-1))/pmb->pcoord->dx1f(i);
   const Real gy = 0.5*(u_rad(k,j+1,i)-u_rad(k,j-1,i))/pmb->pcoord->dx2f(j);
   const Real gz = 0.5*(u_rad(k+1,j,i)-u_rad(k-1,j,i))/pmb->pcoord->dx3f(k);
-  const Real grad = std::sqrt(SQR(gx)+SQR(gy)+SQR(gz));
-  const Real erad = std::max(u_rad(k,j,i), TINY_NUMBER);
-  const Real r = grad/(std::max(sigma_r(k,j,i), TINY_NUMBER)*erad);
-  const Real lambda = RadFLD::FluxLimiter(r, fixed_flux_limiter);
+  const Real grad = std::hypot(gx, std::hypot(gy, gz));
+  const Real erad = u_rad(k,j,i);
+  const RadFLD::ClosureValues closure = RequireClosure(
+      grad, sigma_r(k,j,i), erad, fixed_flux_limiter,
+      "RadiationSoundSpeedSquared", k, j, i);
+  const Real lambda = closure.lambda;
   (void)dir;
   const Real p = std::max(lambda*erad, 0.0);
   const Real rho = std::max(pmb->phydro->w(IDN,k,j,i), TINY_NUMBER);
