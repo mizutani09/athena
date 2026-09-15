@@ -458,6 +458,8 @@ NewtonSolveResult NewtonRaphsonDriver::Solve_general(int stage, Real dt) {
       result.initial_gas_max_norm = values.gas_max_norm;
       result.initial_radiation_l2_norm = values.radiation_l2_norm;
       result.initial_radiation_max_norm = values.radiation_max_norm;
+      result.initial_total_energy_l2_norm = values.total_energy_l2_norm;
+      result.initial_total_energy_max_norm = values.total_energy_max_norm;
     } else {
       result.final_norm = values.l2_norm;
       result.final_max_norm = values.max_norm;
@@ -465,6 +467,8 @@ NewtonSolveResult NewtonRaphsonDriver::Solve_general(int stage, Real dt) {
       result.final_gas_max_norm = values.gas_max_norm;
       result.final_radiation_l2_norm = values.radiation_l2_norm;
       result.final_radiation_max_norm = values.radiation_max_norm;
+      result.final_total_energy_l2_norm = values.total_energy_l2_norm;
+      result.final_total_energy_max_norm = values.total_energy_max_norm;
     }
   };
   store_result_norms(norms, true);
@@ -476,7 +480,9 @@ NewtonSolveResult NewtonRaphsonDriver::Solve_general(int stage, Real dt) {
               << " gas_l2=" << norms.gas_l2_norm
               << " gas_max=" << norms.gas_max_norm
               << " radiation_l2=" << norms.radiation_l2_norm
-              << " radiation_max=" << norms.radiation_max_norm << std::endl;
+              << " radiation_max=" << norms.radiation_max_norm
+              << " total_energy_l2=" << norms.total_energy_l2_norm
+              << " total_energy_max=" << norms.total_energy_max_norm << std::endl;
   if (!norms.finite) {
     result.reason = NewtonSolveReason::initial_nonfinite;
     store_result_norms(norms, false);
@@ -562,7 +568,9 @@ NewtonSolveResult NewtonRaphsonDriver::Solve_general(int stage, Real dt) {
                   << " gas_l2=" << norms.gas_l2_norm
                   << " gas_max=" << norms.gas_max_norm
                   << " radiation_l2=" << norms.radiation_l2_norm
-                  << " radiation_max=" << norms.radiation_max_norm << std::endl;
+                  << " radiation_max=" << norms.radiation_max_norm
+                  << " total_energy_l2=" << norms.total_energy_l2_norm
+                  << " total_energy_max=" << norms.total_energy_max_norm << std::endl;
       }
       if (diagnostic_verbosity_ >= 2) {
         Real local_absmax = -1.0;
@@ -797,12 +805,16 @@ NewtonSolveResult NewtonRaphsonDriver::Solve_general(int stage, Real dt) {
               << " initial_gas_max=" << result.initial_gas_max_norm
               << " initial_radiation_l2=" << result.initial_radiation_l2_norm
               << " initial_radiation_max=" << result.initial_radiation_max_norm
+              << " initial_total_energy_l2=" << result.initial_total_energy_l2_norm
+              << " initial_total_energy_max=" << result.initial_total_energy_max_norm
               << " final_l2=" << result.final_norm
               << " final_max=" << result.final_max_norm
               << " final_gas_l2=" << result.final_gas_l2_norm
               << " final_gas_max=" << result.final_gas_max_norm
               << " final_radiation_l2=" << result.final_radiation_l2_norm
               << " final_radiation_max=" << result.final_radiation_max_norm
+              << " final_total_energy_l2=" << result.final_total_energy_l2_norm
+              << " final_total_energy_max=" << result.final_total_energy_max_norm
               << std::endl;
   }
   return result;
@@ -821,7 +833,9 @@ void NewtonRaphsonDriver::HandleSolveResult(const NewtonSolveResult &result) con
       << ", final_gas_l2=" << result.final_gas_l2_norm
       << ", final_gas_max=" << result.final_gas_max_norm
       << ", final_radiation_l2=" << result.final_radiation_l2_norm
-      << ", final_radiation_max=" << result.final_radiation_max_norm << std::endl;
+      << ", final_radiation_max=" << result.final_radiation_max_norm
+      << ", final_total_energy_l2=" << result.final_total_energy_l2_norm
+      << ", final_total_energy_max=" << result.final_total_energy_max_norm << std::endl;
   ATHENA_ERROR(msg);
 }
 
@@ -929,6 +943,7 @@ void NewtonRaphsonDriver::CalculateDefectNorms(NewtonResidualNorms &norms) {
   std::vector<Real> block_gas_l2(nblock, 0.0);
   std::vector<Real> block_gas_max(nblock, 0.0);
   std::vector<int> block_primary_is_gas(nblock, 0);
+  std::vector<int> block_primary_is_total_energy(nblock, 0);
   std::vector<int> block_gas_active(nblock, 0);
   std::vector<int> block_finite(nblock, 1);
 
@@ -937,6 +952,7 @@ void NewtonRaphsonDriver::CalculateDefectNorms(NewtonResidualNorms &norms) {
     NewtonRaphson *pnr = vnr_[b];
     pnr->CalculateDefectBlock();
     block_primary_is_gas[b] = pnr->PrimaryDefectIsGas() ? 1 : 0;
+    block_primary_is_total_energy[b] = pnr->PrimaryDefectIsTotalEnergy() ? 1 : 0;
     for (int v = 0; v < nvar_; ++v) {
       pnr->CalculateDefectNorms(v, block_primary_l2[b*nvar_ + v],
                                 block_primary_max[b*nvar_ + v]);
@@ -961,8 +977,10 @@ void NewtonRaphsonDriver::CalculateDefectNorms(NewtonResidualNorms &norms) {
 
   Real gas_sum = 0.0;
   Real radiation_sum = 0.0;
+  Real total_energy_sum = 0.0;
   Real gas_max = 0.0;
   Real radiation_max = 0.0;
+  Real total_energy_max = 0.0;
   bool finite = true;
   for (int b = 0; b < nblock; ++b) {
     finite = finite && (block_finite[b] != 0);
@@ -970,6 +988,9 @@ void NewtonRaphsonDriver::CalculateDefectNorms(NewtonResidualNorms &norms) {
       if (block_primary_is_gas[b] != 0) {
         gas_sum += block_primary_l2[b*nvar_ + v];
         gas_max = std::max(gas_max, block_primary_max[b*nvar_ + v]);
+      } else if (block_primary_is_total_energy[b] != 0) {
+        total_energy_sum += block_primary_l2[b*nvar_ + v];
+        total_energy_max = std::max(total_energy_max, block_primary_max[b*nvar_ + v]);
       } else {
         radiation_sum += block_primary_l2[b*nvar_ + v];
         radiation_max = std::max(radiation_max, block_primary_max[b*nvar_ + v]);
@@ -989,13 +1010,13 @@ void NewtonRaphsonDriver::CalculateDefectNorms(NewtonResidualNorms &norms) {
   const Real vol = (pmy_mesh_->mesh_size.x1max-pmy_mesh_->mesh_size.x1min)
                  * (pmy_mesh_->mesh_size.x2max-pmy_mesh_->mesh_size.x2min)
                  * (pmy_mesh_->mesh_size.x3max-pmy_mesh_->mesh_size.x3min);
-  for (Real *value : {&gas_sum, &radiation_sum}) {
+  for (Real *value : {&gas_sum, &radiation_sum, &total_energy_sum}) {
 #ifdef MPI_PARALLEL
     MPI_Allreduce(MPI_IN_PLACE, value, 1, MPI_ATHENA_REAL, MPI_SUM,
                   MPI_COMM_NEWTON_RAPHSON);
 #endif
   }
-  for (Real *value : {&gas_max, &radiation_max}) {
+  for (Real *value : {&gas_max, &radiation_max, &total_energy_max}) {
 #ifdef MPI_PARALLEL
     MPI_Allreduce(MPI_IN_PLACE, value, 1, MPI_ATHENA_REAL, MPI_MAX,
                   MPI_COMM_NEWTON_RAPHSON);
@@ -1005,13 +1026,17 @@ void NewtonRaphsonDriver::CalculateDefectNorms(NewtonResidualNorms &norms) {
   norms.radiation_l2_norm = std::sqrt(radiation_sum/vol);
   norms.gas_max_norm = gas_max;
   norms.radiation_max_norm = radiation_max;
-  norms.l2_norm = std::sqrt((gas_sum + radiation_sum)/vol);
-  norms.max_norm = std::max(gas_max, radiation_max);
+  norms.total_energy_l2_norm = std::sqrt(total_energy_sum/vol);
+  norms.total_energy_max_norm = total_energy_max;
+  norms.l2_norm = std::sqrt((gas_sum + radiation_sum + total_energy_sum)/vol);
+  norms.max_norm = std::max(gas_max, std::max(radiation_max, total_energy_max));
   if (!std::isfinite(norms.gas_l2_norm)
       || !std::isfinite(norms.radiation_l2_norm)
       || !std::isfinite(norms.l2_norm)
       || !std::isfinite(norms.gas_max_norm)
       || !std::isfinite(norms.radiation_max_norm)
+      || !std::isfinite(norms.total_energy_l2_norm)
+      || !std::isfinite(norms.total_energy_max_norm)
       || !std::isfinite(norms.max_norm)) {
     finite = false;
   }

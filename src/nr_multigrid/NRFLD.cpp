@@ -774,8 +774,23 @@ void NRFLD::CalculateDefect(AthenaArray<Real> &def, const AthenaArray<Real> &u,
         gas_defect_(k,j,i) = Fg/gas_scale;
         if (pfld->fixed_u_rad) {
           def(k,j,i) = gas_defect_(k,j,i);
-        } else {
+        } else if (pfld->only_rad) {
           def(k,j,i) = Fr/scale;
+        } else {
+          // {Fg, Fr} and {Fg, Fg+Fr} are equivalent equations.  Use the
+          // latter basis, consistent with the stable Schur elimination above:
+          // scaling Fr alone by Er amplifies stiff exchange roundoff by
+          // Egas/Er even when total energy is balanced to machine precision.
+          // Do not include the cancelling exchange term in the total scale.
+          const Real gas_unsteady = u_gas(k,j,i) - pfld->u_gas(k,j,i);
+          Real total_scale = std::abs(gas_unsteady) + std::abs(unsteady)
+                           + dt*std::abs(diff_term);
+          total_scale = std::max(total_scale,
+              std::max(std::abs(u_gas(k,j,i) + u(k,j,i)),
+                       std::abs(pfld->u_gas(k,j,i) + u_old(k,j,i))));
+          total_scale = std::max(total_scale, static_cast<Real>(1.0e-30));
+          // Evaluate Fg+Fr without forming either stiff exchange contribution.
+          def(k,j,i) = (gas_unsteady + unsteady - dt*diff_term)/total_scale;
         }
 
       }
@@ -826,6 +841,11 @@ void NRFLD::CalculateAdditionalDefectNorms(Real &l2_sum, Real &max_norm,
 
 bool NRFLD::PrimaryDefectIsGas() const {
   return pmy_block_->prfld->fixed_u_rad;
+}
+
+bool NRFLD::PrimaryDefectIsTotalEnergy() const {
+  const FLD *fld = pmy_block_->prfld;
+  return !fld->fixed_u_rad && !fld->only_rad;
 }
 
 

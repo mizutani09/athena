@@ -160,6 +160,7 @@ class NRFLD : public NewtonRaphson {
   void CalculateAdditionalDefectNorms(Real &l2_sum, Real &max_norm,
                                       bool &active, bool &finite) const final;
   bool PrimaryDefectIsGas() const final;
+  bool PrimaryDefectIsTotalEnergy() const final;
   // void CalculateFASRHS(AthenaArray<Real> &def, const AthenaArray<Real> &src,
   //                const AthenaArray<Real> &coeff, const AthenaArray<Real> &matrix,
   //                int rlev, int il, int iu, int jl, int ju, int kl, int ku, bool th) final;

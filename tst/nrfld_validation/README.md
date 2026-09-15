@@ -49,6 +49,37 @@ digests, effective settings, compiler/MPI versions, a limited environment
 allowlist, timeout/exit records, and separate analysis/calculation provenance.
 Missing references and timeouts still leave a final manifest.
 
+## Newton convergence residuals
+
+Ordinary coupled NR-FLD uses the equivalent equation basis `{Fg, Fg + Fr}`:
+the gas equation and the total-energy equation. The total residual is evaluated
+directly as `delta_egas + delta_erad - dt * diffusion`, without subtracting stiff
+equal-and-opposite exchange sources. Its scale is the larger of the absolute
+transient/transport terms and the old/current total internal energy, with a
+`1e-30` floor. Exchange is excluded from this scale. This matches the stable
+Schur elimination and avoids amplifying exchange roundoff by `egas / erad`.
+
+`only_rad=true` retains the radiation residual and `fixed_u_rad=true` retains
+the gas residual. The log fields `gas_*`, `radiation_*`, and `total_energy_*`
+report active convergence equations; inactive fields are zero (in coupled mode,
+`radiation_*=0` is not a measurement of the original radiation residual).
+The combined L2 is the quadrature sum of active L2 norms, and the combined max
+is their maximum. Both must satisfy `nrfld/nr_threshold`; the stopping rule,
+Jacobian, physical boundaries, and initial profiles are unchanged.
+
+The exact equation roots are unchanged, but finite-tolerance weighting differs
+from testing `Fr / erad` alone. Check energy conservation and radiation/flux
+accuracy with a tolerance study before adopting a long production run.
+The regression covers stiff coupled exchange and both single-equation modes:
+
+```bash
+cd tst/regression
+python3 run_tests.py nrmgfld/coupled_residual_norms --hide_make
+```
+
+See [total-energy residual validation](total_energy_residual_validation.md)
+for the solar smoke tests and analytic-solution comparisons.
+
 ## Radiative shocks downloaded from another machine
 
 Radiative shocks are plot-only by default. The suite does not configure,

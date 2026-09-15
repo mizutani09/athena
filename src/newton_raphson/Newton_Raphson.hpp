@@ -47,6 +47,8 @@ struct NewtonResidualNorms {
   Real gas_max_norm{0.0};
   Real radiation_l2_norm{0.0};
   Real radiation_max_norm{0.0};
+  Real total_energy_l2_norm{0.0};
+  Real total_energy_max_norm{0.0};
   bool finite{true};
 };
 
@@ -74,10 +76,14 @@ struct NewtonSolveResult {
   Real initial_gas_max_norm{0.0};
   Real initial_radiation_l2_norm{0.0};
   Real initial_radiation_max_norm{0.0};
+  Real initial_total_energy_l2_norm{0.0};
+  Real initial_total_energy_max_norm{0.0};
   Real final_gas_l2_norm{0.0};
   Real final_gas_max_norm{0.0};
   Real final_radiation_l2_norm{0.0};
   Real final_radiation_max_norm{0.0};
+  Real final_total_energy_l2_norm{0.0};
+  Real final_total_energy_max_norm{0.0};
   bool committed{false};
 
   bool IsSuccess() const {
@@ -154,6 +160,7 @@ class NewtonRaphson {
   virtual void CalculateAdditionalDefectNorms(Real &l2_sum, Real &max_norm,
                                               bool &active, bool &finite) const;
   virtual bool PrimaryDefectIsGas() const { return false; }
+  virtual bool PrimaryDefectIsTotalEnergy() const { return false; }
   virtual void ApplyPhysicalBoundary() = 0;
   virtual void PrintCellPhysicsDebug(int k, int j, int i) {}
   void CalculateCoefficientsTask(Real dt);
