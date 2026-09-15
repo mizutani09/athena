@@ -609,8 +609,19 @@ void NRFLD::CalculateCoefficients(const AthenaArray<Real> &u_rad_old,
         derivetive(NewtonRaphsonFLD::Fr,k,j,i) = (u_rad_new(k,j,i) - u_rad_old(k,j,i))
             - dt*(src_term + diff_term);
 
+        Real dT_deg = def_coeff(NewtonRaphsonFLD::DCOUPLE,k,j,i);
+#if GENERAL_EOS
+        // The residual evaluates T at the current Newton iterate.  Its
+        // derivative must use that same state: a tabulated EOS does not have
+        // the constant dT/deg of an ideal gas.  DCOUPLE was populated only at
+        // the beginning of the hydro step and can be stale after cooling or
+        // crossing an ionization/table interval.
+        dT_deg = T_gas_new/u_gas_new(k,j,i)
+            *pmy_block_->peos->DlnTDlnEgasFromRhoEg(
+                def_coeff(NewtonRaphsonFLD::DRHO,k,j,i), u_gas_new(k,j,i));
+#endif
         const Real exchange_jacobian = 4.0*dt*c_sigma_p*pfld->a_r*T_gas_new3
-            *def_coeff(NewtonRaphsonFLD::DCOUPLE,k,j,i);
+            *dT_deg;
         derivetive(NewtonRaphsonFLD::dFg_deg,k,j,i) = 1.0 + exchange_jacobian;
         derivetive(NewtonRaphsonFLD::dFg_dEr,k,j,i) = -dt*c_sigma_p;
         derivetive(NewtonRaphsonFLD::dFr_deg,k,j,i) = -exchange_jacobian;
@@ -969,6 +980,59 @@ void NRFLD::ApplyPhysicalBoundary() {
   }
   
   return;
+}
+
+void NRFLD::PrintFailurePhysicsDebug(Real gas_max) {
+  if (!(gas_max > 0.0) || !std::isfinite(gas_max)) return;
+  MeshBlock *mb = pmy_block_;
+  FLD *fld = mb->prfld;
+  for (int k=mb->ks; k<=mb->ke; ++k)
+    for (int j=mb->js; j<=mb->je; ++j)
+      for (int i=mb->is; i<=mb->ie; ++i) {
+        // MPI_MAX preserves the selected value exactly. Print only cells
+        // attaining that global maximum, not one diagnostic per MPI rank.
+        if (std::abs(gas_defect_(k,j,i)) != gas_max) continue;
+        const Real rho = def_coeff_(NewtonRaphsonFLD::DRHO,k,j,i);
+        Real egas_floor = TINY_NUMBER;
+        Real dT_deg = def_coeff_(NewtonRaphsonFLD::DCOUPLE,k,j,i);
+#if GENERAL_EOS
+        const Real temperature = mb->peos->TempFromRhoEg(rho, u_gas_(k,j,i));
+        dT_deg = temperature/u_gas_(k,j,i)
+            *mb->peos->DlnTDlnEgasFromRhoEg(rho, u_gas_(k,j,i));
+        if (rho > mb->peos->GetDensityFloor()) {
+          egas_floor = std::max(egas_floor,
+              mb->peos->EgasFromRhoP(rho, mb->peos->GetPressureFloor()));
+        }
+#else
+        const Real temperature = def_coeff_(NewtonRaphsonFLD::DCOUPLE,k,j,i)
+                                 *u_gas_(k,j,i);
+#endif
+        const Real t2 = temperature*temperature;
+        const Real equilibrium = fld->a_r*t2*t2;
+        const Real thermal = ResolvableThermalDifference(equilibrium, u_(k,j,i));
+        std::cout << "[NR_GAS_FAILURE] rank=" << Globals::my_rank
+                  << " gid=" << mb->gid
+                  << " cycle=" << mb->pmy_mesh->ncycle
+                  << " time=" << mb->pmy_mesh->time
+                  << " k=" << k << " j=" << j << " i=" << i
+                  << " x=" << mb->pcoord->x1v(i)
+                  << " y=" << mb->pcoord->x2v(j)
+                  << " z=" << mb->pcoord->x3v(k)
+                  << " signed_gas_defect=" << gas_defect_(k,j,i)
+                  << " rho=" << rho << " egas=" << u_gas_(k,j,i)
+                  << " egas_old=" << fld->u_gas(k,j,i)
+                  << " egas_floor=" << egas_floor
+                  << " gas_at_floor=" << (u_gas_(k,j,i) <= egas_floor)
+                  << " dT_deg_initial=" << def_coeff_(NewtonRaphsonFLD::DCOUPLE,k,j,i)
+                  << " dT_deg_current=" << dT_deg
+                  << " erad=" << u_(k,j,i) << " temperature=" << temperature
+                  << " equilibrium_erad=" << equilibrium
+                  << " raw_thermal_difference=" << equilibrium-u_(k,j,i)
+                  << " dt_source=" << pmy_driver_->dt_*fld->c_ph
+                                     *fld->sigma_p(k,j,i)*thermal
+                  << std::endl;
+        return;  // At most one tied maximum per MeshBlock.
+      }
 }
 
 void NRFLD::PrintCellPhysicsDebug(int k, int j, int i) {

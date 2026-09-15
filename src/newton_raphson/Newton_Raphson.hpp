@@ -167,6 +167,7 @@ class NewtonRaphson {
   void ApplyCorrectionTask();
   virtual void StoreIterate();
   virtual void RestoreIterate();
+  virtual void PrintFailurePhysicsDebug(Real gas_max) {}
   void StartBoundary();
   void SendBoundary();
   bool ReceiveBoundary();

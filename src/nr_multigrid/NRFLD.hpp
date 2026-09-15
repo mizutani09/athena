@@ -128,6 +128,7 @@ class NRFLD : public NewtonRaphson {
                              Real dt) final;
   void ApplyPhysicalBoundary() final;
   void PrintCellPhysicsDebug(int k, int j, int i) final;
+  void PrintFailurePhysicsDebug(Real gas_max) final;
   void StoreIterate() final;
   void RestoreIterate() final;
 

@@ -791,6 +791,14 @@ NewtonSolveResult NewtonRaphsonDriver::Solve_general(int stage, Real dt) {
   }
   result.iterations = n;
   store_result_norms(norms, false);
+  if (!result.committed && norms.finite && result.final_gas_max_norm > 0.0) {
+    // A rejected trial leaves the defect arrays at the trial state even
+    // after restoring the iterate. Reevaluate before reporting its physics.
+    for (auto pnr : vnr_) {
+      pnr->CalculateDefectBlock();
+      pnr->PrintFailurePhysicsDebug(result.final_gas_max_norm);
+    }
+  }
   if (result.committed) {
     for (auto itr = vnr_.begin(); itr < vnr_.end(); itr++) {
       (*itr)->UpdateHydroVariables();
@@ -815,6 +823,9 @@ NewtonSolveResult NewtonRaphsonDriver::Solve_general(int stage, Real dt) {
               << " final_radiation_max=" << result.final_radiation_max_norm
               << " final_total_energy_l2=" << result.final_total_energy_l2_norm
               << " final_total_energy_max=" << result.final_total_energy_max_norm
+              << " cycle=" << pmy_mesh_->ncycle
+              << " time=" << pmy_mesh_->time
+              << " stage=" << stage_ << " dt=" << dt_
               << std::endl;
   }
   return result;
@@ -827,6 +838,9 @@ void NewtonRaphsonDriver::HandleSolveResult(const NewtonSolveResult &result) con
       << "Newton-Raphson solve failed: " << NewtonSolveReasonName(result.reason)
       << ", iterations=" << result.iterations
       << ", initial_l2=" << result.initial_norm
+      << ", cycle=" << pmy_mesh_->ncycle
+      << ", time=" << std::setprecision(17) << pmy_mesh_->time
+      << ", stage=" << stage_ << ", dt=" << dt_
       << ", initial_max=" << result.initial_max_norm
       << ", final_l2=" << result.final_norm
       << ", final_max=" << result.final_max_norm

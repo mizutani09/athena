@@ -91,11 +91,18 @@ SRC_PREFIX := src/
 SRC_DIRS := $(dir $(SRC_FILES))
 VPATH := $(SRC_DIRS)
 
+# Header/API and configuration changes must not leave ABI-incompatible objects
+# in an incremental build. Use conservative prerequisites for all compilers;
+# this also upgrades pre-existing obj/ trees that have no dependency files.
+HEADER_FILES := $(wildcard src/*.hpp src/*/*.hpp src/*/*/*.hpp src/*/*/*/*.hpp)
+
 # Generally useful targets
 
 .PHONY : all dirs clean
 
 all : dirs $(EXECUTABLE)
+
+$(OBJ_FILES): $(HEADER_FILES) Makefile
 
 objs : dirs $(OBJ_FILES)
 
