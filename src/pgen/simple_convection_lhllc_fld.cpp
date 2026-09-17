@@ -1025,20 +1025,23 @@ static void SimpleHydroOuter(MeshBlock *pmb, Coordinates *pco,
       for (int j = js; j <= je; ++j) {
         for (int i = is; i <= ie; ++i) {
           const Real rho = std::max(prim(IDN, ka, j, i), rho_floor);
-          const Real egas = std::max(pmb->prfld->u_gas(ka, j, i), e_floor);
-          // After an implicit radiation solve, u_gas is the authoritative
-          // thermodynamic state. Reconstruct pressure from (rho,u_gas)
-          // before copying the Rempel zero-gradient state. This prevents a
-          // stale/non-finite primitive pressure from entering ghost cells.
-          const Real pres_eos = GasPresFromRhoEg(pmb->peos, rho, egas);
-          const Real pres = std::isfinite(pres_eos)
-              ? std::max(pres_eos, p_floor)
-              : std::numeric_limits<Real>::quiet_NaN();
+          // The active hydro state has just been reconstructed from conserved
+          // variables. Do not replace its pressure with the FLD gas-energy
+          // cache: that cache can still describe the preceding hydro step.
+          // Replacing only w(IPR), without changing u(IEN), makes the next
+          // restart reconstruct a different thermodynamic state.
+          const Real pres = std::max(prim(IPR, ka, j, i), p_floor);
           const Real vx = prim(IVX, ka, j, i);
           const Real vy = prim(IVY, ka, j, i);
           const Real vz = std::max(prim(IVZ, ka, j, i), 0.0);
+          const Real rho_cons = std::max(pmb->phydro->u(IDN, ka, j, i), rho_floor);
+          const Real mx = pmb->phydro->u(IM1, ka, j, i);
+          const Real my = pmb->phydro->u(IM2, ka, j, i);
+          const Real mz = pmb->phydro->u(IM3, ka, j, i);
+          const Real kinetic = 0.5*(mx*mx + my*my + mz*mz)/rho_cons;
+          const Real egas = pmb->phydro->u(IEN, ka, j, i) - kinetic;
           if (!std::isfinite(rho) || !std::isfinite(pres) ||
-              !std::isfinite(egas)) {
+              !std::isfinite(egas) || egas <= e_floor) {
             std::stringstream msg;
             msg << "### FATAL ERROR in Rempel upper boundary: invalid "
                 << "thermodynamic state at i=" << i << " j=" << j
@@ -1046,7 +1049,7 @@ static void SimpleHydroOuter(MeshBlock *pmb, Coordinates *pco,
                 << " egas=" << egas;
             ATHENA_ERROR(msg);
           }
-          prim(IPR, ka, j, i) = pres;
+          pmb->prfld->u_gas(ka, j, i) = egas;
           prim(IDN, kg, j, i) = rho;
           prim(IPR, kg, j, i) = pres;
           prim(IVX, kg, j, i) = vx;

@@ -512,11 +512,12 @@ void FLD::UpdateHydroVariables(AthenaArray<Real> &w, AthenaArray<Real> &hydro_u,
   if (pmy_block->pmy_mesh->f3)
     kl -= NGHOST, ku += NGHOST;
   
-  // Update the hydro energy using the gas energy saved before the Newton
-  // solve.  In the general-EOS case, reconstructing the old energy from
-  // w(IPR) here is unsafe: w(IPR) is updated in the same loop and may already
-  // contain a non-finite trial value.  The cached u_gas is the authoritative
-  // old thermodynamic state for the radiation coupling.
+  // The implicit solve changes internal energy, not momentum. Reconstruct
+  // active-cell total energy from the new gas energy and conserved kinetic
+  // energy, so u(IEN), w(IPR), and the FLD gas cache remain consistent across
+  // a restart even if the old cache and conserved state had drifted apart.
+  // Ghost cells are still updated incrementally; their conserved momentum
+  // need not be valid until the next boundary exchange.
   if (!only_rad) {
     for (int k = kl; k <= ku; ++k) {
       for (int j = jl; j <= ju; ++j) {
@@ -525,7 +526,18 @@ void FLD::UpdateHydroVariables(AthenaArray<Real> &w, AthenaArray<Real> &hydro_u,
           Real rho = w(IDN,k,j,i);
           Real egas_old = u_gas(k,j,i);
           Real pres_new = pmy_block->peos->PresFromRhoEg(rho, fld_u_gas(k,j,i));
-          hydro_u(IEN,k,j,i) += (fld_u_gas(k,j,i) - egas_old);
+          if (k >= pmy_block->ks && k <= pmy_block->ke &&
+              j >= pmy_block->js && j <= pmy_block->je &&
+              i >= pmy_block->is && i <= pmy_block->ie) {
+            const Real rho_cons = std::max(hydro_u(IDN,k,j,i), TINY_NUMBER);
+            const Real mx = hydro_u(IM1,k,j,i);
+            const Real my = hydro_u(IM2,k,j,i);
+            const Real mz = hydro_u(IM3,k,j,i);
+            const Real kinetic = 0.5*(mx*mx + my*my + mz*mz)/rho_cons;
+            hydro_u(IEN,k,j,i) = fld_u_gas(k,j,i) + kinetic;
+          } else {
+            hydro_u(IEN,k,j,i) += (fld_u_gas(k,j,i) - egas_old);
+          }
           w(IPR,k,j,i) = pres_new;
 #else
           Real gm1 = pmy_block->peos->GetGamma() - 1.0;
