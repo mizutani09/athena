@@ -34,12 +34,14 @@
 
 // Athena++ headers
 #include "athena.hpp"
+#include "bvals/bvals.hpp"
 #include "chem_rad/chem_rad.hpp"
 #include "crdiffusion/mg_crdiffusion.hpp"
 #include "fft/turbulence.hpp"
 #include "globals.hpp"
 #include "gravity/fft_gravity.hpp"
 #include "gravity/mg_gravity.hpp"
+#include "hydro/hydro.hpp"
 #include "mesh/mesh.hpp"
 #include "nr_radiation/implicit/radiation_implicit.hpp"
 #include "nr_radiation/radiation.hpp"
@@ -58,6 +60,36 @@
 #ifdef OPENMP_PARALLEL
 #include <omp.h>
 #endif
+
+namespace {
+
+// The implicit NR-FLD solve changes active-cell gas pressure after the previous
+// hydro stage has filled its ghost zones. Refresh primitive hydro boundaries
+// before the next hydro flux calculation, including remote and periodic blocks.
+void SynchronizeHydroPrimitivesAfterNR(Mesh *pmesh) {
+  const BoundaryCommSubset phase = BoundaryCommSubset::newton_raphson;
+  for (int b = 0; b < pmesh->nblocal; ++b) {
+    MeshBlock *pmb = pmesh->my_blocks(b);
+    pmb->phydro->hbvar.SwapHydroQuantity(pmb->phydro->w,
+                                         HydroBoundaryQuantity::prim);
+    pmb->phydro->hbvar.StartReceiving(phase);
+  }
+  for (int b = 0; b < pmesh->nblocal; ++b)
+    pmesh->my_blocks(b)->phydro->hbvar.SendBoundaryBuffers();
+  for (int b = 0; b < pmesh->nblocal; ++b)
+    pmesh->my_blocks(b)->phydro->hbvar.ReceiveAndSetBoundariesWithWait();
+  for (int b = 0; b < pmesh->nblocal; ++b) {
+    MeshBlock *pmb = pmesh->my_blocks(b);
+    if (pmesh->multilevel)
+      pmb->pbval->ProlongateBoundaries(pmesh->time, pmesh->dt,
+                                       {&pmb->phydro->hbvar});
+    pmb->pbval->ApplyPhysicalBoundaries(pmesh->time, pmesh->dt,
+                                        {&pmb->phydro->hbvar});
+    pmb->phydro->hbvar.ClearBoundary(phase);
+  }
+}
+
+}  // namespace
 
 //----------------------------------------------------------------------------------------
 //! \fn int main(int argc, char *argv[])
@@ -491,6 +523,7 @@ int main(int argc, char *argv[]) {
     if (NRMGFLD_ENABLED) {
       const NewtonSolveResult nr_result = pmesh->pmnr->Solve_general(0, pmesh->dt);
       pmesh->pmnr->HandleSolveResult(nr_result);
+      SynchronizeHydroPrimitivesAfterNR(pmesh);
     }
 
     // chemistry with radiation
