@@ -67,7 +67,12 @@ void Hydro::RiemannSolver(const int k, const int j, const int il, const int iu,
   AthenaArray<Real> &radflux=pfld->u_rad_flux[dir];
 #endif
 
+#if NRMGFLD_ENABLED
+  int bad_rad_flux=0;
+#pragma omp simd simdlen(SIMD_WIDTH) private(wli,wri,spd,flxi,vf) reduction(|:bad_rad_flux)
+#else
 #pragma omp simd simdlen(SIMD_WIDTH) private(wli,wri,spd,flxi,vf)
+#endif
   for (int i=il; i<=iu; ++i) {
     Cons1D ul,ur;                   // L/R states, conserved variables (computed)
     Cons1D ulst,uldst,urdst,urst;   // Conserved variable for all states
@@ -546,21 +551,8 @@ void Hydro::RiemannSolver(const int k, const int j, const int il, const int iu,
     const Real ag=left ? arl : arr;
     const Real fer=ag*erg*vf;
     if (active_rad_face
-        && (!std::isfinite(vf) || !std::isfinite(erg) || !std::isfinite(fer))) {
-      std::stringstream msg;
-      msg << "### FATAL ERROR in HLLD-FLD radiation flux at (k,j,i)=("
-          << k << "," << j << "," << i << ") dir=" << dir
-          << " vf=" << vf << " erl=" << erl << " err=" << err
-          << " arl=" << arl << " arr=" << arr << " fer=" << fer
-          << " SL=" << spd[0] << " SM=" << spd[2] << " SR=" << spd[4]
-          << " rhoL=" << wli[IDN] << " rhoR=" << wri[IDN]
-          << " pL=" << wli[IPR] << " pR=" << wri[IPR]
-          << " vxL=" << wli[IVX] << " vxR=" << wri[IVX]
-          << " byL=" << wli[IBY] << " byR=" << wri[IBY]
-          << " bzL=" << wli[IBZ] << " bzR=" << wri[IBZ]
-          << " bx=" << bxi << " cfl=" << cfl << " cfr=" << cfr;
-      ATHENA_ERROR(msg);
-    }
+        && (!std::isfinite(vf) || !std::isfinite(erg)
+            || !std::isfinite(ag) || !std::isfinite(fer))) bad_rad_flux |= 1;
     if (active_rad_face) {
       radflux(k,j,i)=pfld->mixed_frame_transport ? fer : 0.0;
       pfld->rad_face_g[dir](k,j,i)=erg;
@@ -584,5 +576,47 @@ void Hydro::RiemannSolver(const int k, const int j, const int il, const int iu,
 
     wct(k,j,i) = GetWeightForCT(flxi[IDN], wli[IDN], wri[IDN], dxw(i), dt);
   }
+#if NRMGFLD_ENABLED
+  // Throwing an exception is forbidden inside an OpenMP SIMD region by Clang/ICX.
+  // The reduction records a failure in the vector loop; rescan only on that exceptional
+  // path to construct a useful diagnostic without penalizing the normal HLLD-FLD path.
+  for (int i=il; bad_rad_flux != 0 && i<=iu; ++i) {
+    const bool active_rad_face=(dir == X1DIR)
+        ? (j >= pmy_block->js && j <= pmy_block->je
+           && k >= pmy_block->ks && k <= pmy_block->ke)
+        : ((dir == X2DIR)
+           ? (i >= pmy_block->is && i <= pmy_block->ie
+              && k >= pmy_block->ks && k <= pmy_block->ke)
+           : (i >= pmy_block->is && i <= pmy_block->ie
+              && j >= pmy_block->js && j <= pmy_block->je));
+    if (!active_rad_face) continue;
+    const Real vf_face=pmy_block->phydro->vf[dir](k,j,i);
+    const bool left=vf_face >= 0.0;
+    const Real er_face=left ? radl(RadFLD::ERAD,k,j,i) : radr(RadFLD::ERAD,k,j,i);
+    const Real a_face=left ? radl(RadFLD::ARAD,k,j,i) : radr(RadFLD::ARAD,k,j,i);
+    const Real fer=a_face*er_face*vf_face;
+    if (!std::isfinite(vf_face) || !std::isfinite(er_face)
+        || !std::isfinite(a_face) || !std::isfinite(fer)) {
+      std::stringstream msg;
+      msg << "### FATAL ERROR in HLLD-FLD radiation flux at (k,j,i)=("
+          << k << "," << j << "," << i << ") dir=" << dir
+          << " vf=" << vf_face << " er=" << er_face
+          << " arad=" << a_face << " fer=" << fer
+          << " rhoL=" << wl(IDN,i) << " rhoR=" << wr(IDN,i)
+          << " pL=" << wl(IPR,i) << " pR=" << wr(IPR,i)
+          << " vxL=" << wl(ivx,i) << " vxR=" << wr(ivx,i)
+          << " byL=" << wl(IBY,i) << " byR=" << wr(IBY,i)
+          << " bzL=" << wl(IBZ,i) << " bzR=" << wr(IBZ,i)
+          << " bx=" << bx(k,j,i);
+      ATHENA_ERROR(msg);
+    }
+  }
+  if (bad_rad_flux != 0) {
+    std::stringstream msg;
+    msg << "### FATAL ERROR in HLLD-FLD radiation flux: non-finite SIMD result "
+        << "could not be localized, dir=" << dir << " k=" << k << " j=" << j;
+    ATHENA_ERROR(msg);
+  }
+#endif
   return;
 }
