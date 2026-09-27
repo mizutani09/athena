@@ -287,7 +287,8 @@ NRFLD::~NRFLD() {
 void NRFLD::LoadVariables() {
   FLD *pfld = pmy_block_->prfld;
   fixed_linear_coefficients_initialized_ = false;
-  pfld->LoadHydroVariables(pmy_block_->phydro->w, pfld->u_gas);
+  pfld->LoadHydroVariables(pmy_block_->phydro->w,
+                          pmy_block_->phydro->u, pfld->u_gas);
   if (last_delta_rad_.data() == nullptr) {
     std::stringstream msg;
     msg << "### FATAL ERROR in NRFLD::LoadVariables" << std::endl

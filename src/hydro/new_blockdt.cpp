@@ -95,6 +95,13 @@ void Hydro::NewBlockTimeStep() {
               wi[IBY] = bcc(IB2,k,j,i);
               wi[IBZ] = bcc(IB3,k,j,i);
               Real cf = pmb->peos->FastMagnetosonicSpeed(wi,bx);
+#if NRMGFLD_ENABLED
+              if (pmb->prfld->pressure_coupling_mode
+                  != RadFLD::PressureCouplingMode::kOff) {
+                cf = std::sqrt(SQR(cf)
+                    + pmb->prfld->RadiationSoundSpeedSquared(k,j,i,X1DIR));
+              }
+#endif
               Real speed = std::max(cspeed,(std::abs(wi[IVX]) + cf));
               dt1(i) /= (speed);
 
@@ -102,6 +109,13 @@ void Hydro::NewBlockTimeStep() {
               wi[IBZ] = bcc(IB1,k,j,i);
               bx = bcc(IB2,k,j,i) + std::abs(b_x2f(k,j,i) - bcc(IB2,k,j,i));
               cf = pmb->peos->FastMagnetosonicSpeed(wi,bx);
+#if NRMGFLD_ENABLED
+              if (pmb->prfld->pressure_coupling_mode
+                  != RadFLD::PressureCouplingMode::kOff) {
+                cf = std::sqrt(SQR(cf)
+                    + pmb->prfld->RadiationSoundSpeedSquared(k,j,i,X2DIR));
+              }
+#endif
               speed = std::max(cspeed,(std::abs(wi[IVY]) + cf));
               dt2(i) /= (speed);
 
@@ -109,6 +123,13 @@ void Hydro::NewBlockTimeStep() {
               wi[IBZ] = bcc(IB2,k,j,i);
               bx = bcc(IB3,k,j,i) + std::abs(b_x3f(k,j,i) - bcc(IB3,k,j,i));
               cf = pmb->peos->FastMagnetosonicSpeed(wi,bx);
+#if NRMGFLD_ENABLED
+              if (pmb->prfld->pressure_coupling_mode
+                  != RadFLD::PressureCouplingMode::kOff) {
+                cf = std::sqrt(SQR(cf)
+                    + pmb->prfld->RadiationSoundSpeedSquared(k,j,i,X3DIR));
+              }
+#endif
               speed = std::max(cspeed,(std::abs(wi[IVZ]) + cf));
               dt3(i) /= (speed);
             } else {

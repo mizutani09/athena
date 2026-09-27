@@ -1,0 +1,153 @@
+<comment>
+problem    = Simplified Mayer et al. rotating magnetized protostellar-core collapse
+configure  = --prob=protostellar_core_fld --coord=cartesian --eos=adiabatic -b --grav=mg -nrmgfld --flux=hlld_fld --nscalars=1
+limitations = ideal MHD and fixed-gamma ideal gas; no chemistry, non-ideal MHD, sink, H2 dissociation, or second core
+
+<job>
+problem_id = protostellar_core_fld
+
+<output1>
+file_type  = hst
+dcycle     = 1
+
+<output2>
+file_type  = vtk
+id         = prim
+variable   = prim
+dt         = 100.0
+
+<output3>
+file_type  = vtk
+id         = fld
+variable   = uov
+dt         = 100.0
+
+<output4>
+file_type  = rst
+dt         = 1.0e60
+
+<time>
+# Conservative defaults for the documented 32^3 three-step smoke test.
+# Increase nlim/tlim only after tightening and rechecking the nonlinear solve.
+cfl_number = 0.02
+nlim       = 3
+tlim       = 1000.0
+integrator = rk2
+xorder     = 2
+ncycle_out = 1
+
+<mesh>
+nx1        = 32
+x1min      = -6000.0
+x1max      =  6000.0
+ix1_bc     = periodic
+ox1_bc     = periodic
+nx2        = 32
+x2min      = -6000.0
+x2max      =  6000.0
+ix2_bc     = periodic
+ox2_bc     = periodic
+nx3        = 32
+x3min      = -6000.0
+x3max      =  6000.0
+ix3_bc     = periodic
+ox3_bc     = periodic
+refinement = none
+
+<meshblock>
+nx1        = 32
+nx2        = 32
+nx3        = 32
+
+<hydro>
+gamma      = 1.6666666666666667
+rho_unit   = 1.0e-18
+egas_unit  = 1.0e-9
+leng_unit  = 1.495978707e13
+mu         = 2.381
+density_floor  = 1.0e-8
+pressure_floor = 1.0e-10
+
+<gravity>
+mgmode       = FMG
+threshold    = 0.0
+output_defect = true
+ix1_bc       = multipole
+ox1_bc       = multipole
+ix2_bc       = multipole
+ox2_bc       = multipole
+ix3_bc       = multipole
+ox3_bc       = multipole
+mporder      = 2
+auto_mporigin = true
+
+<nrfld>
+mgmode       = MGI
+fas          = false
+smoother     = jacobi-double
+npresmooth   = 2
+npostsmooth  = 0
+omega        = 1.0
+threshold    = 0.0
+niteration   = 10
+# Smoke-test tolerance.  Tighten this (for example to 1e-8) for science runs.
+nr_threshold = 1.0e-3
+nr_niteration = 100
+smoothing_only = true
+coarse_correction_scale = 1.0
+nr_mg_coarse_retry_max = 4
+nr_mg_coarse_retry_factor = 0.5
+nr_mg_coarse_retry_min_scale = 0.0625
+nr_backtrack_max = 4
+nr_backtrack_factor = 0.5
+nr_min_step_scale = 0.05
+nr_use_mg_smoothing_fallback = true
+max_update_fraction = 0.2
+ix1_bc       = periodic
+ox1_bc       = periodic
+ix2_bc       = periodic
+ox2_bc       = periodic
+ix3_bc       = periodic
+ox3_bc       = periodic
+
+<fld>
+output_defect          = true
+is_couple              = true
+only_rad               = false
+cut_diff               = false
+include_radiation_force = true
+pressure_coupling      = flux
+fixed_flux_limiter     = false
+fixed_u_rad             = false
+include_mixed_frame_terms = false
+mixed_frame_transport  = true
+
+<radiation>
+kappa_P = 1.0
+kappa_R = 1.0
+
+<problem>
+M_core     = 1.0
+R_core     = 3000.0
+T_core     = 14.0
+mu         = 2.381
+Omega      = 1.48e-13
+B0         = 1.29e-4
+
+# This ambient factor is a numerical simplification, not a value from Mayer et al.
+rho_ambient_factor = 1.0e-2
+# P_background/P_core.  Setting this equal to rho_ambient_factor keeps T_background=T_core.
+background_pressure_ratio = 1.0e-2
+fix_background_temperature = false
+background_tracer_threshold = 0.5
+# AU; set to zero for a sharp interface.  One half-cell gives a narrow smooth layer.
+transition_width   = 187.5
+
+enable_rotation       = true
+enable_magnetic_field = true
+test_mode              = collapse
+N_J                    = 16.0
+refinement_mode        = jeans
+target_cell_mass_msun  = 3.33e-7
+mass_refine_factor     = 2.0
+mass_derefine_factor   = 0.25

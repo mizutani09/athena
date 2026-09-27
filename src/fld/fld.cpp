@@ -468,9 +468,13 @@ FLD::~FLD() {
 
 
 //----------------------------------------------------------------------------------------
-//! \fn void FLD::LoadHydroVariables(const AthenaArray<Real> &w, AthenaArray<Real> &u)
-//! \brief Load hydro variables from conserved variables
-void FLD::LoadHydroVariables(const AthenaArray<Real> &w, AthenaArray<Real> &fld_u_gas) {
+//! \fn void FLD::LoadHydroVariables(const AthenaArray<Real> &w,
+//!                                  const AthenaArray<Real> &hydro_u,
+//!                                  AthenaArray<Real> &fld_u_gas)
+//! \brief Load gas energy from the conserved active state
+void FLD::LoadHydroVariables(const AthenaArray<Real> &w,
+                             const AthenaArray<Real> &hydro_u,
+                             AthenaArray<Real> &fld_u_gas) {
   if(only_rad && pmy_block->pmy_mesh->dt > 0.0) return;
   int il = pmy_block->is - NGHOST, iu = pmy_block->ie + NGHOST;
   int jl = pmy_block->js, ju = pmy_block->je;
@@ -483,9 +487,44 @@ void FLD::LoadHydroVariables(const AthenaArray<Real> &w, AthenaArray<Real> &fld_
     for (int j = jl; j <= ju; ++j) {
       for (int i = il; i <= iu; ++i) {
 #if GENERAL_EOS
-        Real rho = w(IDN,k,j,i);
-        Real pres = w(IPR,k,j,i);
-        fld_u_gas(k,j,i) = pmy_block->peos->EgasFromRhoP(rho, pres);
+        const bool active = k >= pmy_block->ks && k <= pmy_block->ke
+                         && j >= pmy_block->js && j <= pmy_block->je
+                         && i >= pmy_block->is && i <= pmy_block->ie;
+        if (active) {
+          // The independently interpolated inverse EOS table is not the exact
+          // inverse of P(rho,egas).  Recreating egas from pressure here would
+          // project the conserved energy to a different value on every NR step.
+          const Real rho = hydro_u(IDN,k,j,i);
+          if (!std::isfinite(rho) || rho <= 0.0) {
+            std::stringstream msg;
+            msg << "### FATAL ERROR in FLD::LoadHydroVariables" << std::endl
+                << "Invalid conserved density at gid=" << pmy_block->gid
+                << " (k,j,i)=(" << k << "," << j << "," << i << ")"
+                << " rho=" << rho;
+            ATHENA_ERROR(msg);
+          }
+          const Real mx = hydro_u(IM1,k,j,i);
+          const Real my = hydro_u(IM2,k,j,i);
+          const Real mz = hydro_u(IM3,k,j,i);
+          const Real kinetic = 0.5*(mx*mx + my*my + mz*mz)/rho;
+          const Real egas = hydro_u(IEN,k,j,i) - kinetic;
+          if (!std::isfinite(egas) || egas <= 0.0) {
+            std::stringstream msg;
+            msg << "### FATAL ERROR in FLD::LoadHydroVariables" << std::endl
+                << "Invalid conserved gas energy at gid=" << pmy_block->gid
+                << " (k,j,i)=(" << k << "," << j << "," << i << ")"
+                << " rho=" << rho << " total_energy=" << hydro_u(IEN,k,j,i)
+                << " kinetic_energy=" << kinetic << " gas_energy=" << egas;
+            ATHENA_ERROR(msg);
+          }
+          fld_u_gas(k,j,i) = egas;
+        } else {
+          // Conserved ghost momentum is not guaranteed to be current.  Ghost
+          // gas energy is needed only for boundary stencils and is reconstructed
+          // from the synchronized primitive state.
+          fld_u_gas(k,j,i) = pmy_block->peos->EgasFromRhoP(
+              w(IDN,k,j,i), w(IPR,k,j,i));
+        }
 #else
         Real igm1 = 1.0/(pmy_block->peos->GetGamma() - 1.0);
         fld_u_gas(k,j,i) = igm1*w(IEN,k,j,i);

@@ -25,6 +25,9 @@
 #include "../coordinates/coordinates.hpp"
 #include "../eos/eos.hpp"
 #include "../field/field.hpp"
+#if NRMGFLD_ENABLED
+#include "../fld/fld.hpp"
+#endif
 #include "../hydro/hydro.hpp"
 #include "../mesh/mesh.hpp"
 #include "../parameter_input.hpp"
@@ -110,6 +113,17 @@ void MeshBlock::ProblemGenerator(ParameterInput *pin) {
       }
     }
   }
+
+#if NRMGFLD_ENABLED
+  // Optional passive radiation floor used to exercise the HLLD-FLD
+  // radiation-negligible limit without changing the Orszag-Tang MHD state.
+  const Real erad0 = pin->GetOrAddReal("problem", "Er", TINY_NUMBER);
+  for (int k=ks; k<=ke; ++k) {
+    for (int j=js; j<=je; ++j) {
+      for (int i=is; i<=ie; ++i) prfld->u_rad(k,j,i) = erad0;
+    }
+  }
+#endif
 
   return;
 }

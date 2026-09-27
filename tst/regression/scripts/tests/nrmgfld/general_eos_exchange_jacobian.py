@@ -50,6 +50,11 @@ int main(int argc, char **argv) {
         for (int i=0; i<mb->ncells1; ++i) {
           mb->phydro->w(IDN,k,j,i) = 1.0;
           mb->phydro->w(IPR,k,j,i) = mb->peos->PresFromRhoEg(1.0,1.0);
+          mb->phydro->u(IDN,k,j,i) = 1.0;
+          mb->phydro->u(IM1,k,j,i) = 0.0;
+          mb->phydro->u(IM2,k,j,i) = 0.0;
+          mb->phydro->u(IM3,k,j,i) = 0.0;
+          mb->phydro->u(IEN,k,j,i) = 1.0;
           fld->u_rad(k,j,i) = 0.5;
           fld->sigma_p(k,j,i) = fld->sigma_r(k,j,i) = 1.0;
         }

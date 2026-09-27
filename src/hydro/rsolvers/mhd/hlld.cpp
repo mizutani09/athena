@@ -15,11 +15,15 @@
 // C++ headers
 #include <algorithm>  // max(), min()
 #include <cmath>      // sqrt()
+#include <sstream>
 
 // Athena++ headers
 #include "../../../athena.hpp"
 #include "../../../athena_arrays.hpp"
 #include "../../../eos/eos.hpp"
+#if NRMGFLD_ENABLED
+#include "../../../fld/fld.hpp"
+#endif
 #include "../../../mesh/mesh.hpp"
 #include "../../hydro.hpp"
 
@@ -51,6 +55,17 @@ void Hydro::RiemannSolver(const int k, const int j, const int il, const int iu,
   EquationOfState *peos = pmy_block->peos;
   if (!GENERAL_EOS) igm1 = 1.0 / (peos->GetGamma() - 1.0);
   Real dt = pmy_block->pmy_mesh->dt;
+#if NRMGFLD_ENABLED
+  const int dir=ivx-IVX;
+  FLD *pfld=pmy_block->prfld;
+  const bool coupled=pfld->pressure_coupling_mode
+      != RadFLD::PressureCouplingMode::kOff;
+  const bool radiation_pressure_in_flux=pfld->pressure_coupling_mode
+      == RadFLD::PressureCouplingMode::kFlux;
+  AthenaArray<Real> &radl=pfld->rad_face_l[dir];
+  AthenaArray<Real> &radr=pfld->rad_face_r[dir];
+  AthenaArray<Real> &radflux=pfld->u_rad_flux[dir];
+#endif
 
 #pragma omp simd simdlen(SIMD_WIDTH) private(wli,wri,spd,flxi,vf)
   for (int i=il; i<=iu; ++i) {
@@ -77,6 +92,131 @@ void Hydro::RiemannSolver(const int k, const int j, const int il, const int iu,
     wri[IBZ]=wr(IBZ,i);
 
     Real bxi = bx(k,j,i);
+
+#if NRMGFLD_ENABLED
+    // MHD requests extra transverse Riemann rows for constrained transport.
+    // Those corner ghost states are not radiation control-volume faces and can
+    // legitimately be incomplete at a physical boundary.  Couple FLD only on
+    // the active transverse rows whose radiation flux divergence is evolved.
+    const bool active_rad_face=(dir == X1DIR)
+        ? (j >= pmy_block->js && j <= pmy_block->je
+           && k >= pmy_block->ks && k <= pmy_block->ke)
+        : ((dir == X2DIR)
+           ? (i >= pmy_block->is && i <= pmy_block->ie
+              && k >= pmy_block->ks && k <= pmy_block->ke)
+           : (i >= pmy_block->is && i <= pmy_block->ie
+              && j >= pmy_block->js && j <= pmy_block->je));
+    const bool face_coupled=coupled && active_rad_face;
+    const Real erl=active_rad_face
+        ? std::max(radl(RadFLD::ERAD,k,j,i),TINY_NUMBER) : 0.0;
+    const Real err=active_rad_face
+        ? std::max(radr(RadFLD::ERAD,k,j,i),TINY_NUMBER) : 0.0;
+    const Real laml=active_rad_face
+        ? std::max(radl(RadFLD::LAMBDA,k,j,i),0.0) : 0.0;
+    const Real lamr=active_rad_face
+        ? std::max(radr(RadFLD::LAMBDA,k,j,i),0.0) : 0.0;
+    const Real arl=active_rad_face
+        ? std::max(radl(RadFLD::ARAD,k,j,i),0.0) : 0.0;
+    const Real arr=active_rad_face
+        ? std::max(radr(RadFLD::ARAD,k,j,i),0.0) : 0.0;
+    const Real prl=face_coupled ? laml*erl : 0.0;
+    const Real prr=face_coupled ? lamr*err : 0.0;
+#else
+    const Real prl=0.0, prr=0.0;
+#endif
+
+#if NRMGFLD_ENABLED
+    // At exactly zero magnetic field, use the same hydrodynamic HLLC-FLD
+    // construction as hllc_fld.cpp.  Although the HLLD fan degenerates to a
+    // hydrodynamic fan analytically, its default Davis wave-speed estimates
+    // differ from Athena++'s HLLC-FLD estimates.  This explicit degeneracy
+    // branch makes the B=0 numerical limit reproducible cell for cell and
+    // provides a direct guard against double-counting radiation terms.
+    const bool zero_magnetic = (bxi == 0.0 && wli[IBY] == 0.0 && wli[IBZ] == 0.0
+                                && wri[IBY] == 0.0 && wri[IBZ] == 0.0);
+    if (zero_magnetic) {
+      const Real ptl=wli[IPR]+prl, ptr=wri[IPR]+prr;
+      const Real eil=GENERAL_EOS ? peos->EgasFromRhoP(wli[IDN],wli[IPR])
+                                 : wli[IPR]*igm1;
+      const Real eir=GENERAL_EOS ? peos->EgasFromRhoP(wri[IDN],wri[IPR])
+                                 : wri[IPR]*igm1;
+      const Real kel=0.5*wli[IDN]*(SQR(wli[IVX])+SQR(wli[IVY])+SQR(wli[IVZ]));
+      const Real ker=0.5*wri[IDN]*(SQR(wri[IVX])+SQR(wri[IVY])+SQR(wri[IVZ]));
+      const Real etl=eil+kel+(face_coupled ? erl : 0.0);
+      const Real etr=eir+ker+(face_coupled ? err : 0.0);
+      const Real cgl=peos->SoundSpeed(wli), cgr=peos->SoundSpeed(wri);
+      const Real cl=std::sqrt(SQR(cgl)+(face_coupled
+                              ? laml*(erl+prl)/wli[IDN] : 0.0));
+      const Real cr=std::sqrt(SQR(cgr)+(face_coupled
+                              ? lamr*(err+prr)/wri[IDN] : 0.0));
+      const Real rhoa=0.5*(wli[IDN]+wri[IDN]), ca=0.5*(cl+cr);
+      const Real pmid=0.5*(ptl+ptr+(wli[IVX]-wri[IVX])*rhoa*ca);
+      const Real umid=0.5*(wli[IVX]+wri[IVX]+(ptl-ptr)/(rhoa*ca));
+      const Real rhol=wli[IDN]+(wli[IVX]-umid)*rhoa/ca;
+      const Real rhor=wri[IDN]+(umid-wri[IVX])*rhoa/ca;
+      Real ql, qr;
+      if (GENERAL_EOS) {
+        const Real gl=peos->AsqFromRhoP(rhol,wli[IPR])*rhol
+                      /std::max(wli[IPR],TINY_NUMBER);
+        const Real gr=peos->AsqFromRhoP(rhor,wri[IPR])*rhor
+                      /std::max(wri[IPR],TINY_NUMBER);
+        ql=(pmid<=ptl) ? 1.0 : std::sqrt(1.0+(gl+1.0)/(2.0*gl)*(pmid/ptl-1.0));
+        qr=(pmid<=ptr) ? 1.0 : std::sqrt(1.0+(gr+1.0)/(2.0*gr)*(pmid/ptr-1.0));
+      } else {
+        const Real gamma=peos->GetGamma();
+        ql=(pmid<=ptl) ? 1.0 : std::sqrt(1.0+(gamma+1.0)/(2.0*gamma)
+                                              *(pmid/ptl-1.0));
+        qr=(pmid<=ptr) ? 1.0 : std::sqrt(1.0+(gamma+1.0)/(2.0*gamma)
+                                              *(pmid/ptr-1.0));
+      }
+      const Real al=wli[IVX]-cl*ql, ar=wri[IVX]+cr*qr;
+      const Real bp=ar>0.0 ? ar : TINY_NUMBER;
+      const Real bm=al<0.0 ? al : -TINY_NUMBER;
+      const Real vlbm=wli[IVX]-bm, vrbp=wri[IVX]-bp;
+      const Real ml=wli[IDN]*(wli[IVX]-al);
+      const Real mr=-wri[IDN]*(wri[IVX]-ar);
+      const Real tl=ptl+(wli[IVX]-al)*wli[IDN]*wli[IVX];
+      const Real tr=ptr+(wri[IVX]-ar)*wri[IDN]*wri[IVX];
+      const Real am=(tl-tr)/(ml+mr);
+      const Real cp=std::max((ml*tr+mr*tl)/(ml+mr),0.0);
+      Real hfl[NHYDRO], hfr[NHYDRO];
+      hfl[IDN]=wli[IDN]*vlbm; hfr[IDN]=wri[IDN]*vrbp;
+      hfl[IVX]=wli[IDN]*wli[IVX]*vlbm+ptl;
+      hfr[IVX]=wri[IDN]*wri[IVX]*vrbp+ptr;
+      hfl[IVY]=wli[IDN]*wli[IVY]*vlbm;
+      hfr[IVY]=wri[IDN]*wri[IVY]*vrbp;
+      hfl[IVZ]=wli[IDN]*wli[IVZ]*vlbm;
+      hfr[IVZ]=wri[IDN]*wri[IVZ]*vrbp;
+      hfl[IEN]=etl*vlbm+ptl*wli[IVX];
+      hfr[IEN]=etr*vrbp+ptr*wri[IVX];
+      Real a, b, c;
+      if (am>=0.0) { a=am/(am-bm); b=0.0; c=-bm/(am-bm); }
+      else { a=0.0; b=-am/(bp-am); c=bp/(bp-am); }
+      flxi[IDN]=a*hfl[IDN]+b*hfr[IDN];
+      flxi[IVX]=a*hfl[IVX]+b*hfr[IVX]+c*cp;
+      flxi[IVY]=a*hfl[IVY]+b*hfr[IVY];
+      flxi[IVZ]=a*hfl[IVZ]+b*hfr[IVZ];
+      flxi[IEN]=a*hfl[IEN]+b*hfr[IEN]+c*cp*am;
+      const bool left=am>=0.0;
+      const Real erg=left ? erl : err;
+      const Real lambdag=left ? laml : lamr;
+      const Real ag=left ? arl : arr;
+      const Real fer=ag*erg*am;
+      if (active_rad_face) {
+        radflux(k,j,i)=pfld->mixed_frame_transport ? fer : 0.0;
+        pfld->rad_face_g[dir](k,j,i)=erg;
+      }
+      if (face_coupled && !radiation_pressure_in_flux) flxi[IVX]-=lambdag*erg;
+      if (face_coupled) flxi[IEN]-=fer;
+      flx(IDN,k,j,i)=flxi[IDN]; flx(ivx,k,j,i)=flxi[IVX];
+      flx(ivy,k,j,i)=flxi[IVY]; flx(ivz,k,j,i)=flxi[IVZ];
+      flx(IEN,k,j,i)=flxi[IEN];
+      ey(k,j,i)=0.0; ez(k,j,i)=0.0;
+      pmy_block->phydro->vf[dir](k,j,i)=am;
+      wct(k,j,i)=GetWeightForCT(flxi[IDN],wli[IDN],wri[IDN],dxw(i),dt);
+      continue;
+    }
+#endif
 
     // Compute L/R states for selected conserved variables
     Real bxsq = bxi*bxi;
@@ -110,10 +250,35 @@ void Hydro::RiemannSolver(const int k, const int j, const int il, const int iu,
     ur.by = wri[IBY];
     ur.bz = wri[IBZ];
 
+#if NRMGFLD_ENABLED
+    if (face_coupled) {
+      ul.e += erl;
+      ur.e += err;
+    }
+#endif
+
     //--- Step 2.  Compute L & R wave speeds according to Miyoshi & Kusano, eqn. (67)
 
-    Real cfl = pmy_block->peos->FastMagnetosonicSpeed(wli,bxi);
-    Real cfr = pmy_block->peos->FastMagnetosonicSpeed(wri,bxi);
+    Real cfl, cfr;
+#if NRMGFLD_ENABLED
+    // Replace the gas acoustic modulus gamma*P by the gas+radiation modulus
+    // rho*c_s^2 + lambda*(E_r+P_r) in the standard fast-wave formula.
+    const Real agl=GENERAL_EOS ? peos->AsqFromRhoP(wli[IDN],wli[IPR])*wli[IDN]
+                               : peos->GetGamma()*wli[IPR];
+    const Real agr=GENERAL_EOS ? peos->AsqFromRhoP(wri[IDN],wri[IPR])*wri[IDN]
+                               : peos->GetGamma()*wri[IPR];
+    const Real asl=agl+(face_coupled ? laml*(erl+prl) : 0.0);
+    const Real asr=agr+(face_coupled ? lamr*(err+prr) : 0.0);
+    const Real btl=SQR(wli[IBY])+SQR(wli[IBZ]);
+    const Real btr=SQR(wri[IBY])+SQR(wri[IBZ]);
+    const Real ql=SQR(bxi)+btl+asl, qr=SQR(bxi)+btr+asr;
+    const Real tl=SQR(bxi)+btl-asl, tr=SQR(bxi)+btr-asr;
+    cfl=std::sqrt(0.5*(ql+std::sqrt(SQR(tl)+4.0*asl*btl))/wli[IDN]);
+    cfr=std::sqrt(0.5*(qr+std::sqrt(SQR(tr)+4.0*asr*btr))/wri[IDN]);
+#else
+    cfl = pmy_block->peos->FastMagnetosonicSpeed(wli,bxi);
+    cfr = pmy_block->peos->FastMagnetosonicSpeed(wri,bxi);
+#endif
 
     spd[0] = std::min( wli[IVX]-cfl, wri[IVX]-cfr );
     spd[4] = std::max( wli[IVX]+cfl, wri[IVX]+cfr );
@@ -129,8 +294,8 @@ void Hydro::RiemannSolver(const int k, const int j, const int il, const int iu,
 
     //--- Step 3.  Compute L/R fluxes
 
-    Real ptl = wli[IPR] + pbl; // total pressures L,R
-    Real ptr = wri[IPR] + pbr;
+    Real ptl = wli[IPR] + pbl + prl; // gas + magnetic + radiation pressure
+    Real ptr = wri[IPR] + pbr + prr;
 
     fl.d  = ul.mx;
     fl.mx = ul.mx*wli[IVX] + ptl - bxsq;
@@ -374,6 +539,36 @@ void Hydro::RiemannSolver(const int k, const int j, const int il, const int iu,
       vf = spd[2];
     }
 
+#if NRMGFLD_ENABLED
+    const bool left=vf >= 0.0;
+    const Real erg=left ? erl : err;
+    const Real lambdag=left ? laml : lamr;
+    const Real ag=left ? arl : arr;
+    const Real fer=ag*erg*vf;
+    if (active_rad_face
+        && (!std::isfinite(vf) || !std::isfinite(erg) || !std::isfinite(fer))) {
+      std::stringstream msg;
+      msg << "### FATAL ERROR in HLLD-FLD radiation flux at (k,j,i)=("
+          << k << "," << j << "," << i << ") dir=" << dir
+          << " vf=" << vf << " erl=" << erl << " err=" << err
+          << " arl=" << arl << " arr=" << arr << " fer=" << fer
+          << " SL=" << spd[0] << " SM=" << spd[2] << " SR=" << spd[4]
+          << " rhoL=" << wli[IDN] << " rhoR=" << wri[IDN]
+          << " pL=" << wli[IPR] << " pR=" << wri[IPR]
+          << " vxL=" << wli[IVX] << " vxR=" << wri[IVX]
+          << " byL=" << wli[IBY] << " byR=" << wri[IBY]
+          << " bzL=" << wli[IBZ] << " bzR=" << wri[IBZ]
+          << " bx=" << bxi << " cfl=" << cfl << " cfr=" << cfr;
+      ATHENA_ERROR(msg);
+    }
+    if (active_rad_face) {
+      radflux(k,j,i)=pfld->mixed_frame_transport ? fer : 0.0;
+      pfld->rad_face_g[dir](k,j,i)=erg;
+    }
+    if (face_coupled && !radiation_pressure_in_flux) flxi[IVX]-=lambdag*erg;
+    if (face_coupled) flxi[IEN]-=fer;
+#endif
+
     flx(IDN,k,j,i) = flxi[IDN];
     flx(ivx,k,j,i) = flxi[IVX];
     flx(ivy,k,j,i) = flxi[IVY];
@@ -382,7 +577,10 @@ void Hydro::RiemannSolver(const int k, const int j, const int il, const int iu,
     ey(k,j,i) = -flxi[IBY];
     ez(k,j,i) =  flxi[IBZ];
 
+#if NRMGFLD_ENABLED
+    // vf is allocated only for NR-FLD mixed-frame transport.
     pmy_block->phydro->vf[ivx-IVX](k,j,i) = vf;
+#endif
 
     wct(k,j,i) = GetWeightForCT(flxi[IDN], wli[IDN], wri[IDN], dxw(i), dt);
   }

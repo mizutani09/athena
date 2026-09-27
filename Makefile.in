@@ -136,6 +136,10 @@ $(OBJ_DIR)%.o : %.cpp
 # implementation directly. Rebuild it whenever the common implementation changes.
 $(OBJ_DIR)nrfld_conv_star_ce.o : src/pgen/nrfld_conv_star.cpp
 
+# HLLD-FLD reuses the standard HLLD wave construction through a small wrapper.
+# Track the included implementation explicitly for reliable incremental builds.
+$(OBJ_DIR)hlld_fld.o : src/hydro/rsolvers/mhd/hlld.cpp
+
 # Process .gcno and .gcda files from obj/ into .cpp.gcov files (and .hpp.gcov, .h.gcov) in root directory
 # Rerun Gcov on all files if a single .gcda changes. Other options to consider: --preserve-paths -abcu
 ./%.cpp.gcov : %.cpp $(OBJ_DIR)/%.gcno $(GCDA_FILES)

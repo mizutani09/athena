@@ -261,7 +261,9 @@ class FLD {
   std::vector<std::uint64_t> user_diagnostic_counters;
 
   // for interaction with Hydro
-  void LoadHydroVariables(const AthenaArray<Real> &w, AthenaArray<Real> &fld_u_gas);
+  void LoadHydroVariables(const AthenaArray<Real> &w,
+                          const AthenaArray<Real> &hydro_u,
+                          AthenaArray<Real> &fld_u_gas);
   void UpdateHydroVariables(AthenaArray<Real> &w,
                             AthenaArray<Real> &hydro_u,
                             const AthenaArray<Real> &fld_u_rad,

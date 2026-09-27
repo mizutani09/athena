@@ -110,7 +110,8 @@ parser.add_argument('--eos',
 # --flux=[name] argument
 parser.add_argument('--flux',
                     default='default',
-                    choices=['default', 'hlle', 'hllc', 'lhllc', 'hlld', 'lhlld', 'roe', 'llf'], # noqa
+                    choices=['default', 'hlle', 'hllc', 'lhllc', 'hlld', 'hlld_fld',
+                             'lhlld', 'roe', 'llf'], # noqa
                     help='select Riemann solver')
 
 # --nghost=[value] argument
@@ -387,19 +388,23 @@ if args['flux'] == 'default':
         args['flux'] = 'hllc'
 
 # NR-FLD evolves radiation pressure as part of the hyperbolic gas+radiation
-# subsystem.  Use its dedicated hydro Riemann solver without changing the
-# standard HLLC implementation used by non-FLD configurations.
+# subsystem.  Use a dedicated HLLC/HLLD variant without changing the standard
+# implementations used by non-FLD configurations.
 if args['nrmgfld']:
-    if args['b']:
-        raise SystemExit('### CONFIGURE ERROR: HLLC/LHLLC-FLD does not support MHD')
     if args['eos'] == 'isothermal':
-        raise SystemExit('### CONFIGURE ERROR: HLLC/LHLLC-FLD requires an energy equation')
+        raise SystemExit('### CONFIGURE ERROR: FLD Riemann solvers require an energy equation')
     if args['s'] or args['g']:
-        raise SystemExit('### CONFIGURE ERROR: HLLC/LHLLC-FLD is Newtonian only')
-    if args['flux'] == 'lhllc':
-        args['flux'] = 'lhllc_fld'
+        raise SystemExit('### CONFIGURE ERROR: FLD Riemann solvers are Newtonian only')
+    if args['b']:
+        if args['flux'] == 'hlld':
+            args['flux'] = 'hlld_fld'
+        elif args['flux'] != 'hlld_fld':
+            raise SystemExit('### CONFIGURE ERROR: MHD NR-FLD requires --flux=hlld_fld')
     else:
-        args['flux'] = 'hllc_fld'
+        if args['flux'] == 'lhllc':
+            args['flux'] = 'lhllc_fld'
+        else:
+            args['flux'] = 'hllc_fld'
 
 # Check Riemann solver compatibility
 if args['flux'] == 'hllc' and args['eos'] == 'isothermal':
@@ -412,6 +417,10 @@ if args['flux'] == 'lhllc' and args['b']:
     raise SystemExit('### CONFIGURE ERROR: LHLLC flux cannot be used with MHD')
 if args['flux'] == 'hlld' and not args['b']:
     raise SystemExit('### CONFIGURE ERROR: HLLD flux can only be used with MHD')
+if args['flux'] == 'hlld_fld' and not args['b']:
+    raise SystemExit('### CONFIGURE ERROR: HLLD-FLD flux can only be used with MHD')
+if args['flux'] == 'hlld_fld' and not args['nrmgfld']:
+    raise SystemExit('### CONFIGURE ERROR: HLLD-FLD flux requires -nrmgfld')
 if args['flux'] == 'lhlld' and args['eos'] == 'isothermal':
     raise SystemExit('### CONFIGURE ERROR: LHLLD flux cannot be used with isothermal EOS') # noqa
 if args['flux'] == 'lhlld' and not args['b']:
@@ -440,7 +449,7 @@ if args['eos'][:8] == 'general/':
     if args['s'] or args['g']:
         raise SystemExit('### CONFIGURE ERROR: '
                          + 'General EOS is incompatible with relativity')
-    if args['flux'] not in ['hllc', 'hllc_fld', 'lhllc_fld', 'hlld']:
+    if args['flux'] not in ['hllc', 'hllc_fld', 'lhllc_fld', 'hlld', 'hlld_fld']:
         raise SystemExit('### CONFIGURE ERROR: '
                          + 'General EOS is incompatible with flux ' + args['flux'])
 
