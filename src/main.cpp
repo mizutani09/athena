@@ -520,12 +520,6 @@ int main(int argc, char *argv[]) {
       pmesh->pmcrd->Solve(0, pmesh->dt);
     }
 
-    if (NRMGFLD_ENABLED) {
-      const NewtonSolveResult nr_result = pmesh->pmnr->Solve_general(0, pmesh->dt);
-      pmesh->pmnr->HandleSolveResult(nr_result);
-      SynchronizeHydroPrimitivesAfterNR(pmesh);
-    }
-
     // chemistry with radiation
     if (CHEMRADIATION_ENABLED) {
       clock_t tstart_rad, tstop_rad;
@@ -566,6 +560,14 @@ int main(int argc, char *argv[]) {
       // take super-timestep
       for (int stage=1; stage<=pststlist->nstages; ++stage)
         pststlist->DoTaskListOneStage(pmesh, stage);
+    }
+
+    // Apply the implicit FLD update after all explicit stages, using this step's dt.
+    // Synchronize primitives before end-of-step work, AMR, and output.
+    if (NRMGFLD_ENABLED) {
+      const NewtonSolveResult nr_result = pmesh->pmnr->Solve_general(0, pmesh->dt);
+      pmesh->pmnr->HandleSolveResult(nr_result);
+      SynchronizeHydroPrimitivesAfterNR(pmesh);
     }
 
     pmesh->UserWorkInLoop();
