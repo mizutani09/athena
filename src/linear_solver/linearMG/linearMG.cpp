@@ -10,6 +10,7 @@
 
 // C++ headers
 #include <algorithm>
+#include <cmath>
 #include <iostream>
 #include <limits>
 #include <sstream>    // sstream
@@ -110,6 +111,7 @@ linearMGDriver::linearMGDriver(Mesh *pm, ParameterInput *pin, NewtonRaphsonDrive
     ATHENA_ERROR(msg);
   }
   std::string smoother = pin->GetOrAddString("nrfld", "smoother", "jacobi-rb");
+  symmetric_rb_ = pin->GetOrAddBoolean("nrfld", "symmetric_rb_sweeps", false);
 //   matrixmode_ = 1;
   matrixmode_ = 0; // caution!
   if (smoother == "jacobi-rb") {
@@ -405,12 +407,16 @@ linearMGDriver::~linearMGDriver() {
 
 void linearMGDriver::PrintCoefficientDiagnostics() {
   auto report_level = [&](const char *kind, int lev, bool root_grid) {
-    Real vmin[5] = {std::numeric_limits<Real>::max(),
+    Real vmin[8] = {std::numeric_limits<Real>::max(),
+                    std::numeric_limits<Real>::max(),
+                    std::numeric_limits<Real>::max(),
+                    std::numeric_limits<Real>::max(),
                     std::numeric_limits<Real>::max(),
                     std::numeric_limits<Real>::max(),
                     std::numeric_limits<Real>::max(),
                     std::numeric_limits<Real>::max()};
-    Real vmax[7] = {0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0};
+    Real vmax[9] = {0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0};
+    long long invalid_rows[2] = {0, 0};
     int nx = 0, ny = 0, nz = 0;
     if (!root_grid) {
       const int ll = nmblevel_ - 1 - lev;
@@ -446,15 +452,30 @@ void linearMGDriver::PrintCoefficientDiagnostics() {
                 + c(linearSolver::DZMS,k,j,i) + c(linearSolver::DZPS,k,j,i);
             const Real row_error = std::abs(rowsum - expected_rowsum)
                                  / std::max(std::abs(diag), TINY_NUMBER);
+            const Real offdiag_abs =
+                std::abs(a(linearSolver::CCM,k,j,i))
+              + std::abs(a(linearSolver::CCP,k,j,i))
+              + std::abs(a(linearSolver::CMC,k,j,i))
+              + std::abs(a(linearSolver::CPC,k,j,i))
+              + std::abs(a(linearSolver::MCC,k,j,i))
+              + std::abs(a(linearSolver::PCC,k,j,i));
+            const Real dominance = (diag - offdiag_abs)
+                                 / std::max(std::abs(diag), TINY_NUMBER);
             vmin[0] = std::min(vmin[0], std::abs(dccs));
             vmin[1] = std::min(vmin[1], diffusion_diag);
             vmin[3] = std::min(vmin[3], std::abs(diag));
             vmin[4] = std::min(vmin[4], reaction_fraction);
+            vmin[5] = std::min(vmin[5], dccs);
+            vmin[6] = std::min(vmin[6], diag);
+            vmin[7] = std::min(vmin[7], dominance);
             vmax[0] = std::max(vmax[0], std::abs(dccs));
             vmax[1] = std::max(vmax[1], diffusion_diag);
             vmax[3] = std::max(vmax[3], std::abs(diag));
             vmax[4] = std::max(vmax[4], reaction_fraction);
             vmax[5] = std::max(vmax[5], row_error);
+            vmax[7] = std::max(vmax[7], dccs);
+            vmax[8] = std::max(vmax[8], diag);
+            if (!(diag > 0.0) || !std::isfinite(diag)) ++invalid_rows[0];
 
             const int face_ids[6] = {linearSolver::CCM, linearSolver::CCP,
                                      linearSolver::CMC, linearSolver::CPC,
@@ -463,6 +484,8 @@ void linearMGDriver::PrintCoefficientDiagnostics() {
               const Real face = std::abs(a(face_ids[n],k,j,i));
               if (face > 0.0) vmin[2] = std::min(vmin[2], face);
               vmax[2] = std::max(vmax[2], face);
+              if (a(face_ids[n],k,j,i) > 0.0
+                  || !std::isfinite(a(face_ids[n],k,j,i))) ++invalid_rows[1];
             }
             auto update_asymmetry = [&](Real lhs, Real rhs) {
               vmax[6] = std::max(vmax[6], std::abs(lhs-rhs)
@@ -488,8 +511,10 @@ void linearMGDriver::PrintCoefficientDiagnostics() {
       for (Multigrid *base : vmg_) scan(static_cast<linearMG*>(base));
     }
 #ifdef MPI_PARALLEL
-    MPI_Allreduce(MPI_IN_PLACE, vmin, 5, MPI_ATHENA_REAL, MPI_MIN, MPI_COMM_WORLD);
-    MPI_Allreduce(MPI_IN_PLACE, vmax, 7, MPI_ATHENA_REAL, MPI_MAX, MPI_COMM_WORLD);
+    MPI_Allreduce(MPI_IN_PLACE, vmin, 8, MPI_ATHENA_REAL, MPI_MIN, MPI_COMM_WORLD);
+    MPI_Allreduce(MPI_IN_PLACE, vmax, 9, MPI_ATHENA_REAL, MPI_MAX, MPI_COMM_WORLD);
+    MPI_Allreduce(MPI_IN_PLACE, invalid_rows, 2, MPI_LONG_LONG, MPI_SUM,
+                  MPI_COMM_WORLD);
 #endif
     if (Globals::my_rank == 0) {
       const Real face_contrast = vmax[2]/std::max(vmin[2], TINY_NUMBER);
@@ -501,6 +526,11 @@ void linearMGDriver::PrintCoefficientDiagnostics() {
                 << " face_contrast=" << face_contrast
                 << " diag=[" << vmin[3] << "," << vmax[3] << "]"
                 << " reaction_fraction=[" << vmin[4] << "," << vmax[4] << "]"
+                << " signed_DCCS=[" << vmin[5] << "," << vmax[7] << "]"
+                << " signed_diag=[" << vmin[6] << "," << vmax[8] << "]"
+                << " dominance_min=" << vmin[7]
+                << " nonpositive_diag=" << invalid_rows[0]
+                << " positive_or_nonfinite_offdiag=" << invalid_rows[1]
                 << " row_error_max=" << vmax[5]
                 << " face_asymmetry_max=" << vmax[6] << std::endl;
     }

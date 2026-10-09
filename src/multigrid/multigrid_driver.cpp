@@ -47,7 +47,8 @@ MultigridDriver::MultigridDriver(Mesh *pm, MGBoundaryFunc *MGBoundary,
     maxreflevel_(pm->multilevel?pm->max_level-pm->root_level:0),
     nrbx1_(pm->nrbx1), nrbx2_(pm->nrbx2), nrbx3_(pm->nrbx3), srcmask_(MGSourceMask),
     coeffmask_(MGCoeffMask), pmy_mesh_(pm), fsubtract_average_(false),
-    ffas_(pm->multilevel), redblack_(true), needinit_(true), fshowdef_(false),
+    ffas_(pm->multilevel), redblack_(true), symmetric_rb_(false), needinit_(true),
+    fshowdef_(false),
     smoothing_only_(false), relative_defect_(false),
     eps_(-1.0), dt_(0.0), coarse_corr_scale_(1.0), niter_(-1), npresmooth_(1),
     npostsmooth_(1),
@@ -1018,11 +1019,12 @@ void MultigridDriver::OneStepToFiner(int nsmooth) {
     ProlongateAndCorrectOctets();
     current_level_++;
     for (int n = 0; n < nsmooth; ++n) {
+      const int first_color = symmetric_rb_ ? 0 : coffset_;
       SetBoundariesOctets(false, false, false);
-      SmoothOctets(coffset_);
+      SmoothOctets(first_color);
       if (redblack_) {
         SetBoundariesOctets(false, false, false);
-        SmoothOctets(1-coffset_);
+        SmoothOctets(1-first_color);
       }
     }
   } else { // root grid
@@ -1030,11 +1032,12 @@ void MultigridDriver::OneStepToFiner(int nsmooth) {
     mgroot_->ProlongateAndCorrectBlock();
     current_level_++;
     for (int n = 0; n < nsmooth; ++n) {
+      const int first_color = symmetric_rb_ ? 0 : coffset_;
       mgroot_->pmgbval->ApplyPhysicalBoundaries(0, false);
-      mgroot_->SmoothBlock(coffset_);
+      mgroot_->SmoothBlock(first_color);
       if (redblack_) {
         mgroot_->pmgbval->ApplyPhysicalBoundaries(0, false);
-        mgroot_->SmoothBlock(1-coffset_);
+        mgroot_->SmoothBlock(1-first_color);
       }
     }
   }
@@ -1084,10 +1087,11 @@ void MultigridDriver::OneStepToCoarser(int nsmooth) {
       CalculateFASRHSOctets();
     }
     for (int n=0; n<nsmooth; ++n) {
-      SmoothOctets(coffset_);
+      const int first_color = symmetric_rb_ ? 0 : coffset_;
+      SmoothOctets(first_color);
       SetBoundariesOctets(false, false, false);
       if (redblack_) {
-        SmoothOctets(1-coffset_);
+        SmoothOctets(1-first_color);
         SetBoundariesOctets(false, false, false);
       }
     }
@@ -1103,10 +1107,11 @@ void MultigridDriver::OneStepToCoarser(int nsmooth) {
       mgroot_->CalculateFASRHSBlock();
     }
     for (int n = 0; n < nsmooth; ++n) {
-      mgroot_->SmoothBlock(coffset_);
+      const int first_color = symmetric_rb_ ? 0 : coffset_;
+      mgroot_->SmoothBlock(first_color);
       mgroot_->pmgbval->ApplyPhysicalBoundaries(0, false);
       if (redblack_) {
-        mgroot_->SmoothBlock(1-coffset_);
+        mgroot_->SmoothBlock(1-first_color);
         mgroot_->pmgbval->ApplyPhysicalBoundaries(0, false);
       }
     }
@@ -1135,6 +1140,7 @@ void MultigridDriver::SolveVCycle(int npresmooth, int npostsmooth) {
               << " npostsmooth=" << npostsmooth << std::endl;
   }
   coffset_ ^= 1;
+  const int presmooth_coffset = coffset_;
   if (smoothing_only_ && startlevel >= nrootlevel_ + nreflevel_) {
     const int ngh = mgroot_->ngh_;
     mgtlist_->SetMGTaskListSmoothOnly(npresmooth + npostsmooth);
@@ -1148,9 +1154,14 @@ void MultigridDriver::SolveVCycle(int npresmooth, int npostsmooth) {
               << std::endl;
   }
   SolveCoarsestGrid();
+  // Reverse the color order on the upward leg when requested.  The resulting
+  // symmetric red-black smoother is substantially less sensitive to the
+  // non-Galerkin AMR coarse/fine transfer than using the same order twice.
+  if (symmetric_rb_ && redblack_) coffset_ ^= 1;
   while (current_level_ < startlevel) {
     OneStepToFiner(npostsmooth);
   }
+  coffset_ = presmooth_coffset;
   if (fshowdef_ && Globals::my_rank == 0) {
     std::cout << "[MG trace] finish V-cycle current_level=" << current_level_
               << std::endl;

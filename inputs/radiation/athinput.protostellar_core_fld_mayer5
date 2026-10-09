@@ -86,6 +86,7 @@ auto_mporigin = true
 mgmode       = MGI
 fas          = false
 smoother     = jacobi-rb
+symmetric_rb_sweeps = true
 npresmooth   = 2
 npostsmooth  = 2
 omega        = 1.0
@@ -116,7 +117,9 @@ nr_use_mg_smoothing_fallback = false
 # Roll back a rejected finite Newton iterate, warn, and skip that implicit update.
 # Non-finite residuals remain fatal even with this policy.
 failure_policy = warn_keep_old
-max_update_fraction = 0.2
+# Preserve the coupled Newton direction.  Positivity is enforced by the
+# floors, while nr_backtrack_* globalizes the full nonlinear update.
+max_update_fraction = -1.0
 ix1_bc       = periodic
 ox1_bc       = periodic
 ix2_bc       = periodic

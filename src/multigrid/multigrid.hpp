@@ -292,7 +292,8 @@ class MultigridDriver {
   Mesh *pmy_mesh_;
   std::vector<Multigrid*> vmg_;
   Multigrid *mgroot_;
-  bool fsubtract_average_, ffas_, redblack_, needinit_, fshowdef_, smoothing_only_;
+  bool fsubtract_average_, ffas_, redblack_, symmetric_rb_, needinit_, fshowdef_,
+       smoothing_only_;
   bool relative_defect_;
   Real last_ave_;
   Real eps_, dt_, coarse_corr_scale_;
