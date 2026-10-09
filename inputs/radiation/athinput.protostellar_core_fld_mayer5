@@ -85,23 +85,37 @@ auto_mporigin = true
 <nrfld>
 mgmode       = MGI
 fas          = false
-smoother     = jacobi-double
+smoother     = jacobi-rb
 npresmooth   = 2
-npostsmooth  = 0
+npostsmooth  = 2
 omega        = 1.0
-threshold    = 0.0
-niteration   = 10
+threshold    = 1.0e-8
+niteration   = -1
 nr_threshold = 1.0e-6
 nr_niteration = 100
-smoothing_only = true
+nr_max_iterations = 100
+# 0: summary only, 1: Newton trial summary, 2: maximum-cell stencil.
+diagnostic_verbosity = 0
+smoothing_only = false
+post_mg_smooth = 16
+cache_coefficient_hierarchy = true
+coarse_solver = direct
+coarse_direct_max_cells = 64
+coarse_diagnostics = false
+coarse_diagnostic_limit = 4
+coefficient_diagnostics = false
+coefficient_diagnostic_limit = 1
 coarse_correction_scale = 1.0
-nr_mg_coarse_retry_max = 4
+nr_mg_coarse_retry_max = 0
 nr_mg_coarse_retry_factor = 0.5
 nr_mg_coarse_retry_min_scale = 0.0625
 nr_backtrack_max = 4
 nr_backtrack_factor = 0.5
 nr_min_step_scale = 0.05
-nr_use_mg_smoothing_fallback = true
+nr_use_mg_smoothing_fallback = false
+# Roll back a rejected finite Newton iterate, warn, and skip that implicit update.
+# Non-finite residuals remain fatal even with this policy.
+failure_policy = warn_keep_old
 max_update_fraction = 0.2
 ix1_bc       = periodic
 ox1_bc       = periodic

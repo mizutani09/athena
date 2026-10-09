@@ -85,6 +85,8 @@ class linearMGDriver: public MultigridDriver {
   // LinearSolver *plinsolver = nullptr;
 
  private:
+  void PrintCoefficientDiagnostics();
+
   LinearMGBoundaryTaskList *linmgtlist_;
   NewtonRaphsonDriver *pnrd_;
   Real omega_;
@@ -99,6 +101,9 @@ class linearMGDriver: public MultigridDriver {
   int coarse_direct_max_cells_;
   int coarse_diagnostic_limit_;
   int coarse_diagnostic_count_;
+  bool coefficient_diagnostics_;
+  int coefficient_diagnostic_limit_;
+  int coefficient_diagnostic_count_;
 };
 
 

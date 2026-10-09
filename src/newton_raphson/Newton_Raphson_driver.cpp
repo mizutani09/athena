@@ -668,8 +668,11 @@ NewtonSolveResult NewtonRaphsonDriver::Solve_general(int stage, Real dt) {
         pnr->RestoreIterate();
       }
 
-      // Coarse-correction damping is a safeguard for coarse/fine MG
-      // coupling.  On a uniform mesh it only repeats the same Newton solve.
+      // Optional coarse-correction damping is retained as an expert fallback.
+      // It is disabled by default: changing the linear solve before trying a
+      // line search can replace a useful Newton direction with a much poorer
+      // AMR correction.  With zero retries this falls through to ordinary
+      // backtracking of the same Newton direction.
       if (pmy_mesh_->multilevel
           && !base_smoothing_only && !use_smoothing_retry
           && ncoarse_retry < mg_coarse_retry_max_
@@ -689,8 +692,9 @@ NewtonSolveResult NewtonRaphsonDriver::Solve_general(int stage, Real dt) {
         continue;
       }
 
-      // The fine-grid-only fallback corrects an SMR/AMR transfer mismatch;
-      // it is redundant (and expensive) when no refinement levels exist.
+      // The fine-grid-only fallback is also opt-in.  It can diagnose an
+      // SMR/AMR transfer mismatch, but must not replace the Newton direction
+      // before ordinary backtracking unless explicitly requested.
       if (pmy_mesh_->multilevel && use_mg_smoothing_fallback_
           && !base_smoothing_only && !use_smoothing_retry) {
         use_smoothing_retry = true;

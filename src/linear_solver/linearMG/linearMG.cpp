@@ -53,7 +53,9 @@ linearMGDriver::linearMGDriver(Mesh *pm, ParameterInput *pin, NewtonRaphsonDrive
       coefficient_hierarchy_cached_(false), npostsolve_smooth_(0),
       nsmoothing_only_sweeps_(256), direct_coarse_solve_(true),
       coarse_diagnostics_(false), coarse_direct_max_cells_(64),
-      coarse_diagnostic_limit_(4), coarse_diagnostic_count_(0) {
+      coarse_diagnostic_limit_(4), coarse_diagnostic_count_(0),
+      coefficient_diagnostics_(false), coefficient_diagnostic_limit_(1),
+      coefficient_diagnostic_count_(0) {
   eps_ = pin->GetOrAddReal("nrfld", "threshold", -1.0);
   niter_ = pin->GetOrAddInteger("nrfld", "niteration", -1);
   ffas_ = pin->GetOrAddBoolean("nrfld", "fas", ffas_);
@@ -89,11 +91,16 @@ linearMGDriver::linearMGDriver(Mesh *pm, ParameterInput *pin, NewtonRaphsonDrive
       "nrfld", "coarse_diagnostics", false);
   coarse_diagnostic_limit_ = pin->GetOrAddInteger(
       "nrfld", "coarse_diagnostic_limit", 4);
-  if (coarse_direct_max_cells_ <= 0 || coarse_diagnostic_limit_ < 0) {
+  coefficient_diagnostics_ = pin->GetOrAddBoolean(
+      "nrfld", "coefficient_diagnostics", false);
+  coefficient_diagnostic_limit_ = pin->GetOrAddInteger(
+      "nrfld", "coefficient_diagnostic_limit", 1);
+  if (coarse_direct_max_cells_ <= 0 || coarse_diagnostic_limit_ < 0
+      || coefficient_diagnostic_limit_ < 0) {
     std::stringstream msg;
     msg << "### FATAL ERROR in linearMGDriver::linearMGDriver" << std::endl
-        << "coarse_direct_max_cells must be positive and "
-        << "coarse_diagnostic_limit must be non-negative." << std::endl;
+        << "coarse_direct_max_cells must be positive, and diagnostic limits "
+        << "must be non-negative." << std::endl;
     ATHENA_ERROR(msg);
   }
   if (nsmoothing_only_sweeps_ <= 0) {
@@ -394,6 +401,120 @@ linearMGDriver::~linearMGDriver() {
 
 
 //----------------------------------------------------------------------------------------
+//! \brief Report coefficient contrast and coarse-operator consistency by MG level.
+
+void linearMGDriver::PrintCoefficientDiagnostics() {
+  auto report_level = [&](const char *kind, int lev, bool root_grid) {
+    Real vmin[5] = {std::numeric_limits<Real>::max(),
+                    std::numeric_limits<Real>::max(),
+                    std::numeric_limits<Real>::max(),
+                    std::numeric_limits<Real>::max(),
+                    std::numeric_limits<Real>::max()};
+    Real vmax[7] = {0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0};
+    int nx = 0, ny = 0, nz = 0;
+    if (!root_grid) {
+      const int ll = nmblevel_ - 1 - lev;
+      nx = pmy_mesh_->block_size.nx1 >> ll;
+      ny = pmy_mesh_->block_size.nx2 >> ll;
+      nz = pmy_mesh_->block_size.nx3 >> ll;
+    }
+
+    auto scan = [&](linearMG *pmg) {
+      const int ll = pmg->nlevel_ - 1 - lev;
+      nx = pmg->size_.nx1 >> ll;
+      ny = pmg->size_.nx2 >> ll;
+      nz = pmg->size_.nx3 >> ll;
+      const int is = pmg->ngh_, js = pmg->ngh_, ks = pmg->ngh_;
+      const int ie = is + nx - 1, je = js + ny - 1, ke = ks + nz - 1;
+      const AthenaArray<Real> &c = pmg->coeff_[lev];
+      const AthenaArray<Real> &a = pmg->matrix_[lev];
+      for (int k = ks; k <= ke; ++k) {
+        for (int j = js; j <= je; ++j) {
+          for (int i = is; i <= ie; ++i) {
+            const Real dccs = c(linearSolver::DCCS,k,j,i);
+            const Real diag = a(linearSolver::CCC,k,j,i);
+            const Real diffusion_diag = std::abs(diag - dccs);
+            const Real reaction_fraction = std::abs(dccs)
+                                         / std::max(std::abs(diag), TINY_NUMBER);
+            const Real rowsum = diag
+                + a(linearSolver::CCM,k,j,i) + a(linearSolver::CCP,k,j,i)
+                + a(linearSolver::CMC,k,j,i) + a(linearSolver::CPC,k,j,i)
+                + a(linearSolver::MCC,k,j,i) + a(linearSolver::PCC,k,j,i);
+            const Real expected_rowsum = dccs
+                + c(linearSolver::DXMS,k,j,i) + c(linearSolver::DXPS,k,j,i)
+                + c(linearSolver::DYMS,k,j,i) + c(linearSolver::DYPS,k,j,i)
+                + c(linearSolver::DZMS,k,j,i) + c(linearSolver::DZPS,k,j,i);
+            const Real row_error = std::abs(rowsum - expected_rowsum)
+                                 / std::max(std::abs(diag), TINY_NUMBER);
+            vmin[0] = std::min(vmin[0], std::abs(dccs));
+            vmin[1] = std::min(vmin[1], diffusion_diag);
+            vmin[3] = std::min(vmin[3], std::abs(diag));
+            vmin[4] = std::min(vmin[4], reaction_fraction);
+            vmax[0] = std::max(vmax[0], std::abs(dccs));
+            vmax[1] = std::max(vmax[1], diffusion_diag);
+            vmax[3] = std::max(vmax[3], std::abs(diag));
+            vmax[4] = std::max(vmax[4], reaction_fraction);
+            vmax[5] = std::max(vmax[5], row_error);
+
+            const int face_ids[6] = {linearSolver::CCM, linearSolver::CCP,
+                                     linearSolver::CMC, linearSolver::CPC,
+                                     linearSolver::MCC, linearSolver::PCC};
+            for (int n = 0; n < 6; ++n) {
+              const Real face = std::abs(a(face_ids[n],k,j,i));
+              if (face > 0.0) vmin[2] = std::min(vmin[2], face);
+              vmax[2] = std::max(vmax[2], face);
+            }
+            auto update_asymmetry = [&](Real lhs, Real rhs) {
+              vmax[6] = std::max(vmax[6], std::abs(lhs-rhs)
+                  /std::max({std::abs(lhs), std::abs(rhs), TINY_NUMBER}));
+            };
+            if (i < ie)
+              update_asymmetry(a(linearSolver::CCP,k,j,i),
+                               a(linearSolver::CCM,k,j,i+1));
+            if (j < je)
+              update_asymmetry(a(linearSolver::CPC,k,j,i),
+                               a(linearSolver::CMC,k,j+1,i));
+            if (k < ke)
+              update_asymmetry(a(linearSolver::PCC,k,j,i),
+                               a(linearSolver::MCC,k+1,j,i));
+          }
+        }
+      }
+    };
+
+    if (root_grid) {
+      scan(static_cast<linearMG*>(mgroot_));
+    } else {
+      for (Multigrid *base : vmg_) scan(static_cast<linearMG*>(base));
+    }
+#ifdef MPI_PARALLEL
+    MPI_Allreduce(MPI_IN_PLACE, vmin, 5, MPI_ATHENA_REAL, MPI_MIN, MPI_COMM_WORLD);
+    MPI_Allreduce(MPI_IN_PLACE, vmax, 7, MPI_ATHENA_REAL, MPI_MAX, MPI_COMM_WORLD);
+#endif
+    if (Globals::my_rank == 0) {
+      const Real face_contrast = vmax[2]/std::max(vmin[2], TINY_NUMBER);
+      std::cout << "[NRFLD coefficients] kind=" << kind << " level=" << lev
+                << " cells=" << nx << "x" << ny << "x" << nz
+                << " DCCS=[" << vmin[0] << "," << vmax[0] << "]"
+                << " diffusion_diag=[" << vmin[1] << "," << vmax[1] << "]"
+                << " face_abs=[" << vmin[2] << "," << vmax[2] << "]"
+                << " face_contrast=" << face_contrast
+                << " diag=[" << vmin[3] << "," << vmax[3] << "]"
+                << " reaction_fraction=[" << vmin[4] << "," << vmax[4] << "]"
+                << " row_error_max=" << vmax[5]
+                << " face_asymmetry_max=" << vmax[6] << std::endl;
+    }
+  };
+
+  for (int lev = nmblevel_ - 1; lev >= 0; --lev)
+    report_level("meshblock", lev, false);
+  linearMG *root = static_cast<linearMG*>(mgroot_);
+  for (int lev = root->nlevel_ - 1; lev >= 0; --lev)
+    report_level("root", lev, true);
+}
+
+
+//----------------------------------------------------------------------------------------
 //! \fn linearMG::linearMG(linearMGDriver *pmd, MeshBlock *pmb, ParameterInput *pin, NewtonRaphson *pnr)
 //! \brief linearMG constructor
 
@@ -466,6 +587,11 @@ void linearMGDriver::Solve(int stage, Real dt) {
     SetupMultigrid(true);
     SetupCoefficient(linearSolver::DCCS);
     CalculateMatrixAll();
+  }
+  if (coefficient_diagnostics_
+      && coefficient_diagnostic_count_ < coefficient_diagnostic_limit_) {
+    PrintCoefficientDiagnostics();
+    ++coefficient_diagnostic_count_;
   }
   // std::cout << "setup done at " << Globals::my_rank << std::endl;
   if (smoothing_only_) {

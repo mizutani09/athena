@@ -106,8 +106,8 @@ NRFLDDriver::NRFLDDriver(Mesh *pm, ParameterInput *pin)
   if (!verbosity_in_input && fshowdef_) diagnostic_verbosity_ = 2;
   fshowdef_ = diagnostic_verbosity_ > 0;
   use_mg_smoothing_fallback_ =
-      pin->GetOrAddBoolean("nrfld", "nr_use_mg_smoothing_fallback", true);
-  mg_coarse_retry_max_ = pin->GetOrAddInteger("nrfld", "nr_mg_coarse_retry_max", 4);
+      pin->GetOrAddBoolean("nrfld", "nr_use_mg_smoothing_fallback", false);
+  mg_coarse_retry_max_ = pin->GetOrAddInteger("nrfld", "nr_mg_coarse_retry_max", 0);
   mg_coarse_retry_factor_ =
       pin->GetOrAddReal("nrfld", "nr_mg_coarse_retry_factor", 0.5);
   mg_coarse_retry_min_scale_ =

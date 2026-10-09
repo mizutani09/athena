@@ -89,6 +89,8 @@ coarse_solver                 = direct
 coarse_direct_max_cells       = 64
 coarse_diagnostics            = false
 coarse_diagnostic_limit       = 4
+coefficient_diagnostics       = false
+coefficient_diagnostic_limit  = 1
 
 coarse_correction_scale      = 1.0
 nr_mg_coarse_retry_max       = 4
