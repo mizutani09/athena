@@ -162,6 +162,7 @@ class NRFLD : public NewtonRaphson {
                                       bool &active, bool &finite) const final;
   bool PrimaryDefectIsGas() const final;
   bool PrimaryDefectIsTotalEnergy() const final;
+  void RunJacobianDiagnostic(Real dt) final;
   // void CalculateFASRHS(AthenaArray<Real> &def, const AthenaArray<Real> &src,
   //                const AthenaArray<Real> &coeff, const AthenaArray<Real> &matrix,
   //                int rlev, int il, int iu, int jl, int ju, int kl, int ku, bool th) final;
@@ -194,6 +195,9 @@ class NRFLD : public NewtonRaphson {
   Real defscale_;
   Real max_update_fraction_;
   bool fixed_linear_coefficients_initialized_;
+  bool jacobian_check_;
+  bool jacobian_check_done_;
+  Real jacobian_check_epsilon_;
   // AthenaArray<Real> *u_, *def_, *src_, *uold_, *coeff_, *matrix_;
   // AthenaArray<Real> delta_u_;
   AthenaArray<Real> u_gas_, u_gas_iter_backup_;

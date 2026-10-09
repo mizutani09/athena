@@ -154,6 +154,7 @@ NewtonRaphsonDriver::NewtonRaphsonDriver(Mesh *pm,
     // nrbx1_(pm->nrbx1), nrbx2_(pm->nrbx2), nrbx3_(pm->nrbx3),
     pmy_mesh_(pm),
     needinit_(true), fshowdef_(false), use_mg_smoothing_fallback_(false),
+    abort_on_failure_(true),
     diagnostic_verbosity_(0),
     eps_(-1.0), dt_(0.0), step_scale_(1.0),
     backtrack_factor_(0.5), min_step_scale_(0.05), niter_(-1),
@@ -443,6 +444,9 @@ NewtonSolveResult NewtonRaphsonDriver::Solve_general(int stage, Real dt) {
       pnr->def_coeff_, pnr->coeff_, pnr->derivetive_, pnr->src_,
       dt_);
   }
+  // Optional physics-specific finite-difference checks run after the initial
+  // residual and Jacobian have been assembled, and must restore that state.
+  for (auto pnr : vnr_) pnr->RunJacobianDiagnostic(dt_);
 
   int n = 0;
   NewtonResidualNorms norms;
@@ -791,7 +795,11 @@ NewtonSolveResult NewtonRaphsonDriver::Solve_general(int stage, Real dt) {
   }
   result.iterations = n;
   store_result_norms(norms, false);
-  if (!result.committed && norms.finite && result.final_gas_max_norm > 0.0) {
+  // Keep the detailed per-rank failure dump for fatal failures.  In continuation
+  // mode it can otherwise flood a large MPI job's log on every rejected step;
+  // users can still request it explicitly with diagnostic_verbosity=2.
+  if (!result.committed && norms.finite && result.final_gas_max_norm > 0.0
+      && (abort_on_failure_ || diagnostic_verbosity_ >= 2)) {
     // A rejected trial leaves the defect arrays at the trial state even
     // after restoring the iterate. Reevaluate before reporting its physics.
     for (auto pnr : vnr_) {
@@ -834,7 +842,11 @@ NewtonSolveResult NewtonRaphsonDriver::Solve_general(int stage, Real dt) {
 void NewtonRaphsonDriver::HandleSolveResult(const NewtonSolveResult &result) const {
   if (result.IsSuccess()) return;
   std::stringstream msg;
-  msg << "### FATAL ERROR in NewtonRaphsonDriver::Solve_general" << std::endl
+  const bool nonfinite = result.reason == NewtonSolveReason::initial_nonfinite
+                      || result.reason == NewtonSolveReason::final_nonfinite;
+  msg << (nonfinite || abort_on_failure_
+              ? "### FATAL ERROR in NewtonRaphsonDriver::Solve_general"
+              : "### WARNING in NewtonRaphsonDriver::Solve_general") << std::endl
       << "Newton-Raphson solve failed: " << NewtonSolveReasonName(result.reason)
       << ", iterations=" << result.iterations
       << ", initial_l2=" << result.initial_norm
@@ -850,7 +862,13 @@ void NewtonRaphsonDriver::HandleSolveResult(const NewtonSolveResult &result) con
       << ", final_radiation_max=" << result.final_radiation_max_norm
       << ", final_total_energy_l2=" << result.final_total_energy_l2_norm
       << ", final_total_energy_max=" << result.final_total_energy_max_norm << std::endl;
-  ATHENA_ERROR(msg);
+  if (nonfinite || abort_on_failure_) ATHENA_ERROR(msg);
+  if (Globals::my_rank == 0) {
+    msg << "The rejected nonlinear iterate was rolled back; the implicit FLD update "
+        << "is skipped for this timestep because nrfld/failure_policy=warn_keep_old."
+        << std::endl;
+    std::cout << msg.str();
+  }
 }
 
 

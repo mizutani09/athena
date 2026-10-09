@@ -89,6 +89,18 @@ NRFLDDriver::NRFLDDriver(Mesh *pm, ParameterInput *pin)
   fshowdef_ = pin->GetOrAddBoolean("nrfld", "show_defect", fshowdef_);
   diagnostic_verbosity_ = pin->GetOrAddInteger(
       "nrfld", "diagnostic_verbosity", fshowdef_ ? 2 : 0);
+  const std::string failure_policy = pin->GetOrAddString(
+      "nrfld", "failure_policy", "abort");
+  if (failure_policy == "abort") {
+    abort_on_failure_ = true;
+  } else if (failure_policy == "warn_keep_old") {
+    abort_on_failure_ = false;
+  } else {
+    std::stringstream msg;
+    msg << "### FATAL ERROR in NRFLDDriver::NRFLDDriver" << std::endl
+        << "\"failure_policy\" must be abort or warn_keep_old." << std::endl;
+    ATHENA_ERROR(msg);
+  }
   // show_defect remains a compatibility alias for the former all-or-nothing
   // diagnostics.  An explicit verbosity setting takes precedence.
   if (!verbosity_in_input && fshowdef_) diagnostic_verbosity_ = 2;
@@ -241,7 +253,11 @@ NRFLD::NRFLD(MeshBlock *pmb, ParameterInput *pin) :
     // the driver-wide Newton backtracking, respectively.  Keep the local cap
     // available only as an explicitly requested diagnostic safeguard.
     max_update_fraction_(pin->GetOrAddReal("nrfld", "max_update_fraction", -1.0)),
-    fixed_linear_coefficients_initialized_(false)
+    fixed_linear_coefficients_initialized_(false),
+    jacobian_check_(pin->GetOrAddBoolean("nrfld", "jacobian_check", false)),
+    jacobian_check_done_(false),
+    jacobian_check_epsilon_(pin->GetOrAddReal(
+        "nrfld", "jacobian_check_epsilon", 1.0e-4))
     {
     last_delta_rad_.NewAthenaArray(2, pmb->ncells3, pmb->ncells2, pmb->ncells1);
     last_delta_rad_.ZeroClear();
@@ -257,6 +273,13 @@ NRFLD::NRFLD(MeshBlock *pmb, ParameterInput *pin) :
       std::stringstream msg;
       msg << "### FATAL ERROR in NRFLD::NRFLD" << std::endl
           << "linearMGDriver pointer is null" << std::endl;
+      ATHENA_ERROR(msg);
+    }
+    if (!(jacobian_check_epsilon_ > 0.0) ||
+        !std::isfinite(jacobian_check_epsilon_)) {
+      std::stringstream msg;
+      msg << "### FATAL ERROR in NRFLD::NRFLD" << std::endl
+          << "nrfld/jacobian_check_epsilon must be finite and positive." << std::endl;
       ATHENA_ERROR(msg);
     }
     // pmy_mesh(pm),
@@ -281,6 +304,117 @@ NRFLD::~NRFLD() {
                 << " block.plmg=" << pmy_block_->plmg << std::endl;
     }
     delete plmg_;
+  }
+}
+
+
+void NRFLD::RunJacobianDiagnostic(Real dt) {
+  if (!jacobian_check_ || jacobian_check_done_ || dt == 0.0 || pmy_block_->gid != 0)
+    return;
+  jacobian_check_done_ = true;
+
+  const int is = pmy_block_->is, ie = pmy_block_->ie;
+  const int js = pmy_block_->js, je = pmy_block_->je;
+  const int ks = pmy_block_->ks, ke = pmy_block_->ke;
+  if (ie-is < 2 || je-js < 2 || ke-ks < 2) {
+    if (Globals::my_rank == 0)
+      std::cout << "[NRFLD Jacobian] skipped: MeshBlock interior is too small."
+                << std::endl;
+    return;
+  }
+
+  AthenaArray<Real> vr(pmy_block_->ncells3, pmy_block_->ncells2,
+                       pmy_block_->ncells1);
+  AthenaArray<Real> vg(pmy_block_->ncells3, pmy_block_->ncells2,
+                       pmy_block_->ncells1);
+  vr.ZeroClear();
+  vg.ZeroClear();
+  const int ni = ie-is+1, nj = je-js+1, nk = ke-ks+1;
+  const int ncells = ni*nj*nk;
+  std::vector<Real> fg0(ncells), fr0(ncells), ur0(ncells), ug0(ncells);
+  auto index = [=](int k, int j, int i) {
+    return ((k-ks)*nj + (j-js))*ni + (i-is);
+  };
+  for (int k = ks; k <= ke; ++k) {
+    for (int j = js; j <= je; ++j) {
+      for (int i = is; i <= ie; ++i) {
+        const Real phase = 0.173*(i-is+1) + 0.311*(j-js+1) + 0.419*(k-ks+1);
+        vr(k,j,i) = std::max(std::abs(u_(k,j,i)), TINY_NUMBER)
+                  *(0.5 + 0.25*std::sin(phase));
+        vg(k,j,i) = std::max(std::abs(u_gas_(k,j,i)), TINY_NUMBER)
+                  *(0.5 + 0.25*std::cos(phase));
+        ur0[index(k,j,i)] = u_(k,j,i);
+        ug0[index(k,j,i)] = u_gas_(k,j,i);
+        fg0[index(k,j,i)] = derivetive_(NewtonRaphsonFLD::Fg,k,j,i);
+        fr0[index(k,j,i)] = derivetive_(NewtonRaphsonFLD::Fr,k,j,i);
+      }
+    }
+  }
+
+  const Real dx = pmy_block_->pcoord->dx1f(is);
+  const Real fac = dt/SQR(dx);
+  for (int pass = 0; pass < 3; ++pass) {
+    const Real h = jacobian_check_epsilon_*std::pow(0.1, pass);
+    for (int k = ks; k <= ke; ++k)
+      for (int j = js; j <= je; ++j)
+        for (int i = is; i <= ie; ++i) {
+          u_(k,j,i) = ur0[index(k,j,i)] + h*vr(k,j,i);
+          u_gas_(k,j,i) = ug0[index(k,j,i)] + h*vg(k,j,i);
+        }
+
+    CalculateCoefficients(uold_, u_, def_coeff_, coeff_, derivetive_, src_, dt);
+    long double fg_diff2 = 0.0, fg_jv2 = 0.0;
+    long double fr_diff2 = 0.0, fr_jv2 = 0.0;
+    Real fg_max_rel = 0.0, fr_max_rel = 0.0;
+    std::int64_t count = 0;
+    // Exclude one fine cell next to every MeshBlock face: the deterministic
+    // perturbation is local to this block and deliberately does not communicate ghosts.
+    for (int k = ks+1; k <= ke-1; ++k) {
+      for (int j = js+1; j <= je-1; ++j) {
+        for (int i = is+1; i <= ie-1; ++i) {
+          const Real jvg = derivetive_(NewtonRaphsonFLD::dFg_deg,k,j,i)*vg(k,j,i)
+                         + derivetive_(NewtonRaphsonFLD::dFg_dEr,k,j,i)*vr(k,j,i);
+          Real jvr = derivetive_(NewtonRaphsonFLD::dFr_deg,k,j,i)*vg(k,j,i)
+                   + derivetive_(NewtonRaphsonFLD::dFr_dEr,k,j,i)*vr(k,j,i);
+          jvr += fac*coeff_(linearSolver::DXMF,k,j,i)*vr(k,j,i-1);
+          jvr += fac*coeff_(linearSolver::DXPF,k,j,i)*vr(k,j,i+1);
+          jvr += fac*coeff_(linearSolver::DYMF,k,j,i)*vr(k,j-1,i);
+          jvr += fac*coeff_(linearSolver::DYPF,k,j,i)*vr(k,j+1,i);
+          jvr += fac*coeff_(linearSolver::DZMF,k,j,i)*vr(k-1,j,i);
+          jvr += fac*coeff_(linearSolver::DZPF,k,j,i)*vr(k+1,j,i);
+          const Real fdg = (derivetive_(NewtonRaphsonFLD::Fg,k,j,i)
+                           - fg0[index(k,j,i)])/h;
+          const Real fdr = (derivetive_(NewtonRaphsonFLD::Fr,k,j,i)
+                           - fr0[index(k,j,i)])/h;
+          const Real dg = fdg-jvg, dr = fdr-jvr;
+          fg_diff2 += static_cast<long double>(dg)*dg;
+          fg_jv2 += static_cast<long double>(jvg)*jvg;
+          fr_diff2 += static_cast<long double>(dr)*dr;
+          fr_jv2 += static_cast<long double>(jvr)*jvr;
+          fg_max_rel = std::max(fg_max_rel,
+              std::abs(dg)/std::max({std::abs(fdg), std::abs(jvg), TINY_NUMBER}));
+          fr_max_rel = std::max(fr_max_rel,
+              std::abs(dr)/std::max({std::abs(fdr), std::abs(jvr), TINY_NUMBER}));
+          ++count;
+        }
+      }
+    }
+    std::cout << "[NRFLD Jacobian] gid=" << pmy_block_->gid
+              << " epsilon=" << h << " cells=" << count
+              << " gas_l2_rel="
+              << std::sqrt(static_cast<Real>(fg_diff2/std::max(fg_jv2, 1.0e-300L)))
+              << " gas_max_rel=" << fg_max_rel
+              << " radiation_l2_rel="
+              << std::sqrt(static_cast<Real>(fr_diff2/std::max(fr_jv2, 1.0e-300L)))
+              << " radiation_max_rel=" << fr_max_rel << std::endl;
+
+    for (int k = ks; k <= ke; ++k)
+      for (int j = js; j <= je; ++j)
+        for (int i = is; i <= ie; ++i) {
+          u_(k,j,i) = ur0[index(k,j,i)];
+          u_gas_(k,j,i) = ug0[index(k,j,i)];
+        }
+    CalculateCoefficients(uold_, u_, def_coeff_, coeff_, derivetive_, src_, dt);
   }
 }
 

@@ -11,6 +11,7 @@
 // C++ headers
 #include <algorithm>
 #include <iostream>
+#include <limits>
 #include <sstream>    // sstream
 #include <stdexcept>  // runtime_error
 #include <string>     // c_str()
@@ -50,7 +51,9 @@ linearMGDriver::linearMGDriver(Mesh *pm, ParameterInput *pin, NewtonRaphsonDrive
                           1, linearSolver::NCOEFF, linearSolver::NMATRIX),
       pnrd_(pnrd), cache_coefficient_hierarchy_(true),
       coefficient_hierarchy_cached_(false), npostsolve_smooth_(0),
-      nsmoothing_only_sweeps_(256) {
+      nsmoothing_only_sweeps_(256), direct_coarse_solve_(true),
+      coarse_diagnostics_(false), coarse_direct_max_cells_(64),
+      coarse_diagnostic_limit_(4), coarse_diagnostic_count_(0) {
   eps_ = pin->GetOrAddReal("nrfld", "threshold", -1.0);
   niter_ = pin->GetOrAddInteger("nrfld", "niteration", -1);
   ffas_ = pin->GetOrAddBoolean("nrfld", "fas", ffas_);
@@ -68,6 +71,31 @@ linearMGDriver::linearMGDriver(Mesh *pm, ParameterInput *pin, NewtonRaphsonDrive
       "nrfld", "post_mg_smooth", pm->multilevel ? 16 : 0);
   nsmoothing_only_sweeps_ = pin->GetOrAddInteger(
       "nrfld", "smoothing_only_sweeps", 256);
+  const std::string coarse_solver = pin->GetOrAddString(
+      "nrfld", "coarse_solver", "direct");
+  if (coarse_solver == "direct") {
+    direct_coarse_solve_ = true;
+  } else if (coarse_solver == "legacy") {
+    direct_coarse_solve_ = false;
+  } else {
+    std::stringstream msg;
+    msg << "### FATAL ERROR in linearMGDriver::linearMGDriver" << std::endl
+        << "nrfld/coarse_solver must be direct or legacy." << std::endl;
+    ATHENA_ERROR(msg);
+  }
+  coarse_direct_max_cells_ = pin->GetOrAddInteger(
+      "nrfld", "coarse_direct_max_cells", 64);
+  coarse_diagnostics_ = pin->GetOrAddBoolean(
+      "nrfld", "coarse_diagnostics", false);
+  coarse_diagnostic_limit_ = pin->GetOrAddInteger(
+      "nrfld", "coarse_diagnostic_limit", 4);
+  if (coarse_direct_max_cells_ <= 0 || coarse_diagnostic_limit_ < 0) {
+    std::stringstream msg;
+    msg << "### FATAL ERROR in linearMGDriver::linearMGDriver" << std::endl
+        << "coarse_direct_max_cells must be positive and "
+        << "coarse_diagnostic_limit must be non-negative." << std::endl;
+    ATHENA_ERROR(msg);
+  }
   if (nsmoothing_only_sweeps_ <= 0) {
     std::stringstream msg;
     msg << "### FATAL ERROR in linearMGDriver::linearMGDriver" << std::endl
@@ -168,6 +196,183 @@ linearMGDriver::linearMGDriver(Mesh *pm, ParameterInput *pin, NewtonRaphsonDrive
   int nz = std::max(pmy_mesh_->block_size.nx3, pmy_mesh_->nrbx3) + 2*mgroot_->ngh_;
   for (int n = 0; n < nth; ++n)
     temp[n].NewAthenaArray(nz, ny, nx);
+}
+
+
+//----------------------------------------------------------------------------------------
+//! \fn void linearMGDriver::SolveCoarsestGrid()
+//! \brief Solve the small root-grid system directly, including boundary aliases.
+//!
+//! A one-cell periodic diffusion grid is a particularly important case.  All six
+//! stencil neighbors refer to the center unknown, so the diffusion row sum cancels.
+//! Treating those neighbors as lagged Jacobi values instead gives a convergence factor
+//! arbitrarily close to one in diffusion-dominated NR-FLD systems.  Probing the actual
+//! boundary-aware operator also handles two-cell periodic aliases without special cases.
+void linearMGDriver::SolveCoarsestGrid() {
+  if (!direct_coarse_solve_ || ffas_) {
+    MultigridDriver::SolveCoarsestGrid();
+    return;
+  }
+
+  linearMG *root = static_cast<linearMG*>(mgroot_);
+  const int lev = root->current_level_;
+  const int ll = root->nlevel_ - 1 - lev;
+  const int nx = root->size_.nx1 >> ll;
+  const int ny = root->size_.nx2 >> ll;
+  const int nz = root->size_.nx3 >> ll;
+  const int ncells = nx*ny*nz;
+  if (ncells > coarse_direct_max_cells_) {
+    MultigridDriver::SolveCoarsestGrid();
+    return;
+  }
+
+  const int ngh = root->ngh_;
+  AthenaArray<Real> &u = root->u_[lev];
+  const AthenaArray<Real> &src = root->src_[lev];
+  const AthenaArray<Real> &matrix = root->matrix_[lev];
+  std::vector<Real> a(static_cast<std::size_t>(ncells)*ncells, 0.0);
+  std::vector<Real> affine(ncells), original(static_cast<std::size_t>(nvar_)*ncells);
+  std::vector<Real> rhs(ncells), x(ncells);
+
+  auto index = [nx, ny](int k, int j, int i) {
+    return (k*ny + j)*nx + i;
+  };
+  auto apply_row = [&](int k, int j, int i, int v) {
+    const int kk = ngh + k, jj = ngh + j, ii = ngh + i;
+    return matrix(linearSolver::CCC,kk,jj,ii)*u(v,kk,jj,ii)
+         + matrix(linearSolver::CCM,kk,jj,ii)*u(v,kk,jj,ii-1)
+         + matrix(linearSolver::CCP,kk,jj,ii)*u(v,kk,jj,ii+1)
+         + matrix(linearSolver::CMC,kk,jj,ii)*u(v,kk,jj-1,ii)
+         + matrix(linearSolver::CPC,kk,jj,ii)*u(v,kk,jj+1,ii)
+         + matrix(linearSolver::MCC,kk,jj,ii)*u(v,kk-1,jj,ii)
+         + matrix(linearSolver::PCC,kk,jj,ii)*u(v,kk+1,jj,ii);
+  };
+
+  for (int v = 0; v < nvar_; ++v)
+    for (int k = 0; k < nz; ++k)
+      for (int j = 0; j < ny; ++j)
+        for (int i = 0; i < nx; ++i)
+          original[static_cast<std::size_t>(v)*ncells + index(k,j,i)]
+              = u(v,ngh+k,ngh+j,ngh+i);
+
+  // Probe columns of the true coarse operator.  Subtract the zero-state response so
+  // that affine physical boundary data are moved to the right-hand side.  This also
+  // handles multiple periodic ghosts identifying the same unknown on one- and
+  // two-cell grids without special cases.
+  u.ZeroClear();
+  root->pmgbval->ApplyPhysicalBoundaries(0, false);
+  for (int k = 0; k < nz; ++k)
+    for (int j = 0; j < ny; ++j)
+      for (int i = 0; i < nx; ++i)
+        affine[index(k,j,i)] = apply_row(k,j,i,0);
+  for (int col = 0; col < ncells; ++col) {
+    u.ZeroClear();
+    const int ci = col % nx;
+    const int cj = (col/nx) % ny;
+    const int ck = col/(nx*ny);
+    u(0,ngh+ck,ngh+cj,ngh+ci) = 1.0;
+    root->pmgbval->ApplyPhysicalBoundaries(0, false);
+    for (int k = 0; k < nz; ++k)
+      for (int j = 0; j < ny; ++j)
+        for (int i = 0; i < nx; ++i)
+          a[static_cast<std::size_t>(index(k,j,i))*ncells + col]
+              = apply_row(k,j,i,0) - affine[index(k,j,i)];
+  }
+
+  const bool print_diag = coarse_diagnostics_
+                       && coarse_diagnostic_count_ < coarse_diagnostic_limit_
+                       && Globals::my_rank == 0;
+  if (print_diag) {
+    Real amin = std::numeric_limits<Real>::max();
+    Real amax = 0.0;
+    for (int row = 0; row < ncells; ++row) {
+      const Real diagonal = std::abs(a[static_cast<std::size_t>(row)*ncells + row]);
+      amin = std::min(amin, diagonal);
+      amax = std::max(amax, diagonal);
+    }
+    std::cout << "[NRFLD coarse] cells=" << nx << "x" << ny << "x" << nz
+              << " direct=1 diag_min=" << amin << " diag_max=" << amax;
+    if (ncells == 1) {
+      const int q = ngh;
+      const Real split_diag = matrix(linearSolver::CCC,q,q,q);
+      const Real effective_diag = a[0];
+      const Real jacobi_factor = std::abs(1.0 - omega_*effective_diag/split_diag);
+      std::cout << " split_diag=" << split_diag
+                << " effective_diag=" << effective_diag
+                << " predicted_legacy_factor=" << jacobi_factor;
+    }
+    std::cout << std::endl;
+    ++coarse_diagnostic_count_;
+  }
+
+  // Partial-pivoted Gaussian elimination.  The matrix is shared by all scalar
+  // components, so factor and solve a copy for each component; ncells is deliberately
+  // capped at a small value and this path is negligible compared with a fine-grid V-cycle.
+  for (int v = 0; v < nvar_; ++v) {
+    std::vector<Real> work = a;
+    for (int k = 0; k < nz; ++k)
+      for (int j = 0; j < ny; ++j)
+        for (int i = 0; i < nx; ++i)
+          rhs[index(k,j,i)] = src(v,ngh+k,ngh+j,ngh+i) - affine[index(k,j,i)];
+
+    for (int p = 0; p < ncells; ++p) {
+      int pivot = p;
+      Real pivot_abs = std::abs(work[static_cast<std::size_t>(p)*ncells + p]);
+      for (int row = p + 1; row < ncells; ++row) {
+        const Real candidate = std::abs(work[static_cast<std::size_t>(row)*ncells + p]);
+        if (candidate > pivot_abs) {
+          pivot = row;
+          pivot_abs = candidate;
+        }
+      }
+      Real row_scale = 0.0;
+      for (int col = p; col < ncells; ++col)
+        row_scale = std::max(row_scale,
+            std::abs(work[static_cast<std::size_t>(pivot)*ncells + col]));
+      if (!std::isfinite(pivot_abs) || !(row_scale > 0.0)
+          || !(pivot_abs > std::numeric_limits<Real>::epsilon()*row_scale)) {
+        if (Globals::my_rank == 0)
+          std::cout << "### Warning in linearMGDriver::SolveCoarsestGrid\n"
+                    << "Direct coarse matrix is singular; using legacy smoother."
+                    << std::endl;
+        for (int vv = 0; vv < nvar_; ++vv)
+          for (int k = 0; k < nz; ++k)
+            for (int j = 0; j < ny; ++j)
+              for (int i = 0; i < nx; ++i)
+                u(vv,ngh+k,ngh+j,ngh+i) =
+                    original[static_cast<std::size_t>(vv)*ncells + index(k,j,i)];
+        root->pmgbval->ApplyPhysicalBoundaries(0, false);
+        MultigridDriver::SolveCoarsestGrid();
+        return;
+      }
+      if (pivot != p) {
+        for (int col = p; col < ncells; ++col)
+          std::swap(work[static_cast<std::size_t>(p)*ncells + col],
+                    work[static_cast<std::size_t>(pivot)*ncells + col]);
+        std::swap(rhs[p], rhs[pivot]);
+      }
+      const Real diag = work[static_cast<std::size_t>(p)*ncells + p];
+      for (int row = p + 1; row < ncells; ++row) {
+        const Real factor = work[static_cast<std::size_t>(row)*ncells + p]/diag;
+        work[static_cast<std::size_t>(row)*ncells + p] = 0.0;
+        for (int col = p + 1; col < ncells; ++col)
+          work[static_cast<std::size_t>(row)*ncells + col]
+              -= factor*work[static_cast<std::size_t>(p)*ncells + col];
+        rhs[row] -= factor*rhs[p];
+      }
+    }
+    for (int row = ncells - 1; row >= 0; --row) {
+      Real value = rhs[row];
+      for (int col = row + 1; col < ncells; ++col)
+        value -= work[static_cast<std::size_t>(row)*ncells + col]*x[col];
+      x[row] = value/work[static_cast<std::size_t>(row)*ncells + row];
+    }
+    for (int k = 0; k < nz; ++k)
+      for (int j = 0; j < ny; ++j)
+        for (int i = 0; i < nx; ++i)
+          u(v,ngh+k,ngh+j,ngh+i) = x[index(k,j,i)];
+  }
+  root->pmgbval->ApplyPhysicalBoundaries(0, false);
 }
 
 

@@ -74,6 +74,7 @@ class linearMGDriver: public MultigridDriver {
   linearMGDriver(Mesh *pm, ParameterInput *pin, NewtonRaphsonDriver *pnrd);
   ~linearMGDriver();
   void Solve(int stage, Real dt = 0.0) final;
+  void SolveCoarsestGrid() final;
   void BeginTimeStep() { coefficient_hierarchy_cached_ = false; }
   void ProlongateOctetBoundariesFluxCons(AthenaArray<Real> &dst,
                  AthenaArray<Real> &cbuf, const AthenaArray<bool> &ncoarse) final;
@@ -93,6 +94,11 @@ class linearMGDriver: public MultigridDriver {
   bool coefficient_hierarchy_cached_;
   int npostsolve_smooth_;
   int nsmoothing_only_sweeps_;
+  bool direct_coarse_solve_;
+  bool coarse_diagnostics_;
+  int coarse_direct_max_cells_;
+  int coarse_diagnostic_limit_;
+  int coarse_diagnostic_count_;
 };
 
 

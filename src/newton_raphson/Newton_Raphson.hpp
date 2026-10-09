@@ -161,6 +161,7 @@ class NewtonRaphson {
                                               bool &active, bool &finite) const;
   virtual bool PrimaryDefectIsGas() const { return false; }
   virtual bool PrimaryDefectIsTotalEnergy() const { return false; }
+  virtual void RunJacobianDiagnostic(Real dt) {}
   virtual void ApplyPhysicalBoundary() = 0;
   virtual void PrintCellPhysicsDebug(int k, int j, int i) {}
   void CalculateCoefficientsTask(Real dt);
@@ -263,7 +264,7 @@ class NewtonRaphsonDriver {
   linearMGDriver *plmgd_; // to be set in derived class constructors
 
   std::vector<NewtonRaphson*> vnr_;
-  bool needinit_, fshowdef_, use_mg_smoothing_fallback_;
+  bool needinit_, fshowdef_, use_mg_smoothing_fallback_, abort_on_failure_;
   int diagnostic_verbosity_;
   Real eps_, dt_;
   Real mg_coarse_retry_factor_, mg_coarse_retry_min_scale_;
