@@ -94,7 +94,7 @@ threshold    = 1.0e-8
 niteration   = -1
 nr_threshold = 1.0e-6
 nr_niteration = 100
-nr_max_iterations = 100
+nr_max_iterations = 128
 # 0: summary only, 1: Newton trial summary, 2: maximum-cell stencil.
 diagnostic_verbosity = 0
 smoothing_only = false
@@ -110,12 +110,14 @@ coarse_correction_scale = 1.0
 nr_mg_coarse_retry_max = 0
 nr_mg_coarse_retry_factor = 0.5
 nr_mg_coarse_retry_min_scale = 0.0625
-nr_backtrack_max = 4
+nr_backtrack_max = 20
 nr_backtrack_factor = 0.5
-nr_min_step_scale = 0.05
+nr_min_step_scale = 1.0e-6
 nr_use_mg_smoothing_fallback = false
-# Roll back a rejected finite Newton iterate, warn, and skip that implicit update.
-# Non-finite residuals remain fatal even with this policy.
+# Diagnostic default: roll back a rejected finite iterate and continue.  The
+# production job overrides this with abort so a failed implicit update cannot
+# be silently skipped.
+# Non-finite residuals remain fatal with either policy.
 failure_policy = warn_keep_old
 # Preserve the coupled Newton direction.  Positivity is enforced by the
 # floors, while nr_backtrack_* globalizes the full nonlinear update.

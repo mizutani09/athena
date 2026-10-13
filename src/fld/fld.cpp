@@ -147,6 +147,30 @@ FLD::FLD(MeshBlock *pmb, ParameterInput *pin) :
   include_radiation_force =
       pin->GetOrAddBoolean("fld", "include_radiation_force", true);
   fixed_flux_limiter = pin->GetOrAddBoolean("fld", "fixed_flux_limiter", false);
+  stage_diagnostics_ = pin->GetOrAddBoolean("fld", "stage_diagnostics", false);
+  if (stage_diagnostics_) {
+    stage_diagnostic_interval_ = pin->GetOrAddInteger(
+        "fld", "stage_diagnostic_interval", 1000);
+    stage_diagnostic_first_cycles_ = pin->GetOrAddInteger(
+        "fld", "stage_diagnostic_first_cycles", 3);
+    stage_diagnostic_start_ = pin->GetOrAddReal(
+        "fld", "stage_diagnostic_start", 0.0);
+    stage_diagnostic_end_ = pin->GetOrAddReal(
+        "fld", "stage_diagnostic_end", 1.0e99);
+    if (stage_diagnostic_interval_ <= 0 || stage_diagnostic_first_cycles_ < 0
+        || !std::isfinite(stage_diagnostic_start_)
+        || !std::isfinite(stage_diagnostic_end_)
+        || stage_diagnostic_end_ < stage_diagnostic_start_
+        || MAGNETIC_FIELDS_ENABLED || GENERAL_EOS || !NON_BAROTROPIC_EOS
+        || std::string(COORDINATE_SYSTEM) != "cartesian"
+        || pmb->pmy_mesh->multilevel
+        || (!fixed_flux_limiter && std::string(PROBLEM_GENERATOR) != "nrfld_shock_tube")) {
+      std::stringstream msg;
+      msg << "stage_diagnostics requires a uniform Cartesian ideal-gas "
+          << "hydro mesh, fixed limiter (or nrfld_shock_tube), and valid sampling settings.";
+      ATHENA_ERROR(msg);
+    }
+  }
   fixed_u_rad = pin->GetOrAddBoolean("fld", "fixed_u_rad", false);
   include_mixed_frame_terms =
       pin->GetOrAddBoolean("fld", "include_mixed_frame_terms", false);
@@ -387,6 +411,7 @@ FLD::FLD(MeshBlock *pmb, ParameterInput *pin) :
 #endif
   c_ph = c_ph_dim/vel_unit;
   a_r = a_r_dim/(egas_unit/std::pow(T_unit, 4));
+  stage_diagnostic_temperature_unit_ = T_unit;
   const_opacity = const_opacity_dim*leng_unit*rho_unit; // to be multiplied by rho
 
   // std::cout << "c_ph in sim: " << c_ph << std::endl;

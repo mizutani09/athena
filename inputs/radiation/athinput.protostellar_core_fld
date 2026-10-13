@@ -93,6 +93,7 @@ niteration   = 10
 # Smoke-test tolerance.  Tighten this (for example to 1e-8) for science runs.
 nr_threshold = 1.0e-3
 nr_niteration = 100
+nr_max_iterations = 100
 smoothing_only = true
 coarse_correction_scale = 1.0
 nr_mg_coarse_retry_max = 4

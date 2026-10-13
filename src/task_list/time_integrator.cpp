@@ -1999,7 +1999,9 @@ TaskStatus TimeIntegratorTaskList::AddSourceTerms(MeshBlock *pmb, int stage) {
                                ph->u, ps->s);
       }
 #if NRMGFLD_ENABLED
+      pmb->prfld->DumpStageDiagnostics("before_source", stage, dt);
       pmb->prfld->AddExplicitSourceTerms(dt,ph->w,ph->u);
+      pmb->prfld->DumpStageDiagnostics("after_source", stage, dt);
 #endif
     }
     return TaskStatus::next;
@@ -3324,6 +3326,7 @@ TaskStatus TimeIntegratorTaskList::IntegrateRADFLD(MeshBlock *pmb, int stage) {
 
   if (stage <= nstages) {
     if (stage_wghts[stage-1].main_stage) {
+      prfld->DumpStageDiagnostics("before_average", stage);
       // This time-integrator-specific averaging operation logic is identical to
       // IntegrateHydro, IntegrateField
       Real ave_wghts[5];
@@ -3344,7 +3347,9 @@ TaskStatus TimeIntegratorTaskList::IntegrateRADFLD(MeshBlock *pmb, int stage) {
       }
 
       const Real wght = stage_wghts[stage-1].beta*pmb->pmy_mesh->dt;
+      prfld->DumpStageDiagnostics("before_transport", stage, wght);
       prfld->AddFluxDivergence(wght, prfld->u_rad);
+      prfld->DumpStageDiagnostics("after_transport", stage, wght);
 
 
       // // Hardcode an additional flux divergence weighted average for the penultimate

@@ -278,6 +278,9 @@ class FLD {
   void AddExplicitSourceTerms(const Real dt, const AthenaArray<Real> &prim,
                               AthenaArray<Real> &hydro_u);
 
+  // Opt-in, read-only diagnostics for a uniform Cartesian ideal-gas slab.
+  void DumpStageDiagnostics(const char *phase, int stage = 0, Real subdt = 0.0);
+
   // Function in problem generators to update opacity
   void EnrollOpacityFunction(FLDOpacityFunc MyOpacityFunction);
   // Apply the enrolled callback and then enforce the FLD opacity contract.
@@ -312,6 +315,12 @@ class FLD {
   int force_diagnostic_verbosity_{0};
   int force_diagnostic_rank_{0};
   int force_diagnostic_gid_{0};
+  bool stage_diagnostics_{false};
+  int stage_diagnostic_interval_{1000};
+  int stage_diagnostic_first_cycles_{3};
+  Real stage_diagnostic_start_{0.0};
+  Real stage_diagnostic_end_{1.0e99};
+  Real stage_diagnostic_temperature_unit_{1.0};
 
 };
 

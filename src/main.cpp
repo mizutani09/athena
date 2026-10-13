@@ -42,6 +42,7 @@
 #include "gravity/fft_gravity.hpp"
 #include "gravity/mg_gravity.hpp"
 #include "hydro/hydro.hpp"
+#include "fld/fld.hpp"
 #include "mesh/mesh.hpp"
 #include "nr_radiation/implicit/radiation_implicit.hpp"
 #include "nr_radiation/radiation.hpp"
@@ -491,6 +492,9 @@ int main(int argc, char *argv[]) {
          (pmesh->nlim < 0 || pmesh->ncycle < pmesh->nlim)) {
     if (Globals::my_rank == 0)
       pmesh->OutputCycleDiagnostics();
+    if (NRMGFLD_ENABLED)
+      for (int b = 0; b < pmesh->nblocal; ++b)
+        pmesh->my_blocks(b)->prfld->DumpStageDiagnostics("before_step");
 
     if (STS_ENABLED) {
       pmesh->sts_loc = TaskType::op_split_before;
@@ -544,6 +548,10 @@ int main(int argc, char *argv[]) {
 
     for (int stage=1; stage<=ptlist->nstages; ++stage) {
       ptlist->DoTaskListOneStage(pmesh, stage);
+      if (NRMGFLD_ENABLED) {
+        for (int b = 0; b < pmesh->nblocal; ++b)
+          pmesh->my_blocks(b)->prfld->DumpStageDiagnostics("after_stage", stage);
+      }
       if (ptlist->CheckNextMainStage(stage)) {
         if (SELF_GRAVITY_ENABLED == 1) // fft (0: discrete kernel, 1: continuous kernel)
           pmesh->pfgrd->Solve(stage, 0);
@@ -562,13 +570,21 @@ int main(int argc, char *argv[]) {
         pststlist->DoTaskListOneStage(pmesh, stage);
     }
 
-    // Apply the implicit FLD update after all explicit stages, using this step's dt.
-    // Synchronize primitives before end-of-step work, AMR, and output.
+    // Apply one implicit FLD update after all explicit RK stages, using the
+    // full hydro timestep.  Synchronize primitives before end-of-step work,
+    // AMR, and output.
     if (NRMGFLD_ENABLED) {
+      for (int b = 0; b < pmesh->nblocal; ++b)
+        pmesh->my_blocks(b)->prfld->DumpStageDiagnostics("before_implicit");
       const NewtonSolveResult nr_result = pmesh->pmnr->Solve_general(0, pmesh->dt);
       pmesh->pmnr->HandleSolveResult(nr_result);
       SynchronizeHydroPrimitivesAfterNR(pmesh);
+      for (int b = 0; b < pmesh->nblocal; ++b)
+        pmesh->my_blocks(b)->prfld->DumpStageDiagnostics("after_implicit");
     }
+    if (NRMGFLD_ENABLED)
+      for (int b = 0; b < pmesh->nblocal; ++b)
+        pmesh->my_blocks(b)->prfld->DumpStageDiagnostics("after_step");
 
     pmesh->UserWorkInLoop();
 
