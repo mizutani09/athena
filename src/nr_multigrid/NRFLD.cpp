@@ -1061,8 +1061,8 @@ void NRFLD::AddDifference(AthenaArray<Real> &u_rad,
         u_gas_(k,j,i) = (std::isfinite(egas_next) && egas_next > egas_floor)
                         ? egas_next : egas_floor;
         
-        // reset delta_u to zero for next iteration
-        delta_u(k,j,i) = 0.0;
+        // Keep the linear correction for possible line-search retries.  The
+        // driver clears it before computing the next Newton direction.
       }
     }
   }
@@ -1276,17 +1276,34 @@ void NRFLD::PrintCellPhysicsDebug(int k, int j, int i) {
       + m_ym*delta_raw_ym + m_yp*delta_raw_yp
       + m_zm*delta_raw_zm + m_zp*delta_raw_zp;
 
-  const Real delta_app_c = last_delta_rad_(1,k,j,i);
-  const Real delta_app_xm = last_delta_rad_(1,k,j,i-1);
-  const Real delta_app_xp = last_delta_rad_(1,k,j,i+1);
-  const Real delta_app_ym = last_delta_rad_(1,k,j-1,i);
-  const Real delta_app_yp = last_delta_rad_(1,k,j+1,i);
-  const Real delta_app_zm = last_delta_rad_(1,k-1,j,i);
-  const Real delta_app_zp = last_delta_rad_(1,k+1,j,i);
-  const Real m_delta_applied = m_cc*delta_app_c
-      + m_xm*delta_app_xm + m_xp*delta_app_xp
-      + m_ym*delta_app_ym + m_yp*delta_app_yp
-      + m_zm*delta_app_zm + m_zp*delta_app_zp;
+  // The active cells of u_iter_backup_ contain the exact pre-trial iterate,
+  // but its ghost zones are not exchanged after StoreIterate().  Therefore an
+  // applied-correction stencil is meaningful only when all seven cells are
+  // active cells of this MeshBlock.  Report NaN at a block edge instead of
+  // manufacturing a large operator mismatch from stale backup ghosts.
+  const bool applied_stencil_local =
+      i > pmy_block_->is && i < pmy_block_->ie
+      && j > pmy_block_->js && j < pmy_block_->je
+      && k > pmy_block_->ks && k < pmy_block_->ke;
+  const Real unavailable = std::numeric_limits<Real>::quiet_NaN();
+  const Real delta_app_c = u_(k,j,i) - u_iter_backup_(k,j,i);
+  const Real delta_app_xm = applied_stencil_local
+      ? u_(k,j,i-1) - u_iter_backup_(k,j,i-1) : unavailable;
+  const Real delta_app_xp = applied_stencil_local
+      ? u_(k,j,i+1) - u_iter_backup_(k,j,i+1) : unavailable;
+  const Real delta_app_ym = applied_stencil_local
+      ? u_(k,j-1,i) - u_iter_backup_(k,j-1,i) : unavailable;
+  const Real delta_app_yp = applied_stencil_local
+      ? u_(k,j+1,i) - u_iter_backup_(k,j+1,i) : unavailable;
+  const Real delta_app_zm = applied_stencil_local
+      ? u_(k-1,j,i) - u_iter_backup_(k-1,j,i) : unavailable;
+  const Real delta_app_zp = applied_stencil_local
+      ? u_(k+1,j,i) - u_iter_backup_(k+1,j,i) : unavailable;
+  const Real m_delta_applied = applied_stencil_local
+      ? m_cc*delta_app_c + m_xm*delta_app_xm + m_xp*delta_app_xp
+        + m_ym*delta_app_ym + m_yp*delta_app_yp
+        + m_zm*delta_app_zm + m_zp*delta_app_zp
+      : unavailable;
 
   std::cout << "      linear_row"
             << " m_cc=" << m_cc
@@ -1307,6 +1324,7 @@ void NRFLD::PrintCellPhysicsDebug(int k, int j, int i) {
             << " zp=" << delta_raw_zp
             << std::endl;
   std::cout << "      delta_applied"
+            << " stencil_local=" << applied_stencil_local
             << " c=" << delta_app_c
             << " xm=" << delta_app_xm
             << " xp=" << delta_app_xp

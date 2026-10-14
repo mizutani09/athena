@@ -86,12 +86,24 @@ void PrintMaxDefectStencil(NewtonRaphson *pnr, int k, int j, int i, Real signed_
   std::cout << "      max_defect_stencil rank=" << Globals::my_rank
             << " gid=" << pmb->gid
             << " signed_def=" << signed_defect
+            << " level=" << pmb->loc.level
+            << " logical_loc=(" << pmb->loc.lx1 << ","
+            << pmb->loc.lx2 << "," << pmb->loc.lx3 << ")"
             << " block_i=[" << is << "," << ie << "]"
             << " block_j=[" << js << "," << je << "]"
             << " block_k=[" << ks << "," << ke << "]"
             << " on_edge=(" << (i == is || i == ie)
             << "," << (j == js || j == je)
             << "," << (k == ks || k == ke) << ")"
+            << std::endl;
+
+  std::cout << "      face_neighbor_levels"
+            << " xm=" << pmb->pbval->nblevel[1][1][0]
+            << " xp=" << pmb->pbval->nblevel[1][1][2]
+            << " ym=" << pmb->pbval->nblevel[1][0][1]
+            << " yp=" << pmb->pbval->nblevel[1][2][1]
+            << " zm=" << pmb->pbval->nblevel[0][1][1]
+            << " zp=" << pmb->pbval->nblevel[2][1][1]
             << std::endl;
 
   print_axis_triplet("x-neigh", k, j, i - 1, k, j, i, k, j, i + 1);
@@ -530,6 +542,7 @@ NewtonSolveResult NewtonRaphsonDriver::Solve_general(int stage, Real dt) {
     int nback = 0;
     int ncoarse_retry = 0;
     int trial_attempt = 0;
+    bool solve_direction = true;
 
     while (true) {
       for (auto itr = vnr_.begin(); itr < vnr_.end(); itr++) {
@@ -540,7 +553,12 @@ NewtonSolveResult NewtonRaphsonDriver::Solve_general(int stage, Real dt) {
       step_scale_ = trial_scale;
       plmgd_->SetSmoothingOnly(base_smoothing_only || use_smoothing_retry);
       plmgd_->SetCoarseCorrectionScale(coarse_corr_trial_scale);
-      SolveOneCycle();
+      // A line search must scale one fixed Newton direction.  Re-solving the
+      // linear system at every trial can return a different approximate MG
+      // solution (for example when the red/black starting color changes), so
+      // only expert retries that alter the linear solver request a new one.
+      SolveOneCycle(solve_direction);
+      solve_direction = false;
 
       CalculateDefectNorms(norms);
       def = norms.l2_norm;
@@ -680,6 +698,7 @@ NewtonSolveResult NewtonRaphsonDriver::Solve_general(int stage, Real dt) {
                  >= mg_coarse_retry_min_scale_) {
         coarse_corr_trial_scale *= mg_coarse_retry_factor_;
         ++ncoarse_retry;
+        solve_direction = true;
         if (diagnostic_verbosity_ >= 1 && Globals::my_rank == 0) {
           std::cout << "### Warning in NewtonRaphsonDriver::SolveIterative" << std::endl
                     << "Retrying Newton-Raphson iterate with damped coarse correction: "
@@ -698,6 +717,7 @@ NewtonSolveResult NewtonRaphsonDriver::Solve_general(int stage, Real dt) {
       if (pmy_mesh_->multilevel && use_mg_smoothing_fallback_
           && !base_smoothing_only && !use_smoothing_retry) {
         use_smoothing_retry = true;
+        solve_direction = true;
         if (diagnostic_verbosity_ >= 1 && Globals::my_rank == 0) {
           std::cout << "### Warning in NewtonRaphsonDriver::SolveIterative" << std::endl
                     << "Retrying Newton-Raphson iterate with smoothing-only linear MG: "
@@ -877,12 +897,20 @@ void NewtonRaphsonDriver::HandleSolveResult(const NewtonSolveResult &result) con
 
 
 //----------------------------------------------------------------------------------------
-//! \fn void NewtonRaphsonDriver::SolveOneCycle()
-//! \brief Solve one cycle of NewtonRaphson
+//! \fn void NewtonRaphsonDriver::SolveOneCycle(bool solve_direction)
+//! \brief Solve a Newton direction when requested, then apply it once
 
-void NewtonRaphsonDriver::SolveOneCycle() {
-  nrtlist_coeff_->DoTaskListOneStage(stage_);
-  plmgd_->Solve(stage_, dt_);
+void NewtonRaphsonDriver::SolveOneCycle(bool solve_direction) {
+  if (solve_direction) {
+    nrtlist_coeff_->DoTaskListOneStage(stage_);
+    // The linear solve historically starts from a zero correction.  Preserve
+    // that behavior while retaining the result for subsequent line-search
+    // trials in the same Newton iteration.
+#pragma omp parallel for num_threads(nthreads_)
+    for (auto itr = vnr_.begin(); itr < vnr_.end(); ++itr)
+      (*itr)->delta_u_.ZeroClear();
+    plmgd_->Solve(stage_, dt_);
+  }
   nrtlist_post_->DoTaskListOneStage(stage_);
   return;
 }

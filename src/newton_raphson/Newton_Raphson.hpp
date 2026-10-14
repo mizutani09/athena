@@ -243,7 +243,7 @@ class NewtonRaphsonDriver {
   // void CheckBoundaryFunctions();
   // void SetupNewtonRaphson();
   // void SetupCoefficients();
-  void SolveOneCycle();
+  void SolveOneCycle(bool solve_direction);
   // void SolveIterative();
   // void SolveIterativeFixedTimes();
 
