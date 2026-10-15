@@ -349,11 +349,18 @@ void MultigridDriver::CheckBoundaryFunctions() {
     for (int i = 0; i < 6; ++i) {
       if (pmy_mesh_->mesh_bcs[i] == BoundaryFlag::periodic
        || mg_mesh_bcs_[i] == BoundaryFlag::periodic) {
-        if (pmy_mesh_->mesh_bcs[i] != mg_mesh_bcs_[i]) {
+        // A periodic gas/radiation box may still use isolated self-gravity.
+        // Multipole is an explicit physical boundary for the multigrid solve,
+        // so it does not need to share the main mesh's periodic topology.
+        const bool isolated_gravity =
+            (pmy_mesh_->mesh_bcs[i] == BoundaryFlag::periodic
+             && mg_mesh_bcs_[i] == BoundaryFlag::mg_multipole);
+        if (pmy_mesh_->mesh_bcs[i] != mg_mesh_bcs_[i] && !isolated_gravity) {
           std::stringstream msg;
           msg << "### FATAL ERROR in MGGravityDriver::CheckBoundaryFunctions" << std::endl
               << "When periodic boundary condition is set either for" << std::endl
-              << "Multigrid or for the main part, both must be periodic." << std::endl;
+              << "Multigrid or for the main part, both must be periodic " << std::endl
+              << "unless Multigrid uses an isolated multipole boundary." << std::endl;
           ATHENA_ERROR(msg);
         }
       }
