@@ -1,6 +1,6 @@
 //========================================================================================
 //! \file add_mixed_frame_source.cpp
-//! \brief Explicit radiation force and mixed-frame energy terms.
+//! \brief Explicit radiation force and hyperbolic mixed-frame work.
 
 #include <algorithm>
 #include <cmath>
@@ -128,9 +128,8 @@ void FLD::AddExplicitSourceTerms(const Real dt, const AthenaArray<Real> &prim,
                                  AthenaArray<Real> &hydro_u) {
   if (!is_couple || only_rad) return;
   MeshBlock *pmb = pmy_block;
-  const bool do_force =
-      pressure_coupling_mode == RadFLD::PressureCouplingMode::kSource;
-  const bool do_mixed = include_mixed_frame_terms && mixed_frame_transport;
+  const bool do_force = PressureCoupled();
+  const bool do_mixed = MixedFrameCoupled();
   if (!do_force && !do_mixed) return;
 
   // Keep optional work out of the production cell loop.  State belongs to
@@ -172,10 +171,9 @@ void FLD::AddExplicitSourceTerms(const Real dt, const AthenaArray<Real> &prim,
         }
 
         if (do_mixed) {
-          // Zhang et al.: q=2 lambda kappa_P/chi_R. In FLD, sigma_p and
-          // sigma_r are the corresponding inverse-length coefficients.
-          const Real q = 2.0*lambda*sigma_p(k,j,i)
-                         / std::max(sigma_r(k,j,i), TINY_NUMBER);
+          // CASTRO's hyperbolic subsystem contains -lambda*v.grad(Er).
+          // The q*v.grad(Er) Lorentz correction belongs to the implicit
+          // radiation/thermal-exchange solve.
           const Real vx = 0.5*(pmb->phydro->vf[X1DIR](k,j,i)
                                + pmb->phydro->vf[X1DIR](k,j,i+1));
           const Real vy = (pmb->block_size.nx2 > 1)
@@ -184,7 +182,7 @@ void FLD::AddExplicitSourceTerms(const Real dt, const AthenaArray<Real> &prim,
           const Real vz = (pmb->block_size.nx3 > 1)
               ? 0.5*(pmb->phydro->vf[X3DIR](k,j,i)
                      + pmb->phydro->vf[X3DIR](k+1,j,i)) : prim(IVZ,k,j,i);
-          const Real source = (q - lambda)*(vx*ex + vy*ey + vz*ez);
+          const Real source = -lambda*(vx*ex + vy*ey + vz*ez);
           if (NON_BAROTROPIC_EOS) hydro_u(IEN,k,j,i) += dt*source;
           u_rad(k,j,i) = std::max(u_rad(k,j,i) - dt*source, TINY_NUMBER);
         }

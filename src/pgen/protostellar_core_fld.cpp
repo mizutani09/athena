@@ -439,12 +439,6 @@ void Mesh::InitUserMeshData(ParameterInput *pin) {
         << "fld/is_couple must be true and fld/only_rad must be false.";
     ATHENA_ERROR(msg);
   }
-  if (pin->GetOrAddString("fld","pressure_coupling","flux") != "flux") {
-    std::stringstream msg;
-    msg << "### FATAL ERROR in protostellar_core_fld\n"
-        << "protostellar_core_fld requires the HLLD-FLD flux coupling mode.";
-    ATHENA_ERROR(msg);
-  }
   const Real gamma=pin->GetReal("hydro","gamma");
   if (std::abs(gamma-5.0/3.0) > 1.0e-10) {
     std::stringstream msg;

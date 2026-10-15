@@ -32,10 +32,7 @@ void Hydro::RiemannSolver(const int k, const int j, const int il, const int iu,
   const int ivy = IVX + (dir+1)%3;
   const int ivz = IVX + (dir+2)%3;
   FLD *pfld = pmy_block->prfld;
-  const bool coupled = pfld->pressure_coupling_mode
-      != RadFLD::PressureCouplingMode::kOff;
-  const bool radiation_pressure_in_flux = pfld->pressure_coupling_mode
-      == RadFLD::PressureCouplingMode::kFlux;
+  const bool coupled = pfld->PressureCoupled();
   AthenaArray<Real> &radl = pfld->rad_face_l[dir];
   AthenaArray<Real> &radr = pfld->rad_face_r[dir];
   AthenaArray<Real> &radflux = pfld->u_rad_flux[dir];
@@ -207,11 +204,11 @@ void Hydro::RiemannSolver(const int k, const int j, const int il, const int iu,
     const Real fer = ag*erg*am;
     radflux(k,j,i) = pfld->mixed_frame_transport ? fer : 0.0;
     pfld->rad_face_g[dir](k,j,i) = erg;
-    if (coupled && !radiation_pressure_in_flux) {
+    if (coupled) {
       flxi[IVX] -= lambdag*erg;
     }
     if (coupled) {
-      flxi[IEN] -= fer;
+      flxi[IEN] -= RadFLD::GasEnergyFluxCorrection(lambdag,erg,am);
     }
 
     // A ghost-state diode can still yield a small inward HLLC contact flux

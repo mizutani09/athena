@@ -44,18 +44,13 @@ namespace RadFLD {
   constexpr int NRAD_FACE_STATE = 3;
   enum RadiationFaceIndex {ERAD=0, LAMBDA=1, ARAD=2};
 
-  // The radiation-pressure force has exactly one owner in a coupled update:
-  // either the gas Riemann flux or the explicit source term.  The mode is
-  // resolved once by FLD and shared by both HLLC variants and the source.
-  enum class PressureCouplingMode { kOff, kSource, kFlux };
-
-  inline const char *PressureCouplingModeName(const PressureCouplingMode mode) {
-    switch (mode) {
-      case PressureCouplingMode::kSource: return "source";
-      case PressureCouplingMode::kFlux: return "flux";
-      case PressureCouplingMode::kOff: return "off";
-    }
-    return "invalid";
+  // The HLLC/HLLD energy state contains E_g+E_r and its total pressure
+  // contains p_g+lambda*E_r.  This contact-upwind subtraction makes the
+  // returned gas flux consistent with (E_g+p_g)*v for identical face states.
+  // Radiation transport separately uses alpha*E_r*v, alpha=(3-f)/2;
+  // alpha need not equal 1+lambda away from the diffusion/streaming limits.
+  inline Real GasEnergyFluxCorrection(Real lambda, Real erad, Real velocity) {
+    return (1.0 + lambda)*erad*velocity;
   }
 
   // Levermore-Pomraning FLD closure shared by every radiation operator.
@@ -237,14 +232,23 @@ class FLD {
   bool only_rad;
   bool cut_diff;
   bool include_radiation_force;
-  RadFLD::PressureCouplingMode pressure_coupling_mode;
+  // Radiation pressure enters the Riemann wave construction when coupled;
+  // its force -lambda grad(E_r) is applied by AddExplicitSourceTerms.
+  bool PressureCoupled() const {
+    return is_couple && !only_rad && include_radiation_force;
+  }
+  bool MixedFrameCoupled() const {
+    return is_couple && !only_rad && include_mixed_frame_terms
+        && mixed_frame_transport;
+  }
   bool fixed_flux_limiter;
   bool fixed_u_rad;
-  // Explicit O(v/c) mixed-frame energy exchange.
+  // O(v/c) mixed-frame energy exchange: -lambda*v.grad(Er) is explicit;
+  // q*v.grad(Er) is included in the implicit gas/radiation solve.
   bool include_mixed_frame_terms;
-  // Radiation-energy transport and explicit mixed-frame source are separate
-  // switches.  Both are resolved once at startup; the legacy environment
-  // variable only overrides the transport switch when the input omits it.
+  // Radiation-energy transport and mixed-frame work are separate switches.
+  // Both are resolved once at startup; the legacy environment variable only
+  // overrides the transport switch when the input omits it.
   bool mixed_frame_transport;
   // Optional hydrodynamic diode used by an outflow-only physical upper
   // boundary.  It is consumed only by the LHLLC-FLD Riemann solver.

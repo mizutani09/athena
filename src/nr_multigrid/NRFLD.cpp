@@ -73,6 +73,58 @@ inline Real FaceEnergy(const Real left, const Real right) {
   return 0.5*left + 0.5*right;
 }
 
+enum DriftFace { XMinus, XPlus, YMinus, YPlus, ZMinus, ZPlus };
+
+inline Real MixedDriftFace(const RadFLD::ClosureValues &closure,
+                           Real sigma_p_left, Real sigma_p_right,
+                           Real velocity_left, Real velocity_right) {
+  // q_face*v_face = 2*lambda_face*(sigma_P/sigma_R)_face*v_face.
+  const Real drift = 0.5*(sigma_p_left + sigma_p_right)
+      *(velocity_left + velocity_right)*closure.lambda_over_opacity;
+  if (!std::isfinite(drift)) {
+    std::stringstream msg;
+    msg << "### FATAL ERROR in NR-FLD implicit mixed-frame face coefficient: "
+        << "q*v is not finite.\n";
+    ATHENA_ERROR(msg);
+  }
+  return drift;
+}
+
+template <typename EnergyAt>
+inline Real MixedDriftStencil(const AthenaArray<Real> &drift,
+                              const EnergyAt &energy_at,
+                              int k, int j, int i, Real half_idx) {
+  const Real center = energy_at(k,j,i);
+  return half_idx*(
+      drift(XPlus,k,j,i)*(energy_at(k,j,i+1)-center)
+    + drift(XMinus,k,j,i)*(center-energy_at(k,j,i-1))
+    + drift(YPlus,k,j,i)*(energy_at(k,j+1,i)-center)
+    + drift(YMinus,k,j,i)*(center-energy_at(k,j-1,i))
+    + drift(ZPlus,k,j,i)*(energy_at(k+1,j,i)-center)
+    + drift(ZMinus,k,j,i)*(center-energy_at(k-1,j,i)));
+}
+
+inline Real MixedDriftTerm(const AthenaArray<Real> &drift,
+                           const AthenaArray<Real> &erad,
+                           int k, int j, int i, Real half_idx) {
+  return MixedDriftStencil(drift,
+      [&erad](int z, int y, int x) { return erad(z,y,x); }, k,j,i,half_idx);
+}
+
+inline Real MixedDriftCorrection(const AthenaArray<Real> &drift,
+                                  const AthenaArray<Real> &delta,
+                                  int k, int j, int i, Real half_idx) {
+  return MixedDriftStencil(drift,
+      [&delta](int z, int y, int x) { return delta(1,z,y,x); },
+      k,j,i,half_idx);
+}
+
+inline Real LimitNewtonCorrection(Real delta, Real scale, Real max_fraction) {
+  if (max_fraction <= 0.0) return delta;
+  const Real limit = max_fraction*scale;
+  return std::max(-limit, std::min(limit, delta));
+}
+
 }  // namespace
 
 //----------------------------------------------------------------------------------------
@@ -246,12 +298,12 @@ NRFLD::NRFLD(MeshBlock *pmb, ParameterInput *pin) :
     u_gas_(pmb->ncells3, pmb->ncells2, pmb->ncells1),
     u_gas_iter_backup_(pmb->ncells3, pmb->ncells2, pmb->ncells1),
     gas_defect_(pmb->ncells3, pmb->ncells2, pmb->ncells1),
+    mixed_drift_(6, pmb->ncells3, pmb->ncells2, pmb->ncells1),
     ngh_(NGHOST),
-    // A cell-by-cell cap destroys the spatial structure of the correction
-    // returned by the linear solve, especially across SMR/AMR interfaces.
-    // Positivity and nonlinear globalization are handled by the floors and
-    // the driver-wide Newton backtracking, respectively.  Keep the local cap
-    // available only as an explicitly requested diagnostic safeguard.
+    // The optional per-cell cap can alter the multigrid correction, especially
+    // across SMR/AMR interfaces.  AddDifference uses the resulting applied
+    // radiation correction in the mixed-frame gas stencil; Newton backtracking
+    // still controls acceptance of the complete nonlinear update.
     max_update_fraction_(pin->GetOrAddReal("nrfld", "max_update_fraction", -1.0)),
     fixed_linear_coefficients_initialized_(false),
     jacobian_check_(pin->GetOrAddBoolean("nrfld", "jacobian_check", false)),
@@ -261,6 +313,7 @@ NRFLD::NRFLD(MeshBlock *pmb, ParameterInput *pin) :
     {
     last_delta_rad_.NewAthenaArray(2, pmb->ncells3, pmb->ncells2, pmb->ncells1);
     last_delta_rad_.ZeroClear();
+    mixed_drift_.ZeroClear();
 
     // check pointer
     if (pmy_driver_ == nullptr) {
@@ -280,6 +333,13 @@ NRFLD::NRFLD(MeshBlock *pmb, ParameterInput *pin) :
       std::stringstream msg;
       msg << "### FATAL ERROR in NRFLD::NRFLD" << std::endl
           << "nrfld/jacobian_check_epsilon must be finite and positive." << std::endl;
+      ATHENA_ERROR(msg);
+    }
+    if (!std::isfinite(max_update_fraction_)) {
+      std::stringstream msg;
+      msg << "### FATAL ERROR in NRFLD::NRFLD" << std::endl
+          << "nrfld/max_update_fraction must be finite; values <= 0 disable the cap."
+          << std::endl;
       ATHENA_ERROR(msg);
     }
     // pmy_mesh(pm),
@@ -372,10 +432,13 @@ void NRFLD::RunJacobianDiagnostic(Real dt) {
     for (int k = ks+1; k <= ke-1; ++k) {
       for (int j = js+1; j <= je-1; ++j) {
         for (int i = is+1; i <= ie-1; ++i) {
+          const Real mixed_jv = dt*MixedDriftTerm(mixed_drift_, vr, k,j,i,0.5/dx);
           const Real jvg = derivetive_(NewtonRaphsonFLD::dFg_deg,k,j,i)*vg(k,j,i)
-                         + derivetive_(NewtonRaphsonFLD::dFg_dEr,k,j,i)*vr(k,j,i);
+                         + derivetive_(NewtonRaphsonFLD::dFg_dEr,k,j,i)*vr(k,j,i)
+                         - mixed_jv;
           Real jvr = derivetive_(NewtonRaphsonFLD::dFr_deg,k,j,i)*vg(k,j,i)
-                   + derivetive_(NewtonRaphsonFLD::dFr_dEr,k,j,i)*vr(k,j,i);
+                   + derivetive_(NewtonRaphsonFLD::dFr_dEr,k,j,i)*vr(k,j,i)
+                   + mixed_jv;
           jvr += fac*coeff_(linearSolver::DXMF,k,j,i)*vr(k,j,i-1);
           jvr += fac*coeff_(linearSolver::DXPF,k,j,i)*vr(k,j,i+1);
           jvr += fac*coeff_(linearSolver::DYMF,k,j,i)*vr(k,j-1,i);
@@ -493,6 +556,7 @@ void NRFLD::CalculateCoefficientsOnce(const AthenaArray<Real> &u_pre,
   Real idx = 1.0/dx;
   Real idy = 1.0/dy;
   Real idz = 1.0/dz;
+  const bool mixed_active = pfld->MixedFrameCoupled();
   const int check_il = std::max(0, is-1);
   const int check_iu = std::min(u_pre.GetDim1()-1, ie+1);
   const int check_jl = std::max(0, js-1);
@@ -554,9 +618,13 @@ void NRFLD::CalculateCoefficientsOnce(const AthenaArray<Real> &u_pre,
               "x-", k, j, i);
           derivetive(NewtonRaphsonFLD::dFr_dEr_xm,k,j,i) =
               pfld->c_ph*closure.lambda_over_opacity;
+          mixed_drift_(XMinus,k,j,i) = mixed_active ? MixedDriftFace(
+              closure, pfld->sigma_p(k,j,i-1), pfld->sigma_p(k,j,i),
+              w(IVX,k,j,i-1), w(IVX,k,j,i)) : 0.0;
         } else {
           derivetive(NewtonRaphsonFLD::dFr_dEr_xm,k,j,i) =
               derivetive(NewtonRaphsonFLD::dFr_dEr_xp,k,j,i-1);
+          mixed_drift_(XMinus,k,j,i) = mixed_drift_(XPlus,k,j,i-1);
         }
 
          // for i+1/2 face
@@ -571,6 +639,9 @@ void NRFLD::CalculateCoefficientsOnce(const AthenaArray<Real> &u_pre,
             "x+", k, j, i);
         derivetive(NewtonRaphsonFLD::dFr_dEr_xp,k,j,i) =
             pfld->c_ph*closure_xp.lambda_over_opacity;
+        mixed_drift_(XPlus,k,j,i) = mixed_active ? MixedDriftFace(
+            closure_xp, pfld->sigma_p(k,j,i), pfld->sigma_p(k,j,i+1),
+            w(IVX,k,j,i), w(IVX,k,j,i+1)) : 0.0;
 
         if (j == js) {
           // for j-1/2 face
@@ -585,9 +656,14 @@ void NRFLD::CalculateCoefficientsOnce(const AthenaArray<Real> &u_pre,
               "y-", k, j, i);
           derivetive(NewtonRaphsonFLD::dFr_dEr_ym,k,j,i) =
               pfld->c_ph*closure_ym.lambda_over_opacity;
+          mixed_drift_(YMinus,k,j,i) = mixed_active && pmy_block_->block_size.nx2 > 1
+              ? MixedDriftFace(closure_ym, pfld->sigma_p(k,j-1,i),
+                               pfld->sigma_p(k,j,i), w(IVY,k,j-1,i),
+                               w(IVY,k,j,i)) : 0.0;
         } else {
           derivetive(NewtonRaphsonFLD::dFr_dEr_ym,k,j,i) =
               derivetive(NewtonRaphsonFLD::dFr_dEr_yp,k,j-1,i);
+          mixed_drift_(YMinus,k,j,i) = mixed_drift_(YPlus,k,j-1,i);
         }
 
         // for j+1/2 face
@@ -602,6 +678,10 @@ void NRFLD::CalculateCoefficientsOnce(const AthenaArray<Real> &u_pre,
             "y+", k, j, i);
         derivetive(NewtonRaphsonFLD::dFr_dEr_yp,k,j,i) =
             pfld->c_ph*closure_yp.lambda_over_opacity;
+        mixed_drift_(YPlus,k,j,i) = mixed_active && pmy_block_->block_size.nx2 > 1
+            ? MixedDriftFace(closure_yp, pfld->sigma_p(k,j,i),
+                             pfld->sigma_p(k,j+1,i), w(IVY,k,j,i),
+                             w(IVY,k,j+1,i)) : 0.0;
 
         if (k == ks) {
           // for k-1/2 face
@@ -616,9 +696,14 @@ void NRFLD::CalculateCoefficientsOnce(const AthenaArray<Real> &u_pre,
               "z-", k, j, i);
           derivetive(NewtonRaphsonFLD::dFr_dEr_zm,k,j,i) =
               pfld->c_ph*closure_zm.lambda_over_opacity;
+          mixed_drift_(ZMinus,k,j,i) = mixed_active && pmy_block_->block_size.nx3 > 1
+              ? MixedDriftFace(closure_zm, pfld->sigma_p(k-1,j,i),
+                               pfld->sigma_p(k,j,i), w(IVZ,k-1,j,i),
+                               w(IVZ,k,j,i)) : 0.0;
         } else {
           derivetive(NewtonRaphsonFLD::dFr_dEr_zm,k,j,i) =
               derivetive(NewtonRaphsonFLD::dFr_dEr_zp,k-1,j,i);
+          mixed_drift_(ZMinus,k,j,i) = mixed_drift_(ZPlus,k-1,j,i);
         }
 
         // for k+1/2 face
@@ -633,6 +718,10 @@ void NRFLD::CalculateCoefficientsOnce(const AthenaArray<Real> &u_pre,
             "z+", k, j, i);
         derivetive(NewtonRaphsonFLD::dFr_dEr_zp,k,j,i) =
             pfld->c_ph*closure_zp.lambda_over_opacity;
+        mixed_drift_(ZPlus,k,j,i) = mixed_active && pmy_block_->block_size.nx3 > 1
+            ? MixedDriftFace(closure_zp, pfld->sigma_p(k,j,i),
+                             pfld->sigma_p(k+1,j,i), w(IVZ,k,j,i),
+                             w(IVZ,k+1,j,i)) : 0.0;
         // Preserve the lagged upper-face diffusion coefficient used by this
         // Newton solve.  The Marshak residual/Jacobian and diagnostics must
         // use this exact coefficient rather than an uninitialized side array
@@ -736,13 +825,15 @@ void NRFLD::CalculateCoefficients(const AthenaArray<Real> &u_rad_old,
         }
         diff_term *= idx2;
 
-        // The implicit subsystem contains only matter-radiation thermal
-        // exchange and radiation diffusion. The exchange appears with equal
-        // and opposite signs in the gas and radiation residuals.
+        const Real mixed_term = MixedDriftTerm(
+            mixed_drift_, u_rad_new, k,j,i,0.5*std::sqrt(idx2));
+
+        // The Lorentz correction has equal and opposite gas/radiation signs.
         derivetive(NewtonRaphsonFLD::Fg,k,j,i) =
-            (u_gas_new(k,j,i) - u_gas_old(k,j,i)) + dt*src_term;
+            (u_gas_new(k,j,i) - u_gas_old(k,j,i))
+            + dt*(src_term - mixed_term);
         derivetive(NewtonRaphsonFLD::Fr,k,j,i) = (u_rad_new(k,j,i) - u_rad_old(k,j,i))
-            - dt*(src_term + diff_term);
+            - dt*(src_term + diff_term - mixed_term);
 
         Real dT_deg = def_coeff(NewtonRaphsonFLD::DCOUPLE,k,j,i);
 #if GENERAL_EOS
@@ -783,6 +874,12 @@ void NRFLD::CalculateCoefficients(const AthenaArray<Real> &u_rad_old,
           coeff(linearSolver::DYPF,k,j,i) = 0.0;
           coeff(linearSolver::DZMF,k,j,i) = 0.0;
           coeff(linearSolver::DZPF,k,j,i) = 0.0;
+          coeff(linearSolver::DXMS,k,j,i) = 0.0;
+          coeff(linearSolver::DXPS,k,j,i) = 0.0;
+          coeff(linearSolver::DYMS,k,j,i) = 0.0;
+          coeff(linearSolver::DYPS,k,j,i) = 0.0;
+          coeff(linearSolver::DZMS,k,j,i) = 0.0;
+          coeff(linearSolver::DZPS,k,j,i) = 0.0;
           src(k,j,i) = 0.0;
         } else {
           if (!fixed_linear_coefficients_initialized_) {
@@ -826,8 +923,16 @@ void NRFLD::CalculateCoefficients(const AthenaArray<Real> &u_rad_old,
           // residuals without subtracting two O(C) quantities.
           const Real inv_dFg_deg =
               1.0/derivetive(NewtonRaphsonFLD::dFg_deg,k,j,i);
+          // The face drift has a center contribution when its two face
+          // coefficients differ.  Keep it in the unscaled diagonal slot.
+          const Real drift_fac = 0.5*dt*std::sqrt(idx2)*inv_dFg_deg;
+          const Real drift_center = drift_fac*(
+              mixed_drift_(XMinus,k,j,i)-mixed_drift_(XPlus,k,j,i)
+            + mixed_drift_(YMinus,k,j,i)-mixed_drift_(YPlus,k,j,i)
+            + mixed_drift_(ZMinus,k,j,i)-mixed_drift_(ZPlus,k,j,i));
           coeff(linearSolver::DCCS,k,j,i) =
               1.0 - derivetive(NewtonRaphsonFLD::dFg_dEr,k,j,i)*inv_dFg_deg
+              + drift_center
               // The Robin boundary is a local face-reaction term in the
               // matrix, dt*(dF/dE)/dx.  Keep it in DCCS rather than DCCF:
               // DCCF is rescaled by dt/dx^2 at every MG level, which would
@@ -835,6 +940,15 @@ void NRFLD::CalculateCoefficients(const AthenaArray<Real> &u_rad_old,
               // during coefficient restriction.
               + ((pfld->marshak_top_boundary && physical_top && k == ke)
                  ? dt*marshak_dflux_dE/dx : 0.0);
+          // Elimination of the local gas correction leaves a directed,
+          // nonsymmetric nearest-neighbour term in the radiation matrix.
+          // The *S slots are not multiplied by dt/dx^2 by linearMG.
+          coeff(linearSolver::DXMS,k,j,i) = -drift_fac*mixed_drift_(XMinus,k,j,i);
+          coeff(linearSolver::DXPS,k,j,i) =  drift_fac*mixed_drift_(XPlus,k,j,i);
+          coeff(linearSolver::DYMS,k,j,i) = -drift_fac*mixed_drift_(YMinus,k,j,i);
+          coeff(linearSolver::DYPS,k,j,i) =  drift_fac*mixed_drift_(YPlus,k,j,i);
+          coeff(linearSolver::DZMS,k,j,i) = -drift_fac*mixed_drift_(ZMinus,k,j,i);
+          coeff(linearSolver::DZPS,k,j,i) =  drift_fac*mixed_drift_(ZPlus,k,j,i);
           src(k,j,i) =
               -(derivetive(NewtonRaphsonFLD::Fr,k,j,i)
                 + derivetive(NewtonRaphsonFLD::Fg,k,j,i))
@@ -898,21 +1012,25 @@ void NRFLD::CalculateDefect(AthenaArray<Real> &def, const AthenaArray<Real> &u,
                      *(u(k+1,j,i) - u(k,j,i));
         }
         diff_term *= idx2;
+        const Real mixed_term = MixedDriftTerm(
+            mixed_drift_, u, k,j,i,0.5/std::max(dx, TINY_NUMBER));
 
-        Real Fg = (u_gas(k,j,i) - pfld->u_gas(k,j,i)) + dt*src_term;
+        Real Fg = (u_gas(k,j,i) - pfld->u_gas(k,j,i))
+                + dt*(src_term - mixed_term);
         Real Fr = (u(k,j,i)     - u_old(k,j,i))
-            - dt*(src_term + diff_term);
+            - dt*(src_term + diff_term - mixed_term);
         // Normalize each equation by its local transient/source scale, with
         // the current and old state as a floor.  This makes gas and radiation
         // residuals dimensionless without letting a nearly-zero update hide
         // an absolute residual near a floor.
         Real unsteady = u(k,j,i) - u_old(k,j,i);
         Real scale = std::abs(unsteady)
-                   + dt*(std::abs(src_term) + std::abs(diff_term));
+                   + dt*(std::abs(src_term) + std::abs(diff_term)
+                         + std::abs(mixed_term));
         scale = std::max(scale, std::max(std::abs(u(k,j,i)), std::abs(u_old(k,j,i))));
         scale = std::max(scale, static_cast<Real>(1.0e-30));
         Real gas_scale = std::abs(u_gas(k,j,i) - pfld->u_gas(k,j,i))
-                       + dt*std::abs(src_term);
+                       + dt*(std::abs(src_term) + std::abs(mixed_term));
         gas_scale = std::max(gas_scale,
                              std::max(std::abs(u_gas(k,j,i)),
                                       std::abs(pfld->u_gas(k,j,i))));
@@ -1007,6 +1125,8 @@ void NRFLD::AddDifference(AthenaArray<Real> &u_rad,
   int ks = pmy_block_->ks;
   int ke = pmy_block_->ke;
   FLD *pfld = pmy_block_->prfld;
+  const Real step_scale = pmy_driver_->step_scale_;
+  const bool mixed_active = pfld->MixedFrameCoupled();
 
   if (pmy_driver_->diagnostic_verbosity_ >= 2) {
     for (int k = 0; k < delta_u.GetDim3(); ++k)
@@ -1015,18 +1135,37 @@ void NRFLD::AddDifference(AthenaArray<Real> &u_rad,
           last_delta_rad_(0,k,j,i) = last_delta_rad_(1,k,j,i) = delta_u(k,j,i);
   }
 
+  if (mixed_active) {
+    // The gas correction contains a stencil of the radiation correction.
+    // Compute the correction actually applied at every stencil point before
+    // changing any active cell.  With a per-cell cap or positivity floor this
+    // differs from the raw multigrid direction in neighboring cells.
+    for (int k = 0; k < delta_u.GetDim3(); ++k) {
+      for (int j = 0; j < delta_u.GetDim2(); ++j) {
+        for (int i = 0; i < delta_u.GetDim1(); ++i) {
+          Real delta = pfld->fixed_u_rad ? 0.0 : delta_u(k,j,i);
+          delta = LimitNewtonCorrection(delta,
+              std::max(std::abs(u_rad(k,j,i)), TINY_NUMBER),
+              max_update_fraction_);
+          const Real next = u_rad(k,j,i) + step_scale*delta;
+          const Real applied = pfld->fixed_u_rad ? 0.0
+              : ((std::isfinite(next) && next > TINY_NUMBER)
+                 ? next - u_rad(k,j,i) : TINY_NUMBER - u_rad(k,j,i));
+          last_delta_rad_(1,k,j,i) = applied/step_scale;
+        }
+      }
+    }
+  }
+
   for (int k=ks; k<=ke; ++k) {
     for (int j=js; j<=je; ++j) {
 #pragma omp simd
       for (int i=is; i<=ie; ++i) {
         const Real raw_delta_ur = delta_u(k,j,i);
         Real delta_ur = pfld->fixed_u_rad ? 0.0 : raw_delta_ur;
-        if (max_update_fraction_ > 0.0) {
-          const Real ur_scale = std::max(std::abs(u_rad(k,j,i)), TINY_NUMBER);
-          const Real ur_limit = max_update_fraction_*ur_scale;
-          delta_ur = std::max(-ur_limit, std::min(ur_limit, delta_ur));
-        }
-        const Real step_scale = pmy_driver_->step_scale_;
+        delta_ur = LimitNewtonCorrection(delta_ur,
+            std::max(std::abs(u_rad(k,j,i)), TINY_NUMBER),
+            max_update_fraction_);
         const Real scaled_delta_ur = step_scale*delta_ur;
         const Real u_rad_before = u_rad(k,j,i);
         if (!pfld->fixed_u_rad) {
@@ -1038,11 +1177,17 @@ void NRFLD::AddDifference(AthenaArray<Real> &u_rad,
           u_rad(k,j,i) = uold_(k,j,i);
         }
         last_delta_rad_(0,k,j,i) = raw_delta_ur;
-        last_delta_rad_(1,k,j,i) = u_rad(k,j,i) - u_rad_before;
+        if (!mixed_active)
+          last_delta_rad_(1,k,j,i) = u_rad(k,j,i) - u_rad_before;
 
         const Real denom = derivetive(NewtonRaphsonFLD::dFg_deg,k,j,i);
+        const Real mixed_delta = mixed_active ? MixedDriftCorrection(
+            mixed_drift_, last_delta_rad_, k,j,i,
+            0.5/pmy_block_->pcoord->dx1f(is)) : 0.0;
         const Real egas_delta = -(derivetive(NewtonRaphsonFLD::Fg,k,j,i)
-            + derivetive(NewtonRaphsonFLD::dFg_dEr,k,j,i)*delta_ur)/denom;
+            + derivetive(NewtonRaphsonFLD::dFg_dEr,k,j,i)*
+                (mixed_active ? last_delta_rad_(1,k,j,i) : delta_ur)
+            - pmy_driver_->dt_*mixed_delta)/denom;
         Real egas_floor = TINY_NUMBER;
 #if GENERAL_EOS
         const Real rho = pmy_block_->phydro->w(IDN,k,j,i);
@@ -1052,11 +1197,9 @@ void NRFLD::AddDifference(AthenaArray<Real> &u_rad,
         }
 #endif
         Real limited_egas_delta = egas_delta;
-        if (max_update_fraction_ > 0.0) {
-          const Real egas_scale = std::max(std::abs(u_gas_(k,j,i)), egas_floor);
-          const Real egas_limit = max_update_fraction_*egas_scale;
-          limited_egas_delta = std::max(-egas_limit, std::min(egas_limit, limited_egas_delta));
-        }
+        limited_egas_delta = LimitNewtonCorrection(limited_egas_delta,
+            std::max(std::abs(u_gas_(k,j,i)), egas_floor),
+            max_update_fraction_);
         const Real egas_next = u_gas_(k,j,i) + step_scale*limited_egas_delta;
         u_gas_(k,j,i) = (std::isfinite(egas_next) && egas_next > egas_floor)
                         ? egas_next : egas_floor;
@@ -1065,6 +1208,14 @@ void NRFLD::AddDifference(AthenaArray<Real> &u_rad,
         // driver clears it before computing the next Newton direction.
       }
     }
+  }
+  // The mixed stencil above must see the same precomputed correction for all
+  // cells.  Restore the diagnostic slot's usual applied-delta units afterward.
+  if (mixed_active) {
+    for (int k = ks; k <= ke; ++k)
+      for (int j = js; j <= je; ++j)
+        for (int i = is; i <= ie; ++i)
+          last_delta_rad_(1,k,j,i) *= step_scale;
   }
   // if(pmy_driver_->fshowdef_)  {
   //   int k = (ks + ke) / 2;

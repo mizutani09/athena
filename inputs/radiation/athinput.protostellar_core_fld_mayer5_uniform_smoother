@@ -103,7 +103,8 @@ nr_backtrack_factor = 0.5
 nr_min_step_scale   = 0.005
 
 failure_policy      = abort
-max_update_fraction = 0.2
+# Preserve the coupled Newton correction; use nr_backtrack_* for damping.
+max_update_fraction = -1.0
 
 ix1_bc = periodic
 ox1_bc = periodic
@@ -118,10 +119,9 @@ is_couple                 = true
 only_rad                  = false
 cut_diff                  = false
 include_radiation_force   = true
-pressure_coupling         = flux
 fixed_flux_limiter        = false
 fixed_u_rad               = false
-include_mixed_frame_terms = false
+include_mixed_frame_terms = true
 mixed_frame_transport     = true
 
 <radiation>

@@ -46,6 +46,7 @@ Real core_anchor_radius, core_anchor_width, core_anchor_tau;
 Real core_anchor_end, core_anchor_ramp;
 Real atmosphere_anchor_radius, atmosphere_anchor_width, atmosphere_anchor_tau;
 Real atmosphere_velocity_tau, atmosphere_velocity_density_limit;
+Real atmosphere_planck_taper_radius, atmosphere_planck_taper_width;
 Real rho_floor, temp_floor, pgas_floor, erad_floor;
 bool use_opacity_table;
 bool discrete_hse_gravity;
@@ -285,6 +286,8 @@ void Opacity(MeshBlock *pmb, AthenaArray<Real> &u_fld, AthenaArray<Real> &prim) 
   int jl=pmb->js-NGHOST, ju=pmb->je+NGHOST;
   int il=pmb->is-NGHOST, iu=pmb->ie+NGHOST;
   for (int k=kl;k<=ku;++k) for (int j=jl;j<=ju;++j) for (int i=il;i<=iu;++i) {
+    const Real radius=std::sqrt(SQR(pmb->pcoord->x1v(i))+SQR(pmb->pcoord->x2v(j))
+                                +SQR(pmb->pcoord->x3v(k)))*leng_unit;
     // Prevent the optically thin atmosphere from producing an extreme jump
     // in the implicit diffusion coefficient on the commissioning grid.
     Real rho=std::max(prim(IDN,k,j,i)*rho_unit, rho_floor*1.0e-2);
@@ -294,8 +297,6 @@ void Opacity(MeshBlock *pmb, AthenaArray<Real> &u_fld, AthenaArray<Real> &prim) 
     if (use_profile_opacity && !vkappa.empty() && vkappa.front()>0.0) {
       Real &cached_kappa=pmb->ruser_meshblock_data[kOpacityMass](k,j,i);
       if (cached_kappa <= 0.0) {
-        Real radius=std::sqrt(SQR(pmb->pcoord->x1v(i))+SQR(pmb->pcoord->x2v(j))
-                              +SQR(pmb->pcoord->x3v(k)))*leng_unit;
         cached_kappa=Interp(vkappa,std::min(radius,rstar));
       }
       kp=kr=cached_kappa;
@@ -304,7 +305,25 @@ void Opacity(MeshBlock *pmb, AthenaArray<Real> &u_fld, AthenaArray<Real> &prim) 
       kp=opacity_table->GetOpacity(RadFLD::SIGMA_P,rho,temp);
       kr=opacity_table->GetOpacity(RadFLD::SIGMA_R,rho,temp);
     }
-    pmb->prfld->sigma_p(k,j,i)=std::max(kp*rho*leng_unit,TINY_NUMBER);
+    // The atmosphere outside the supplied stellar profile is a numerical
+    // floor, not a physical continuation of the RSG photosphere.  Extending
+    // its surface Planck opacity through that floor makes gas-radiation
+    // exchange artificially stiff after even a small explicit update.  An
+    // optional radial taper removes only this thermal exchange; Rosseland
+    // transport and all opacities inside the requested radius are unchanged.
+    Real planck_weight=1.0;
+    if (atmosphere_planck_taper_radius > 0.0
+        && radius > atmosphere_planck_taper_radius) {
+      planck_weight=0.0;
+      if (atmosphere_planck_taper_width > 0.0
+          && radius < atmosphere_planck_taper_radius+atmosphere_planck_taper_width) {
+        const Real s=(radius-atmosphere_planck_taper_radius)
+                     /atmosphere_planck_taper_width;
+        planck_weight=0.5*(1.0+std::cos(M_PI*s));
+      }
+    }
+    pmb->prfld->sigma_p(k,j,i)=
+        std::max(planck_weight*kp*rho*leng_unit,TINY_NUMBER);
     pmb->prfld->sigma_r(k,j,i)=std::max(kr*rho*leng_unit,TINY_NUMBER);
   }
 }
@@ -697,6 +716,10 @@ void Mesh::InitUserMeshData(ParameterInput *pin) {
       pin->GetOrAddReal("problem","atmosphere_velocity_damping_timescale",0.0);
   atmosphere_velocity_density_limit=
       pin->GetOrAddReal("problem","atmosphere_velocity_density_limit",1.0e-4);
+  atmosphere_planck_taper_radius=
+      pin->GetOrAddReal("problem","atmosphere_planck_taper_radius_fraction",0.0)*rstar;
+  atmosphere_planck_taper_width=
+      pin->GetOrAddReal("problem","atmosphere_planck_taper_width_fraction",0.0)*rstar;
   if (relax_end < 0.0 || relax_ramp < 0.0 || relax_tau < 0.0) {
     std::stringstream msg;
     msg << "Invalid relaxation end, ramp, or timescale";
@@ -705,6 +728,11 @@ void Mesh::InitUserMeshData(ParameterInput *pin) {
   if (core_anchor_end < 0.0 || core_anchor_ramp < 0.0) {
     std::stringstream msg;
     msg << "Invalid core-anchor end or ramp";
+    ATHENA_ERROR(msg);
+  }
+  if (atmosphere_planck_taper_radius < 0.0 || atmosphere_planck_taper_width < 0.0) {
+    std::stringstream msg;
+    msg << "Invalid atmosphere Planck-opacity taper radius or width";
     ATHENA_ERROR(msg);
   }
   if (use_opacity_table) opacity_table=new UserOpacityTable(pin);

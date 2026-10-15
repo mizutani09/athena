@@ -22,6 +22,7 @@
 #include "../../athena_arrays.hpp"
 #include "../../coordinates/coordinates.hpp"
 #include "../../field/field.hpp"
+#include "../../fld/fld.hpp"
 #include "../../globals.hpp"
 #include "../../hydro/hydro.hpp"
 #include "../../mesh/mesh.hpp"
@@ -584,6 +585,13 @@ void linearMGDriver::Solve(int stage, Real dt) {
   vmg_.clear();
   for (int i = 0; i < pmy_mesh_->nblocal; ++i)
     vmg_.push_back(pmy_mesh_->my_blocks(i)->pnr->plmg_);
+  // The implicit q*v.grad(Er) Schur coefficients vary with the local
+  // matter/radiation Jacobian, so the full nonsymmetric matrix must be
+  // refreshed at each Newton iteration.
+  const FLD *mixed_fld = vmg_.empty() ? nullptr
+      : static_cast<linearMG*>(vmg_.front())->pmy_block_->prfld;
+  const bool mixed_implicit = mixed_fld != nullptr
+      && mixed_fld->MixedFrameCoupled();
 
   // load the source
 #pragma omp parallel for num_threads(nthreads_)
@@ -594,7 +602,7 @@ void linearMGDriver::Solve(int stage, Real dt) {
     NewtonRaphson *pnr = pmg->pmy_block_->pnr;
     pmg->LoadSource(pnr->src_, 0, NGHOST, 1.0);
     pmg->LoadFinestData(pnr->delta_u_, 0, NGHOST); // caution! should be zero
-    if (!cache_coefficient_hierarchy_ || !coefficient_hierarchy_cached_
+    if (mixed_implicit || !cache_coefficient_hierarchy_ || !coefficient_hierarchy_cached_
         || mode_ == 0 || pmy_mesh_->amr_updated) {
       pmg->LoadCoefficients(pnr->coeff_, NGHOST);
     } else {
@@ -607,7 +615,7 @@ void linearMGDriver::Solve(int stage, Real dt) {
 
   // std::cout << "Source loaded to linearMG. Start to solve... at " << Globals::my_rank << std::endl;
 
-  const bool rebuild_coefficients = !cache_coefficient_hierarchy_
+  const bool rebuild_coefficients = mixed_implicit || !cache_coefficient_hierarchy_
                                   || !coefficient_hierarchy_cached_
                                   || mode_ == 0 || pmy_mesh_->amr_updated;
   if (rebuild_coefficients) {

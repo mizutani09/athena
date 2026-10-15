@@ -124,7 +124,7 @@ FLD::FLD(MeshBlock *pmb, ParameterInput *pin) :
                   CellCenteredBoundaryVariable::max_phys_id, true),
     refinement_idx_(),
     is_couple(), only_rad(), cut_diff(), include_radiation_force(),
-    pressure_coupling_mode(RadFLD::PressureCouplingMode::kOff), fixed_flux_limiter(),
+    fixed_flux_limiter(),
     fixed_u_rad(), include_mixed_frame_terms(), mixed_frame_transport(true),
     hydro_top_outflow_diode(false),
     marshak_top_boundary(), marshak_top_alpha(0.5), marshak_top_erad_ext(0.0)
@@ -173,7 +173,7 @@ FLD::FLD(MeshBlock *pmb, ParameterInput *pin) :
   }
   fixed_u_rad = pin->GetOrAddBoolean("fld", "fixed_u_rad", false);
   include_mixed_frame_terms =
-      pin->GetOrAddBoolean("fld", "include_mixed_frame_terms", false);
+      pin->GetOrAddBoolean("fld", "include_mixed_frame_terms", true);
   const EnvironmentFlag force_diagnostics =
       ReadEnvironmentFlag("ATHENA_FLD_FORCE_DIAGNOSTICS");
   if (!force_diagnostics.valid) {
@@ -202,10 +202,8 @@ FLD::FLD(MeshBlock *pmb, ParameterInput *pin) :
   // all blocks.  GetOrAdd* adds defaults on the first construction, so keep
   // the original "was explicitly present" state for all later blocks.
   static ParameterInput *resolved_pin = nullptr;
-  static bool pressure_mode_in_input = false;
   static bool mixed_transport_in_input = false;
   if (resolved_pin != pin) {
-    pressure_mode_in_input = pin->DoesParameterExist("fld", "pressure_coupling") != 0;
     mixed_transport_in_input =
         pin->DoesParameterExist("fld", "mixed_frame_transport") != 0;
     resolved_pin = pin;
@@ -213,48 +211,33 @@ FLD::FLD(MeshBlock *pmb, ParameterInput *pin) :
   mixed_frame_transport =
       pin->GetOrAddBoolean("fld", "mixed_frame_transport", true);
 
-  std::string pressure_mode = Lowercase(
-      pin->GetOrAddString("fld", "pressure_coupling", "source"));
-  if (pressure_mode != "source" && pressure_mode != "flux") {
+  // Accept old input files specifying the sole supported value, but do not
+  // expose pressure coupling as a selectable numerical mode.
+  if (pin->DoesParameterExist("fld", "pressure_coupling") &&
+      Lowercase(pin->GetString("fld", "pressure_coupling")) != "source") {
     std::stringstream msg;
     msg << "### FATAL ERROR in function [FLD::FLD]" << std::endl
-        << "fld/pressure_coupling must be 'source' or 'flux', got '"
-        << pressure_mode << "'.";
+        << "fld/pressure_coupling is no longer selectable; remove it "
+        << "(radiation pressure uses source coupling).";
     ATHENA_ERROR(msg);
   }
 
-  const EnvironmentFlag pressure_in_flux =
-      ReadEnvironmentFlag("ATHENA_FLD_PRESSURE_IN_FLUX");
-  const EnvironmentFlag gas_source_only =
-      ReadEnvironmentFlag("ATHENA_FLD_GAS_HLLC_SOURCE_ONLY");
+  if (std::getenv("ATHENA_FLD_PRESSURE_IN_FLUX") != nullptr ||
+      std::getenv("ATHENA_FLD_GAS_HLLC_SOURCE_ONLY") != nullptr) {
+    std::stringstream msg;
+    msg << "### FATAL ERROR in function [FLD::FLD]" << std::endl
+        << "ATHENA_FLD_PRESSURE_IN_FLUX and ATHENA_FLD_GAS_HLLC_SOURCE_ONLY "
+        << "are no longer supported; radiation pressure uses source coupling.";
+    ATHENA_ERROR(msg);
+  }
   const EnvironmentFlag disable_mixed =
       ReadEnvironmentFlag("ATHENA_FLD_DISABLE_MIXED_FRAME");
-  if (!pressure_in_flux.valid || !gas_source_only.valid || !disable_mixed.valid) {
+  if (!disable_mixed.valid) {
     std::stringstream msg;
     msg << "### FATAL ERROR in function [FLD::FLD]" << std::endl
         << "ATHENA_FLD_* switches accept 0/1 (also false/true, "
         << "no/yes, off/on); an unrecognized value was supplied.";
     ATHENA_ERROR(msg);
-  }
-  if (gas_source_only.present && gas_source_only.value) {
-    std::stringstream msg;
-    msg << "### FATAL ERROR in function [FLD::FLD]" << std::endl
-        << "ATHENA_FLD_GAS_HLLC_SOURCE_ONLY=1 is deprecated and unsupported "
-        << "for a shared HLLC/LHLLC mode. Use fld/pressure_coupling=source; "
-        << "the legacy gas-only wave construction cannot be translated "
-        << "without changing the LHLLC discretization.";
-    ATHENA_ERROR(msg);
-  }
-  if (pressure_in_flux.value) {
-    if (pressure_mode_in_input && pressure_mode != "flux") {
-      std::stringstream msg;
-      msg << "### FATAL ERROR in function [FLD::FLD]" << std::endl
-          << "ATHENA_FLD_PRESSURE_IN_FLUX=1 conflicts with "
-          << "fld/pressure_coupling=" << pressure_mode
-          << "; select one pressure-coupling mode.";
-      ATHENA_ERROR(msg);
-    }
-    pressure_mode = "flux";
   }
   if (disable_mixed.value && mixed_transport_in_input && mixed_frame_transport) {
     std::stringstream msg;
@@ -264,22 +247,7 @@ FLD::FLD(MeshBlock *pmb, ParameterInput *pin) :
     ATHENA_ERROR(msg);
   }
   if (disable_mixed.value) mixed_frame_transport = false;
-  pressure_coupling_mode = pressure_mode == "flux"
-      ? RadFLD::PressureCouplingMode::kFlux
-      : RadFLD::PressureCouplingMode::kSource;
-  if (!is_couple || only_rad || !include_radiation_force) {
-    pressure_coupling_mode = RadFLD::PressureCouplingMode::kOff;
-  }
   if (pmb->gid == 0) {
-    if (pressure_in_flux.present) {
-      std::cout << "WARNING: ATHENA_FLD_PRESSURE_IN_FLUX is deprecated; "
-                << "use fld/pressure_coupling=flux (value "
-                << (pressure_in_flux.value ? "enabled" : "disabled") << ").\n";
-    }
-    if (gas_source_only.present) {
-      std::cout << "WARNING: ATHENA_FLD_GAS_HLLC_SOURCE_ONLY is deprecated; "
-                << "value 0 is ignored and value 1 is rejected.\n";
-    }
     if (disable_mixed.present) {
       std::cout << "WARNING: ATHENA_FLD_DISABLE_MIXED_FRAME is deprecated; "
                 << "use fld/mixed_frame_transport (and "
@@ -287,16 +255,12 @@ FLD::FLD(MeshBlock *pmb, ParameterInput *pin) :
                 << (disable_mixed.value ? "disabled" : "enabled") << ".\n";
     }
     std::cout << "FLD_PRESSURE_COUPLING mode="
-              << RadFLD::PressureCouplingModeName(pressure_coupling_mode)
-              << " requested=" << pressure_mode
-              << " active=" << (pressure_coupling_mode !=
-                                  RadFLD::PressureCouplingMode::kOff)
-              << " source_force="
-              << (pressure_coupling_mode == RadFLD::PressureCouplingMode::kSource)
-              << " pressure_flux="
-              << (pressure_coupling_mode == RadFLD::PressureCouplingMode::kFlux)
+              << (PressureCoupled() ? "source" : "off")
+              << " active=" << PressureCoupled()
+              << " source_force=" << PressureCoupled()
+              << " pressure_flux=0"
               << " mixed_frame_source="
-              << (include_mixed_frame_terms && mixed_frame_transport)
+              << MixedFrameCoupled()
               << " mixed_frame_transport=" << mixed_frame_transport
               << " is_couple=" << is_couple << " only_rad=" << only_rad
               << " include_radiation_force=" << include_radiation_force

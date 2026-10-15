@@ -135,10 +135,9 @@ is_couple              = true
 only_rad               = false
 cut_diff               = false
 include_radiation_force = true
-pressure_coupling      = flux
 fixed_flux_limiter     = false
 fixed_u_rad            = false
-include_mixed_frame_terms = false
+include_mixed_frame_terms = true
 mixed_frame_transport  = true
 
 <radiation>

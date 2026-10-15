@@ -394,18 +394,20 @@ inline void RestrictLinearCoefficientsCell(AthenaArray<Real> &dst,
       -(dxm_f + dxp_f + dym_f + dyp_f + dzm_f + dzp_f);
 
   dst(linearSolver::DCCS, ck, cj, ci) = RestrictOne(src, linearSolver::DCCS, fi, fj, fk);
-  dst(linearSolver::DXMS, ck, cj, ci) = RestrictFaceX1Minus(src, linearSolver::DXMS,
-                                                            fi, fj, fk);
-  dst(linearSolver::DXPS, ck, cj, ci) = RestrictFaceX1Plus(src, linearSolver::DXPS,
-                                                           fi, fj, fk);
-  dst(linearSolver::DYMS, ck, cj, ci) = RestrictFaceX2Minus(src, linearSolver::DYMS,
-                                                            fi, fj, fk);
-  dst(linearSolver::DYPS, ck, cj, ci) = RestrictFaceX2Plus(src, linearSolver::DYPS,
-                                                           fi, fj, fk);
-  dst(linearSolver::DZMS, ck, cj, ci) = RestrictFaceX3Minus(src, linearSolver::DZMS,
-                                                            fi, fj, fk);
-  dst(linearSolver::DZPS, ck, cj, ci) = RestrictFaceX3Plus(src, linearSolver::DZPS,
-                                                           fi, fj, fk);
+  // The *S off-diagonals hold the centered q*v.grad(E) correction.  They
+  // scale as 1/dx, so halve them whenever the mesh spacing doubles.
+  dst(linearSolver::DXMS, ck, cj, ci) = 0.5*RestrictFaceX1Minus(
+      src, linearSolver::DXMS, fi, fj, fk);
+  dst(linearSolver::DXPS, ck, cj, ci) = 0.5*RestrictFaceX1Plus(
+      src, linearSolver::DXPS, fi, fj, fk);
+  dst(linearSolver::DYMS, ck, cj, ci) = 0.5*RestrictFaceX2Minus(
+      src, linearSolver::DYMS, fi, fj, fk);
+  dst(linearSolver::DYPS, ck, cj, ci) = 0.5*RestrictFaceX2Plus(
+      src, linearSolver::DYPS, fi, fj, fk);
+  dst(linearSolver::DZMS, ck, cj, ci) = 0.5*RestrictFaceX3Minus(
+      src, linearSolver::DZMS, fi, fj, fk);
+  dst(linearSolver::DZPS, ck, cj, ci) = 0.5*RestrictFaceX3Plus(
+      src, linearSolver::DZPS, fi, fj, fk);
 }
 
 

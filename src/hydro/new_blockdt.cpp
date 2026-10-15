@@ -96,8 +96,7 @@ void Hydro::NewBlockTimeStep() {
               wi[IBZ] = bcc(IB3,k,j,i);
               Real cf = pmb->peos->FastMagnetosonicSpeed(wi,bx);
 #if NRMGFLD_ENABLED
-              if (pmb->prfld->pressure_coupling_mode
-                  != RadFLD::PressureCouplingMode::kOff) {
+              if (pmb->prfld->PressureCoupled()) {
                 cf = std::sqrt(SQR(cf)
                     + pmb->prfld->RadiationSoundSpeedSquared(k,j,i,X1DIR));
               }
@@ -110,8 +109,7 @@ void Hydro::NewBlockTimeStep() {
               bx = bcc(IB2,k,j,i) + std::abs(b_x2f(k,j,i) - bcc(IB2,k,j,i));
               cf = pmb->peos->FastMagnetosonicSpeed(wi,bx);
 #if NRMGFLD_ENABLED
-              if (pmb->prfld->pressure_coupling_mode
-                  != RadFLD::PressureCouplingMode::kOff) {
+              if (pmb->prfld->PressureCoupled()) {
                 cf = std::sqrt(SQR(cf)
                     + pmb->prfld->RadiationSoundSpeedSquared(k,j,i,X2DIR));
               }
@@ -124,8 +122,7 @@ void Hydro::NewBlockTimeStep() {
               bx = bcc(IB3,k,j,i) + std::abs(b_x3f(k,j,i) - bcc(IB3,k,j,i));
               cf = pmb->peos->FastMagnetosonicSpeed(wi,bx);
 #if NRMGFLD_ENABLED
-              if (pmb->prfld->pressure_coupling_mode
-                  != RadFLD::PressureCouplingMode::kOff) {
+              if (pmb->prfld->PressureCoupled()) {
                 cf = std::sqrt(SQR(cf)
                     + pmb->prfld->RadiationSoundSpeedSquared(k,j,i,X3DIR));
               }
@@ -136,8 +133,7 @@ void Hydro::NewBlockTimeStep() {
               Real cs = pmb->peos->SoundSpeed(wi);
               Real cs1 = cs, cs2 = cs, cs3 = cs;
 #if NRMGFLD_ENABLED
-              if (pmb->prfld->pressure_coupling_mode
-                  != RadFLD::PressureCouplingMode::kOff) {
+              if (pmb->prfld->PressureCoupled()) {
                 cs1 = std::sqrt(SQR(cs)
                     + pmb->prfld->RadiationSoundSpeedSquared(k,j,i,X1DIR));
                 cs2 = std::sqrt(SQR(cs)

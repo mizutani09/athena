@@ -574,11 +574,23 @@ int main(int argc, char *argv[]) {
     // full hydro timestep.  Synchronize primitives before end-of-step work,
     // AMR, and output.
     if (NRMGFLD_ENABLED) {
+      // Use the post-Godunov state for the implicit solve.  These opacities
+      // remain fixed throughout its Newton iterations.
+      for (int b = 0; b < pmesh->nblocal; ++b) {
+        MeshBlock *pmb = pmesh->my_blocks(b);
+        pmb->prfld->UpdateOpacity(pmb, pmb->prfld->u_rad, pmb->phydro->w);
+      }
       for (int b = 0; b < pmesh->nblocal; ++b)
         pmesh->my_blocks(b)->prfld->DumpStageDiagnostics("before_implicit");
       const NewtonSolveResult nr_result = pmesh->pmnr->Solve_general(0, pmesh->dt);
       pmesh->pmnr->HandleSolveResult(nr_result);
       SynchronizeHydroPrimitivesAfterNR(pmesh);
+      // Keep stored opacities consistent with the committed end-of-step
+      // gas/radiation state, including for diagnostics and user callbacks.
+      for (int b = 0; b < pmesh->nblocal; ++b) {
+        MeshBlock *pmb = pmesh->my_blocks(b);
+        pmb->prfld->UpdateOpacity(pmb, pmb->prfld->u_rad, pmb->phydro->w);
+      }
       for (int b = 0; b < pmesh->nblocal; ++b)
         pmesh->my_blocks(b)->prfld->DumpStageDiagnostics("after_implicit");
     }
