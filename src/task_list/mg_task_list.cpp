@@ -55,7 +55,6 @@ void MultigridTaskList::DoTaskListOneStage(MultigridDriver *pmd) {
 //! cleared) in this TaskList, return status.
 
 TaskListStatus MultigridTaskList::DoAllAvailableTasks(Multigrid *pmg, TaskStates &ts) {
-  static bool printed_stuck = false;
   int skip=0;
   TaskStatus ret;
 
@@ -84,28 +83,6 @@ TaskListStatus MultigridTaskList::DoAllAvailableTasks(Multigrid *pmg, TaskStates
     }
   }
   // there are still tasks to do but nothing can be done now
-  if (pmg->pmy_driver_->fshowdef_ && Globals::my_rank == 0 && !printed_stuck) {
-    printed_stuck = true;
-    std::cout << "[MG stuck] gid="
-              << (pmg->pmy_block_ != nullptr ? pmg->pmy_block_->gid : -1)
-              << " current_level=" << pmg->current_level_
-              << " indx_first_task=" << ts.indx_first_task
-              << " num_tasks_left=" << ts.num_tasks_left << std::endl;
-    for (int i = ts.indx_first_task; i < ntasks; ++i) {
-      MGTask &taski = task_list_[i];
-      const bool unfinished = ts.finished_tasks.IsUnfinished(taski.task_id);
-      const bool dep_clear = ts.finished_tasks.CheckDependencies(taski.dependency);
-      if (!unfinished) continue;
-      std::cout << "  [MG stuck] task_index=" << i
-                << " dep_clear=" << dep_clear
-                << " task_bits=(" << taski.task_id.bitfld_[0] << ","
-                << taski.task_id.bitfld_[1] << ")"
-                << " dep_bits=(" << taski.dependency.bitfld_[0] << ","
-                << taski.dependency.bitfld_[1] << ")"
-                << " finished_bits=(" << ts.finished_tasks.bitfld_[0] << ","
-                << ts.finished_tasks.bitfld_[1] << ")" << std::endl;
-    }
-  }
   return TaskListStatus::stuck;
 }
 

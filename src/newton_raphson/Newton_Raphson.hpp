@@ -23,7 +23,6 @@
 #include "../bvals/bvals_interfaces.hpp"
 #include "../bvals/cc/nr/bvals_nr.hpp"
 #include "../globals.hpp"
-#include "../linear_solver/linear_solver.hpp"
 #include "../mesh/mesh.hpp"
 
 #ifdef MPI_PARALLEL

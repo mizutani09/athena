@@ -25,8 +25,8 @@
 #include "../../fld/fld.hpp"
 #include "../../globals.hpp"
 #include "../../hydro/hydro.hpp"
+#include "../../linear_solver/linear_solver.hpp"
 #include "../../mesh/mesh.hpp"
-#include "../../linear_solver/linearMG/linearMG.hpp"
 #include "../../parameter_input.hpp"
 #include "../../task_list/linmg_task_list.hpp"
 #include "linearMG.hpp"
@@ -39,6 +39,36 @@ class MeshBlock;
 
 namespace {
   AthenaArray<Real> *temp; // temporary data for the Jacobi iteration
+
+Real RestrictFaceX1Minus(const AthenaArray<Real> &src, int v, int fi, int fj, int fk) {
+  return 0.25*(src(v, fk,   fj,   fi) + src(v, fk,   fj+1, fi)
+             + src(v, fk+1, fj,   fi) + src(v, fk+1, fj+1, fi));
+}
+
+Real RestrictFaceX1Plus(const AthenaArray<Real> &src, int v, int fi, int fj, int fk) {
+  return 0.25*(src(v, fk,   fj,   fi+1) + src(v, fk,   fj+1, fi+1)
+             + src(v, fk+1, fj,   fi+1) + src(v, fk+1, fj+1, fi+1));
+}
+
+Real RestrictFaceX2Minus(const AthenaArray<Real> &src, int v, int fi, int fj, int fk) {
+  return 0.25*(src(v, fk,   fj, fi) + src(v, fk,   fj, fi+1)
+             + src(v, fk+1, fj, fi) + src(v, fk+1, fj, fi+1));
+}
+
+Real RestrictFaceX2Plus(const AthenaArray<Real> &src, int v, int fi, int fj, int fk) {
+  return 0.25*(src(v, fk,   fj+1, fi) + src(v, fk,   fj+1, fi+1)
+             + src(v, fk+1, fj+1, fi) + src(v, fk+1, fj+1, fi+1));
+}
+
+Real RestrictFaceX3Minus(const AthenaArray<Real> &src, int v, int fi, int fj, int fk) {
+  return 0.25*(src(v, fk, fj,   fi) + src(v, fk, fj,   fi+1)
+             + src(v, fk, fj+1, fi) + src(v, fk, fj+1, fi+1));
+}
+
+Real RestrictFaceX3Plus(const AthenaArray<Real> &src, int v, int fi, int fj, int fk) {
+  return 0.25*(src(v, fk+1, fj,   fi) + src(v, fk+1, fj,   fi+1)
+             + src(v, fk+1, fj+1, fi) + src(v, fk+1, fj+1, fi+1));
+}
 }
 
 //----------------------------------------------------------------------------------------
@@ -113,8 +143,6 @@ linearMGDriver::linearMGDriver(Mesh *pm, ParameterInput *pin, NewtonRaphsonDrive
   }
   std::string smoother = pin->GetOrAddString("nrfld", "smoother", "jacobi-rb");
   symmetric_rb_ = pin->GetOrAddBoolean("nrfld", "symmetric_rb_sweeps", false);
-//   matrixmode_ = 1;
-  matrixmode_ = 0; // caution!
   if (smoother == "jacobi-rb") {
     fsmoother_ = 1;
     redblack_ = true;
@@ -180,12 +208,6 @@ linearMGDriver::linearMGDriver(Mesh *pm, ParameterInput *pin, NewtonRaphsonDrive
       pin->GetString("mesh", "ox3_bc") == "periodic" ? "periodic" :
       pin->GetOrAddString("nrfld", "linearMG_ox3_bc", "zerofixed"));
 
-  // mg_mesh_bcs_[inner_x1] = GetMGBoundaryFlag("zerofixed");
-  // mg_mesh_bcs_[outer_x1] = GetMGBoundaryFlag("zerofixed");
-  // mg_mesh_bcs_[inner_x2] = GetMGBoundaryFlag("zerofixed");
-  // mg_mesh_bcs_[outer_x2] = GetMGBoundaryFlag("zerofixed");
-  // mg_mesh_bcs_[inner_x3] = GetMGBoundaryFlag("zerofixed");
-  // mg_mesh_bcs_[outer_x3] = GetMGBoundaryFlag("zerofixed");
   CheckBoundaryFunctions();
   fsubtract_average_ = false; // override the subtract average flag
 
@@ -206,6 +228,50 @@ linearMGDriver::linearMGDriver(Mesh *pm, ParameterInput *pin, NewtonRaphsonDrive
   int nz = std::max(pmy_mesh_->block_size.nx3, pmy_mesh_->nrbx3) + 2*mgroot_->ngh_;
   for (int n = 0; n < nth; ++n)
     temp[n].NewAthenaArray(nz, ny, nx);
+}
+
+
+//----------------------------------------------------------------------------------------
+//! \brief Restrict the FLD stencil coefficients while preserving their geometry
+
+void linearMGDriver::RestrictCoefficientCell(AthenaArray<Real> &dst,
+                                             const AthenaArray<Real> &src,
+                                             int ck, int cj, int ci,
+                                             int fk, int fj, int fi) {
+  const Real dxm_f = RestrictFaceX1Minus(src, linearSolver::DXMF, fi, fj, fk);
+  const Real dxp_f = RestrictFaceX1Plus(src, linearSolver::DXPF, fi, fj, fk);
+  const Real dym_f = RestrictFaceX2Minus(src, linearSolver::DYMF, fi, fj, fk);
+  const Real dyp_f = RestrictFaceX2Plus(src, linearSolver::DYPF, fi, fj, fk);
+  const Real dzm_f = RestrictFaceX3Minus(src, linearSolver::DZMF, fi, fj, fk);
+  const Real dzp_f = RestrictFaceX3Plus(src, linearSolver::DZPF, fi, fj, fk);
+
+  dst(linearSolver::DXMF, ck, cj, ci) = dxm_f;
+  dst(linearSolver::DXPF, ck, cj, ci) = dxp_f;
+  dst(linearSolver::DYMF, ck, cj, ci) = dym_f;
+  dst(linearSolver::DYPF, ck, cj, ci) = dyp_f;
+  dst(linearSolver::DZMF, ck, cj, ci) = dzm_f;
+  dst(linearSolver::DZPF, ck, cj, ci) = dzp_f;
+  // The diffusion off-diagonals are negative. Rebuild the diagonal so each
+  // coarse diffusion row retains a zero row sum.
+  dst(linearSolver::DCCF, ck, cj, ci) =
+      -(dxm_f + dxp_f + dym_f + dyp_f + dzm_f + dzp_f);
+
+  dst(linearSolver::DCCS, ck, cj, ci) =
+      RestrictOne(src, linearSolver::DCCS, fi, fj, fk);
+  // These off-diagonals discretize q*v.grad(E) and scale as 1/dx.  A coarse
+  // cell has twice the spacing, so its restricted coefficient is halved.
+  dst(linearSolver::DXMS, ck, cj, ci) =
+      0.5*RestrictFaceX1Minus(src, linearSolver::DXMS, fi, fj, fk);
+  dst(linearSolver::DXPS, ck, cj, ci) =
+      0.5*RestrictFaceX1Plus(src, linearSolver::DXPS, fi, fj, fk);
+  dst(linearSolver::DYMS, ck, cj, ci) =
+      0.5*RestrictFaceX2Minus(src, linearSolver::DYMS, fi, fj, fk);
+  dst(linearSolver::DYPS, ck, cj, ci) =
+      0.5*RestrictFaceX2Plus(src, linearSolver::DYPS, fi, fj, fk);
+  dst(linearSolver::DZMS, ck, cj, ci) =
+      0.5*RestrictFaceX3Minus(src, linearSolver::DZMS, fi, fj, fk);
+  dst(linearSolver::DZPS, ck, cj, ci) =
+      0.5*RestrictFaceX3Plus(src, linearSolver::DZPS, fi, fj, fk);
 }
 
 
@@ -756,15 +822,9 @@ void linearMGDriver::Solve(int stage, Real dt) {
 //! \brief Implementation of the Red-Black Gauss-Seidel Smoother
 //!        rlev = relative level from the finest level of this Multigrid block
 
-// void linearMG::Smooth(AthenaArray<Real> &u, const AthenaArray<Real> &src,
 void linearMG::Smooth(AthenaArray<Real> &u, const AthenaArray<Real> &src,
          const AthenaArray<Real> &coeff, const AthenaArray<Real> &matrix, int rlev,
          int il, int iu, int jl, int ju, int kl, int ku, int color, bool th) {
-  Real dx;
-  if (rlev <= 0) dx = rdx_*static_cast<Real>(1<<(-rlev));
-  else           dx = rdx_/static_cast<Real>(1<<rlev);
-  Real dx2 = SQR(dx);
-  Real isix = omega_/6.0;
   color ^= pmy_driver_->coffset_;
   if (fsmoother_ == 1) { // jacobi-rb
     if (th == true && (ku-kl) >=  minth_) {
@@ -822,18 +882,6 @@ void linearMG::Smooth(AthenaArray<Real> &u, const AthenaArray<Real> &src,
           }
         }
       }
-      // std::cout << "rlev " << rlev << " il " << il << " iu " << iu << " jl " << jl << " ju " << ju << " kl " << kl << " ku " << ku << std::endl;
-      // // std::cout << "CPRR " <<matrix(linearSolver::CPRR,1,1,1) << " CPRG " << matrix(linearSolver::CPRG,1,1,1) << " CPGR " <<matrix(linearSolver::CPGR,1,1,1) << " CPGG " << matrix(linearSolver::CPGG,1,1,1) << " CPGC " << matrix(linearSolver::CPGC,1,1,1) << " CPRC " << matrix(linearSolver::CPRC,1,1,1)<< std::endl;
-      // // std::cout << "RSRC " << src(linearSolver::RAD,1,1,1) << " MGSRC " << matrix(linearSolver::CPRG,1,1,1)/matrix(linearSolver::CPGG,1,1,1)*src(linearSolver::GAS,1,1,1) << " MGCG " << matrix(linearSolver::CPRG,1,1,1)/matrix(linearSolver::CPGG,1,1,1)*matrix(linearSolver::CPGC,1,1,1) << " CPRC " <<matrix(linearSolver::CPRC,1,1,1)<< " CPRCS " << matrix(linearSolver::CPRCS,1,1,1) << std::endl;
-      // // std::cout << src(linearSolver::RAD,1,1,1)-matrix(linearSolver::CPRG,1,1,1)/matrix(linearSolver::CPGG,1,1,1)*(src(linearSolver::GAS,1,1,1)-matrix(linearSolver::CPGC,1,1,1))-matrix(linearSolver::CPRC,1,1,1)<< std::endl;
-      // // std::cout << "RAD " << u(linearSolver::RAD,1,1,1) << " GAS " << u(linearSolver::GAS,1,1,1) << " GSRC " <<src(linearSolver::GAS,1,1,1) << std::endl;
-      // std::cout << "CCM = " << matrix(linearSolver::CCM,1,1,1) << ", CCP = " << matrix(linearSolver::CCP,1,1,1)
-      //           << ", CMC = " << matrix(linearSolver::CMC,1,1,1) << ", CPC = " << matrix(linearSolver::CPC,1,1,1)
-      //           << ", MCC = " << matrix(linearSolver::MCC,1,1,1) << ", PCC = " << matrix(linearSolver::PCC,1,1,1)
-      //           << ", CCC = " << matrix(linearSolver::CCC,1,1,1) << std::endl;
-      // std::cout << "src_ = " << src(1,1,1) << std::endl;
-      // std::cout << "work_ = " << work(1,1,1) << std::endl;
-      // std::cout << "u_ = " << u(1,1,1) << std::endl;
     }
   } else { // jacobi
     if (th == true && (ku-kl) >=  minth_) {
@@ -845,16 +893,13 @@ void linearMG::Smooth(AthenaArray<Real> &u, const AthenaArray<Real> &src,
           for (int j=jl; j<=ju; j++) {
 #pragma ivdep
             for (int i=il; i<=iu; i++) {
-              // Real M = matrix(linearSolver::CCM,k,j,i)*u(k,j,i-1)   + matrix(linearSolver::CCP,k,j,i)*u(k,j,i+1)
-              //        + matrix(linearSolver::CMC,k,j,i)*u(k,j-1,i)   + matrix(linearSolver::CPC,k,j,i)*u(k,j+1,i)
-              //        + matrix(linearSolver::MCC,k,j,i)*u(k-1,j,i)   + matrix(linearSolver::PCC,k,j,i)*u(k+1,j,i)
-              //        + matrix(linearSolver::CMM,k,j,i)*u(k,j-1,i-1) + matrix(linearSolver::CMP,k,j,i)*u(k,j-1,i+1)
-              //        + matrix(linearSolver::CPM,k,j,i)*u(k,j+1,i-1) + matrix(linearSolver::CPP,k,j,i)*u(k,j+1,i+1)
-              //        + matrix(linearSolver::MCM,k,j,i)*u(k-1,j,i-1) + matrix(linearSolver::MCP,k,j,i)*u(k-1,j,i+1)
-              //        + matrix(linearSolver::PCM,k,j,i)*u(k+1,j,i-1) + matrix(linearSolver::PCP,k,j,i)*u(k+1,j,i+1)
-              //        + matrix(linearSolver::MMC,k,j,i)*u(k-1,j-1,i) + matrix(linearSolver::MPC,k,j,i)*u(k-1,j+1,i)
-              //        + matrix(linearSolver::PMC,k,j,i)*u(k+1,j-1,i) + matrix(linearSolver::PPC,k,j,i)*u(k+1,j+1,i);
-              //   work(k,j,i) = (src(k,j,i) - M) / matrix(linearSolver::CCC,k,j,i);
+              Real M = matrix(linearSolver::CCM,k,j,i)*u(k,j,i-1)
+                     + matrix(linearSolver::CCP,k,j,i)*u(k,j,i+1)
+                     + matrix(linearSolver::CMC,k,j,i)*u(k,j-1,i)
+                     + matrix(linearSolver::CPC,k,j,i)*u(k,j+1,i)
+                     + matrix(linearSolver::MCC,k,j,i)*u(k-1,j,i)
+                     + matrix(linearSolver::PCC,k,j,i)*u(k+1,j,i);
+              work(k,j,i) = (src(k,j,i) - M) / matrix(linearSolver::CCC,k,j,i);
             }
           }
         }
@@ -1049,8 +1094,7 @@ void linearMG::CalculateMatrix(AthenaArray<Real> &matrix, const AthenaArray<Real
   Real dx, dt = pmy_driver_->dt_;
   if (rlev <= 0) dx = rdx_*static_cast<Real>(1<<(-rlev));
   else           dx = rdx_/static_cast<Real>(1<<rlev);
-  Real idx = 1.0/dx;
-  Real fac = dt/SQR(dx), efac = 0.125*fac;
+  Real fac = dt/SQR(dx);
 #pragma omp parallel for num_threads(pmy_driver_->nthreads_) if (th && (ku-kl) >= minth_)
   for (int k=kl; k<=ku; k++) {
     for (int j=jl; j<=ju; j++) {
@@ -1075,14 +1119,5 @@ void linearMG::CalculateMatrix(AthenaArray<Real> &matrix, const AthenaArray<Real
       }
     }
   }
-
-  // // output for 1,1,1
-  // std::cout << "matrix CCC = " << matrix(linearSolver::CCC,1,1,1) << std::endl
-  //           << "       CCM = " << matrix(linearSolver::CCM,1,1,1)
-  //           << ", CCP = " << matrix(linearSolver::CCP,1,1,1) << std::endl
-  //           << "       CMC = " << matrix(linearSolver::CMC,1,1,1)
-  //           << ", CPC = " << matrix(linearSolver::CPC,1,1,1) << std::endl
-  //           << "       MCC = " << matrix(linearSolver::MCC,1,1,1)
-  //           << ", PCC = " << matrix(linearSolver::PCC,1,1,1) << std::endl;
   return;
 }

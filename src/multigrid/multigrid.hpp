@@ -23,7 +23,6 @@
 #include "../bvals/bvals_interfaces.hpp"
 #include "../bvals/cc/mg/bvals_mg.hpp"
 #include "../globals.hpp"
-#include "../linear_solver/linear_solver.hpp"
 #include "../mesh/mesh.hpp"
 #include "../task_list/mg_task_list.hpp"
 
@@ -118,7 +117,6 @@ class Multigrid {
   void SmoothBlock(int color);
   void CalculateDefectBlock();
   void CalculateFASRHSBlock();
-  void CalculateMatrixBlockCurrent();
   void CalculateMatrixBlockAll();
   void SetFromRootGrid(bool folddata);
   Real CalculateDefectNorm(MGNormType nrm, int n);
@@ -203,11 +201,6 @@ class MultigridDriver {
 
   // pure virtual function
   virtual void Solve(int step, Real dt = 0.0) = 0;
-  void SetSmoothingOnly(bool value) { smoothing_only_ = value; }
-  bool GetSmoothingOnly() const { return smoothing_only_; }
-  void SetCoarseCorrectionScale(Real value) { coarse_corr_scale_ = value; }
-  Real GetCoarseCorrectionScale() const { return coarse_corr_scale_; }
-
   friend class Multigrid;
   friend class MultigridTaskList;
   friend class MGGravity;
@@ -236,6 +229,11 @@ class MultigridDriver {
   void SolveIterativeFixedTimes();
 
   virtual void SolveCoarsestGrid();
+  virtual bool EnforcePeriodicBoundaryConsistency() const { return true; }
+  virtual void RestrictCoefficientCell(AthenaArray<Real> &dst,
+                                       const AthenaArray<Real> &src,
+                                       int ck, int cj, int ci,
+                                       int fk, int fj, int fi);
   Real CalculateDefectNorm(MGNormType nrm, int n);
   Real CalculateSourceNorm(int n);
   void CalculateMatrixAll();
@@ -279,7 +277,7 @@ class MultigridDriver {
   // small functions
   int GetNumMultigrids() { return nblist_[Globals::my_rank]; }
 
-  int nranks_, nthreads_, nbtotal_, nvar_, ncoeff_, nmatrix_, mode_, matrixmode_;
+  int nranks_, nthreads_, nbtotal_, nvar_, ncoeff_, nmatrix_, mode_;
   int locrootlevel_, nrootlevel_, nmblevel_, ntotallevel_, nreflevel_, maxreflevel_;
   int current_level_, fmglevel_;
   int *nslist_, *nblist_, *nvlist_, *nvslist_, *nvlisti_, *nvslisti_,
@@ -334,82 +332,6 @@ inline Real RestrictOne(const AthenaArray<Real> &src, int v, int fi, int fj, int
                +src(v, fk+1, fj,   fi)+src(v, fk+1, fj,   fi+1)
                +src(v, fk+1, fj+1, fi)+src(v, fk+1, fj+1, fi+1));
 }
-
-inline Real RestrictFaceX1Minus(const AthenaArray<Real> &src, int v, int fi, int fj,
-                                int fk) {
-  return 0.25*(src(v, fk,   fj,   fi) + src(v, fk,   fj+1, fi)
-             + src(v, fk+1, fj,   fi) + src(v, fk+1, fj+1, fi));
-}
-
-inline Real RestrictFaceX1Plus(const AthenaArray<Real> &src, int v, int fi, int fj,
-                               int fk) {
-  return 0.25*(src(v, fk,   fj,   fi+1) + src(v, fk,   fj+1, fi+1)
-             + src(v, fk+1, fj,   fi+1) + src(v, fk+1, fj+1, fi+1));
-}
-
-inline Real RestrictFaceX2Minus(const AthenaArray<Real> &src, int v, int fi, int fj,
-                                int fk) {
-  return 0.25*(src(v, fk,   fj, fi) + src(v, fk,   fj, fi+1)
-             + src(v, fk+1, fj, fi) + src(v, fk+1, fj, fi+1));
-}
-
-inline Real RestrictFaceX2Plus(const AthenaArray<Real> &src, int v, int fi, int fj,
-                               int fk) {
-  return 0.25*(src(v, fk,   fj+1, fi) + src(v, fk,   fj+1, fi+1)
-             + src(v, fk+1, fj+1, fi) + src(v, fk+1, fj+1, fi+1));
-}
-
-inline Real RestrictFaceX3Minus(const AthenaArray<Real> &src, int v, int fi, int fj,
-                                int fk) {
-  return 0.25*(src(v, fk, fj,   fi) + src(v, fk, fj,   fi+1)
-             + src(v, fk, fj+1, fi) + src(v, fk, fj+1, fi+1));
-}
-
-inline Real RestrictFaceX3Plus(const AthenaArray<Real> &src, int v, int fi, int fj,
-                               int fk) {
-  return 0.25*(src(v, fk+1, fj,   fi) + src(v, fk+1, fj,   fi+1)
-             + src(v, fk+1, fj+1, fi) + src(v, fk+1, fj+1, fi+1));
-}
-
-inline void RestrictLinearCoefficientsCell(AthenaArray<Real> &dst,
-                                           const AthenaArray<Real> &src, int ck, int cj,
-                                           int ci, int fk, int fj, int fi) {
-  const Real dxm_f = RestrictFaceX1Minus(src, linearSolver::DXMF, fi, fj, fk);
-  const Real dxp_f = RestrictFaceX1Plus(src,  linearSolver::DXPF, fi, fj, fk);
-  const Real dym_f = RestrictFaceX2Minus(src, linearSolver::DYMF, fi, fj, fk);
-  const Real dyp_f = RestrictFaceX2Plus(src,  linearSolver::DYPF, fi, fj, fk);
-  const Real dzm_f = RestrictFaceX3Minus(src, linearSolver::DZMF, fi, fj, fk);
-  const Real dzp_f = RestrictFaceX3Plus(src,  linearSolver::DZPF, fi, fj, fk);
-
-  dst(linearSolver::DXMF, ck, cj, ci) = dxm_f;
-  dst(linearSolver::DXPF, ck, cj, ci) = dxp_f;
-  dst(linearSolver::DYMF, ck, cj, ci) = dym_f;
-  dst(linearSolver::DYPF, ck, cj, ci) = dyp_f;
-  dst(linearSolver::DZMF, ck, cj, ci) = dzm_f;
-  dst(linearSolver::DZPF, ck, cj, ci) = dzp_f;
-  // Diffusion off-diagonal coefficients are negative, while DCCF stores the
-  // corresponding positive diagonal contribution.  Preserve the row-sum
-  // relation on every coarse level.
-  dst(linearSolver::DCCF, ck, cj, ci) =
-      -(dxm_f + dxp_f + dym_f + dyp_f + dzm_f + dzp_f);
-
-  dst(linearSolver::DCCS, ck, cj, ci) = RestrictOne(src, linearSolver::DCCS, fi, fj, fk);
-  // The *S off-diagonals hold the centered q*v.grad(E) correction.  They
-  // scale as 1/dx, so halve them whenever the mesh spacing doubles.
-  dst(linearSolver::DXMS, ck, cj, ci) = 0.5*RestrictFaceX1Minus(
-      src, linearSolver::DXMS, fi, fj, fk);
-  dst(linearSolver::DXPS, ck, cj, ci) = 0.5*RestrictFaceX1Plus(
-      src, linearSolver::DXPS, fi, fj, fk);
-  dst(linearSolver::DYMS, ck, cj, ci) = 0.5*RestrictFaceX2Minus(
-      src, linearSolver::DYMS, fi, fj, fk);
-  dst(linearSolver::DYPS, ck, cj, ci) = 0.5*RestrictFaceX2Plus(
-      src, linearSolver::DYPS, fi, fj, fk);
-  dst(linearSolver::DZMS, ck, cj, ci) = 0.5*RestrictFaceX3Minus(
-      src, linearSolver::DZMS, fi, fj, fk);
-  dst(linearSolver::DZPS, ck, cj, ci) = 0.5*RestrictFaceX3Plus(
-      src, linearSolver::DZPS, fi, fj, fk);
-}
-
 
 // Multigrid Boundary functions
 

@@ -351,22 +351,18 @@ void Multigrid::RestrictCoefficients() {
   for (int lev = nlevel_ - 1; lev > 0; lev--) {
     int ll = nlevel_ - lev;
     ie=is+(size_.nx1>>ll)-1, je=js+(size_.nx2>>ll)-1, ke=ks+(size_.nx3>>ll)-1;
-    if (ncoeff_ == linearSolver::NCOEFF) {
-      AthenaArray<Real> &dst = coeff_[lev-1];
-      const AthenaArray<Real> &src = coeff_[lev];
-      for (int k = ks; k <= ke; ++k) {
-        const int fk = 2*k - ks;
-        for (int j = js; j <= je; ++j) {
-          const int fj = 2*j - js;
+    AthenaArray<Real> &dst = coeff_[lev-1];
+    const AthenaArray<Real> &src = coeff_[lev];
+    for (int k = ks; k <= ke; ++k) {
+      const int fk = 2*k - ks;
+      for (int j = js; j <= je; ++j) {
+        const int fj = 2*j - js;
 #pragma ivdep
-          for (int i = is; i <= ie; ++i) {
-            const int fi = 2*i - is;
-            RestrictLinearCoefficientsCell(dst, src, k, j, i, fk, fj, fi);
-          }
+        for (int i = is; i <= ie; ++i) {
+          const int fi = 2*i - is;
+          pmy_driver_->RestrictCoefficientCell(dst, src, k, j, i, fk, fj, fi);
         }
       }
-    } else {
-      Restrict(coeff_[lev-1], coeff_[lev], ncoeff_, is, ie, js, je, ks, ke, false);
     }
   }
   return;
@@ -627,23 +623,6 @@ void Multigrid::CalculateFASRHSBlock() {
 
   CalculateFASRHS(src_[current_level_], u_[current_level_], coeff_[current_level_],
                   matrix_[current_level_], -ll, is, ie, js, je, ks, ke, th);
-
-  return;
-}
-
-
-//----------------------------------------------------------------------------------------
-//! \fn void Multigrid::CalculateMatrixBlockCurrent()
-//  \brief calculate matrix elements for the current level
-
-void Multigrid::CalculateMatrixBlockCurrent() {
-  int is, ie, js, je, ks, ke;
-  is=js=ks=ngh_;
-  int ll = nlevel_ - current_level_ - 1;
-  ie=is+(size_.nx1>>ll)-1, je=js+(size_.nx2>>ll)-1, ke=ks+(size_.nx3>>ll)-1;
-
-  CalculateMatrix(matrix_[current_level_], u_[current_level_], src_[current_level_],
-                  coeff_[current_level_], -ll, is, ie, js, je, ks, ke, false);
 
   return;
 }

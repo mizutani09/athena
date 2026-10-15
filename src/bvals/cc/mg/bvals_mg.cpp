@@ -11,7 +11,6 @@
 // C++ headers
 #include <algorithm>
 #include <cmath>
-#include <cstdlib>
 #include <cstring>    // memcpy()
 #include <iomanip>
 #include <iostream>   // endl
@@ -90,12 +89,6 @@ MGBoundaryValues::MGBoundaryValues(Multigrid *pmg, BoundaryFlag *input_bcs)
 //! \brief Destructor of the MGBoundaryValues class
 
 MGBoundaryValues::~MGBoundaryValues() {
-  const bool trace_dtor = (std::getenv("ATHENA_TRACE_DTOR") != nullptr);
-  if (trace_dtor) {
-    std::cout << "[DTOR] MGBoundaryValues block="
-              << (pmy_mg_->pmy_block_ ? pmy_mg_->pmy_block_->gid : -1)
-              << " destroy=" << (pmy_mg_->pmy_block_ != nullptr) << std::endl;
-  }
   if (pmy_mg_->pmy_block_ != nullptr)
     DestroyBoundaryData();
 }
@@ -141,30 +134,15 @@ void MGBoundaryValues::InitBoundaryData(BoundaryQuantity type) {
 //! \brief Destroy BoundaryData<> structure
 
 void MGBoundaryValues::DestroyBoundaryData() {
-  const bool trace_dtor = (std::getenv("ATHENA_TRACE_DTOR") != nullptr);
   int nbuf = triplebuf_?3:1;
   for (int c = 0; c < nbuf; ++c) {
     for (int n = 0; n < bdata_[c].nbmax; ++n) {
 #ifdef MPI_PARALLEL
       if (bdata_[c].req_send[n] != MPI_REQUEST_NULL) {
-        int completed = 0;
-        MPI_Test(&bdata_[c].req_send[n], &completed, MPI_STATUS_IGNORE);
-        if (!completed && trace_dtor) {
-          std::cout << "[DTOR] MGBoundaryValues waiting on active send request"
-                    << " block=" << (pmy_mg_->pmy_block_ ? pmy_mg_->pmy_block_->gid : -1)
-                    << " color=" << c << " bufid=" << n << std::endl;
-        }
-        if (!completed) MPI_Wait(&bdata_[c].req_send[n], MPI_STATUS_IGNORE);
+        MPI_Wait(&bdata_[c].req_send[n], MPI_STATUS_IGNORE);
       }
       if (bdata_[c].req_recv[n] != MPI_REQUEST_NULL) {
-        int completed = 0;
-        MPI_Test(&bdata_[c].req_recv[n], &completed, MPI_STATUS_IGNORE);
-        if (!completed && trace_dtor) {
-          std::cout << "[DTOR] MGBoundaryValues waiting on active recv request"
-                    << " block=" << (pmy_mg_->pmy_block_ ? pmy_mg_->pmy_block_->gid : -1)
-                    << " color=" << c << " bufid=" << n << std::endl;
-        }
-        if (!completed) MPI_Wait(&bdata_[c].req_recv[n], MPI_STATUS_IGNORE);
+        MPI_Wait(&bdata_[c].req_recv[n], MPI_STATUS_IGNORE);
       }
 #endif
       delete [] bdata_[c].send[n];
@@ -475,8 +453,6 @@ void MGBoundaryValues::StartReceivingMultigrid(BoundaryQuantity type, bool foldd
 
   for (int n = 0; n < nneighbor; ++n) {
     NeighborBlock& nb = neighbor[n];
-    // std::cout << Globals::my_rank << " recv mg bvals from nb rank " << nb.snb.rank
-    //           << " bufid " << nb.bufid << " level " << nb.snb.level << std::endl;
     if (nb.snb.rank!=Globals::my_rank) {
       if (type == BoundaryQuantity::mg_faceonly && nb.snb.level > loc.level
         && nb.ni.type != NeighborConnect::face) continue;
@@ -755,9 +731,6 @@ bool MGBoundaryValues::SendMultigridBoundaryBuffers(BoundaryQuantity type,
   Multigrid *pmg = nullptr;
   for (int n = 0; n < nneighbor; ++n) {
     NeighborBlock& nb = neighbor[n];
-    // std::cout << Globals::my_rank << " Sending MG bndry to block GID " << nb.snb.gid
-    //           << " from block GID " << pmy_mg_->pmy_block_->gid
-    //           << " bufid " << nb.bufid << " targetid " << nb.targetid << std::endl;
     if (bdata_[bcolor_].sflag[nb.bufid] == BoundaryStatus::completed) continue;
     if (type == BoundaryQuantity::mg_faceonly && nb.snb.level < loc.level
       && nb.ni.type != NeighborConnect::face) continue;
@@ -1005,17 +978,9 @@ bool MGBoundaryValues::ReceiveMultigridBoundaryBuffers(BoundaryQuantity type,
 
   for (int n = 0; n < nneighbor; ++n) {
     NeighborBlock& nb = neighbor[n];
-    // if (Globals::my_rank == 0) std::cout << "neighbor " << n << " bufid " << nb.bufid
-    //                                     << " flag " << static_cast<int>(bdata_[bcolor_].flag[nb.bufid]) << std::endl;
     if (bdata_[bcolor_].flag[nb.bufid] == BoundaryStatus::completed) continue;
-    // if (Globals::my_rank == 0) std::cout << "type " << static_cast<int>(type) << " nb.snb.level "
-    //                                     << nb.snb.level << " loc.level " << loc.level
-    //                                     << " ni.type " << static_cast<int>(nb.ni.type) << std::endl;
     if (type == BoundaryQuantity::mg_faceonly && nb.snb.level > loc.level
       && nb.ni.type != NeighborConnect::face) continue;
-    // if (Globals::my_rank == 0)
-    // std::cout << "nb.snb.rank " << nb.snb.rank << " my_rank "
-    //                                     << Globals::my_rank << std::endl;
     if (bdata_[bcolor_].flag[nb.bufid] == BoundaryStatus::waiting) {
       if (nb.snb.rank == Globals::my_rank) {// on the same process
         bflag = false;

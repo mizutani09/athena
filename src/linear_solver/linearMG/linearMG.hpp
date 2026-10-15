@@ -23,7 +23,6 @@
 #include "../../bvals/bvals_interfaces.hpp"
 #include "../../globals.hpp"
 #include "../../mesh/mesh.hpp"
-// #include "../linear_solver.hpp"
 #include "../../multigrid/multigrid.hpp"
 #include "../../newton_raphson/Newton_Raphson.hpp"
 
@@ -41,7 +40,6 @@ class LinearMGBoundaryTaskList;
 class linearMG: public Multigrid {
  public:
   linearMG(linearMGDriver *pmd, MeshBlock *pmb, ParameterInput *pin, NewtonRaphson *pnr);
-  // linearMG(MeshBlock *pmb, ParameterInput *pin);
   ~linearMG();
 
   void Smooth(AthenaArray<Real> &dst, const AthenaArray<Real> &src,
@@ -62,7 +60,6 @@ class linearMG: public Multigrid {
   friend class NewtonRaphson;
 
  private:
-  // linearMGDriver *pmd_;
   NewtonRaphson *pnr_;
   Real omega_;
   int fsmoother_;
@@ -76,15 +73,22 @@ class linearMGDriver: public MultigridDriver {
   void Solve(int stage, Real dt = 0.0) final;
   void SolveCoarsestGrid() final;
   void BeginTimeStep() { coefficient_hierarchy_cached_ = false; }
+  void SetSmoothingOnly(bool value) { smoothing_only_ = value; }
+  bool GetSmoothingOnly() const { return smoothing_only_; }
+  void SetCoarseCorrectionScale(Real value) { coarse_corr_scale_ = value; }
+  Real GetCoarseCorrectionScale() const { return coarse_corr_scale_; }
   void ProlongateOctetBoundariesFluxCons(AthenaArray<Real> &dst,
                  AthenaArray<Real> &cbuf, const AthenaArray<bool> &ncoarse) final;
 
   friend class linearMG;
   friend class NewtonRaphsonDriver;
 
-  // LinearSolver *plinsolver = nullptr;
-
  private:
+  bool EnforcePeriodicBoundaryConsistency() const final { return false; }
+  void RestrictCoefficientCell(AthenaArray<Real> &dst,
+                               const AthenaArray<Real> &src,
+                               int ck, int cj, int ci,
+                               int fk, int fj, int fi) final;
   void PrintCoefficientDiagnostics();
 
   LinearMGBoundaryTaskList *linmgtlist_;
@@ -105,54 +109,6 @@ class linearMGDriver: public MultigridDriver {
   int coefficient_diagnostic_limit_;
   int coefficient_diagnostic_count_;
 };
-
-
-// class linearMGAdapter : public LinearSolver {
-// public:
-//   linearMGAdapter() = default;
-//   explicit linearMGAdapter(linearMGDriver *pmd, MeshBlock *pmb, ParameterInput *pin) : pmg_(new linearMG(pmd, pmb, pin)) {}
-
-//   ~linearMGAdapter() override = default;
-
-//   // void set_backend(linearMG* plinmg) { plinmg_ = plinmg; }
-
-//   // void set_operator(MatVec A, std::size_t n) override {
-//   //   assert(plinmg_ && "linearMGAdapter: backend MG is null");
-//   //   plinmg_->Setup(A, n);
-//   // }
-//   // void set_tolerance(double rel, double abs) override {
-//   //   assert(plinmg_);
-//   //   plinmg_->SetTol(rel, abs);
-//   // }
-//   // void set_maxiter(int it) override {
-//   //   assert(plinmg_);
-//   //   plinmg_->SetMaxIter(it);
-//   // }
-
-// private:
-//   linearMG* pmg_ = nullptr;
-// };
-
-
-// class linearMGDriverAdapter : public LinearSolverDriver {
-// public:
-//   linearMGDriverAdapter() = default;
-//   explicit linearMGDriverAdapter(Mesh *pm, ParameterInput *pin) {
-//     pmd_ = new linearMGDriver(pm, pin);
-//   }
-
-//   void Solve(int stage, Real time) override final {
-//     // assert(pmd_ && "linearMGDriverAdapter: backend MG driver is null");
-//     pmd_->Solve(stage, time);
-//   }
-
-//   // linear solverたちの関数をそのまま呼び出せるようにする。
-//   // つまり本来はplinsolver->pmd->Solve()と呼ぶところを、
-//   // plinsolver->Solve()で済むようにする。
-
-//   linearMGDriver* pmd_ = nullptr;
-// private:
-// };
 
 
 #endif // LINEAR_SOLVER_LINEARMG_LINEARMG_HPP_

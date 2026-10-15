@@ -24,6 +24,7 @@
 #include "../athena_arrays.hpp"
 #include "../coordinates/coordinates.hpp"
 #include "../eos/eos.hpp"
+#include "../linear_solver/linear_solver.hpp"
 #include "../mesh/mesh.hpp"
 #include "../parameter_input.hpp"
 #include "NRFLD.hpp"

@@ -43,7 +43,6 @@ MultigridDriver::MultigridDriver(Mesh *pm, MGBoundaryFunc *MGBoundary,
                  MGMaskFunc MGCoeffMask, int invar, int ncoeff, int nmatrix) :
     nranks_(Globals::nranks), nthreads_(pm->num_mesh_threads_), nbtotal_(pm->nbtotal),
     nvar_(invar), ncoeff_(ncoeff), nmatrix_(nmatrix), mode_(0), // 0: FMG+V, 1: V-cycle
-    matrixmode_(0), // 0: fixed, 1: update after every V-cycle
     maxreflevel_(pm->multilevel?pm->max_level-pm->root_level:0),
     nrbx1_(pm->nrbx1), nrbx2_(pm->nrbx2), nrbx3_(pm->nrbx3), srcmask_(MGSourceMask),
     coeffmask_(MGCoeffMask), pmy_mesh_(pm), fsubtract_average_(false),
@@ -346,16 +345,17 @@ void MultigridDriver::CheckBoundaryFunctions() {
   }
 
   // check periodic boundary conditions
-  for (int i = 0; i < 6; ++i) {
-    if (NRMGFLD_ENABLED) continue; // caution! Multigrid in NewtonRaphson uses zerofixed internally
-    if (pmy_mesh_->mesh_bcs[i] == BoundaryFlag::periodic
-     || mg_mesh_bcs_[i] == BoundaryFlag::periodic) {
-      if (pmy_mesh_->mesh_bcs[i] != mg_mesh_bcs_[i]) {
-        std::stringstream msg;
-        msg << "### FATAL ERROR in MGGravityDriver::CheckBoundaryFunctions" << std::endl
-            << "When periodic boundary condition is set either for" << std::endl
-            << "Multigrid or for the main part, both must be periodic." << std::endl;
-        ATHENA_ERROR(msg);
+  if (EnforcePeriodicBoundaryConsistency()) {
+    for (int i = 0; i < 6; ++i) {
+      if (pmy_mesh_->mesh_bcs[i] == BoundaryFlag::periodic
+       || mg_mesh_bcs_[i] == BoundaryFlag::periodic) {
+        if (pmy_mesh_->mesh_bcs[i] != mg_mesh_bcs_[i]) {
+          std::stringstream msg;
+          msg << "### FATAL ERROR in MGGravityDriver::CheckBoundaryFunctions" << std::endl
+              << "When periodic boundary condition is set either for" << std::endl
+              << "Multigrid or for the main part, both must be periodic." << std::endl;
+          ATHENA_ERROR(msg);
+        }
       }
     }
   }
@@ -563,13 +563,7 @@ void MultigridDriver::SetupCoefficients() {
         int oj = (static_cast<int>(loc.lx2) & 1) + ngh;
         int ok = (static_cast<int>(loc.lx3) & 1) + ngh;
         MGOctet &coct = octets_[l-1][oid];
-        if (ncoeff_ == linearSolver::NCOEFF) {
-          RestrictLinearCoefficientsCell(coct.coeff, foct.coeff, ok, oj, oi, ngh, ngh,
-                                         ngh);
-        } else {
-          for (int v = 0; v < ncoeff_; ++v)
-            coct.coeff(v, ok, oj, oi) = RestrictOne(foct.coeff, v, ngh, ngh, ngh);
-        }
+        RestrictCoefficientCell(coct.coeff, foct.coeff, ok, oj, oi, ngh, ngh, ngh);
         for (int v = 0; v < nvar_; ++v) {
           coct.u(v, ok, oj, oi) = RestrictOne(foct.u, v, ngh, ngh, ngh);
           coct.src(v, ok, oj, oi) = RestrictOne(foct.src, v, ngh, ngh, ngh);
@@ -583,14 +577,8 @@ void MultigridDriver::SetupCoefficients() {
       int lx1 = static_cast<int>(loc.lx1) + mgroot_->ngh_;
       int lx2 = static_cast<int>(loc.lx2) + mgroot_->ngh_;
       int lx3 = static_cast<int>(loc.lx3) + mgroot_->ngh_;
-      if (ncoeff_ == linearSolver::NCOEFF) {
-        RestrictLinearCoefficientsCell(mgroot_->coeff_[mgroot_->nlevel_-1], oct.coeff,
-                                       lx3, lx2, lx1, ngh, ngh, ngh);
-      } else {
-        for (int v = 0; v < ncoeff_; ++v)
-          mgroot_->coeff_[mgroot_->nlevel_-1](v, lx3, lx2, lx1)
-            = RestrictOne(oct.coeff, v, ngh, ngh, ngh);
-      }
+      RestrictCoefficientCell(mgroot_->coeff_[mgroot_->nlevel_-1], oct.coeff,
+                              lx3, lx2, lx1, ngh, ngh, ngh);
       for (int v = 0; v < nvar_; ++v) {
         mgroot_->u_[mgroot_->nlevel_-1](v, lx3, lx2, lx1)
           = RestrictOne(oct.u, v, ngh, ngh, ngh);
@@ -1187,8 +1175,6 @@ void MultigridDriver::SolveFMGCycle() {
     if (fmglevel_ != ntotallevel_-1) {
       FMGProlongate();
     }
-    if (matrixmode_ == 1)
-      CalculateMatrixAll();
   }
   // std::cout << "fmglevel_ " << fmglevel_ << std::endl;
   def = 0.0;
@@ -1243,8 +1229,6 @@ void MultigridDriver::SolveIterative() {
       std::memcpy(pmg->iteration_backup_.data(), u.data(), u.GetSizeInBytes());
     }
     SolveVCycle(npresmooth_, npostsmooth_);
-    if (matrixmode_ == 1)
-      CalculateMatrixAll();
     Real olddef = def, oldmax = defmax;
     def = 0.0, defmax = 0.0;
     for (int v = 0; v < nvar_; ++v) {
@@ -1274,8 +1258,8 @@ void MultigridDriver::SolveIterative() {
       }
       if (eps_ == 0.0) break;
     }
-    // Robin/Marshak radiation boundaries can require substantially more
-    // V-cycles than the old fixed limit of 30.  Stopping there returns a
+    // Physical boundary conditions can require substantially more V-cycles
+    // than the old fixed limit of 30.  Stopping there returns a
     // meshblock-dependent approximate solution, because the local MG
     // hierarchy changes with the meshblock size.
     constexpr int max_vcycles = 100;
@@ -1294,8 +1278,8 @@ void MultigridDriver::SolveIterative() {
   if (fsubtract_average_)
     SubtractAverage(MGVariable::u);
   // A temporarily slow V-cycle is not a failed solve when subsequent cycles
-  // reach the requested tolerance.  Reporting those cases as warnings made
-  // otherwise successful NR-FLD runs produce thousands of misleading lines.
+  // reach the requested tolerance. Report only when the solve still misses
+  // its requested tolerance.
   if (slow_count > 0 && def > eps_ && Globals::my_rank == 0) {
     std::cout << "### Warning in MultigridDriver::SolveIterative" << std::endl
               << "Slow multigrid convergence occurred " << slow_count
@@ -1323,8 +1307,6 @@ void MultigridDriver::SolveIterativeFixedTimes() {
                 << " : " << def << std::endl;
     }
 
-    if (matrixmode_ == 1)
-      CalculateMatrixAll();
   }
   if (fsubtract_average_)
     SubtractAverage(MGVariable::u);
@@ -1386,6 +1368,18 @@ void MultigridDriver::SolveCoarsestGrid() {
     }
   }
   return;
+}
+
+
+//----------------------------------------------------------------------------------------
+//! \brief Restrict one cell of generic cell-centered coefficients
+
+void MultigridDriver::RestrictCoefficientCell(AthenaArray<Real> &dst,
+                                              const AthenaArray<Real> &src,
+                                              int ck, int cj, int ci,
+                                              int fk, int fj, int fi) {
+  for (int v = 0; v < ncoeff_; ++v)
+    dst(v, ck, cj, ci) = RestrictOne(src, v, fi, fj, fk);
 }
 
 
