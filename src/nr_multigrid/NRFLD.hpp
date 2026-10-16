@@ -194,6 +194,9 @@ class NRFLD : public NewtonRaphson {
   Real rdx_, rdy_, rdz_;
   Real defscale_;
   Real max_update_fraction_;
+  // If false, retain the mixed-frame term in the nonlinear residual but lag
+  // its nearest-neighbour derivative in the inexact Newton solve.
+  bool linearize_mixed_frame_transport_;
   bool fixed_linear_coefficients_initialized_;
   bool jacobian_check_;
   bool jacobian_check_done_;

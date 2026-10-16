@@ -306,6 +306,8 @@ NRFLD::NRFLD(MeshBlock *pmb, ParameterInput *pin) :
     // radiation correction in the mixed-frame gas stencil; Newton backtracking
     // still controls acceptance of the complete nonlinear update.
     max_update_fraction_(pin->GetOrAddReal("nrfld", "max_update_fraction", -1.0)),
+    linearize_mixed_frame_transport_(pin->GetOrAddBoolean(
+        "nrfld", "linearize_mixed_frame_transport", true)),
     fixed_linear_coefficients_initialized_(false),
     jacobian_check_(pin->GetOrAddBoolean("nrfld", "jacobian_check", false)),
     jacobian_check_done_(false),
@@ -342,6 +344,12 @@ NRFLD::NRFLD(MeshBlock *pmb, ParameterInput *pin) :
           << "nrfld/max_update_fraction must be finite; values <= 0 disable the cap."
           << std::endl;
       ATHENA_ERROR(msg);
+    }
+    if (pmb->gid == 0 && Globals::my_rank == 0) {
+      std::cout << "[NRFLD] mixed-frame transport Jacobian = "
+                << (linearize_mixed_frame_transport_ ? "exact" : "lagged")
+                << " (the nonlinear residual always retains the physical term)"
+                << std::endl;
     }
     // pmy_mesh(pm),
     // coarse_u_(1, pmb->ncc3, pmb->ncc2, pmb->ncc1,
@@ -926,7 +934,13 @@ void NRFLD::CalculateCoefficients(const AthenaArray<Real> &u_rad_old,
               1.0/derivetive(NewtonRaphsonFLD::dFg_deg,k,j,i);
           // The face drift has a center contribution when its two face
           // coefficients differ.  Keep it in the unscaled diagonal slot.
-          const Real drift_fac = 0.5*dt*std::sqrt(idx2)*inv_dFg_deg;
+          // An optional inexact-Newton mode lags the mixed-frame stencil.
+          // The nonlinear residual above still contains mixed_term, so a
+          // converged solve satisfies the same physical equations.  Only the
+          // direction supplied by the linear solve omits this nonsymmetric
+          // nearest-neighbour derivative.
+          const Real drift_fac = linearize_mixed_frame_transport_
+              ? 0.5*dt*std::sqrt(idx2)*inv_dFg_deg : 0.0;
           const Real drift_center = drift_fac*(
               mixed_drift_(XMinus,k,j,i)-mixed_drift_(XPlus,k,j,i)
             + mixed_drift_(YMinus,k,j,i)-mixed_drift_(YPlus,k,j,i)
@@ -1127,7 +1141,9 @@ void NRFLD::AddDifference(AthenaArray<Real> &u_rad,
   int ke = pmy_block_->ke;
   FLD *pfld = pmy_block_->prfld;
   const Real step_scale = pmy_driver_->step_scale_;
-  const bool mixed_active = pfld->MixedFrameCoupled();
+  const bool mixed_physics_active = pfld->MixedFrameCoupled();
+  const bool mixed_jacobian_active =
+      mixed_physics_active && linearize_mixed_frame_transport_;
 
   if (pmy_driver_->diagnostic_verbosity_ >= 2) {
     for (int k = 0; k < delta_u.GetDim3(); ++k)
@@ -1136,7 +1152,7 @@ void NRFLD::AddDifference(AthenaArray<Real> &u_rad,
           last_delta_rad_(0,k,j,i) = last_delta_rad_(1,k,j,i) = delta_u(k,j,i);
   }
 
-  if (mixed_active) {
+  if (mixed_jacobian_active) {
     // The gas correction contains a stencil of the radiation correction.
     // Compute the correction actually applied at every stencil point before
     // changing any active cell.  With a per-cell cap or positivity floor this
@@ -1178,16 +1194,16 @@ void NRFLD::AddDifference(AthenaArray<Real> &u_rad,
           u_rad(k,j,i) = uold_(k,j,i);
         }
         last_delta_rad_(0,k,j,i) = raw_delta_ur;
-        if (!mixed_active)
+        if (!mixed_jacobian_active)
           last_delta_rad_(1,k,j,i) = u_rad(k,j,i) - u_rad_before;
 
         const Real denom = derivetive(NewtonRaphsonFLD::dFg_deg,k,j,i);
-        const Real mixed_delta = mixed_active ? MixedDriftCorrection(
+        const Real mixed_delta = mixed_jacobian_active ? MixedDriftCorrection(
             mixed_drift_, last_delta_rad_, k,j,i,
             0.5/pmy_block_->pcoord->dx1f(is)) : 0.0;
         const Real egas_delta = -(derivetive(NewtonRaphsonFLD::Fg,k,j,i)
             + derivetive(NewtonRaphsonFLD::dFg_dEr,k,j,i)*
-                (mixed_active ? last_delta_rad_(1,k,j,i) : delta_ur)
+                (mixed_jacobian_active ? last_delta_rad_(1,k,j,i) : delta_ur)
             - pmy_driver_->dt_*mixed_delta)/denom;
         Real egas_floor = TINY_NUMBER;
 #if GENERAL_EOS
@@ -1212,7 +1228,7 @@ void NRFLD::AddDifference(AthenaArray<Real> &u_rad,
   }
   // The mixed stencil above must see the same precomputed correction for all
   // cells.  Restore the diagnostic slot's usual applied-delta units afterward.
-  if (mixed_active) {
+  if (mixed_jacobian_active) {
     for (int k = ks; k <= ke; ++k)
       for (int j = js; j <= je; ++j)
         for (int i = is; i <= ie; ++i)
