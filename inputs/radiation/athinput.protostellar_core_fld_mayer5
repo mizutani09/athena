@@ -122,9 +122,6 @@ failure_policy = warn_keep_old
 # Preserve the coupled Newton direction.  Positivity is enforced by the
 # floors, while nr_backtrack_* globalizes the full nonlinear update.
 max_update_fraction = -1.0
-# true: exact mixed-frame nearest-neighbour Jacobian; false: retain the
-# physical residual but lag this nonsymmetric term in the Newton direction.
-linearize_mixed_frame_transport = true
 ix1_bc       = periodic
 ox1_bc       = periodic
 ix2_bc       = periodic
