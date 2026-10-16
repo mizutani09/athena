@@ -89,6 +89,7 @@ linearMGDriver::linearMGDriver(Mesh *pm, ParameterInput *pin, NewtonRaphsonDrive
       coarse_diagnostic_limit_(4), coarse_diagnostic_count_(0),
       coefficient_diagnostics_(false), coefficient_diagnostic_limit_(1),
       coefficient_diagnostic_count_(0), vcycle_diagnostics_(false),
+      vcycle_scale_diagnostics_(false), vcycle_scale_levels_(6),
       vcycle_diagnostic_limit_(1), vcycle_diagnostic_count_(0) {
   eps_ = pin->GetOrAddReal("nrfld", "threshold", -1.0);
   niter_ = pin->GetOrAddInteger("nrfld", "niteration", -1);
@@ -131,14 +132,20 @@ linearMGDriver::linearMGDriver(Mesh *pm, ParameterInput *pin, NewtonRaphsonDrive
       "nrfld", "coefficient_diagnostic_limit", 1);
   vcycle_diagnostics_ = pin->GetOrAddBoolean(
       "nrfld", "vcycle_diagnostics", false);
+  vcycle_scale_diagnostics_ = pin->GetOrAddBoolean(
+      "nrfld", "vcycle_scale_diagnostics", false);
+  vcycle_scale_levels_ = pin->GetOrAddInteger(
+      "nrfld", "vcycle_scale_levels", 6);
   vcycle_diagnostic_limit_ = pin->GetOrAddInteger(
       "nrfld", "vcycle_diagnostic_limit", 1);
   if (coarse_direct_max_cells_ <= 0 || coarse_diagnostic_limit_ < 0
-      || coefficient_diagnostic_limit_ < 0 || vcycle_diagnostic_limit_ < 0) {
+      || coefficient_diagnostic_limit_ < 0 || vcycle_diagnostic_limit_ < 0
+      || vcycle_scale_levels_ < 1) {
     std::stringstream msg;
     msg << "### FATAL ERROR in linearMGDriver::linearMGDriver" << std::endl
         << "coarse_direct_max_cells must be positive, and diagnostic limits "
-        << "must be non-negative." << std::endl;
+        << "must be non-negative, and vcycle_scale_levels must be positive."
+        << std::endl;
     ATHENA_ERROR(msg);
   }
   if (nsmoothing_only_sweeps_ <= 0) {
@@ -800,6 +807,51 @@ void linearMGDriver::ReportDivergentCycle(Real old_defect, Real new_defect) {
                   << new_max[slot]/std::max(old_max[slot], TINY_NUMBER)
                   << " correction_rms=" << correction_rms
                   << " correction_max=" << correction_max[slot] << std::endl;
+      }
+    }
+  }
+
+  // Diagnose the direction returned by the completed V-cycle, rather than
+  // changing the scale of each individual prolongation.  Because the linear
+  // residual is evaluated before SolveIterative rolls the rejected iterate
+  // back, this scan is observational only.  Interpolating the complete arrays
+  // also interpolates their ghost values, preserving linear boundary data.
+  if (vcycle_scale_diagnostics_) {
+    Real post_norm = 0.0;
+    for (int v = 0; v < nvar_; ++v)
+      post_norm += CalculateDefectNorm(MGNormType::l2, v);
+    post_norm = std::max(post_norm, TINY_NUMBER);
+
+    Real current_alpha = 1.0;
+    for (int level = 0; level < vcycle_scale_levels_; ++level) {
+      const Real alpha = std::ldexp(1.0, -level);
+      if (level > 0) {
+        const Real ratio = alpha/current_alpha;
+#pragma omp parallel for num_threads(nthreads_)
+        for (auto itr = vmg_.begin(); itr < vmg_.end(); ++itr) {
+          Multigrid *pmg = *itr;
+          AthenaArray<Real> &u = pmg->u_[pmg->current_level_];
+          const AthenaArray<Real> &base = pmg->iteration_backup_;
+          const std::size_t size = u.GetSize();
+          Real *udata = u.data();
+          const Real *bdata = base.data();
+#pragma omp simd
+          for (std::size_t i = 0; i < size; ++i)
+            udata[i] = bdata[i] + ratio*(udata[i] - bdata[i]);
+        }
+        current_alpha = alpha;
+      }
+
+      Real trial_norm = 0.0;
+      for (int v = 0; v < nvar_; ++v)
+        trial_norm += CalculateDefectNorm(MGNormType::l2, v);
+      const Real factor = trial_norm/post_norm
+                        * new_defect/std::max(old_defect, TINY_NUMBER);
+      if (Globals::my_rank == 0) {
+        std::cout << "[NRFLD V-cycle scale] rejected="
+                  << vcycle_diagnostic_count_ << " alpha=" << alpha
+                  << " factor=" << factor
+                  << " contracts=" << (factor < 1.0 ? 1 : 0) << std::endl;
       }
     }
   }

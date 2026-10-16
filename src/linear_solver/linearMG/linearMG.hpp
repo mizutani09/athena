@@ -110,6 +110,8 @@ class linearMGDriver: public MultigridDriver {
   int coefficient_diagnostic_limit_;
   int coefficient_diagnostic_count_;
   bool vcycle_diagnostics_;
+  bool vcycle_scale_diagnostics_;
+  int vcycle_scale_levels_;
   int vcycle_diagnostic_limit_;
   int vcycle_diagnostic_count_;
 };
