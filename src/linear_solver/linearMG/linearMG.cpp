@@ -90,6 +90,8 @@ linearMGDriver::linearMGDriver(Mesh *pm, ParameterInput *pin, NewtonRaphsonDrive
       coefficient_diagnostics_(false), coefficient_diagnostic_limit_(1),
       coefficient_diagnostic_count_(0), vcycle_diagnostics_(false),
       vcycle_scale_diagnostics_(false), vcycle_scale_levels_(6),
+      vcycle_damping_(false), vcycle_damping_levels_(8),
+      vcycle_damping_max_factor_(0.90),
       vcycle_diagnostic_limit_(1), vcycle_diagnostic_count_(0) {
   eps_ = pin->GetOrAddReal("nrfld", "threshold", -1.0);
   niter_ = pin->GetOrAddInteger("nrfld", "niteration", -1);
@@ -136,15 +138,25 @@ linearMGDriver::linearMGDriver(Mesh *pm, ParameterInput *pin, NewtonRaphsonDrive
       "nrfld", "vcycle_scale_diagnostics", false);
   vcycle_scale_levels_ = pin->GetOrAddInteger(
       "nrfld", "vcycle_scale_levels", 6);
+  vcycle_damping_ = pin->GetOrAddBoolean(
+      "nrfld", "vcycle_damping", false);
+  vcycle_damping_levels_ = pin->GetOrAddInteger(
+      "nrfld", "vcycle_damping_levels", 8);
+  vcycle_damping_max_factor_ = pin->GetOrAddReal(
+      "nrfld", "vcycle_damping_max_factor", 0.90);
   vcycle_diagnostic_limit_ = pin->GetOrAddInteger(
       "nrfld", "vcycle_diagnostic_limit", 1);
   if (coarse_direct_max_cells_ <= 0 || coarse_diagnostic_limit_ < 0
       || coefficient_diagnostic_limit_ < 0 || vcycle_diagnostic_limit_ < 0
-      || vcycle_scale_levels_ < 1) {
+      || vcycle_scale_levels_ < 1 || vcycle_damping_levels_ < 2
+      || vcycle_damping_max_factor_ <= 0.0
+      || vcycle_damping_max_factor_ >= 1.0) {
     std::stringstream msg;
     msg << "### FATAL ERROR in linearMGDriver::linearMGDriver" << std::endl
         << "coarse_direct_max_cells must be positive, and diagnostic limits "
-        << "must be non-negative, and vcycle_scale_levels must be positive."
+        << "must be non-negative, vcycle_scale_levels must be positive, "
+        << "vcycle_damping_levels must be at least two, and "
+        << "vcycle_damping_max_factor must lie strictly between zero and one."
         << std::endl;
     ATHENA_ERROR(msg);
   }
@@ -854,6 +866,87 @@ void linearMGDriver::ReportDivergentCycle(Real old_defect, Real new_defect) {
                   << " contracts=" << (factor < 1.0 ? 1 : 0) << std::endl;
       }
     }
+
+    // ReportDivergentCycle is observational.  Restore the completed V-cycle
+    // candidate in case a subsequent recovery hook needs to inspect it.
+    if (current_alpha != 1.0) {
+      ScaleFinestCorrection(1.0/current_alpha);
+    }
+  }
+}
+
+
+//----------------------------------------------------------------------------------------
+//! \brief Recover one divergent completed V-cycle by damping its full correction.
+//!
+//! This does not alter any individual restriction, prolongation, or smoothing operation.
+//! It samples powers of two along the already-computed correction, retains the best
+//! sufficiently contractive iterate, and returns immediately to the existing fine-grid
+//! post-smoother.  When disabled, the legacy rollback path is unchanged.
+
+bool linearMGDriver::RecoverDivergentCycle(Real old_defect, Real new_defect,
+                                           Real &recovered_defect) {
+  if (!vcycle_damping_) return false;
+
+  Real post_norm = 0.0;
+  for (int v = 0; v < nvar_; ++v)
+    post_norm += CalculateDefectNorm(MGNormType::l2, v);
+  post_norm = std::max(post_norm, TINY_NUMBER);
+
+  Real current_alpha = 1.0;
+  Real best_alpha = 0.0;
+  Real best_factor = std::numeric_limits<Real>::max();
+  for (int level = 1; level < vcycle_damping_levels_; ++level) {
+    const Real alpha = std::ldexp(1.0, -level);
+    const Real ratio = alpha/current_alpha;
+    ScaleFinestCorrection(ratio);
+    current_alpha = alpha;
+
+    Real trial_norm = 0.0;
+    for (int v = 0; v < nvar_; ++v)
+      trial_norm += CalculateDefectNorm(MGNormType::l2, v);
+    const Real factor = trial_norm/post_norm
+                      * new_defect/std::max(old_defect, TINY_NUMBER);
+    if (std::isfinite(factor) && factor < best_factor) {
+      best_factor = factor;
+      best_alpha = alpha;
+    }
+  }
+
+  const bool accepted = best_alpha > 0.0
+                     && best_factor <= vcycle_damping_max_factor_;
+  if (accepted && best_alpha != current_alpha) {
+    ScaleFinestCorrection(best_alpha/current_alpha);
+  }
+
+  if (Globals::my_rank == 0) {
+    std::cout << "[NRFLD V-cycle damping] accepted=" << (accepted ? 1 : 0)
+              << " alpha=" << best_alpha
+              << " factor=" << best_factor
+              << " max_factor=" << vcycle_damping_max_factor_ << std::endl;
+  }
+  if (!accepted) return false;
+
+  recovered_defect = old_defect*best_factor;
+  return true;
+}
+
+
+//----------------------------------------------------------------------------------------
+//! \brief Rescale the completed finest-grid correction relative to its saved base iterate.
+
+void linearMGDriver::ScaleFinestCorrection(Real ratio) {
+#pragma omp parallel for num_threads(nthreads_)
+  for (auto itr = vmg_.begin(); itr < vmg_.end(); ++itr) {
+    Multigrid *pmg = *itr;
+    AthenaArray<Real> &u = pmg->u_[pmg->current_level_];
+    const AthenaArray<Real> &base = pmg->iteration_backup_;
+    const std::size_t size = u.GetSize();
+    Real *udata = u.data();
+    const Real *bdata = base.data();
+#pragma omp simd
+    for (std::size_t i = 0; i < size; ++i)
+      udata[i] = bdata[i] + ratio*(udata[i] - bdata[i]);
   }
 }
 

@@ -1250,6 +1250,17 @@ void MultigridDriver::SolveIterative() {
       if (def/olddef > 1.0) {
         const Real rejected_def = def;
         ReportDivergentCycle(olddef, rejected_def);
+        Real recovered_def = olddef;
+        if (RecoverDivergentCycle(olddef, rejected_def, recovered_def)) {
+          def = recovered_def;
+          if (Globals::my_rank == 0)
+            std::cout << "### Warning in MultigridDriver::SolveIterative" << std::endl
+                      << "Recovered a divergent V-cycle: rejected defect norm = "
+                      << rejected_def << ", recovered defect norm = " << def
+                      << ", recovered convergence factor = " << def/olddef
+                      << ", and niter = " << n << "." << std::endl;
+          break;
+        }
 #pragma omp parallel for num_threads(nthreads_)
         for (auto itr = vmg_.begin(); itr < vmg_.end(); ++itr) {
           Multigrid *pmg = *itr;
