@@ -43,7 +43,6 @@ namespace RadFLD {
   enum OpacityIndex {SIGMA_P=0, SIGMA_R=1};
   constexpr int NRAD_FACE_STATE = 3;
   enum RadiationFaceIndex {ERAD=0, LAMBDA=1, ARAD=2};
-  enum class MixedFrameDriftTreatment {implicit, explicit_source, off};
 
   // The HLLC/HLLD energy state contains E_g+E_r and its total pressure
   // contains p_g+lambda*E_r.  This contact-upwind subtraction makes the
@@ -242,31 +241,15 @@ class FLD {
     return is_couple && !only_rad && include_mixed_frame_terms
         && mixed_frame_transport;
   }
-  bool MixedFrameDriftEnabled() const {
-    return MixedFrameCoupled()
-        && mixed_frame_drift_treatment != RadFLD::MixedFrameDriftTreatment::off;
-  }
-  bool ImplicitMixedFrameDrift() const {
-    return MixedFrameCoupled()
-        && mixed_frame_drift_treatment
-             == RadFLD::MixedFrameDriftTreatment::implicit;
-  }
-  bool ExplicitMixedFrameDrift() const {
-    return MixedFrameCoupled()
-        && mixed_frame_drift_treatment
-             == RadFLD::MixedFrameDriftTreatment::explicit_source;
-  }
   bool fixed_flux_limiter;
   bool fixed_u_rad;
-  // O(v/c) mixed-frame energy exchange: -lambda*v.grad(Er) is explicit.
-  // The q*v.grad(Er) drift can remain implicit, be evaluated from the old
-  // radiation state as an explicit source, or be omitted for diagnosis.
+  // O(v/c) mixed-frame energy exchange: -lambda*v.grad(Er) is explicit;
+  // q*v.grad(Er) is included in the implicit gas/radiation solve.
   bool include_mixed_frame_terms;
   // Radiation-energy transport and mixed-frame work are separate switches.
   // Both are resolved once at startup; the legacy environment variable only
   // overrides the transport switch when the input omits it.
   bool mixed_frame_transport;
-  RadFLD::MixedFrameDriftTreatment mixed_frame_drift_treatment;
   // Optional hydrodynamic diode used by an outflow-only physical upper
   // boundary.  It is consumed only by the LHLLC-FLD Riemann solver.
   bool hydro_top_outflow_diode;

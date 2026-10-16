@@ -126,7 +126,6 @@ FLD::FLD(MeshBlock *pmb, ParameterInput *pin) :
     is_couple(), only_rad(), cut_diff(), include_radiation_force(),
     fixed_flux_limiter(),
     fixed_u_rad(), include_mixed_frame_terms(), mixed_frame_transport(true),
-    mixed_frame_drift_treatment(RadFLD::MixedFrameDriftTreatment::implicit),
     hydro_top_outflow_diode(false),
     marshak_top_boundary(), marshak_top_alpha(0.5), marshak_top_erad_ext(0.0)
     {
@@ -211,21 +210,6 @@ FLD::FLD(MeshBlock *pmb, ParameterInput *pin) :
   }
   mixed_frame_transport =
       pin->GetOrAddBoolean("fld", "mixed_frame_transport", true);
-  const std::string drift_treatment = Lowercase(pin->GetOrAddString(
-      "fld", "mixed_frame_drift_treatment", "implicit"));
-  if (drift_treatment == "implicit") {
-    mixed_frame_drift_treatment = RadFLD::MixedFrameDriftTreatment::implicit;
-  } else if (drift_treatment == "explicit") {
-    mixed_frame_drift_treatment = RadFLD::MixedFrameDriftTreatment::explicit_source;
-  } else if (drift_treatment == "off") {
-    mixed_frame_drift_treatment = RadFLD::MixedFrameDriftTreatment::off;
-  } else {
-    std::stringstream msg;
-    msg << "### FATAL ERROR in function [FLD::FLD]" << std::endl
-        << "fld/mixed_frame_drift_treatment must be implicit, explicit, or off; got '"
-        << drift_treatment << "'.";
-    ATHENA_ERROR(msg);
-  }
 
   // Accept old input files specifying the sole supported value, but do not
   // expose pressure coupling as a selectable numerical mode.
@@ -278,7 +262,6 @@ FLD::FLD(MeshBlock *pmb, ParameterInput *pin) :
               << " mixed_frame_source="
               << MixedFrameCoupled()
               << " mixed_frame_transport=" << mixed_frame_transport
-              << " mixed_frame_drift_treatment=" << drift_treatment
               << " is_couple=" << is_couple << " only_rad=" << only_rad
               << " include_radiation_force=" << include_radiation_force
               << std::endl;

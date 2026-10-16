@@ -100,8 +100,6 @@ nr_niteration = 100
 nr_max_iterations = 128
 # 0: summary only, 1: Newton trial summary, 2: maximum-cell stencil.
 diagnostic_verbosity = 0
-jacobian_check = false
-jacobian_check_epsilon = 1.0e-4
 smoothing_only = false
 post_mg_smooth = 16
 cache_coefficient_hierarchy = true
@@ -146,9 +144,6 @@ fixed_flux_limiter     = false
 fixed_u_rad            = false
 include_mixed_frame_terms = true
 mixed_frame_transport  = true
-# q*v.grad(Er): implicit (baseline), explicit (old-state conservative source),
-# or off (diagnostic only; -lambda*v.grad(Er) remains enabled).
-mixed_frame_drift_treatment = implicit
 
 <radiation>
 kappa_P = 1.0
