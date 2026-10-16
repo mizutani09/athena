@@ -557,7 +557,7 @@ void NRFLD::CalculateCoefficientsOnce(const AthenaArray<Real> &u_pre,
   Real idx = 1.0/dx;
   Real idy = 1.0/dy;
   Real idz = 1.0/dz;
-  const bool mixed_active = pfld->MixedFrameCoupled();
+  const bool mixed_active = pfld->MixedFrameDriftEnabled();
   const int check_il = std::max(0, is-1);
   const int check_iu = std::min(u_pre.GetDim1()-1, ie+1);
   const int check_jl = std::max(0, js-1);
@@ -826,8 +826,17 @@ void NRFLD::CalculateCoefficients(const AthenaArray<Real> &u_rad_old,
         }
         diff_term *= idx2;
 
-        const Real mixed_term = MixedDriftTerm(
-            mixed_drift_, u_rad_new, k,j,i,0.5*std::sqrt(idx2));
+        Real mixed_term = 0.0;
+        if (pfld->ImplicitMixedFrameDrift()) {
+          mixed_term = MixedDriftTerm(
+              mixed_drift_, u_rad_new, k,j,i,0.5*std::sqrt(idx2));
+        } else if (pfld->ExplicitMixedFrameDrift()) {
+          // IMEX diagnostic/production candidate: retain the physical
+          // equal-and-opposite work term, but freeze it at the beginning of
+          // the implicit step so it contributes no nonsymmetric Jacobian.
+          mixed_term = MixedDriftTerm(
+              mixed_drift_, u_rad_old, k,j,i,0.5*std::sqrt(idx2));
+        }
 
         // The Lorentz correction has equal and opposite gas/radiation signs.
         derivetive(NewtonRaphsonFLD::Fg,k,j,i) =
@@ -926,7 +935,8 @@ void NRFLD::CalculateCoefficients(const AthenaArray<Real> &u_rad_old,
               1.0/derivetive(NewtonRaphsonFLD::dFg_deg,k,j,i);
           // The face drift has a center contribution when its two face
           // coefficients differ.  Keep it in the unscaled diagonal slot.
-          const Real drift_fac = 0.5*dt*std::sqrt(idx2)*inv_dFg_deg;
+          const Real drift_fac = pfld->ImplicitMixedFrameDrift()
+              ? 0.5*dt*std::sqrt(idx2)*inv_dFg_deg : 0.0;
           const Real drift_center = drift_fac*(
               mixed_drift_(XMinus,k,j,i)-mixed_drift_(XPlus,k,j,i)
             + mixed_drift_(YMinus,k,j,i)-mixed_drift_(YPlus,k,j,i)
@@ -1013,8 +1023,14 @@ void NRFLD::CalculateDefect(AthenaArray<Real> &def, const AthenaArray<Real> &u,
                      *(u(k+1,j,i) - u(k,j,i));
         }
         diff_term *= idx2;
-        const Real mixed_term = MixedDriftTerm(
-            mixed_drift_, u, k,j,i,0.5/std::max(dx, TINY_NUMBER));
+        Real mixed_term = 0.0;
+        if (pfld->ImplicitMixedFrameDrift()) {
+          mixed_term = MixedDriftTerm(
+              mixed_drift_, u, k,j,i,0.5/std::max(dx, TINY_NUMBER));
+        } else if (pfld->ExplicitMixedFrameDrift()) {
+          mixed_term = MixedDriftTerm(
+              mixed_drift_, u_old, k,j,i,0.5/std::max(dx, TINY_NUMBER));
+        }
 
         Real Fg = (u_gas(k,j,i) - pfld->u_gas(k,j,i))
                 + dt*(src_term - mixed_term);
@@ -1127,7 +1143,7 @@ void NRFLD::AddDifference(AthenaArray<Real> &u_rad,
   int ke = pmy_block_->ke;
   FLD *pfld = pmy_block_->prfld;
   const Real step_scale = pmy_driver_->step_scale_;
-  const bool mixed_active = pfld->MixedFrameCoupled();
+  const bool mixed_active = pfld->ImplicitMixedFrameDrift();
 
   if (pmy_driver_->diagnostic_verbosity_ >= 2) {
     for (int k = 0; k < delta_u.GetDim3(); ++k)

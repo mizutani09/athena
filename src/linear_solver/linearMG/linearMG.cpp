@@ -852,7 +852,7 @@ void linearMGDriver::Solve(int stage, Real dt) {
   const FLD *mixed_fld = vmg_.empty() ? nullptr
       : static_cast<linearMG*>(vmg_.front())->pmy_block_->prfld;
   const bool mixed_implicit = mixed_fld != nullptr
-      && mixed_fld->MixedFrameCoupled();
+      && mixed_fld->ImplicitMixedFrameDrift();
 
   // load the source
 #pragma omp parallel for num_threads(nthreads_)
