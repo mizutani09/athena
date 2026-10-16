@@ -256,8 +256,6 @@ void linearMGDriver::RestrictCoefficientCell(AthenaArray<Real> &dst,
   dst(linearSolver::DCCF, ck, cj, ci) =
       -(dxm_f + dxp_f + dym_f + dyp_f + dzm_f + dzp_f);
 
-  dst(linearSolver::DCCS, ck, cj, ci) =
-      RestrictOne(src, linearSolver::DCCS, fi, fj, fk);
   // These off-diagonals discretize q*v.grad(E) and scale as 1/dx.  A coarse
   // cell has twice the spacing, so its restricted coefficient is halved.
   dst(linearSolver::DXMS, ck, cj, ci) =
@@ -272,6 +270,28 @@ void linearMGDriver::RestrictCoefficientCell(AthenaArray<Real> &dst,
       0.5*RestrictFaceX3Minus(src, linearSolver::DZMS, fi, fj, fk);
   dst(linearSolver::DZPS, ck, cj, ci) =
       0.5*RestrictFaceX3Plus(src, linearSolver::DZPS, fi, fj, fk);
+
+  // DCCS contains both the local matter-radiation Schur diagonal and the
+  // center part of q*v.grad(E).  The latter is minus the sum of the six *S
+  // off-diagonals, and must scale as 1/dx just like those off-diagonals.
+  // Restricting the combined DCCS as a cell scalar would leave its drift
+  // contribution unscaled while halving the face contributions above.  That
+  // destroys the drift row sum and creates a spurious coarse-grid reaction
+  // term which compounds on deep AMR hierarchies.  Separate the local part
+  // on the fine grid, restrict it, then rebuild the coarse center drift from
+  // the restricted faces.
+  Real local_diagonal = RestrictOne(src, linearSolver::DCCS, fi, fj, fk);
+  local_diagonal += RestrictOne(src, linearSolver::DXMS, fi, fj, fk)
+                  + RestrictOne(src, linearSolver::DXPS, fi, fj, fk)
+                  + RestrictOne(src, linearSolver::DYMS, fi, fj, fk)
+                  + RestrictOne(src, linearSolver::DYPS, fi, fj, fk)
+                  + RestrictOne(src, linearSolver::DZMS, fi, fj, fk)
+                  + RestrictOne(src, linearSolver::DZPS, fi, fj, fk);
+  const Real coarse_drift_offdiag =
+      dst(linearSolver::DXMS, ck, cj, ci) + dst(linearSolver::DXPS, ck, cj, ci)
+    + dst(linearSolver::DYMS, ck, cj, ci) + dst(linearSolver::DYPS, ck, cj, ci)
+    + dst(linearSolver::DZMS, ck, cj, ci) + dst(linearSolver::DZPS, ck, cj, ci);
+  dst(linearSolver::DCCS, ck, cj, ci) = local_diagonal - coarse_drift_offdiag;
 }
 
 
@@ -474,7 +494,8 @@ linearMGDriver::~linearMGDriver() {
 
 void linearMGDriver::PrintCoefficientDiagnostics() {
   auto report_level = [&](const char *kind, int lev, bool root_grid) {
-    Real vmin[8] = {std::numeric_limits<Real>::max(),
+    Real vmin[9] = {std::numeric_limits<Real>::max(),
+                    std::numeric_limits<Real>::max(),
                     std::numeric_limits<Real>::max(),
                     std::numeric_limits<Real>::max(),
                     std::numeric_limits<Real>::max(),
@@ -482,7 +503,8 @@ void linearMGDriver::PrintCoefficientDiagnostics() {
                     std::numeric_limits<Real>::max(),
                     std::numeric_limits<Real>::max(),
                     std::numeric_limits<Real>::max()};
-    Real vmax[9] = {0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0};
+    Real vmax[11] = {0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
+                     0.0, 0.0, 0.0, 0.0, 0.0};
     long long invalid_rows[2] = {0, 0};
     int nx = 0, ny = 0, nz = 0;
     if (!root_grid) {
@@ -517,6 +539,10 @@ void linearMGDriver::PrintCoefficientDiagnostics() {
                 + c(linearSolver::DXMS,k,j,i) + c(linearSolver::DXPS,k,j,i)
                 + c(linearSolver::DYMS,k,j,i) + c(linearSolver::DYPS,k,j,i)
                 + c(linearSolver::DZMS,k,j,i) + c(linearSolver::DZPS,k,j,i);
+            const Real local_schur_diagonal = expected_rowsum;
+            const Real drift_center = dccs - local_schur_diagonal;
+            const Real drift_fraction = std::abs(drift_center)
+                                      / std::max(std::abs(diag), TINY_NUMBER);
             const Real row_error = std::abs(rowsum - expected_rowsum)
                                  / std::max(std::abs(diag), TINY_NUMBER);
             const Real offdiag_abs =
@@ -535,6 +561,7 @@ void linearMGDriver::PrintCoefficientDiagnostics() {
             vmin[5] = std::min(vmin[5], dccs);
             vmin[6] = std::min(vmin[6], diag);
             vmin[7] = std::min(vmin[7], dominance);
+            vmin[8] = std::min(vmin[8], local_schur_diagonal);
             vmax[0] = std::max(vmax[0], std::abs(dccs));
             vmax[1] = std::max(vmax[1], diffusion_diag);
             vmax[3] = std::max(vmax[3], std::abs(diag));
@@ -542,6 +569,8 @@ void linearMGDriver::PrintCoefficientDiagnostics() {
             vmax[5] = std::max(vmax[5], row_error);
             vmax[7] = std::max(vmax[7], dccs);
             vmax[8] = std::max(vmax[8], diag);
+            vmax[9] = std::max(vmax[9], local_schur_diagonal);
+            vmax[10] = std::max(vmax[10], drift_fraction);
             if (!(diag > 0.0) || !std::isfinite(diag)) ++invalid_rows[0];
 
             const int face_ids[6] = {linearSolver::CCM, linearSolver::CCP,
@@ -578,8 +607,8 @@ void linearMGDriver::PrintCoefficientDiagnostics() {
       for (Multigrid *base : vmg_) scan(static_cast<linearMG*>(base));
     }
 #ifdef MPI_PARALLEL
-    MPI_Allreduce(MPI_IN_PLACE, vmin, 8, MPI_ATHENA_REAL, MPI_MIN, MPI_COMM_WORLD);
-    MPI_Allreduce(MPI_IN_PLACE, vmax, 9, MPI_ATHENA_REAL, MPI_MAX, MPI_COMM_WORLD);
+    MPI_Allreduce(MPI_IN_PLACE, vmin, 9, MPI_ATHENA_REAL, MPI_MIN, MPI_COMM_WORLD);
+    MPI_Allreduce(MPI_IN_PLACE, vmax, 11, MPI_ATHENA_REAL, MPI_MAX, MPI_COMM_WORLD);
     MPI_Allreduce(MPI_IN_PLACE, invalid_rows, 2, MPI_LONG_LONG, MPI_SUM,
                   MPI_COMM_WORLD);
 #endif
@@ -595,6 +624,8 @@ void linearMGDriver::PrintCoefficientDiagnostics() {
                 << " reaction_fraction=[" << vmin[4] << "," << vmax[4] << "]"
                 << " signed_DCCS=[" << vmin[5] << "," << vmax[7] << "]"
                 << " signed_diag=[" << vmin[6] << "," << vmax[8] << "]"
+                << " local_schur=[" << vmin[8] << "," << vmax[9] << "]"
+                << " drift_fraction_max=" << vmax[10]
                 << " dominance_min=" << vmin[7]
                 << " nonpositive_diag=" << invalid_rows[0]
                 << " positive_or_nonfinite_offdiag=" << invalid_rows[1]
