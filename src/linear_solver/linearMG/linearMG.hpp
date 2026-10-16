@@ -89,6 +89,7 @@ class linearMGDriver: public MultigridDriver {
                                const AthenaArray<Real> &src,
                                int ck, int cj, int ci,
                                int fk, int fj, int fi) final;
+  void ReportDivergentCycle(Real old_defect, Real new_defect) final;
   void PrintCoefficientDiagnostics();
 
   LinearMGBoundaryTaskList *linmgtlist_;
@@ -108,6 +109,9 @@ class linearMGDriver: public MultigridDriver {
   bool coefficient_diagnostics_;
   int coefficient_diagnostic_limit_;
   int coefficient_diagnostic_count_;
+  bool vcycle_diagnostics_;
+  int vcycle_diagnostic_limit_;
+  int vcycle_diagnostic_count_;
 };
 
 

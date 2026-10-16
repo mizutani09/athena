@@ -20,6 +20,7 @@
 // Athena++ headers
 #include "../../athena.hpp"
 #include "../../athena_arrays.hpp"
+#include "../../bvals/bvals.hpp"
 #include "../../coordinates/coordinates.hpp"
 #include "../../field/field.hpp"
 #include "../../fld/fld.hpp"
@@ -87,7 +88,8 @@ linearMGDriver::linearMGDriver(Mesh *pm, ParameterInput *pin, NewtonRaphsonDrive
       coarse_diagnostics_(false), coarse_direct_max_cells_(64),
       coarse_diagnostic_limit_(4), coarse_diagnostic_count_(0),
       coefficient_diagnostics_(false), coefficient_diagnostic_limit_(1),
-      coefficient_diagnostic_count_(0) {
+      coefficient_diagnostic_count_(0), vcycle_diagnostics_(false),
+      vcycle_diagnostic_limit_(1), vcycle_diagnostic_count_(0) {
   eps_ = pin->GetOrAddReal("nrfld", "threshold", -1.0);
   niter_ = pin->GetOrAddInteger("nrfld", "niteration", -1);
   ffas_ = pin->GetOrAddBoolean("nrfld", "fas", ffas_);
@@ -127,8 +129,12 @@ linearMGDriver::linearMGDriver(Mesh *pm, ParameterInput *pin, NewtonRaphsonDrive
       "nrfld", "coefficient_diagnostics", false);
   coefficient_diagnostic_limit_ = pin->GetOrAddInteger(
       "nrfld", "coefficient_diagnostic_limit", 1);
+  vcycle_diagnostics_ = pin->GetOrAddBoolean(
+      "nrfld", "vcycle_diagnostics", false);
+  vcycle_diagnostic_limit_ = pin->GetOrAddInteger(
+      "nrfld", "vcycle_diagnostic_limit", 1);
   if (coarse_direct_max_cells_ <= 0 || coarse_diagnostic_limit_ < 0
-      || coefficient_diagnostic_limit_ < 0) {
+      || coefficient_diagnostic_limit_ < 0 || vcycle_diagnostic_limit_ < 0) {
     std::stringstream msg;
     msg << "### FATAL ERROR in linearMGDriver::linearMGDriver" << std::endl
         << "coarse_direct_max_cells must be positive, and diagnostic limits "
@@ -639,6 +645,164 @@ void linearMGDriver::PrintCoefficientDiagnostics() {
   linearMG *root = static_cast<linearMG*>(mgroot_);
   for (int lev = root->nlevel_ - 1; lev >= 0; --lev)
     report_level("root", lev, true);
+}
+
+
+//----------------------------------------------------------------------------------------
+//! \brief Localize the residual growth caused by a rejected V-cycle.
+//!
+//! The saved pre-cycle iterate and the still-present post-cycle iterate are compared on
+//! the finest MeshBlock grids.  Statistics are separated by physical AMR level and by
+//! whether a cell touches a block face whose neighbor is at a different refinement level.
+//! This is diagnostic only and runs before SolveIterative restores the pre-cycle iterate.
+
+void linearMGDriver::ReportDivergentCycle(Real old_defect, Real new_defect) {
+  if (!vcycle_diagnostics_
+      || vcycle_diagnostic_count_ >= vcycle_diagnostic_limit_) return;
+  ++vcycle_diagnostic_count_;
+
+  const int nlevels = pmy_mesh_->max_level + 1;
+  const int nslots = 2*nlevels;
+  std::vector<Real> old_sum2(nslots, 0.0), new_sum2(nslots, 0.0);
+  std::vector<Real> correction_sum2(nslots, 0.0);
+  std::vector<Real> old_max(nslots, 0.0), new_max(nslots, 0.0);
+  std::vector<Real> correction_max(nslots, 0.0);
+  std::vector<long long> counts(nslots, 0);
+
+  auto accumulate = [&](linearMG *pmg, const AthenaArray<Real> &def,
+                        std::vector<Real> &sum2, std::vector<Real> &maximum,
+                        bool count_cells) {
+    MeshBlock *pmb = pmg->pmy_block_;
+    const int level = pmb->loc.level;
+    const int is = pmg->ngh_, js = pmg->ngh_, ks = pmg->ngh_;
+    const int ie = is + pmb->block_size.nx1 - 1;
+    const int je = js + pmb->block_size.nx2 - 1;
+    const int ke = ks + pmb->block_size.nx3 - 1;
+    const bool xm = pmb->pbval->nblevel[1][1][0] >= 0
+                 && pmb->pbval->nblevel[1][1][0] != level;
+    const bool xp = pmb->pbval->nblevel[1][1][2] >= 0
+                 && pmb->pbval->nblevel[1][1][2] != level;
+    const bool ym = pmb->pbval->nblevel[1][0][1] >= 0
+                 && pmb->pbval->nblevel[1][0][1] != level;
+    const bool yp = pmb->pbval->nblevel[1][2][1] >= 0
+                 && pmb->pbval->nblevel[1][2][1] != level;
+    const bool zm = pmb->pbval->nblevel[0][1][1] >= 0
+                 && pmb->pbval->nblevel[0][1][1] != level;
+    const bool zp = pmb->pbval->nblevel[2][1][1] >= 0
+                 && pmb->pbval->nblevel[2][1][1] != level;
+    for (int k = ks; k <= ke; ++k) {
+      for (int j = js; j <= je; ++j) {
+        for (int i = is; i <= ie; ++i) {
+          const bool boundary = (xm && i == is) || (xp && i == ie)
+                             || (ym && j == js) || (yp && j == je)
+                             || (zm && k == ks) || (zp && k == ke);
+          const int slot = 2*level + (boundary ? 1 : 0);
+          const Real value = std::abs(def(0,k,j,i));
+          sum2[slot] += value*value;
+          maximum[slot] = std::max(maximum[slot], value);
+          if (count_cells) ++counts[slot];
+        }
+      }
+    }
+  };
+
+  for (Multigrid *base : vmg_) {
+    linearMG *pmg = static_cast<linearMG*>(base);
+    const int lev = pmg->nlevel_ - 1;
+    const int is = pmg->ngh_, js = pmg->ngh_, ks = pmg->ngh_;
+    const int ie = is + pmg->pmy_block_->block_size.nx1 - 1;
+    const int je = js + pmg->pmy_block_->block_size.nx2 - 1;
+    const int ke = ks + pmg->pmy_block_->block_size.nx3 - 1;
+
+    pmg->CalculateDefect(pmg->def_[lev], pmg->iteration_backup_, pmg->src_[lev],
+                         pmg->coeff_[lev], pmg->matrix_[lev], 0,
+                         is, ie, js, je, ks, ke, false);
+    accumulate(pmg, pmg->def_[lev], old_sum2, old_max, true);
+
+    pmg->CalculateDefect(pmg->def_[lev], pmg->u_[lev], pmg->src_[lev],
+                         pmg->coeff_[lev], pmg->matrix_[lev], 0,
+                         is, ie, js, je, ks, ke, false);
+    accumulate(pmg, pmg->def_[lev], new_sum2, new_max, false);
+
+    MeshBlock *pmb = pmg->pmy_block_;
+    const int level = pmb->loc.level;
+    const bool xm = pmb->pbval->nblevel[1][1][0] >= 0
+                 && pmb->pbval->nblevel[1][1][0] != level;
+    const bool xp = pmb->pbval->nblevel[1][1][2] >= 0
+                 && pmb->pbval->nblevel[1][1][2] != level;
+    const bool ym = pmb->pbval->nblevel[1][0][1] >= 0
+                 && pmb->pbval->nblevel[1][0][1] != level;
+    const bool yp = pmb->pbval->nblevel[1][2][1] >= 0
+                 && pmb->pbval->nblevel[1][2][1] != level;
+    const bool zm = pmb->pbval->nblevel[0][1][1] >= 0
+                 && pmb->pbval->nblevel[0][1][1] != level;
+    const bool zp = pmb->pbval->nblevel[2][1][1] >= 0
+                 && pmb->pbval->nblevel[2][1][1] != level;
+    for (int k = ks; k <= ke; ++k) {
+      for (int j = js; j <= je; ++j) {
+        for (int i = is; i <= ie; ++i) {
+          const bool boundary = (xm && i == is) || (xp && i == ie)
+                             || (ym && j == js) || (yp && j == je)
+                             || (zm && k == ks) || (zp && k == ke);
+          const int slot = 2*level + (boundary ? 1 : 0);
+          const Real correction = std::abs(
+              pmg->u_[lev](0,k,j,i) - pmg->iteration_backup_(0,k,j,i));
+          correction_sum2[slot] += correction*correction;
+          correction_max[slot] = std::max(correction_max[slot], correction);
+        }
+      }
+    }
+  }
+
+#ifdef MPI_PARALLEL
+  MPI_Allreduce(MPI_IN_PLACE, old_sum2.data(), nslots, MPI_ATHENA_REAL, MPI_SUM,
+                MPI_COMM_WORLD);
+  MPI_Allreduce(MPI_IN_PLACE, new_sum2.data(), nslots, MPI_ATHENA_REAL, MPI_SUM,
+                MPI_COMM_WORLD);
+  MPI_Allreduce(MPI_IN_PLACE, correction_sum2.data(), nslots, MPI_ATHENA_REAL, MPI_SUM,
+                MPI_COMM_WORLD);
+  MPI_Allreduce(MPI_IN_PLACE, old_max.data(), nslots, MPI_ATHENA_REAL, MPI_MAX,
+                MPI_COMM_WORLD);
+  MPI_Allreduce(MPI_IN_PLACE, new_max.data(), nslots, MPI_ATHENA_REAL, MPI_MAX,
+                MPI_COMM_WORLD);
+  MPI_Allreduce(MPI_IN_PLACE, correction_max.data(), nslots, MPI_ATHENA_REAL, MPI_MAX,
+                MPI_COMM_WORLD);
+  MPI_Allreduce(MPI_IN_PLACE, counts.data(), nslots, MPI_LONG_LONG, MPI_SUM,
+                MPI_COMM_WORLD);
+#endif
+
+  if (Globals::my_rank == 0) {
+    std::cout << "[NRFLD V-cycle] rejected=" << vcycle_diagnostic_count_
+              << " prolongation="
+              << (fprolongation_ == 2 ? "constant"
+                  : (fprolongation_ == 1 ? "tricubic" : "trilinear"))
+              << " global_old=" << old_defect
+              << " global_new=" << new_defect
+              << " global_factor=" << new_defect/std::max(old_defect, TINY_NUMBER)
+              << std::endl;
+    for (int level = 0; level < nlevels; ++level) {
+      for (int category = 0; category < 2; ++category) {
+        const int slot = 2*level + category;
+        if (counts[slot] == 0) continue;
+        const Real norm = static_cast<Real>(counts[slot]);
+        const Real old_rms = std::sqrt(old_sum2[slot]/norm);
+        const Real new_rms = std::sqrt(new_sum2[slot]/norm);
+        const Real correction_rms = std::sqrt(correction_sum2[slot]/norm);
+        std::cout << "[NRFLD V-cycle level] level=" << level
+                  << " region=" << (category == 0 ? "interior" : "amr_boundary")
+                  << " cells=" << counts[slot]
+                  << " old_rms=" << old_rms
+                  << " new_rms=" << new_rms
+                  << " rms_factor=" << new_rms/std::max(old_rms, TINY_NUMBER)
+                  << " old_max=" << old_max[slot]
+                  << " new_max=" << new_max[slot]
+                  << " max_factor="
+                  << new_max[slot]/std::max(old_max[slot], TINY_NUMBER)
+                  << " correction_rms=" << correction_rms
+                  << " correction_max=" << correction_max[slot] << std::endl;
+      }
+    }
+  }
 }
 
 

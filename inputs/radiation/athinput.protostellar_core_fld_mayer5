@@ -87,6 +87,9 @@ mgmode       = MGI
 fas          = false
 smoother     = jacobi-rb
 symmetric_rb_sweeps = true
+# Coarse-grid correction interpolation.  "constant" is a monotone diagnostic
+# alternative for strongly varying AMR diffusion coefficients.
+prolongation = trilinear
 npresmooth   = 2
 npostsmooth  = 2
 omega        = 1.0
@@ -106,6 +109,8 @@ coarse_diagnostics = false
 coarse_diagnostic_limit = 4
 coefficient_diagnostics = false
 coefficient_diagnostic_limit = 1
+vcycle_diagnostics = false
+vcycle_diagnostic_limit = 1
 coarse_correction_scale = 1.0
 nr_mg_coarse_retry_max = 0
 nr_mg_coarse_retry_factor = 0.5

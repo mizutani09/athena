@@ -229,6 +229,9 @@ class MultigridDriver {
   void SolveIterativeFixedTimes();
 
   virtual void SolveCoarsestGrid();
+  // Optional physics-specific diagnostics for a V-cycle that increased the
+  // finest-grid residual.  Called before the saved iterate is restored.
+  virtual void ReportDivergentCycle(Real old_defect, Real new_defect) {}
   virtual bool EnforcePeriodicBoundaryConsistency() const { return true; }
   virtual void RestrictCoefficientCell(AthenaArray<Real> &dst,
                                        const AthenaArray<Real> &src,

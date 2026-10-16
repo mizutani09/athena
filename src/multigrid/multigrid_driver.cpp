@@ -1249,6 +1249,7 @@ void MultigridDriver::SolveIterative() {
       slow_worst_factor = std::max(slow_worst_factor, def/olddef);
       if (def/olddef > 1.0) {
         const Real rejected_def = def;
+        ReportDivergentCycle(olddef, rejected_def);
 #pragma omp parallel for num_threads(nthreads_)
         for (auto itr = vmg_.begin(); itr < vmg_.end(); ++itr) {
           Multigrid *pmg = *itr;
