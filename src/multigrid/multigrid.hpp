@@ -229,14 +229,6 @@ class MultigridDriver {
   void SolveIterativeFixedTimes();
 
   virtual void SolveCoarsestGrid();
-  // Optional physics-specific diagnostics for a V-cycle that increased the
-  // finest-grid residual.  Called before the saved iterate is restored.
-  virtual void ReportDivergentCycle(Real old_defect, Real new_defect) {}
-  // Optional physics-specific recovery of a divergent V-cycle.  An accepted
-  // recovery must leave u at the recovered iterate and return its normalized
-  // defect.  The caller then stops the linear iteration at that iterate.
-  virtual bool RecoverDivergentCycle(Real old_defect, Real new_defect,
-                                     Real &recovered_defect) { return false; }
   virtual bool EnforcePeriodicBoundaryConsistency() const { return true; }
   virtual void RestrictCoefficientCell(AthenaArray<Real> &dst,
                                        const AthenaArray<Real> &src,
@@ -299,7 +291,7 @@ class MultigridDriver {
   std::vector<Multigrid*> vmg_;
   Multigrid *mgroot_;
   bool fsubtract_average_, ffas_, redblack_, symmetric_rb_, needinit_, fshowdef_,
-       smoothing_only_;
+       smoothing_only_, stage_diagnostics_, stage_diagnostics_active_;
   bool relative_defect_;
   Real last_ave_;
   Real eps_, dt_, coarse_corr_scale_;

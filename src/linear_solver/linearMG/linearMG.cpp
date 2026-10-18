@@ -20,7 +20,6 @@
 // Athena++ headers
 #include "../../athena.hpp"
 #include "../../athena_arrays.hpp"
-#include "../../bvals/bvals.hpp"
 #include "../../coordinates/coordinates.hpp"
 #include "../../field/field.hpp"
 #include "../../fld/fld.hpp"
@@ -88,11 +87,7 @@ linearMGDriver::linearMGDriver(Mesh *pm, ParameterInput *pin, NewtonRaphsonDrive
       coarse_diagnostics_(false), coarse_direct_max_cells_(64),
       coarse_diagnostic_limit_(4), coarse_diagnostic_count_(0),
       coefficient_diagnostics_(false), coefficient_diagnostic_limit_(1),
-      coefficient_diagnostic_count_(0), vcycle_diagnostics_(false),
-      vcycle_scale_diagnostics_(false), vcycle_scale_levels_(6),
-      vcycle_damping_(false), vcycle_damping_levels_(8),
-      vcycle_damping_max_factor_(0.90),
-      vcycle_diagnostic_limit_(1), vcycle_diagnostic_count_(0) {
+      coefficient_diagnostic_count_(0) {
   eps_ = pin->GetOrAddReal("nrfld", "threshold", -1.0);
   niter_ = pin->GetOrAddInteger("nrfld", "niteration", -1);
   ffas_ = pin->GetOrAddBoolean("nrfld", "fas", ffas_);
@@ -101,6 +96,8 @@ linearMGDriver::linearMGDriver(Mesh *pm, ParameterInput *pin, NewtonRaphsonDrive
   npresmooth_ = pin->GetOrAddReal("nrfld", "npresmooth", 2);
   npostsmooth_ = pin->GetOrAddReal("nrfld", "npostsmooth", 2);
   fshowdef_ = pin->GetOrAddBoolean("nrfld", "show_defect", fshowdef_);
+  stage_diagnostics_ = pin->GetOrAddInteger(
+      "nrfld", "diagnostic_verbosity", 0) >= 2;
   smoothing_only_ = pin->GetOrAddBoolean("nrfld", "smoothing_only", false);
   cache_coefficient_hierarchy_ =
       pin->GetOrAddBoolean("nrfld", "cache_coefficient_hierarchy", true);
@@ -132,32 +129,12 @@ linearMGDriver::linearMGDriver(Mesh *pm, ParameterInput *pin, NewtonRaphsonDrive
       "nrfld", "coefficient_diagnostics", false);
   coefficient_diagnostic_limit_ = pin->GetOrAddInteger(
       "nrfld", "coefficient_diagnostic_limit", 1);
-  vcycle_diagnostics_ = pin->GetOrAddBoolean(
-      "nrfld", "vcycle_diagnostics", false);
-  vcycle_scale_diagnostics_ = pin->GetOrAddBoolean(
-      "nrfld", "vcycle_scale_diagnostics", false);
-  vcycle_scale_levels_ = pin->GetOrAddInteger(
-      "nrfld", "vcycle_scale_levels", 6);
-  vcycle_damping_ = pin->GetOrAddBoolean(
-      "nrfld", "vcycle_damping", false);
-  vcycle_damping_levels_ = pin->GetOrAddInteger(
-      "nrfld", "vcycle_damping_levels", 8);
-  vcycle_damping_max_factor_ = pin->GetOrAddReal(
-      "nrfld", "vcycle_damping_max_factor", 0.90);
-  vcycle_diagnostic_limit_ = pin->GetOrAddInteger(
-      "nrfld", "vcycle_diagnostic_limit", 1);
   if (coarse_direct_max_cells_ <= 0 || coarse_diagnostic_limit_ < 0
-      || coefficient_diagnostic_limit_ < 0 || vcycle_diagnostic_limit_ < 0
-      || vcycle_scale_levels_ < 1 || vcycle_damping_levels_ < 2
-      || vcycle_damping_max_factor_ <= 0.0
-      || vcycle_damping_max_factor_ >= 1.0) {
+      || coefficient_diagnostic_limit_ < 0) {
     std::stringstream msg;
     msg << "### FATAL ERROR in linearMGDriver::linearMGDriver" << std::endl
         << "coarse_direct_max_cells must be positive, and diagnostic limits "
-        << "must be non-negative, vcycle_scale_levels must be positive, "
-        << "vcycle_damping_levels must be at least two, and "
-        << "vcycle_damping_max_factor must lie strictly between zero and one."
-        << std::endl;
+        << "must be non-negative." << std::endl;
     ATHENA_ERROR(msg);
   }
   if (nsmoothing_only_sweeps_ <= 0) {
@@ -664,290 +641,6 @@ void linearMGDriver::PrintCoefficientDiagnostics() {
   linearMG *root = static_cast<linearMG*>(mgroot_);
   for (int lev = root->nlevel_ - 1; lev >= 0; --lev)
     report_level("root", lev, true);
-}
-
-
-//----------------------------------------------------------------------------------------
-//! \brief Localize the residual growth caused by a rejected V-cycle.
-//!
-//! The saved pre-cycle iterate and the still-present post-cycle iterate are compared on
-//! the finest MeshBlock grids.  Statistics are separated by physical AMR level and by
-//! whether a cell touches a block face whose neighbor is at a different refinement level.
-//! This is diagnostic only and runs before SolveIterative restores the pre-cycle iterate.
-
-void linearMGDriver::ReportDivergentCycle(Real old_defect, Real new_defect) {
-  if (!vcycle_diagnostics_
-      || vcycle_diagnostic_count_ >= vcycle_diagnostic_limit_) return;
-  ++vcycle_diagnostic_count_;
-
-  const int nlevels = pmy_mesh_->max_level + 1;
-  const int nslots = 2*nlevels;
-  std::vector<Real> old_sum2(nslots, 0.0), new_sum2(nslots, 0.0);
-  std::vector<Real> correction_sum2(nslots, 0.0);
-  std::vector<Real> old_max(nslots, 0.0), new_max(nslots, 0.0);
-  std::vector<Real> correction_max(nslots, 0.0);
-  std::vector<long long> counts(nslots, 0);
-
-  auto accumulate = [&](linearMG *pmg, const AthenaArray<Real> &def,
-                        std::vector<Real> &sum2, std::vector<Real> &maximum,
-                        bool count_cells) {
-    MeshBlock *pmb = pmg->pmy_block_;
-    const int level = pmb->loc.level;
-    const int is = pmg->ngh_, js = pmg->ngh_, ks = pmg->ngh_;
-    const int ie = is + pmb->block_size.nx1 - 1;
-    const int je = js + pmb->block_size.nx2 - 1;
-    const int ke = ks + pmb->block_size.nx3 - 1;
-    const bool xm = pmb->pbval->nblevel[1][1][0] >= 0
-                 && pmb->pbval->nblevel[1][1][0] != level;
-    const bool xp = pmb->pbval->nblevel[1][1][2] >= 0
-                 && pmb->pbval->nblevel[1][1][2] != level;
-    const bool ym = pmb->pbval->nblevel[1][0][1] >= 0
-                 && pmb->pbval->nblevel[1][0][1] != level;
-    const bool yp = pmb->pbval->nblevel[1][2][1] >= 0
-                 && pmb->pbval->nblevel[1][2][1] != level;
-    const bool zm = pmb->pbval->nblevel[0][1][1] >= 0
-                 && pmb->pbval->nblevel[0][1][1] != level;
-    const bool zp = pmb->pbval->nblevel[2][1][1] >= 0
-                 && pmb->pbval->nblevel[2][1][1] != level;
-    for (int k = ks; k <= ke; ++k) {
-      for (int j = js; j <= je; ++j) {
-        for (int i = is; i <= ie; ++i) {
-          const bool boundary = (xm && i == is) || (xp && i == ie)
-                             || (ym && j == js) || (yp && j == je)
-                             || (zm && k == ks) || (zp && k == ke);
-          const int slot = 2*level + (boundary ? 1 : 0);
-          const Real value = std::abs(def(0,k,j,i));
-          sum2[slot] += value*value;
-          maximum[slot] = std::max(maximum[slot], value);
-          if (count_cells) ++counts[slot];
-        }
-      }
-    }
-  };
-
-  for (Multigrid *base : vmg_) {
-    linearMG *pmg = static_cast<linearMG*>(base);
-    const int lev = pmg->nlevel_ - 1;
-    const int is = pmg->ngh_, js = pmg->ngh_, ks = pmg->ngh_;
-    const int ie = is + pmg->pmy_block_->block_size.nx1 - 1;
-    const int je = js + pmg->pmy_block_->block_size.nx2 - 1;
-    const int ke = ks + pmg->pmy_block_->block_size.nx3 - 1;
-
-    pmg->CalculateDefect(pmg->def_[lev], pmg->iteration_backup_, pmg->src_[lev],
-                         pmg->coeff_[lev], pmg->matrix_[lev], 0,
-                         is, ie, js, je, ks, ke, false);
-    accumulate(pmg, pmg->def_[lev], old_sum2, old_max, true);
-
-    pmg->CalculateDefect(pmg->def_[lev], pmg->u_[lev], pmg->src_[lev],
-                         pmg->coeff_[lev], pmg->matrix_[lev], 0,
-                         is, ie, js, je, ks, ke, false);
-    accumulate(pmg, pmg->def_[lev], new_sum2, new_max, false);
-
-    MeshBlock *pmb = pmg->pmy_block_;
-    const int level = pmb->loc.level;
-    const bool xm = pmb->pbval->nblevel[1][1][0] >= 0
-                 && pmb->pbval->nblevel[1][1][0] != level;
-    const bool xp = pmb->pbval->nblevel[1][1][2] >= 0
-                 && pmb->pbval->nblevel[1][1][2] != level;
-    const bool ym = pmb->pbval->nblevel[1][0][1] >= 0
-                 && pmb->pbval->nblevel[1][0][1] != level;
-    const bool yp = pmb->pbval->nblevel[1][2][1] >= 0
-                 && pmb->pbval->nblevel[1][2][1] != level;
-    const bool zm = pmb->pbval->nblevel[0][1][1] >= 0
-                 && pmb->pbval->nblevel[0][1][1] != level;
-    const bool zp = pmb->pbval->nblevel[2][1][1] >= 0
-                 && pmb->pbval->nblevel[2][1][1] != level;
-    for (int k = ks; k <= ke; ++k) {
-      for (int j = js; j <= je; ++j) {
-        for (int i = is; i <= ie; ++i) {
-          const bool boundary = (xm && i == is) || (xp && i == ie)
-                             || (ym && j == js) || (yp && j == je)
-                             || (zm && k == ks) || (zp && k == ke);
-          const int slot = 2*level + (boundary ? 1 : 0);
-          const Real correction = std::abs(
-              pmg->u_[lev](0,k,j,i) - pmg->iteration_backup_(0,k,j,i));
-          correction_sum2[slot] += correction*correction;
-          correction_max[slot] = std::max(correction_max[slot], correction);
-        }
-      }
-    }
-  }
-
-#ifdef MPI_PARALLEL
-  MPI_Allreduce(MPI_IN_PLACE, old_sum2.data(), nslots, MPI_ATHENA_REAL, MPI_SUM,
-                MPI_COMM_WORLD);
-  MPI_Allreduce(MPI_IN_PLACE, new_sum2.data(), nslots, MPI_ATHENA_REAL, MPI_SUM,
-                MPI_COMM_WORLD);
-  MPI_Allreduce(MPI_IN_PLACE, correction_sum2.data(), nslots, MPI_ATHENA_REAL, MPI_SUM,
-                MPI_COMM_WORLD);
-  MPI_Allreduce(MPI_IN_PLACE, old_max.data(), nslots, MPI_ATHENA_REAL, MPI_MAX,
-                MPI_COMM_WORLD);
-  MPI_Allreduce(MPI_IN_PLACE, new_max.data(), nslots, MPI_ATHENA_REAL, MPI_MAX,
-                MPI_COMM_WORLD);
-  MPI_Allreduce(MPI_IN_PLACE, correction_max.data(), nslots, MPI_ATHENA_REAL, MPI_MAX,
-                MPI_COMM_WORLD);
-  MPI_Allreduce(MPI_IN_PLACE, counts.data(), nslots, MPI_LONG_LONG, MPI_SUM,
-                MPI_COMM_WORLD);
-#endif
-
-  if (Globals::my_rank == 0) {
-    std::cout << "[NRFLD V-cycle] rejected=" << vcycle_diagnostic_count_
-              << " prolongation="
-              << (fprolongation_ == 2 ? "constant"
-                  : (fprolongation_ == 1 ? "tricubic" : "trilinear"))
-              << " global_old=" << old_defect
-              << " global_new=" << new_defect
-              << " global_factor=" << new_defect/std::max(old_defect, TINY_NUMBER)
-              << std::endl;
-    for (int level = 0; level < nlevels; ++level) {
-      for (int category = 0; category < 2; ++category) {
-        const int slot = 2*level + category;
-        if (counts[slot] == 0) continue;
-        const Real norm = static_cast<Real>(counts[slot]);
-        const Real old_rms = std::sqrt(old_sum2[slot]/norm);
-        const Real new_rms = std::sqrt(new_sum2[slot]/norm);
-        const Real correction_rms = std::sqrt(correction_sum2[slot]/norm);
-        std::cout << "[NRFLD V-cycle level] level=" << level
-                  << " region=" << (category == 0 ? "interior" : "amr_boundary")
-                  << " cells=" << counts[slot]
-                  << " old_rms=" << old_rms
-                  << " new_rms=" << new_rms
-                  << " rms_factor=" << new_rms/std::max(old_rms, TINY_NUMBER)
-                  << " old_max=" << old_max[slot]
-                  << " new_max=" << new_max[slot]
-                  << " max_factor="
-                  << new_max[slot]/std::max(old_max[slot], TINY_NUMBER)
-                  << " correction_rms=" << correction_rms
-                  << " correction_max=" << correction_max[slot] << std::endl;
-      }
-    }
-  }
-
-  // Diagnose the direction returned by the completed V-cycle, rather than
-  // changing the scale of each individual prolongation.  Because the linear
-  // residual is evaluated before SolveIterative rolls the rejected iterate
-  // back, this scan is observational only.  Interpolating the complete arrays
-  // also interpolates their ghost values, preserving linear boundary data.
-  if (vcycle_scale_diagnostics_) {
-    Real post_norm = 0.0;
-    for (int v = 0; v < nvar_; ++v)
-      post_norm += CalculateDefectNorm(MGNormType::l2, v);
-    post_norm = std::max(post_norm, TINY_NUMBER);
-
-    Real current_alpha = 1.0;
-    for (int level = 0; level < vcycle_scale_levels_; ++level) {
-      const Real alpha = std::ldexp(1.0, -level);
-      if (level > 0) {
-        const Real ratio = alpha/current_alpha;
-#pragma omp parallel for num_threads(nthreads_)
-        for (auto itr = vmg_.begin(); itr < vmg_.end(); ++itr) {
-          Multigrid *pmg = *itr;
-          AthenaArray<Real> &u = pmg->u_[pmg->current_level_];
-          const AthenaArray<Real> &base = pmg->iteration_backup_;
-          const std::size_t size = u.GetSize();
-          Real *udata = u.data();
-          const Real *bdata = base.data();
-#pragma omp simd
-          for (std::size_t i = 0; i < size; ++i)
-            udata[i] = bdata[i] + ratio*(udata[i] - bdata[i]);
-        }
-        current_alpha = alpha;
-      }
-
-      Real trial_norm = 0.0;
-      for (int v = 0; v < nvar_; ++v)
-        trial_norm += CalculateDefectNorm(MGNormType::l2, v);
-      const Real factor = trial_norm/post_norm
-                        * new_defect/std::max(old_defect, TINY_NUMBER);
-      if (Globals::my_rank == 0) {
-        std::cout << "[NRFLD V-cycle scale] rejected="
-                  << vcycle_diagnostic_count_ << " alpha=" << alpha
-                  << " factor=" << factor
-                  << " contracts=" << (factor < 1.0 ? 1 : 0) << std::endl;
-      }
-    }
-
-    // ReportDivergentCycle is observational.  Restore the completed V-cycle
-    // candidate in case a subsequent recovery hook needs to inspect it.
-    if (current_alpha != 1.0) {
-      ScaleFinestCorrection(1.0/current_alpha);
-    }
-  }
-}
-
-
-//----------------------------------------------------------------------------------------
-//! \brief Recover one divergent completed V-cycle by damping its full correction.
-//!
-//! This does not alter any individual restriction, prolongation, or smoothing operation.
-//! It samples powers of two along the already-computed correction, retains the best
-//! sufficiently contractive iterate, and returns immediately to the existing fine-grid
-//! post-smoother.  When disabled, the legacy rollback path is unchanged.
-
-bool linearMGDriver::RecoverDivergentCycle(Real old_defect, Real new_defect,
-                                           Real &recovered_defect) {
-  if (!vcycle_damping_) return false;
-
-  Real post_norm = 0.0;
-  for (int v = 0; v < nvar_; ++v)
-    post_norm += CalculateDefectNorm(MGNormType::l2, v);
-  post_norm = std::max(post_norm, TINY_NUMBER);
-
-  Real current_alpha = 1.0;
-  Real best_alpha = 0.0;
-  Real best_factor = std::numeric_limits<Real>::max();
-  for (int level = 1; level < vcycle_damping_levels_; ++level) {
-    const Real alpha = std::ldexp(1.0, -level);
-    const Real ratio = alpha/current_alpha;
-    ScaleFinestCorrection(ratio);
-    current_alpha = alpha;
-
-    Real trial_norm = 0.0;
-    for (int v = 0; v < nvar_; ++v)
-      trial_norm += CalculateDefectNorm(MGNormType::l2, v);
-    const Real factor = trial_norm/post_norm
-                      * new_defect/std::max(old_defect, TINY_NUMBER);
-    if (std::isfinite(factor) && factor < best_factor) {
-      best_factor = factor;
-      best_alpha = alpha;
-    }
-  }
-
-  const bool accepted = best_alpha > 0.0
-                     && best_factor <= vcycle_damping_max_factor_;
-  if (accepted && best_alpha != current_alpha) {
-    ScaleFinestCorrection(best_alpha/current_alpha);
-  }
-
-  if (Globals::my_rank == 0) {
-    std::cout << "[NRFLD V-cycle damping] accepted=" << (accepted ? 1 : 0)
-              << " alpha=" << best_alpha
-              << " factor=" << best_factor
-              << " max_factor=" << vcycle_damping_max_factor_ << std::endl;
-  }
-  if (!accepted) return false;
-
-  recovered_defect = old_defect*best_factor;
-  return true;
-}
-
-
-//----------------------------------------------------------------------------------------
-//! \brief Rescale the completed finest-grid correction relative to its saved base iterate.
-
-void linearMGDriver::ScaleFinestCorrection(Real ratio) {
-#pragma omp parallel for num_threads(nthreads_)
-  for (auto itr = vmg_.begin(); itr < vmg_.end(); ++itr) {
-    Multigrid *pmg = *itr;
-    AthenaArray<Real> &u = pmg->u_[pmg->current_level_];
-    const AthenaArray<Real> &base = pmg->iteration_backup_;
-    const std::size_t size = u.GetSize();
-    Real *udata = u.data();
-    const Real *bdata = base.data();
-#pragma omp simd
-    for (std::size_t i = 0; i < size; ++i)
-      udata[i] = bdata[i] + ratio*(udata[i] - bdata[i]);
-  }
 }
 
 
