@@ -15,6 +15,7 @@
 #include <cstdlib>    // abs
 #include <iomanip>    // setprecision
 #include <iostream>   // endl
+#include <limits>     // numeric_limits
 #include <sstream>    // sstream
 #include <stdexcept>  // runtime_error
 #include <string>     // c_str()
@@ -50,7 +51,8 @@ MultigridDriver::MultigridDriver(Mesh *pm, MGBoundaryFunc *MGBoundary,
     fshowdef_(false),
     smoothing_only_(false), stage_diagnostics_(false), stage_diagnostics_active_(false),
     relative_defect_(false),
-    eps_(-1.0), dt_(0.0), coarse_corr_scale_(1.0), niter_(-1), npresmooth_(1),
+    eps_(-1.0), dt_(0.0), coarse_corr_scale_(1.0),
+    stage_diagnostic_reference_scale_(1.0), niter_(-1), npresmooth_(1),
     npostsmooth_(1),
     coffset_(0), fprolongation_(0), mporder_(-1), nmpcoeff_(0), mpo_(3), autompo_(false),
     nodipole_(false), nb_rank_(0) {
@@ -1130,28 +1132,17 @@ void MultigridDriver::OneStepToCoarser(int nsmooth) {
 
 void MultigridDriver::SolveVCycle(int npresmooth, int npostsmooth) {
   int startlevel=current_level_;
-  // At diagnostic verbosity 2, split only the finest downward/upward task lists.
+  // For the concise stage diagnostic, split only the finest downward/upward task lists.
   // This exposes the residual after pre-smoothing but before restriction, and after
-  // prolongation but before post-smoothing.  The ordinary verbosity-0/1 path remains
-  // byte-for-byte the original V-cycle sequence.
+  // prolongation but before post-smoothing.  When the diagnostic is disabled,
+  // the original V-cycle task sequence is unchanged.
   const bool split_finest_stage = stage_diagnostics_active_
       && startlevel >= nrootlevel_ + nreflevel_;
-  auto stage_defect = [&](const char *stage) {
+  auto stage_defect = [&]() -> Real {
     Real defect = 0.0;
-    Real source = 1.0;
     for (int v = 0; v < nvar_; ++v)
       defect += CalculateDefectNorm(MGNormType::l2, v);
-    if (relative_defect_) {
-      source = 0.0;
-      for (int v = 0; v < nvar_; ++v) source += CalculateSourceNorm(v);
-      source = std::max(source, static_cast<Real>(1.0e-30));
-    }
-    if (Globals::my_rank == 0) {
-      std::cout << "[NRFLD MG stage] stage=" << stage
-                << " level=" << current_level_
-                << " defect_l2=" << defect
-                << " relative_defect_l2=" << defect/source << std::endl;
-    }
+    return defect;
   };
   auto smooth_finest = [&](int nsmooth) {
     int remaining = nsmooth;
@@ -1178,12 +1169,15 @@ void MultigridDriver::SolveVCycle(int npresmooth, int npostsmooth) {
     mgtlist_->DoTaskListOneStage(this);
     return;
   }
+  Real before_pre = 0.0;
+  Real after_pre = 0.0;
+  Real after_prolong = 0.0;
+  Real after_post = 0.0;
   if (split_finest_stage) {
-    stage_defect("before_pre_smoothing");
+    before_pre = stage_defect();
     smooth_finest(npresmooth);
-    stage_defect("after_pre_smoothing_before_restriction");
+    after_pre = stage_defect();
     OneStepToCoarser(0);
-    stage_defect("after_finest_restriction");
   }
   while (current_level_ > 0)
     OneStepToCoarser(npresmooth);
@@ -1198,11 +1192,21 @@ void MultigridDriver::SolveVCycle(int npresmooth, int npostsmooth) {
   if (symmetric_rb_ && redblack_) coffset_ ^= 1;
   while (current_level_ < startlevel) {
     if (split_finest_stage && current_level_ == startlevel - 1) {
-      stage_defect("before_finest_prolongation");
       OneStepToFiner(0);
-      stage_defect("after_prolongation_before_post_smoothing");
+      after_prolong = stage_defect();
       smooth_finest(npostsmooth);
-      stage_defect("after_post_smoothing");
+      after_post = stage_defect();
+      if (Globals::my_rank == 0) {
+        std::cout << "[NRFLD MG transfer] level=" << current_level_
+                  << " before_pre=" << before_pre
+                  << " after_pre_before_restrict=" << after_pre
+                  << " after_prolong_before_post=" << after_prolong
+                  << " prolong_factor="
+                  << after_prolong/std::max(after_pre, TINY_NUMBER)
+                  << " after_post=" << after_post
+                  << " full_factor="
+                  << after_post/std::max(before_pre, TINY_NUMBER) << std::endl;
+      }
     } else {
       OneStepToFiner(npostsmooth);
     }
@@ -1286,7 +1290,11 @@ void MultigridDriver::SolveIterative() {
       AthenaArray<Real> &u = pmg->u_[pmg->current_level_];
       std::memcpy(pmg->iteration_backup_.data(), u.data(), u.GetSizeInBytes());
     }
-    stage_diagnostics_active_ = stage_diagnostics_ && n == 0;
+    const Real scale_tol = 16.0*std::numeric_limits<Real>::epsilon()
+                         * std::max(std::abs(stage_diagnostic_reference_scale_),
+                                    static_cast<Real>(1.0));
+    stage_diagnostics_active_ = stage_diagnostics_ && n == 0
+        && std::abs(coarse_corr_scale_ - stage_diagnostic_reference_scale_) <= scale_tol;
     SolveVCycle(npresmooth_, npostsmooth_);
     stage_diagnostics_active_ = false;
     Real olddef = def, oldmax = defmax;

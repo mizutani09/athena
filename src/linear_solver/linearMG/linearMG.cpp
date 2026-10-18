@@ -97,12 +97,13 @@ linearMGDriver::linearMGDriver(Mesh *pm, ParameterInput *pin, NewtonRaphsonDrive
   npostsmooth_ = pin->GetOrAddReal("nrfld", "npostsmooth", 2);
   fshowdef_ = pin->GetOrAddBoolean("nrfld", "show_defect", fshowdef_);
   stage_diagnostics_ = pin->GetOrAddInteger(
-      "nrfld", "diagnostic_verbosity", 0) >= 2;
+      "nrfld", "diagnostic_verbosity", 0) >= 1;
   smoothing_only_ = pin->GetOrAddBoolean("nrfld", "smoothing_only", false);
   cache_coefficient_hierarchy_ =
       pin->GetOrAddBoolean("nrfld", "cache_coefficient_hierarchy", true);
   relative_defect_ = true;
   coarse_corr_scale_ = pin->GetOrAddReal("nrfld", "coarse_correction_scale", 1.0);
+  stage_diagnostic_reference_scale_ = coarse_corr_scale_;
   npostsolve_smooth_ = pin->GetOrAddInteger(
       "nrfld", "post_mg_smooth", pm->multilevel ? 16 : 0);
   nsmoothing_only_sweeps_ = pin->GetOrAddInteger(
