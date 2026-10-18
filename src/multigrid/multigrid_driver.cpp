@@ -53,7 +53,7 @@ MultigridDriver::MultigridDriver(Mesh *pm, MGBoundaryFunc *MGBoundary,
     relative_defect_(false),
     eps_(-1.0), dt_(0.0), coarse_corr_scale_(1.0),
     stage_diagnostic_reference_scale_(1.0), niter_(-1), npresmooth_(1),
-    npostsmooth_(1),
+    npostsmooth_(1), stage_diagnostic_vcycle_(-1),
     coffset_(0), fprolongation_(0), mporder_(-1), nmpcoeff_(0), mpo_(3), autompo_(false),
     nodipole_(false), nb_rank_(0) {
   std::cout << std::scientific << std::setprecision(15);
@@ -1171,13 +1171,18 @@ void MultigridDriver::SolveVCycle(int npresmooth, int npostsmooth) {
   }
   Real before_pre = 0.0;
   Real after_pre = 0.0;
+  Real coarse_after_restrict = 0.0;
+  Real coarse_before_prolong = 0.0;
   Real after_prolong = 0.0;
   Real after_post = 0.0;
+  const bool measure_block_coarse = split_finest_stage
+      && startlevel > nrootlevel_ + nreflevel_;
   if (split_finest_stage) {
     before_pre = stage_defect();
     smooth_finest(npresmooth);
     after_pre = stage_defect();
     OneStepToCoarser(0);
+    if (measure_block_coarse) coarse_after_restrict = stage_defect();
   }
   while (current_level_ > 0)
     OneStepToCoarser(npresmooth);
@@ -1192,18 +1197,36 @@ void MultigridDriver::SolveVCycle(int npresmooth, int npostsmooth) {
   if (symmetric_rb_ && redblack_) coffset_ ^= 1;
   while (current_level_ < startlevel) {
     if (split_finest_stage && current_level_ == startlevel - 1) {
+      if (measure_block_coarse) {
+        // The previous upward smoothing leaves the correction interior updated but its
+        // ghost zones stale.  Refresh them before measuring the coarse equation.  The
+        // following prolongation task would perform the same communication.
+        mgtlist_->SetMGTaskListBoundaryCommunication();
+        mgtlist_->DoTaskListOneStage(this);
+        coarse_before_prolong = stage_defect();
+      }
       OneStepToFiner(0);
       after_prolong = stage_defect();
       smooth_finest(npostsmooth);
       after_post = stage_defect();
       if (Globals::my_rank == 0) {
-        std::cout << "[NRFLD MG transfer] level=" << current_level_
+        std::cout << "[NRFLD MG transfer] vcycle=" << stage_diagnostic_vcycle_
+                  << " level=" << current_level_
                   << " before_pre=" << before_pre
                   << " after_pre_before_restrict=" << after_pre
+                  << " coarse_metrics_valid=" << measure_block_coarse
+                  << " coarse_after_restrict=" << coarse_after_restrict
+                  << " restriction_factor="
+                  << coarse_after_restrict/std::max(after_pre, TINY_NUMBER)
+                  << " coarse_before_prolong=" << coarse_before_prolong
+                  << " coarse_solve_factor="
+                  << coarse_before_prolong/std::max(coarse_after_restrict, TINY_NUMBER)
                   << " after_prolong_before_post=" << after_prolong
-                  << " prolong_factor="
+                  << " correction_factor="
                   << after_prolong/std::max(after_pre, TINY_NUMBER)
                   << " after_post=" << after_post
+                  << " post_factor="
+                  << after_post/std::max(after_prolong, TINY_NUMBER)
                   << " full_factor="
                   << after_post/std::max(before_pre, TINY_NUMBER) << std::endl;
       }
@@ -1293,7 +1316,8 @@ void MultigridDriver::SolveIterative() {
     const Real scale_tol = 16.0*std::numeric_limits<Real>::epsilon()
                          * std::max(std::abs(stage_diagnostic_reference_scale_),
                                     static_cast<Real>(1.0));
-    stage_diagnostics_active_ = stage_diagnostics_ && n == 0
+    stage_diagnostic_vcycle_ = n;
+    stage_diagnostics_active_ = stage_diagnostics_ && n <= 1
         && std::abs(coarse_corr_scale_ - stage_diagnostic_reference_scale_) <= scale_tol;
     SolveVCycle(npresmooth_, npostsmooth_);
     stage_diagnostics_active_ = false;
