@@ -295,7 +295,7 @@ class MultigridDriver {
   bool relative_defect_;
   Real last_ave_;
   Real eps_, dt_, coarse_corr_scale_, stage_diagnostic_reference_scale_;
-  int niter_, npresmooth_, npostsmooth_, stage_diagnostic_vcycle_;
+  int niter_, max_vcycles_, npresmooth_, npostsmooth_, stage_diagnostic_vcycle_;
   int os_, oe_;
   int coffset_;
   int fprolongation_;

@@ -52,7 +52,7 @@ MultigridDriver::MultigridDriver(Mesh *pm, MGBoundaryFunc *MGBoundary,
     smoothing_only_(false), stage_diagnostics_(false), stage_diagnostics_active_(false),
     relative_defect_(false),
     eps_(-1.0), dt_(0.0), coarse_corr_scale_(1.0),
-    stage_diagnostic_reference_scale_(1.0), niter_(-1), npresmooth_(1),
+    stage_diagnostic_reference_scale_(1.0), niter_(-1), max_vcycles_(100), npresmooth_(1),
     npostsmooth_(1), stage_diagnostic_vcycle_(-1),
     coffset_(0), fprolongation_(0), mporder_(-1), nmpcoeff_(0), mpo_(3), autompo_(false),
     nodipole_(false), nb_rank_(0) {
@@ -1350,18 +1350,15 @@ void MultigridDriver::SolveIterative() {
       }
       if (eps_ == 0.0) break;
     }
-    // Physical boundary conditions can require substantially more V-cycles
-    // than the old fixed limit of 30.  Stopping there returns a
-    // meshblock-dependent approximate solution, because the local MG
-    // hierarchy changes with the meshblock size.
-    constexpr int max_vcycles = 100;
-    if (n > max_vcycles) {
+    const int completed_vcycles = n + 1;
+    if (completed_vcycles >= max_vcycles_) {
       if (Globals::my_rank == 0) {
         std::cout
             << "### Warning in MultigridDriver::SolveIterative" << std::endl
-            << "Aborting because the # iterations is too large, n > "
-            << max_vcycles << "." << std::endl
-            << "Check the solution as it may not be accurate enough." << std::endl;
+            << "Stopping at the configured V-cycle limit: completed="
+            << completed_vcycles
+            << ", final relative defect=" << def
+            << ", requested threshold=" << eps_ << "." << std::endl;
       }
       break;
     }

@@ -90,6 +90,7 @@ linearMGDriver::linearMGDriver(Mesh *pm, ParameterInput *pin, NewtonRaphsonDrive
       coefficient_diagnostic_count_(0) {
   eps_ = pin->GetOrAddReal("nrfld", "threshold", -1.0);
   niter_ = pin->GetOrAddInteger("nrfld", "niteration", -1);
+  max_vcycles_ = pin->GetOrAddInteger("nrfld", "linear_max_vcycles", 100);
   ffas_ = pin->GetOrAddBoolean("nrfld", "fas", ffas_);
   omega_ = pin->GetOrAddReal("nrfld", "omega", 1.0);
   fsteady_ = pin->GetOrAddBoolean("nrfld", "steady", false);
@@ -186,6 +187,16 @@ linearMGDriver::linearMGDriver(Mesh *pm, ParameterInput *pin, NewtonRaphsonDrive
         << "or set \"threshold = 0.0\" together with \"niteration\" to use "
         << "a fixed number of V-cycles." << std::endl;
     ATHENA_ERROR(msg);
+  }
+  if (max_vcycles_ <= 0) {
+    std::stringstream msg;
+    msg << "### FATAL ERROR in linearMGFLDDriver::linearMGFLDDriver" << std::endl
+        << "The nrfld/linear_max_vcycles parameter must be positive." << std::endl;
+    ATHENA_ERROR(msg);
+  }
+  if (Globals::my_rank == 0) {
+    std::cout << "[LINEAR_MG_CONFIG] threshold=" << eps_
+              << " max_vcycles=" << max_vcycles_ << std::endl;
   }
   // The linear solve acts on Newton corrections, so its physical boundary
   // condition need not be the same type as the full-state hydro/NR boundary.
