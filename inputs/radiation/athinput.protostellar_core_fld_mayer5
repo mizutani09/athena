@@ -12,13 +12,13 @@ file_type  = hst
 dcycle     = 1
 
 <output2>
-file_type  = athdf
+file_type  = hdf5
 id         = prim
 variable   = prim
 dt         = 10.0
 
 <output3>
-file_type  = athdf
+file_type  = hdf5
 id         = fld
 variable   = uov
 dt         = 10.0
@@ -26,6 +26,28 @@ dt         = 10.0
 <output4>
 file_type  = rst
 dt         = 50.0
+dcycle     = 0       # Set dt=0 and override this for cycle-based production checkpoints
+
+# Mid-plane diagnostics.  The code time unit is about 15 yr for the units
+# below, so this writes an xy plane about every 15 yr.  Combining prim and
+# uov keeps the gas primitives and physical-unit FLD diagnostics in one file.
+<output5>
+file_type  = hdf5
+id         = xy
+variable   = prim,uov
+dt         = 1.0
+x3_slice   = 0.0
+
+# High-cadence line through the origin, parallel to x1.  With an even number
+# of cells, x2=x3=0 are cell faces; Athena++ selects the immediately adjacent
+# cell-centre line.  Spherical symmetry makes either side equivalent here.
+<output6>
+file_type  = hdf5
+id         = xline
+variable   = prim,uov
+dcycle     = 10
+x2_slice   = 0.0
+x3_slice   = 0.0
 
 <time>
 cfl_number = 0.005
