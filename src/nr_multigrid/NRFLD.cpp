@@ -135,6 +135,10 @@ inline Real LimitNewtonCorrection(Real delta, Real scale, Real max_fraction) {
 NRFLDDriver::NRFLDDriver(Mesh *pm, ParameterInput *pin)
     : NewtonRaphsonDriver(pm, 1, linearSolver::NCOEFF, linearSolver::NMATRIX) {
   eps_ = pin->GetOrAddReal("nrfld", "nr_threshold", -1.0);
+  relaxed_l2_eps_ = pin->GetOrAddReal(
+      "nrfld", "nr_accept_l2_threshold", -1.0);
+  relaxed_max_eps_ = pin->GetOrAddReal(
+      "nrfld", "nr_accept_max_threshold", -1.0);
   niter_ = pin->GetOrAddInteger("nrfld", "nr_niteration", -1);
   nr_max_iterations_ = pin->GetOrAddInteger("nrfld", "nr_max_iterations", 100);
   const bool verbosity_in_input =
@@ -195,6 +199,30 @@ NRFLDDriver::NRFLDDriver(Mesh *pm, ParameterInput *pin)
     msg << "### FATAL ERROR in NRFLDDriver::NRFLDDriver" << std::endl
         << "\"nr_threshold\" must be finite." << std::endl;
     ATHENA_ERROR(msg);
+  }
+  const bool relaxed_l2_set = relaxed_l2_eps_ > 0.0;
+  const bool relaxed_max_set = relaxed_max_eps_ > 0.0;
+  if (relaxed_l2_set != relaxed_max_set
+      || !std::isfinite(relaxed_l2_eps_)
+      || !std::isfinite(relaxed_max_eps_)) {
+    std::stringstream msg;
+    msg << "### FATAL ERROR in NRFLDDriver::NRFLDDriver" << std::endl
+        << "\"nr_accept_l2_threshold\" and \"nr_accept_max_threshold\" "
+        << "must either both be finite and positive, or both be omitted." << std::endl;
+    ATHENA_ERROR(msg);
+  }
+  if (relaxed_l2_set && eps_ > 0.0
+      && (relaxed_l2_eps_ < eps_ || relaxed_max_eps_ < eps_)) {
+    std::stringstream msg;
+    msg << "### FATAL ERROR in NRFLDDriver::NRFLDDriver" << std::endl
+        << "Relaxed acceptance thresholds must be no smaller than nr_threshold."
+        << std::endl;
+    ATHENA_ERROR(msg);
+  }
+  if (relaxed_l2_set && Globals::my_rank == 0) {
+    std::cout << "[NR_RELAXED_CONFIG] target=" << eps_
+              << " accept_l2=" << relaxed_l2_eps_
+              << " accept_max=" << relaxed_max_eps_ << std::endl;
   }
   if (nr_max_iterations_ <= 0) {
     std::stringstream msg;

@@ -54,6 +54,7 @@ struct NewtonResidualNorms {
 //! \brief Reason why a Newton solve stopped.
 enum class NewtonSolveReason {
   converged,
+  accepted_relaxed,
   fixed_iterations_complete,
   dt_zero_initialization,
   initial_nonfinite,
@@ -83,6 +84,7 @@ struct NewtonSolveResult {
   Real final_radiation_max_norm{0.0};
   Real final_total_energy_l2_norm{0.0};
   Real final_total_energy_max_norm{0.0};
+  NewtonSolveReason relaxed_trigger{NewtonSolveReason::converged};
   bool committed{false};
 
   bool IsSuccess() const {
@@ -265,7 +267,7 @@ class NewtonRaphsonDriver {
   std::vector<NewtonRaphson*> vnr_;
   bool needinit_, fshowdef_, use_mg_smoothing_fallback_, abort_on_failure_;
   int diagnostic_verbosity_;
-  Real eps_, dt_;
+  Real eps_, relaxed_l2_eps_, relaxed_max_eps_, dt_;
   Real mg_coarse_retry_factor_, mg_coarse_retry_min_scale_;
   Real step_scale_, backtrack_factor_, min_step_scale_;
   int stage_;

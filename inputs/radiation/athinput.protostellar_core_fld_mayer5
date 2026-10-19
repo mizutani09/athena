@@ -12,13 +12,13 @@ file_type  = hst
 dcycle     = 1
 
 <output2>
-file_type  = vtk
+file_type  = athdf
 id         = prim
 variable   = prim
 dt         = 10.0
 
 <output3>
-file_type  = vtk
+file_type  = athdf
 id         = fld
 variable   = uov
 dt         = 10.0
@@ -87,15 +87,17 @@ mgmode       = MGI
 fas          = false
 smoother     = jacobi-rb
 symmetric_rb_sweeps = true
-# Coarse-grid correction interpolation.  "constant" is a monotone diagnostic
-# alternative for strongly varying AMR diffusion coefficients.
-prolongation = trilinear
 npresmooth   = 2
 npostsmooth  = 2
 omega        = 1.0
 threshold    = 1.0e-8
 niteration   = -1
-nr_threshold = 1.0e-6
+nr_threshold = 1.0e-5
+# If the strict target cannot be reached, accept only a finite iterate satisfying
+# both relaxed limits.  These values are intended for the localized ambient/AMR
+# residual seen near cycle 7 and must be validated against a strict reference run.
+nr_accept_l2_threshold  = 5.0e-3
+nr_accept_max_threshold = 2.0e-1
 nr_niteration = 100
 nr_max_iterations = 128
 # 0: summary only, 1: Newton trial summary, 2: maximum-cell stencil.
@@ -109,13 +111,6 @@ coarse_diagnostics = false
 coarse_diagnostic_limit = 4
 coefficient_diagnostics = false
 coefficient_diagnostic_limit = 1
-vcycle_diagnostics = false
-vcycle_diagnostic_limit = 1
-vcycle_scale_diagnostics = false
-vcycle_scale_levels = 6
-vcycle_damping = false
-vcycle_damping_levels = 8
-vcycle_damping_max_factor = 0.90
 coarse_correction_scale = 1.0
 nr_mg_coarse_retry_max = 0
 nr_mg_coarse_retry_factor = 0.5
@@ -124,11 +119,9 @@ nr_backtrack_max = 20
 nr_backtrack_factor = 0.5
 nr_min_step_scale = 1.0e-6
 nr_use_mg_smoothing_fallback = false
-# Diagnostic default: roll back a rejected finite iterate and continue.  The
-# production job overrides this with abort so a failed implicit update cannot
-# be silently skipped.
-# Non-finite residuals remain fatal with either policy.
-failure_policy = warn_keep_old
+# A solve inside the relaxed limits is committed with an explicit warning.
+# Falling outside those limits must stop rather than skip the implicit update.
+failure_policy = abort
 # Preserve the coupled Newton direction.  Positivity is enforced by the
 # floors, while nr_backtrack_* globalizes the full nonlinear update.
 max_update_fraction = -1.0

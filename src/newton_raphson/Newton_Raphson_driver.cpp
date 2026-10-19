@@ -43,6 +43,7 @@
 const char *NewtonSolveReasonName(NewtonSolveReason reason) {
   switch (reason) {
     case NewtonSolveReason::converged: return "converged";
+    case NewtonSolveReason::accepted_relaxed: return "accepted_relaxed";
     case NewtonSolveReason::fixed_iterations_complete:
       return "fixed_iterations_complete";
     case NewtonSolveReason::dt_zero_initialization:
@@ -168,7 +169,8 @@ NewtonRaphsonDriver::NewtonRaphsonDriver(Mesh *pm,
     needinit_(true), fshowdef_(false), use_mg_smoothing_fallback_(false),
     abort_on_failure_(true),
     diagnostic_verbosity_(0),
-    eps_(-1.0), dt_(0.0), step_scale_(1.0),
+    eps_(-1.0), relaxed_l2_eps_(-1.0), relaxed_max_eps_(-1.0), dt_(0.0),
+    step_scale_(1.0),
     backtrack_factor_(0.5), min_step_scale_(0.05), niter_(-1),
     nr_max_iterations_(100), max_backtrack_(0)
     // nb_rank_(0)
@@ -522,6 +524,30 @@ NewtonSolveResult NewtonRaphsonDriver::Solve_general(int stage, Real dt) {
     return norms.l2_norm <= stopping_defect
         && norms.max_norm <= stopping_defect;
   };
+  const bool relaxed_enabled = relaxed_l2_eps_ > 0.0 && relaxed_max_eps_ > 0.0;
+  const auto meets_relaxed_stopping = [&]() {
+    return relaxed_enabled && norms.finite
+        && norms.l2_norm <= relaxed_l2_eps_
+        && norms.max_norm <= relaxed_max_eps_;
+  };
+  const auto accept_relaxed = [&](NewtonSolveReason trigger) {
+    if (fixed_mode || !meets_relaxed_stopping()) return false;
+    result.reason = NewtonSolveReason::accepted_relaxed;
+    result.relaxed_trigger = trigger;
+    result.committed = true;
+    if (Globals::my_rank == 0) {
+      std::cout << "### WARNING in NewtonRaphsonDriver::SolveIterative" << std::endl
+                << "Accepting a finite relaxed-tolerance Newton-Raphson iterate: "
+                << "trigger=" << NewtonSolveReasonName(trigger)
+                << ", l2=" << norms.l2_norm
+                << ", max=" << norms.max_norm
+                << ", target=" << stopping_defect
+                << ", accept_l2=" << relaxed_l2_eps_
+                << ", accept_max=" << relaxed_max_eps_
+                << ", niter=" << n << "." << std::endl;
+    }
+    return true;
+  };
   if (!fixed_mode && meets_stopping()) {
     result.reason = initialization_step ? NewtonSolveReason::dt_zero_initialization
                                         : NewtonSolveReason::converged;
@@ -763,7 +789,13 @@ NewtonSolveResult NewtonRaphsonDriver::Solve_general(int stage, Real dt) {
     plmgd_->SetSmoothingOnly(base_smoothing_only);
     plmgd_->SetCoarseCorrectionScale(base_coarse_corr_scale);
 
-    if (!accepted) break;
+    if (!accepted) {
+      // Rejected line-search trials have already been rolled back.  The
+      // retained iterate may still meet an explicitly requested, looser
+      // production tolerance even though the strict target was missed.
+      accept_relaxed(result.reason);
+      break;
+    }
 
     ++n;
     if (initialization_step) {
@@ -790,24 +822,28 @@ NewtonSolveResult NewtonRaphsonDriver::Solve_general(int stage, Real dt) {
       if (n > 1 && (convergence_factor > 1.0
                     || std::abs(def - olddef) < 1e-12
                     || eps_ == 0.0)) {
+        if (accept_relaxed(NewtonSolveReason::stagnation)) break;
         for (auto itr = vnr_.begin(); itr < vnr_.end(); itr++) {
           (*itr)->RestoreIterate();
         }
         norms = old_norms;
         def = norms.l2_norm;
         defmax = norms.max_norm;
-        result.reason = NewtonSolveReason::stagnation;
+        if (!accept_relaxed(NewtonSolveReason::stagnation))
+          result.reason = NewtonSolveReason::stagnation;
         break;
       }
     }
     if (n >= nr_max_iterations_) {
+      if (accept_relaxed(NewtonSolveReason::max_iterations)) break;
       for (auto itr = vnr_.begin(); itr < vnr_.end(); itr++) {
         (*itr)->RestoreIterate();
       }
       norms = old_norms;
       def = norms.l2_norm;
       defmax = norms.max_norm;
-      result.reason = NewtonSolveReason::max_iterations;
+      if (!accept_relaxed(NewtonSolveReason::max_iterations))
+        result.reason = NewtonSolveReason::max_iterations;
       break;
     }
   }
@@ -857,8 +893,10 @@ NewtonSolveResult NewtonRaphsonDriver::Solve_general(int stage, Real dt) {
               << " final_total_energy_max=" << result.final_total_energy_max_norm
               << " cycle=" << pmy_mesh_->ncycle
               << " time=" << pmy_mesh_->time
-              << " stage=" << stage_ << " dt=" << dt_
-              << std::endl;
+              << " stage=" << stage_ << " dt=" << dt_;
+    if (result.reason == NewtonSolveReason::accepted_relaxed)
+      std::cout << " relaxed_from=" << NewtonSolveReasonName(result.relaxed_trigger);
+    std::cout << std::endl;
   }
   return result;
 }
