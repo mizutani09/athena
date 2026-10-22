@@ -52,6 +52,7 @@
 #include "nr_multigrid/NRFLD.hpp"
 #include "task_list/chem_rad_task_list.hpp"
 #include "utils/utils.hpp"
+#include "utils/performance_timer.hpp"
 
 // MPI/OpenMP headers
 #ifdef MPI_PARALLEL
@@ -483,6 +484,7 @@ int main(int argc, char *argv[]) {
     std::cout << "\nSetup complete, entering main loop...\n" << std::endl;
   }
 
+  PerformanceTimer performance(pinput);
   clock_t tstart = clock();
 #ifdef OPENMP_PARALLEL
   double omp_start_time = omp_get_wtime();
@@ -490,6 +492,9 @@ int main(int argc, char *argv[]) {
 
   while ((pmesh->time < pmesh->tlim) &&
          (pmesh->nlim < 0 || pmesh->ncycle < pmesh->nlim)) {
+    performance.BeginStep(pmesh->ncycle, pmesh->dt,
+        static_cast<double>(pmesh->nbtotal) *
+        pmesh->my_blocks(0)->GetNumberOfMeshBlockCells());
     if (Globals::my_rank == 0)
       pmesh->OutputCycleDiagnostics();
     if (NRMGFLD_ENABLED)
@@ -547,16 +552,20 @@ int main(int argc, char *argv[]) {
     }
 
     for (int stage=1; stage<=ptlist->nstages; ++stage) {
+      performance.Mark(PerformanceTimer::explicit_integrator);
       ptlist->DoTaskListOneStage(pmesh, stage);
+      performance.Mark(PerformanceTimer::other);
       if (NRMGFLD_ENABLED) {
         for (int b = 0; b < pmesh->nblocal; ++b)
           pmesh->my_blocks(b)->prfld->DumpStageDiagnostics("after_stage", stage);
       }
-      if (ptlist->CheckNextMainStage(stage)) {
+      if (ptlist->CheckNextMainStage(stage) && SELF_GRAVITY_ENABLED) {
+        performance.Mark(PerformanceTimer::gravity_solve);
         if (SELF_GRAVITY_ENABLED == 1) // fft (0: discrete kernel, 1: continuous kernel)
           pmesh->pfgrd->Solve(stage, 0);
         else if (SELF_GRAVITY_ENABLED == 2) // multigrid
           pmesh->pmgrd->Solve(stage);
+        performance.Mark(PerformanceTimer::other);
       }
       if (IM_RADIATION_ENABLED) {
         pmesh->pimrad->Iteration(pmesh,ptlist,stage);
@@ -574,6 +583,7 @@ int main(int argc, char *argv[]) {
     // full hydro timestep.  Synchronize primitives before end-of-step work,
     // AMR, and output.
     if (NRMGFLD_ENABLED) {
+      performance.Mark(PerformanceTimer::fld_prepare);
       // Use the post-Godunov state for the implicit solve.  These opacities
       // remain fixed throughout its Newton iterations.
       for (int b = 0; b < pmesh->nblocal; ++b) {
@@ -582,9 +592,14 @@ int main(int argc, char *argv[]) {
       }
       for (int b = 0; b < pmesh->nblocal; ++b)
         pmesh->my_blocks(b)->prfld->DumpStageDiagnostics("before_implicit");
+      performance.Mark(PerformanceTimer::fld_solve);
       const NewtonSolveResult nr_result = pmesh->pmnr->Solve_general(0, pmesh->dt);
       pmesh->pmnr->HandleSolveResult(nr_result);
+      performance.Mark(PerformanceTimer::fld_sync);
+      performance.Newton(nr_result.iterations, nr_result.final_norm,
+          nr_result.final_max_norm, NewtonSolveReasonName(nr_result.reason));
       SynchronizeHydroPrimitivesAfterNR(pmesh);
+      performance.Mark(PerformanceTimer::fld_finish);
       // Keep stored opacities consistent with the committed end-of-step
       // gas/radiation state, including for diagnostics and user callbacks.
       for (int b = 0; b < pmesh->nblocal; ++b) {
@@ -593,6 +608,7 @@ int main(int argc, char *argv[]) {
       }
       for (int b = 0; b < pmesh->nblocal; ++b)
         pmesh->my_blocks(b)->prfld->DumpStageDiagnostics("after_implicit");
+      performance.Mark(PerformanceTimer::other);
     }
     if (NRMGFLD_ENABLED)
       for (int b = 0; b < pmesh->nblocal; ++b)
@@ -605,15 +621,19 @@ int main(int argc, char *argv[]) {
     mbcnt += pmesh->nbtotal;
     pmesh->step_since_lb++;
 
+    performance.Mark(PerformanceTimer::amr);
     pmesh->LoadBalancingAndAdaptiveMeshRefinement(pinput);
+    performance.Mark(PerformanceTimer::other);
 
     pmesh->NewTimeStep();
 
 #ifdef ENABLE_EXCEPTIONS
     try {
 #endif
+      performance.Mark(PerformanceTimer::output);
       if (pmesh->time < pmesh->tlim) // skip the final output as it happens later
         pouts->MakeOutputs(pmesh,pinput);
+      performance.Mark(PerformanceTimer::other);
 #ifdef ENABLE_EXCEPTIONS
     }
     catch(std::bad_alloc& ba) {
@@ -634,10 +654,12 @@ int main(int argc, char *argv[]) {
 #endif // ENABLE_EXCEPTIONS
 
     // check for signals
+    performance.EndStep();
     if (SignalHandler::CheckSignalFlags() != 0) {
       break;
     }
   } // END OF MAIN INTEGRATION LOOP ======================================================
+  performance.Write();
   // Make final outputs, print diagnostics, clean up and terminate
 
   if (Globals::my_rank == 0 && wtlim > 0)
