@@ -1,0 +1,108 @@
+<comment>
+problem   = Test C: 1D-like variable-coefficient FLD diffusion with optional static AMR
+configure = --prob=nrfld_diff_amr_interface -nrmgfld
+
+<job>
+problem_id = nrfld_diff_amr_interface
+
+<output1>
+file_type = hst
+dcycle    = 1
+
+<time>
+cfl_number = 0.3
+nlim       = 4
+tlim       = 1.0e60
+integrator = rk2
+xorder     = 2
+ncycle_out = 1
+
+<mesh>
+# Override with mesh/refinement=none for C0 and C2.
+refinement = static
+nx1        = 32
+x1min      = 0.0
+x1max      = 1.0
+ix1_bc     = periodic
+ox1_bc     = periodic
+nx2        = 8
+x2min      = 0.0
+x2max      = 0.25
+ix2_bc     = periodic
+ox2_bc     = periodic
+nx3        = 8
+x3min      = 0.0
+x3max      = 0.25
+ix3_bc     = periodic
+ox3_bc     = periodic
+
+<meshblock>
+nx1 = 8
+nx2 = 8
+nx3 = 8
+
+# Fine region 0.25 <= x1 <= 0.75, spanning the full transverse domain.
+<refinement1>
+level = 1
+x1min = 0.25
+x1max = 0.75
+x2min = 0.0
+x2max = 0.25
+x3min = 0.0
+x3max = 0.25
+
+<hydro>
+gamma     = 1.6666666666666667
+rho_unit  = 1.0e-7
+egas_unit = 1.0e7
+leng_unit = 4.0e10
+mu        = 1.0
+dfloor    = 1.0e-12
+pfloor    = 1.0e-12
+
+<nrfld>
+mgmode          = MGI
+fas             = false
+smoother        = jacobi-rb
+prolongation    = trilinear
+npresmooth      = 2
+npostsmooth     = 2
+omega           = 1.0
+threshold       = 1.0e-10
+nr_threshold    = 1.0e-10
+nr_max_iterations = 64
+coarse_solver             = direct
+coarse_direct_max_cells   = 64
+cache_coefficient_hierarchy = false
+diagnostic_verbosity = 1
+failure_policy       = abort
+ix1_bc = periodic
+ox1_bc = periodic
+ix2_bc = periodic
+ox2_bc = periodic
+ix3_bc = periodic
+ox3_bc = periodic
+
+<fld>
+is_couple                 = false
+only_rad                  = true
+cut_diff                  = false
+include_radiation_force   = false
+include_mixed_frame_terms = false
+fixed_flux_limiter        = true
+const_opacity             = 0.4
+
+<problem>
+# C0/C1: density_high=1.0.  C2/C3: density_high>1.0.
+density_low    = 1.0
+density_high   = 1.15
+slab_left      = 0.25
+slab_right     = 0.75
+interface_width = 0.0
+
+# Put the radiation gradient at the left material interface.
+erad_background = 1.0
+erad_amplitude  = 0.1
+pulse_center    = 0.25
+pulse_width     = 0.08
+pressure        = 100.0
