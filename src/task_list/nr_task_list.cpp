@@ -30,8 +30,8 @@ NewtonRaphsonTaskList::NewtonRaphsonTaskList(NewtonRaphsonDriver *pmd, Mode mode
   if (mode_ == Mode::coeff) {
     AddNewtonRaphsonTask(CALC_COEFF, NONE);
   } else {
-    AddNewtonRaphsonTask(APPLY_CORR, NONE);
-    AddNewtonRaphsonTask(START_RECV, APPLY_CORR);
+    if (mode_ == Mode::post) AddNewtonRaphsonTask(APPLY_CORR, NONE);
+    AddNewtonRaphsonTask(START_RECV, mode_ == Mode::post ? APPLY_CORR : NONE);
     AddNewtonRaphsonTask(SEND_BND, START_RECV);
     AddNewtonRaphsonTask(RECV_BND, SEND_BND);
     AddNewtonRaphsonTask(SET_BND, RECV_BND);

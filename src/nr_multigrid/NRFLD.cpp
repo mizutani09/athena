@@ -135,6 +135,15 @@ inline Real LimitNewtonCorrection(Real delta, Real scale, Real max_fraction) {
 NRFLDDriver::NRFLDDriver(Mesh *pm, ParameterInput *pin)
     : NewtonRaphsonDriver(pm, 1, linearSolver::NCOEFF, linearSolver::NMATRIX) {
   eps_ = pin->GetOrAddReal("nrfld", "nr_threshold", -1.0);
+  global_jv_ = pin->GetOrAddBoolean("nrfld", "global_jacobian_check", false);
+  global_jv_iteration_ = pin->GetOrAddInteger("nrfld", "global_jacobian_iteration", 0);
+  global_jv_epsilon_ = pin->GetOrAddReal("nrfld", "global_jacobian_epsilon", 1.e-4);
+  if (global_jv_iteration_ < 0 || !(global_jv_epsilon_ > 0.0)
+      || !std::isfinite(global_jv_epsilon_)) {
+    std::stringstream msg;
+    msg << "Invalid global_jacobian_iteration/epsilon";
+    ATHENA_ERROR(msg);
+  }
   relaxed_l2_eps_ = pin->GetOrAddReal(
       "nrfld", "nr_accept_l2_threshold", -1.0);
   relaxed_max_eps_ = pin->GetOrAddReal(
@@ -316,7 +325,6 @@ NRFLDDriver::~NRFLDDriver() {
     delete plmgd_;
   }
 }
-
 
 NRFLD::NRFLD(MeshBlock *pmb, ParameterInput *pin) :
     NewtonRaphson(pmb->pmy_mesh->pmnr, pmb, NGHOST,

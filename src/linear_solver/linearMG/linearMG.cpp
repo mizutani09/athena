@@ -91,6 +91,10 @@ linearMGDriver::linearMGDriver(Mesh *pm, ParameterInput *pin, NewtonRaphsonDrive
   eps_ = pin->GetOrAddReal("nrfld", "threshold", -1.0);
   niter_ = pin->GetOrAddInteger("nrfld", "niteration", -1);
   max_vcycles_ = pin->GetOrAddInteger("nrfld", "linear_max_vcycles", 100);
+  divergence_patience_ = pin->GetOrAddInteger(
+      "nrfld", "linear_divergence_patience", 1);
+  max_transient_growth_ = pin->GetOrAddReal(
+      "nrfld", "linear_max_transient_growth", 2.0);
   ffas_ = pin->GetOrAddBoolean("nrfld", "fas", ffas_);
   omega_ = pin->GetOrAddReal("nrfld", "omega", 1.0);
   fsteady_ = pin->GetOrAddBoolean("nrfld", "steady", false);
@@ -129,14 +133,23 @@ linearMGDriver::linearMGDriver(Mesh *pm, ParameterInput *pin, NewtonRaphsonDrive
       "nrfld", "coarse_diagnostic_limit", 4);
   coefficient_diagnostics_ = pin->GetOrAddBoolean(
       "nrfld", "coefficient_diagnostics", false);
+  handoff_diagnostics_ = pin->GetOrAddBoolean("nrfld", "handoff_diagnostics", false);
+  handoff_diagnostic_limit_ = pin->GetOrAddInteger("nrfld", "handoff_diagnostic_limit", 4);
+  if (handoff_diagnostic_limit_ < 0 || (handoff_diagnostics_ && Globals::nranks != 1)) {
+    std::stringstream msg;
+    msg << "handoff_diagnostics requires one MPI rank and a non-negative limit.";
+    ATHENA_ERROR(msg);
+  }
   coefficient_diagnostic_limit_ = pin->GetOrAddInteger(
       "nrfld", "coefficient_diagnostic_limit", 1);
   if (coarse_direct_max_cells_ <= 0 || coarse_diagnostic_limit_ < 0
-      || coefficient_diagnostic_limit_ < 0) {
+      || coefficient_diagnostic_limit_ < 0 || divergence_patience_ <= 0
+      || max_transient_growth_ < 1.0) {
     std::stringstream msg;
     msg << "### FATAL ERROR in linearMGDriver::linearMGDriver" << std::endl
-        << "coarse_direct_max_cells must be positive, and diagnostic limits "
-        << "must be non-negative." << std::endl;
+        << "coarse_direct_max_cells and linear_divergence_patience must be positive, "
+        << "diagnostic limits must be non-negative, and "
+        << "linear_max_transient_growth must be >= 1." << std::endl;
     ATHENA_ERROR(msg);
   }
   if (nsmoothing_only_sweeps_ <= 0) {
@@ -196,7 +209,9 @@ linearMGDriver::linearMGDriver(Mesh *pm, ParameterInput *pin, NewtonRaphsonDrive
   }
   if (Globals::my_rank == 0) {
     std::cout << "[LINEAR_MG_CONFIG] threshold=" << eps_
-              << " max_vcycles=" << max_vcycles_ << std::endl;
+              << " max_vcycles=" << max_vcycles_
+              << " divergence_patience=" << divergence_patience_
+              << " max_transient_growth=" << max_transient_growth_ << std::endl;
   }
   // The linear solve acts on Newton corrections, so its physical boundary
   // condition need not be the same type as the full-state hydro/NR boundary.
@@ -502,6 +517,10 @@ linearMGDriver::~linearMGDriver() {
   delete [] temp;
 }
 
+void linearMGDriver::SynchronizeCorrectionBoundaries(int stage) {
+  linmgtlist_->DoTaskListOneStage(pmy_mesh_, stage);
+}
+
 
 //----------------------------------------------------------------------------------------
 //! \brief Report coefficient contrast and coarse-operator consistency by MG level.
@@ -519,6 +538,7 @@ void linearMGDriver::PrintCoefficientDiagnostics() {
                     std::numeric_limits<Real>::max()};
     Real vmax[11] = {0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
                      0.0, 0.0, 0.0, 0.0, 0.0};
+    Real sums[4] = {0.0, 0.0, 0.0, 0.0};
     long long invalid_rows[2] = {0, 0};
     int nx = 0, ny = 0, nz = 0;
     if (!root_grid) {
@@ -540,6 +560,16 @@ void linearMGDriver::PrintCoefficientDiagnostics() {
       for (int k = ks; k <= ke; ++k) {
         for (int j = js; j <= je; ++j) {
           for (int i = is; i <= ie; ++i) {
+            for (int n = 0; n < ncoeff_; ++n) {
+              const Real value = c(n,k,j,i);
+              sums[0] += std::abs(value);
+              sums[1] += value*value;
+            }
+            for (int n = 0; n < 7; ++n) {
+              const Real value = a(n,k,j,i);
+              sums[2] += std::abs(value);
+              sums[3] += value*value;
+            }
             const Real dccs = c(linearSolver::DCCS,k,j,i);
             const Real diag = a(linearSolver::CCC,k,j,i);
             const Real diffusion_diag = std::abs(diag - dccs);
@@ -623,12 +653,14 @@ void linearMGDriver::PrintCoefficientDiagnostics() {
 #ifdef MPI_PARALLEL
     MPI_Allreduce(MPI_IN_PLACE, vmin, 9, MPI_ATHENA_REAL, MPI_MIN, MPI_COMM_WORLD);
     MPI_Allreduce(MPI_IN_PLACE, vmax, 11, MPI_ATHENA_REAL, MPI_MAX, MPI_COMM_WORLD);
+    MPI_Allreduce(MPI_IN_PLACE, sums, 4, MPI_ATHENA_REAL, MPI_SUM, MPI_COMM_WORLD);
     MPI_Allreduce(MPI_IN_PLACE, invalid_rows, 2, MPI_LONG_LONG, MPI_SUM,
                   MPI_COMM_WORLD);
 #endif
     if (Globals::my_rank == 0) {
       const Real face_contrast = vmax[2]/std::max(vmin[2], TINY_NUMBER);
-      std::cout << "[NRFLD coefficients] kind=" << kind << " level=" << lev
+      std::cout << "[NRFLD coefficients] solve=" << coefficient_diagnostic_count_
+                << " kind=" << kind << " level=" << lev
                 << " cells=" << nx << "x" << ny << "x" << nz
                 << " DCCS=[" << vmin[0] << "," << vmax[0] << "]"
                 << " diffusion_diag=[" << vmin[1] << "," << vmax[1] << "]"
@@ -645,6 +677,13 @@ void linearMGDriver::PrintCoefficientDiagnostics() {
                 << " positive_or_nonfinite_offdiag=" << invalid_rows[1]
                 << " row_error_max=" << vmax[5]
                 << " face_asymmetry_max=" << vmax[6] << std::endl;
+      std::cout << "[NRFLD coefficient fingerprint] solve="
+                << coefficient_diagnostic_count_
+                << " kind=" << kind << " level=" << lev
+                << " coeff_l1=" << sums[0]
+                << " coeff_l2=" << std::sqrt(sums[1])
+                << " matrix_l1=" << sums[2]
+                << " matrix_l2=" << std::sqrt(sums[3]) << std::endl;
     }
   };
 
@@ -769,6 +808,8 @@ void linearMGDriver::Solve(int stage, Real dt) {
   // std::cout << "linearMG solve finished at " << Globals::my_rank << std::endl;
 
   // Return the result
+  if (handoff_diagnostics_ && handoff_diagnostic_count_ < handoff_diagnostic_limit_)
+    PrintHandoffDiagnostic("mg_end", true);
 #pragma omp parallel for num_threads(nthreads_)
   for (auto itr = vmg_.begin(); itr < vmg_.end(); itr++) {
     linearMG *pmg = static_cast<linearMG*>(*itr);
@@ -781,7 +822,11 @@ void linearMGDriver::Solve(int stage, Real dt) {
   }
 
   // std::cout << "Result retrieved from linearMG at " << Globals::my_rank << std::endl;
+  if (handoff_diagnostics_ && handoff_diagnostic_count_ < handoff_diagnostic_limit_)
+    PrintHandoffDiagnostic("retrieved", false);
   linmgtlist_->DoTaskListOneStage(pmy_mesh_, stage);
+  if (handoff_diagnostics_ && handoff_diagnostic_count_ < handoff_diagnostic_limit_)
+    PrintHandoffDiagnostic("boundary", false);
   // MG and MeshRefinement use slightly different coarse/fine ghost
   // interpolation.  Polish the returned correction with the exact
   // MeshBlock boundary operator used by NRFLD, so the Newton step satisfies
@@ -848,6 +893,9 @@ void linearMGDriver::Solve(int stage, Real dt) {
     linmgtlist_->DoTaskListOneStage(pmy_mesh_, stage);
   }
   // std::cout << "linearMG boundary conditions applied." << std::endl;
+  if (handoff_diagnostics_ && handoff_diagnostic_count_ < handoff_diagnostic_limit_)
+    PrintHandoffDiagnostic("fine_sweeps", false);
+  ++handoff_diagnostic_count_;
 // #pragma omp parallel for num_threads(nthreads_)
 //   for (auto itr = vmg_.begin(); itr < vmg_.end(); itr++) {
 //     linearMG *pmg = static_cast<linearMG*>(*itr);

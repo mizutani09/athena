@@ -460,7 +460,7 @@ NewtonSolveResult NewtonRaphsonDriver::Solve_general(int stage, Real dt) {
   }
   // Optional physics-specific finite-difference checks run after the initial
   // residual and Jacobian have been assembled, and must restore that state.
-  for (auto pnr : vnr_) pnr->RunJacobianDiagnostic(dt_);
+  RunJacobianDiagnostics();
 
   int n = 0;
   NewtonResidualNorms norms;
@@ -901,6 +901,10 @@ NewtonSolveResult NewtonRaphsonDriver::Solve_general(int stage, Real dt) {
   return result;
 }
 
+void NewtonRaphsonDriver::RunJacobianDiagnostics() {
+  for (auto pnr : vnr_) pnr->RunJacobianDiagnostic(dt_);
+}
+
 void NewtonRaphsonDriver::HandleSolveResult(const NewtonSolveResult &result) const {
   if (result.IsSuccess()) return;
   std::stringstream msg;
@@ -948,6 +952,7 @@ void NewtonRaphsonDriver::SolveOneCycle(bool solve_direction) {
     for (auto itr = vnr_.begin(); itr < vnr_.end(); ++itr)
       (*itr)->delta_u_.ZeroClear();
     plmgd_->Solve(stage_, dt_);
+    RunDirectionDiagnostic();
   }
   nrtlist_post_->DoTaskListOneStage(stage_);
   return;

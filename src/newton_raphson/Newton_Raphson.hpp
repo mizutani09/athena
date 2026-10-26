@@ -249,6 +249,8 @@ class NewtonRaphsonDriver {
   // void SolveIterativeFixedTimes();
 
   void CalculateDefectNorms(NewtonResidualNorms &norms);
+  virtual void RunJacobianDiagnostics();
+  virtual void RunDirectionDiagnostic() {}
   // void CalculateMatrix();
 
   // // small functions

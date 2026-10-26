@@ -175,6 +175,7 @@ class NRFLD : public NewtonRaphson {
                      const AthenaArray<Real> &derivetive) final;
 
   friend class NewtonRaphsonDriver;
+  friend class NRFLDDriver;
   friend class NewtonRaphsonTaskList;
   friend class NRBoundaryValues;
   friend class linearMGDriver;
@@ -227,6 +228,8 @@ class NRFLDDriver : public NewtonRaphsonDriver {
   // virtual ~NRFLDDriver();
   NRFLDDriver(Mesh *pm, ParameterInput *pin);
   ~NRFLDDriver();
+  void RunJacobianDiagnostics() final;
+  void RunDirectionDiagnostic() final;
 
   // void Solve(int step, Real dt = 0.0) final;
 
@@ -237,7 +240,11 @@ class NRFLDDriver : public NewtonRaphsonDriver {
   friend class linearMGDriver;
   friend class linearMG;
 
-  // linearMGDriver *plmgd;
+  // Single-rank, periodic, uncoupled Test C diagnostics; disabled by default.
+  void CheckGlobalJacobian(bool actual_direction);
+  bool global_jv_{false};
+  int global_jv_iteration_{0}, global_jv_solve_{0};
+  Real global_jv_epsilon_{1.e-4};
 
  protected:
 };

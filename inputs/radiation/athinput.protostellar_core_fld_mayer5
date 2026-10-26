@@ -117,6 +117,10 @@ niteration   = -1
 # Stop earlier when the requested linear tolerance is reached; otherwise return
 # the best correction after this many V-cycles.  Test 30 before changing the default.
 linear_max_vcycles = 100
+# Reject the first worsening V-cycle by default.  A value of 2 is an opt-in
+# bounded non-monotone control and must pass the same-restart collapse gate.
+linear_divergence_patience = 1
+linear_max_transient_growth = 2.0
 nr_threshold = 1.0e-5
 # If the strict target cannot be reached, accept only a finite iterate satisfying
 # both relaxed limits.  These values are intended for the localized ambient/AMR

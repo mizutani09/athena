@@ -77,6 +77,7 @@ class linearMGDriver: public MultigridDriver {
   bool GetSmoothingOnly() const { return smoothing_only_; }
   void SetCoarseCorrectionScale(Real value) { coarse_corr_scale_ = value; }
   Real GetCoarseCorrectionScale() const { return coarse_corr_scale_; }
+  void SynchronizeCorrectionBoundaries(int stage);
   void ProlongateOctetBoundariesFluxCons(AthenaArray<Real> &dst,
                  AthenaArray<Real> &cbuf, const AthenaArray<bool> &ncoarse) final;
 
@@ -90,6 +91,9 @@ class linearMGDriver: public MultigridDriver {
                                int ck, int cj, int ci,
                                int fk, int fj, int fi) final;
   void PrintCoefficientDiagnostics();
+  void PrintHandoffDiagnostic(const char *stage, bool native);
+  bool handoff_diagnostics_{false};
+  int handoff_diagnostic_limit_{4}, handoff_diagnostic_count_{0};
 
   LinearMGBoundaryTaskList *linmgtlist_;
   NewtonRaphsonDriver *pnrd_;

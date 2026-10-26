@@ -52,7 +52,7 @@ struct NRTask {
 
 class NewtonRaphsonTaskList {
  public:
-  enum class Mode {coeff, post};
+  enum class Mode {coeff, post, boundary};
   NewtonRaphsonTaskList(NewtonRaphsonDriver *pmd, Mode mode);
 
   void DoTaskListOneStage(int stage);

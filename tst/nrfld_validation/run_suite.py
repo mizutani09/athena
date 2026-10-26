@@ -69,6 +69,8 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--diffusion-resolution", type=int, default=16)
     parser.add_argument("--diffusion-block-size", type=int, default=8)
     parser.add_argument("--couple-nlim", type=int, default=100)
+    parser.add_argument("--linear-divergence-patience", type=int, default=None)
+    parser.add_argument("--linear-max-transient-growth", type=float, default=2.0)
     parser.add_argument(
         "--run-radiative-shock",
         action="store_true",
@@ -279,6 +281,15 @@ def case_parameters(case: str, args: argparse.Namespace) -> dict[str, Any]:
         f"time/ncycle_out={args.couple_nlim}",
         "job/problem_id=nrfld_couple_validation",
     ]
+    if args.linear_divergence_patience is not None:
+        if (args.linear_divergence_patience < 1
+                or args.linear_max_transient_growth < 1.0):
+            raise ValueError("linear patience must be >=1 and transient growth >=1")
+        overrides.extend([
+            f"nrfld/linear_divergence_patience={args.linear_divergence_patience}",
+            "nrfld/linear_max_transient_growth="
+            f"{args.linear_max_transient_growth:.17g}",
+        ])
     return {
         "problem": "nrfld_couple",
         "input": "inputs/radiation/athinput.nrfld_couple",
@@ -399,6 +410,18 @@ def run_case(
     output_dir.mkdir(parents=True, exist_ok=True)
     input_path = repo / parameters["input"]
     shutil.copy2(input_path, case_dir / "input.used")
+    command_overrides = []
+    added_nrfld = []
+    for override in parameters["overrides"]:
+        key, value = override.split("=", 1)
+        if key in ("nrfld/linear_divergence_patience",
+                   "nrfld/linear_max_transient_growth"):
+            added_nrfld.append(f"{key.split('/', 1)[1]} = {value}")
+        else:
+            command_overrides.append(override)
+    if added_nrfld:
+        with (case_dir / "input.used").open("a", encoding="utf-8") as stream:
+            stream.write("\n<nrfld>\n" + "\n".join(added_nrfld) + "\n")
     command = []
     if parameters["ranks"] > 1:
         command.extend(["mpirun", "-np", str(parameters["ranks"])])
@@ -409,7 +432,7 @@ def run_case(
             str(case_dir / "input.used"),
             "-d",
             str(output_dir),
-            *parameters["overrides"],
+            *command_overrides,
         ]
     )
     try:
