@@ -1,0 +1,7 @@
+# Factor-two convergence resolution. Start from athinput.st35gm03n07_fld and apply:
+#   mesh/nx1=512 mesh/nx2=512 mesh/nx3=512
+#   meshblock/nx1=32 meshblock/nx2=32 meshblock/nx3=32
+base = athinput.st35gm03n07_fld
+mesh_nx = 512
+meshblock_nx = 32
+problem_id = st35gm03n07_fld_512

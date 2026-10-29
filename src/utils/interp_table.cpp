@@ -95,3 +95,28 @@ Real InterpTable2D::interpolate(int var, Real x2, Real x1) {
           + (1-xrl)*(1-yrl)*data(var,xil+1,yil+1);
   return out;
 }
+
+//! Exact x2 derivative of the same piecewise-bilinear interpolant used by
+//! interpolate().  At an interior knot this selects the cell on the upper-x2
+//! side, matching an infinitesimal forward perturbation of interpolate().
+Real InterpTable2D::interpolateX2Derivative(int var, Real x2, Real x1) {
+  const Real x = (x2 - x2min_) * x2norm_;
+  const Real y = (x1 - x1min_) * x1norm_;
+  int xil = static_cast<int>(x);
+  int yil = static_cast<int>(y);
+  if (xil < 0) {
+    xil = 0;
+  } else if (xil >= nx2_ - 1) {
+    xil = nx2_ - 2;
+  }
+  if (yil < 0) {
+    yil = 0;
+  } else if (yil >= nx1_ - 1) {
+    yil = nx1_ - 2;
+  }
+  const Real yrl = 1 + yil - y;
+  const Real lower_slope = data(var, xil + 1, yil) - data(var, xil, yil);
+  const Real upper_slope = data(var, xil + 1, yil + 1)
+                         - data(var, xil, yil + 1);
+  return x2norm_ * (yrl*lower_slope + (1.0 - yrl)*upper_slope);
+}

@@ -1,0 +1,8 @@
+# Factor-two convergence resolution. Start from athinput.st35gm03n07_fld and apply:
+#   mesh/nx1=470 mesh/nx2=470 mesh/nx3=470
+#   meshblock/nx1=47 meshblock/nx2=47 meshblock/nx3=47
+# This file is materialized and validated by scripts/materialize_rsg_input.py.
+base = athinput.st35gm03n07_fld
+mesh_nx = 470
+meshblock_nx = 47
+problem_id = st35gm03n07_fld_470

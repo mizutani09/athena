@@ -1,0 +1,150 @@
+<comment>
+problem = Chiavassa et al. (2011) st35gm03n07, nearest NR-MG-compatible grid
+configure = --prob=rsg_star_in_box --coord=cartesian --eos=general/eos_table -nrmgfld -hdf5 -mpi
+
+<job>
+problem_id = st35gm03n07_fld
+
+<output1>
+file_type = hst
+dt = 3.9270
+
+<output2>
+file_type = hdf5
+variable = prim
+id = prim
+dt = 58.905
+
+<output3>
+file_type = hdf5
+variable = uov
+id = uov
+dt = 58.905
+
+<output4>
+file_type = rst
+dt = 78.540
+
+<time>
+cfl_number = 0.30
+nlim = -1
+tlim = 14345.0
+integrator = rk2
+xorder = 2
+ncycle_out = 10
+
+<mesh>
+num_threads = 1
+refinement = none
+nx1 = 256
+nx2 = 256
+nx3 = 256
+x1min = -1010.5
+x1max = 1010.5
+x2min = -1010.5
+x2max = 1010.5
+x3min = -1010.5
+x3max = 1010.5
+ix1_bc = user
+ox1_bc = user
+ix2_bc = user
+ox2_bc = user
+ix3_bc = user
+ox3_bc = user
+
+<meshblock>
+nx1 = 32
+nx2 = 32
+nx3 = 32
+
+<hydro>
+gamma = 1.6666666666666667
+mu = 1.3
+rho_unit = 1.0e-8
+egas_unit = 1.0e5
+leng_unit = 6.957e10
+dfloor = 9.9e-5
+pfloor = 1.0e-20
+eos_file_name = data/eos/rsg_nata_eos.tab
+eos_file_type = ascii
+eos_read_ratios = true
+eos_rho_unit = 1.0e-8
+eos_egas_unit = 1.0e5
+eos_temp_unit = 1.0
+T_unit = 1.0
+dens_pow = -1.0
+eos_table_clamp = false
+
+<fld>
+is_couple = true
+only_rad = false
+cut_diff = false
+include_radiation_force = false
+include_mixed_frame_terms = false
+fixed_flux_limiter = false
+fixed_u_rad = false
+use_opacity_table = true
+opacity_table_file = data/opacity/rsg_gray_opacity.h5
+opacity_table_file_type = hdf5
+opacity_table_axis = trho
+opacity_table_domain_policy = error
+const_opacity_P = 0.0
+const_opacity_R = 1.0
+
+<nrfld>
+show_defect = false
+diagnostic_verbosity = 0
+linear_solver = fgmres
+coarse_operator = galerkin
+galerkin_zero_physical_boundaries = true
+fgmres_threshold = 1.0e-8
+fgmres_restart = 20
+fgmres_max_iterations = 200
+fgmres_mg_vcycles = 1
+mgmode = MGI
+smoother = jacobi
+prolongation = constant
+npresmooth = 2
+npostsmooth = 2
+cache_coefficient_hierarchy = true
+omega = 0.7
+threshold = 0.1
+niteration = 30
+nr_threshold = 1.0e-8
+nr_niteration = 60
+backward_error_convergence = true
+max_update_fraction = 0.2
+ix1_bc = user
+ox1_bc = user
+ix2_bc = user
+ox2_bc = user
+ix3_bc = user
+ox3_bc = user
+linearMG_ix1_bc = user
+linearMG_ox1_bc = user
+linearMG_ix2_bc = user
+linearMG_ox2_bc = user
+linearMG_ix3_bc = user
+linearMG_ox3_bc = user
+
+<problem>
+model_name = st35gm03n07_athena_fld
+hse_model_file = data/ic/st35gm03n07_hse.dat
+potential_mass_msun = 12.0
+gas_mass_msun = 3.0
+radius_rsun = 830.0
+luminosity_lsun = 91932.0
+surface_temperature = 3487.0
+core_radius_fraction = 0.2
+outer_flattening_fraction = 1.2
+heating_radius_fraction = 0.2
+core_drag_timescale = -1.0
+drag_tau_tdyn = 0.5
+drag_taper_start_tdyn = 0.5
+drag_taper_end_tdyn = 4.0
+polytropic_index = 1.5
+velocity_perturb_fraction = 1.0e-4
+perturb_seed = 350307
+grid_mass_tolerance = 5.0e-3
+boundary_scale_height_factor = 1.0
+radiation_bath_temperature = 10.0

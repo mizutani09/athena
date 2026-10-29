@@ -1,0 +1,21 @@
+model: st35gm03n07_athena_fld
+status: validation-snapshot
+source:
+  git_commit: FILL_AT_RUN_TIME
+  dirty_diff: FILL_AT_RUN_TIME
+build:
+  configure: scripts/configure_rsg.sh
+  compiler: FILL_AT_RUN_TIME
+  mpi: FILL_AT_RUN_TIME
+physics:
+  eos_sha256: 837819aaa71ba3fa5342cdc0849904fdfb04ae50fe4dccf5dfec788aa3460a06
+  eos_qualification: validation-only-photon-terms-present
+  opacity_sha256: cc5912dd3896c39c1ea3fde0d315dc16c136303a8c363ab58fa56b705b909aaf
+  hse_profile_sha256: 6e50b1d9ac49b35f2707b0f0418a61d3b6efa0dc06e5a9cb6ae3d2aa03deea83
+initialization:
+  perturb_seed: 350307
+  relaxation_interval_years: 4.0
+run:
+  input_sha256: FILL_AT_RUN_TIME
+  meshblock_decomposition: FILL_AT_RUN_TIME
+  restart_provenance: FILL_AT_RUN_TIME

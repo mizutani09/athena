@@ -138,6 +138,9 @@ class Multigrid {
   AthenaArray<Real>& GetCurrentSource() { return src_[current_level_]; }
   AthenaArray<Real>& GetCurrentOldData() { return uold_[current_level_]; }
   AthenaArray<Real>& GetCurrentCoefficient() { return coeff_[current_level_]; }
+  AthenaArray<Real>& GetDefectAtLevel(int level) { return def_[level]; }
+  void PrintGalerkinMismatch(const AthenaArray<Real> &fine_defect_before,
+                             int driver_coarse_level, int vcycle);
 
   // actual implementations of Multigrid operations
   void Restrict(AthenaArray<Real> &dst, const AthenaArray<Real> &src,
@@ -291,7 +294,8 @@ class MultigridDriver {
   std::vector<Multigrid*> vmg_;
   Multigrid *mgroot_;
   bool fsubtract_average_, ffas_, redblack_, symmetric_rb_, needinit_, fshowdef_,
-       smoothing_only_, stage_diagnostics_, stage_diagnostics_active_;
+       smoothing_only_, stage_diagnostics_, stage_diagnostics_active_,
+       residual_minimizing_prolongation_;
   bool relative_defect_;
   Real last_ave_;
   Real eps_, dt_, coarse_corr_scale_, stage_diagnostic_reference_scale_,

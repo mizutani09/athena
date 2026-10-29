@@ -342,6 +342,8 @@ NRFLD::NRFLD(MeshBlock *pmb, ParameterInput *pin) :
     // radiation correction in the mixed-frame gas stencil; Newton backtracking
     // still controls acceptance of the complete nonlinear update.
     max_update_fraction_(pin->GetOrAddReal("nrfld", "max_update_fraction", -1.0)),
+    backward_error_convergence_(pin->GetOrAddBoolean(
+        "nrfld", "backward_error_convergence", false)),
     fixed_linear_coefficients_initialized_(false),
     jacobian_check_(pin->GetOrAddBoolean("nrfld", "jacobian_check", false)),
     jacobian_check_done_(false),
@@ -1072,7 +1074,28 @@ void NRFLD::CalculateDefect(AthenaArray<Real> &def, const AthenaArray<Real> &u,
                              std::max(std::abs(u_gas(k,j,i)),
                                       std::abs(pfld->u_gas(k,j,i))));
         gas_scale = std::max(gas_scale, static_cast<Real>(1.0e-30));
-        gas_defect_(k,j,i) = Fg/gas_scale;
+        const Real normalized_gas_residual = Fg/gas_scale;
+        gas_defect_(k,j,i) = normalized_gas_residual;
+        if (backward_error_convergence_) {
+          // In the stiff LTE limit, adjacent floating-point states can straddle
+          // Fg=0 while both normalized residuals remain much larger than the
+          // requested tolerance.  The Newton backward error measures the state
+          // perturbation needed to solve the local equation and remains
+          // meaningful in that case.  This changes convergence measurement
+          // only; the raw residual and Jacobian still define the Newton update.
+          const Real jacobian = derivetive_(
+              NewtonRaphsonFLD::dFg_deg,k,j,i);
+          const Real state_scale = std::max(
+              std::max(std::abs(u_gas(k,j,i)),
+                       std::abs(pfld->u_gas(k,j,i))),
+              static_cast<Real>(1.0e-30));
+          if (std::isfinite(jacobian) && std::abs(jacobian) > TINY_NUMBER) {
+            const Real backward_error = std::abs(Fg/jacobian)/state_scale;
+            gas_defect_(k,j,i) = std::copysign(
+                std::min(std::abs(normalized_gas_residual), backward_error),
+                normalized_gas_residual);
+          }
+        }
         if (pfld->fixed_u_rad) {
           def(k,j,i) = gas_defect_(k,j,i);
         } else if (pfld->only_rad) {
@@ -1221,9 +1244,16 @@ void NRFLD::AddDifference(AthenaArray<Real> &u_rad,
         const Real mixed_delta = mixed_active ? MixedDriftCorrection(
             mixed_drift_, last_delta_rad_, k,j,i,
             0.5/pmy_block_->pcoord->dx1f(is)) : 0.0;
+        // Reconstruct the gas correction from the radiation correction that
+        // will actually be applied.  In the non-mixed case last_delta_rad_
+        // stores the applied update (including a positivity-floor clip), while
+        // the elimination formula expects an unscaled Newton direction.
+        // Using delta_ur here would make the gas and radiation components
+        // inconsistent whenever the positivity floor clips the trial update.
+        const Real coupled_delta_ur = mixed_active ? last_delta_rad_(1,k,j,i)
+            : last_delta_rad_(1,k,j,i)/step_scale;
         const Real egas_delta = -(derivetive(NewtonRaphsonFLD::Fg,k,j,i)
-            + derivetive(NewtonRaphsonFLD::dFg_dEr,k,j,i)*
-                (mixed_active ? last_delta_rad_(1,k,j,i) : delta_ur)
+            + derivetive(NewtonRaphsonFLD::dFg_dEr,k,j,i)*coupled_delta_ur
             - pmy_driver_->dt_*mixed_delta)/denom;
         Real egas_floor = TINY_NUMBER;
 #if GENERAL_EOS

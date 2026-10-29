@@ -1,0 +1,10 @@
+# Generated initial RSG model
+filename = st35gm03n07_hse.dat
+generator = tools/rsg/make_hse_model.py
+sidecar = st35gm03n07_hse.dat.json
+grid_for_mass_iteration = 117
+density_floor_g_cm3 = 1.0e-12
+sha256 = 6e50b1d9ac49b35f2707b0f0418a61d3b6efa0dc06e5a9cb6ae3d2aa03deea83
+mapped_mass_117_msun = 2.998652534015071
+verified_mapped_mass_128_msun = 2.9985641985753575
+qualification = numerical-integration test using the validation-only NATA EOS

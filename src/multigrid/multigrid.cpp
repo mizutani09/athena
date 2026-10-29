@@ -14,6 +14,7 @@
 #include <cstddef>    // std::size_t
 #include <cstring>    // memset, memcpy
 #include <iostream>
+#include <limits>
 #include <sstream>    // stringstream
 #include <stdexcept>  // runtime_error
 #include <string>     // c_str()
@@ -603,6 +604,76 @@ void Multigrid::CalculateDefectBlock() {
                   -ll, is, ie, js, je, ks, ke, th);
 
   return;
+}
+
+
+//----------------------------------------------------------------------------------------
+//! \brief Compare the rediscretized coarse action with R A_h P for the actual correction.
+//!
+//! The fine residual before prolongation is r_h and the residual immediately after adding
+//! the coarse correction is r'_h.  Their difference is A_h P e_H without requiring a
+//! second operator application.  On the coarse grid, A_H e_H = b_H-r_H.  Restricting the
+//! former therefore gives a direct, mode-specific Galerkin mismatch diagnostic.
+void Multigrid::PrintGalerkinMismatch(const AthenaArray<Real> &fine_defect_before,
+                                      int driver_coarse_level, int vcycle) {
+  const int fine_level = current_level_;
+  const int coarse_level = fine_level - 1;
+  if (coarse_level < 0 || fine_defect_before.GetSize() == 0) return;
+
+  const AthenaArray<Real> &fine_after = def_[fine_level];
+  const AthenaArray<Real> &coarse_src = src_[coarse_level];
+  const AthenaArray<Real> &coarse_def = def_[coarse_level];
+  const Real scale = pmy_driver_->coarse_corr_scale_;
+  const int ll = nlevel_ - fine_level;
+  const int is = ngh_, js = ngh_, ks = ngh_;
+  const int cie = is + (size_.nx1 >> (ll + 1)) - 1;
+  const int cje = js + (size_.nx2 >> (ll + 1)) - 1;
+  const int cke = ks + (size_.nx3 >> (ll + 1)) - 1;
+
+  Real ahp2 = 0.0, ah2 = 0.0, mismatch2 = 0.0, dot = 0.0;
+  Real max_relative = 0.0;
+  for (int n = 0; n < nvar_; ++n) {
+    for (int k = ks; k <= cke; ++k) {
+      const int fk = 2*k - ks;
+      for (int j = js; j <= cje; ++j) {
+        const int fj = 2*j - js;
+        for (int i = is; i <= cie; ++i) {
+          const int fi = 2*i - is;
+          Real rahp = 0.0;
+          for (int ok = 0; ok < 2; ++ok)
+            for (int oj = 0; oj < 2; ++oj)
+              for (int oi = 0; oi < 2; ++oi)
+                rahp += fine_defect_before(n, fk+ok, fj+oj, fi+oi)
+                      - fine_after(n, fk+ok, fj+oj, fi+oi);
+          rahp *= 0.125;
+          const Real ahe = scale*(coarse_src(n,k,j,i) - coarse_def(n,k,j,i));
+          const Real mismatch = rahp - ahe;
+          ahp2 += rahp*rahp;
+          ah2 += ahe*ahe;
+          mismatch2 += mismatch*mismatch;
+          dot += rahp*ahe;
+          max_relative = std::max(max_relative, std::abs(mismatch)
+              /std::max({std::abs(rahp), std::abs(ahe), TINY_NUMBER}));
+        }
+      }
+    }
+  }
+  const Real denom = std::sqrt(std::max(ahp2, ah2));
+  const Real relative_l2 = std::sqrt(mismatch2)/std::max(denom, TINY_NUMBER);
+  const Real cosine = dot/std::max(std::sqrt(ahp2*ah2),
+                                   std::numeric_limits<Real>::min());
+  if (Globals::my_rank == 0) {
+    std::cout << "[NRFLD Galerkin] vcycle=" << vcycle
+              << " driver_coarse_level=" << driver_coarse_level
+              << " block_gid=" << (pmy_block_ == nullptr ? -1 : pmy_block_->gid)
+              << " local_coarse_level=" << coarse_level
+              << " local_fine_level=" << fine_level
+              << " rahp_l2=" << std::sqrt(ahp2)
+              << " scaled_ahe_l2=" << std::sqrt(ah2)
+              << " mismatch_relative_l2=" << relative_l2
+              << " mismatch_max_relative=" << max_relative
+              << " cosine=" << cosine << std::endl;
+  }
 }
 
 

@@ -1,0 +1,13 @@
+# RSG validation EOS snapshot
+filename = rsg_nata_eos.tab
+athena_format = general/eos_table ASCII, 6 fields (P/u, u/P, Gamma1, T, S[rho,u], S[rho,P])
+source = /home/kosuke/simulation/nata_eos/runs/athena_solar_fine_safe/nata_eos_rho_u_table.dat
+source_sha256 = 89a7bc17c707c4b9a7fcf1c2fbf26534a3f87e701a1ffa28a1b7242c105630c6
+generator = tools/rsg/make_athena_eos_from_nata.py
+sha256 = 837819aaa71ba3fa5342cdc0849904fdfb04ae50fe4dccf5dfec788aa3460a06
+composition = X=0.70, Y=0.28, Z=0.02, GS98-like metals
+domain = log10(rho/[g cm^-3]) -18..-3; log10(specific-energy-or-P/rho) 8..14.5
+policy = eos_table_clamp=false
+qualification = NUMERICAL-INTEGRATION-TEST ONLY
+known_limitation = NATA source includes photon pressure, energy, and entropy; this double-counts radiation when coupled to FLD
+production_requirement = regenerate/export the material-only NATA EOS before a physical RSG run

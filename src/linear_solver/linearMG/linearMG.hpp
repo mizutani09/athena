@@ -92,6 +92,9 @@ class linearMGDriver: public MultigridDriver {
                                int fk, int fj, int fi) final;
   void PrintCoefficientDiagnostics();
   void PrintHandoffDiagnostic(const char *stage, bool native);
+  void SolveUniformPCG(int stage);
+  void SolveFGMRES(int stage);
+  void BuildGalerkinHierarchy();
   bool handoff_diagnostics_{false};
   int handoff_diagnostic_limit_{4}, handoff_diagnostic_count_{0};
 
@@ -112,6 +115,14 @@ class linearMGDriver: public MultigridDriver {
   bool coefficient_diagnostics_;
   int coefficient_diagnostic_limit_;
   int coefficient_diagnostic_count_;
+  bool uniform_pcg_;
+  Real uniform_pcg_threshold_;
+  int uniform_pcg_max_iterations_;
+  bool fgmres_;
+  Real fgmres_threshold_;
+  int fgmres_restart_, fgmres_max_iterations_, fgmres_mg_vcycles_;
+  bool galerkin_coarse_operator_;
+  bool experimental_27_point_galerkin_;
 };
 
 

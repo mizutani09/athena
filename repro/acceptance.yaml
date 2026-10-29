@@ -1,0 +1,20 @@
+model: st35gm03n07_athena_fld
+numerical:
+  eos_or_opacity_clamps: 0
+  reduced_flux_max: 1.0
+  restart_relative_tolerance: 3.0e-5
+  mapped_mass_relative_tolerance: 5.0e-3
+  meshblock_dimension_power_of_two: true
+microphysics:
+  production_eos_must_exclude_photon_pressure_energy_entropy: true
+  opacity_composition_and_license_must_be_recorded: true
+steady_state:
+  discard_initial_years: 4.0
+  preferred_production_years: 5.0
+historical_comparison_engineering_tolerances:
+  luminosity_fraction: 0.05
+  radius_fraction: 0.05
+  effective_temperature_fraction: 0.03
+notes:
+  - Report measured offsets; do not tune until all means match.
+  - Published one-sigma fluctuations are reference statistics, not cross-code tolerances.

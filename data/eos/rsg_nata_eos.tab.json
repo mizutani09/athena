@@ -1,0 +1,17 @@
+{
+  "source": "/home/kosuke/simulation/nata_eos/runs/athena_solar_fine_safe/nata_eos_rho_u_table.dat",
+  "source_sha256": "89a7bc17c707c4b9a7fcf1c2fbf26534a3f87e701a1ffa28a1b7242c105630c6",
+  "output": "/home/kosuke/simulation/athena/data/eos/rsg_nata_eos.tab",
+  "output_sha256": "837819aaa71ba3fa5342cdc0849904fdfb04ae50fe4dccf5dfec788aa3460a06",
+  "nvar": 6,
+  "nx2": 326,
+  "nrho": 301,
+  "logx2": [
+    8.0,
+    14.5
+  ],
+  "logrho": [
+    -18.0,
+    -3.0
+  ]
+}

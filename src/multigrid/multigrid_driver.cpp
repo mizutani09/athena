@@ -50,6 +50,7 @@ MultigridDriver::MultigridDriver(Mesh *pm, MGBoundaryFunc *MGBoundary,
     ffas_(pm->multilevel), redblack_(true), symmetric_rb_(false), needinit_(true),
     fshowdef_(false),
     smoothing_only_(false), stage_diagnostics_(false), stage_diagnostics_active_(false),
+    residual_minimizing_prolongation_(false),
     relative_defect_(false),
     eps_(-1.0), dt_(0.0), coarse_corr_scale_(1.0),
     stage_diagnostic_reference_scale_(1.0), max_transient_growth_(1.0),
@@ -1137,7 +1138,8 @@ void MultigridDriver::SolveVCycle(int npresmooth, int npostsmooth) {
   // This exposes smoothing, restriction, and prolongation separately at every local
   // multigrid level.  Octet/root levels retain their original task sequence.  When the
   // diagnostic is disabled, the original V-cycle task sequence is unchanged.
-  const bool split_block_stages = stage_diagnostics_active_
+  const bool split_block_stages =
+      (stage_diagnostics_active_ || residual_minimizing_prolongation_)
       && startlevel >= nrootlevel_ + nreflevel_;
   const int block_level_min = nrootlevel_ + nreflevel_;
   auto stage_defect = [&]() -> Real {
@@ -1193,7 +1195,7 @@ void MultigridDriver::SolveVCycle(int npresmooth, int npostsmooth) {
         after_pre = after_smooth;
         if (coarse_valid) coarse_after_restrict = after_restrict;
       }
-      if (Globals::my_rank == 0) {
+      if (stage_diagnostics_active_ && Globals::my_rank == 0) {
         std::cout << "[NRFLD MG level] vcycle=" << stage_diagnostic_vcycle_
                   << " phase=down fine_level=" << fine_level
                   << " before_smooth=" << before_smooth
@@ -1227,6 +1229,8 @@ void MultigridDriver::SolveVCycle(int npresmooth, int npostsmooth) {
     if (split_block_stages && fine_level >= block_level_min) {
       const bool coarse_valid = coarse_level >= block_level_min;
       Real before_prolong = 0.0;
+      std::vector<AthenaArray<Real>> fine_defect_before;
+      std::vector<AthenaArray<Real>> fine_data_before;
       if (coarse_valid) {
         // The previous upward smoothing leaves the correction interior updated but its
         // ghost zones stale.  Refresh them before measuring the coarse equation.  The
@@ -1234,12 +1238,94 @@ void MultigridDriver::SolveVCycle(int npresmooth, int npostsmooth) {
         mgtlist_->SetMGTaskListBoundaryCommunication();
         mgtlist_->DoTaskListOneStage(this);
         before_prolong = stage_defect();
+        fine_defect_before.reserve(vmg_.size());
+        if (residual_minimizing_prolongation_)
+          fine_data_before.reserve(vmg_.size());
+        for (auto *base : vmg_) {
+          Multigrid *pmg = static_cast<Multigrid*>(base);
+          fine_defect_before.push_back(
+              pmg->GetDefectAtLevel(pmg->GetCurrentLevel() + 1));
+          if (residual_minimizing_prolongation_)
+            fine_data_before.push_back(
+                pmg->u_[pmg->GetCurrentLevel() + 1]);
+        }
       }
       OneStepToFiner(0);
-      const Real level_after_prolong = stage_defect();
+      Real level_after_prolong = stage_defect();
+      if (coarse_valid && stage_diagnostics_active_) {
+        std::size_t block = 0;
+        for (auto *base : vmg_) {
+          Multigrid *pmg = static_cast<Multigrid*>(base);
+          pmg->PrintGalerkinMismatch(fine_defect_before[block++], coarse_level,
+                                     stage_diagnostic_vcycle_);
+        }
+      }
+      Real correction_beta = 1.0;
+      if (coarse_valid && residual_minimizing_prolongation_) {
+        long double numerator = 0.0L;
+        long double denominator = 0.0L;
+        std::size_t block = 0;
+        for (auto *base : vmg_) {
+          Multigrid *pmg = static_cast<Multigrid*>(base);
+          const int level = pmg->GetCurrentLevel();
+          const int ll = pmg->nlevel_ - 1 - level;
+          const int is = pmg->ngh_, js = pmg->ngh_, ks = pmg->ngh_;
+          const int ie = is + (pmg->size_.nx1 >> ll) - 1;
+          const int je = js + (pmg->size_.nx2 >> ll) - 1;
+          const int ke = ks + (pmg->size_.nx3 >> ll) - 1;
+          const AthenaArray<Real> &before = fine_defect_before[block];
+          const AthenaArray<Real> &after = pmg->def_[level];
+          for (int n = 0; n < pmg->nvar_; ++n)
+            for (int k = ks; k <= ke; ++k)
+              for (int j = js; j <= je; ++j)
+                for (int i = is; i <= ie; ++i) {
+                  const long double q = static_cast<long double>(before(n,k,j,i))
+                                      - after(n,k,j,i);
+                  numerator += static_cast<long double>(before(n,k,j,i))*q;
+                  denominator += q*q;
+                }
+          ++block;
+        }
+#ifdef MPI_PARALLEL
+        long double sums[2] = {numerator, denominator};
+        MPI_Allreduce(MPI_IN_PLACE, sums, 2, MPI_LONG_DOUBLE, MPI_SUM,
+                      MPI_COMM_MULTIGRID);
+        numerator = sums[0];
+        denominator = sums[1];
+#endif
+        if (denominator > std::numeric_limits<long double>::min())
+          correction_beta = static_cast<Real>(numerator/denominator);
+        else
+          correction_beta = 0.0;
+        correction_beta = std::max(static_cast<Real>(0.0),
+                                   std::min(static_cast<Real>(1.0), correction_beta));
+
+        block = 0;
+        for (auto *base : vmg_) {
+          Multigrid *pmg = static_cast<Multigrid*>(base);
+          AthenaArray<Real> &after = pmg->u_[pmg->GetCurrentLevel()];
+          const AthenaArray<Real> &before = fine_data_before[block++];
+          for (std::size_t q = 0; q < after.GetSize(); ++q)
+            after.data()[q] = before.data()[q]
+                            + correction_beta*(after.data()[q] - before.data()[q]);
+        }
+        mgtlist_->SetMGTaskListBoundaryCommunication();
+        mgtlist_->DoTaskListOneStage(this);
+        level_after_prolong = stage_defect();
+        if (stage_diagnostics_active_ && Globals::my_rank == 0) {
+          std::cout << "[NRFLD MG coarse line search] vcycle="
+                    << stage_diagnostic_vcycle_
+                    << " coarse_level=" << coarse_level
+                    << " fine_level=" << fine_level
+                    << " numerator=" << static_cast<Real>(numerator)
+                    << " denominator=" << static_cast<Real>(denominator)
+                    << " beta=" << correction_beta
+                    << " residual=" << level_after_prolong << std::endl;
+        }
+      }
       smooth_block_level(npostsmooth);
       const Real level_after_smooth = stage_defect();
-      if (Globals::my_rank == 0) {
+      if (stage_diagnostics_active_ && Globals::my_rank == 0) {
         std::cout << "[NRFLD MG level] vcycle=" << stage_diagnostic_vcycle_
                   << " phase=up coarse_level=" << coarse_level
                   << " coarse_valid=" << coarse_valid
@@ -1260,7 +1346,7 @@ void MultigridDriver::SolveVCycle(int npresmooth, int npostsmooth) {
       OneStepToFiner(npostsmooth);
     }
   }
-  if (split_block_stages && Globals::my_rank == 0) {
+  if (stage_diagnostics_active_ && Globals::my_rank == 0) {
     std::cout << "[NRFLD MG transfer] vcycle=" << stage_diagnostic_vcycle_
               << " level=" << current_level_
               << " before_pre=" << before_pre

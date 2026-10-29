@@ -45,11 +45,17 @@ def _synthetic_fields(log_rho, log_u):
 
 
 def _write_nonideal_table(path, include_entropy=True, include_temperature=True,
-                          direct_nabla=None):
+                          direct_nabla=None, temperature_kink=False):
     limits = np.array([-2.0, 2.0])
     log_rho = np.linspace(*limits, num=33)
     log_u = np.linspace(*limits, num=41)
     x, y, log_p, log_t, log_s = _synthetic_fields(log_rho, log_u)
+    if temperature_kink:
+        # Keep T continuous while changing dlog(T)/dlog(u) at y=0.  This is
+        # used by the exchange-Jacobian regression to catch derivatives that
+        # average slopes across an interpolation knot instead of using the
+        # same piecewise-bilinear cell as the nonlinear residual.
+        log_t = log_t + 0.25*np.maximum(y, 0.0)
     forward_p_over_e = 10.0**(log_p - x - y)
 
     # Inverse fields use q=log10(P/rho) as their x2 coordinate.

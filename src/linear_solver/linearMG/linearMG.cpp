@@ -69,6 +69,41 @@ Real RestrictFaceX3Plus(const AthenaArray<Real> &src, int v, int fi, int fj, int
   return 0.25*(src(v, fk+1, fj,   fi) + src(v, fk+1, fj,   fi+1)
              + src(v, fk+1, fj+1, fi) + src(v, fk+1, fj+1, fi+1));
 }
+
+int LinearMGMatrixCount(ParameterInput *pin) {
+  const std::string coarse_operator = pin->GetOrAddString(
+      "nrfld", "coarse_operator", "rediscretized");
+  // The production Galerkin path uses volume-average restriction and
+  // piecewise-constant prolongation.  R A_h P then preserves the seven-point
+  // support exactly.  Keep the wider implementation available only behind an
+  // explicitly experimental input value.
+  return coarse_operator == "galerkin_27_experimental"
+      ? linearSolver::GALERKIN_NMATRIX : linearSolver::NMATRIX;
+}
+
+inline Real ApplyMatrixRow(const AthenaArray<Real> &matrix,
+                           const AthenaArray<Real> &u,
+                           int k, int j, int i, int nmatrix) {
+  Real value = 0.0;
+  for (int n = 0; n < nmatrix; ++n) {
+    value += matrix(n,k,j,i)*u(k + linearSolver::matrix_offset_k[n],
+                               j + linearSolver::matrix_offset_j[n],
+                               i + linearSolver::matrix_offset_i[n]);
+  }
+  return value;
+}
+
+inline Real ApplyMatrixOffDiagonal(const AthenaArray<Real> &matrix,
+                                   const AthenaArray<Real> &u,
+                                   int k, int j, int i, int nmatrix) {
+  Real value = 0.0;
+  for (int n = 1; n < nmatrix; ++n) {
+    value += matrix(n,k,j,i)*u(k + linearSolver::matrix_offset_k[n],
+                               j + linearSolver::matrix_offset_j[n],
+                               i + linearSolver::matrix_offset_i[n]);
+  }
+  return value;
+}
 }
 
 //----------------------------------------------------------------------------------------
@@ -80,14 +115,18 @@ linearMGDriver::linearMGDriver(Mesh *pm, ParameterInput *pin, NewtonRaphsonDrive
                           pm->LinearMGCoeffBoundaryFunction_,
                           nullptr,
                           nullptr,
-                          1, linearSolver::NCOEFF, linearSolver::NMATRIX),
+                          1, linearSolver::NCOEFF, LinearMGMatrixCount(pin)),
       pnrd_(pnrd), cache_coefficient_hierarchy_(true),
       coefficient_hierarchy_cached_(false), npostsolve_smooth_(0),
       nsmoothing_only_sweeps_(256), direct_coarse_solve_(true),
       coarse_diagnostics_(false), coarse_direct_max_cells_(64),
       coarse_diagnostic_limit_(4), coarse_diagnostic_count_(0),
       coefficient_diagnostics_(false), coefficient_diagnostic_limit_(1),
-      coefficient_diagnostic_count_(0) {
+      coefficient_diagnostic_count_(0), uniform_pcg_(false),
+      uniform_pcg_threshold_(1.0e-10), uniform_pcg_max_iterations_(10000),
+      fgmres_(false), fgmres_threshold_(1.0e-8), fgmres_restart_(20),
+      fgmres_max_iterations_(200), fgmres_mg_vcycles_(1),
+      galerkin_coarse_operator_(false), experimental_27_point_galerkin_(false) {
   eps_ = pin->GetOrAddReal("nrfld", "threshold", -1.0);
   niter_ = pin->GetOrAddInteger("nrfld", "niteration", -1);
   max_vcycles_ = pin->GetOrAddInteger("nrfld", "linear_max_vcycles", 100);
@@ -104,6 +143,69 @@ linearMGDriver::linearMGDriver(Mesh *pm, ParameterInput *pin, NewtonRaphsonDrive
   stage_diagnostics_ = pin->GetOrAddInteger(
       "nrfld", "diagnostic_verbosity", 0) >= 1;
   smoothing_only_ = pin->GetOrAddBoolean("nrfld", "smoothing_only", false);
+  residual_minimizing_prolongation_ = pin->GetOrAddBoolean(
+      "nrfld", "residual_minimizing_prolongation", false);
+  uniform_pcg_ = pin->GetOrAddBoolean("nrfld", "uniform_pcg", false);
+  uniform_pcg_threshold_ = pin->GetOrAddReal(
+      "nrfld", "uniform_pcg_threshold", 1.0e-10);
+  uniform_pcg_max_iterations_ = pin->GetOrAddInteger(
+      "nrfld", "uniform_pcg_max_iterations", 10000);
+  std::string linear_solver = pin->GetOrAddString("nrfld", "linear_solver", "mg");
+  std::transform(linear_solver.begin(), linear_solver.end(), linear_solver.begin(),
+                 ::tolower);
+  if (uniform_pcg_ && linear_solver != "mg" && linear_solver != "uniform_pcg") {
+    std::stringstream msg;
+    msg << "### FATAL ERROR in linearMGDriver::linearMGDriver" << std::endl
+        << "nrfld/uniform_pcg=true conflicts with nrfld/linear_solver="
+        << linear_solver << "." << std::endl;
+    ATHENA_ERROR(msg);
+  }
+  if (uniform_pcg_) linear_solver = "uniform_pcg";
+  if (linear_solver == "mg") {
+    uniform_pcg_ = false;
+  } else if (linear_solver == "uniform_pcg") {
+    uniform_pcg_ = true;
+  } else if (linear_solver == "fgmres") {
+    fgmres_ = true;
+    uniform_pcg_ = false;
+  } else {
+    std::stringstream msg;
+    msg << "### FATAL ERROR in linearMGDriver::linearMGDriver" << std::endl
+        << "nrfld/linear_solver must be mg, fgmres, or uniform_pcg." << std::endl;
+    ATHENA_ERROR(msg);
+  }
+  fgmres_threshold_ = pin->GetOrAddReal("nrfld", "fgmres_threshold", 1.0e-8);
+  fgmres_restart_ = pin->GetOrAddInteger("nrfld", "fgmres_restart", 20);
+  fgmres_max_iterations_ = pin->GetOrAddInteger(
+      "nrfld", "fgmres_max_iterations", 200);
+  fgmres_mg_vcycles_ = pin->GetOrAddInteger("nrfld", "fgmres_mg_vcycles", 1);
+  const std::string coarse_operator = pin->GetString("nrfld", "coarse_operator");
+  if (coarse_operator == "rediscretized") {
+    galerkin_coarse_operator_ = false;
+  } else if (coarse_operator == "galerkin") {
+    galerkin_coarse_operator_ = true;
+  } else if (coarse_operator == "galerkin_27_experimental") {
+    galerkin_coarse_operator_ = true;
+    experimental_27_point_galerkin_ = true;
+  } else {
+    std::stringstream msg;
+    msg << "### FATAL ERROR in linearMGDriver::linearMGDriver" << std::endl
+        << "nrfld/coarse_operator must be rediscretized, galerkin, or "
+        << "galerkin_27_experimental." << std::endl;
+    ATHENA_ERROR(msg);
+  }
+  if (!(uniform_pcg_threshold_ > 0.0)
+      || !std::isfinite(uniform_pcg_threshold_)
+      || uniform_pcg_max_iterations_ <= 0
+      || !(fgmres_threshold_ > 0.0) || !std::isfinite(fgmres_threshold_)
+      || fgmres_restart_ <= 0 || fgmres_max_iterations_ <= 0
+      || fgmres_mg_vcycles_ <= 0) {
+    std::stringstream msg;
+    msg << "### FATAL ERROR in linearMGDriver::linearMGDriver" << std::endl
+        << "Krylov thresholds must be finite and positive, and iteration, "
+        << "restart, and MG V-cycle counts must be positive." << std::endl;
+    ATHENA_ERROR(msg);
+  }
   cache_coefficient_hierarchy_ =
       pin->GetOrAddBoolean("nrfld", "cache_coefficient_hierarchy", true);
   relative_defect_ = true;
@@ -175,6 +277,32 @@ linearMGDriver::linearMGDriver(Mesh *pm, ParameterInput *pin, NewtonRaphsonDrive
     fprolongation_ = 1;
   else if (prol == "constant" || prol == "inject")
     fprolongation_ = 2;
+  if (galerkin_coarse_operator_ && !experimental_27_point_galerkin_
+      && fprolongation_ != 2) {
+    std::stringstream msg;
+    msg << "### FATAL ERROR in linearMGDriver::linearMGDriver" << std::endl
+        << "nrfld/coarse_operator=galerkin requires "
+        << "nrfld/prolongation=constant.  The existing volume-average restriction "
+        << "is the scaled transpose of constant prolongation; trilinear/tricubic "
+        << "would form a non-variational transfer pair and is not stable for the "
+        << "strong-diffusion RSG operator." << std::endl;
+    ATHENA_ERROR(msg);
+  }
+  if (experimental_27_point_galerkin_ && fprolongation_ == 1) {
+    std::stringstream msg;
+    msg << "### FATAL ERROR in linearMGDriver::linearMGDriver" << std::endl
+        << "nrfld/coarse_operator=galerkin_27_experimental supports trilinear "
+        << "or constant prolongation, not tricubic.  Its retained RAP builder "
+        << "contains trilinear weights only." << std::endl;
+    ATHENA_ERROR(msg);
+  }
+  if (galerkin_coarse_operator_ && pm->multilevel) {
+    std::stringstream msg;
+    msg << "### FATAL ERROR in linearMGDriver::linearMGDriver" << std::endl
+        << "The Galerkin hierarchy currently supports uniform MeshBlock "
+        << "topology only; AMR/SMR remains outside WOR-53." << std::endl;
+    ATHENA_ERROR(msg);
+  }
 
   std::string m = pin->GetOrAddString("nrfld", "mgmode", "none");
   std::transform(m.begin(), m.end(), m.begin(), ::tolower);
@@ -211,7 +339,13 @@ linearMGDriver::linearMGDriver(Mesh *pm, ParameterInput *pin, NewtonRaphsonDrive
     std::cout << "[LINEAR_MG_CONFIG] threshold=" << eps_
               << " max_vcycles=" << max_vcycles_
               << " divergence_patience=" << divergence_patience_
-              << " max_transient_growth=" << max_transient_growth_ << std::endl;
+              << " max_transient_growth=" << max_transient_growth_
+              << " solver=" << linear_solver
+              << " coarse_operator=" << coarse_operator << std::endl;
+    if (experimental_27_point_galerkin_) {
+      std::cout << "[LINEAR_MG_EXPERIMENTAL] 27-point RAP storage/transfer path; "
+                << "not the validated RSG production configuration." << std::endl;
+    }
   }
   // The linear solve acts on Newton corrections, so its physical boundary
   // condition need not be the same type as the full-state hydro/NR boundary.
@@ -236,6 +370,26 @@ linearMGDriver::linearMGDriver(Mesh *pm, ParameterInput *pin, NewtonRaphsonDrive
   mg_mesh_bcs_[outer_x3] = GetMGBoundaryFlag(
       pin->GetString("mesh", "ox3_bc") == "periodic" ? "periodic" :
       pin->GetOrAddString("nrfld", "linearMG_ox3_bc", "zerofixed"));
+
+  bool has_physical_boundary = false;
+  for (int face = 0; face < 6; ++face) {
+    const BoundaryFlag flag = mg_mesh_bcs_[face];
+    has_physical_boundary |= flag != BoundaryFlag::block
+                          && flag != BoundaryFlag::periodic;
+  }
+  const bool galerkin_zero_physical_boundaries = pin->GetOrAddBoolean(
+      "nrfld", "galerkin_zero_physical_boundaries", false);
+  if (galerkin_coarse_operator_ && has_physical_boundary
+      && !galerkin_zero_physical_boundaries) {
+    std::stringstream msg;
+    msg << "### FATAL ERROR in linearMGDriver::linearMGDriver" << std::endl
+        << "The current Galerkin boundary elimination requires zero correction "
+        << "values in physical ghost-cell centres.  Set "
+        << "nrfld/galerkin_zero_physical_boundaries=true only when every enrolled "
+        << "non-periodic linear-MG boundary callback enforces that condition."
+        << std::endl;
+    ATHENA_ERROR(msg);
+  }
 
   CheckBoundaryFunctions();
   fsubtract_average_ = false; // override the subtract average flag
@@ -364,13 +518,13 @@ void linearMGDriver::SolveCoarsestGrid() {
   };
   auto apply_row = [&](int k, int j, int i, int v) {
     const int kk = ngh + k, jj = ngh + j, ii = ngh + i;
-    return matrix(linearSolver::CCC,kk,jj,ii)*u(v,kk,jj,ii)
-         + matrix(linearSolver::CCM,kk,jj,ii)*u(v,kk,jj,ii-1)
-         + matrix(linearSolver::CCP,kk,jj,ii)*u(v,kk,jj,ii+1)
-         + matrix(linearSolver::CMC,kk,jj,ii)*u(v,kk,jj-1,ii)
-         + matrix(linearSolver::CPC,kk,jj,ii)*u(v,kk,jj+1,ii)
-         + matrix(linearSolver::MCC,kk,jj,ii)*u(v,kk-1,jj,ii)
-         + matrix(linearSolver::PCC,kk,jj,ii)*u(v,kk+1,jj,ii);
+    Real value = 0.0;
+    for (int n = 0; n < nmatrix_; ++n) {
+      value += matrix(n,kk,jj,ii)*u(v,kk + linearSolver::matrix_offset_k[n],
+                                      jj + linearSolver::matrix_offset_j[n],
+                                      ii + linearSolver::matrix_offset_i[n]);
+    }
+    return value;
   };
 
   for (int v = 0; v < nvar_; ++v)
@@ -728,6 +882,552 @@ linearMG::~linearMG() {
 //! \fn void linearMGDriver::Solve(int stage, Real dt)
 //! \brief load the data and solve
 
+//----------------------------------------------------------------------------------------
+//! \brief Reference PCG solve for a single uniform MeshBlock.
+//!
+//! This bypasses the coarse hierarchy to distinguish a fine-grid Schur/Jacobian error
+//! from a multigrid-preconditioner failure in strongly diffusive uniform-grid problems.
+void linearMGDriver::SolveUniformPCG(int stage) {
+  if (nranks_ != 1 || pmy_mesh_->nbtotal != 1 || pmy_mesh_->nblocal != 1
+      || pmy_mesh_->multilevel || vmg_.size() != 1) {
+    std::stringstream msg;
+    msg << "### FATAL ERROR in linearMGDriver::SolveUniformPCG" << std::endl
+        << "nrfld/uniform_pcg requires one MPI rank, one MeshBlock, and no AMR/SMR."
+        << std::endl;
+    ATHENA_ERROR(msg);
+  }
+
+  linearMG *pmg = static_cast<linearMG*>(vmg_.front());
+  NewtonRaphson *pnr = pmg->pnr_;
+  MeshBlock *pmb = pnr->pmy_block_;
+  if (pmb->prfld->MixedFrameCoupled()) {
+    std::stringstream msg;
+    msg << "### FATAL ERROR in linearMGDriver::SolveUniformPCG" << std::endl
+        << "nrfld/uniform_pcg requires mixed-frame coupling to be off." << std::endl;
+    ATHENA_ERROR(msg);
+  }
+
+  AthenaArray<Real> &delta = pnr->delta_u_;
+  const AthenaArray<Real> &src = pnr->src_;
+  const AthenaArray<Real> &coeff = pnr->coeff_;
+  AthenaArray<Real> x(delta), r(delta), z(delta), p(delta), ap(delta);
+  x.ZeroClear();
+  r.ZeroClear();
+  z.ZeroClear();
+  p.ZeroClear();
+  ap.ZeroClear();
+
+  const int is = pmb->is, ie = pmb->ie;
+  const int js = pmb->js, je = pmb->je;
+  const int ks = pmb->ks, ke = pmb->ke;
+  const Real fac = dt_/SQR(pmb->pcoord->dx1f(is));
+  long double source2 = 0.0L;
+  long double rz = 0.0L;
+  for (int k = ks; k <= ke; ++k)
+    for (int j = js; j <= je; ++j)
+      for (int i = is; i <= ie; ++i) {
+        const Real diag = fac*coeff(linearSolver::DCCF,k,j,i)
+                        + coeff(linearSolver::DCCS,k,j,i);
+        if (!(diag > 0.0) || !std::isfinite(diag)) {
+          std::stringstream msg;
+          msg << "### FATAL ERROR in linearMGDriver::SolveUniformPCG" << std::endl
+              << "Nonpositive or nonfinite diagonal at (k,j,i)=("
+              << k << "," << j << "," << i << ")." << std::endl;
+          ATHENA_ERROR(msg);
+        }
+        r(k,j,i) = src(k,j,i);
+        z(k,j,i) = r(k,j,i)/diag;
+        p(k,j,i) = z(k,j,i);
+        source2 += static_cast<long double>(src(k,j,i))*src(k,j,i);
+        rz += static_cast<long double>(r(k,j,i))*z(k,j,i);
+      }
+  const long double source_norm = std::sqrt(
+      std::max(source2, std::numeric_limits<long double>::min()));
+  Real relative_residual = static_cast<Real>(std::sqrt(source2)/source_norm);
+  int iterations = 0;
+  bool breakdown = false;
+  while (relative_residual > uniform_pcg_threshold_
+         && iterations < uniform_pcg_max_iterations_) {
+    delta = p;
+    linmgtlist_->DoTaskListOneStage(pmy_mesh_, stage);
+    long double pap = 0.0L;
+    for (int k = ks; k <= ke; ++k)
+      for (int j = js; j <= je; ++j)
+        for (int i = is; i <= ie; ++i) {
+          Real value = (fac*coeff(linearSolver::DCCF,k,j,i)
+                       + coeff(linearSolver::DCCS,k,j,i))*delta(k,j,i);
+          value += (fac*coeff(linearSolver::DXMF,k,j,i)
+                    + coeff(linearSolver::DXMS,k,j,i))*delta(k,j,i-1);
+          value += (fac*coeff(linearSolver::DXPF,k,j,i)
+                    + coeff(linearSolver::DXPS,k,j,i))*delta(k,j,i+1);
+          value += (fac*coeff(linearSolver::DYMF,k,j,i)
+                    + coeff(linearSolver::DYMS,k,j,i))*delta(k,j-1,i);
+          value += (fac*coeff(linearSolver::DYPF,k,j,i)
+                    + coeff(linearSolver::DYPS,k,j,i))*delta(k,j+1,i);
+          value += (fac*coeff(linearSolver::DZMF,k,j,i)
+                    + coeff(linearSolver::DZMS,k,j,i))*delta(k-1,j,i);
+          value += (fac*coeff(linearSolver::DZPF,k,j,i)
+                    + coeff(linearSolver::DZPS,k,j,i))*delta(k+1,j,i);
+          ap(k,j,i) = value;
+          pap += static_cast<long double>(p(k,j,i))*value;
+        }
+    if (!(pap > 0.0L) || !std::isfinite(static_cast<Real>(pap))
+        || !std::isfinite(static_cast<Real>(rz))) {
+      breakdown = true;
+      break;
+    }
+    const Real alpha = static_cast<Real>(rz/pap);
+    long double residual2 = 0.0L;
+    for (int k = ks; k <= ke; ++k)
+      for (int j = js; j <= je; ++j)
+        for (int i = is; i <= ie; ++i) {
+          x(k,j,i) += alpha*p(k,j,i);
+          r(k,j,i) -= alpha*ap(k,j,i);
+          residual2 += static_cast<long double>(r(k,j,i))*r(k,j,i);
+        }
+    relative_residual = static_cast<Real>(std::sqrt(residual2)/source_norm);
+    ++iterations;
+    if (relative_residual <= uniform_pcg_threshold_) break;
+
+    long double rz_new = 0.0L;
+    for (int k = ks; k <= ke; ++k)
+      for (int j = js; j <= je; ++j)
+        for (int i = is; i <= ie; ++i) {
+          const Real diag = fac*coeff(linearSolver::DCCF,k,j,i)
+                          + coeff(linearSolver::DCCS,k,j,i);
+          z(k,j,i) = r(k,j,i)/diag;
+          rz_new += static_cast<long double>(r(k,j,i))*z(k,j,i);
+        }
+    if (!(rz_new >= 0.0L) || !std::isfinite(static_cast<Real>(rz_new))) {
+      breakdown = true;
+      break;
+    }
+    const Real beta = static_cast<Real>(rz_new/rz);
+    for (int k = ks; k <= ke; ++k)
+      for (int j = js; j <= je; ++j)
+        for (int i = is; i <= ie; ++i)
+          p(k,j,i) = z(k,j,i) + beta*p(k,j,i);
+    rz = rz_new;
+  }
+
+  delta = x;
+  linmgtlist_->DoTaskListOneStage(pmy_mesh_, stage);
+  if (Globals::my_rank == 0) {
+    std::cout << "[LINEAR_PCG] iterations=" << iterations
+              << " relative_residual=" << relative_residual
+              << " target=" << uniform_pcg_threshold_
+              << " breakdown=" << breakdown << std::endl;
+  }
+}
+
+//----------------------------------------------------------------------------------------
+//! \brief Build the exact R A_h P hierarchy for a uniform MeshBlock topology.
+//!
+//! Restriction is the existing eight-cell volume average and prolongation is piecewise
+//! constant, its scaled transpose, in the production path.  A seven-point fine operator
+//! therefore remains exactly seven-point on every coarse level.  The former wider RAP
+//! builder is retained for explicit galerkin_27_experimental use with trilinear transfer.
+void linearMGDriver::BuildGalerkinHierarchy() {
+  if (!galerkin_coarse_operator_) return;
+
+  auto floor_half = [](int q) { return q >= 0 ? q/2 : -((-q + 1)/2); };
+  auto build_level = [&](linearMG *owner, const AthenaArray<Real> &fine,
+                         AthenaArray<Real> &coarse,
+                         int fnx, int fny, int fnz, int ngh) {
+    const int cnx = fnx/2, cny = fny/2, cnz = fnz/2;
+    for (int ck = 0; ck < cnz; ++ck) {
+      const int k = ngh + ck;
+      for (int cj = 0; cj < cny; ++cj) {
+        const int j = ngh + cj;
+        for (int ci = 0; ci < cnx; ++ci) {
+          const int i = ngh + ci;
+          for (int n = 0; n < nmatrix_; ++n)
+            coarse(n,k,j,i) = 0.0;
+
+          for (int ok = 0; ok < 2; ++ok) {
+            const int fk = ngh + 2*ck + ok;
+            for (int oj = 0; oj < 2; ++oj) {
+              const int fj = ngh + 2*cj + oj;
+              for (int oi = 0; oi < 2; ++oi) {
+                const int fi = ngh + 2*ci + oi;
+                for (int s = 0; s < nmatrix_; ++s) {
+                  const Real a = fine(s,fk,fj,fi);
+                  if (a == 0.0) continue;
+                  const int gk = 2*ck + ok + linearSolver::matrix_offset_k[s];
+                  const int gj = 2*cj + oj + linearSolver::matrix_offset_j[s];
+                  const int gi = 2*ci + oi + linearSolver::matrix_offset_i[s];
+                  auto physical = [&](BoundaryFace face) {
+                    const BoundaryFlag flag = owner->mg_block_bcs_[face];
+                    return flag != BoundaryFlag::block && flag != BoundaryFlag::periodic;
+                  };
+                  // RSG correction boundaries prescribe zero ghost-centre values.  Such
+                  // fine-grid columns are not coarse unknowns and must be eliminated from
+                  // R A_h P instead of trilinearly extrapolated beyond the domain.
+                  if ((gi < 0 && physical(inner_x1))
+                      || (gi >= fnx && physical(outer_x1))
+                      || (gj < 0 && physical(inner_x2))
+                      || (gj >= fny && physical(outer_x2))
+                      || (gk < 0 && physical(inner_x3))
+                      || (gk >= fnz && physical(outer_x3))) continue;
+                  const int pk = floor_half(gk), pj = floor_half(gj), pi = floor_half(gi);
+                  const int nk = pk + ((gk - 2*pk) == 0 ? -1 : 1);
+                  const int nj = pj + ((gj - 2*pj) == 0 ? -1 : 1);
+                  const int ni = pi + ((gi - 2*pi) == 0 ? -1 : 1);
+                  const int dk[2] = {pk, nk};
+                  const int dj[2] = {pj, nj};
+                  const int di[2] = {pi, ni};
+                  const bool constant = fprolongation_ == 2;
+                  const Real weight[2] = {constant ? 1.0 : 0.75, 0.25};
+                  const int nweight = constant ? 1 : 2;
+                  for (int wk = 0; wk < nweight; ++wk)
+                    for (int wj = 0; wj < nweight; ++wj)
+                      for (int wi = 0; wi < nweight; ++wi) {
+                        const int sok = dk[wk] - ck;
+                        const int soj = dj[wj] - cj;
+                        const int soi = di[wi] - ci;
+                        const int index = linearSolver::MatrixIndexFromOffset(
+                            sok, soj, soi);
+                        if (index < 0) {
+                          std::stringstream msg;
+                          msg << "### FATAL ERROR in BuildGalerkinHierarchy" << std::endl
+                              << "RAP generated support outside the 27-point stencil."
+                              << std::endl;
+                          ATHENA_ERROR(msg);
+                        }
+                        if (!experimental_27_point_galerkin_
+                            && index >= linearSolver::NMATRIX) {
+                          std::stringstream msg;
+                          msg << "### FATAL ERROR in BuildGalerkinHierarchy" << std::endl
+                              << "The production constant-transfer RAP generated an "
+                              << "edge/corner coupling.  Its exact support must remain "
+                              << "seven-point; use galerkin_27_experimental only for an "
+                              << "intentional wider-transfer experiment." << std::endl;
+                          ATHENA_ERROR(msg);
+                        }
+                        coarse(index,k,j,i) += 0.125*a
+                            *weight[wk]*weight[wj]*weight[wi];
+                      }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  };
+
+  auto build_object = [&](linearMG *pmg) {
+    for (int lev = pmg->nlevel_ - 1; lev > 0; --lev) {
+      const int shift = pmg->nlevel_ - 1 - lev;
+      build_level(pmg, pmg->matrix_[lev], pmg->matrix_[lev-1],
+                  pmg->size_.nx1 >> shift, pmg->size_.nx2 >> shift,
+                  pmg->size_.nx3 >> shift, pmg->ngh_);
+    }
+  };
+
+#pragma omp parallel for num_threads(nthreads_)
+  for (auto itr = vmg_.begin(); itr < vmg_.end(); ++itr)
+    build_object(static_cast<linearMG*>(*itr));
+
+  // Each uniform MeshBlock contributes its one-cell coarsest Galerkin row to
+  // the finest root-grid level.  Summation is safe because exactly one rank
+  // owns each gid and all other entries are initialized to zero.
+  std::vector<Real> rows(static_cast<std::size_t>(nbtotal_)
+                         *nmatrix_, 0.0);
+  for (auto *base : vmg_) {
+    linearMG *pmg = static_cast<linearMG*>(base);
+    const int ngh = pmg->ngh_;
+    const int gid = pmg->pmy_block_->gid;
+    for (int n = 0; n < nmatrix_; ++n)
+      rows[static_cast<std::size_t>(gid)*nmatrix_ + n]
+          = pmg->matrix_[0](n,ngh,ngh,ngh);
+  }
+#ifdef MPI_PARALLEL
+  MPI_Allreduce(MPI_IN_PLACE, rows.data(),
+                static_cast<int>(rows.size()), MPI_ATHENA_REAL, MPI_SUM, MPI_COMM_WORLD);
+#endif
+  linearMG *root = static_cast<linearMG*>(mgroot_);
+  const int root_finest = root->nlevel_ - 1;
+  const int rngh = root->ngh_;
+  for (int gid = 0; gid < nbtotal_; ++gid) {
+    const LogicalLocation &loc = pmy_mesh_->loclist[gid];
+    const int i = rngh + static_cast<int>(loc.lx1);
+    const int j = rngh + static_cast<int>(loc.lx2);
+    const int k = rngh + static_cast<int>(loc.lx3);
+    for (int n = 0; n < nmatrix_; ++n)
+      root->matrix_[root_finest](n,k,j,i) =
+          rows[static_cast<std::size_t>(gid)*nmatrix_ + n];
+  }
+  build_object(root);
+  if (Globals::my_rank == 0 && fshowdef_) {
+    std::cout << "[LINEAR_MG_GALERKIN] rebuilt " << nmatrix_
+              << "-point RAP hierarchy"
+              << (experimental_27_point_galerkin_ ? " (experimental)" : "")
+              << std::endl;
+  }
+}
+
+//----------------------------------------------------------------------------------------
+//! \brief Restarted right-preconditioned FGMRES on the distributed fine-grid operator.
+//!
+//! Fine-grid matvecs use the same MeshBlock correction boundary exchange as NRFLD.  One
+//! or more existing V-cycles form a flexible right preconditioner, so a nonstationary or
+//! nonsymmetric MG response is permitted.
+void linearMGDriver::SolveFGMRES(int stage) {
+  using BlockVector = std::vector<AthenaArray<Real>>;
+  auto make_vector = [&]() {
+    BlockVector value;
+    value.reserve(vmg_.size());
+    for (auto *base : vmg_) {
+      linearMG *pmg = static_cast<linearMG*>(base);
+      value.emplace_back(pmg->pnr_->delta_u_);
+      value.back().ZeroClear();
+    }
+    return value;
+  };
+  auto copy = [&](BlockVector &dst, const BlockVector &src) {
+    for (std::size_t b = 0; b < dst.size(); ++b) dst[b] = src[b];
+  };
+  auto scale = [&](BlockVector &x, Real a) {
+    for (std::size_t b = 0; b < x.size(); ++b) {
+      MeshBlock *pmb = static_cast<linearMG*>(vmg_[b])->pmy_block_;
+      for (int k = pmb->ks; k <= pmb->ke; ++k)
+        for (int j = pmb->js; j <= pmb->je; ++j)
+          for (int i = pmb->is; i <= pmb->ie; ++i) x[b](k,j,i) *= a;
+    }
+  };
+  auto axpy = [&](BlockVector &y, Real a, const BlockVector &x) {
+    for (std::size_t b = 0; b < y.size(); ++b) {
+      MeshBlock *pmb = static_cast<linearMG*>(vmg_[b])->pmy_block_;
+      for (int k = pmb->ks; k <= pmb->ke; ++k)
+        for (int j = pmb->js; j <= pmb->je; ++j)
+          for (int i = pmb->is; i <= pmb->ie; ++i)
+            y[b](k,j,i) += a*x[b](k,j,i);
+    }
+  };
+  auto dot = [&](const BlockVector &x, const BlockVector &y) {
+    long double sum = 0.0L;
+    for (std::size_t b = 0; b < x.size(); ++b) {
+      MeshBlock *pmb = static_cast<linearMG*>(vmg_[b])->pmy_block_;
+      for (int k = pmb->ks; k <= pmb->ke; ++k)
+        for (int j = pmb->js; j <= pmb->je; ++j)
+          for (int i = pmb->is; i <= pmb->ie; ++i)
+            sum += static_cast<long double>(x[b](k,j,i))*y[b](k,j,i);
+    }
+#ifdef MPI_PARALLEL
+    MPI_Allreduce(MPI_IN_PLACE, &sum, 1, MPI_LONG_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
+#endif
+    return sum;
+  };
+  auto norm = [&](const BlockVector &x) {
+    return std::sqrt(std::max(dot(x,x), 0.0L));
+  };
+  auto load_delta = [&](const BlockVector &x) {
+    for (std::size_t b = 0; b < x.size(); ++b) {
+      linearMG *pmg = static_cast<linearMG*>(vmg_[b]);
+      MeshBlock *pmb = pmg->pmy_block_;
+      AthenaArray<Real> &delta = pmg->pnr_->delta_u_;
+      delta.ZeroClear();
+      for (int k = pmb->ks; k <= pmb->ke; ++k)
+        for (int j = pmb->js; j <= pmb->je; ++j)
+          for (int i = pmb->is; i <= pmb->ie; ++i) delta(k,j,i) = x[b](k,j,i);
+    }
+    linmgtlist_->DoTaskListOneStage(pmy_mesh_, stage);
+  };
+  auto apply_operator = [&](const BlockVector &x, BlockVector &y) {
+    load_delta(x);
+    for (std::size_t b = 0; b < y.size(); ++b) {
+      linearMG *pmg = static_cast<linearMG*>(vmg_[b]);
+      MeshBlock *pmb = pmg->pmy_block_;
+      const AthenaArray<Real> &delta = pmg->pnr_->delta_u_;
+      const AthenaArray<Real> &coeff = pmg->pnr_->coeff_;
+      const Real fac = dt_/SQR(pmb->pcoord->dx1f(pmb->is));
+      y[b].ZeroClear();
+      for (int k = pmb->ks; k <= pmb->ke; ++k) {
+        for (int j = pmb->js; j <= pmb->je; ++j) {
+          for (int i = pmb->is; i <= pmb->ie; ++i) {
+            Real value = (fac*coeff(linearSolver::DCCF,k,j,i)
+                         + coeff(linearSolver::DCCS,k,j,i))*delta(k,j,i);
+            value += (fac*coeff(linearSolver::DXMF,k,j,i)
+                     + coeff(linearSolver::DXMS,k,j,i))*delta(k,j,i-1);
+            value += (fac*coeff(linearSolver::DXPF,k,j,i)
+                     + coeff(linearSolver::DXPS,k,j,i))*delta(k,j,i+1);
+            value += (fac*coeff(linearSolver::DYMF,k,j,i)
+                     + coeff(linearSolver::DYMS,k,j,i))*delta(k,j-1,i);
+            value += (fac*coeff(linearSolver::DYPF,k,j,i)
+                     + coeff(linearSolver::DYPS,k,j,i))*delta(k,j+1,i);
+            value += (fac*coeff(linearSolver::DZMF,k,j,i)
+                     + coeff(linearSolver::DZMS,k,j,i))*delta(k-1,j,i);
+            value += (fac*coeff(linearSolver::DZPF,k,j,i)
+                     + coeff(linearSolver::DZPS,k,j,i))*delta(k+1,j,i);
+            y[b](k,j,i) = value;
+          }
+        }
+      }
+    }
+  };
+  auto apply_preconditioner = [&](const BlockVector &rhs, BlockVector &z) {
+    current_level_ = fmglevel_ = ntotallevel_ - 1;
+    for (std::size_t b = 0; b < rhs.size(); ++b) {
+      linearMG *pmg = static_cast<linearMG*>(vmg_[b]);
+      pmg->current_level_ = pmg->nlevel_ - 1;
+      pmg->u_[pmg->current_level_].ZeroClear();
+      pmg->src_[pmg->current_level_].ZeroClear();
+      MeshBlock *pmb = pmg->pmy_block_;
+      const int ngh = pmg->ngh_;
+      for (int k = pmb->ks; k <= pmb->ke; ++k) {
+        const int mk = k - pmb->ks + ngh;
+        for (int j = pmb->js; j <= pmb->je; ++j) {
+          const int mj = j - pmb->js + ngh;
+          for (int i = pmb->is; i <= pmb->ie; ++i) {
+            const int mi = i - pmb->is + ngh;
+            pmg->src_[pmg->current_level_](0,mk,mj,mi) = rhs[b](k,j,i);
+          }
+        }
+      }
+    }
+    for (int cycle = 0; cycle < fgmres_mg_vcycles_; ++cycle)
+      SolveVCycle(npresmooth_, npostsmooth_);
+    for (std::size_t b = 0; b < z.size(); ++b) {
+      linearMG *pmg = static_cast<linearMG*>(vmg_[b]);
+      MeshBlock *pmb = pmg->pmy_block_;
+      const int ngh = pmg->ngh_;
+      z[b].ZeroClear();
+      for (int k = pmb->ks; k <= pmb->ke; ++k) {
+        const int mk = k - pmb->ks + ngh;
+        for (int j = pmb->js; j <= pmb->je; ++j) {
+          const int mj = j - pmb->js + ngh;
+          for (int i = pmb->is; i <= pmb->ie; ++i) {
+            const int mi = i - pmb->is + ngh;
+            z[b](k,j,i) = pmg->u_[pmg->current_level_](0,mk,mj,mi);
+          }
+        }
+      }
+    }
+  };
+
+  BlockVector b = make_vector(), x = make_vector(), r = make_vector(), ax = make_vector();
+  for (std::size_t q = 0; q < b.size(); ++q) {
+    linearMG *pmg = static_cast<linearMG*>(vmg_[q]);
+    MeshBlock *pmb = pmg->pmy_block_;
+    for (int k = pmb->ks; k <= pmb->ke; ++k)
+      for (int j = pmb->js; j <= pmb->je; ++j)
+        for (int i = pmb->is; i <= pmb->ie; ++i)
+          b[q](k,j,i) = pmg->pnr_->src_(k,j,i);
+  }
+  copy(r,b);
+  const long double bnorm = std::max(norm(b),
+      static_cast<long double>(std::numeric_limits<Real>::min()));
+  long double beta = norm(r);
+  Real relative_residual = static_cast<Real>(beta/bnorm);
+  int total_iterations = 0;
+  bool breakdown = false;
+
+  while (relative_residual > fgmres_threshold_
+         && total_iterations < fgmres_max_iterations_) {
+    const int width = std::min(fgmres_restart_,
+                               fgmres_max_iterations_ - total_iterations);
+    std::vector<BlockVector> v, z;
+    v.reserve(width + 1);
+    z.reserve(width);
+    for (int n = 0; n <= width; ++n) v.emplace_back(make_vector());
+    for (int n = 0; n < width; ++n) z.emplace_back(make_vector());
+    copy(v[0], r);
+    scale(v[0], static_cast<Real>(1.0L/beta));
+    std::vector<Real> h(static_cast<std::size_t>(width + 1)*width, 0.0);
+    std::vector<Real> cs(width, 0.0), sn(width, 0.0), g(width + 1, 0.0);
+    g[0] = static_cast<Real>(beta);
+    int used = 0;
+    for (int j = 0; j < width; ++j) {
+      apply_preconditioner(v[j], z[j]);
+      apply_operator(z[j], v[j+1]);
+      for (int i = 0; i <= j; ++i) {
+        h[static_cast<std::size_t>(i)*width + j] =
+            static_cast<Real>(dot(v[j+1], v[i]));
+        axpy(v[j+1], -h[static_cast<std::size_t>(i)*width + j], v[i]);
+      }
+      // A second MGS pass prevents loss of orthogonality for the 1e11-scale
+      // coefficient contrasts present in the RSG Schur operator.
+      for (int i = 0; i <= j; ++i) {
+        const Real correction = static_cast<Real>(dot(v[j+1], v[i]));
+        h[static_cast<std::size_t>(i)*width + j] += correction;
+        axpy(v[j+1], -correction, v[i]);
+      }
+      const long double hnext = norm(v[j+1]);
+      h[static_cast<std::size_t>(j + 1)*width + j] = static_cast<Real>(hnext);
+      if (hnext > std::numeric_limits<Real>::epsilon()*bnorm)
+        scale(v[j+1], static_cast<Real>(1.0L/hnext));
+
+      for (int i = 0; i < j; ++i) {
+        const Real hij = h[static_cast<std::size_t>(i)*width + j];
+        const Real hip = h[static_cast<std::size_t>(i + 1)*width + j];
+        h[static_cast<std::size_t>(i)*width + j] = cs[i]*hij + sn[i]*hip;
+        h[static_cast<std::size_t>(i + 1)*width + j] = -sn[i]*hij + cs[i]*hip;
+      }
+      const Real hjj = h[static_cast<std::size_t>(j)*width + j];
+      const Real hjp = h[static_cast<std::size_t>(j + 1)*width + j];
+      const Real rho = std::hypot(hjj, hjp);
+      if (!(rho > 0.0) || !std::isfinite(rho)) {
+        breakdown = true;
+        break;
+      }
+      cs[j] = hjj/rho;
+      sn[j] = hjp/rho;
+      h[static_cast<std::size_t>(j)*width + j] = rho;
+      h[static_cast<std::size_t>(j + 1)*width + j] = 0.0;
+      g[j+1] = -sn[j]*g[j];
+      g[j] = cs[j]*g[j];
+      used = j + 1;
+      ++total_iterations;
+      relative_residual = std::abs(g[j+1])/static_cast<Real>(bnorm);
+      if (relative_residual <= fgmres_threshold_
+          || hnext <= std::numeric_limits<Real>::epsilon()*bnorm) break;
+    }
+    if (used == 0) {
+      breakdown = true;
+      break;
+    }
+    std::vector<Real> y(used, 0.0);
+    for (int row = used - 1; row >= 0; --row) {
+      Real value = g[row];
+      for (int col = row + 1; col < used; ++col)
+        value -= h[static_cast<std::size_t>(row)*width + col]*y[col];
+      const Real diag = h[static_cast<std::size_t>(row)*width + row];
+      if (!(std::abs(diag) > std::numeric_limits<Real>::min())) {
+        breakdown = true;
+        break;
+      }
+      y[row] = value/diag;
+    }
+    for (int j = 0; j < used; ++j) axpy(x, y[j], z[j]);
+    apply_operator(x, ax);
+    copy(r,b);
+    axpy(r, -1.0, ax);
+    beta = norm(r);
+    relative_residual = static_cast<Real>(beta/bnorm);
+    if (breakdown) break;
+  }
+  load_delta(x);
+  if (Globals::my_rank == 0) {
+    std::cout << "[LINEAR_FGMRES] iterations=" << total_iterations
+              << " relative_residual=" << relative_residual
+              << " target=" << fgmres_threshold_
+              << " restart=" << fgmres_restart_
+              << " mg_vcycles=" << fgmres_mg_vcycles_
+              << " breakdown=" << breakdown << std::endl;
+  }
+  if (breakdown || !(relative_residual <= fgmres_threshold_)
+      || !std::isfinite(relative_residual)) {
+    std::stringstream msg;
+    msg << "### FATAL ERROR in linearMGDriver::SolveFGMRES" << std::endl
+        << "FGMRES did not reach its requested relative residual: iterations="
+        << total_iterations << ", relative_residual=" << relative_residual
+        << ", target=" << fgmres_threshold_ << ", breakdown=" << breakdown
+        << "." << std::endl;
+    ATHENA_ERROR(msg);
+  }
+}
+
 void linearMGDriver::Solve(int stage, Real dt) {
   // std::cout << "In linearMGDriver::Solve()" << std::endl;
   dt_ = dt;
@@ -776,13 +1476,19 @@ void linearMGDriver::Solve(int stage, Real dt) {
     SetupCoefficient(linearSolver::DCCS);
     CalculateMatrixAll();
   }
+  BuildGalerkinHierarchy();
   if (coefficient_diagnostics_
       && coefficient_diagnostic_count_ < coefficient_diagnostic_limit_) {
     PrintCoefficientDiagnostics();
     ++coefficient_diagnostic_count_;
   }
   // std::cout << "setup done at " << Globals::my_rank << std::endl;
-  if (smoothing_only_) {
+  const bool used_krylov = uniform_pcg_ || fgmres_;
+  if (uniform_pcg_) {
+    SolveUniformPCG(stage);
+  } else if (fgmres_) {
+    SolveFGMRES(stage);
+  } else if (smoothing_only_) {
     // The NR globalization fallback must not use any coarse-grid correction.
     // Start from a neutral correction and solve with the same fine-grid
     // boundary operator that is used when the Newton residual is evaluated.
@@ -808,17 +1514,20 @@ void linearMGDriver::Solve(int stage, Real dt) {
   // std::cout << "linearMG solve finished at " << Globals::my_rank << std::endl;
 
   // Return the result
-  if (handoff_diagnostics_ && handoff_diagnostic_count_ < handoff_diagnostic_limit_)
+  if (!used_krylov && handoff_diagnostics_
+      && handoff_diagnostic_count_ < handoff_diagnostic_limit_)
     PrintHandoffDiagnostic("mg_end", true);
+  if (!used_krylov) {
 #pragma omp parallel for num_threads(nthreads_)
-  for (auto itr = vmg_.begin(); itr < vmg_.end(); itr++) {
-    linearMG *pmg = static_cast<linearMG*>(*itr);
-    // FLD *prfld = pmg->pmy_block_->prfld;
-    NewtonRaphson *pnr = pmg->pnr_;
-    // Hydro *phydro = pmg->pmy_block_->phydro;
-    pmg->RetrieveResult(pnr->delta_u_, 0, NGHOST);
-    // if (pnr->output_defect)
-    //   pmg->RetrieveDefect(pnr->def_, 0, NGHOST);
+    for (auto itr = vmg_.begin(); itr < vmg_.end(); itr++) {
+      linearMG *pmg = static_cast<linearMG*>(*itr);
+      // FLD *prfld = pmg->pmy_block_->prfld;
+      NewtonRaphson *pnr = pmg->pnr_;
+      // Hydro *phydro = pmg->pmy_block_->phydro;
+      pmg->RetrieveResult(pnr->delta_u_, 0, NGHOST);
+      // if (pnr->output_defect)
+      //   pmg->RetrieveDefect(pnr->def_, 0, NGHOST);
+    }
   }
 
   // std::cout << "Result retrieved from linearMG at " << Globals::my_rank << std::endl;
@@ -930,9 +1639,8 @@ void linearMG::Smooth(AthenaArray<Real> &u, const AthenaArray<Real> &src,
             int c = (color + k + j) & 1;
 #pragma ivdep
             for (int i=il+c; i<=iu; i+=2) {
-              Real M = matrix(linearSolver::CCM,k,j,i)*u(k,j,i-1)+matrix(linearSolver::CCP,k,j,i)*u(k,j,i+1)
-                     + matrix(linearSolver::CMC,k,j,i)*u(k,j-1,i)+matrix(linearSolver::CPC,k,j,i)*u(k,j+1,i)
-                     + matrix(linearSolver::MCC,k,j,i)*u(k-1,j,i)+matrix(linearSolver::PCC,k,j,i)*u(k+1,j,i);
+              const Real M = ApplyMatrixOffDiagonal(
+                  matrix, u, k, j, i, pmy_driver_->nmatrix_);
               work(k,j,i) = (src(k,j,i) - M) / matrix(linearSolver::CCC,k,j,i);
             }
           }
@@ -959,9 +1667,8 @@ void linearMG::Smooth(AthenaArray<Real> &u, const AthenaArray<Real> &src,
           int c = (color + k + j) & 1;
 #pragma ivdep
           for (int i=il+c; i<=iu; i+=2) {
-            Real M = matrix(linearSolver::CCM,k,j,i)*u(k,j,i-1)+matrix(linearSolver::CCP,k,j,i)*u(k,j,i+1)
-                    + matrix(linearSolver::CMC,k,j,i)*u(k,j-1,i)+matrix(linearSolver::CPC,k,j,i)*u(k,j+1,i)
-                    + matrix(linearSolver::MCC,k,j,i)*u(k-1,j,i)+matrix(linearSolver::PCC,k,j,i)*u(k+1,j,i);
+            const Real M = ApplyMatrixOffDiagonal(
+                matrix, u, k, j, i, pmy_driver_->nmatrix_);
             work(k,j,i) = (src(k,j,i) - M) / matrix(linearSolver::CCC,k,j,i);
           }
         }
@@ -986,12 +1693,8 @@ void linearMG::Smooth(AthenaArray<Real> &u, const AthenaArray<Real> &src,
           for (int j=jl; j<=ju; j++) {
 #pragma ivdep
             for (int i=il; i<=iu; i++) {
-              Real M = matrix(linearSolver::CCM,k,j,i)*u(k,j,i-1)
-                     + matrix(linearSolver::CCP,k,j,i)*u(k,j,i+1)
-                     + matrix(linearSolver::CMC,k,j,i)*u(k,j-1,i)
-                     + matrix(linearSolver::CPC,k,j,i)*u(k,j+1,i)
-                     + matrix(linearSolver::MCC,k,j,i)*u(k-1,j,i)
-                     + matrix(linearSolver::PCC,k,j,i)*u(k+1,j,i);
+              const Real M = ApplyMatrixOffDiagonal(
+                  matrix, u, k, j, i, pmy_driver_->nmatrix_);
               work(k,j,i) = (src(k,j,i) - M) / matrix(linearSolver::CCC,k,j,i);
             }
           }
@@ -1015,9 +1718,8 @@ void linearMG::Smooth(AthenaArray<Real> &u, const AthenaArray<Real> &src,
         for (int j=jl; j<=ju; j++) {
 #pragma ivdep
           for (int i=il; i<=iu; i++) {
-            Real M = matrix(linearSolver::CCM,k,j,i)*u(k,j,i-1)+matrix(linearSolver::CCP,k,j,i)*u(k,j,i+1)
-                   + matrix(linearSolver::CMC,k,j,i)*u(k,j-1,i)+matrix(linearSolver::CPC,k,j,i)*u(k,j+1,i)
-                   + matrix(linearSolver::MCC,k,j,i)*u(k-1,j,i)+matrix(linearSolver::PCC,k,j,i)*u(k+1,j,i);
+            const Real M = ApplyMatrixOffDiagonal(
+                matrix, u, k, j, i, pmy_driver_->nmatrix_);
             work(k,j,i) = (src(k,j,i) - M) / matrix(linearSolver::CCC,k,j,i);
           }
         }
@@ -1058,10 +1760,8 @@ void linearMG::CalculateDefect(AthenaArray<Real> &def, const AthenaArray<Real> &
     for (int j=jl; j<=ju; j++) {
 #pragma omp simd
       for (int i=il; i<=iu; i++) {
-        Real M = matrix(linearSolver::CCC,k,j,i)*u(k,j,i)
-               + matrix(linearSolver::CCM,k,j,i)*u(k,j,i-1)+matrix(linearSolver::CCP,k,j,i)*u(k,j,i+1)
-               + matrix(linearSolver::CMC,k,j,i)*u(k,j-1,i)+matrix(linearSolver::CPC,k,j,i)*u(k,j+1,i)
-               + matrix(linearSolver::MCC,k,j,i)*u(k-1,j,i)+matrix(linearSolver::PCC,k,j,i)*u(k+1,j,i);
+        const Real M = ApplyMatrixRow(
+            matrix, u, k, j, i, pmy_driver_->nmatrix_);
         // Multigrid coarse-grid correction must use the raw residual.
         // Normalizing here distorts the restricted error equation.
         def(k,j,i) = src(k,j,i) - M;
@@ -1094,10 +1794,8 @@ void linearMG::CalculateFASRHS(AthenaArray<Real> &src, const AthenaArray<Real> &
     for (int j=jl; j<=ju; j++) {
 #pragma omp simd
       for (int i=il; i<=iu; i++) {
-        Real M = matrix(linearSolver::CCC,k,j,i)*u(k,j,i)
-               + matrix(linearSolver::CCM,k,j,i)*u(k,j,i-1)+matrix(linearSolver::CCP,k,j,i)*u(k,j,i+1)
-               + matrix(linearSolver::CMC,k,j,i)*u(k,j-1,i)+matrix(linearSolver::CPC,k,j,i)*u(k,j+1,i)
-               + matrix(linearSolver::MCC,k,j,i)*u(k-1,j,i)+matrix(linearSolver::PCC,k,j,i)*u(k+1,j,i);
+        const Real M = ApplyMatrixRow(
+            matrix, u, k, j, i, pmy_driver_->nmatrix_);
         src(k,j,i) += M;
       }
     }
@@ -1193,6 +1891,8 @@ void linearMG::CalculateMatrix(AthenaArray<Real> &matrix, const AthenaArray<Real
     for (int j=jl; j<=ju; j++) {
 #pragma omp simd
       for (int i=il; i<=iu; i++) {
+        for (int n = linearSolver::NMATRIX; n < pmy_driver_->nmatrix_; ++n)
+          matrix(n,k,j,i) = 0.0;
         // center
         matrix(linearSolver::CCC,k,j,i) = fac*coeff(linearSolver::DCCF,k,j,i)
                                             + coeff(linearSolver::DCCS,k,j,i);

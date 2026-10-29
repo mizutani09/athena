@@ -211,6 +211,7 @@ def run(args):
                     f"problem/pulse_center={args.pulse_center:.17g}",
                     f"problem/pulse_width={args.pulse_width:.17g}",
                     f"nrfld/linear_max_vcycles={args.linear_max_vcycles}",
+                    f"nrfld/mgmode={args.mgmode}",
                     f"nrfld/smoother={args.smoother}",
                     f"nrfld/omega={args.omega:.17g}",
                     "nrfld/nr_max_iterations=64",
@@ -329,6 +330,8 @@ if __name__ == "__main__":
     parser.add_argument("--linear-fixed-vcycles", type=int,
                         help="Diagnostic: bypass monotone rejection and run exactly N V-cycles")
     parser.add_argument("--linear-max-vcycles", type=int, default=30)
+    parser.add_argument("--mgmode", choices=["MGI", "FMG"], default="MGI",
+                        help="Existing linearMG solve mode")
     parser.add_argument("--smoother", choices=["jacobi-rb", "jacobi-double", "jacobi"],
                         default="jacobi-rb",
                         help="Existing linearMG smoother selection")

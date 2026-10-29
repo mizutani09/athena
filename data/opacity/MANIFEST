@@ -1,0 +1,12 @@
+# RSG gray opacity snapshot supplied for validation
+filename = rsg_gray_opacity.h5
+source = /home/kosuke/simulation/test/rad_nr/test_20261018/opacity_table_rhoT_3p0_6p3.h5
+sha256 = cc5912dd3896c39c1ea3fde0d315dc16c136303a8c363ab58fa56b705b909aaf
+datasets = axes/log10_temperature, axes/log10_density, kappa/log10_planck, kappa/log10_rosseland
+domain = log10(T/K) 3.0..6.3; log10(rho/[g cm^-3]) -23.3000335..-1.19313943
+resolution = 128 x 128, uniformly spaced in log10(T), log10(rho)
+values = finite and positive; Planck 4.2108e-21..3.6657e5 cm^2/g; Rosseland 4.0337e-6..3.6657e5 cm^2/g
+generator_attribute = sample/python/make_opacity_table_hdf5.py
+input_pattern_attribute = sample/rhoT_3p0_6p3/output/mono_*.h5
+policy = opacity_table_domain_policy=error
+qualification = domain and numerical schema PASS; source composition and license remain to be recorded before publication/production

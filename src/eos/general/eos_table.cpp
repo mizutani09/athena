@@ -133,20 +133,20 @@ Real EquationOfState::TempFromRhoEg(Real rho, Real egas) {
 
 //----------------------------------------------------------------------------------------
 //! \fn Real EquationOfState::DlnTDlnEgasFromRhoEg(Real rho, Real egas)
-//! \brief Numerically evaluate d ln(T) / d ln(egas) at constant density
+//! \brief Evaluate d ln(T) / d ln(egas) for the table interpolant at fixed density
 Real EquationOfState::DlnTDlnEgasFromRhoEg(Real rho, Real egas) {
-  // Differentiate the interpolated temperature itself instead of requiring a
-  // derivative field in the table.  A symmetric perturbation in ln(egas)
-  // gives the logarithmic derivative directly and remains well scaled across
-  // the many decades covered by typical stellar EOS tables.
-  const Real eg_center = std::max(egas, TINY_NUMBER);
-  const Real eg_lo = eg_center*std::exp(-derivative_log_step);
-  const Real eg_hi = eg_center*std::exp( derivative_log_step);
-  const Real t_lo = TempFromRhoEg(rho, eg_lo);
-  const Real t_hi = TempFromRhoEg(rho, eg_hi);
-  if (!std::isfinite(t_lo) || !std::isfinite(t_hi)
-      || t_lo <= TINY_NUMBER || t_hi <= TINY_NUMBER) return 0.0;
-  return (std::log(t_hi) - std::log(t_lo))/(2.0*derivative_log_step);
+  // The table stores log10(T) on a uniform log10(egas/rho)-like coordinate.
+  // At fixed rho, d x2 == d log10(egas), so the exact derivative of the
+  // piecewise-bilinear interpolant is also d ln(T)/d ln(egas).  A finite
+  // centered difference can straddle an interpolation knot and average two
+  // slopes even though the nonlinear residual uses only the current cell's
+  // slope, making the Newton Jacobian inconsistent in stiff coupling zones.
+  Real x1, x2;
+  GetEosCoordinates(ptable, kTemperature, std::max(egas, TINY_NUMBER), rho,
+                    x2, x1);
+  const Real derivative =
+      ptable->table.interpolateX2Derivative(kTemperature, x2, x1);
+  return std::isfinite(derivative) ? derivative : 0.0;
 }
 
 //----------------------------------------------------------------------------------------

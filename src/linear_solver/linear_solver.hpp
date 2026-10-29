@@ -10,6 +10,7 @@
 
 namespace linearSolver {
 constexpr int NMATRIX = 7;
+constexpr int GALERKIN_NMATRIX = 27;
 constexpr int NCOEFF = 14;
 
 enum CoeffIndex {
@@ -40,6 +41,36 @@ enum MatrixIndex {
   MCC = 5,
   PCC = 6
 };
+
+// The production rediscretized and constant-transfer Galerkin operators use
+// the first seven entries.  The remaining edge/corner offsets are retained
+// solely for the explicit galerkin_27_experimental path.
+constexpr int matrix_offset_k[GALERKIN_NMATRIX] = {
+   0, 0, 0, 0, 0,-1, 1,
+  -1,-1,-1,-1,-1,-1,-1,-1,
+   0, 0, 0, 0,
+   1, 1, 1, 1, 1, 1, 1, 1
+};
+constexpr int matrix_offset_j[GALERKIN_NMATRIX] = {
+   0, 0, 0,-1, 1, 0, 0,
+  -1,-1,-1, 0, 0, 1, 1, 1,
+  -1,-1, 1, 1,
+  -1,-1,-1, 0, 0, 1, 1, 1
+};
+constexpr int matrix_offset_i[GALERKIN_NMATRIX] = {
+   0,-1, 1, 0, 0, 0, 0,
+  -1, 0, 1,-1, 1,-1, 0, 1,
+  -1, 1,-1, 1,
+  -1, 0, 1,-1, 1,-1, 0, 1
+};
+
+inline int MatrixIndexFromOffset(int dk, int dj, int di) {
+  for (int n = 0; n < GALERKIN_NMATRIX; ++n) {
+    if (matrix_offset_k[n] == dk && matrix_offset_j[n] == dj
+        && matrix_offset_i[n] == di) return n;
+  }
+  return -1;
+}
 }  // namespace linearSolver
 
 #endif  // LINEAR_SOLVER_LINEAR_SOLVER_HPP_

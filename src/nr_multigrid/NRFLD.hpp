@@ -195,6 +195,7 @@ class NRFLD : public NewtonRaphson {
   Real rdx_, rdy_, rdz_;
   Real defscale_;
   Real max_update_fraction_;
+  bool backward_error_convergence_;
   bool fixed_linear_coefficients_initialized_;
   bool jacobian_check_;
   bool jacobian_check_done_;

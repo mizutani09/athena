@@ -67,7 +67,11 @@ int main(int argc, char **argv) {
       nr->CalculateCoefficients(nr->uold_, nr->u_, nr->def_coeff_,
                                  nr->coeff_, nr->derivetive_, nr->src_, dt);
     };
-    for (Real energy : {0.2, 0.7, 1.8}) {
+    // The third point lies just above the temperature-slope knot at e=1.
+    // The Jv perturbation remains in the upper cell, while the historical
+    // fixed-width EOS finite difference crossed the knot and averaged the two
+    // cell slopes.
+    for (Real energy : {0.2, 0.7, std::pow(10.0, 1.e-5), 1.8}) {
       gas(k,j,i) = energy;
       assemble();
       const Real analytic = nr->derivetive_(NewtonRaphsonFLD::dFg_deg,k,j,i);
@@ -120,7 +124,7 @@ def prepare(**kwargs):
                '-x', 'c++', '-', '-x', 'none'] + objects
     command += ['-lhdf5', '-o', 'bin/general_eos_exchange_jacobian']
     subprocess.run(command, input=_PROBE.encode(), check=True)
-    _write_nonideal_table('bin/exchange_jacobian_eos.tab')
+    _write_nonideal_table('bin/exchange_jacobian_eos.tab', temperature_kink=True)
     _write_opacity_table('bin/exchange_jacobian_opacity.h5')
 
 
