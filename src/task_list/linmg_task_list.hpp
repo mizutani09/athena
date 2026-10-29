@@ -40,6 +40,8 @@ class LinearMGBoundaryTaskList : public TaskList {
  private:
   void AddTask(const TaskID& id, const TaskID& dep) override;
   void StartupTaskList(MeshBlock *pmb, int stage) override;
+  bool constant_correction_prolongation_{false};
+  bool tangent_correction_prolongation_{false};
 };
 
 

@@ -27,6 +27,19 @@
 //! LinearMGBoundaryTaskList constructor
 
 LinearMGBoundaryTaskList::LinearMGBoundaryTaskList(ParameterInput *pin, Mesh *pm) {
+  std::string correction_prolongation = pin->GetOrAddString(
+      "nrfld", "amr_correction_prolongation", "minmod");
+  if (correction_prolongation == "constant") {
+    constant_correction_prolongation_ = true;
+  } else if (correction_prolongation == "tangent") {
+    tangent_correction_prolongation_ = true;
+  } else if (correction_prolongation != "minmod") {
+    std::stringstream msg;
+    msg << "### FATAL ERROR in LinearMGBoundaryTaskList" << std::endl
+        << "nrfld/amr_correction_prolongation must be minmod, constant, or tangent."
+        << std::endl;
+    ATHENA_ERROR(msg);
+  }
   {using namespace LinearMGBoundaryTaskNames; // NOLINT (build/namespace)
     AddTask(SEND_DATA_BND,NONE);
     AddTask(RECV_DATA_BND,NONE);
@@ -127,7 +140,9 @@ TaskStatus LinearMGBoundaryTaskList::SetLinearMGBoundary(MeshBlock *pmb, int sta
 TaskStatus LinearMGBoundaryTaskList::ProlongateLinearMGBoundary(MeshBlock *pmb,
                                                               int stage) {
   // std::cout << "Prolongate LinearMG." << std::endl;
-  pmb->pbval->ProlongateBoundariesPostMG(&(pmb->pnr->delta_bvar));
+  pmb->pbval->ProlongateBoundariesPostMG(
+      &(pmb->pnr->delta_bvar), constant_correction_prolongation_,
+      tangent_correction_prolongation_, &(pmb->pnr->coarse_u_));
   // std::cout << "LinearMG Prolongated" << std::endl;
   return TaskStatus::success;
 }

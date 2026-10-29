@@ -302,6 +302,18 @@ The controlled harness also accepts `--symmetric-rb-sweeps true|false` for the
 WOR-29 order comparison and `--cache-coefficient-hierarchy true|false` plus
 `--coefficient-diagnostic-limit N` for the WOR-30 cache audit.  See
 `wor29_rb_order_20261023.md` and `wor30_coefficient_update_audit_20261023.md`.
+It also accepts `--linear-solver`, `--coarse-operator`, `--prolongation` and
+the `--fgmres-*` controls for WOR-54.  AMR FGMRES results must pass the
+coarse/fine matvec-linearity and conservation checks described in
+`wor54_fgmres_amr_plan_20261029.md`; convergence alone is not that validation.
+For NR-FLD correction ghosts, `--amr-correction-prolongation tangent` freezes
+the minmod branch at the Newton base state and applies its linearized mapping;
+`minmod` and `constant` remain comparison controls.
+The FGMRES performance controls are independently testable with
+`--[no-]fgmres-compact-basis`, `--[no-]fgmres-reuse-basis`, and
+`--[no-]fgmres-batched-reductions`; use `--fgmres-restart 5` and `10` for the
+memory/convergence comparison.  Runtime logs report basis/workspace bytes,
+allocation rebuilds, and collective-reduction calls for each linear solve.
 
 New runtime diagnostics (disabled by default):
 

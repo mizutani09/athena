@@ -153,7 +153,10 @@ class BoundaryValues : public BoundaryBase, //public BoundaryPhysics,
   void ProlongateFLDBoundaries(const Real time, const Real dt);
 
   // temporary workaround for Multigrid
-  void ProlongateBoundariesPostMG(CellCenteredBoundaryVariable* pbvar);
+  void ProlongateBoundariesPostMG(CellCenteredBoundaryVariable* pbvar,
+                                  bool constant_correction = false,
+                                  bool tangent_correction = false,
+                                  const AthenaArray<Real>* base_coarse = nullptr);
 
   // compute the shear at each integrator stage
   //! \todo (felker):
@@ -230,7 +233,10 @@ class BoundaryValues : public BoundaryBase, //public BoundaryPhysics,
   void RestrictGhostCellsOnSameLevelPostMG(CellCenteredBoundaryVariable* pbvar,
                                     const NeighborBlock& nb, int nk, int nj, int ni);
   void ProlongateGhostCellsPostMG(CellCenteredBoundaryVariable* pbvar,
-                                  int si, int ei, int sj, int ej, int sk, int ek);
+                                  int si, int ei, int sj, int ej, int sk, int ek,
+                                  bool constant_correction = false,
+                                  bool tangent_correction = false,
+                                  const AthenaArray<Real>* base_coarse = nullptr);
 
   void DispatchBoundaryFunctions(
       MeshBlock *pmb, Coordinates *pco, Real time, Real dt,

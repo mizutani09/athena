@@ -63,6 +63,18 @@ def summarize(case, dt):
               "linear_cap_hits": text.count("Stopping at the configured V-cycle limit:"),
               "last_cycle": int(cycles[-1][0]) if cycles else None,
               "last_time": float(cycles[-1][1]) if cycles else None}
+    result["fgmres"] = [dict(re.findall(r"(\w+)=([^\s]+)", line))
+                         for line in text.splitlines()
+                         if line.startswith("[LINEAR_FGMRES]")]
+    result["fgmres_iterations_total"] = sum(
+        int(row["iterations"]) for row in result["fgmres"])
+    result["fgmres_iterations_max"] = max(
+        (int(row["iterations"]) for row in result["fgmres"]), default=0)
+    result["fgmres_relative_residual_max"] = max(
+        (float(row["relative_residual"]) for row in result["fgmres"]), default=0.0)
+    result["fgmres_linearity"] = [dict(re.findall(r"(\w+)=([^\s]+)", line))
+                                  for line in text.splitlines()
+                                  if line.startswith("[LINEAR_FGMRES_LINEARITY]")]
     for key, prefix in (("global_jv", "[NRFLD global Jv]"),
                         ("jv_setup", "[NRFLD Jv setup]"),
                         ("jv_skipped", "[NRFLD Jv skipped]"),
@@ -165,7 +177,8 @@ def run(args):
     config = binary_configuration(exe, root, 30, records)
     validate_binary_configuration(config, "nrfld_diff_amr_interface", exe)
     manifest["provenance"]["calculation"].update(binary=str(exe),
-                 binary_sha256=sha256_file(exe), configuration=config, mpi_ranks=1)
+                 binary_sha256=sha256_file(exe), configuration=config,
+                 mpi_ranks=args.mpi_ranks)
     source_input = repo / "inputs/radiation/athinput.nrfld_diff_amr_interface"
     shutil.copy2(source_input, root / "input.original")
     manifest["input"] = {"sha256": sha256_file(source_input)}
@@ -211,6 +224,23 @@ def run(args):
                     f"problem/pulse_center={args.pulse_center:.17g}",
                     f"problem/pulse_width={args.pulse_width:.17g}",
                     f"nrfld/linear_max_vcycles={args.linear_max_vcycles}",
+                    f"nrfld/linear_solver={args.linear_solver}",
+                    f"nrfld/coarse_operator={args.coarse_operator}",
+                    f"nrfld/prolongation={args.prolongation}",
+                    f"nrfld/fgmres_threshold={args.fgmres_threshold:.17g}",
+                    f"nrfld/fgmres_restart={args.fgmres_restart}",
+                    f"nrfld/fgmres_max_iterations={args.fgmres_max_iterations}",
+                    f"nrfld/fgmres_mg_vcycles={args.fgmres_mg_vcycles}",
+                    "nrfld/fgmres_compact_basis="
+                    f"{'true' if args.fgmres_compact_basis else 'false'}",
+                    "nrfld/fgmres_reuse_basis="
+                    f"{'true' if args.fgmres_reuse_basis else 'false'}",
+                    "nrfld/fgmres_batched_reductions="
+                    f"{'true' if args.fgmres_batched_reductions else 'false'}",
+                    "nrfld/fgmres_linearity_check="
+                    f"{'true' if args.fgmres_linearity_check else 'false'}",
+                    "nrfld/amr_correction_prolongation="
+                    f"{args.amr_correction_prolongation}",
                     f"nrfld/mgmode={args.mgmode}",
                     f"nrfld/smoother={args.smoother}",
                     f"nrfld/omega={args.omega:.17g}",
@@ -250,8 +280,11 @@ def run(args):
                 input_path.write_text("\n".join(f"<{s}>\n" + "\n".join(
                     f"{k} = {v}" for k, v in values.items()) for s, values in sections.items())+"\n")
                 command = ["/usr/bin/time", "-f", "max_rss_kib=%M elapsed_s=%e", "-o",
-                           str(case / "resources.txt"), str(exe), "-i", str(input_path),
-                           "-d", str(case / "output")]
+                           str(case / "resources.txt")]
+                if args.mpi_ranks > 1:
+                    command.extend(["mpirun", "-n", str(args.mpi_ranks)])
+                command.extend([str(exe), "-i", str(input_path),
+                                "-d", str(case / "output")])
                 record = bounded_run(command, case, args.timeout, args.memory_gib)
                 record.update(summarize(case, args.dt), tag=tag, layout=name, contrast=contrast,
                               input_sha256=sha256_file(input_path), settings=settings,
@@ -286,7 +319,9 @@ def run(args):
                 write_manifest(manifest_path, manifest)
                 iterations = [int(r["iterations"]) for r in record["nr"]]
                 print(f"{tag}: pass={record['pass']} NR={iterations} "
-                      f"reject={record['rejected_vcycles']} RSS={record.get('max_rss_kib')} KiB", flush=True)
+                      f"reject={record['rejected_vcycles']} "
+                      f"FGMRES={record['fgmres_iterations_total']} "
+                      f"RSS={record.get('max_rss_kib')} KiB", flush=True)
             reference = next((g for g in group if g[0]["layout"] == "uniform_fine"), None)
             if reference:
                 for record, x, profile in group:
@@ -311,6 +346,8 @@ if __name__ == "__main__":
     parser.add_argument("--build-timeout", type=float, default=600)
     parser.add_argument("--timeout", type=float, default=30)
     parser.add_argument("--memory-gib", type=float, default=4)
+    parser.add_argument("--mpi-ranks", type=int, default=1,
+                        help="MPI ranks used for each case (default: 1)")
     parser.add_argument("--dt", type=float, default=2e-4)
     parser.add_argument("--nr-threshold", type=float, default=1e-10)
     parser.add_argument("--pulse-center", type=float, default=.25)
@@ -330,6 +367,27 @@ if __name__ == "__main__":
     parser.add_argument("--linear-fixed-vcycles", type=int,
                         help="Diagnostic: bypass monotone rejection and run exactly N V-cycles")
     parser.add_argument("--linear-max-vcycles", type=int, default=30)
+    parser.add_argument("--linear-solver", choices=["mg", "fgmres"], default="mg")
+    parser.add_argument("--coarse-operator",
+                        choices=["rediscretized", "galerkin",
+                                 "galerkin_27_experimental"],
+                        default="rediscretized")
+    parser.add_argument("--prolongation",
+                        choices=["trilinear", "constant", "tricubic"],
+                        default="trilinear")
+    parser.add_argument("--fgmres-threshold", type=float, default=1.0e-8)
+    parser.add_argument("--fgmres-restart", type=int, default=20)
+    parser.add_argument("--fgmres-max-iterations", type=int, default=200)
+    parser.add_argument("--fgmres-mg-vcycles", type=int, default=1)
+    parser.add_argument("--fgmres-compact-basis", action=argparse.BooleanOptionalAction,
+                        default=True)
+    parser.add_argument("--fgmres-reuse-basis", action=argparse.BooleanOptionalAction,
+                        default=True)
+    parser.add_argument("--fgmres-batched-reductions",
+                        action=argparse.BooleanOptionalAction, default=True)
+    parser.add_argument("--fgmres-linearity-check", action="store_true")
+    parser.add_argument("--amr-correction-prolongation",
+                        choices=["minmod", "constant", "tangent"], default="minmod")
     parser.add_argument("--mgmode", choices=["MGI", "FMG"], default="MGI",
                         help="Existing linearMG solve mode")
     parser.add_argument("--smoother", choices=["jacobi-rb", "jacobi-double", "jacobi"],
@@ -354,14 +412,17 @@ if __name__ == "__main__":
     parser.add_argument("--contrasts", type=float, nargs="+", default=[1, 10])
     args = parser.parse_args()
     if not (1 <= args.build_jobs <= 4 and args.build_timeout > 0
-            and args.dt > 0 and args.timeout > 0
+            and args.dt > 0 and args.timeout > 0 and args.mpi_ranks > 0
             and args.memory_gib > 0 and args.nr_threshold > 0 and args.pulse_width > 0
             and args.base_nx1 >= 32 and args.base_nx1 % 8 == 0
             and args.transverse_blocks >= 1
+            and (not args.global_jv or args.mpi_ranks == 1)
             and args.jv_iteration >= 0
             and args.coefficient_diagnostic_limit >= 0
             and (args.linear_fixed_vcycles is None or args.linear_fixed_vcycles > 0)
             and args.linear_max_vcycles > 0 and 0 < args.omega <= 1
+            and args.fgmres_threshold > 0 and args.fgmres_restart > 0
+            and args.fgmres_max_iterations > 0 and args.fgmres_mg_vcycles > 0
             and (args.linear_divergence_patience is None
                  or args.linear_divergence_patience > 0)
             and args.linear_max_transient_growth >= 1

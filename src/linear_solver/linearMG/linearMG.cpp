@@ -179,6 +179,14 @@ linearMGDriver::linearMGDriver(Mesh *pm, ParameterInput *pin, NewtonRaphsonDrive
   fgmres_max_iterations_ = pin->GetOrAddInteger(
       "nrfld", "fgmres_max_iterations", 200);
   fgmres_mg_vcycles_ = pin->GetOrAddInteger("nrfld", "fgmres_mg_vcycles", 1);
+  fgmres_linearity_check_ = pin->GetOrAddBoolean(
+      "nrfld", "fgmres_linearity_check", false);
+  fgmres_compact_basis_ = pin->GetOrAddBoolean(
+      "nrfld", "fgmres_compact_basis", true);
+  fgmres_reuse_basis_ = pin->GetOrAddBoolean(
+      "nrfld", "fgmres_reuse_basis", true);
+  fgmres_batched_reductions_ = pin->GetOrAddBoolean(
+      "nrfld", "fgmres_batched_reductions", true);
   const std::string coarse_operator = pin->GetString("nrfld", "coarse_operator");
   if (coarse_operator == "rediscretized") {
     galerkin_coarse_operator_ = false;
@@ -342,6 +350,15 @@ linearMGDriver::linearMGDriver(Mesh *pm, ParameterInput *pin, NewtonRaphsonDrive
               << " max_transient_growth=" << max_transient_growth_
               << " solver=" << linear_solver
               << " coarse_operator=" << coarse_operator << std::endl;
+    if (fgmres_) {
+      std::cout << "[LINEAR_FGMRES_CONFIG] restart=" << fgmres_restart_
+                << " max_iterations=" << fgmres_max_iterations_
+                << " mg_vcycles=" << fgmres_mg_vcycles_
+                << " compact=" << fgmres_compact_basis_
+                << " reuse=" << fgmres_reuse_basis_
+                << " batched_reductions=" << fgmres_batched_reductions_
+                << std::endl;
+    }
     if (experimental_27_point_galerkin_) {
       std::cout << "[LINEAR_MG_EXPERIMENTAL] 27-point RAP storage/transfer path; "
                 << "not the validated RSG production configuration." << std::endl;
@@ -1174,16 +1191,37 @@ void linearMGDriver::BuildGalerkinHierarchy() {
 //! or more existing V-cycles form a flexible right preconditioner, so a nonstationary or
 //! nonsymmetric MG response is permitted.
 void linearMGDriver::SolveFGMRES(int stage) {
-  using BlockVector = std::vector<AthenaArray<Real>>;
+  using BlockVector = FGMRESBlockVector;
   auto make_vector = [&]() {
     BlockVector value;
     value.reserve(vmg_.size());
     for (auto *base : vmg_) {
       linearMG *pmg = static_cast<linearMG*>(base);
-      value.emplace_back(pmg->pnr_->delta_u_);
+      MeshBlock *pmb = pmg->pmy_block_;
+      value.emplace_back();
+      if (fgmres_compact_basis_) {
+        value.back().NewAthenaArray(pmb->block_size.nx3,
+                                    pmb->block_size.nx2,
+                                    pmb->block_size.nx1);
+      } else {
+        value.back().NewAthenaArray(pmb->ncells3, pmb->ncells2, pmb->ncells1);
+      }
       value.back().ZeroClear();
     }
     return value;
+  };
+  auto at = [&](BlockVector &x, std::size_t b, int k, int j, int i) -> Real& {
+    MeshBlock *pmb = static_cast<linearMG*>(vmg_[b])->pmy_block_;
+    if (fgmres_compact_basis_)
+      return x[b](k-pmb->ks,j-pmb->js,i-pmb->is);
+    return x[b](k,j,i);
+  };
+  auto cat = [&](const BlockVector &x, std::size_t b,
+                 int k, int j, int i) -> Real {
+    MeshBlock *pmb = static_cast<linearMG*>(vmg_[b])->pmy_block_;
+    if (fgmres_compact_basis_)
+      return x[b](k-pmb->ks,j-pmb->js,i-pmb->is);
+    return x[b](k,j,i);
   };
   auto copy = [&](BlockVector &dst, const BlockVector &src) {
     for (std::size_t b = 0; b < dst.size(); ++b) dst[b] = src[b];
@@ -1193,7 +1231,7 @@ void linearMGDriver::SolveFGMRES(int stage) {
       MeshBlock *pmb = static_cast<linearMG*>(vmg_[b])->pmy_block_;
       for (int k = pmb->ks; k <= pmb->ke; ++k)
         for (int j = pmb->js; j <= pmb->je; ++j)
-          for (int i = pmb->is; i <= pmb->ie; ++i) x[b](k,j,i) *= a;
+          for (int i = pmb->is; i <= pmb->ie; ++i) at(x,b,k,j,i) *= a;
     }
   };
   auto axpy = [&](BlockVector &y, Real a, const BlockVector &x) {
@@ -1202,22 +1240,40 @@ void linearMGDriver::SolveFGMRES(int stage) {
       for (int k = pmb->ks; k <= pmb->ke; ++k)
         for (int j = pmb->js; j <= pmb->je; ++j)
           for (int i = pmb->is; i <= pmb->ie; ++i)
-            y[b](k,j,i) += a*x[b](k,j,i);
+            at(y,b,k,j,i) += a*cat(x,b,k,j,i);
     }
   };
-  auto dot = [&](const BlockVector &x, const BlockVector &y) {
+  auto local_dot = [&](const BlockVector &x, const BlockVector &y) {
     long double sum = 0.0L;
     for (std::size_t b = 0; b < x.size(); ++b) {
       MeshBlock *pmb = static_cast<linearMG*>(vmg_[b])->pmy_block_;
       for (int k = pmb->ks; k <= pmb->ke; ++k)
         for (int j = pmb->js; j <= pmb->je; ++j)
           for (int i = pmb->is; i <= pmb->ie; ++i)
-            sum += static_cast<long double>(x[b](k,j,i))*y[b](k,j,i);
+            sum += static_cast<long double>(cat(x,b,k,j,i))*cat(y,b,k,j,i);
     }
-#ifdef MPI_PARALLEL
-    MPI_Allreduce(MPI_IN_PLACE, &sum, 1, MPI_LONG_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
-#endif
     return sum;
+  };
+  long long reduction_calls = 0;
+  auto reduce = [&](long double &value) {
+    ++reduction_calls;
+#ifdef MPI_PARALLEL
+    MPI_Allreduce(MPI_IN_PLACE, &value, 1, MPI_LONG_DOUBLE, MPI_SUM,
+                  MPI_COMM_WORLD);
+#endif
+  };
+  auto reduce_many = [&](std::vector<long double> &values) {
+    if (values.empty()) return;
+    ++reduction_calls;
+#ifdef MPI_PARALLEL
+    MPI_Allreduce(MPI_IN_PLACE, values.data(), static_cast<int>(values.size()),
+                  MPI_LONG_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
+#endif
+  };
+  auto dot = [&](const BlockVector &x, const BlockVector &y) {
+    long double value = local_dot(x,y);
+    reduce(value);
+    return value;
   };
   auto norm = [&](const BlockVector &x) {
     return std::sqrt(std::max(dot(x,x), 0.0L));
@@ -1230,7 +1286,8 @@ void linearMGDriver::SolveFGMRES(int stage) {
       delta.ZeroClear();
       for (int k = pmb->ks; k <= pmb->ke; ++k)
         for (int j = pmb->js; j <= pmb->je; ++j)
-          for (int i = pmb->is; i <= pmb->ie; ++i) delta(k,j,i) = x[b](k,j,i);
+          for (int i = pmb->is; i <= pmb->ie; ++i)
+            delta(k,j,i) = cat(x,b,k,j,i);
     }
     linmgtlist_->DoTaskListOneStage(pmy_mesh_, stage);
   };
@@ -1260,12 +1317,62 @@ void linearMGDriver::SolveFGMRES(int stage) {
                      + coeff(linearSolver::DZMS,k,j,i))*delta(k-1,j,i);
             value += (fac*coeff(linearSolver::DZPF,k,j,i)
                      + coeff(linearSolver::DZPS,k,j,i))*delta(k+1,j,i);
-            y[b](k,j,i) = value;
+            at(y,b,k,j,i) = value;
           }
         }
       }
     }
   };
+  if (fgmres_linearity_check_ && fgmres_linearity_check_count_ == 0) {
+    BlockVector lx = make_vector(), ly = make_vector(), lxy = make_vector();
+    BlockVector alx = make_vector(), aly = make_vector(), alxy = make_vector();
+    BlockVector scaled_x = make_vector(), a_scaled_x = make_vector();
+    constexpr Real alpha = -0.375;
+    for (std::size_t bidx = 0; bidx < lx.size(); ++bidx) {
+      linearMG *pmg = static_cast<linearMG*>(vmg_[bidx]);
+      MeshBlock *pmb = pmg->pmy_block_;
+      for (int k = pmb->ks; k <= pmb->ke; ++k) {
+        for (int j = pmb->js; j <= pmb->je; ++j) {
+          for (int i = pmb->is; i <= pmb->ie; ++i) {
+            const Real key = 0.173*(pmg->pmy_block_->gid + 1)
+                           + 0.119*(i - pmb->is + 1)
+                           + 0.071*(j - pmb->js + 1)
+                           + 0.043*(k - pmb->ks + 1);
+            at(lx,bidx,k,j,i) = std::sin(key) + 0.1*std::cos(2.3*key);
+            at(ly,bidx,k,j,i) = std::cos(1.7*key) - 0.2*std::sin(0.7*key);
+            at(lxy,bidx,k,j,i) = at(lx,bidx,k,j,i) + at(ly,bidx,k,j,i);
+            at(scaled_x,bidx,k,j,i) = alpha*at(lx,bidx,k,j,i);
+          }
+        }
+      }
+    }
+    apply_operator(lx, alx);
+    apply_operator(ly, aly);
+    apply_operator(lxy, alxy);
+    apply_operator(scaled_x, a_scaled_x);
+    const long double add_scale = std::max(
+        norm(alxy), std::max(norm(alx) + norm(aly), 1.0e-300L));
+    const long double hom_scale = std::max(
+        norm(a_scaled_x), std::max(std::abs(alpha)*norm(alx), 1.0e-300L));
+    for (std::size_t bidx = 0; bidx < alxy.size(); ++bidx) {
+      MeshBlock *pmb = static_cast<linearMG*>(vmg_[bidx])->pmy_block_;
+      for (int k = pmb->ks; k <= pmb->ke; ++k)
+        for (int j = pmb->js; j <= pmb->je; ++j)
+          for (int i = pmb->is; i <= pmb->ie; ++i) {
+            at(alxy,bidx,k,j,i) -= at(alx,bidx,k,j,i) + at(aly,bidx,k,j,i);
+            at(a_scaled_x,bidx,k,j,i) -= alpha*at(alx,bidx,k,j,i);
+          }
+    }
+    const Real additivity = static_cast<Real>(norm(alxy)/add_scale);
+    const Real homogeneity = static_cast<Real>(norm(a_scaled_x)/hom_scale);
+    if (Globals::my_rank == 0) {
+      std::cout << "[LINEAR_FGMRES_LINEARITY] additivity_rel=" << additivity
+                << " homogeneity_rel=" << homogeneity
+                << " alpha=" << alpha
+                << " multilevel=" << pmy_mesh_->multilevel << std::endl;
+    }
+    ++fgmres_linearity_check_count_;
+  }
   auto apply_preconditioner = [&](const BlockVector &rhs, BlockVector &z) {
     current_level_ = fmglevel_ = ntotallevel_ - 1;
     for (std::size_t b = 0; b < rhs.size(); ++b) {
@@ -1281,7 +1388,7 @@ void linearMGDriver::SolveFGMRES(int stage) {
           const int mj = j - pmb->js + ngh;
           for (int i = pmb->is; i <= pmb->ie; ++i) {
             const int mi = i - pmb->is + ngh;
-            pmg->src_[pmg->current_level_](0,mk,mj,mi) = rhs[b](k,j,i);
+            pmg->src_[pmg->current_level_](0,mk,mj,mi) = cat(rhs,b,k,j,i);
           }
         }
       }
@@ -1299,21 +1406,67 @@ void linearMGDriver::SolveFGMRES(int stage) {
           const int mj = j - pmb->js + ngh;
           for (int i = pmb->is; i <= pmb->ie; ++i) {
             const int mi = i - pmb->is + ngh;
-            z[b](k,j,i) = pmg->u_[pmg->current_level_](0,mk,mj,mi);
+            at(z,b,k,j,i) = pmg->u_[pmg->current_level_](0,mk,mj,mi);
           }
         }
       }
     }
   };
 
+  std::vector<int> current_gids;
+  current_gids.reserve(vmg_.size());
+  for (auto *base : vmg_)
+    current_gids.push_back(static_cast<linearMG*>(base)->pmy_block_->gid);
+  const bool cache_matches = fgmres_cache_compact_ == fgmres_compact_basis_
+      && current_gids == fgmres_cache_gids_
+      && fgmres_v_cache_.size() == static_cast<std::size_t>(fgmres_restart_ + 1)
+      && fgmres_z_cache_.size() == static_cast<std::size_t>(fgmres_restart_);
+  bool workspace_rebuilt = false;
+  if (fgmres_reuse_basis_ && !cache_matches) {
+    fgmres_v_cache_.clear();
+    fgmres_z_cache_.clear();
+    fgmres_v_cache_.reserve(fgmres_restart_ + 1);
+    fgmres_z_cache_.reserve(fgmres_restart_);
+    for (int n = 0; n <= fgmres_restart_; ++n)
+      fgmres_v_cache_.emplace_back(make_vector());
+    for (int n = 0; n < fgmres_restart_; ++n)
+      fgmres_z_cache_.emplace_back(make_vector());
+    fgmres_cache_gids_ = current_gids;
+    fgmres_cache_compact_ = fgmres_compact_basis_;
+    ++fgmres_workspace_rebuilds_;
+    workspace_rebuilt = true;
+  }
+  std::vector<BlockVector> local_v, local_z;
+  if (!fgmres_reuse_basis_) {
+    local_v.reserve(fgmres_restart_ + 1);
+    local_z.reserve(fgmres_restart_);
+    for (int n = 0; n <= fgmres_restart_; ++n)
+      local_v.emplace_back(make_vector());
+    for (int n = 0; n < fgmres_restart_; ++n)
+      local_z.emplace_back(make_vector());
+    workspace_rebuilt = true;
+  }
+  std::vector<BlockVector> &v = fgmres_reuse_basis_ ? fgmres_v_cache_ : local_v;
+  std::vector<BlockVector> &z = fgmres_reuse_basis_ ? fgmres_z_cache_ : local_z;
+  std::size_t basis_slots = 0;
+  for (const auto &basis : v)
+    for (const auto &block : basis) basis_slots += block.GetSize();
+  for (const auto &basis : z)
+    for (const auto &block : basis) basis_slots += block.GetSize();
+
   BlockVector b = make_vector(), x = make_vector(), r = make_vector(), ax = make_vector();
+  std::size_t work_slots = 0;
+  for (const auto &block : b) work_slots += block.GetSize();
+  for (const auto &block : x) work_slots += block.GetSize();
+  for (const auto &block : r) work_slots += block.GetSize();
+  for (const auto &block : ax) work_slots += block.GetSize();
   for (std::size_t q = 0; q < b.size(); ++q) {
     linearMG *pmg = static_cast<linearMG*>(vmg_[q]);
     MeshBlock *pmb = pmg->pmy_block_;
     for (int k = pmb->ks; k <= pmb->ke; ++k)
       for (int j = pmb->js; j <= pmb->je; ++j)
         for (int i = pmb->is; i <= pmb->ie; ++i)
-          b[q](k,j,i) = pmg->pnr_->src_(k,j,i);
+          at(b,q,k,j,i) = pmg->pnr_->src_(k,j,i);
   }
   copy(r,b);
   const long double bnorm = std::max(norm(b),
@@ -1327,11 +1480,6 @@ void linearMGDriver::SolveFGMRES(int stage) {
          && total_iterations < fgmres_max_iterations_) {
     const int width = std::min(fgmres_restart_,
                                fgmres_max_iterations_ - total_iterations);
-    std::vector<BlockVector> v, z;
-    v.reserve(width + 1);
-    z.reserve(width);
-    for (int n = 0; n <= width; ++n) v.emplace_back(make_vector());
-    for (int n = 0; n < width; ++n) z.emplace_back(make_vector());
     copy(v[0], r);
     scale(v[0], static_cast<Real>(1.0L/beta));
     std::vector<Real> h(static_cast<std::size_t>(width + 1)*width, 0.0);
@@ -1341,17 +1489,39 @@ void linearMGDriver::SolveFGMRES(int stage) {
     for (int j = 0; j < width; ++j) {
       apply_preconditioner(v[j], z[j]);
       apply_operator(z[j], v[j+1]);
-      for (int i = 0; i <= j; ++i) {
-        h[static_cast<std::size_t>(i)*width + j] =
-            static_cast<Real>(dot(v[j+1], v[i]));
-        axpy(v[j+1], -h[static_cast<std::size_t>(i)*width + j], v[i]);
+      if (fgmres_batched_reductions_) {
+        std::vector<long double> products(j + 1, 0.0L);
+        for (int i = 0; i <= j; ++i) products[i] = local_dot(v[j+1],v[i]);
+        reduce_many(products);
+        for (int i = 0; i <= j; ++i) {
+          h[static_cast<std::size_t>(i)*width + j] =
+              static_cast<Real>(products[i]);
+          axpy(v[j+1], -h[static_cast<std::size_t>(i)*width + j], v[i]);
+        }
+      } else {
+        for (int i = 0; i <= j; ++i) {
+          h[static_cast<std::size_t>(i)*width + j] =
+              static_cast<Real>(dot(v[j+1], v[i]));
+          axpy(v[j+1], -h[static_cast<std::size_t>(i)*width + j], v[i]);
+        }
       }
       // A second MGS pass prevents loss of orthogonality for the 1e11-scale
       // coefficient contrasts present in the RSG Schur operator.
-      for (int i = 0; i <= j; ++i) {
-        const Real correction = static_cast<Real>(dot(v[j+1], v[i]));
-        h[static_cast<std::size_t>(i)*width + j] += correction;
-        axpy(v[j+1], -correction, v[i]);
+      if (fgmres_batched_reductions_) {
+        std::vector<long double> products(j + 1, 0.0L);
+        for (int i = 0; i <= j; ++i) products[i] = local_dot(v[j+1],v[i]);
+        reduce_many(products);
+        for (int i = 0; i <= j; ++i) {
+          const Real correction = static_cast<Real>(products[i]);
+          h[static_cast<std::size_t>(i)*width + j] += correction;
+          axpy(v[j+1], -correction, v[i]);
+        }
+      } else {
+        for (int i = 0; i <= j; ++i) {
+          const Real correction = static_cast<Real>(dot(v[j+1], v[i]));
+          h[static_cast<std::size_t>(i)*width + j] += correction;
+          axpy(v[j+1], -correction, v[i]);
+        }
       }
       const long double hnext = norm(v[j+1]);
       h[static_cast<std::size_t>(j + 1)*width + j] = static_cast<Real>(hnext);
@@ -1414,6 +1584,14 @@ void linearMGDriver::SolveFGMRES(int stage) {
               << " target=" << fgmres_threshold_
               << " restart=" << fgmres_restart_
               << " mg_vcycles=" << fgmres_mg_vcycles_
+              << " compact=" << fgmres_compact_basis_
+              << " reuse=" << fgmres_reuse_basis_
+              << " batched_reductions=" << fgmres_batched_reductions_
+              << " reduction_calls=" << reduction_calls
+              << " basis_bytes=" << basis_slots*sizeof(Real)
+              << " workspace_bytes=" << (basis_slots + work_slots)*sizeof(Real)
+              << " workspace_rebuilt=" << workspace_rebuilt
+              << " workspace_rebuilds=" << fgmres_workspace_rebuilds_
               << " breakdown=" << breakdown << std::endl;
   }
   if (breakdown || !(relative_residual <= fgmres_threshold_)

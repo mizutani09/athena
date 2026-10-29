@@ -68,6 +68,21 @@ class MeshRefinement {
                                     AthenaArray<Real> &fine, int sn, int en,
                                     int si, int ei, int sj, int ej, int sk, int ek);
 
+  // Linear piecewise-constant prolongation for correction vectors.  This is
+  // deliberately separate from the limited state prolongation above so that
+  // Krylov matvecs can opt into a fixed linear coarse/fine ghost operator
+  // without changing hydro/AMR state interpolation.
+  void ProlongateCellCenteredValuesConstant(
+      const AthenaArray<Real> &coarse, AthenaArray<Real> &fine, int sn, int en,
+      int si, int ei, int sj, int ej, int sk, int ek);
+
+  // Linearization of the limited state prolongation about base_coarse. The
+  // limiter branch is frozen by the base state, keeping a Krylov matvec linear.
+  void ProlongateCellCenteredValuesMinmodTangent(
+      const AthenaArray<Real> &base_coarse,
+      const AthenaArray<Real> &coarse_delta, AthenaArray<Real> &fine_delta,
+      int sn, int en, int si, int ei, int sj, int ej, int sk, int ek);
+
   void ProlongateCellCenteredValues(const AthenaArray<Real> &coarse,
                                     AthenaArray<Real> &fine, int array_order,
                                     int sn, int en, int si, int ei, int sj, int ej,

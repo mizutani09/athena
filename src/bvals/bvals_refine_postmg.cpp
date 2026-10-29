@@ -12,6 +12,7 @@
 #include <algorithm>  // min
 #include <cmath>
 #include <iterator>
+#include <sstream>
 #include <vector>
 
 // Athena++ headers
@@ -31,7 +32,10 @@ class CellCenteredCellCenteredBoundaryVariable;
 //!                                              CellCenteredBoundaryVariable* pbvar)
 //! \brief Prolongate boundaries after Multigrid assuming physical boundaries are filled
 
-void BoundaryValues::ProlongateBoundariesPostMG(CellCenteredBoundaryVariable* pbvar) {
+void BoundaryValues::ProlongateBoundariesPostMG(CellCenteredBoundaryVariable* pbvar,
+                                                bool constant_correction,
+                                                bool tangent_correction,
+                                                const AthenaArray<Real>* base_coarse) {
   MeshBlock *pmb = pmy_block_;
   const int &mylevel = loc.level;
 
@@ -109,7 +113,8 @@ void BoundaryValues::ProlongateBoundariesPostMG(CellCenteredBoundaryVariable* pb
 
 
     // Step 3. Finally, the ghost-ghost zones are ready for prolongation:
-    ProlongateGhostCellsPostMG(pbvar, si, ei, sj, ej, sk, ek);
+    ProlongateGhostCellsPostMG(pbvar, si, ei, sj, ej, sk, ek,
+                              constant_correction, tangent_correction, base_coarse);
   } // end loop over nneighbor
   return;
 }
@@ -169,9 +174,30 @@ void BoundaryValues::RestrictGhostCellsOnSameLevelPostMG(
 //! \brief Prolongate ghost cells after Multigrid
 
 void BoundaryValues::ProlongateGhostCellsPostMG(CellCenteredBoundaryVariable* pbvar,
-                               int si, int ei, int sj, int ej, int sk, int ek) {
+                               int si, int ei, int sj, int ej, int sk, int ek,
+                               bool constant_correction, bool tangent_correction,
+                               const AthenaArray<Real>* base_coarse) {
   MeshRefinement *pmr = pmy_block_->pmr;
-  pmr->ProlongateCellCenteredValues(*(pbvar->coarse_buf), *(pbvar->var_cc), 0, 0,
-                                    si, ei, sj, ej, sk, ek);
+  if (constant_correction) {
+    pmr->ProlongateCellCenteredValuesConstant(
+        *(pbvar->coarse_buf), *(pbvar->var_cc), 0, 0,
+        si, ei, sj, ej, sk, ek);
+  } else if (tangent_correction) {
+    if (base_coarse == nullptr) {
+      std::stringstream msg;
+      msg << "### FATAL ERROR in BoundaryValues::ProlongateGhostCellsPostMG"
+          << std::endl
+          << "Tangent correction prolongation requires a base coarse state."
+          << std::endl;
+      ATHENA_ERROR(msg);
+    }
+    pmr->ProlongateCellCenteredValuesMinmodTangent(
+        *base_coarse, *(pbvar->coarse_buf), *(pbvar->var_cc), 0, 0,
+        si, ei, sj, ej, sk, ek);
+  } else {
+    pmr->ProlongateCellCenteredValues(
+        *(pbvar->coarse_buf), *(pbvar->var_cc), 0, 0,
+        si, ei, sj, ej, sk, ek);
+  }
   return;
 }

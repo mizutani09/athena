@@ -107,6 +107,20 @@ auto_mporigin = true
 <nrfld>
 mgmode       = MGI
 fas          = false
+# Linear solver selection.  Production remains on the historical MG path by
+# default; FGMRES with tangent correction prolongation is an opt-in AMR test.
+linear_solver = mg
+coarse_operator = rediscretized
+prolongation = trilinear
+amr_correction_prolongation = minmod
+fgmres_threshold = 1.0e-8
+fgmres_restart = 10
+fgmres_max_iterations = 300
+fgmres_mg_vcycles = 1
+fgmres_linearity_check = false
+fgmres_compact_basis = true
+fgmres_reuse_basis = true
+fgmres_batched_reductions = true
 smoother     = jacobi-rb
 symmetric_rb_sweeps = true
 npresmooth   = 2

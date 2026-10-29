@@ -28,6 +28,24 @@
 #include "mesh.hpp"
 #include "mesh_refinement.hpp"
 
+namespace {
+
+// Directional derivative of minmod(bm, bp), with its branch selected solely
+// from the base-state slopes.  The equal-slope case uses the symmetric member
+// of the generalized derivative; every branch is linear in (dm, dp).
+inline Real MinmodTangent(Real bm, Real bp, Real dm, Real dp) {
+  // Avoid bm*bp: very small same-sign slopes can underflow to zero, while
+  // very large slopes can overflow even though only their signs are needed.
+  if (bm == 0.0 || bp == 0.0 || ((bm > 0.0) != (bp > 0.0))) return 0.0;
+  const Real abm = std::abs(bm);
+  const Real abp = std::abs(bp);
+  if (abm < abp) return dm;
+  if (abp < abm) return dp;
+  return 0.5*(dm + dp);
+}
+
+}  // namespace
+
 //----------------------------------------------------------------------------------------
 //! \fn MeshRefinement::MeshRefinement(MeshBlock *pmb, ParameterInput *pin)
 //! \brief constructor
@@ -620,6 +638,103 @@ void MeshRefinement::ProlongateCellCenteredValues(
     }
   }
   return;
+}
+
+//----------------------------------------------------------------------------------------
+//! \brief Piecewise-constant cell-centred prolongation for linear correction vectors.
+
+void MeshRefinement::ProlongateCellCenteredValuesConstant(
+    const AthenaArray<Real> &coarse, AthenaArray<Real> &fine,
+    int sn, int en, int si, int ei, int sj, int ej, int sk, int ek) {
+  MeshBlock *pmb = pmy_block_;
+  const int nk = pmb->block_size.nx3 > 1 ? 2 : 1;
+  const int nj = pmb->block_size.nx2 > 1 ? 2 : 1;
+  for (int n = sn; n <= en; ++n) {
+    for (int k = sk; k <= ek; ++k) {
+      const int fk = (k - pmb->cks)*2 + pmb->ks;
+      for (int j = sj; j <= ej; ++j) {
+        const int fj = (j - pmb->cjs)*2 + pmb->js;
+        for (int i = si; i <= ei; ++i) {
+          const int fi = (i - pmb->cis)*2 + pmb->is;
+          const Real value = coarse(n,k,j,i);
+          for (int ok = 0; ok < nk; ++ok)
+            for (int oj = 0; oj < nj; ++oj)
+              for (int oi = 0; oi < 2; ++oi)
+                fine(n,fk+ok,fj+oj,fi+oi) = value;
+        }
+      }
+    }
+  }
+}
+
+//----------------------------------------------------------------------------------------
+//! \brief Tangent of minmod-limited cell-centred prolongation about a base state.
+
+void MeshRefinement::ProlongateCellCenteredValuesMinmodTangent(
+    const AthenaArray<Real> &base_coarse,
+    const AthenaArray<Real> &coarse_delta, AthenaArray<Real> &fine_delta,
+    int sn, int en, int si, int ei, int sj, int ej, int sk, int ek) {
+  MeshBlock *pmb = pmy_block_;
+  Coordinates *pco = pmb->pcoord;
+  const bool has_x2 = pmb->block_size.nx2 > 1;
+  const bool has_x3 = pmb->block_size.nx3 > 1;
+  const int nj = has_x2 ? 2 : 1;
+  const int nk = has_x3 ? 2 : 1;
+
+  for (int n = sn; n <= en; ++n) {
+    for (int k = sk; k <= ek; ++k) {
+      const int fk = (k - pmb->cks)*2 + pmb->ks;
+      for (int j = sj; j <= ej; ++j) {
+        const int fj = (j - pmb->cjs)*2 + pmb->js;
+        for (int i = si; i <= ei; ++i) {
+          const int fi = (i - pmb->cis)*2 + pmb->is;
+          const Real bc = base_coarse(n,k,j,i);
+          const Real dc = coarse_delta(n,k,j,i);
+
+          const Real dx1m = pcoarsec->x1v(i) - pcoarsec->x1v(i-1);
+          const Real dx1p = pcoarsec->x1v(i+1) - pcoarsec->x1v(i);
+          const Real b1m = (bc - base_coarse(n,k,j,i-1))/dx1m;
+          const Real b1p = (base_coarse(n,k,j,i+1) - bc)/dx1p;
+          const Real d1m = (dc - coarse_delta(n,k,j,i-1))/dx1m;
+          const Real d1p = (coarse_delta(n,k,j,i+1) - dc)/dx1p;
+          const Real g1 = MinmodTangent(b1m, b1p, d1m, d1p);
+
+          Real g2 = 0.0;
+          if (has_x2) {
+            const Real dx2m = pcoarsec->x2v(j) - pcoarsec->x2v(j-1);
+            const Real dx2p = pcoarsec->x2v(j+1) - pcoarsec->x2v(j);
+            const Real b2m = (bc - base_coarse(n,k,j-1,i))/dx2m;
+            const Real b2p = (base_coarse(n,k,j+1,i) - bc)/dx2p;
+            const Real d2m = (dc - coarse_delta(n,k,j-1,i))/dx2m;
+            const Real d2p = (coarse_delta(n,k,j+1,i) - dc)/dx2p;
+            g2 = MinmodTangent(b2m, b2p, d2m, d2p);
+          }
+
+          Real g3 = 0.0;
+          if (has_x3) {
+            const Real dx3m = pcoarsec->x3v(k) - pcoarsec->x3v(k-1);
+            const Real dx3p = pcoarsec->x3v(k+1) - pcoarsec->x3v(k);
+            const Real b3m = (bc - base_coarse(n,k-1,j,i))/dx3m;
+            const Real b3p = (base_coarse(n,k+1,j,i) - bc)/dx3p;
+            const Real d3m = (dc - coarse_delta(n,k-1,j,i))/dx3m;
+            const Real d3p = (coarse_delta(n,k+1,j,i) - dc)/dx3p;
+            g3 = MinmodTangent(b3m, b3p, d3m, d3p);
+          }
+
+          for (int ok = 0; ok < nk; ++ok) {
+            const Real dz = has_x3 ? pco->x3v(fk+ok) - pcoarsec->x3v(k) : 0.0;
+            for (int oj = 0; oj < nj; ++oj) {
+              const Real dy = has_x2 ? pco->x2v(fj+oj) - pcoarsec->x2v(j) : 0.0;
+              for (int oi = 0; oi < 2; ++oi) {
+                const Real dx = pco->x1v(fi+oi) - pcoarsec->x1v(i);
+                fine_delta(n,fk+ok,fj+oj,fi+oi) = dc + g1*dx + g2*dy + g3*dz;
+              }
+            }
+          }
+        }
+      }
+    }
+  }
 }
 
 

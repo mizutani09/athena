@@ -85,6 +85,7 @@ class linearMGDriver: public MultigridDriver {
   friend class NewtonRaphsonDriver;
 
  private:
+  using FGMRESBlockVector = std::vector<AthenaArray<Real>>;
   bool EnforcePeriodicBoundaryConsistency() const final { return false; }
   void RestrictCoefficientCell(AthenaArray<Real> &dst,
                                const AthenaArray<Real> &src,
@@ -121,6 +122,15 @@ class linearMGDriver: public MultigridDriver {
   bool fgmres_;
   Real fgmres_threshold_;
   int fgmres_restart_, fgmres_max_iterations_, fgmres_mg_vcycles_;
+  bool fgmres_linearity_check_{false};
+  int fgmres_linearity_check_count_{0};
+  bool fgmres_compact_basis_{true};
+  bool fgmres_reuse_basis_{true};
+  bool fgmres_batched_reductions_{true};
+  std::vector<FGMRESBlockVector> fgmres_v_cache_, fgmres_z_cache_;
+  std::vector<int> fgmres_cache_gids_;
+  bool fgmres_cache_compact_{true};
+  int fgmres_workspace_rebuilds_{0};
   bool galerkin_coarse_operator_;
   bool experimental_27_point_galerkin_;
 };
