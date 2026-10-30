@@ -11,6 +11,7 @@
 #include "../athena.hpp"
 #include "../athena_arrays.hpp"
 #include "../coordinates/coordinates.hpp"
+#include "../eos/eos.hpp"
 #include "../globals.hpp"
 #include "../hydro/hydro.hpp"
 #include "../mesh/mesh.hpp"
@@ -164,7 +165,14 @@ void FLD::AddExplicitSourceTerms(const Real dt, const AthenaArray<Real> &prim,
         // this RK stage. Reuse it here instead of recomputing R and lambda.
         const Real lambda = rad_state_cc_(RadFLD::LAMBDA,k,j,i);
 
-        if (do_force) {
+        // A density floor is a numerical atmosphere, not physical inertia.
+        // Applying a finite radiation-force density to a cell pinned to that
+        // floor can launch it across many cells in one otherwise valid fluid
+        // CFL step.  An opt-in mask excludes only cells at the numerical lower
+        // bound; zero preserves the historical behavior.
+        const bool force_cell = RadiationForceActiveAtDensity(
+            prim(IDN,k,j,i), pmb->peos->GetDensityFloor());
+        if (do_force && force_cell) {
           hydro_u(IM1,k,j,i) -= dt*lambda*ex;
           hydro_u(IM2,k,j,i) -= dt*lambda*ey;
           hydro_u(IM3,k,j,i) -= dt*lambda*ez;

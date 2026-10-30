@@ -8,3 +8,17 @@ sha256 = 6e50b1d9ac49b35f2707b0f0418a61d3b6efa0dc06e5a9cb6ae3d2aa03deea83
 mapped_mass_117_msun = 2.998652534015071
 verified_mapped_mass_128_msun = 2.9985641985753575
 qualification = numerical-integration test using the validation-only NATA EOS
+
+# Material-EOS gray-atmosphere production candidate
+filename = st35gm03n07_tomida_gray_hse.dat
+sidecar = st35gm03n07_tomida_gray_hse.dat.json
+generator = tools/rsg/make_gray_rsg_hse.py
+eos_sha256 = 7051d1c5222f3ca7dddbbba1c48d473cb39bc5e76badb869b082625473a71576
+opacity_sha256 = 6f5d39922be2436daf45c049c081adcf65e2b71ff15ab05ef4c066413ae65a14
+sha256 = d24ab36d205cc1561267b0d7e0b2c39a71d592fac52a0da3ea88e5361c394227
+physics = 12 Msun fixed Freytag potential, 3 Msun envelope, R=830 Rsun, L=91932 Lsun, Teff=3487 K
+structure = table-consistent convective interior, shot superadiabatic layer, spherical Eddington gray atmosphere
+radiation_force = included consistently in gas HSE
+spherical_mass_msun = 2.9992386261223065
+resolved_interior_hse_max = 0.008484531916230248
+qualification = production asset validation PASS; 32^3 full-FLD CFL=0.3 100-cycle test PASS

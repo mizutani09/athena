@@ -58,7 +58,7 @@ void Hydro::RiemannSolver(const int k, const int j, const int il, const int iu,
 #if NRMGFLD_ENABLED
   const int dir=ivx-IVX;
   FLD *pfld=pmy_block->prfld;
-  const bool coupled=pfld->PressureCoupled();
+  const bool pressure_enabled=pfld->RiemannPressureCoupled();
   AthenaArray<Real> &radl=pfld->rad_face_l[dir];
   AthenaArray<Real> &radr=pfld->rad_face_r[dir];
   AthenaArray<Real> &radflux=pfld->u_rad_flux[dir];
@@ -108,7 +108,11 @@ void Hydro::RiemannSolver(const int k, const int j, const int il, const int iu,
               && k >= pmy_block->ks && k <= pmy_block->ke)
            : (i >= pmy_block->is && i <= pmy_block->ie
               && j >= pmy_block->js && j <= pmy_block->je));
-    const bool face_coupled=coupled && active_rad_face;
+    const bool face_coupled=pressure_enabled && active_rad_face
+        && pfld->RadiationForceActiveAtDensity(
+            wli[IDN], pmy_block->peos->GetDensityFloor())
+        && pfld->RadiationForceActiveAtDensity(
+            wri[IDN], pmy_block->peos->GetDensityFloor());
     const Real erl=active_rad_face
         ? std::max(radl(RadFLD::ERAD,k,j,i),TINY_NUMBER) : 0.0;
     const Real err=active_rad_face

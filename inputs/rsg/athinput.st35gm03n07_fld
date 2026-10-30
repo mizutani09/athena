@@ -1,5 +1,5 @@
 <comment>
-problem = Chiavassa et al. (2011) st35gm03n07, nearest NR-MG-compatible grid
+problem = st35gm03n07 material-only Tomida EOS + gray-FLD production model
 configure = --prob=rsg_star_in_box --coord=cartesian --eos=general/eos_table -nrmgfld -hdf5 -mpi
 
 <job>
@@ -63,9 +63,10 @@ mu = 1.3
 rho_unit = 1.0e-8
 egas_unit = 1.0e5
 leng_unit = 6.957e10
-dfloor = 9.9e-5
-pfloor = 1.0e-20
-eos_file_name = data/eos/rsg_nata_eos.tab
+dfloor = 1.0e-13
+pfloor = 1.4e-15
+tfloor = 1.0e3
+eos_file_name = data/eos/rsg_tomida2013_material_eos.tab
 eos_file_type = ascii
 eos_read_ratios = true
 eos_rho_unit = 1.0e-8
@@ -79,12 +80,14 @@ eos_table_clamp = false
 is_couple = true
 only_rad = false
 cut_diff = false
-include_radiation_force = false
+include_radiation_force = true
+radiation_pressure_in_riemann = false
+radiation_force_density_floor_factor = 1.01
 include_mixed_frame_terms = false
 fixed_flux_limiter = false
 fixed_u_rad = false
 use_opacity_table = true
-opacity_table_file = data/opacity/rsg_gray_opacity.h5
+opacity_table_file = data/opacity/rsg_gray_opacity_t7.h5
 opacity_table_file_type = hdf5
 opacity_table_axis = trho
 opacity_table_domain_policy = error
@@ -97,7 +100,7 @@ diagnostic_verbosity = 0
 linear_solver = fgmres
 coarse_operator = galerkin
 galerkin_zero_physical_boundaries = true
-fgmres_threshold = 1.0e-8
+fgmres_threshold = 1.0e-4
 fgmres_restart = 20
 fgmres_max_iterations = 200
 fgmres_mg_vcycles = 1
@@ -113,7 +116,10 @@ niteration = 30
 nr_threshold = 1.0e-8
 nr_niteration = 60
 backward_error_convergence = true
-max_update_fraction = 0.2
+exact_local_gas_solve = true
+max_update_fraction = 10.0
+jacobian_check = false
+jacobian_check_epsilon = 1.0e-4
 ix1_bc = user
 ox1_bc = user
 ix2_bc = user
@@ -128,8 +134,8 @@ linearMG_ix3_bc = user
 linearMG_ox3_bc = user
 
 <problem>
-model_name = st35gm03n07_athena_fld
-hse_model_file = data/ic/st35gm03n07_hse.dat
+model_name = st35gm03n07_tomida_material_gray_fld
+hse_model_file = data/ic/st35gm03n07_tomida_gray_hse.dat
 potential_mass_msun = 12.0
 gas_mass_msun = 3.0
 radius_rsun = 830.0
@@ -147,4 +153,6 @@ velocity_perturb_fraction = 1.0e-4
 perturb_seed = 350307
 grid_mass_tolerance = 5.0e-3
 boundary_scale_height_factor = 1.0
-radiation_bath_temperature = 10.0
+radiation_boundary = marshak_vacuum
+radiation_external_temperature = 0.0
+marshak_alpha = 0.5

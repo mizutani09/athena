@@ -76,6 +76,36 @@ inline Real FaceEnergy(const Real left, const Real right) {
 
 enum DriftFace { XMinus, XPlus, YMinus, YPlus, ZMinus, ZPlus };
 
+inline bool MarshakFaceActive(const MeshBlock *pmb, const FLD *fld,
+                              const int face, const int k, const int j,
+                              const int i) {
+  const bool enabled = fld->marshak_face_boundary[face]
+      || (face == ZPlus && fld->marshak_top_boundary);
+  if (!enabled) return false;
+  const RegionSize &block = pmb->block_size;
+  const RegionSize &mesh = pmb->pmy_mesh->mesh_size;
+  if (face == XMinus) return i == pmb->is && block.x1min == mesh.x1min;
+  if (face == XPlus)  return i == pmb->ie && block.x1max == mesh.x1max;
+  if (face == YMinus) return j == pmb->js && block.x2min == mesh.x2min;
+  if (face == YPlus)  return j == pmb->je && block.x2max == mesh.x2max;
+  if (face == ZMinus) return k == pmb->ks && block.x3min == mesh.x3min;
+  return k == pmb->ke && block.x3max == mesh.x3max;
+}
+
+inline Real MarshakFlux(const FLD *fld, const int face, const int k,
+                        const int j, const int i, const Real erad,
+                        const Real dx, Real *derivative) {
+  const Real dface = std::max(fld->marshak_dface_all(face,k,j,i), TINY_NUMBER);
+  const Real acoef = fld->marshak_top_alpha*fld->c_ph*0.5*dx;
+  const Real denom = std::max(dface + acoef, TINY_NUMBER);
+  const Real eb = (dface*erad + acoef*fld->marshak_top_erad_ext)/denom;
+  if (derivative != nullptr) {
+    *derivative = fld->marshak_top_alpha*fld->c_ph*dface/denom;
+  }
+  return fld->marshak_top_alpha*fld->c_ph
+      *(eb - fld->marshak_top_erad_ext);
+}
+
 inline Real MixedDriftFace(const RadFLD::ClosureValues &closure,
                            Real sigma_p_left, Real sigma_p_right,
                            Real velocity_left, Real velocity_right) {
@@ -344,6 +374,8 @@ NRFLD::NRFLD(MeshBlock *pmb, ParameterInput *pin) :
     max_update_fraction_(pin->GetOrAddReal("nrfld", "max_update_fraction", -1.0)),
     backward_error_convergence_(pin->GetOrAddBoolean(
         "nrfld", "backward_error_convergence", false)),
+    exact_local_gas_solve_(pin->GetOrAddBoolean(
+        "nrfld", "exact_local_gas_solve", false)),
     fixed_linear_coefficients_initialized_(false),
     jacobian_check_(pin->GetOrAddBoolean("nrfld", "jacobian_check", false)),
     jacobian_check_done_(false),
@@ -466,11 +498,22 @@ void NRFLD::RunJacobianDiagnostic(Real dt) {
     long double fr_diff2 = 0.0, fr_jv2 = 0.0;
     Real fg_max_rel = 0.0, fr_max_rel = 0.0;
     std::int64_t count = 0;
-    // Exclude one fine cell next to every MeshBlock face: the deterministic
-    // perturbation is local to this block and deliberately does not communicate ghosts.
-    for (int k = ks+1; k <= ke-1; ++k) {
-      for (int j = js+1; j <= je-1; ++j) {
-        for (int i = is+1; i <= ie-1; ++i) {
+    // The deterministic perturbation is local to this MeshBlock and does not
+    // communicate neighbour-block ghosts, so exclude one cell next to an
+    // internal MeshBlock face.  A physical-boundary ghost is prescribed
+    // independently of the interior perturbation; include that boundary cell
+    // so Robin/Marshak face derivatives are covered by this diagnostic.
+    const RegionSize &block = pmy_block_->block_size;
+    const RegionSize &mesh = pmy_block_->pmy_mesh->mesh_size;
+    const int il = (block.x1min == mesh.x1min) ? is : is+1;
+    const int iu = (block.x1max == mesh.x1max) ? ie : ie-1;
+    const int jl = (block.x2min == mesh.x2min) ? js : js+1;
+    const int ju = (block.x2max == mesh.x2max) ? je : je-1;
+    const int kl = (block.x3min == mesh.x3min) ? ks : ks+1;
+    const int ku = (block.x3max == mesh.x3max) ? ke : ke-1;
+    for (int k = kl; k <= ku; ++k) {
+      for (int j = jl; j <= ju; ++j) {
+        for (int i = il; i <= iu; ++i) {
           const Real mixed_jv = dt*MixedDriftTerm(mixed_drift_, vr, k,j,i,0.5/dx);
           const Real jvg = derivetive_(NewtonRaphsonFLD::dFg_deg,k,j,i)*vg(k,j,i)
                          + derivetive_(NewtonRaphsonFLD::dFg_dEr,k,j,i)*vr(k,j,i)
@@ -761,10 +804,22 @@ void NRFLD::CalculateCoefficientsOnce(const AthenaArray<Real> &u_pre,
             ? MixedDriftFace(closure_zp, pfld->sigma_p(k,j,i),
                              pfld->sigma_p(k+1,j,i), w(IVZ,k,j,i),
                              w(IVZ,k+1,j,i)) : 0.0;
-        // Preserve the lagged upper-face diffusion coefficient used by this
-        // Newton solve.  The Marshak residual/Jacobian and diagnostics must
-        // use this exact coefficient rather than an uninitialized side array
-        // or an independently reconstructed approximation.
+        // Preserve every lagged face diffusion coefficient used by this
+        // Newton solve.  A face-flux boundary must use the same D in its
+        // residual and Jacobian as the interior discretization.
+        pfld->marshak_dface_all(XMinus,k,j,i) =
+            derivetive(NewtonRaphsonFLD::dFr_dEr_xm,k,j,i);
+        pfld->marshak_dface_all(XPlus,k,j,i) =
+            derivetive(NewtonRaphsonFLD::dFr_dEr_xp,k,j,i);
+        pfld->marshak_dface_all(YMinus,k,j,i) =
+            derivetive(NewtonRaphsonFLD::dFr_dEr_ym,k,j,i);
+        pfld->marshak_dface_all(YPlus,k,j,i) =
+            derivetive(NewtonRaphsonFLD::dFr_dEr_yp,k,j,i);
+        pfld->marshak_dface_all(ZMinus,k,j,i) =
+            derivetive(NewtonRaphsonFLD::dFr_dEr_zm,k,j,i);
+        pfld->marshak_dface_all(ZPlus,k,j,i) =
+            derivetive(NewtonRaphsonFLD::dFr_dEr_zp,k,j,i);
+        // Legacy top-only storage for existing diagnostics.
         pfld->marshak_dface(k,j,i) =
             derivetive(NewtonRaphsonFLD::dFr_dEr_zp,k,j,i);
 
@@ -804,12 +859,6 @@ void NRFLD::CalculateCoefficients(const AthenaArray<Real> &u_rad_old,
   int ks = pmy_block_->ks, ke = pmy_block_->ke;
   Real dx = pmy_block_->pcoord->dx1f(is);
   Real idx2 = 1.0/(dx*dx);
-  // Apply the Marshak radiation condition only on the physical upper
-  // boundary, never on the upper face of an interior z meshblock.
-  const bool physical_top =
-      pmy_block_->block_size.x3max == pmy_block_->pmy_mesh->mesh_size.x3max;
-
-
   for (int k=ks; k<=ke; k++) {
     for (int j=js; j<=je; j++) {
 #pragma omp simd
@@ -840,27 +889,29 @@ void NRFLD::CalculateCoefficients(const AthenaArray<Real> &u_rad_old,
         const Real equilibrium_rad = pfld->a_r*T_gas_new4;
         Real src_term = c_sigma_p*ResolvableThermalDifference(
             equilibrium_rad, u_rad_new(k,j,i));
+        const Real center = u_rad_new(k,j,i);
+        const Real face_coeff[6] = {
+          derivetive(NewtonRaphsonFLD::dFr_dEr_xm,k,j,i),
+          derivetive(NewtonRaphsonFLD::dFr_dEr_xp,k,j,i),
+          derivetive(NewtonRaphsonFLD::dFr_dEr_ym,k,j,i),
+          derivetive(NewtonRaphsonFLD::dFr_dEr_yp,k,j,i),
+          derivetive(NewtonRaphsonFLD::dFr_dEr_zm,k,j,i),
+          derivetive(NewtonRaphsonFLD::dFr_dEr_zp,k,j,i)};
+        const Real neighbor[6] = {u_rad_new(k,j,i-1), u_rad_new(k,j,i+1),
+          u_rad_new(k,j-1,i), u_rad_new(k,j+1,i),
+          u_rad_new(k-1,j,i), u_rad_new(k+1,j,i)};
+        bool marshak[6];
+        Real marshak_dflux_sum = 0.0;
         Real diff_term = 0.0;
-        diff_term += derivetive(NewtonRaphsonFLD::dFr_dEr_xm,k,j,i)*(u_rad_new(k,j,i-1) - u_rad_new(k,j,i));
-        diff_term += derivetive(NewtonRaphsonFLD::dFr_dEr_xp,k,j,i)*(u_rad_new(k,j,i+1) - u_rad_new(k,j,i));
-        diff_term += derivetive(NewtonRaphsonFLD::dFr_dEr_ym,k,j,i)*(u_rad_new(k,j-1,i) - u_rad_new(k,j,i));
-        diff_term += derivetive(NewtonRaphsonFLD::dFr_dEr_yp,k,j,i)*(u_rad_new(k,j+1,i) - u_rad_new(k,j,i));
-        diff_term += derivetive(NewtonRaphsonFLD::dFr_dEr_zm,k,j,i)*(u_rad_new(k-1,j,i) - u_rad_new(k,j,i));
-        Real marshak_dflux_dE = 0.0;
-        if (pfld->marshak_top_boundary && physical_top && k == ke) {
-          const Real dface = std::max(pfld->marshak_dface(k,j,i), TINY_NUMBER);
-          const Real acoef = pfld->marshak_top_alpha*pfld->c_ph*0.5*dx;
-          const Real eb = (dface*u_rad_new(k,j,i)
-                           + acoef*pfld->marshak_top_erad_ext)
-                          /std::max(dface + acoef, TINY_NUMBER);
-          const Real ftop = pfld->marshak_top_alpha*pfld->c_ph
-                          *(eb - pfld->marshak_top_erad_ext);
-          diff_term += -ftop*dx;
-          marshak_dflux_dE = pfld->marshak_top_alpha*pfld->c_ph*dface
-                           /std::max(dface + acoef, TINY_NUMBER);
-        } else {
-          diff_term += derivetive(NewtonRaphsonFLD::dFr_dEr_zp,k,j,i)
-                     *(u_rad_new(k+1,j,i) - u_rad_new(k,j,i));
+        for (int face=0; face<6; ++face) {
+          marshak[face] = MarshakFaceActive(pmy_block_, pfld, face,k,j,i);
+          if (marshak[face]) {
+            Real derivative = 0.0;
+            diff_term -= MarshakFlux(pfld, face,k,j,i,center,dx,&derivative)*dx;
+            marshak_dflux_sum += derivative;
+          } else {
+            diff_term += face_coeff[face]*(neighbor[face] - center);
+          }
         }
         diff_term *= idx2;
 
@@ -891,14 +942,13 @@ void NRFLD::CalculateCoefficients(const AthenaArray<Real> &u_rad_old,
         derivetive(NewtonRaphsonFLD::dFg_dEr,k,j,i) = -dt*c_sigma_p;
         derivetive(NewtonRaphsonFLD::dFr_deg,k,j,i) = -exchange_jacobian;
         Real boundary_coeff = sum_dcp;
-        if (pfld->marshak_top_boundary && physical_top && k == ke &&
-            !fixed_linear_coefficients_initialized_)
-          boundary_coeff = sum_dcp
-                         - derivetive(NewtonRaphsonFLD::dFr_dEr_zp,k,j,i);
+        if (!fixed_linear_coefficients_initialized_) {
+          for (int face=0; face<6; ++face)
+            if (marshak[face]) boundary_coeff -= face_coeff[face];
+        }
         derivetive(NewtonRaphsonFLD::dFr_dEr,k,j,i) =
             1.0 + dt*(c_sigma_p + idx2*(boundary_coeff
-                + ((pfld->marshak_top_boundary && physical_top && k == ke)
-                   ? dx*marshak_dflux_dE : 0.0)));
+                + dx*marshak_dflux_sum));
 
 
         if (pfld->fixed_u_rad) {
@@ -923,19 +973,12 @@ void NRFLD::CalculateCoefficients(const AthenaArray<Real> &u_rad_old,
         } else {
           if (!fixed_linear_coefficients_initialized_) {
             coeff(linearSolver::DCCF,k,j,i) = boundary_coeff;
-            coeff(linearSolver::DXMF,k,j,i) =
-                -derivetive(NewtonRaphsonFLD::dFr_dEr_xm,k,j,i);
-            coeff(linearSolver::DXPF,k,j,i) =
-                -derivetive(NewtonRaphsonFLD::dFr_dEr_xp,k,j,i);
-            coeff(linearSolver::DYMF,k,j,i) =
-                -derivetive(NewtonRaphsonFLD::dFr_dEr_ym,k,j,i);
-            coeff(linearSolver::DYPF,k,j,i) =
-                -derivetive(NewtonRaphsonFLD::dFr_dEr_yp,k,j,i);
-            coeff(linearSolver::DZMF,k,j,i) =
-                -derivetive(NewtonRaphsonFLD::dFr_dEr_zm,k,j,i);
-            coeff(linearSolver::DZPF,k,j,i) =
-                (pfld->marshak_top_boundary && physical_top && k == ke) ? 0.0
-                : -derivetive(NewtonRaphsonFLD::dFr_dEr_zp,k,j,i);
+            coeff(linearSolver::DXMF,k,j,i) = marshak[XMinus] ? 0.0 : -face_coeff[XMinus];
+            coeff(linearSolver::DXPF,k,j,i) = marshak[XPlus]  ? 0.0 : -face_coeff[XPlus];
+            coeff(linearSolver::DYMF,k,j,i) = marshak[YMinus] ? 0.0 : -face_coeff[YMinus];
+            coeff(linearSolver::DYPF,k,j,i) = marshak[YPlus]  ? 0.0 : -face_coeff[YPlus];
+            coeff(linearSolver::DZMF,k,j,i) = marshak[ZMinus] ? 0.0 : -face_coeff[ZMinus];
+            coeff(linearSolver::DZPF,k,j,i) = marshak[ZPlus]  ? 0.0 : -face_coeff[ZPlus];
           }
           // Eliminate the gas-energy correction from the two-equation
           // Newton system.  Since thermal exchange enters the gas and
@@ -977,8 +1020,7 @@ void NRFLD::CalculateCoefficients(const AthenaArray<Real> &u_rad_old,
               // DCCF is rescaled by dt/dx^2 at every MG level, which would
               // otherwise discard or incorrectly scale the boundary term
               // during coefficient restriction.
-              + ((pfld->marshak_top_boundary && physical_top && k == ke)
-                 ? dt*marshak_dflux_dE/dx : 0.0);
+              + dt*marshak_dflux_sum/dx;
           // Elimination of the local gas correction leaves a directed,
           // nonsymmetric nearest-neighbour term in the radiation matrix.
           // The *S slots are not multiplied by dt/dx^2 by linearMG.
@@ -1030,27 +1072,28 @@ void NRFLD::CalculateDefect(AthenaArray<Real> &def, const AthenaArray<Real> &u,
         const Real equilibrium_rad = pfld->a_r*T_gas2*T_gas2;
         Real src_term = pfld->c_ph*pfld->sigma_p(k,j,i)
             *ResolvableThermalDifference(equilibrium_rad, u(k,j,i));
+        const Real center = u(k,j,i);
+        const Real matrix_face[6] = {
+          -coeff(linearSolver::DXMF,k,j,i), -coeff(linearSolver::DXPF,k,j,i),
+          -coeff(linearSolver::DYMF,k,j,i), -coeff(linearSolver::DYPF,k,j,i),
+          -coeff(linearSolver::DZMF,k,j,i), -coeff(linearSolver::DZPF,k,j,i)};
+        const Real neighbor[6] = {u(k,j,i-1), u(k,j,i+1),
+          u(k,j-1,i), u(k,j+1,i), u(k-1,j,i), u(k+1,j,i)};
         Real diff_term = 0.0;
-        diff_term += -coeff(linearSolver::DXMF,k,j,i)*(u(k,j,i-1) - u(k,j,i));
-        diff_term += -coeff(linearSolver::DXPF,k,j,i)*(u(k,j,i+1) - u(k,j,i));
-        diff_term += -coeff(linearSolver::DYMF,k,j,i)*(u(k,j-1,i) - u(k,j,i));
-        diff_term += -coeff(linearSolver::DYPF,k,j,i)*(u(k,j+1,i) - u(k,j,i));
-        diff_term += -coeff(linearSolver::DZMF,k,j,i)*(u(k-1,j,i) - u(k,j,i));
-        const bool physical_top =
-            pmb->block_size.x3max == pmb->pmy_mesh->mesh_size.x3max;
-        if (pfld->marshak_top_boundary && physical_top && k == ku) {
-          const Real dface = std::max(pfld->marshak_dface(k,j,i), TINY_NUMBER);
-          const Real acoef = pfld->marshak_top_alpha*pfld->c_ph*0.5*dx;
-          const Real eb = (dface*u(k,j,i) + acoef*pfld->marshak_top_erad_ext)
-                        /std::max(dface + acoef, TINY_NUMBER);
-          const Real ftop = pfld->marshak_top_alpha*pfld->c_ph
-                          *(eb - pfld->marshak_top_erad_ext);
-          diff_term += -ftop*dx;
-        } else {
-          diff_term += -coeff(linearSolver::DZPF,k,j,i)
-                     *(u(k+1,j,i) - u(k,j,i));
+        Real diff_abs_term = 0.0;
+        for (int face=0; face<6; ++face) {
+          Real face_term;
+          if (MarshakFaceActive(pmb,pfld,face,k,j,i)) {
+            face_term = -MarshakFlux(
+                pfld,face,k,j,i,center,dx,nullptr)*dx;
+          } else {
+            face_term = matrix_face[face]*(neighbor[face]-center);
+          }
+          diff_term += face_term;
+          diff_abs_term += std::abs(face_term);
         }
         diff_term *= idx2;
+        diff_abs_term *= idx2;
         const Real mixed_term = MixedDriftTerm(
             mixed_drift_, u, k,j,i,0.5/std::max(dx, TINY_NUMBER));
 
@@ -1063,8 +1106,17 @@ void NRFLD::CalculateDefect(AthenaArray<Real> &def, const AthenaArray<Real> &u,
         // residuals dimensionless without letting a nearly-zero update hide
         // an absolute residual near a floor.
         Real unsteady = u(k,j,i) - u_old(k,j,i);
+        // A converged diffusion row can be the cancellation of individually
+        // large face fluxes.  Scaling by only |sum(face terms)| then reports a
+        // false O(1e-3) residual after the state update has reached its last
+        // representable bit.  For backward-error convergence use the absolute
+        // row sum, which asks whether a tiny perturbation of the assembled
+        // discrete equation would make the current state exact.  Retain the
+        // legacy net-divergence scale when backward-error control is disabled.
+        const Real diffusion_scale = backward_error_convergence_
+            ? diff_abs_term : std::abs(diff_term);
         Real scale = std::abs(unsteady)
-                   + dt*(std::abs(src_term) + std::abs(diff_term)
+                   + dt*(std::abs(src_term) + diffusion_scale
                          + std::abs(mixed_term));
         scale = std::max(scale, std::max(std::abs(u(k,j,i)), std::abs(u_old(k,j,i))));
         scale = std::max(scale, static_cast<Real>(1.0e-30));
@@ -1096,10 +1148,67 @@ void NRFLD::CalculateDefect(AthenaArray<Real> &def, const AthenaArray<Real> &u,
                 normalized_gas_residual);
           }
         }
+        // Treat the gas-energy floor as a lower-bound constraint.  If the
+        // iterate is at that bound and the unconstrained Newton direction
+        // points below it, the projected residual is zero (the KKT condition
+        // for the constrained local solve).  Keeping the raw residual in the
+        // convergence norm would make every floor cell fail forever even
+        // though AddDifference correctly refuses the inadmissible update.
+        Real egas_lower_bound = TINY_NUMBER;
+#if GENERAL_EOS
+        const Real rho = def_coeff(NewtonRaphsonFLD::DRHO,k,j,i);
+        if (std::isfinite(rho) && rho > pmy_block_->peos->GetDensityFloor()) {
+          egas_lower_bound = std::max(egas_lower_bound,
+              pmy_block_->peos->EgasFromRhoP(
+                  rho, pmy_block_->peos->GetPressureFloor()));
+        }
+#endif
+        const Real gas_jacobian =
+            derivetive_(NewtonRaphsonFLD::dFg_deg,k,j,i);
+        const Real bound_tol = 64.0*std::numeric_limits<Real>::epsilon()
+            *std::max(egas_lower_bound, TINY_NUMBER);
+        if (u_gas(k,j,i) <= egas_lower_bound + bound_tol
+            && std::isfinite(gas_jacobian)
+            && gas_jacobian > 0.0 && Fg > 0.0) {
+          gas_defect_(k,j,i) = 0.0;
+        }
+        Real radiation_matrix_scale = 0.0;
+        if (backward_error_convergence_ && !pfld->fixed_u_rad) {
+          const Real fac = dt*idx2;
+          radiation_matrix_scale =
+              std::abs((fac*coeff(linearSolver::DCCF,k,j,i)
+                        + coeff(linearSolver::DCCS,k,j,i))*center)
+            + std::abs((fac*coeff(linearSolver::DXMF,k,j,i)
+                        + coeff(linearSolver::DXMS,k,j,i))*neighbor[XMinus])
+            + std::abs((fac*coeff(linearSolver::DXPF,k,j,i)
+                        + coeff(linearSolver::DXPS,k,j,i))*neighbor[XPlus])
+            + std::abs((fac*coeff(linearSolver::DYMF,k,j,i)
+                        + coeff(linearSolver::DYMS,k,j,i))*neighbor[YMinus])
+            + std::abs((fac*coeff(linearSolver::DYPF,k,j,i)
+                        + coeff(linearSolver::DYPS,k,j,i))*neighbor[YPlus])
+            + std::abs((fac*coeff(linearSolver::DZMF,k,j,i)
+                        + coeff(linearSolver::DZMS,k,j,i))*neighbor[ZMinus])
+            + std::abs((fac*coeff(linearSolver::DZPF,k,j,i)
+                        + coeff(linearSolver::DZPS,k,j,i))*neighbor[ZPlus])
+            + std::abs(src_(k,j,i));
+        }
         if (pfld->fixed_u_rad) {
           def(k,j,i) = gas_defect_(k,j,i);
         } else if (pfld->only_rad) {
           def(k,j,i) = Fr/scale;
+          if (backward_error_convergence_
+              && std::isfinite(radiation_matrix_scale)
+              && radiation_matrix_scale > TINY_NUMBER) {
+            // The last few bits of E can no longer realize an accurately
+            // solved correction when the diffusion matrix has O(1e13) row
+            // entries.  Measure the residual also as a normwise backward
+            // error of the assembled discrete row, including the unscaled
+            // directed (*S) terms.  This is the radiation analogue of the
+            // local gas-equation backward error above.
+            const Real backward_error = std::abs(Fr)/radiation_matrix_scale;
+            def(k,j,i) = std::copysign(
+                std::min(std::abs(def(k,j,i)), backward_error), Fr);
+          }
         } else {
           // {Fg, Fr} and {Fg, Fg+Fr} are equivalent equations.  Use the
           // latter basis, consistent with the stable Schur elimination above:
@@ -1108,13 +1217,22 @@ void NRFLD::CalculateDefect(AthenaArray<Real> &def, const AthenaArray<Real> &u,
           // Do not include the cancelling exchange term in the total scale.
           const Real gas_unsteady = u_gas(k,j,i) - pfld->u_gas(k,j,i);
           Real total_scale = std::abs(gas_unsteady) + std::abs(unsteady)
-                           + dt*std::abs(diff_term);
+                           + dt*diffusion_scale;
           total_scale = std::max(total_scale,
               std::max(std::abs(u_gas(k,j,i) + u(k,j,i)),
                        std::abs(pfld->u_gas(k,j,i) + u_old(k,j,i))));
           total_scale = std::max(total_scale, static_cast<Real>(1.0e-30));
           // Evaluate Fg+Fr without forming either stiff exchange contribution.
-          def(k,j,i) = (gas_unsteady + unsteady - dt*diff_term)/total_scale;
+          const Real total_residual = gas_unsteady + unsteady - dt*diff_term;
+          def(k,j,i) = total_residual/total_scale;
+          if (backward_error_convergence_
+              && std::isfinite(radiation_matrix_scale)
+              && radiation_matrix_scale > TINY_NUMBER) {
+            const Real backward_error =
+                std::abs(total_residual)/radiation_matrix_scale;
+            def(k,j,i) = std::copysign(
+                std::min(std::abs(def(k,j,i)), backward_error), total_residual);
+          }
         }
 
       }
@@ -1219,7 +1337,6 @@ void NRFLD::AddDifference(AthenaArray<Real> &u_rad,
 
   for (int k=ks; k<=ke; ++k) {
     for (int j=js; j<=je; ++j) {
-#pragma omp simd
       for (int i=is; i<=ie; ++i) {
         const Real raw_delta_ur = delta_u(k,j,i);
         Real delta_ur = pfld->fixed_u_rad ? 0.0 : raw_delta_ur;
@@ -1263,13 +1380,66 @@ void NRFLD::AddDifference(AthenaArray<Real> &u_rad,
               pmy_block_->peos->EgasFromRhoP(rho, pmy_block_->peos->GetPressureFloor()));
         }
 #endif
-        Real limited_egas_delta = egas_delta;
-        limited_egas_delta = LimitNewtonCorrection(limited_egas_delta,
-            std::max(std::abs(u_gas_(k,j,i)), egas_floor),
-            max_update_fraction_);
-        const Real egas_next = u_gas_(k,j,i) + step_scale*limited_egas_delta;
-        u_gas_(k,j,i) = (std::isfinite(egas_next) && egas_next > egas_floor)
-                        ? egas_next : egas_floor;
+        bool local_gas_solved = false;
+#if GENERAL_EOS && EOS_TABLE_ENABLED
+        // In the optically stiff limit a global radiation correction can move
+        // Er by orders of magnitude.  A single linearized gas correction then
+        // leaves a large LTE residual and can cease to be a descent direction.
+        // For a table EOS, eliminate the monotone local matter equation exactly
+        // at the newly applied Er.  The old gas state and the LTE state bracket
+        // the root; a pressure floor turns the solve into a lower-bound problem.
+        if (exact_local_gas_solve_ && pfld->is_couple && !pfld->only_rad
+            && !mixed_active) {
+          const Real rho = pmy_block_->phydro->w(IDN,k,j,i);
+          const Real egas_old = pfld->u_gas(k,j,i);
+          const Real c_sigma_p = pfld->c_ph*pfld->sigma_p(k,j,i);
+          auto gas_residual = [&](const Real egas) {
+            const Real temperature = pmy_block_->peos->TempFromRhoEg(rho, egas);
+            const Real t2 = temperature*temperature;
+            return (egas-egas_old) + pmy_driver_->dt_*c_sigma_p
+                *ResolvableThermalDifference(
+                    pfld->a_r*t2*t2, u_rad(k,j,i));
+          };
+          const Real f_floor = gas_residual(egas_floor);
+          if (std::isfinite(f_floor) && f_floor >= 0.0) {
+            u_gas_(k,j,i) = egas_floor;
+            local_gas_solved = true;
+          } else if (std::isfinite(f_floor)) {
+            const Real radiation_temperature = std::pow(
+                std::max(u_rad(k,j,i), TINY_NUMBER)/pfld->a_r, 0.25);
+            const Real egas_lte = pmy_block_->peos->EgasFromRhoT(
+                rho, radiation_temperature);
+            if (std::isfinite(egas_lte) && egas_lte > 0.0) {
+              Real lower = egas_floor;
+              Real upper = std::max({egas_floor, egas_old, egas_lte});
+              Real f_upper = gas_residual(upper);
+              if (std::isfinite(f_upper) && f_upper >= 0.0) {
+                for (int iteration=0; iteration<64; ++iteration) {
+                  const Real middle = 0.5*(lower+upper);
+                  const Real f_middle = gas_residual(middle);
+                  if (!std::isfinite(f_middle)) break;
+                  if (f_middle < 0.0) lower = middle;
+                  else upper = middle;
+                  if (upper-lower <= 8.0*std::numeric_limits<Real>::epsilon()
+                      *std::max(upper, egas_floor)) break;
+                }
+                u_gas_(k,j,i) = 0.5*(lower+upper);
+                local_gas_solved = true;
+              }
+            }
+          }
+        }
+#endif
+        if (!local_gas_solved) {
+          Real limited_egas_delta = LimitNewtonCorrection(
+              egas_delta, std::max(std::abs(u_gas_(k,j,i)), egas_floor),
+              max_update_fraction_);
+          const Real egas_next =
+              u_gas_(k,j,i) + step_scale*limited_egas_delta;
+          u_gas_(k,j,i) =
+              (std::isfinite(egas_next) && egas_next > egas_floor)
+              ? egas_next : egas_floor;
+        }
         
         // Keep the linear correction for possible line-search retries.  The
         // driver clears it before computing the next Newton direction.

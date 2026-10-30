@@ -97,6 +97,7 @@ only_rad        = false
 cut_diff        = false
 include_radiation_force = true
 pressure_coupling = source
+radiation_pressure_in_riemann = true
 fixed_u_rad     = false
 
 <problem>

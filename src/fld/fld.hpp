@@ -232,10 +232,18 @@ class FLD {
   bool only_rad;
   bool cut_diff;
   bool include_radiation_force;
+  bool radiation_pressure_in_riemann;
   // Radiation pressure enters the Riemann wave construction when coupled;
   // its force -lambda grad(E_r) is applied by AddExplicitSourceTerms.
   bool PressureCoupled() const {
     return is_couple && !only_rad && include_radiation_force;
+  }
+  bool RiemannPressureCoupled() const {
+    return PressureCoupled() && radiation_pressure_in_riemann;
+  }
+  bool RadiationForceActiveAtDensity(Real rho, Real density_floor) const {
+    return radiation_force_density_floor_factor_ <= 0.0
+        || rho > radiation_force_density_floor_factor_*density_floor;
   }
   bool MixedFrameCoupled() const {
     return is_couple && !only_rad && include_mixed_frame_terms
@@ -257,6 +265,12 @@ class FLD {
   Real marshak_top_alpha;
   Real marshak_top_erad_ext;
   AthenaArray<Real> marshak_dface;
+  // Per-face Robin/Marshak boundary switches.  The legacy top-only switch is
+  // retained for the plane-parallel convection problem; star-in-a-box uses
+  // all six entries so the imposed condition is a face flux, not a ghost-cell
+  // radiation bath.  Face order is x-,x+,y-,y+,z-,z+.
+  bool marshak_face_boundary[6];
+  AthenaArray<Real> marshak_dface_all;
 
   // Problem generators may keep inexpensive diagnostic counters here.  The
   // storage belongs to the MeshBlock's FLD object, so block-parallel boundary
@@ -319,6 +333,7 @@ class FLD {
   int force_diagnostic_verbosity_{0};
   int force_diagnostic_rank_{0};
   int force_diagnostic_gid_{0};
+  Real radiation_force_density_floor_factor_{0.0};
   bool stage_diagnostics_{false};
   int stage_diagnostic_interval_{1000};
   int stage_diagnostic_first_cycles_{3};

@@ -111,13 +111,15 @@ class AthenaEos:
         s, q = s[keep], q[keep]
         if entropy < s[0] or entropy > s[-1]:
             raise ValueError("requested isentrope leaves EOS entropy domain")
-        logq = np.interp(entropy, s, q)
-        qphys = 10.0**logq
-        log_e_over_p = self.interp(self.fields[1], logq, lr)
+        logq_coordinate = np.interp(entropy, s, q)
+        qphys = 10.0**logq_coordinate/self.ratios[5]
+        log_e_over_p = self.interp(self.fields[1], logq_coordinate, lr)
         espec = qphys*10.0**log_e_over_p
         log_espec = np.log10(espec)
-        temp = 10.0**self.interp(self.fields[3], log_espec, lr)
-        gamma1 = 10.0**self.interp(self.fields[2], logq, lr)
+        temp = 10.0**self.interp(
+            self.fields[3], log_espec+np.log10(self.ratios[3]), lr)
+        gamma1 = 10.0**self.interp(
+            self.fields[2], np.log10(qphys*self.ratios[2]), lr)
         return rho*qphys, rho*espec, temp, gamma1
 
     def state_from_rho_temp(self, rho, temperature):
@@ -134,9 +136,10 @@ class AthenaEos:
         target = np.log10(temperature)
         if target < x[0] or target > x[-1]:
             raise ValueError("requested temperature leaves EOS domain")
-        log_espec = np.interp(target, x, y)
+        log_espec = np.interp(target, x, y)-np.log10(self.ratios[3])
         espec = 10.0**log_espec
-        pressure = rho*espec*10.0**self.interp(self.fields[0], log_espec, lr)
+        pressure = rho*espec*10.0**self.interp(
+            self.fields[0], log_espec+np.log10(self.ratios[0]), lr)
         return pressure, rho*espec
 
 

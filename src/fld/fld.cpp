@@ -124,6 +124,7 @@ FLD::FLD(MeshBlock *pmb, ParameterInput *pin) :
                   CellCenteredBoundaryVariable::max_phys_id, true),
     refinement_idx_(),
     is_couple(), only_rad(), cut_diff(), include_radiation_force(),
+    radiation_pressure_in_riemann(true),
     fixed_flux_limiter(),
     fixed_u_rad(), include_mixed_frame_terms(), mixed_frame_transport(true),
     hydro_top_outflow_diode(false),
@@ -141,11 +142,26 @@ FLD::FLD(MeshBlock *pmb, ParameterInput *pin) :
     }
   }
   marshak_dface.NewAthenaArray(pmb->ncells3, pmb->ncells2, pmb->ncells1);
+  marshak_dface_all.NewAthenaArray(6, pmb->ncells3, pmb->ncells2,
+                                  pmb->ncells1);
+  for (int face=0; face<6; ++face) marshak_face_boundary[face] = false;
   is_couple = pin->GetOrAddBoolean("fld", "is_couple", true);
   only_rad = pin->GetOrAddBoolean("fld", "only_rad", false);
   cut_diff = pin->GetOrAddBoolean("fld", "cut_diff", false);
   include_radiation_force =
       pin->GetOrAddBoolean("fld", "include_radiation_force", true);
+  radiation_pressure_in_riemann = pin->GetOrAddBoolean(
+      "fld", "radiation_pressure_in_riemann", true);
+  radiation_force_density_floor_factor_ = pin->GetOrAddReal(
+      "fld", "radiation_force_density_floor_factor", 0.0);
+  if (!std::isfinite(radiation_force_density_floor_factor_)
+      || radiation_force_density_floor_factor_ < 0.0) {
+    std::stringstream msg;
+    msg << "### FATAL ERROR in function [FLD::FLD]" << std::endl
+        << "fld/radiation_force_density_floor_factor must be finite and "
+        << "non-negative (zero disables the atmosphere mask).";
+    ATHENA_ERROR(msg);
+  }
   fixed_flux_limiter = pin->GetOrAddBoolean("fld", "fixed_flux_limiter", false);
   stage_diagnostics_ = pin->GetOrAddBoolean("fld", "stage_diagnostics", false);
   if (stage_diagnostics_) {
@@ -264,6 +280,7 @@ FLD::FLD(MeshBlock *pmb, ParameterInput *pin) :
               << " mixed_frame_transport=" << mixed_frame_transport
               << " is_couple=" << is_couple << " only_rad=" << only_rad
               << " include_radiation_force=" << include_radiation_force
+              << " riemann_pressure=" << RiemannPressureCoupled()
               << std::endl;
   }
 

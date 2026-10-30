@@ -48,9 +48,11 @@ def _run_case(solver, mode, mpirun_cmd, mpirun_opts, extra):
 def run(**kwargs):
     for solver in ('hllc', 'lhllc'):
         _build(solver)
-        _run_case(solver, 'source', kwargs['mpirun_cmd'], kwargs['mpirun_opts'], [])
-        _run_case(solver, 'flux', kwargs['mpirun_cmd'], kwargs['mpirun_opts'],
-                  ['fld/pressure_coupling=flux'])
+        _run_case(solver, 'source_riemann', kwargs['mpirun_cmd'],
+                  kwargs['mpirun_opts'], [])
+        _run_case(solver, 'source_gas_riemann', kwargs['mpirun_cmd'],
+                  kwargs['mpirun_opts'],
+                  ['fld/radiation_pressure_in_riemann=false'])
         _run_case(solver, 'off', kwargs['mpirun_cmd'], kwargs['mpirun_opts'],
                   ['fld/include_radiation_force=false'])
 
@@ -68,13 +70,21 @@ def analyze():
         if match is None:
             return False
         mode, active, source_force, pressure_flux = match.groups()
-        if expected == 'source':
+        riemann = re.search(r'riemann_pressure=(\d+)', output)
+        if riemann is None:
+            return False
+        if expected == 'source_riemann':
             expected_values = ('source', '1', '1', '0')
-        elif expected == 'flux':
-            expected_values = ('flux', '1', '0', '1')
+            expected_riemann = '1'
+        elif expected == 'source_gas_riemann':
+            expected_values = ('source', '1', '1', '0')
+            expected_riemann = '0'
         else:
             expected_values = ('off', '0', '0', '0')
+            expected_riemann = '0'
         if (mode, active, source_force, pressure_flux) != expected_values:
+            return False
+        if riemann.group(1) != expected_riemann:
             return False
         if 'cycle=1' not in output:
             return False

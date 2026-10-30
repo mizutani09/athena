@@ -1,0 +1,45 @@
+{
+  "model": "convective-interior+spherical-gray-atmosphere",
+  "eos": "/home/kosuke/simulation/athena/data/eos/rsg_tomida2013_material_eos.tab",
+  "eos_sha256": "7051d1c5222f3ca7dddbbba1c48d473cb39bc5e76badb869b082625473a71576",
+  "opacity": "/home/kosuke/simulation/athena/data/opacity/rsg_gray_opacity_t7.h5",
+  "opacity_sha256": "6f5d39922be2436daf45c049c081adcf65e2b71ff15ab05ef4c066413ae65a14",
+  "profile_sha256": "d24ab36d205cc1561267b0d7e0b2c39a71d592fac52a0da3ea88e5361c394227",
+  "radiation_force_in_hse": true,
+  "photosphere_tau": 0.6666666666666666,
+  "photosphere_density_g_cm3": 1.0181698842309551e-09,
+  "photosphere_pressure_dyn_cm2": 225.25882261969244,
+  "photosphere_entropy_cgs": 1866731726.2628238,
+  "central_entropy_cgs": 3259348922.653773,
+  "superadiabatic_width_Rstar": 0.1,
+  "superadiabatic_peak_delta_nabla": 0.8087446546839973,
+  "potential_mass_msun": 12.0,
+  "requested_mass_msun": 3.0,
+  "radius_rsun": 830.0,
+  "luminosity_lsun": 91932.0,
+  "effective_temperature_K": 3487.0,
+  "central_logrho_logT": [
+    -7.147857561912588,
+    5.240336132051121
+  ],
+  "mass_inside_radius_msun": 2.9992386261223065,
+  "mapped_grid": null,
+  "mapped_mass_msun": null,
+  "rho_range_g_cm3": [
+    1e-21,
+    7.114468572971861e-08
+  ],
+  "temperature_range_K": [
+    2223.6979768800957,
+    173914.63596972136
+  ],
+  "opacity_range_cm2_g": [
+    5.222622421111673e-05,
+    28.799150332713324
+  ],
+  "hse_relative": {
+    "max_abs_resolved_interior": 0.008484531916230248,
+    "rms_resolved_interior": 0.0007772993389560835,
+    "max_abs_atmosphere": 0.7669189025225488
+  }
+}

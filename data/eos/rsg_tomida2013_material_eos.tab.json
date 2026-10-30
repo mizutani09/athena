@@ -1,0 +1,94 @@
+{
+  "schema": "athena-general-eos-v7",
+  "material_only": true,
+  "photon_pressure_energy_entropy": false,
+  "reference": "Tomida et al. 2013, ApJ 763, 6, Appendix 1",
+  "reference_url": "https://arxiv.org/abs/1206.3567",
+  "assumptions": [
+    "LTE and chemical equilibrium",
+    "ideal mixture",
+    "seven H/He species",
+    "fixed H2 ortho:para=3:1",
+    "ground electronic states",
+    "metals omitted"
+  ],
+  "composition": {
+    "X": 0.7,
+    "Y": 0.28,
+    "unmodelled_mass_fraction": 0.020000000000000018
+  },
+  "h2_vibration": "tomida2013",
+  "grid": {
+    "logrho": [
+      -22.0,
+      -3.0,
+      160
+    ],
+    "logT": [
+      2.5,
+      7.0,
+      512
+    ],
+    "logx2": [
+      11.031311841412034,
+      15.302812895376237,
+      512
+    ]
+  },
+  "ratios": [
+    1.0,
+    3.851079545209408,
+    3.851079545209408,
+    1.0,
+    1.0,
+    3.851079545209408,
+    1.0
+  ],
+  "conservation_max_relative": {
+    "hydrogen": 1.0521008139665181e-14,
+    "helium": 4.2918894355309467e-16,
+    "charge": 5.165650335824438e-12
+  },
+  "ranges": {
+    "p": [
+      1.0957006887891223e-12,
+      1328213297002.3542
+    ],
+    "e": [
+      1.074760858120064e-11,
+      2008227432995.602
+    ],
+    "s": [
+      564449425.2501472,
+      8608911333.46067
+    ],
+    "cv": [
+      79993179.49407959,
+      20542460170.40573
+    ],
+    "gamma1": [
+      1.0407297575058951,
+      1.666666781198563
+    ],
+    "nabla_ad": [
+      0.02264177616463751,
+      0.40000000226670107
+    ]
+  },
+  "checks": {
+    "all_finite": true,
+    "positive_pressure": true,
+    "positive_energy": true,
+    "positive_entropy": true,
+    "positive_cv": true,
+    "positive_gamma1": true,
+    "positive_nabla_ad": true,
+    "energy_monotone_T": true,
+    "pressure_monotone_T": true,
+    "entropy_monotone_T": true,
+    "athena_fields_finite": true,
+    "pass": true
+  },
+  "output": "/home/kosuke/simulation/athena/data/eos/rsg_tomida2013_material_eos.tab",
+  "output_sha256": "7051d1c5222f3ca7dddbbba1c48d473cb39bc5e76badb869b082625473a71576"
+}

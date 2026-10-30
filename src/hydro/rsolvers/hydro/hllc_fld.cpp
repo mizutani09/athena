@@ -19,7 +19,7 @@ void Hydro::RiemannSolver(const int k, const int j, const int il, const int iu,
   const int dir=ivx-IVX;
   const int ivy=IVX+(dir+1)%3, ivz=IVX+(dir+2)%3;
   FLD *pfld=pmy_block->prfld;
-  const bool coupled = pfld->PressureCoupled();
+  const bool pressure_enabled = pfld->RiemannPressureCoupled();
   AthenaArray<Real> &radl=pfld->rad_face_l[dir];
   AthenaArray<Real> &radr=pfld->rad_face_r[dir];
   AthenaArray<Real> &radflux=pfld->u_rad_flux[dir];
@@ -34,6 +34,16 @@ void Hydro::RiemannSolver(const int k, const int j, const int il, const int iu,
     wli[IVZ]=wl(ivz,i); wli[IPR]=wl(IPR,i);
     wri[IDN]=wr(IDN,i); wri[IVX]=wr(ivx,i); wri[IVY]=wr(ivy,i);
     wri[IVZ]=wr(ivz,i); wri[IPR]=wr(IPR,i);
+
+    // Do not give the artificial density-floor atmosphere radiation inertia
+    // in the Riemann problem.  The same opt-in threshold is used by the
+    // explicit matching force, so pressure construction and source removal
+    // remain paired on every active face.
+    const bool coupled = pressure_enabled
+        && pfld->RadiationForceActiveAtDensity(
+            wli[IDN], pmy_block->peos->GetDensityFloor())
+        && pfld->RadiationForceActiveAtDensity(
+            wri[IDN], pmy_block->peos->GetDensityFloor());
 
     const Real erl=std::max(radl(RadFLD::ERAD,k,j,i),TINY_NUMBER);
     const Real err=std::max(radr(RadFLD::ERAD,k,j,i),TINY_NUMBER);

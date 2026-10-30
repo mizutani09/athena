@@ -32,7 +32,7 @@ void Hydro::RiemannSolver(const int k, const int j, const int il, const int iu,
   const int ivy = IVX + (dir+1)%3;
   const int ivz = IVX + (dir+2)%3;
   FLD *pfld = pmy_block->prfld;
-  const bool coupled = pfld->PressureCoupled();
+  const bool pressure_enabled = pfld->RiemannPressureCoupled();
   AthenaArray<Real> &radl = pfld->rad_face_l[dir];
   AthenaArray<Real> &radr = pfld->rad_face_r[dir];
   AthenaArray<Real> &radflux = pfld->u_rad_flux[dir];
@@ -63,6 +63,12 @@ void Hydro::RiemannSolver(const int k, const int j, const int il, const int iu,
     wri[IVY]=wr(ivy,i);
     wri[IVZ]=wr(ivz,i);
     wri[IPR]=wr(IPR,i);
+
+    const bool coupled = pressure_enabled
+        && pfld->RadiationForceActiveAtDensity(
+            wli[IDN], pmy_block->peos->GetDensityFloor())
+        && pfld->RadiationForceActiveAtDensity(
+            wri[IDN], pmy_block->peos->GetDensityFloor());
 
     //--- Step 2.  Compute middle state estimates with PVRS (Toro 10.5.2)
 

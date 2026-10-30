@@ -1,0 +1,30 @@
+{
+  "source": "/home/kosuke/simulation/athena/data/opacity/rsg_gray_opacity.h5",
+  "source_sha256": "cc5912dd3896c39c1ea3fde0d315dc16c136303a8c363ab58fa56b705b909aaf",
+  "output": "/home/kosuke/simulation/athena/data/opacity/rsg_gray_opacity_t7.h5",
+  "output_sha256": "6f5d39922be2436daf45c049c081adcf65e2b71ff15ab05ef4c066413ae65a14",
+  "logrho": [
+    -23.300033532248772,
+    -1.193139428735147,
+    128
+  ],
+  "logT": [
+    2.5,
+    7.0,
+    192
+  ],
+  "tail_points": 8,
+  "electron_scattering_floor": 0.34,
+  "source_attributes": {
+    "crop_mode": "full",
+    "generator": "sample/python/make_opacity_table_hdf5.py",
+    "input_pattern": "sample/rhoT_3p0_6p3/output/mono_*.h5",
+    "interpolation": "structured(1D-rho + 1D-T) in (log10T, log10rho)",
+    "log10Rho_max": -1.193139428735147,
+    "log10Rho_min": -23.300033532248772,
+    "log10T_max": 6.3,
+    "log10T_min": 3.0,
+    "note": "Built from scattered OPTAB layers. Use kappa/log10_* datasets for Athena++ table conversion."
+  },
+  "provenance_limitation": "source composition and license are not embedded in the supplied OPTAB snapshot"
+}

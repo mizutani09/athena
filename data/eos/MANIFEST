@@ -11,3 +11,18 @@ policy = eos_table_clamp=false
 qualification = NUMERICAL-INTEGRATION-TEST ONLY
 known_limitation = NATA source includes photon pressure, energy, and entropy; this double-counts radiation when coupled to FLD
 production_requirement = regenerate/export the material-only NATA EOS before a physical RSG run
+
+# RSG production material-only EOS
+filename = rsg_tomida2013_material_eos.tab
+sidecar = rsg_tomida2013_material_eos.tab.json
+audit = rsg_tomida2013_material_eos_audit.npz
+generator = tools/rsg/make_tomida_material_eos.py
+reference = Tomida et al. 2013, ApJ 763, 6, Appendix 1
+schema = Athena general/eos_table, 7 fields including entropy and nabla_ad
+composition = X=0.70, Y=0.28; metals omitted from the ideal seven-species mixture
+photon_terms = none; radiation energy and pressure are evolved only by FLD
+domain = log10(rho/[g cm^-3]) -22..-3; log10(T/K) 2.5..7.0
+resolution = forward 160x512; Athena inverse table 160x512
+sha256 = 7051d1c5222f3ca7dddbbba1c48d473cb39bc5e76badb869b082625473a71576
+qualification = builder thermodynamic/monotonicity/conservation audit PASS; RSG profile entropy round-trip PASS
+known_approximation = LTE ideal H/He equilibrium, fixed H2 ortho:para 3:1, no metals/non-ideal effects

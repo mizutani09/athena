@@ -160,6 +160,10 @@ class EquationOfState {
   Real EntropyFromRhoP(Real rho, Real pres);
   Real PresFromRhoEntropy(Real rho, Real entropy, Real pres_guess);
   Real RhoFromPEntropy(Real pres, Real entropy, Real rho_guess);
+  // Invert the tabulated monotone T(rho,egas) relation.  This is used by a
+  // density-aware temperature floor; a constant pressure floor cannot bound
+  // temperature when a dilute atmosphere is compressed.
+  Real EgasFromRhoT(Real rho, Real temperature);
 #endif
   Real GetIsoSoundSpeed() const {return iso_sound_speed_;}
   Real GetDensityFloor() const {return density_floor_;}
@@ -178,6 +182,7 @@ class EquationOfState {
   MeshBlock *pmy_block_;                 // ptr to MeshBlock containing this EOS
   Real iso_sound_speed_, gamma_;         // isothermal Cs, ratio of specific heats
   Real density_floor_, pressure_floor_;  // density and pressure floors
+  Real temperature_floor_{0.0};          // general-EOS code-temperature floor
   Real energy_floor_;                    // energy floor
   Real scalar_floor_; // dimensionless concentration floor
   Real sigma_max_, beta_min_;            // limits on ratios of gas quantities to pmag

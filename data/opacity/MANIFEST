@@ -10,3 +10,15 @@ generator_attribute = sample/python/make_opacity_table_hdf5.py
 input_pattern_attribute = sample/rhoT_3p0_6p3/output/mono_*.h5
 policy = opacity_table_domain_policy=error
 qualification = domain and numerical schema PASS; source composition and license remain to be recorded before publication/production
+
+# Temperature-extended RSG working table
+filename = rsg_gray_opacity_t7.h5
+sidecar = rsg_gray_opacity_t7.h5.json
+source = rsg_gray_opacity.h5
+generator = tools/rsg/extend_rsg_opacity.py
+sha256 = 6f5d39922be2436daf45c049c081adcf65e2b71ff15ab05ef4c066413ae65a14
+domain = log10(T/K) 2.5..7.0; log10(rho/[g cm^-3]) -23.3000335..-1.19313943
+resolution = 128 x 192 in log10(rho), log10(T)
+extension = median terminal log-log slopes; hot dilute Rosseland floor kappa_es=0.34 cm^2/g
+qualification = engineering continuation; all 100-cycle 32^3 RSG lookups remained in-domain
+production_blocker = source composition and license are not embedded; replace tails with microphysical recomputation before publication-quality runs

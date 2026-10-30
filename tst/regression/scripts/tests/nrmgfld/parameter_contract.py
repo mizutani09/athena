@@ -13,7 +13,10 @@ _LOGS = []
 
 
 def _write_opacity_table(path):
-    axis = np.array([-3.0, 0.0, 3.0])
+    # Cover the physical rho and T units used by simple_convection.  This
+    # table tests the coupling contract, not opacity domain rejection (which
+    # has a separate regression).
+    axis = np.array([-20.0, 0.0, 20.0])
     with h5py.File(path, 'w') as handle:
         handle.create_dataset('axes/log10_density', data=axis)
         handle.create_dataset('axes/log10_temperature', data=axis)
@@ -81,8 +84,12 @@ def run(**kwargs):
     _run('contract_table', 'athinput.simple_convection_lhllc_fld', 'table_off',
          mpirun_cmd, mpirun_opts, [
              'time/nlim=0', 'time/tlim=0.0',
-             'mesh/nx1=4', 'mesh/nx2=4', 'mesh/nx3=4',
-             'meshblock/nx1=4', 'meshblock/nx2=4', 'meshblock/nx3=4',
+             # At 4^3 the two top ghost centres lie so far beyond z_ref that
+             # the analytic test polytrope has negative temperature.  A
+             # single 16^3 block keeps the complete initialized stencil in
+             # the valid state domain while remaining an inexpensive test.
+             'mesh/nx1=16', 'mesh/nx2=16', 'mesh/nx3=16',
+             'meshblock/nx1=16', 'meshblock/nx2=16', 'meshblock/nx3=16',
              'fld/is_couple=false', 'fld/only_rad=true',
              'fld/include_radiation_force=false',
              'fld/opacity_table_file=contract_opacity.h5',

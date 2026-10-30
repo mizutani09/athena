@@ -10,6 +10,7 @@
 #include <fstream>
 #include <iomanip>
 #include <iostream>
+#include <limits>
 #include <sstream>
 #include <string>
 #include <vector>
@@ -42,8 +43,9 @@ Real gm, radius, rcore, router, rheat, drag_tau, gamma_gas, mu, tsurface;
 Real index_poly, perturb, rho_surface, heat_norm, lum_code, boundary_er, bc_scale;
 Real dfloor, pfloor, kp_const, kr_const;
 Real drag_taper_start, drag_taper_end, grid_mass_tolerance;
+Real marshak_alpha;
 std::uint64_t perturb_seed;
-bool profile_initialization=false;
+bool profile_initialization=false, marshak_boundary=false;
 std::vector<Real> profile_r, profile_rho, profile_egas, profile_erad, profile_temp;
 UserOpacityTable *opacity_table=nullptr;
 
@@ -139,8 +141,30 @@ void Opacity(MeshBlock *mb,AthenaArray<Real>&,AthenaArray<Real> &w) {
 #endif
         Real kp=kp_const,kr=kr_const;
         if (opacity_table) {
-          kp=opacity_table->GetOpacity(RadFLD::SIGMA_P,d,t);
-          kr=opacity_table->GetOpacity(RadFLD::SIGMA_R,d,t);
+          try {
+            kp=opacity_table->GetOpacity(RadFLD::SIGMA_P,d,t);
+            kr=opacity_table->GetOpacity(RadFLD::SIGMA_R,d,t);
+          } catch (const std::runtime_error &error) {
+            std::stringstream msg;
+            const int ia=std::max(mb->is,std::min(mb->ie,i));
+            const int ja=std::max(mb->js,std::min(mb->je,j));
+            const int ka=std::max(mb->ks,std::min(mb->ke,k));
+            msg << error.what() << "\nRSG opacity state: gid=" << mb->gid
+                << " (k,j,i)=(" << k << "," << j << "," << i << ")"
+                << " x=(" << mb->pcoord->x1v(i) << ","
+                << mb->pcoord->x2v(j) << "," << mb->pcoord->x3v(k) << ")"
+                << " rho_code=" << w(IDN,k,j,i)
+                << " pressure_code=" << w(IPR,k,j,i)
+                << " temperature_K=" << t
+                << " velocity=(" << w(IVX,k,j,i) << ","
+                << w(IVY,k,j,i) << "," << w(IVZ,k,j,i) << ")"
+                << " nearest_active=(" << ka << "," << ja << "," << ia
+                << ") active_rho_code=" << w(IDN,ka,ja,ia)
+                << " active_pressure_code=" << w(IPR,ka,ja,ia)
+                << " active_velocity=(" << w(IVX,ka,ja,ia) << ","
+                << w(IVY,ka,ja,ia) << "," << w(IVZ,ka,ja,ia) << ").";
+            ATHENA_ERROR(msg);
+          }
         }
         Require(std::isfinite(kp) && kp>=0.0 && std::isfinite(kr) && kr>0.0,
                 "opacity must have finite kappa_P>=0 and kappa_R>0");
@@ -187,8 +211,10 @@ void HydroBoundary(MeshBlock *mb,Coordinates *c,AthenaArray<Real> &w,int axis,bo
 #endif
     }
 }
-// Fixed positive radiation energy in ghost CELL CENTRES: an exterior bath,
-// not an exact free-streaming or no-incoming-intensity boundary condition.
+// The production Marshak condition is imposed directly as a face flux in
+// NRFLD.  Its ghost state is zero-gradient and is used only to evaluate the
+// lagged face diffusion coefficient.  The old fixed bath remains available
+// explicitly for solver-regression comparisons.
 void RadiationBoundary(AthenaArray<Real> &er,AthenaArray<Real> *eg,int axis,
                        bool inner,int is,int ie,int js,int je,int ks,int ke,int ngh) {
   int lo[3]={is,js,ks},hi[3]={ie,je,ke};
@@ -196,8 +222,9 @@ void RadiationBoundary(AthenaArray<Real> &er,AthenaArray<Real> *eg,int axis,
   lo[axis]=inner?ref-ngh:ref+1; hi[axis]=inner?ref-1:ref+ngh;
   for (int k=lo[2];k<=hi[2];++k) for (int j=lo[1];j<=hi[1];++j)
     for (int i=lo[0];i<=hi[0];++i) {
-      er(k,j,i)=boundary_er;
-      if (eg) {int q[3]={i,j,k};q[axis]=ref;(*eg)(k,j,i)=(*eg)(q[2],q[1],q[0]);}
+      int q[3]={i,j,k};q[axis]=ref;
+      er(k,j,i)=marshak_boundary ? er(q[2],q[1],q[0]) : boundary_er;
+      if (eg) (*eg)(k,j,i)=(*eg)(q[2],q[1],q[0]);
     }
 }
 // The Newton correction must be ZERO in ghost centres. The built-in MG
@@ -281,7 +308,20 @@ void Mesh::InitUserMeshData(ParameterInput *pin) {
   tsurface=Positive(pin,"problem","surface_temperature");
   index_poly=Positive(pin,"problem","polytropic_index");
   bc_scale=Positive(pin,"problem","boundary_scale_height_factor");
-  boundary_er=kAr*std::pow(Positive(pin,"problem","radiation_bath_temperature"),4)/energy_unit;
+  const std::string radiation_boundary = pin->GetOrAddString(
+      "problem","radiation_boundary","fixed_bath");
+  Require(radiation_boundary=="fixed_bath" || radiation_boundary=="marshak_vacuum",
+          "problem/radiation_boundary must be fixed_bath or marshak_vacuum");
+  marshak_boundary=(radiation_boundary=="marshak_vacuum");
+  const Real external_temperature=pin->GetOrAddReal(
+      "problem","radiation_external_temperature",
+      pin->GetOrAddReal("problem","radiation_bath_temperature",10.0));
+  Require(std::isfinite(external_temperature) && external_temperature>=0.0,
+          "problem/radiation_external_temperature must be finite and nonnegative");
+  boundary_er=kAr*std::pow(external_temperature,4)/energy_unit;
+  marshak_alpha=pin->GetOrAddReal("problem","marshak_alpha",0.5);
+  Require(std::isfinite(marshak_alpha) && marshak_alpha>0.0,
+          "problem/marshak_alpha must be finite and positive");
   drag_tau=pin->GetOrAddReal("problem","core_drag_timescale",-1.0);
   const Real drag_tau_tdyn=pin->GetOrAddReal("problem","drag_tau_tdyn",-1.0);
   const Real tdyn=std::sqrt(radius*radius*radius/gm);
@@ -331,6 +371,10 @@ void Mesh::InitUserMeshData(ParameterInput *pin) {
   Require(opacity_table!=nullptr,"production RSG requires fld/use_opacity_table=true");
   Require(!pin->GetOrAddBoolean("hydro","eos_table_clamp",false),
           "production RSG forbids hydro/eos_table_clamp");
+  Require(radiation_force,
+          "production material-only RSG requires fld/include_radiation_force=true");
+  Require(marshak_boundary,
+          "production RSG requires problem/radiation_boundary=marshak_vacuum");
 #endif
 #if GENERAL_EOS
   Require(profile_initialization,"general EOS initialization requires an HSE profile");
@@ -402,6 +446,11 @@ void Mesh::InitUserMeshData(ParameterInput *pin) {
 
 void MeshBlock::InitUserMeshBlockData(ParameterInput*) {
   prfld->EnrollOpacityFunction(Opacity);
+  if (marshak_boundary) {
+    for (int face=0; face<6; ++face) prfld->marshak_face_boundary[face]=true;
+    prfld->marshak_top_alpha=marshak_alpha;
+    prfld->marshak_top_erad_ext=boundary_er;
+  }
   AllocateRealUserMeshBlockDataField(1);
   ruser_meshblock_data[0].NewAthenaArray(5);
   for (int q=0;q<5;++q) ruser_meshblock_data[0](q)=0.0;
@@ -412,15 +461,41 @@ void MeshBlock::InitUserMeshBlockData(ParameterInput*) {
 void MeshBlock::ProblemGenerator(ParameterInput*) {
   for (int k=ks;k<=ke;++k) for (int j=js;j<=je;++j) for (int i=is;i<=ie;++i) {
     const Real r=RadialPosition(pcoord,k,j,i);
-    const Real d=InitialDensity(r);
-    const Real eg=profile_initialization ? InterpolateProfile(profile_egas,r) : -1.0;
+    const Real d_profile=InitialDensity(r);
+    const Real floor_tolerance=64.0*std::numeric_limits<Real>::epsilon();
+    if (!std::isfinite(d_profile)
+        || d_profile < dfloor*(1.0-floor_tolerance)) {
+      std::stringstream message;
+      message << "initial density is materially below hydro/dfloor at gid=" << gid
+              << " (k,j,i)=(" << k << "," << j << "," << i << ")"
+              << ", r=" << r << ", rho=" << d_profile
+              << ", dfloor=" << dfloor;
+      Require(false,message.str());
+    }
+    // A log interpolation of a profile plateau that is exactly equal to the
+    // configured floor can land one ULP below it.  Accept only that roundoff-
+    // sized discrepancy and preserve specific internal energy when snapping
+    // density back to the exact numerical bound.
+    const Real d=std::max(d_profile,dfloor);
+    const Real eg_profile=profile_initialization
+        ? InterpolateProfile(profile_egas,r) : -1.0;
+    const Real eg=profile_initialization ? eg_profile*d/d_profile : -1.0;
     const Real t=profile_initialization ? InterpolateProfile(profile_temp,r) : Temperature(r);
 #if GENERAL_EOS
-    const Real p=peos->PresFromRhoEg(d,eg);
+    const Real p_profile=peos->PresFromRhoEg(d,eg);
 #else
-    const Real p=d*kRgas*t/mu/SQR(velocity_unit);
+    const Real p_profile=d*kRgas*t/mu/SQR(velocity_unit);
 #endif
-    Require(d>=dfloor && p>=pfloor,"initial state is below hydro floors; lower floors");
+    if (!std::isfinite(p_profile)
+        || p_profile < pfloor*(1.0-floor_tolerance)) {
+      std::stringstream message;
+      message << "initial pressure is materially below hydro/pfloor at gid=" << gid
+              << " (k,j,i)=(" << k << "," << j << "," << i << ")"
+              << ", r=" << r << ", pressure=" << p_profile
+              << ", pfloor=" << pfloor << ", rho=" << d;
+      Require(false,message.str());
+    }
+    const Real p=std::max(p_profile,pfloor);
     const Real w=(r>rcore && r<radius) ? std::sin(M_PI*(r-rcore)/(radius-rcore)) : 0.0;
     const Real cs=std::sqrt(peos->AsqFromRhoP(d,p));
     const int m1=5+static_cast<int>(perturb_seed%7);
@@ -434,7 +509,12 @@ void MeshBlock::ProblemGenerator(ParameterInput*) {
     const Real vz=perturb*w*cs*std::sin((m3*pcoord->x1v(i)+m1*pcoord->x2v(j))/radius);
     phydro->u(IDN,k,j,i)=d;phydro->u(IM1,k,j,i)=d*vx;
     phydro->u(IM2,k,j,i)=d*vy;phydro->u(IM3,k,j,i)=d*vz;
+#if GENERAL_EOS
+    const Real eint=(profile_initialization && p_profile>=pfloor)
+        ? eg : peos->EgasFromRhoP(d,p);
+#else
     const Real eint=profile_initialization ? eg : p/(gamma_gas-1.0);
+#endif
     phydro->u(IEN,k,j,i)=eint+0.5*d*(vx*vx+vy*vy+vz*vz);
     prfld->u_gas(k,j,i)=eint;
     prfld->u_rad(k,j,i)=profile_initialization ? InterpolateProfile(profile_erad,r)

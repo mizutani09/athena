@@ -132,6 +132,38 @@ Real EquationOfState::TempFromRhoEg(Real rho, Real egas) {
 }
 
 //----------------------------------------------------------------------------------------
+//! \fn Real EquationOfState::EgasFromRhoT(Real rho, Real temperature)
+//! \brief Invert the table's monotone T(rho,egas) interpolant at fixed density.
+Real EquationOfState::EgasFromRhoT(Real rho, Real temperature) {
+  if (ptable == nullptr || !std::isfinite(rho) || !std::isfinite(temperature)
+      || rho <= 0.0 || temperature <= 0.0) {
+    return std::numeric_limits<Real>::quiet_NaN();
+  }
+  Real x1 = std::log10(rho*ptable->rhoUnit);
+  if (x1 < ptable->logRhoMin || x1 > ptable->logRhoMax) {
+    return std::numeric_limits<Real>::quiet_NaN();
+  }
+  const Real target = std::log10(temperature*ptable->tUnit);
+  Real lower = ptable->logEgasMin;
+  Real upper = ptable->logEgasMax;
+  const Real t_lower = ptable->table.interpolate(kTemperature, lower, x1);
+  const Real t_upper = ptable->table.interpolate(kTemperature, upper, x1);
+  if (target < t_lower || target > t_upper) {
+    return std::numeric_limits<Real>::quiet_NaN();
+  }
+  for (int iteration=0; iteration<64; ++iteration) {
+    const Real middle = 0.5*(lower+upper);
+    const Real value = ptable->table.interpolate(kTemperature, middle, x1);
+    if (value < target) lower = middle;
+    else upper = middle;
+  }
+  const Real x2 = 0.5*(lower+upper);
+  const Real log_egas = x2-dens_pow*x1
+      -std::log10(ptable->EosRatios(kTemperature)*ptable->eUnit);
+  return std::pow(10.0, log_egas);
+}
+
+//----------------------------------------------------------------------------------------
 //! \fn Real EquationOfState::DlnTDlnEgasFromRhoEg(Real rho, Real egas)
 //! \brief Evaluate d ln(T) / d ln(egas) for the table interpolant at fixed density
 Real EquationOfState::DlnTDlnEgasFromRhoEg(Real rho, Real egas) {
