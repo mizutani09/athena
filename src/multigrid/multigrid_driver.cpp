@@ -1561,7 +1561,18 @@ void MultigridDriver::SolveIterative() {
 void MultigridDriver::SolveIterativeFixedTimes() {
   // std::cout << "In SolveIterativeFixedTimes: niter_ " << niter_ << std::endl;
   for (int n = 0; n < niter_; ++n) {
+    // FGMRES uses the fixed-count preconditioner path.  Keep the same
+    // first-V-cycle transfer diagnostics as the tolerance-driven path so
+    // that AMR restriction/prolongation can be inspected inside a Krylov
+    // preconditioner as well.
+    const Real scale_tol = 16.0*std::numeric_limits<Real>::epsilon()
+                         * std::max(std::abs(stage_diagnostic_reference_scale_),
+                                    static_cast<Real>(1.0));
+    stage_diagnostic_vcycle_ = n;
+    stage_diagnostics_active_ = stage_diagnostics_ && n <= 1
+        && std::abs(coarse_corr_scale_ - stage_diagnostic_reference_scale_) <= scale_tol;
     SolveVCycle(npresmooth_, npostsmooth_);
+    stage_diagnostics_active_ = false;
     Real def = 0.0;
     for (int v = 0; v < nvar_; ++v)
       def += CalculateDefectNorm(MGNormType::l2, v);
