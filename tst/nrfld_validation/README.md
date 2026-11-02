@@ -109,8 +109,12 @@ after_prolong_before_post
 after_post
 ```
 
-The same line reports `prolong_factor=after_prolong_before_post/
+The same line reports `correction_factor=after_prolong_before_post/
 after_pre_before_restrict` and `full_factor=after_post/before_pre`.
+With `linear_solver=fgmres`, the MG preconditioner calls `SolveVCycle()`
+directly.  The same verbosity prints stage records for up to the first two
+V-cycles of the first preconditioner application in each linear solve; later
+Krylov iterations are not traced to keep the output bounded.
 Coarse-correction retry solves are deliberately omitted so a failed Newton
 step cannot emit one record per retry.  Verbosity 0 retains the original
 unsplit V-cycle task sequence.  At verbosity 1 or 2 the finest task list is

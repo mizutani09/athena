@@ -1373,6 +1373,7 @@ void linearMGDriver::SolveFGMRES(int stage) {
     }
     ++fgmres_linearity_check_count_;
   }
+  int preconditioner_calls = 0;
   auto apply_preconditioner = [&](const BlockVector &rhs, BlockVector &z) {
     current_level_ = fmglevel_ = ntotallevel_ - 1;
     for (std::size_t b = 0; b < rhs.size(); ++b) {
@@ -1393,8 +1394,21 @@ void linearMGDriver::SolveFGMRES(int stage) {
         }
       }
     }
-    for (int cycle = 0; cycle < fgmres_mg_vcycles_; ++cycle)
+    // FGMRES invokes the V-cycle directly rather than through
+    // SolveIterativeFixedTimes().  Diagnose only the first preconditioner
+    // application in each linear solve to bound the log and diagnostic cost.
+    const Real scale_tol = 16.0*std::numeric_limits<Real>::epsilon()
+                         * std::max(std::abs(stage_diagnostic_reference_scale_),
+                                    static_cast<Real>(1.0));
+    const bool diagnose_first_call = stage_diagnostics_ && preconditioner_calls == 0
+        && std::abs(coarse_corr_scale_ - stage_diagnostic_reference_scale_) <= scale_tol;
+    for (int cycle = 0; cycle < fgmres_mg_vcycles_; ++cycle) {
+      stage_diagnostic_vcycle_ = cycle;
+      stage_diagnostics_active_ = diagnose_first_call && cycle <= 1;
       SolveVCycle(npresmooth_, npostsmooth_);
+      stage_diagnostics_active_ = false;
+    }
+    ++preconditioner_calls;
     for (std::size_t b = 0; b < z.size(); ++b) {
       linearMG *pmg = static_cast<linearMG*>(vmg_[b]);
       MeshBlock *pmb = pmg->pmy_block_;
