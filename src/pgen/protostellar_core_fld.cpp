@@ -67,7 +67,8 @@ Real gravity_code, jeans_number;
 Real background_temperature, background_tracer_threshold;
 Real target_cell_mass, mass_refine_factor, mass_derefine_factor;
 bool enable_rotation, enable_magnetic_field, uniform_equilibrium;
-bool fix_background_temperature, use_mass_refinement;
+bool fix_background_temperature, background_fix_radiation;
+bool background_sink_after_implicit, use_mass_refinement;
 
 enum InitialDataIndex {INITIAL_RHO=0, INITIAL_EGAS=1, INITIAL_ERAD=2,
                        NINITIAL_DATA=3};
@@ -480,6 +481,10 @@ void Mesh::InitUserMeshData(ParameterInput *pin) {
 
   fix_background_temperature=pin->GetOrAddBoolean(
       "problem","fix_background_temperature",false);
+  background_fix_radiation=pin->GetOrAddBoolean(
+      "problem","background_fix_radiation",true);
+  background_sink_after_implicit=pin->GetOrAddBoolean(
+      "problem","background_sink_after_implicit",false);
   background_tracer_threshold=pin->GetOrAddReal(
       "problem","background_tracer_threshold",0.5);
   const Real background_pressure_ratio=pin->GetOrAddReal(
@@ -629,6 +634,10 @@ void Mesh::InitUserMeshData(ParameterInput *pin) {
       << "target cell mass         = " << target_cell_mass/kMsun << " Msun\n"
       << "background temperature   = " << background_temperature << " K\n"
       << "background heat sink     = " << fix_background_temperature << "\n"
+      << "background radiation fix = " << background_fix_radiation << "\n"
+      << "background sink timing    = "
+      << (background_sink_after_implicit ? "after_implicit" : "before_implicit")
+      << "\n"
       << "root/minimum dx          = " << root_dx << " / " << finest_dx << " au\n"
       << "hydro/FLD boundaries     = periodic\n"
       << "gravity boundaries       = isolated multipole (set in athinput)\n"
@@ -702,40 +711,52 @@ void MeshBlock::ProblemGenerator(ParameterInput *pin) {
       for (int i=is; i<=ie; ++i) pfield->b.x3f(k,j,i)=b_code;
 }
 
-void MeshBlock::UserWorkInLoop() {
+static void ApplyBackgroundHeatSink(MeshBlock *pmb) {
   if (!fix_background_temperature) return;
+  if (Globals::my_rank == 0) {
+    static bool announced = false;
+    if (!announced) {
+      std::cout << "[BACKGROUND_SINK] timing="
+                << (background_sink_after_implicit ? "after_implicit" : "before_implicit")
+                << " radiation=" << background_fix_radiation << std::endl;
+      announced = true;
+    }
+  }
 #if NSCALARS > 0
-  const Real gm1=peos->GetGamma()-1.0;
+  const Real gm1=pmb->peos->GetGamma()-1.0;
   const Real erad_target=kRadiationConst*std::pow(background_temperature,4)/egas_unit;
-  pfield->CalculateCellCenteredField(pfield->b,pfield->bcc,pcoord,
-                                      is,ie,js,je,ks,ke);
-  for (int k=ks; k<=ke; ++k) {
-    for (int j=js; j<=je; ++j) {
-      for (int i=is; i<=ie; ++i) {
-        const Real rho=std::max(phydro->u(IDN,k,j,i),TINY_NUMBER);
-        const Real background_fraction=pscalars->s(0,k,j,i)/rho;
+  pmb->pfield->CalculateCellCenteredField(pmb->pfield->b,pmb->pfield->bcc,
+      pmb->pcoord,pmb->is,pmb->ie,pmb->js,pmb->je,pmb->ks,pmb->ke);
+  for (int k=pmb->ks; k<=pmb->ke; ++k) {
+    for (int j=pmb->js; j<=pmb->je; ++j) {
+      for (int i=pmb->is; i<=pmb->ie; ++i) {
+        const Real rho=std::max(pmb->phydro->u(IDN,k,j,i),TINY_NUMBER);
+        const Real background_fraction=pmb->pscalars->s(0,k,j,i)/rho;
         if (background_fraction < background_tracer_threshold) continue;
         const Real pressure=rho*rho_unit*kGasConstant*background_temperature
                             /mean_molecular_weight/egas_unit;
         const Real eint=pressure/gm1;
-        const Real kinetic=0.5*(SQR(phydro->u(IM1,k,j,i))
-                               +SQR(phydro->u(IM2,k,j,i))
-                               +SQR(phydro->u(IM3,k,j,i)))/rho;
-        const Real magnetic=0.5*(SQR(pfield->bcc(IB1,k,j,i))
-                                +SQR(pfield->bcc(IB2,k,j,i))
-                                +SQR(pfield->bcc(IB3,k,j,i)));
-        phydro->u(IEN,k,j,i)=eint+kinetic+magnetic;
-        phydro->w(IPR,k,j,i)=pressure;
-        prfld->u_gas(k,j,i)=eint;
-        prfld->u_rad(k,j,i)=erad_target;
-        // Restart serializes NRFLD::u_ and restores FLD::u_rad from it.
-        // Keep the saved state consistent with the background heat sink,
-        // which runs after the implicit NRFLD update.
-        pnr->u_(k,j,i)=erad_target;
+        const Real kinetic=0.5*(SQR(pmb->phydro->u(IM1,k,j,i))
+                               +SQR(pmb->phydro->u(IM2,k,j,i))
+                               +SQR(pmb->phydro->u(IM3,k,j,i)))/rho;
+        const Real magnetic=0.5*(SQR(pmb->pfield->bcc(IB1,k,j,i))
+                                +SQR(pmb->pfield->bcc(IB2,k,j,i))
+                                +SQR(pmb->pfield->bcc(IB3,k,j,i)));
+        pmb->phydro->u(IEN,k,j,i)=eint+kinetic+magnetic;
+        pmb->phydro->w(IPR,k,j,i)=pressure;
+        pmb->prfld->u_gas(k,j,i)=eint;
+        if (background_fix_radiation) {
+          pmb->prfld->u_rad(k,j,i)=erad_target;
+          // A post-implicit reset must also update the array saved in restarts.
+          if (background_sink_after_implicit) pmb->pnr->u_(k,j,i)=erad_target;
+        }
       }
     }
   }
 #endif
+}
+void MeshBlock::UserWorkInLoop() {
+  if (!background_sink_after_implicit) ApplyBackgroundHeatSink(this);
 }
 void MeshBlock::UserWorkBeforeOutput(ParameterInput *pin) {
   (void)pin;
@@ -762,5 +783,8 @@ void MeshBlock::UserWorkBeforeOutput(ParameterInput *pin) {
     }
   }
 }
-void Mesh::UserWorkInLoop() {}
+void Mesh::UserWorkInLoop() {
+  if (!background_sink_after_implicit) return;
+  for (int b=0; b<nblocal; ++b) ApplyBackgroundHeatSink(my_blocks(b));
+}
 void Mesh::UserWorkAfterLoop(ParameterInput *pin) { (void)pin; }

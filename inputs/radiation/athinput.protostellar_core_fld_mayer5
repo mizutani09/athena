@@ -202,6 +202,9 @@ B0         = 1.29e-4
 rho_ambient_factor = 1.0e-2
 background_pressure_ratio = 1.0e-2
 fix_background_temperature = true
+# Diagnostics: retain the historical pre-implicit gas+radiation reset by default.
+background_fix_radiation = true
+background_sink_after_implicit = false
 background_tracer_threshold = 0.5
 transition_width   = 187.5
 enable_rotation       = false
