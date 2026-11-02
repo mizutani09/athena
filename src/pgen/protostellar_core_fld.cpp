@@ -728,6 +728,10 @@ void MeshBlock::UserWorkInLoop() {
         phydro->w(IPR,k,j,i)=pressure;
         prfld->u_gas(k,j,i)=eint;
         prfld->u_rad(k,j,i)=erad_target;
+        // Restart serializes NRFLD::u_ and restores FLD::u_rad from it.
+        // Keep the saved state consistent with the background heat sink,
+        // which runs after the implicit NRFLD update.
+        pnr->u_(k,j,i)=erad_target;
       }
     }
   }
