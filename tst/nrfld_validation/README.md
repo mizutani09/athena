@@ -206,6 +206,23 @@ plot, front zoom, position/width evolution, H.264 movie, raw HDF5, CSV, input,
 logs and manifests. For analysis-only regeneration from saved output, use
 `--postprocess /mnt/d/output/rad/validation_streaming_<timestamp>_JST`.
 
+For the separate WOR-59 time/space convergence and control sweep, run:
+
+```bash
+python3 tst/nrfld_validation/streaming_front_convergence.py --max-cores 4
+```
+
+It keeps the same cubic cell spacing but uses an 8×8 transverse slab. A
+128-cell slab was numerically identical to the original 128×32×32 run. The
+runner varies `dt` at fixed `N`, `N` at fixed physical `dt`, and `N` with
+`dt=dx/(20c)`, plus controls for the initial step's cell placement, right
+boundary distance, opacity, and solver tolerance. Its output root contains
+`index.html`, per-case inputs/logs/HDF5, `summary.json`, position/width plots,
+and explicit convergence-trend checks. Calculation PASS still means the solver
+completed; the separate trend checks quantify front capture. The reference
+curve is never shifted. See `wor59_streaming_front_20261104.md` for the
+measured results and interpretation.
+
 ## Shock tube against 1D Rad-EOS hydro
 
 Run the full comparison with:

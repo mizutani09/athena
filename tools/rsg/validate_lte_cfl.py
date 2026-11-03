@@ -55,9 +55,13 @@ def main():
                         help='test each requested CFL at its untruncated first timestep')
     parser.add_argument('--energy-ledger', action='store_true',
                         help='emit and check the implicit gas/radiation energy ledger')
+    parser.add_argument('--schur-audit', action='store_true',
+                        help='check the coupled Schur RHS against direct total energy')
     args = parser.parse_args()
     if args.energy_ledger and args.mode == 'fixed_local':
         parser.error('energy ledger requires evolving gas and radiation')
+    if args.schur_audit and args.mode == 'fixed_local':
+        parser.error('Schur audit requires evolving gas and radiation')
     output = args.output.resolve()
     output.mkdir(parents=True, exist_ok=False)
     executable = ROOT / 'bin/athena'
@@ -69,11 +73,14 @@ def main():
     summary = {'binary_sha256': digest(executable), 'input_sha256': digest(source),
                'tlim': args.tlim, 'mode': args.mode, 'one_step': args.one_step,
                'energy_ledger': args.energy_ledger,
+               'schur_audit': args.schur_audit,
                'cases': {}, 'status': 'running'}
     (output / 'binary_config.txt').write_text(config)
     environment = dict(os.environ, OMP_NUM_THREADS='1')
     if args.energy_ledger:
         environment['ATHENA_NRFLD_ENERGY_LEDGER'] = '1'
+    if args.schur_audit:
+        environment['ATHENA_NRFLD_SCHUR_AUDIT'] = '1'
     try:
         for cfl in CFL:
             tag = f'cfl_{cfl:.2f}'
@@ -110,6 +117,15 @@ def main():
             ledgers = [dict(re.findall(r'(\w+)=([^\s]+)', line))
                        for line in text.splitlines()
                        if line.startswith('[NR_ENERGY_LEDGER]')]
+            schur = [dict(re.findall(r'(\w+)=([^\s]+)', line))
+                     for line in text.splitlines()
+                     if line.startswith('[NR_SCHUR_AUDIT]')]
+            physical_schur = [row for row in schur if float(row['dt']) > 0.]
+            rhs_direct_errors = [abs(float(row['rhs'])-float(row['rhs_direct']))
+                                 for row in physical_schur]
+            rhs_direct_scaled_errors = [
+                error/max(1., abs(float(row['rhs_direct'])))
+                for error, row in zip(rhs_direct_errors, physical_schur)]
             cycles = re.findall(r'time=([0-9.eE+-]+) cycle=(\d+)', text)
             first_dt = re.search(r'^cycle=0 time=[^ ]+ dt=([0-9.eE+-]+)',
                                  text, re.MULTILINE)
@@ -122,6 +138,12 @@ def main():
                           for status in statuses),
                       'max_final_residual': max(final_residuals, default=None),
                       'energy_ledger_records': len(ledgers),
+                      'schur_audit_records': len(physical_schur),
+                      'max_rhs_direct_scaled_error': max(
+                          rhs_direct_scaled_errors, default=None),
+                      'max_legacy_total_relative_gap': max((
+                          float(row['relative_delta']) for row in physical_schur),
+                          default=None),
                       'max_energy_relative_balance': max((
                           abs(float(item['relative_balance']))
                           for item in ledgers), default=None),
@@ -140,6 +162,9 @@ def main():
                     or record['opacity_violations']
                     or record['max_final_residual'] is None
                     or record['max_final_residual'] > 1.e-8
+                    or (args.schur_audit and (
+                        not physical_schur
+                        or record['max_rhs_direct_scaled_error'] > 1.e-14))
                     or (args.energy_ledger and (
                         not ledgers
                         or record['max_energy_relative_balance'] > 1.e-8

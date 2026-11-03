@@ -42,7 +42,7 @@ COMMENTS = {
     "couple": "小さい dt と大きい dt の両方を確認",
     "diffusion": "時間・空間の収束性を測定",
     "marshak": "解析解との比較",
-    "streaming": "前線位置の遅れは WOR-59 で継続調査",
+    "streaming": "前線精度の刻み幅・格子収束は WOR-59 の追加レポートを参照",
     "shock_tube": "Rad EoS の高解像度 hydro 解と比較",
     "radiative_shock": "Mach 5 の温度スパイクは解像度不足なら精度未達",
     "advection_pulse": "移動距離だけシフトして静止解と比較",

@@ -1112,11 +1112,13 @@ void NRFLD::CalculateCoefficients(const AthenaArray<Real> &u_rad_old,
           // algebraically identical forms
           //
           //   1 - (dFg/dEr)/(dFg/deg)
-          //   -(Fr + Fg) + Fg/(dFg/deg)
+          //   -Ftotal + Fg/(dFg/deg)
           //
           // for the local diagonal and reduced right-hand side.  These also
           // preserve the exact cancellation of equal-and-opposite exchange
-          // residuals without subtracting two O(C) quantities.
+          // residuals without adding two O(C) terms.  Form Ftotal directly:
+          // separately rounded Fg and Fr lose the small total when exchange
+          // is stiff (WOR-26).
           const Real inv_dFg_deg =
               1.0/derivetive(NewtonRaphsonFLD::dFg_deg,k,j,i);
           // The face drift has a center contribution when its two face
@@ -1144,14 +1146,111 @@ void NRFLD::CalculateCoefficients(const AthenaArray<Real> &u_rad_old,
           coeff(linearSolver::DYPS,k,j,i) =  drift_fac*mixed_drift_(YPlus,k,j,i);
           coeff(linearSolver::DZMS,k,j,i) = -drift_fac*mixed_drift_(ZMinus,k,j,i);
           coeff(linearSolver::DZPS,k,j,i) =  drift_fac*mixed_drift_(ZPlus,k,j,i);
-          src(k,j,i) =
-              -(derivetive(NewtonRaphsonFLD::Fr,k,j,i)
-                + derivetive(NewtonRaphsonFLD::Fg,k,j,i))
+          const Real total_residual =
+              (u_gas_new(k,j,i) - u_gas_old(k,j,i))
+              + (u_rad_new(k,j,i) - u_rad_old(k,j,i)) - dt*diff_term;
+          src(k,j,i) = -total_residual
               + derivetive(NewtonRaphsonFLD::Fg,k,j,i)*inv_dFg_deg;
         }
 
       }
     }
+  }
+  // Opt-in audit of cancellation in the coupled Schur right-hand side.  The
+  // direct total omits the equal-and-opposite thermal and mixed-frame terms.
+  // Keep this separate from the vectorized production loop.
+  if (std::getenv("ATHENA_NRFLD_SCHUR_AUDIT") != nullptr &&
+      !pfld->only_rad && !pfld->fixed_u_rad) {
+    Real worst_ratio = -1.0, worst_abs = 0.0, worst_scale = 0.0;
+    Real worst_total_scale = 0.0, max_total_ratio = 0.0;
+    int total_i = is, total_j = js, total_k = ks;
+    Real worst_naive = 0.0, worst_direct = 0.0, worst_exchange = 0.0;
+    Real worst_rhs = 0.0, worst_rhs_direct = 0.0, worst_rhs_legacy = 0.0;
+    int worst_i = is, worst_j = js, worst_k = ks;
+    for (int k=ks; k<=ke; ++k) {
+      for (int j=js; j<=je; ++j) {
+        for (int i=is; i<=ie; ++i) {
+          const Real center = u_rad_new(k,j,i);
+          const Real face_coeff[6] = {
+            derivetive(NewtonRaphsonFLD::dFr_dEr_xm,k,j,i),
+            derivetive(NewtonRaphsonFLD::dFr_dEr_xp,k,j,i),
+            derivetive(NewtonRaphsonFLD::dFr_dEr_ym,k,j,i),
+            derivetive(NewtonRaphsonFLD::dFr_dEr_yp,k,j,i),
+            derivetive(NewtonRaphsonFLD::dFr_dEr_zm,k,j,i),
+            derivetive(NewtonRaphsonFLD::dFr_dEr_zp,k,j,i)};
+          const Real neighbor[6] = {u_rad_new(k,j,i-1), u_rad_new(k,j,i+1),
+            u_rad_new(k,j-1,i), u_rad_new(k,j+1,i),
+            u_rad_new(k-1,j,i), u_rad_new(k+1,j,i)};
+          Real diff_term = 0.0;
+          Real diff_abs_term = 0.0;
+          for (int face=0; face<6; ++face) {
+            Real face_term;
+            if (MarshakFaceActive(pmy_block_, pfld, face,k,j,i)) {
+              face_term = -MarshakFlux(pfld, face,k,j,i,center,dx,nullptr)*dx;
+            } else {
+              face_term = face_coeff[face]*(neighbor[face] - center);
+            }
+            diff_term += face_term;
+            diff_abs_term += std::abs(face_term);
+          }
+          diff_term *= idx2;
+          diff_abs_term *= idx2;
+          const Real gas_delta = u_gas_new(k,j,i) - u_gas_old(k,j,i);
+          const Real rad_delta = center - u_rad_old(k,j,i);
+          const Real direct = (gas_delta + rad_delta) - dt*diff_term;
+          const Real fg = derivetive(NewtonRaphsonFLD::Fg,k,j,i);
+          const Real fr = derivetive(NewtonRaphsonFLD::Fr,k,j,i);
+          const Real naive = fg + fr;
+          const Real abs_delta = std::abs(naive - direct);
+          const Real scale = std::max({std::abs(gas_delta), std::abs(rad_delta),
+              std::abs(dt*diff_term), std::abs(u_gas_old(k,j,i)),
+              std::abs(u_rad_old(k,j,i)), Real(1.e-30)});
+          const Real ratio = abs_delta/scale;
+          const Real diffusion_scale = backward_error_convergence_
+              ? diff_abs_term : std::abs(diff_term);
+          Real total_scale = std::abs(gas_delta) + std::abs(rad_delta)
+              + dt*diffusion_scale;
+          total_scale = std::max(total_scale,
+              std::max(std::abs(u_gas_new(k,j,i) + center),
+                       std::abs(u_gas_old(k,j,i) + u_rad_old(k,j,i))));
+          total_scale = std::max(total_scale, Real(1.e-30));
+          const Real total_ratio = abs_delta/total_scale;
+          if (total_ratio > max_total_ratio) {
+            max_total_ratio = total_ratio;
+            total_i = i; total_j = j; total_k = k;
+          }
+          if (ratio > worst_ratio) {
+            worst_ratio = ratio;
+            worst_abs = abs_delta;
+            worst_scale = scale;
+            worst_total_scale = total_scale;
+            worst_naive = naive;
+            worst_direct = direct;
+            worst_exchange = std::max(std::abs(fg), std::abs(fr));
+            const Real gas_schur = fg/derivetive(NewtonRaphsonFLD::dFg_deg,k,j,i);
+            worst_rhs = src(k,j,i);
+            worst_rhs_direct = -direct + gas_schur;
+            worst_rhs_legacy = -naive + gas_schur;
+            worst_i = i; worst_j = j; worst_k = k;
+          }
+        }
+      }
+    }
+    std::cout << std::setprecision(17)
+              << "[NR_SCHUR_AUDIT] cycle=" << pmy_block_->pmy_mesh->ncycle
+              << " gid=" << pmy_block_->gid << " dt=" << dt
+              << " i=" << worst_i << " j=" << worst_j << " k=" << worst_k
+              << " naive=" << worst_naive << " direct=" << worst_direct
+              << " abs_delta=" << worst_abs << " energy_scale=" << worst_scale
+              << " relative_delta=" << worst_ratio
+              << " total_scale=" << worst_total_scale
+              << " relative_total_delta=" << worst_abs/worst_total_scale
+              << " max_relative_total_delta=" << max_total_ratio
+              << " total_i=" << total_i << " total_j=" << total_j
+              << " total_k=" << total_k
+              << " exchange_residual=" << worst_exchange
+              << " rhs=" << worst_rhs << " rhs_direct=" << worst_rhs_direct
+              << " rhs_legacy=" << worst_rhs_legacy << std::endl;
   }
   fixed_linear_coefficients_initialized_ = true;
 }
