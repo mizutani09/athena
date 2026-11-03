@@ -871,6 +871,7 @@ NewtonSolveResult NewtonRaphsonDriver::Solve_general(int stage, Real dt) {
     for (auto itr = vnr_.begin(); itr < vnr_.end(); itr++) {
       (*itr)->UpdateHydroVariables();
     }
+    RunCommittedDiagnostic();
   }
   if (Globals::my_rank == 0) {
     std::cout << "[NR] status=" << NewtonSolveReasonName(result.reason)

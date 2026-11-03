@@ -277,8 +277,16 @@ void Mesh::InitUserMeshData(ParameterInput *pin) {
                           hydro_p_floor);
 
   kappa_sim = kappa_phys * leng_unit;
-  // delta_tau = beta*c*kappa*dt = 3e-4, so 1000 cycles reach tau=0.3.
-  fixed_dt_sim = 3.0e-4 / (beta_marshak * c_light_sim * kappa_sim);
+  // delta_tau = beta*c*kappa*dt. The default reaches tau=0.3 in 1000 cycles;
+  // smaller values permit independent time-error and spatial-error studies.
+  const Real delta_tau_target = pin->GetOrAddReal("problem", "delta_tau", 3.0e-4);
+  if (!(delta_tau_target > 0.0) || !std::isfinite(delta_tau_target)) {
+    std::stringstream msg;
+    msg << "### FATAL ERROR in nrfld_marshak: problem/delta_tau must be "
+        << "finite and positive." << std::endl;
+    ATHENA_ERROR(msg);
+  }
+  fixed_dt_sim = delta_tau_target / (beta_marshak * c_light_sim * kappa_sim);
 
   EnrollUserFLDBoundaryFunction(BoundaryFace::inner_x1, FLDFixedInnerX1);
   EnrollUserFLDBoundaryFunction(BoundaryFace::outer_x1, FLDFixedOuterX1);

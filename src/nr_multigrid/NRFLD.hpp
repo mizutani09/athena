@@ -232,6 +232,7 @@ class NRFLDDriver : public NewtonRaphsonDriver {
   ~NRFLDDriver();
   void RunJacobianDiagnostics() final;
   void RunDirectionDiagnostic() final;
+  void RunCommittedDiagnostic() final;
 
   // void Solve(int step, Real dt = 0.0) final;
 
@@ -247,6 +248,7 @@ class NRFLDDriver : public NewtonRaphsonDriver {
   bool global_jv_{false};
   int global_jv_iteration_{0}, global_jv_solve_{0};
   Real global_jv_epsilon_{1.e-4};
+  int mixed_frame_ledger_count_{0};
 
  protected:
 };

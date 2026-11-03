@@ -17,6 +17,41 @@
 #include "../mesh/mesh.hpp"
 #include "fld.hpp"
 
+namespace {
+// Match the fixed-limiter face coefficient and centered stencil used by the
+// NR-FLD mixed-drift residual.  This branch is an experimental time-placement
+// control, so every spatial coefficient is held identical between variants.
+Real ExplicitMixedDrift(const FLD *fld, const MeshBlock *pmb,
+                        const AthenaArray<Real> &prim,
+                        const AthenaArray<Real> &erad, int k, int j, int i) {
+  const Real idx = 1.0/pmb->pcoord->dx1f(i);
+  auto face = [&](int ka, int ja, int ia, int kb, int jb, int ib, int velocity) {
+    const Real opacity = RadFLD::FaceOpacity(
+        fld->sigma_r(ka,ja,ia), fld->sigma_r(kb,jb,ib), idx);
+    if (!(opacity > 0.0) || !std::isfinite(opacity)) {
+      std::stringstream msg;
+      msg << "### FATAL ERROR in ExplicitMixedDrift: invalid face opacity.";
+      ATHENA_ERROR(msg);
+    }
+    return 0.5*(fld->sigma_p(ka,ja,ia) + fld->sigma_p(kb,jb,ib))
+        *(prim(velocity,ka,ja,ia) + prim(velocity,kb,jb,ib))
+        *ONE_3RD/opacity;
+  };
+  const Real center = erad(k,j,i);
+  Real term = face(k,j,i,k,j,i+1,IVX)*(erad(k,j,i+1)-center)
+      + face(k,j,i-1,k,j,i,IVX)*(center-erad(k,j,i-1));
+  if (pmb->block_size.nx2 > 1) {
+    term += face(k,j,i,k,j+1,i,IVY)*(erad(k,j+1,i)-center)
+          + face(k,j-1,i,k,j,i,IVY)*(center-erad(k,j-1,i));
+  }
+  if (pmb->block_size.nx3 > 1) {
+    term += face(k,j,i,k+1,j,i,IVZ)*(erad(k+1,j,i)-center)
+          + face(k-1,j,i,k,j,i,IVZ)*(center-erad(k-1,j,i));
+  }
+  return 0.5*idx*term;
+}
+}  // namespace
+
 void FLD::EmitForceDiagnostic(const Real dt, const AthenaArray<Real> &prim,
                               const AthenaArray<Real> &hydro_u) {
   MeshBlock *pmb = pmy_block;
@@ -131,7 +166,22 @@ void FLD::AddExplicitSourceTerms(const Real dt, const AthenaArray<Real> &prim,
   MeshBlock *pmb = pmy_block;
   const bool do_force = PressureCoupled();
   const bool do_mixed = MixedFrameCoupled();
+  const bool explicit_drift = do_mixed && !implicit_mixed_frame_drift;
+  const bool ledger = do_mixed && mixed_frame_ledger_count < mixed_frame_ledger_limit;
+  Real lambda_gas_volume = 0.0, drift_gas_volume = 0.0;
+  Real lambda_abs_volume = 0.0, drift_abs_volume = 0.0;
+  Real gas_delta_volume = 0.0, radiation_delta_volume = 0.0;
+  Real radiation_floor_volume = 0.0;
   if (!do_force && !do_mixed) return;
+
+  AthenaArray<Real> erad_before;
+  if (explicit_drift) {
+    erad_before.NewAthenaArray(pmb->ncells3, pmb->ncells2, pmb->ncells1);
+    for (int k = 0; k < pmb->ncells3; ++k)
+      for (int j = 0; j < pmb->ncells2; ++j)
+        for (int i = 0; i < pmb->ncells1; ++i)
+          erad_before(k,j,i) = u_rad(k,j,i);
+  }
 
   // Keep optional work out of the production cell loop.  State belongs to
   // this block rather than a process-wide gid set, so AMR gid reuse is safe;
@@ -180,8 +230,8 @@ void FLD::AddExplicitSourceTerms(const Real dt, const AthenaArray<Real> &prim,
 
         if (do_mixed) {
           // CASTRO's hyperbolic subsystem contains -lambda*v.grad(Er).
-          // The q*v.grad(Er) Lorentz correction belongs to the implicit
-          // radiation/thermal-exchange solve.
+          // The q*v.grad(Er) Lorentz correction is implicit by default;
+          // the comparison switch moves only that term to this source stage.
           const Real vx = 0.5*(pmb->phydro->vf[X1DIR](k,j,i)
                                + pmb->phydro->vf[X1DIR](k,j,i+1));
           const Real vy = (pmb->block_size.nx2 > 1)
@@ -191,10 +241,47 @@ void FLD::AddExplicitSourceTerms(const Real dt, const AthenaArray<Real> &prim,
               ? 0.5*(pmb->phydro->vf[X3DIR](k,j,i)
                      + pmb->phydro->vf[X3DIR](k+1,j,i)) : prim(IVZ,k,j,i);
           const Real source = -lambda*(vx*ex + vy*ey + vz*ez);
-          if (NON_BAROTROPIC_EOS) hydro_u(IEN,k,j,i) += dt*source;
-          u_rad(k,j,i) = std::max(u_rad(k,j,i) - dt*source, TINY_NUMBER);
+          const Real drift = explicit_drift
+              ? ExplicitMixedDrift(this, pmb, prim, erad_before, k,j,i) : 0.0;
+          const Real total_source = source + drift;
+          const Real radiation_before = u_rad(k,j,i);
+          const Real radiation_unclipped = radiation_before - dt*total_source;
+          const Real radiation_after = std::max(radiation_unclipped, TINY_NUMBER);
+          if (NON_BAROTROPIC_EOS) hydro_u(IEN,k,j,i) += dt*total_source;
+          u_rad(k,j,i) = radiation_after;
+          if (ledger) {
+            const Real volume = pmb->pcoord->GetCellVolume(k,j,i);
+            lambda_gas_volume += dt*source*volume;
+            drift_gas_volume += dt*drift*volume;
+            lambda_abs_volume += std::abs(dt*source*volume);
+            drift_abs_volume += std::abs(dt*drift*volume);
+            gas_delta_volume += dt*total_source*volume;
+            radiation_delta_volume += (radiation_after-radiation_before)*volume;
+            radiation_floor_volume += (radiation_after-radiation_unclipped)*volume;
+          }
         }
       }
     }
+  }
+  if (ledger) {
+    ++mixed_frame_ledger_count;
+    const auto flags = std::cout.flags();
+    const auto precision = std::cout.precision();
+    std::cout << std::scientific << std::setprecision(16)
+              << "[MIXED_EXPLICIT_LEDGER] rank=" << Globals::my_rank
+              << " gid=" << pmb->gid << " cycle=" << pmb->pmy_mesh->ncycle
+              << " time=" << pmb->pmy_mesh->time << " dt=" << dt
+              << " implicit_q=" << implicit_mixed_frame_drift
+              << " lambda_gas_volume=" << lambda_gas_volume
+              << " lambda_abs_volume=" << lambda_abs_volume
+              << " q_gas_volume=" << drift_gas_volume
+              << " q_abs_volume=" << drift_abs_volume
+              << " gas_delta_volume=" << gas_delta_volume
+              << " radiation_delta_volume=" << radiation_delta_volume
+              << " radiation_floor_volume=" << radiation_floor_volume
+              << " pair_balance_volume=" << gas_delta_volume+radiation_delta_volume
+              << std::endl;
+    std::cout.flags(flags);
+    std::cout.precision(precision);
   }
 }

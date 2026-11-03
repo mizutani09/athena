@@ -13,6 +13,7 @@
 #include <cmath>
 #include <cstdlib>
 #include <cstring>    // memset, memcpy
+#include <iomanip>
 #include <iostream>
 #include <limits>
 #include <sstream>    // stringstream
@@ -356,6 +357,45 @@ NRFLDDriver::~NRFLDDriver() {
   }
 }
 
+void NRFLDDriver::RunCommittedDiagnostic() {
+  if (vnr_.empty() || dt_ <= 0.0) return;
+  FLD *first = static_cast<NRFLD*>(vnr_.front())->pmy_block_->prfld;
+  if (!first->MixedFrameCoupled()
+      || mixed_frame_ledger_count_ >= first->mixed_frame_ledger_limit) return;
+  ++mixed_frame_ledger_count_;
+  Real q_gas_volume = 0.0;
+  Real q_abs_volume = 0.0;
+  for (auto base : vnr_) {
+    NRFLD *nr = static_cast<NRFLD*>(base);
+    MeshBlock *mb = nr->pmy_block_;
+    if (!mb->prfld->implicit_mixed_frame_drift) continue;
+    const Real half_idx = 0.5/mb->pcoord->dx1f(mb->is);
+    for (int k = mb->ks; k <= mb->ke; ++k)
+      for (int j = mb->js; j <= mb->je; ++j)
+        for (int i = mb->is; i <= mb->ie; ++i) {
+          const Real contribution = dt_*MixedDriftTerm(
+              nr->mixed_drift_, nr->u_, k,j,i,half_idx)
+              *mb->pcoord->GetCellVolume(k,j,i);
+          q_gas_volume += contribution;
+          q_abs_volume += std::abs(contribution);
+        }
+  }
+  const auto flags = std::cout.flags();
+  const auto precision = std::cout.precision();
+  std::cout << std::scientific << std::setprecision(16)
+            << "[MIXED_IMPLICIT_LEDGER] rank=" << Globals::my_rank
+            << " cycle=" << pmy_mesh_->ncycle << " time=" << pmy_mesh_->time
+            << " stage=" << stage_ << " dt=" << dt_
+            << " implicit_q=" << first->implicit_mixed_frame_drift
+            << " q_gas_volume=" << q_gas_volume
+            << " q_abs_volume=" << q_abs_volume
+            << " q_radiation_volume=" << -q_gas_volume
+            << " pair_balance_volume=" << q_gas_volume-q_gas_volume
+            << std::endl;
+  std::cout.flags(flags);
+  std::cout.precision(precision);
+}
+
 NRFLD::NRFLD(MeshBlock *pmb, ParameterInput *pin) :
     NewtonRaphson(pmb->pmy_mesh->pmnr, pmb, NGHOST,
                   NewtonRaphsonFLD::NNRDIV,
@@ -638,7 +678,8 @@ void NRFLD::CalculateCoefficientsOnce(const AthenaArray<Real> &u_pre,
   Real idx = 1.0/dx;
   Real idy = 1.0/dy;
   Real idz = 1.0/dz;
-  const bool mixed_active = pfld->MixedFrameCoupled();
+  const bool mixed_active = pfld->MixedFrameCoupled()
+      && pfld->implicit_mixed_frame_drift;
   const int check_il = std::max(0, is-1);
   const int check_iu = std::min(u_pre.GetDim1()-1, ie+1);
   const int check_jl = std::max(0, js-1);
@@ -1304,7 +1345,8 @@ void NRFLD::AddDifference(AthenaArray<Real> &u_rad,
   int ke = pmy_block_->ke;
   FLD *pfld = pmy_block_->prfld;
   const Real step_scale = pmy_driver_->step_scale_;
-  const bool mixed_active = pfld->MixedFrameCoupled();
+  const bool mixed_active = pfld->MixedFrameCoupled()
+      && pfld->implicit_mixed_frame_drift;
 
   if (pmy_driver_->diagnostic_verbosity_ >= 2) {
     for (int k = 0; k < delta_u.GetDim3(); ++k)

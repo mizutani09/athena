@@ -251,6 +251,7 @@ class NewtonRaphsonDriver {
   void CalculateDefectNorms(NewtonResidualNorms &norms);
   virtual void RunJacobianDiagnostics();
   virtual void RunDirectionDiagnostic() {}
+  virtual void RunCommittedDiagnostic() {}
   // void CalculateMatrix();
 
   // // small functions

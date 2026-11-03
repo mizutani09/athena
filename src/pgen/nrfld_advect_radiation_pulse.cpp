@@ -55,6 +55,8 @@ Real opacity_mass_coeff_phys;
 Real rgas_over_mu_phys, total_pressure0_phys;
 bool force_lambda_one_third;
 bool static_equilibrium_2d;
+bool closed_box;
+Real initial_erad_temperature_factor;
 int blocks_initialized_local;
 Real diag_t_min, diag_t_max;
 Real diag_rho_min, diag_rho_max;
@@ -63,6 +65,72 @@ Real diag_prad_min, diag_prad_max;
 Real diag_ptot_min, diag_ptot_max;
 Real diag_erad_min, diag_erad_max;
 Real diag_ptot_rel_var;
+
+Real HistoryClosedBoxMass(MeshBlock *pmb, int iout) {
+  (void)iout;
+  AthenaArray<Real> volume;
+  volume.NewAthenaArray(pmb->ie - pmb->is + 2 * NGHOST);
+  Real total = 0.0;
+  for (int k = pmb->ks; k <= pmb->ke; ++k) {
+    for (int j = pmb->js; j <= pmb->je; ++j) {
+      pmb->pcoord->CellVolume(k, j, pmb->is, pmb->ie, volume);
+      for (int i = pmb->is; i <= pmb->ie; ++i) {
+        total += pmb->phydro->u(IDN, k, j, i) * volume(i);
+      }
+    }
+  }
+  return total * rho_unit * std::pow(leng_unit, 3);
+}
+
+Real HistoryClosedBoxEnergy(MeshBlock *pmb, int iout) {
+  (void)iout;
+  AthenaArray<Real> volume;
+  volume.NewAthenaArray(pmb->ie - pmb->is + 2 * NGHOST);
+  Real total = 0.0;
+  for (int k = pmb->ks; k <= pmb->ke; ++k) {
+    for (int j = pmb->js; j <= pmb->je; ++j) {
+      pmb->pcoord->CellVolume(k, j, pmb->is, pmb->ie, volume);
+      for (int i = pmb->is; i <= pmb->ie; ++i) {
+        const Real rho = pmb->phydro->u(IDN, k, j, i);
+        const Real m1 = pmb->phydro->u(IM1, k, j, i);
+        const Real m2 = pmb->phydro->u(IM2, k, j, i);
+        const Real m3 = pmb->phydro->u(IM3, k, j, i);
+        const Real kinetic = 0.5 * (SQR(m1) + SQR(m2) + SQR(m3)) / rho;
+        total += (pmb->prfld->u_gas(k, j, i) + pmb->prfld->u_rad(k, j, i)
+                  + kinetic) * volume(i);
+      }
+    }
+  }
+  return total * egas_unit * std::pow(leng_unit, 3);
+}
+
+Real ClosedBoxGasMomentum(MeshBlock *pmb, int component) {
+  AthenaArray<Real> volume;
+  volume.NewAthenaArray(pmb->ie - pmb->is + 2 * NGHOST);
+  Real total = 0.0;
+  for (int k = pmb->ks; k <= pmb->ke; ++k) {
+    for (int j = pmb->js; j <= pmb->je; ++j) {
+      pmb->pcoord->CellVolume(k, j, pmb->is, pmb->ie, volume);
+      for (int i = pmb->is; i <= pmb->ie; ++i) {
+        total += pmb->phydro->u(component, k, j, i) * volume(i);
+      }
+    }
+  }
+  return total * rho_unit * vel_unit * std::pow(leng_unit, 3);
+}
+
+Real HistoryClosedBoxMomentum1(MeshBlock *pmb, int iout) {
+  (void)iout;
+  return ClosedBoxGasMomentum(pmb, IM1);
+}
+Real HistoryClosedBoxMomentum2(MeshBlock *pmb, int iout) {
+  (void)iout;
+  return ClosedBoxGasMomentum(pmb, IM2);
+}
+Real HistoryClosedBoxMomentum3(MeshBlock *pmb, int iout) {
+  (void)iout;
+  return ClosedBoxGasMomentum(pmb, IM3);
+}
 
 Real TemperatureProfile(Real radius_phys) {
   return t0_phys + (t1_phys - t0_phys)
@@ -251,9 +319,18 @@ void GlobalMax(Real &val) {
 }  // namespace
 
 void Mesh::InitUserMeshData(ParameterInput *pin) {
-  static_equilibrium_2d =
-      pin->GetOrAddString("problem", "problem_type", "advecting_pulse_1d")
-      == "static_equilibrium_2d";
+  const std::string problem_type =
+      pin->GetOrAddString("problem", "problem_type", "advecting_pulse_1d");
+  static_equilibrium_2d = problem_type == "static_equilibrium_2d";
+  closed_box = problem_type == "closed_box";
+  initial_erad_temperature_factor =
+      pin->GetOrAddReal("problem", "initial_erad_temperature_factor", 1.0);
+  if (!(initial_erad_temperature_factor > 0.0)) {
+    std::stringstream msg;
+    msg << "### FATAL ERROR in Mesh::InitUserMeshData" << std::endl
+        << "initial_erad_temperature_factor must be positive.";
+    ATHENA_ERROR(msg);
+  }
   if (static_equilibrium_2d && mesh_size.nx2 <= 1) {
     std::stringstream msg;
     msg << "### FATAL ERROR in Mesh::InitUserMeshData" << std::endl
@@ -374,7 +451,7 @@ void Mesh::InitUserMeshData(ParameterInput *pin) {
   diag_erad_max = -std::numeric_limits<Real>::max();
   diag_ptot_rel_var = 0.0;
 
-  AllocateUserHistoryOutput(7);
+  AllocateUserHistoryOutput(closed_box ? 12 : 7);
   EnrollUserHistoryOutput(0, HistoryTgasMax, "Tgas_max", UserHistoryOperation::max);
   EnrollUserHistoryOutput(1, HistoryTgasMin, "Tgas_min", UserHistoryOperation::min);
   EnrollUserHistoryOutput(2, HistoryTradMax, "Trad_max", UserHistoryOperation::max);
@@ -383,6 +460,13 @@ void Mesh::InitUserMeshData(ParameterInput *pin) {
   EnrollUserHistoryOutput(5, HistoryPtotMin, "Ptot_min", UserHistoryOperation::min);
   EnrollUserHistoryOutput(6, HistoryTransverseTgasSpread, "Tgas_trans_rel",
                           UserHistoryOperation::max);
+  if (closed_box) {
+    EnrollUserHistoryOutput(7, HistoryClosedBoxMass, "box_mass", UserHistoryOperation::sum);
+    EnrollUserHistoryOutput(8, HistoryClosedBoxEnergy, "box_energy", UserHistoryOperation::sum);
+    EnrollUserHistoryOutput(9, HistoryClosedBoxMomentum1, "box_p1", UserHistoryOperation::sum);
+    EnrollUserHistoryOutput(10, HistoryClosedBoxMomentum2, "box_p2", UserHistoryOperation::sum);
+    EnrollUserHistoryOutput(11, HistoryClosedBoxMomentum3, "box_p3", UserHistoryOperation::sum);
+  }
 
 }
 
@@ -449,8 +533,9 @@ void MeshBlock::ProblemGenerator(ParameterInput *pin) {
         Real profile_coordinate = static_equilibrium_2d
             ? std::sqrt(SQR(x_phys) + SQR(y_phys)) : x_phys;
         Real temp_phys = TemperatureProfile(profile_coordinate);
-        Real rho_phys = DensityFromPressureBalance(temp_phys);
-        Real erad_phys = RadiationEnergyPhysFromTemp(temp_phys);
+        Real rho_phys = closed_box ? rho0_phys : DensityFromPressureBalance(temp_phys);
+        Real erad_phys = RadiationEnergyPhysFromTemp(
+            closed_box ? t0_phys * initial_erad_temperature_factor : temp_phys);
         Real pgas_phys = GasPressurePhys(rho_phys, temp_phys);
         Real ptot_phys = pgas_phys + erad_phys * ONE_3RD;
 

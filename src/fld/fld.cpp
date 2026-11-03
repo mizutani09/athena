@@ -126,7 +126,9 @@ FLD::FLD(MeshBlock *pmb, ParameterInput *pin) :
     is_couple(), only_rad(), cut_diff(), include_radiation_force(),
     radiation_pressure_in_riemann(true),
     fixed_flux_limiter(),
-    fixed_u_rad(), include_mixed_frame_terms(), mixed_frame_transport(true),
+    fixed_u_rad(), include_mixed_frame_terms(), implicit_mixed_frame_drift(true),
+    mixed_frame_ledger_limit(0), mixed_frame_ledger_count(0),
+    mixed_frame_transport(true),
     hydro_top_outflow_diode(false),
     marshak_top_boundary(), marshak_top_alpha(0.5), marshak_top_erad_ext(0.0)
     {
@@ -190,6 +192,21 @@ FLD::FLD(MeshBlock *pmb, ParameterInput *pin) :
   fixed_u_rad = pin->GetOrAddBoolean("fld", "fixed_u_rad", false);
   include_mixed_frame_terms =
       pin->GetOrAddBoolean("fld", "include_mixed_frame_terms", true);
+  implicit_mixed_frame_drift =
+      pin->GetOrAddBoolean("fld", "implicit_mixed_frame_drift", true);
+  mixed_frame_ledger_limit = pin->GetOrAddInteger("fld", "mixed_frame_ledger_limit", 0);
+  if (mixed_frame_ledger_limit < 0) {
+    std::stringstream msg;
+    msg << "### FATAL ERROR in function [FLD::FLD]" << std::endl
+        << "fld/mixed_frame_ledger_limit must be non-negative.";
+    ATHENA_ERROR(msg);
+  }
+  if (!implicit_mixed_frame_drift && !fixed_flux_limiter) {
+    std::stringstream msg;
+    msg << "### FATAL ERROR in function [FLD::FLD]" << std::endl
+        << "Explicit q*v.grad(Er) comparison requires fixed_flux_limiter=true.";
+    ATHENA_ERROR(msg);
+  }
   const EnvironmentFlag force_diagnostics =
       ReadEnvironmentFlag("ATHENA_FLD_FORCE_DIAGNOSTICS");
   if (!force_diagnostics.valid) {
@@ -277,6 +294,8 @@ FLD::FLD(MeshBlock *pmb, ParameterInput *pin) :
               << " pressure_flux=0"
               << " mixed_frame_source="
               << MixedFrameCoupled()
+              << " implicit_mixed_frame_drift=" << implicit_mixed_frame_drift
+              << " mixed_frame_ledger_limit=" << mixed_frame_ledger_limit
               << " mixed_frame_transport=" << mixed_frame_transport
               << " is_couple=" << is_couple << " only_rad=" << only_rad
               << " include_radiation_force=" << include_radiation_force

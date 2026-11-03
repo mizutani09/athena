@@ -534,12 +534,10 @@ void Mesh::InitUserMeshData(ParameterInput *pin) {
     msg << "is_couple must be true for this problem.";
     ATHENA_ERROR(msg);
   }
-  if (!pin->GetBoolean("fld", "only_rad")) {
-    std::stringstream msg;
-    msg << "### FATAL ERROR in function [Mesh::InitUserMeshData]" << std::endl;
-    msg << "only_rad must be true for this problem.";
-    ATHENA_ERROR(msg);
-  }
+  // Both solver forms are useful here.  The fully coupled form measures gas
+  // and total-energy defects separately and is preferable for the stringent
+  // 3-D analytic-profile validation; only_rad remains available for legacy
+  // runs and for diagnosing its radiation-only convergence behavior.
   if (pin->GetBoolean("fld", "cut_diff") && !allow_debug_toggles) {
     std::stringstream msg;
     msg << "### FATAL ERROR in function [Mesh::InitUserMeshData]" << std::endl;

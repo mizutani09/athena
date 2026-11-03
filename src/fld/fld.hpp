@@ -254,6 +254,13 @@ class FLD {
   // O(v/c) mixed-frame energy exchange: -lambda*v.grad(Er) is explicit;
   // q*v.grad(Er) is included in the implicit gas/radiation solve.
   bool include_mixed_frame_terms;
+  // Experimental placement of q*v.grad(Er): true in the Newton solve,
+  // false in the explicit stage with equal/opposite gas-radiation exchange.
+  bool implicit_mixed_frame_drift;
+  // Log the first N source/implicit updates per block for term-by-term energy
+  // accounting.  Disabled in production unless requested in the input.
+  int mixed_frame_ledger_limit;
+  int mixed_frame_ledger_count;
   // Radiation-energy transport and mixed-frame work are separate switches.
   // Both are resolved once at startup; the legacy environment variable only
   // overrides the transport switch when the input omits it.

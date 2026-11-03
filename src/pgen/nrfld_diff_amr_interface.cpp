@@ -41,6 +41,16 @@ Real erad_background;
 Real erad_amplitude;
 Real pulse_center;
 Real pulse_width;
+int test_regrid_cycle;
+
+int ControlledRefinement(MeshBlock *pmb) {
+  // Deterministic topology change for restart/rank-invariance regression.
+  // The pulse region is refined initially, then every fine block is removed.
+  if (test_regrid_cycle < 0) return 0;
+  if (pmb->pmy_mesh->ncycle >= test_regrid_cycle) return -1;
+  return (pmb->block_size.x1max > slab_left
+          && pmb->block_size.x1min < slab_right) ? 1 : -1;
+}
 
 // A periodic dense slab gives two interfaces without introducing a second
 // discontinuity at the periodic domain boundary.  width=0 requests a sharp
@@ -96,6 +106,10 @@ void Mesh::InitUserMeshData(ParameterInput *pin) {
   erad_amplitude = pin->GetOrAddReal("problem", "erad_amplitude", 0.1);
   pulse_center = pin->GetOrAddReal("problem", "pulse_center", slab_left);
   pulse_width = pin->GetOrAddReal("problem", "pulse_width", 0.08);
+  test_regrid_cycle = pin->GetOrAddInteger("problem", "test_regrid_cycle", -1);
+  if (adaptive && test_regrid_cycle >= 0) {
+    EnrollUserRefinementCondition(ControlledRefinement);
+  }
 
   if (!(density_low > 0.0) || !(density_high > 0.0)
       || !(slab_left < slab_right) || interface_width < 0.0

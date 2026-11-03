@@ -6,6 +6,7 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import re
 import shutil
 import subprocess
 import sys
@@ -19,6 +20,7 @@ SCRIPT_DIR = Path(__file__).resolve().parent
 sys.path.insert(0, str(SCRIPT_DIR))
 
 from nrfld_validation.io import find_repo_root, read_history  # noqa: E402
+from nrfld_validation.report import write_html_summary  # noqa: E402
 from nrfld_validation.manifest import (  # noqa: E402
     base_manifest,
     command_string,
@@ -34,9 +36,9 @@ from plots.plot_diff import plot_diffusion  # noqa: E402
 from plots.plot_radiative_shock import plot_radiative_shock  # noqa: E402
 
 
-DEFAULT_CASES = ("diffusion", "couple")
+DEFAULT_CASES = ("diffusion", "couple_low", "couple_high")
 RADIATIVE_SHOCK_CASES = ("radiative_shock_mach2", "radiative_shock_mach5")
-CASES = DEFAULT_CASES + RADIATIVE_SHOCK_CASES
+CASES = DEFAULT_CASES + ("couple",) + RADIATIVE_SHOCK_CASES
 
 
 class CommandExecutionError(RuntimeError):
@@ -69,6 +71,11 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--diffusion-resolution", type=int, default=16)
     parser.add_argument("--diffusion-block-size", type=int, default=8)
     parser.add_argument("--couple-nlim", type=int, default=100)
+    parser.add_argument("--couple-high-nlim", type=int, default=1800)
+    parser.add_argument("--couple-high-dt0", type=float, default=1.0e-17)
+    parser.add_argument("--couple-high-dt-growth", type=float, default=1.01)
+    parser.add_argument("--couple-linear-solver", choices=("mg", "fgmres"),
+                        default="fgmres")
     parser.add_argument("--linear-divergence-patience", type=int, default=None)
     parser.add_argument("--linear-max-transient-growth", type=float, default=2.0)
     parser.add_argument(
@@ -276,11 +283,20 @@ def case_parameters(case: str, args: argparse.Namespace) -> dict[str, Any]:
             "overrides": overrides,
         }
     ranks = 1  # The canonical coupling problem contains one MeshBlock.
+    high = case == "couple_high"
     overrides = [
-        f"time/nlim={args.couple_nlim}",
-        f"time/ncycle_out={args.couple_nlim}",
-        "job/problem_id=nrfld_couple_validation",
+        f"time/nlim={args.couple_high_nlim if high else args.couple_nlim}",
+        f"time/ncycle_out={args.couple_high_nlim if high else args.couple_nlim}",
+        f"job/problem_id=nrfld_{case}_validation",
+        f"problem/eg_0={'1e10' if high else '1e2'}",
     ]
+    if high:
+        overrides.extend([
+            f"problem/dt0={args.couple_high_dt0:.17g}",
+            f"problem/dt_growth={args.couple_high_dt_growth:.17g}",
+        ])
+    if case != "couple":
+        overrides.append(f"nrfld/linear_solver={args.couple_linear_solver}")
     if args.linear_divergence_patience is not None:
         if (args.linear_divergence_patience < 1
                 or args.linear_max_transient_growth < 1.0):
@@ -415,7 +431,8 @@ def run_case(
     for override in parameters["overrides"]:
         key, value = override.split("=", 1)
         if key in ("nrfld/linear_divergence_patience",
-                   "nrfld/linear_max_transient_growth"):
+                   "nrfld/linear_max_transient_growth",
+                   "nrfld/linear_solver"):
             added_nrfld.append(f"{key.split('/', 1)[1]} = {value}")
         else:
             command_overrides.append(override)
@@ -435,15 +452,26 @@ def run_case(
             *command_overrides,
         ]
     )
+    resource_log = case_dir / "resources.txt"
+    timed_command = (["/usr/bin/time", "-v", "-o", str(resource_log), *command]
+                     if parameters["ranks"] == 1 and Path("/usr/bin/time").is_file()
+                     else command)
     try:
-        record = checked(command, case_dir, case_dir / "run.log", timeout, "run")
+        record = checked(timed_command, case_dir, case_dir / "run.log", timeout, "run")
     except CommandExecutionError as error:
         command_records.append(error.record)
         raise
     command_records.append(record)
+    max_rss_kib = None
+    if resource_log.is_file():
+        match = re.search(r"Maximum resident set size \(kbytes\):\s*(\d+)",
+                          resource_log.read_text(encoding="utf-8"))
+        if match:
+            max_rss_kib = int(match.group(1))
     return {
-        "run": command_string(command),
+        "run": command_string(timed_command),
         "ranks": parameters["ranks"],
+        "max_rss_kib": max_rss_kib,
         "input": str(case_dir / "input.used"),
         "overrides": parameters["overrides"],
         "output_dir": output_dir,
@@ -451,7 +479,9 @@ def run_case(
     }
 
 
-def analyse_case(case: str, output_dir: Path) -> dict[str, float | bool]:
+def analyse_case(case: str, output_dir: Path, run_log: Path | None = None,
+                 expected_cycles: int | None = None,
+                 expected_solver: str | None = None) -> dict[str, Any]:
     history = read_history(output_dir)
     if case == "diffusion":
         l1 = float(history["L1norm"][-1])
@@ -466,21 +496,69 @@ def analyse_case(case: str, output_dir: Path) -> dict[str, float | bool]:
         }
     import numpy as np
 
-    analytic_time, analytic_egas = coupling_analytic("low")
+    coupling_case = "high" if case == "couple_high" else "low"
+    analytic_time, analytic_egas = coupling_analytic(coupling_case)
     valid = (history["Rtime"] > 0.0) & (history["e_gas"] > 0.0)
+    if not np.any(valid):
+        raise ValueError("coupling run has no positive-time gas energy samples")
+    analytic_valid = (analytic_time > 0.0) & np.isfinite(analytic_time)
+    if np.count_nonzero(analytic_valid) < 2:
+        raise ValueError("coupling analytic time grid has fewer than two points")
+    if np.any(np.diff(analytic_time[analytic_valid]) <= 0.0):
+        raise ValueError("coupling analytic time grid must increase")
+    measured_time = history["Rtime"][valid]
+    if measured_time[-1] > analytic_time[analytic_valid][-1]:
+        raise ValueError("coupling run extends beyond the analytic reference")
     analytic_log_egas = np.interp(
-        np.log(history["Rtime"][valid]), np.log(analytic_time), np.log(analytic_egas)
+        np.log(measured_time),
+        np.log(analytic_time[analytic_valid]),
+        np.log(analytic_egas[analytic_valid]),
     )
     log_error = np.abs(np.log(history["e_gas"][valid]) - analytic_log_egas)
     max_log_error = float(np.max(log_error)) if log_error.size else float("inf")
-    finite = bool(np_all_finite(history) and np.isfinite(max_log_error))
+    radiation_drift = float(np.max(np.abs(history["E_rad"] / 1.0e12 - 1.0)))
+    nr_rows = []
+    fgmres_rows = []
+    if run_log is not None:
+        for line in run_log.read_text(encoding="utf-8", errors="replace").splitlines():
+            if line.startswith("[NR] status="):
+                nr_rows.append(dict(re.findall(r"(\w+)=([^\s]+)", line)))
+            elif line.startswith("[LINEAR_FGMRES]"):
+                fgmres_rows.append(dict(re.findall(r"(\w+)=([^\s]+)", line)))
+    converged = [row for row in nr_rows if row.get("status") == "converged"]
+    nr_all_converged = bool(
+        len(converged) == expected_cycles
+        and len(nr_rows) == len(converged) + 1
+        and nr_rows[0].get("status") == "dt_zero_initialization"
+        and all(float(row["final_l2"]) <= 1.0e-10
+                and float(row["final_max"]) <= 1.0e-10 for row in converged)
+    )
+    fgmres_all_converged = bool(
+        fgmres_rows and all(
+            np.isfinite(float(row["relative_residual"]))
+            and float(row["relative_residual"]) <= float(row["target"])
+            for row in fgmres_rows
+        )
+    ) if expected_solver == "fgmres" else len(fgmres_rows) == 0
+    finite = bool(np_all_finite(history) and np.isfinite(max_log_error)
+                  and np.isfinite(radiation_drift))
     return {
+        "initial_egas": float(history["e_gas"][0]),
         "final_egas": float(history["e_gas"][-1]),
         "final_erad": float(history["E_rad"][-1]),
         "max_log_egas_error": max_log_error,
         "max_log_egas_error_limit": 5.0e-3,
+        "max_relative_erad_drift": radiation_drift,
+        "max_relative_erad_drift_limit": 1.0e-10,
+        "nr_converged_steps": len(converged),
+        "nr_expected_steps": expected_cycles,
+        "nr_all_converged": nr_all_converged,
+        "fgmres_calls": len(fgmres_rows),
+        "fgmres_all_converged": fgmres_all_converged,
         "finite": finite,
-        "passed": bool(finite and max_log_error < 5.0e-3),
+        "passed": bool(finite and max_log_error < 5.0e-3
+                       and radiation_drift < 1.0e-10 and nr_all_converged
+                       and fgmres_all_converged),
     }
 
 
@@ -583,6 +661,10 @@ def main() -> int:
     args = parse_args()
     if args.max_cores < 1:
         raise ValueError("--max-cores must be positive")
+    if args.couple_nlim < 1 or args.couple_high_nlim < 1:
+        raise ValueError("coupling cycle limits must be positive")
+    if args.couple_high_dt0 <= 0 or args.couple_high_dt_growth <= 0:
+        raise ValueError("high coupling timestep parameters must be positive")
     if args.mpi_ranks is not None and args.mpi_ranks < 1:
         raise ValueError("--mpi-ranks must be positive")
     if args.build_timeout <= 0 or args.run_timeout <= 0 or args.config_timeout <= 0:
@@ -610,11 +692,23 @@ def main() -> int:
     }
 
     failed = False
+    built_by_problem: dict[str, dict[str, Any]] = {}
     for case in cases:
         case_dir = suite_dir / case
         case_dir.mkdir()
         manifest_path = case_dir / "manifest.json"
         manifest = base_manifest(repo, case, args.max_cores)
+        analysis_files = (
+            Path(__file__),
+            SCRIPT_DIR / "plots" / "plot_couple.py",
+            SCRIPT_DIR / "nrfld_validation" / "report.py",
+            SCRIPT_DIR / "nrfld_validation" / "manifest.py",
+            SCRIPT_DIR / "nrfld_validation" / "io.py",
+        )
+        manifest["provenance"]["analysis"]["files"] = {
+            path.relative_to(repo).as_posix(): sha256_file(path)
+            for path in analysis_files
+        }
         command_records: list[dict[str, Any]] = []
         manifest["commands"]["records"] = command_records
         write_manifest(manifest_path, manifest)
@@ -694,14 +788,18 @@ def main() -> int:
             manifest["resources"]["mode"] = "no-build" if args.no_build else "isolated-build"
             build_source: Path | None = None
             if not args.no_build:
-                build_info = build_case(
-                    repo,
-                    case_dir,
-                    parameters["problem"],
-                    args.max_cores,
-                    args.build_timeout,
-                    command_records,
-                )
+                problem = parameters["problem"]
+                if problem in built_by_problem:
+                    build_info = built_by_problem[problem]
+                    manifest["resources"]["mode"] = "isolated-build-reused"
+                    manifest["resources"]["build_reused_from_case"] = build_info["case"]
+                else:
+                    build_info = build_case(
+                        repo, case_dir, problem, args.max_cores,
+                        args.build_timeout, command_records,
+                    )
+                    build_info["case"] = case
+                    built_by_problem[problem] = build_info
                 build_source = build_info["build_source"]
                 manifest["commands"].update(
                     {
@@ -756,6 +854,7 @@ def main() -> int:
                 repo, case_dir, case, args, executable, args.run_timeout, command_records
             )
             manifest["commands"]["run"] = run_info["run"]
+            manifest["resources"]["max_rss_kib"] = run_info["max_rss_kib"]
             manifest["artifacts"]["executable"] = {
                 "path": str(run_info["executable"]),
                 "sha256": sha256_file(run_info["executable"]),
@@ -775,7 +874,15 @@ def main() -> int:
                     output_dir=run_info["output_dir"],
                 )
             else:
-                metrics = analyse_case(case, run_info["output_dir"])
+                expected_cycles = (args.couple_high_nlim if case == "couple_high"
+                                   else args.couple_nlim if case.startswith("couple")
+                                   else None)
+                expected_solver = (args.couple_linear_solver
+                                   if case in ("couple_low", "couple_high")
+                                   else "mg" if case == "couple" else None)
+                metrics = analyse_case(case, run_info["output_dir"],
+                                       case_dir / "run.log", expected_cycles,
+                                       expected_solver)
             manifest["metrics"] = metrics
             manifest["input"]["used_path"] = str(case_dir / "input.used")
             manifest["input"]["used_sha256"] = sha256_file(case_dir / "input.used")
@@ -786,8 +893,11 @@ def main() -> int:
                 figure = case_dir / "figures" / f"{case}.png"
                 if case == "diffusion":
                     plot_diffusion(run_info["output_dir"], figure)
-                elif case == "couple":
-                    plot_coupling(run_info["output_dir"], figure)
+                elif case.startswith("couple"):
+                    plot_coupling(
+                        run_info["output_dir"], figure,
+                        "high" if case == "couple_high" else "low",
+                    )
                 elif not figure.is_file():
                     mach, _, analytic = shock_case_options(case, args)
                     plot_radiative_shock(
@@ -838,6 +948,7 @@ def main() -> int:
         json.dumps({**summary, "finished_at": utc_now()}, indent=2, sort_keys=True) + "\n",
         encoding="utf-8",
     )
+    write_html_summary(suite_dir, summary)
     print(json.dumps(summary, indent=2, sort_keys=True))
     return 1 if failed else 0
 

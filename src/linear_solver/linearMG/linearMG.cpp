@@ -1376,6 +1376,11 @@ void linearMGDriver::SolveFGMRES(int stage) {
   int preconditioner_calls = 0;
   auto apply_preconditioner = [&](const BlockVector &rhs, BlockVector &z) {
     current_level_ = fmglevel_ = ntotallevel_ - 1;
+    // The initial residual/operator setup can leave the root MG object at its
+    // coarsest level.  A V-cycle starts from the finest root level; otherwise
+    // RestrictBlock() decrements it below zero and the coarse boundary update
+    // dereferences an unallocated AthenaArray.
+    mgroot_->current_level_ = nrootlevel_ - 1;
     for (std::size_t b = 0; b < rhs.size(); ++b) {
       linearMG *pmg = static_cast<linearMG*>(vmg_[b]);
       pmg->current_level_ = pmg->nlevel_ - 1;
