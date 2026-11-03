@@ -260,6 +260,9 @@ def run(args):
                 if args.symmetric_rb_sweeps is not None:
                     overrides.append(
                         f"nrfld/symmetric_rb_sweeps={args.symmetric_rb_sweeps}")
+                if args.consistent_rb_colors is not None:
+                    overrides.append(
+                        f"nrfld/consistent_rb_colors={args.consistent_rb_colors}")
                 if args.cache_coefficient_hierarchy is not None:
                     overrides.append(
                         "nrfld/cache_coefficient_hierarchy="
@@ -360,7 +363,7 @@ if __name__ == "__main__":
     parser.add_argument("--variable-limiter", action="store_true",
                         help="Use the production flux limiter instead of fixed lambda=1/3")
     parser.add_argument("--global-jv", action="store_true",
-                        help="Single-rank Test C boundary-inclusive operator diagnostic")
+                        help="Test C boundary-inclusive operator diagnostic")
     parser.add_argument("--jv-iteration", type=int, default=0)
     parser.add_argument("--handoff", action="store_true",
                         help="Compare MG and NR correction residuals (first four solves)")
@@ -401,6 +404,8 @@ if __name__ == "__main__":
                         help="Immediate rollback bound relative to the best linear residual")
     parser.add_argument("--symmetric-rb-sweeps", choices=["true", "false"],
                         help="Override the RBGS post-smoothing order for WOR-29 controls")
+    parser.add_argument("--consistent-rb-colors", choices=["true", "false"],
+                        help="Opt-in shared MeshBlock/octets/root color policy for WOR-29")
     parser.add_argument("--cache-coefficient-hierarchy", choices=["true", "false"],
                         help="Override MG coefficient-hierarchy caching for WOR-30 controls")
     parser.add_argument("--coefficient-diagnostic-limit", type=int, default=1,
@@ -416,7 +421,6 @@ if __name__ == "__main__":
             and args.memory_gib > 0 and args.nr_threshold > 0 and args.pulse_width > 0
             and args.base_nx1 >= 32 and args.base_nx1 % 8 == 0
             and args.transverse_blocks >= 1
-            and (not args.global_jv or args.mpi_ranks == 1)
             and args.jv_iteration >= 0
             and args.coefficient_diagnostic_limit >= 0
             and (args.linear_fixed_vcycles is None or args.linear_fixed_vcycles > 0)

@@ -785,6 +785,16 @@ unless `--reanalyze` is used. Existing production binaries are not overwritten.
 
 ## Test C operator audits / WOR-23 and WOR-24
 
+The optional `test_c_controlled.py --global-jv --handoff --mpi-ranks 2` now
+aggregates boundary-inclusive Jv and four-stage MG handoff diagnostics across
+MPI ranks. It remains restricted to the periodic, uncoupled Test C. Use
+`--jv-iteration 1` to inspect the second actual Newton direction. The
+one-versus-two-rank and ON/OFF checks are recorded in
+[the MPI operator audit](wor23_24_mpi_operator_audit_20261104.md).
+`--consistent-rb-colors true` is an opt-in WOR-29 control that makes octet and
+root color order follow MeshBlock order; it is not the production default.
+See [the RB order comparison](wor29_rb_order_mpi_20261104.md).
+
 `test_c_operator_audit.py` runs the interior-AMR controls with diagnostics OFF
 and ON, checks identical NR results, history bytes and HDF datasets, and measures
 both initial and actual correction directions. The 27 simulations use one MPI

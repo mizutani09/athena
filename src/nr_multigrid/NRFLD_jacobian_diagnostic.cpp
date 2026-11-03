@@ -6,8 +6,13 @@
 #include <sstream>
 #include <vector>
 
+#ifdef MPI_PARALLEL
+#include <mpi.h>
+#endif
+
 #include "NRFLD.hpp"
 #include "../coordinates/coordinates.hpp"
+#include "../globals.hpp"
 #include "../linear_solver/linear_solver.hpp"
 #include "../task_list/nr_task_list.hpp"
 
@@ -68,11 +73,6 @@ void NRFLDDriver::RunDirectionDiagnostic() {
 }
 
 void NRFLDDriver::CheckGlobalJacobian(bool actual_direction) {
-  if (nranks_!=1) {
-    std::stringstream msg;
-    msg << "global_jacobian_check currently requires one MPI rank (Test C).";
-    ATHENA_ERROR(msg);
-  }
   for (auto base:vnr_) {
     NRFLD *nr=static_cast<NRFLD*>(base);
     FLD *fld=nr->pmy_block_->prfld;
@@ -142,12 +142,18 @@ void NRFLDDriver::CheckGlobalJacobian(bool actual_direction) {
                              std::max(std::abs(s.baseline(k,j,i)),TINY_NUMBER));
         }
   }
+#ifdef MPI_PARALLEL
+  MPI_Allreduce(MPI_IN_PLACE,&baseline_ghost_change,1,MPI_ATHENA_REAL,MPI_MAX,
+                MPI_COMM_WORLD);
+  MPI_Allreduce(MPI_IN_PLACE,&amplitude,1,MPI_ATHENA_REAL,MPI_MAX,MPI_COMM_WORLD);
+#endif
   // Normalize the actual MG direction to avoid positivity clipping. Preserve
   // its shape and sign; epsilon is relative to the energy, not to raw delta.
   if (actual_direction && amplitude==0.0) {
     restore();
-    std::cout << "[NRFLD Jv skipped] direction=newton iteration=" << global_jv_solve_
-              << " reason=zero_direction" << std::endl;
+    if (Globals::my_rank==0)
+      std::cout << "[NRFLD Jv skipped] direction=newton iteration=" << global_jv_solve_
+                << " reason=zero_direction" << std::endl;
     return;
   }
   amplitude=std::max(amplitude,static_cast<Real>(1.e-30));
@@ -163,7 +169,7 @@ void NRFLDDriver::CheckGlobalJacobian(bool actual_direction) {
 
   const auto flags=std::cout.flags(); const auto precision=std::cout.precision();
   std::cout << std::scientific << std::setprecision(16);
-  std::cout << "[NRFLD Jv setup] direction=" << (actual_direction ? "newton" : "smooth")
+  if (Globals::my_rank==0) std::cout << "[NRFLD Jv setup] direction=" << (actual_direction ? "newton" : "smooth")
             << " iteration=" << (actual_direction ? global_jv_solve_ : -1)
             << " baseline_ghost_change=" << baseline_ghost_change
             << " direction_scale=" << amplitude << " coefficient_policy=lagged_per_step"
@@ -242,7 +248,28 @@ void NRFLDDriver::CheckGlobalJacobian(bool actual_direction) {
       }
       const char *regions[4]={"interior","same_level_face","coarse_fine_face","all"};
       for (int region=0;region<4;++region) {
-        const Sums &a=sums[region]; if (!a.cells) continue;
+        Sums &a=sums[region];
+#ifdef MPI_PARALLEL
+        long double totals[6]={a.error,a.fd,a.av,a.tangent_error,
+                               a.ghost_error,a.ghost_ref};
+        MPI_Allreduce(MPI_IN_PLACE,totals,6,MPI_LONG_DOUBLE,MPI_SUM,MPI_COMM_WORLD);
+        a.error=totals[0]; a.fd=totals[1]; a.av=totals[2];
+        a.tangent_error=totals[3]; a.ghost_error=totals[4]; a.ghost_ref=totals[5];
+        const std::int64_t local_cells=a.cells;
+        MPI_Allreduce(MPI_IN_PLACE,&a.cells,1,MPI_LONG_LONG,MPI_SUM,MPI_COMM_WORLD);
+        const Real local_max=a.max_error;
+        MPI_Allreduce(MPI_IN_PLACE,&a.max_error,1,MPI_ATHENA_REAL,MPI_MAX,
+                      MPI_COMM_WORLD);
+        int owner=(local_max==a.max_error && local_cells>0) ? Globals::my_rank : nranks_;
+        MPI_Allreduce(MPI_IN_PLACE,&owner,1,MPI_INT,MPI_MIN,MPI_COMM_WORLD);
+        if (a.cells>0) {
+          Real xyz[3]={a.x,a.y,a.z}; int ids[2]={a.gid,a.level};
+          MPI_Bcast(xyz,3,MPI_ATHENA_REAL,owner,MPI_COMM_WORLD);
+          MPI_Bcast(ids,2,MPI_INT,owner,MPI_COMM_WORLD);
+          a.x=xyz[0]; a.y=xyz[1]; a.z=xyz[2]; a.gid=ids[0]; a.level=ids[1];
+        }
+#endif
+        if (!a.cells || Globals::my_rank!=0) continue;
         const long double ref=std::max({a.fd,a.av,1.e-300L});
         std::cout << "[NRFLD global Jv] direction=" << (actual_direction ? "newton" : "smooth")
                   << " iteration=" << (actual_direction ? global_jv_solve_ : -1)

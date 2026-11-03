@@ -247,9 +247,9 @@ linearMGDriver::linearMGDriver(Mesh *pm, ParameterInput *pin, NewtonRaphsonDrive
       "nrfld", "coefficient_diagnostics", false);
   handoff_diagnostics_ = pin->GetOrAddBoolean("nrfld", "handoff_diagnostics", false);
   handoff_diagnostic_limit_ = pin->GetOrAddInteger("nrfld", "handoff_diagnostic_limit", 4);
-  if (handoff_diagnostic_limit_ < 0 || (handoff_diagnostics_ && Globals::nranks != 1)) {
+  if (handoff_diagnostic_limit_ < 0) {
     std::stringstream msg;
-    msg << "handoff_diagnostics requires one MPI rank and a non-negative limit.";
+    msg << "handoff_diagnostic_limit must be non-negative.";
     ATHENA_ERROR(msg);
   }
   coefficient_diagnostic_limit_ = pin->GetOrAddInteger(
@@ -272,6 +272,9 @@ linearMGDriver::linearMGDriver(Mesh *pm, ParameterInput *pin, NewtonRaphsonDrive
   }
   std::string smoother = pin->GetOrAddString("nrfld", "smoother", "jacobi-rb");
   symmetric_rb_ = pin->GetOrAddBoolean("nrfld", "symmetric_rb_sweeps", false);
+  // Smooth() applies coffset_ itself. Opt in while comparing octet/root and
+  // MeshBlock color policies; retain the historical default until validated.
+  consistent_rb_colors_ = pin->GetOrAddBoolean("nrfld", "consistent_rb_colors", false);
   if (smoother == "jacobi-rb") {
     fsmoother_ = 1;
     redblack_ = true;
