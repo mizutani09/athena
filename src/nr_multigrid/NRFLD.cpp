@@ -80,6 +80,10 @@ enum DriftFace { XMinus, XPlus, YMinus, YPlus, ZMinus, ZPlus };
 inline bool MarshakFaceActive(const MeshBlock *pmb, const FLD *fld,
                               const int face, const int k, const int j,
                               const int i) {
+  // cut_diff removes the entire diffusion operator, including its physical
+  // boundary flux.  Keeping a Marshak face here changes the supposedly local
+  // exchange problem and defeats its total-energy cancellation.
+  if (fld->cut_diff) return false;
   const bool enabled = fld->marshak_face_boundary[face]
       || (face == ZPlus && fld->marshak_top_boundary);
   if (!enabled) return false;
@@ -360,6 +364,75 @@ NRFLDDriver::~NRFLDDriver() {
 void NRFLDDriver::RunCommittedDiagnostic() {
   if (vnr_.empty() || dt_ <= 0.0) return;
   FLD *first = static_cast<NRFLD*>(vnr_.front())->pmy_block_->prfld;
+  if (std::getenv("ATHENA_NRFLD_ENERGY_LEDGER") != nullptr
+      && first->is_couple && !first->only_rad && !first->fixed_u_rad) {
+    long double gas_delta = 0.0L, radiation_delta = 0.0L;
+    long double diffusion_delta = 0.0L, boundary_delta = 0.0L;
+    long double absolute_scale = 0.0L, absolute_balance = 0.0L;
+    for (auto base : vnr_) {
+      NRFLD *nr = static_cast<NRFLD*>(base);
+      MeshBlock *mb = nr->pmy_block_;
+      FLD *fld = mb->prfld;
+      const Real dx = mb->pcoord->dx1f(mb->is);
+      const Real idx2 = 1.0/SQR(dx);
+      for (int k=mb->ks; k<=mb->ke; ++k)
+        for (int j=mb->js; j<=mb->je; ++j)
+          for (int i=mb->is; i<=mb->ie; ++i) {
+            const Real center = nr->u_(k,j,i);
+            const Real face_coeff[6] = {
+              -nr->coeff_(linearSolver::DXMF,k,j,i),
+              -nr->coeff_(linearSolver::DXPF,k,j,i),
+              -nr->coeff_(linearSolver::DYMF,k,j,i),
+              -nr->coeff_(linearSolver::DYPF,k,j,i),
+              -nr->coeff_(linearSolver::DZMF,k,j,i),
+              -nr->coeff_(linearSolver::DZPF,k,j,i)};
+            const Real neighbor[6] = {nr->u_(k,j,i-1),nr->u_(k,j,i+1),
+              nr->u_(k,j-1,i),nr->u_(k,j+1,i),nr->u_(k-1,j,i),nr->u_(k+1,j,i)};
+            Real face_sum = 0.0, boundary_sum = 0.0;
+            for (int face=0; face<6; ++face) {
+              if (MarshakFaceActive(mb,fld,face,k,j,i)) {
+                const Real contribution = -MarshakFlux(
+                    fld,face,k,j,i,center,dx,nullptr)*dx;
+                face_sum += contribution;
+                boundary_sum += contribution;
+              } else {
+                face_sum += face_coeff[face]*(neighbor[face]-center);
+              }
+            }
+            const Real volume = mb->pcoord->GetCellVolume(k,j,i);
+            const Real dg = nr->u_gas_(k,j,i)-fld->u_gas(k,j,i);
+            const Real dr = center-nr->uold_(k,j,i);
+            const Real dd = dt_*face_sum*idx2;
+            const Real residual = (dg+dr)-dd;
+            gas_delta += static_cast<long double>(dg)*volume;
+            radiation_delta += static_cast<long double>(dr)*volume;
+            diffusion_delta += static_cast<long double>(dd)*volume;
+            boundary_delta += static_cast<long double>(dt_*boundary_sum*idx2)*volume;
+            absolute_balance += static_cast<long double>(std::abs(residual))*volume;
+            absolute_scale += (static_cast<long double>(std::abs(dg))
+                + std::abs(dr) + std::abs(dd)
+                + std::abs(nr->u_gas_(k,j,i)) + std::abs(center))*volume;
+          }
+    }
+    const long double balance = gas_delta+radiation_delta-diffusion_delta;
+    const long double scale = std::max(absolute_scale, 1.0e-30L);
+    const auto flags = std::cout.flags();
+    const auto precision = std::cout.precision();
+    std::cout << std::scientific << std::setprecision(16)
+              << "[NR_ENERGY_LEDGER] rank=" << Globals::my_rank
+              << " cycle=" << pmy_mesh_->ncycle << " stage=" << stage_
+              << " dt=" << dt_ << " gas_delta=" << gas_delta
+              << " radiation_delta=" << radiation_delta
+              << " diffusion_delta=" << diffusion_delta
+              << " marshak_delta=" << boundary_delta
+              << " interior_delta=" << diffusion_delta-boundary_delta
+              << " balance=" << balance
+              << " relative_balance=" << std::abs(balance)/scale
+              << " absolute_relative_balance=" << absolute_balance/scale
+              << std::endl;
+    std::cout.flags(flags);
+    std::cout.precision(precision);
+  }
   if (!first->MixedFrameCoupled()
       || mixed_frame_ledger_count_ >= first->mixed_frame_ledger_limit) return;
   ++mixed_frame_ledger_count_;
@@ -1442,31 +1515,88 @@ void NRFLD::AddDifference(AthenaArray<Real> &u_rad,
                 *ResolvableThermalDifference(
                     pfld->a_r*t2*t2, u_rad(k,j,i));
           };
-          const Real f_floor = gas_residual(egas_floor);
-          if (std::isfinite(f_floor) && f_floor >= 0.0) {
-            u_gas_(k,j,i) = egas_floor;
-            local_gas_solved = true;
-          } else if (std::isfinite(f_floor)) {
+          // With diffusion disabled, the second local equation is exactly
+          // egas + Er = egas_old + Er_old.  Solve that one-dimensional system
+          // directly instead of recovering Er by subtracting two large gas
+          // energies.  The latter loses the small radiation state before the
+          // stiff exchange coefficient magnifies its rounding error.
+          if (pfld->cut_diff && !pfld->fixed_u_rad) {
+            const Real erad_old = uold_(k,j,i);
+            const Real total = egas_old + erad_old;
+            const Real upper_bound = std::nextafter(
+                total, -std::numeric_limits<Real>::infinity());
             const Real radiation_temperature = std::pow(
-                std::max(u_rad(k,j,i), TINY_NUMBER)/pfld->a_r, 0.25);
+                std::max(erad_old, TINY_NUMBER)/pfld->a_r, 0.25);
             const Real egas_lte = pmy_block_->peos->EgasFromRhoT(
                 rho, radiation_temperature);
-            if (std::isfinite(egas_lte) && egas_lte > 0.0) {
-              Real lower = egas_floor;
-              Real upper = std::max({egas_floor, egas_old, egas_lte});
-              Real f_upper = gas_residual(upper);
-              if (std::isfinite(f_upper) && f_upper >= 0.0) {
-                for (int iteration=0; iteration<64; ++iteration) {
-                  const Real middle = 0.5*(lower+upper);
-                  const Real f_middle = gas_residual(middle);
-                  if (!std::isfinite(f_middle)) break;
-                  if (f_middle < 0.0) lower = middle;
-                  else upper = middle;
-                  if (upper-lower <= 8.0*std::numeric_limits<Real>::epsilon()
-                      *std::max(upper, egas_floor)) break;
+            const Real bracket_upper = std::min(
+                upper_bound, std::max(egas_old, egas_lte));
+            if (std::isfinite(egas_lte) && std::isfinite(bracket_upper)
+                && bracket_upper > egas_floor) {
+              auto coupled_residual = [&](const Real egas) {
+                const Real erad = erad_old + (egas_old-egas);
+                const Real temperature = pmy_block_->peos->TempFromRhoEg(
+                    rho, egas);
+                const Real t2 = temperature*temperature;
+                return (egas-egas_old) + pmy_driver_->dt_*c_sigma_p
+                    *ResolvableThermalDifference(pfld->a_r*t2*t2, erad);
+              };
+              const Real f_lower = coupled_residual(egas_floor);
+              const Real f_upper = coupled_residual(bracket_upper);
+              if (std::isfinite(f_lower) && std::isfinite(f_upper)
+                  && f_upper >= 0.0) {
+                Real lower = egas_floor;
+                Real upper = bracket_upper;
+                if (f_lower >= 0.0) {
+                  upper = lower;
+                } else {
+                  for (int iteration=0; iteration<64; ++iteration) {
+                    const Real middle = 0.5*(lower+upper);
+                    if (middle == lower || middle == upper) break;
+                    const Real f_middle = coupled_residual(middle);
+                    if (!std::isfinite(f_middle)) break;
+                    if (f_middle < 0.0) lower = middle;
+                    else upper = middle;
+                  }
                 }
-                u_gas_(k,j,i) = 0.5*(lower+upper);
-                local_gas_solved = true;
+                const Real egas = 0.5*(lower+upper);
+                const Real erad = erad_old + (egas_old-egas);
+                if (std::isfinite(erad) && erad > TINY_NUMBER) {
+                  u_gas_(k,j,i) = egas;
+                  u_rad(k,j,i) = erad;
+                  last_delta_rad_(1,k,j,i) = erad-u_rad_before;
+                  local_gas_solved = true;
+                }
+              }
+            }
+          }
+          if (!local_gas_solved) {
+            const Real f_floor = gas_residual(egas_floor);
+            if (std::isfinite(f_floor) && f_floor >= 0.0) {
+              u_gas_(k,j,i) = egas_floor;
+              local_gas_solved = true;
+            } else if (std::isfinite(f_floor)) {
+              const Real radiation_temperature = std::pow(
+                  std::max(u_rad(k,j,i), TINY_NUMBER)/pfld->a_r, 0.25);
+              const Real egas_lte = pmy_block_->peos->EgasFromRhoT(
+                  rho, radiation_temperature);
+              if (std::isfinite(egas_lte) && egas_lte > 0.0) {
+                Real lower = egas_floor;
+                Real upper = std::max({egas_floor, egas_old, egas_lte});
+                Real f_upper = gas_residual(upper);
+                if (std::isfinite(f_upper) && f_upper >= 0.0) {
+                  for (int iteration=0; iteration<64; ++iteration) {
+                    const Real middle = 0.5*(lower+upper);
+                    const Real f_middle = gas_residual(middle);
+                    if (!std::isfinite(f_middle)) break;
+                    if (f_middle < 0.0) lower = middle;
+                    else upper = middle;
+                    if (upper-lower <= 8.0*std::numeric_limits<Real>::epsilon()
+                        *std::max(upper, egas_floor)) break;
+                  }
+                  u_gas_(k,j,i) = 0.5*(lower+upper);
+                  local_gas_solved = true;
+                }
               }
             }
           }
