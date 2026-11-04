@@ -650,7 +650,15 @@ flux deficit. The
 comparison is `rempel_box_pilot/mass_rate_gain_sweep_t800_850/index.html`.
 The first gain-`80` run accidentally used the default pressure relaxation
 time `10.0` and cannot be compared as a gain-only control. Its output is
-retained with suffix `_invalid_relax10`; a corrected gain-`80` run is underway.
+retained under `invalid_controls/` with suffix `_invalid_relax10`.
+The corrected gain-`80`, relaxation-`2.0` run completed 715/715 Newton
+solves without warnings/fatals, but its lower hydro-flux standard deviation
+was **`185.19 F_sun`** and mass-drift standard deviation `0.6611%`,
+versus `4.95 F_sun` and `0.0433%` for gain `40`. Its maximum mass drift
+reached `1.87%`. The mean top flux stayed near `0.608 F_sun` over this
+short window. The controller is evidently overdriven at gain `80` on this
+checkpoint, despite successful implicit solves. The five-case HTML now
+includes both the full amplitude and a zoomed view of gains `0`–`40`.
 An interim `t=450`–`500` diagnostic has least-squares stored-energy trend
 `+0.016 F_sun` but endpoint storage rate `+0.678 F_sun` (sampled ledger
 residual `-0.0006 F_sun`). The small regression slope alone would therefore
@@ -812,6 +820,14 @@ uppermost interior FLD flux improves from `0.795` to `0.969 F_sun`, but the
 at 96 km, so the fixed 1D radiative gradient alone does not resolve the
 initial cooling. See
 `rempel_box_pilot/profile_closure_48km_t10_comparison/index.html`.
+The matched 48 km **full-3D** runs confirm the optical-depth-surface result.
+At `tau=2/3`, the initial horizontal-mean temperature is `5704 K` for the
+old profile and `5798 K` for the FLD-consistent one. At `t=10` they have
+fallen to `4447` and `4461 K`, shrinking their initial `94 K` difference
+to only `14 K`. Both completed 240/240 Newton steps with no warnings or
+fatals. This is a strong indication that changing the 1D radiative gradient
+alone does not prevent the early 3D cooling. The comparison is
+`rempel_box_pilot/profile_closure_48km_3d_t10_comparison/index.html`.
 At 96 km the old and new profile cases with the *same* HD2 inflow entropy
 continued to `t=100`. Over `t=41`–`100`, their mean top fluxes were
 `0.54043` and `0.55992 F_sun`; over `t=85`–`100`, they were `0.57746` and
@@ -825,8 +841,14 @@ neither case has a steady solar flux. See
 The lower radiation ghost target helper also had a local copy of the
 limiter with `6+2R+R^2` in the denominator; the shared FLD limiter uses
 `6+3R+R^2`. The code now calls the shared limiter. This correction is
-negligible at the current deep lower boundary where `R` is tiny, and is
-not included in the startup binary above. Rebuild and verify it separately.
+negligible at the current deep lower boundary where `R` is tiny. It was
+rebuilt as binary SHA-256 `4b616a13...` and compared against the legacy
+`f0bee32b...` binary at 96 km through `t=10`, holding the input and tables
+fixed. Both finished 120/120 Newton solves without warnings/fatals. The
+mean top flux was `0.54335700139 F_sun` in both; the largest relative HST
+differences were `4.9e-16` in top flux and `7.3e-14` in lower hydro flux.
+This correction is not the cause of the startup cooling. See
+`rempel_box_pilot/ghost_limiter_fix_t0_10_comparison/index.html`.
 
 The earlier one-rank startup to `t=1` gave sampled residuals `+0.0801`
 and `-0.0721 F_sun` for the old and new sources, so a one-second diagnostic

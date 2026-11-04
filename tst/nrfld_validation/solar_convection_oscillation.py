@@ -151,11 +151,18 @@ def main() -> None:
                   for key in fixed_keys}
         values["mass_balance_on"] = effective_problem_bool(
             source, overrides, "mass_balance_on")
+        values["s_in_from_profile"] = effective_problem_bool(
+            source, overrides, "s_in_from_profile")
+        values["gravity_work_face_flux"] = effective_problem_bool(
+            source, overrides, "gravity_work_face_flux")
         values["mass_balance_rate_gain"] = effective_problem_float(
             source, overrides, "mass_balance_rate_gain")
+        values["binary_sha256"] = manifest.get("binary_sha256")
+        values["data_sha256"] = manifest.get("data_sha256")
         controls.append((label, values))
     for label, values in controls[1:]:
-        for key in (*fixed_keys, "mass_balance_on"):
+        for key in (*fixed_keys, "mass_balance_on", "s_in_from_profile",
+                    "gravity_work_face_flux", "binary_sha256", "data_sha256"):
             if values[key] != controls[0][1][key]:
                 raise ValueError(f"{label}: {key}={values[key]} differs from "
                                  f"{controls[0][0]}={controls[0][1][key]}; "
@@ -200,6 +207,33 @@ def main() -> None:
         axis.legend(fontsize=10)
     fig.savefig(args.output_dir / "oscillation_comparison.png", dpi=150)
     plt.close(fig)
+    zoom_html = ""
+    smallest = min(row["bottom_hydro_flux_std_over_solar"] for row in rows)
+    visible = [(row, data) for row, data in zip(rows, curves)
+               if row["bottom_hydro_flux_std_over_solar"] <= 5*smallest]
+    if len(visible) >= 2 and len(visible) < len(rows):
+        fig, axes = plt.subplots(1, 2, figsize=(14, 5), constrained_layout=True)
+        for row, data in visible:
+            axes[0].plot(data["time"], data["curves"]["FhydBottom"],
+                         label=row["label"])
+            axes[1].plot(data["time"], data["curves"]["MassDrift"],
+                         label=row["label"])
+        axes[0].set(title="Bottom flux: smaller-amplitude cases",
+                    xlabel="code time since window start", ylabel=r"$F/F_\odot$")
+        axes[1].set(title="Mass drift: smaller-amplitude cases",
+                    xlabel="code time since window start", ylabel="%")
+        for axis in axes:
+            axis.grid(alpha=0.25)
+            axis.legend()
+        fig.savefig(args.output_dir / "oscillation_stable_zoom.png", dpi=150)
+        plt.close(fig)
+        excluded = ", ".join(row["label"] for row in rows if row not in
+                             [item[0] for item in visible])
+        zoom_html = ("<p>The full plot includes every case. This second plot "
+                     "shows the smaller-amplitude cases so they remain "
+                     f"readable; excluded here: {html.escape(excluded)}.</p>"
+                     "<img src='oscillation_stable_zoom.png' alt='smaller "
+                     "amplitude comparison'>")
     cells = "".join(
         "<tr>" + "".join(f"<td>{html.escape(value)}</td>" for value in (
             row["label"],
@@ -239,6 +273,7 @@ def main() -> None:
         "<th>Global vz std [km/s]</th>"
         "<th>Mean-vz variance fraction</th></tr>"
         f"{cells}</table><img src='oscillation_comparison.png' alt='oscillation'>"
+        + zoom_html +
         "<p><a href='summary.json'>Numerical results</a></p></html>"
     )
     print(args.output_dir / "index.html")
