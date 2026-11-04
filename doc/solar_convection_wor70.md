@@ -556,8 +556,7 @@ dominant period near `12.5` code units. Mean top flux changed from `1.286`
 to `0.742 F_sun`; disabling feedback is not an acceptable physical solution.
 The matched history and spectral HTML reports are
 `rempel_box_pilot/mass_feedback_off_comparison_t400_450/` and
-`rempel_box_pilot/mass_feedback_diagnostic/`. A faster mean-pressure
-feedback control is the next same-checkpoint experiment.
+`rempel_box_pilot/mass_feedback_diagnostic/`.
 With feedback enabled but the response time shortened from 10 to 2 code
 units, another same-checkpoint `t=400`–`450` test completed 737/737 Newton
 solves without warnings or fatals. Relative to the standard control, lower
@@ -572,12 +571,51 @@ full-volume dumps still show a substantial coherent component.
 The matched plot is in
 `rempel_box_pilot/mass_feedback_tau2_comparison_t400_450/`; the three-case
 spectral report is in `rempel_box_pilot/mass_feedback_diagnostic/`.
-The improved control is being continued from `t=450` to `650` so that two
-late windows each span approximately one vertical crossing time.
+Further controls from the *same* `t=400` checkpoint completed without
+solver failures: a fresh `tau=10` restart, `tau=1`, and `Cdmp=0.5` at
+`tau=10`. Their `t=400`–`450` bottom hydro-flux standard deviations are
+`158.1`, `39.8`, and `160.8 F_sun`, versus `37.6 F_sun` for `tau=2`;
+mass-drift standard deviations are `1.031%`, `0.170%`, `1.046%`, versus
+`0.226%`. The fresh `tau=10` values agree with the continuous baseline
+(`158.2 F_sun`, `1.03%`), excluding a large restart artifact. Stronger
+`Cdmp` barely changes the box-wide mode, as expected because it damps
+horizontal pressure fluctuations rather than their mean. `tau=1` controls
+mass slightly more tightly but does not improve the lower-flux oscillation
+over `tau=2`; the latter remains the long-run baseline. The four-case
+spectral report is
+`rempel_box_pilot/mass_feedback_parameter_sweep_t400_450/index.html`.
+The improved control continued from `t=450` to `650` with 2,884/2,884
+Newton solves converged, maximum 30 FGMRES iterations, and no warnings or
+fatals. Lower hydro-flux standard deviation in 25-code windows fell from
+`44.1 F_sun` at `t=400`–`425` to `7.85` and `8.86 F_sun` at `t=600`–`625`
+and `625`–`650`; mass-drift standard deviation fell `0.245%`→`0.076%`.
+The two late 50-code windows have mean top flux `0.624` and
+`0.617 F_sun`, but span only 0.56 and 0.51 vertical crossing times.
+Their stored-energy regression trends are `+0.120` and `+0.037 F_sun`,
+while endpoint rates are `+0.484` and `-0.188 F_sun`. The five-snapshot
+late `tau=2/3` temperature mean is `5109 K` versus `5769 K` in the initial
+1D solar profile. The case report is
+`rempel_box_pilot/face_gravity_hd2_mass_tau2_64x64x32_np4_t450_650/index.html`.
+Thus the boundary mode is decaying, but neither solar flux nor statistical
+stationarity has been established. A continuation to `t=850` is running to
+obtain two longer late windows.
 An interim `t=450`–`500` diagnostic has least-squares stored-energy trend
 `+0.016 F_sun` but endpoint storage rate `+0.678 F_sun` (sampled ledger
 residual `-0.0006 F_sun`). The small regression slope alone would therefore
 give false confidence; neither measure can yet establish thermal stationarity.
+Over `t=500`–`600`, a 100-code window, the corresponding values are
+`+0.026` and `-0.014 F_sun`. The dependence on window length is why the
+next continuation retains the conservative screening thresholds and uses
+longer windows.
+For WOR-74, the profile-derived HD2 inflow entropy is
+`1.581097454457282e9 erg g^-1 K^-1` at the 96 km bottom-cell center;
+the 48 km first cell uses `1.581460760857411e9`. Same-checkpoint
+`t=650`–`750` sensitivity pilots at 96 km use the baseline plus and minus
+`5e6 erg g^-1 K^-1`, with `s_in_from_profile=false` and `tau=2`.
+These pilots do not yet calibrate a steady solar flux. A corrected-source
+96 km `t=40`–`100` continuation from the corresponding old-source restart
+also runs to make the early 48 km resolution comparison less confounded by
+the gravity-source switch.
 
 The earlier one-rank startup to `t=1` gave sampled residuals `+0.0801`
 and `-0.0721 F_sun` for the old and new sources, so a one-second diagnostic
