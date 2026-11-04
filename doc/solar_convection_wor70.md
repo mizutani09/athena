@@ -1037,11 +1037,25 @@ from the new state. The old lower ghost density differed by up to
 `0.1103` code units (`1.53e-4` relative to the maximum density).
 Reapplying the physical lower boundary after that HD2 update reduces
 the ghost comparison to float32 output roundoff and keeps a `t=1300`–`1320`
-smoke run converged for 288/288 Newton solves. The first post-restart
-total-energy difference is reduced only from `-1.399e-6` to `-1.304e-6`
-relative, so WOR-76 remains open. Combining the HD2 fix with a post-step
-FLD ghost synchronization did not further reduce the difference; that
-additional generic synchronization was also reverted.
+smoke run converged for 288/288 Newton solves. This alone reduces the first
+post-restart total-energy difference only from `-1.399e-6` to `-1.304e-6`
+relative. Combining it with a post-step FLD ghost synchronization did not
+further help; that additional generic synchronization was reverted.
+
+The remaining difference came from `Mesh::Initialize`: it unconditionally
+called the NR zero-time-step solve even when loading a checkpoint, thereby
+reprojecting the already committed gas/radiation state through the EOS.
+Skipping that initialization solve on restart gives the first physical
+step at `t=1190.137` a relative total-plus-gravity energy difference of
+`+1.28e-14` from the uninterrupted run, a lower hydro-flux difference
+of only `+125 erg cm^-2 s^-1`, and a top total-flux difference of
+`-0.49 erg cm^-2 s^-1`. A generic AMR/FGMRES validation with changing
+mesh topology and one-/two-rank restarts also passes: all direct and
+restart fields have zero reported relative L1 and maximum differences,
+and all Newton/FGMRES solves converge. Results are under
+`wor76_amr_restart_skip_zero_20261105/summary.json`. The longer
+`t=1300` campaigns were launched with the older copied executable before
+this fix; their comparisons all use that same binary.
 
 ## Next scientific gates
 

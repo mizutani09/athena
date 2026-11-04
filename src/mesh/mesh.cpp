@@ -2019,7 +2019,10 @@ void Mesh::Initialize(int res_flag, ParameterInput *pin) {
     if (CRDIFFUSION_ENABLED) // CR has to be processed after MHD boundaries
       pmcrd->Solve(1, 0.0);
 
-    if (NRMGFLD_ENABLED)  // NRMGFLD has to be processed after MHD boundaries (caution)
+    // A restart already contains the committed gas/radiation state. Running
+    // the zero-dt NR solve again can reproject it through the EOS and change
+    // the first physical timestep relative to an uninterrupted run.
+    if (NRMGFLD_ENABLED && !res_flag)
       pmnr->HandleSolveResult(pmnr->Solve_general(1, 0.0));
 
     if (!res_flag && adaptive) {
