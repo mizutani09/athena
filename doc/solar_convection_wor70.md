@@ -616,14 +616,15 @@ for example `t=650`–`850` gives slope `-0.025 F_sun` and endpoint rate
 `-0.098 F_sun`, while the last two 50-code windows show substantial cooling.
 There is no claim of statistical stationarity or solar agreement.
 Matched `t=800`–`850` continuations from the same checkpoint varied the HD2
-mass-rate correction gain from `0` to `10`, `20`, and `40`. All four finished
+mass-rate correction gain from `0` to `10`, `20`, `40`, and `80`. All five finished
 714/714 Newton solves without slow-MG warnings or fatals. The lower hydro-flux
-standard deviations decrease from `10.92` to `7.90`, `6.44`, and `4.95 F_sun`;
+standard deviations are `10.92`, `7.90`, `6.44`, `4.95`, and `7.97 F_sun`;
 mass-drift standard deviations decrease from `0.0822%` to `0.0721%`,
-`0.0607%`, and `0.0433%`. The dominant period remains about `16.63` code
-time in every case. The mean top flux is nearly unchanged (`0.612` to
-`0.608 F_sun`). Stronger mass correction therefore damps this coherent
-boundary oscillation but has not fixed the large thermal flux deficit. The
+`0.0607%`, and `0.0433%`, then rise to `0.0753%`. The dominant period remains
+about `16.6` code time in every case. The mean top flux is nearly unchanged
+(`0.612` to `0.608 F_sun`). Gain `40` best damps this coherent boundary
+oscillation in this matched window; gain `80` worsens it. Neither fixes the
+large thermal flux deficit. The
 comparison is `rempel_box_pilot/mass_rate_gain_sweep_t800_850/index.html`.
 An interim `t=450`–`500` diagnostic has least-squares stored-energy trend
 `+0.016 F_sun` but endpoint storage rate `+0.678 F_sun` (sampled ledger
@@ -778,6 +779,24 @@ FLD-consistent profile with the old inflow entropy. These are differences
 from each case's own initial 3D state, not an energy budget. The plots and
 height-resolved arrays are in
 `rempel_box_pilot/thermal_stratification_t0_40/index.html`.
+At 48 km (128×128×64), both old- and new-profile `t=0`–`10` pilots finished
+240/240 Newton solves without slow-MG warnings or fatals. The sampled
+uppermost interior FLD flux improves from `0.795` to `0.969 F_sun`, but the
+`t=5`–`10` mean top flux improves only from `0.38243` to `0.39260 F_sun`
+(the `t=10` values are `0.34661` and `0.35218`). The impact is smaller than
+at 96 km, so the fixed 1D radiative gradient alone does not resolve the
+initial cooling. See
+`rempel_box_pilot/profile_closure_48km_t10_comparison/index.html`.
+At 96 km the old and new profile cases with the *same* HD2 inflow entropy
+continued to `t=100`. Over `t=41`–`100`, their mean top fluxes were
+`0.54043` and `0.55992 F_sun`; over `t=85`–`100`, they were `0.57746` and
+`0.60201 F_sun`. The final full-3D `tau=2/3` temperatures were `5031` and
+`5072 K`. All 829 and 839 continuation Newton steps converged respectively,
+without slow-MG warnings or fatals. The sampled new-case `t≈40`–`100`
+energy-ledger residual was `0.00042 F_sun` equivalent. The benefit is still
+small, and the lower PBND remains profile-derived even with entropy fixed;
+neither case has a steady solar flux. See
+`rempel_box_pilot/profile_closure_fixed_sin_t41_100_comparison/index.html`.
 The lower radiation ghost target helper also had a local copy of the
 limiter with `6+2R+R^2` in the denominator; the shared FLD limiter uses
 `6+3R+R^2`. The code now calls the shared limiter. This correction is
