@@ -86,6 +86,24 @@ def effective_problem_bool(path: Path, overrides: list[str], key: str) -> bool |
     return value
 
 
+def effective_problem_float(path: Path, overrides: list[str], key: str
+                            ) -> float | None:
+    """Read a numeric problem setting, applying command-line overrides."""
+    block = re.search(r"^<problem>[ \t]*$.*?(?=^<|\Z)", path.read_text(),
+                      re.M | re.S)
+    value = None
+    if block:
+        match = re.search(rf"^[ \t]*{re.escape(key)}[ \t]*=[ \t]*([^#\s]+)",
+                          block.group(0), re.M)
+        if match:
+            value = float(match.group(1))
+    for override in overrides:
+        name, _, raw = override.partition("=")
+        if name == key:
+            value = float(raw)
+    return value
+
+
 def physical_time_unit(units: dict[str, float], velocity_unit: float) -> float:
     # The pgen treats a negative time_unit as a request to derive it.
     specified = units.get("time_unit", -1.0)
@@ -459,6 +477,9 @@ def main() -> None:
         args.input, overrides, "gravity_work_face_flux")
     report["hd2_mass_balance_on"] = effective_problem_bool(
         args.input, overrides, "mass_balance_on")
+    report["hd2_mass_balance_relax_time"] = effective_problem_float(
+        args.input, overrides, "mass_balance_relax_time")
+    report["hd2_Cdmp"] = effective_problem_float(args.input, overrides, "Cdmp")
     tau_path = args.run_dir / "tau1_slice.json"
     if tau_path.is_file():
         tau_records = json.loads(tau_path.read_text())["records"]
@@ -520,6 +541,9 @@ def main() -> None:
          "cell-centered legacy" if report["gravity_work_face_flux"] is False else
          "unspecified in input"),
         ("HD2 mass-balance feedback", str(report["hd2_mass_balance_on"])),
+        ("HD2 mass feedback time [code]",
+         str(report["hd2_mass_balance_relax_time"])),
+        ("HD2 pressure fluctuation Cdmp", str(report["hd2_Cdmp"])),
         ("NR statuses", ", ".join(f"{k}: {v}" for k, v in log["nr_status_counts"].items())),
         ("Late top flux / solar", f"{late['top_total_flux_over_solar']:.3f}" if late else "—"),
         ("Late vertical RMS", f"{late['vz_rms_km_s']:.3f} km/s" if late else "—"),
