@@ -486,6 +486,14 @@ boundary state. The remaining every-step residual is not a measured RK-stage
 conservation error. See
 `rempel_box_pilot/energy_ledger_cadence_t850_855/index.html` and
 `tst/nrfld_validation/solar_convection_ledger_cadence.py`.
+A third restart with HST cadence `0.2` shows a consistent ordering when all
+three cases are restricted to their *same* sampled interval
+`t=850.206253`–`855`: the trapezoidal residual is `+0.010562`, `+0.002591`,
+and `+0.000538 F_sun` for cadence `0.2`, `0.1`, and every step (25, 49, and
+71 history samples). This is stronger evidence that much of the observed
+ledger mismatch is sampling error. HST cadence `0.05` records every step as
+well, so it provides no additional refinement level. The three-way report is
+`rempel_box_pilot/energy_ledger_cadence_3way_t850_855/index.html`.
 The corrected source is now the default for this problem; set
 `gravity_work_face_flux=false` to reproduce the legacy calculation. The
 matched plot and JSON are in

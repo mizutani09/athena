@@ -108,6 +108,7 @@ def main() -> None:
             f"<a href='{html.escape(link)}'>{html.escape(row['label'])}</a>",
             str(row["history_sample_count"]),
             f"{row['median_history_gap_code']:.4f}",
+            f"{row['maximum_history_gap_code']:.4f}",
             f"{row['newton_converged_count']}",
             f"{row['residual_left_over_solar']:+.6f}",
             f"{row['residual_trapezoid_over_solar']:+.6f}",
@@ -127,6 +128,7 @@ def main() -> None:
         "history samples. Even every-step history is not an exact RK-stage "
         "flux integral or a discrete conservation proof.</p>"
         "<table><tr><th>Case</th><th>Samples</th><th>Median gap [code]</th>"
+        "<th>Max gap [code]</th>"
         "<th>Newton converged</th><th>Left / solar</th>"
         "<th>Trapezoid / solar</th><th>Right / solar</th></tr>"
         +"".join(cells)+"</table>"
