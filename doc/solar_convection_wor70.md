@@ -1121,11 +1121,42 @@ slow-MG warnings or fatals. Its `t=1310`–`1320` mean top-flux difference
 from the old-binary run is `+1.20e-5 F_sun`; this short check does not
 replace the longer matched-old-binary entropy comparison.
 
+The corrected binary also ran the 96 km gain-40 baseline from the old
+`t=1500` checkpoint to `t=1600`, with `1415/1415` Newton solves converged,
+no slow-MG warnings, and no fatal error. The two `t=1500`–`1550` and
+`1550`–`1600` windows give top fluxes `0.6175` and `0.6195 F_sun`.
+The lower hydro-flux standard deviation decreases from `0.871` to
+`0.841 F_sun`, following `0.879 F_sun` in the preceding old-binary
+`t=1450`–`1500` window; the dominant period stays near `6.20 min`.
+The last `t=1575`–`1600` sampled energy-ledger residual is
+`-1.24e-4 F_sun`. This continuation provides another stable solver
+window but does not establish solar-flux agreement. The binary changed
+at the checkpoint, so it is documented as a separate segment rather
+than included in the same-binary `t=800`–`1500` aggregate. Reports:
+`rempel_box_pilot/face_gravity_hd2_mass_tau2_rate40_current_64x64x32_np4_t1500_1600/index.html`
+and `rempel_box_pilot/gain40_current_late_oscillation_t1500_1600/index.html`.
+
+At 48 km (`128×128×64`, 12 MPI ranks, CFL 0.3), a matched restart
+from the same `t=100` checkpoint compares the legacy and corrected
+binaries through `t=110`. They converge all `302/302` and `301/301`
+Newton solves, respectively, with no slow-MG warnings or fatals. Over
+the common `t=100.102`–`110` interval, mean top flux is `0.5243688`
+versus `0.5243681 F_sun`; the `t=110` 3D optical-depth-surface mean
+temperatures are `5011.668` versus `5011.666 K`. These close short-time
+results show the corrected restart remains usable on the larger local
+grid, but this interval spans much less than one convective crossing
+and is not a resolution-convergence or solar-flux test. The corrected
+run report and matched comparison are at
+`rempel_box_pilot/face_gravity_hd2_mass_tau2_rate40_restartfix_128x128x64_np12_t100_110/index.html`
+and `rempel_box_pilot/restartfix_48km_t100_110_comparison/index.html`.
+
 ## Next scientific gates
 
-1. Continue the corrected Rempel-sized box past `t=300`, compare the HD2
-   mass-balance-off control, and audit its boundary/gravity energy budget.
-   Solver convergence alone does not establish thermal stationarity.
+1. Continue the corrected 96 km box beyond `t=1600` only if the additional
+   physical time can distinguish thermal relaxation from a true persistent
+   flux deficit. The full-box internal-energy-over-solar-flux time is about
+   `2e4` code units, much longer than the current run. Solver convergence
+   alone does not establish thermal stationarity.
 2. Keep the confirmed, tracked `simple_convection_lhllc_fld` series as the
    baseline. Review the untracked `nrfld_solar_convection` files separately
    before using their safety caps or flux controls in a comparison.
