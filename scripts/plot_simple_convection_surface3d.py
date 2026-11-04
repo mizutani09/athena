@@ -155,6 +155,8 @@ def main() -> None:
     late_start = profile_times[-1] - 0.25*(profile_times[-1] - profile_times[0])
     selected_optical = [item for item in optical_profiles
                         if item["time_code"] >= late_start]
+    if len(selected_optical) < 2 and len(optical_profiles) >= 2:
+        selected_optical = optical_profiles[-2:]
     late_optical = {
         "description": "Full 3D horizontal means on Rosseland optical-depth surfaces, "
                        "then temporal means; not a stationarity claim",

@@ -394,8 +394,18 @@ feedback improves mass control in this interval and changes top flux only
 about 1.2%; it is not a sufficient explanation for the large thermal
 transience. The paired plot and JSON are in
 `rempel_box_pilot/mass_control_comparison_64x64x32_t100_150/`.
-A corrected 48 km box is continuing from `t=10` to `t=100` on 12 MPI ranks
-for a resolution comparison.
+The 48 km, 128×128×64, 12-rank continuation with the **legacy** gravity-work
+source was intentionally stopped after a complete `t=40` checkpoint. Its
+`t=10`→`40` segment had 754/754 Newton solves converged, 2,180 FGMRES
+calls, maximum 52 iterations per call, and no slow-MG warning or fatal.
+The old-source partial report and plots remain in
+`rempel_box_pilot/fixed_hd2_128x128x64_np12_cfl03_t100/`, explicitly
+marked as stopped. The corrected face-flux gravity source is continuing
+from that exact checkpoint to `t=100` on the same 12 MPI ranks under
+`rempel_box_pilot/face_gravity_hd2_128x128x64_np12_cfl03_t100/`.
+This source switch at `t=40` is recorded in both manifests; its early
+state still contains the legacy source history, so a later corrected-source
+relaxation window is required for physical acceptance.
 The pre-fix 64³ continuation was intentionally stopped at `t≈153` after
 writing a `t=150` restart, to free six physical cores for the corrected
 baseline. Between `t=100` and the stop, all 3,303 reported Newton solves
