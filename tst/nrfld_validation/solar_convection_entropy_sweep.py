@@ -47,12 +47,20 @@ def main() -> None:
                         help="Effective profile-derived entropy from the original-run log")
     parser.add_argument("--variant", nargs=2, action="append", required=True,
                         metavar=("LABEL", "RUN_DIR"))
+    parser.add_argument("--variant-continuation", nargs=2, action="append",
+                        default=[], metavar=("LABEL", "RUN_DIR"),
+                        help="Consecutive checkpoint continuation of a variant")
     parser.add_argument("--header-from", type=Path, required=True)
     parser.add_argument("--output-dir", type=Path, required=True)
     parser.add_argument("--reference-flux", type=float, default=6.3e10)
     args = parser.parse_args()
     paths = [("baseline", args.baseline), *[(label, Path(path))
                                            for label, path in args.variant]]
+    variant_continuations: dict[str, list[Path]] = {}
+    for label, path in args.variant_continuation:
+        if label not in {name for name, _ in paths[1:]}:
+            raise ValueError(f"Unknown variant continuation label: {label}")
+        variant_continuations.setdefault(label, []).append(Path(path))
     manifests = {label: json.loads((path / "manifest.json").read_text())
                  for label, path in paths}
     baseline_manifest = manifests["baseline"]
@@ -94,6 +102,20 @@ def main() -> None:
                 manifest.get("problem_overrides", []), key)
             if reference != candidate:
                 raise ValueError(f"{label}: {key} differs from baseline")
+    for label, path in paths[1:]:
+        previous = path
+        original = manifests[label]
+        for continuation in variant_continuations.get(label, []):
+            manifest = json.loads((continuation / "manifest.json").read_text())
+            if Path(manifest.get("restart", "")).parent.resolve() != previous.resolve():
+                raise ValueError(f"{continuation}: not restarted from prior variant segment")
+            for key in ("binary_sha256", "base_input_sha256", "data_sha256",
+                        "generated_input_sha256", "problem_overrides"):
+                if manifest.get(key) != original.get(key):
+                    raise ValueError(f"{continuation}: changed {key}")
+            if numerical_overrides(manifest) != numerical_overrides(original):
+                raise ValueError(f"{continuation}: grid or CFL changed")
+            previous = continuation
         for key in ("mass_balance_on", "gravity_work_face_flux"):
             reference = effective_problem_bool(
                 args.baseline / "athinput.generated",
@@ -113,6 +135,15 @@ def main() -> None:
         keep = prior["time"] < current["time"][0]
         histories["baseline"] = {key: np.r_[values[keep], current[key]]
                                  for key, values in prior.items()}
+    for label, continuations in variant_continuations.items():
+        for path in continuations:
+            current = read_history(next(path.glob("*.hst")), args.header_from)
+            prior = histories[label]
+            if set(current) != set(prior) or current["time"][0] <= prior["time"][0]:
+                raise ValueError(f"{path}: incompatible variant history")
+            keep = prior["time"] < current["time"][0]
+            histories[label] = {key: np.r_[values[keep], current[key]]
+                                for key, values in prior.items()}
     start = max(float(h["time"][0]) for h in histories.values())
     end = min(float(h["time"][-1]) for h in histories.values())
     if end - start < 5.0:
@@ -169,7 +200,9 @@ def main() -> None:
                 history["FhydBottom"][selected][late])/args.reference_flux),
             "sample_count": int(len(t)),
         }
-        summary = path / "summary.json"
+        final_path = variant_continuations.get(label, [path])[-1]
+        row["final_run_dir"] = str(final_path)
+        summary = final_path / "summary.json"
         if summary.is_file():
             item = json.loads(summary.read_text())
             row["tau23_last_K"] = item.get("surface3d_last", {}).get(
@@ -186,6 +219,9 @@ def main() -> None:
         "baseline_run_dir": str(args.baseline),
         "baseline_continuation_dirs": [str(path) for path in
                                        args.baseline_continuation],
+        "variant_continuation_dirs": {
+            label: [str(path) for path in paths]
+            for label, paths in variant_continuations.items()},
         "baseline_s_in_cgs": args.baseline_s_in,
         "common_start_code": start, "common_end_code": end,
         "early_window_code": [start, start+span],
@@ -233,8 +269,13 @@ def main() -> None:
     cells = []
     for row in rows:
         name = Path(row["run_dir"]).name
+        links = f"<a href='../{html.escape(name)}/index.html'>{html.escape(row['label'])}</a>"
+        if row["final_run_dir"] != row["run_dir"]:
+            continuation_name = Path(row["final_run_dir"]).name
+            links += (f" <a href='../{html.escape(continuation_name)}/index.html'>"
+                      "(continuation)</a>")
         cells.append("<tr>" + "".join(f"<td>{value}</td>" for value in (
-            f"<a href='../{html.escape(name)}/index.html'>{html.escape(row['label'])}</a>",
+            links,
             f"{row['delta_s_in_cgs']:+.2e}",
             f"{row['early_delta_bottom_hydro_over_solar']:+.3f}",
             f"{row['late_delta_bottom_hydro_over_solar']:+.3f}",
