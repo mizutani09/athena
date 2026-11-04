@@ -531,6 +531,17 @@ change rate against left-point, trapezoidal, or right-point sampled supply
 gives RMS mismatches `0.3871`, `0.01856`, and `0.3839 F_sun` respectively.
 This explains why one-sided integration of the HST samples was misleading;
 it still does not identify the exact flux evaluations inside the update.
+The input uses `time/integrator=rk2` (Heun/SSPRK2). Its explicit update weights
+the stage-1 and stage-2 flux divergences by one half each; the HST face-flux
+arrays retain only the last stage. Thus an end-sample right rectangle omits
+the stage-1 flux, while neighboring HST samples provide a good but not exact
+trapezoidal proxy. The code then performs **one** full-timestep implicit FLD
+solve after both explicit stages. An exact audit must record both actual RK
+boundary fluxes and the implicit diffusion boundary flux/source exchange,
+and compare against the conserved-state changes before and after that solve.
+The existing per-cell `fld/stage_diagnostics` switch is restricted to an
+ideal-gas fixed-limiter mesh and explicitly rejects this general-EOS solar
+case, so a separate scalar audit is needed.
 The corrected source is now the default for this problem; set
 `gravity_work_face_flux=false` to reproduce the legacy calculation. The
 matched plot and JSON are in
@@ -949,6 +960,44 @@ MPI placement can be varied explicitly with `--mpi-map-by core
 `hwthread` defaults. Compare wall time on an identical checkpoint before
 selecting a faster placement; the current 12-rank and four-rank runs use
 six and two physical cores respectively.
+
+## Long-run continuity and entropy response
+
+The gain-40 mass-feedback baseline continued from `t=800` to `1200` with
+5699/5699 Newton solves converged, no slow-MG warnings, and no fatal errors.
+The `t=1000`–`1200` execution session received SIGTERM at `t≈1191`, not an
+out-of-memory failure; the last numbered restart was used to finish `t=1200`.
+The joined history and late-window checks are in
+`rempel_box_pilot/mass_rate40_combined_t800_1200/index.html`. The last two
+approximately 100-code-time windows contain only `0.900` and `0.898`
+vertical crossing times. Their top fluxes average `0.606` and `0.612 F_sun`.
+The stationarity screen fails the crossing-duration and solar-flux checks;
+the solver's successful continuation is not a thermal-equilibrium claim.
+
+A same-checkpoint `t=1000`–`1200` inflow entropy sensitivity sweep uses
+`s_in=1.581097454457282e9 ± 5e6 erg g^-1 K^-1`, with identical code,
+grid, CFL, HD2 feedback, and tables. The plus/minus runs completed
+2885/2885 and 2816/2816 converged Newton solves, respectively, without
+slow-MG warnings or fatals. Compared with the joined baseline, the top
+flux response over the final 25 code-time units is `+0.00890` and
+`-0.00182 F_sun`; over the final half of the common interval it is
+`+0.00237` and `-0.00362 F_sun`. The bottom hydro-flux response over the
+final 25 units is much larger and asymmetric (`+0.257` and `-0.687 F_sun`).
+The system has not relaxed enough to infer a steady entropy calibration
+from these numbers. Plots and exact windows are in
+`rempel_box_pilot/inflow_entropy_sensitivity_t1000_1200/index.html`.
+
+The checkpoint restart itself is deterministic: two independent restarts
+from the `t=1190.065` checkpoint give identical history values. However,
+the first post-checkpoint step differs from the uninterrupted path by
+`-1.40e-6` relative in total-plus-gravity energy and by
+`-0.096 F_sun` in instantaneous lower hydro flux. The checkpoint's
+energy and HD2 pressure scale match the original at its saved time.
+WOR-76 tracks this restart-to-continuous difference. A zero-step restart's
+`MassDrift=-1` is a diagnostic initialization artifact: its static
+`hd2_current_mass` is populated in `UserWorkInLoop` at the first step,
+where the drift returns to a normal value. Do not interpret the zero-step
+sample as physical mass loss.
 
 ## Next scientific gates
 

@@ -443,12 +443,14 @@ def make_campaign_index(root: Path) -> None:
                      and bool(statuses)
                      and set(statuses).issubset({"converged", "dt_zero_initialization"}))
         intentionally_stopped = bool(item.get("intentional_stop_reason"))
+        interrupted = bool(item.get("interruption_reason"))
         late = item.get("late_window", {})
         ratio = late.get("top_total_flux_over_solar")
         cells = [
             f"<a href='{html.escape(case.name)}/index.html'>{html.escape(case.name)}</a>",
             ("<strong>PASS</strong>" if solver_ok else
-             "intentionally stopped" if intentionally_stopped else "incomplete / failed"),
+             "intentionally stopped" if intentionally_stopped else
+             "interrupted" if interrupted else "incomplete / failed"),
             "candidate" if item["stationarity_candidate"] else "not established",
             str(log["final_cycle"] if log["final_cycle"] is not None else "—"),
             f"{ratio:.3f}" if ratio is not None else "—",
@@ -499,6 +501,8 @@ def main() -> None:
         overrides = manifest.get("problem_overrides", [])
         if manifest.get("intentional_stop_reason"):
             report["intentional_stop_reason"] = manifest["intentional_stop_reason"]
+        if manifest.get("interruption_reason"):
+            report["interruption_reason"] = manifest["interruption_reason"]
     report["gravity_work_face_flux"] = effective_problem_bool(
         args.input, overrides, "gravity_work_face_flux")
     report["hd2_mass_balance_on"] = effective_problem_bool(
@@ -553,7 +557,9 @@ def main() -> None:
     make_energy_budget_plot(current, units, args.reference_flux,
                             args.run_dir / "imgs" / "simple_convection_energy_budget.png")
     candidate = report["stationarity_candidate"]
-    status = ("Run intentionally stopped; stationarity not established"
+    status = ("Run interrupted; stationarity not established"
+              if report.get("interruption_reason") else
+              "Run intentionally stopped; stationarity not established"
               if report.get("intentional_stop_reason") else
               "Stationarity screening passed" if candidate else
               "Stationarity not established")
@@ -586,6 +592,8 @@ def main() -> None:
     ]
     if report.get("intentional_stop_reason"):
         quick.insert(1, ("Stop reason", report["intentional_stop_reason"]))
+    if report.get("interruption_reason"):
+        quick.insert(1, ("Interruption", report["interruption_reason"]))
     tau_last = report.get("tau1_slice_last")
     if tau_last and tau_last["T_tau1_mean_K"] is not None:
         quick.extend([

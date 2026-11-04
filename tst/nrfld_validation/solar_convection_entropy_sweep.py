@@ -39,6 +39,9 @@ def rolling_mean(y: np.ndarray, samples: int) -> np.ndarray:
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--baseline", type=Path, required=True)
+    parser.add_argument("--baseline-continuation", type=Path, action="append",
+                        default=[], help="Consecutive checkpoint restart of the "
+                        "baseline; repeat for interrupted segments")
     parser.add_argument("--baseline-s-in", type=float, required=True,
                         help="Effective profile-derived entropy from the original-run log")
     parser.add_argument("--variant", nargs=2, action="append", required=True,
@@ -52,6 +55,17 @@ def main() -> None:
     manifests = {label: json.loads((path / "manifest.json").read_text())
                  for label, path in paths}
     baseline_manifest = manifests["baseline"]
+    continuation_manifests = [json.loads((path / "manifest.json").read_text())
+                              for path in args.baseline_continuation]
+    previous = args.baseline
+    for path, manifest in zip(args.baseline_continuation, continuation_manifests):
+        if Path(manifest.get("restart", "")).parent.resolve() != previous.resolve():
+            raise ValueError(f"{path}: baseline continuation must use the prior checkpoint")
+        for key in ("binary_sha256", "base_input_sha256", "data_sha256",
+                    "generated_input_sha256", "problem_overrides"):
+            if manifest.get(key) != baseline_manifest.get(key):
+                raise ValueError(f"{path}: baseline continuation {key} differs")
+        previous = path
     if not effective_problem_bool(args.baseline / "athinput.generated",
                                   baseline_manifest.get("problem_overrides", []),
                                   "s_in_from_profile"):
@@ -90,6 +104,14 @@ def main() -> None:
                 raise ValueError(f"{label}: {key} differs from baseline")
     histories = {label: read_history(next(path.glob("*.hst")), args.header_from)
                  for label, path in paths}
+    for path in args.baseline_continuation:
+        current = read_history(next(path.glob("*.hst")), args.header_from)
+        prior = histories["baseline"]
+        if set(current) != set(prior) or current["time"][0] <= prior["time"][0]:
+            raise ValueError(f"{path}: incompatible baseline history")
+        keep = prior["time"] < current["time"][0]
+        histories["baseline"] = {key: np.r_[values[keep], current[key]]
+                                 for key, values in prior.items()}
     start = max(float(h["time"][0]) for h in histories.values())
     end = min(float(h["time"][-1]) for h in histories.values())
     if end - start < 5.0:
@@ -99,6 +121,7 @@ def main() -> None:
     area = ((units["x1max"]-units["x1min"])
             * (units["x2max"]-units["x2min"]) * units["leng_unit"]**2)
     span = min(25.0, 0.5*(end-start))
+    late_half_start = start + 0.5*(end-start)
     rows = []
     curves = []
     for label, path in paths[1:]:
@@ -113,6 +136,7 @@ def main() -> None:
                 t, baseline["time"], baseline[key])
         early = t < start + span
         late = t >= end - span
+        late_half = t >= late_half_start
         entropy = explicit_entropy(path)
         row = {
             "label": label, "run_dir": str(path), "s_in_cgs": entropy,
@@ -121,6 +145,10 @@ def main() -> None:
                                                / args.reference_flux),
             "late_delta_top_over_solar": float(np.mean(delta["FtotTop"][late])
                                               / args.reference_flux),
+            "late_half_delta_top_over_solar": float(np.mean(
+                delta["FtotTop"][late_half])/args.reference_flux),
+            "late_half_delta_bottom_hydro_over_solar": float(np.mean(
+                delta["FhydBottom"][late_half])/args.reference_flux),
             "early_delta_bottom_hydro_over_solar": float(np.mean(
                 delta["FhydBottom"][early])/args.reference_flux),
             "late_delta_bottom_hydro_over_solar": float(np.mean(
@@ -146,10 +174,13 @@ def main() -> None:
     result = {
         "description": "Matched-restart transient entropy sensitivity; not a solar calibration",
         "baseline_run_dir": str(args.baseline),
+        "baseline_continuation_dirs": [str(path) for path in
+                                       args.baseline_continuation],
         "baseline_s_in_cgs": args.baseline_s_in,
         "common_start_code": start, "common_end_code": end,
         "early_window_code": [start, start+span],
         "late_window_code": [end-span, end],
+        "late_half_window_code": [late_half_start, end],
         "baseline_late_top_over_solar": float(np.mean(
             baseline["FtotTop"][baseline_selected][baseline_late])
             / args.reference_flux),
@@ -162,16 +193,23 @@ def main() -> None:
     axes[0, 0].plot(t_base-start,
                     baseline["FtotTop"][baseline_selected]/args.reference_flux,
                     label="baseline", color="black")
-    for label, t, top, delta in curves:
-        axes[0, 0].plot(t, top, label=label)
-        axes[0, 1].plot(t, delta["FtotTop"]/args.reference_flux, label=label)
+    for index, (label, t, top, delta) in enumerate(curves):
+        color = f"C{index}"
+        axes[0, 0].plot(t, top, label=label, color=color)
+        top_delta = delta["FtotTop"]/args.reference_flux
+        axes[0, 1].plot(t, top_delta, alpha=0.18, lw=0.8, color=color)
+        top_samples = max(1, int(round(25.0/np.median(np.diff(t)))))
+        axes[0, 1].plot(t, rolling_mean(top_delta, top_samples), label=label,
+                        color=color)
         samples = max(1, int(round(5.0/np.median(np.diff(t)))))
         axes[1, 0].plot(t, rolling_mean(delta["FhydBottom"]
-                                        / args.reference_flux, samples), label=label)
+                                        / args.reference_flux, samples), label=label,
+                        color=color)
         axes[1, 1].plot(t, (delta["EtotGrav"]-delta["EtotGrav"][0])
-                        / (area*args.reference_flux*3600.0), label=label)
+                        / (area*args.reference_flux*3600.0), label=label,
+                        color=color)
     axes[0, 0].set(title="Top flux", ylabel=r"$F/F_\odot$")
-    axes[0, 1].set(title="Top-flux response to entropy change",
+    axes[0, 1].set(title="Top-flux response (25-code running mean)",
                    ylabel=r"$\Delta F/F_\odot$")
     axes[1, 0].set(title="Bottom hydro-flux response (5-code mean)",
                    ylabel=r"$\Delta F/F_\odot$")
@@ -192,11 +230,13 @@ def main() -> None:
             f"{row['late_delta_bottom_hydro_over_solar']:+.3f}",
             f"{row['early_delta_top_over_solar']:+.4f}",
             f"{row['late_delta_top_over_solar']:+.4f}",
+            f"{row['late_half_delta_top_over_solar']:+.4f}",
             f"{row['late_absolute_top_over_solar']:.3f}",
         )) + "</tr>")
     headers = ("Case", "Δs [erg g⁻¹ K⁻¹]", "Early ΔFhyd,bottom / solar",
                "Late ΔFhyd,bottom / solar", "Early ΔFtop / solar",
-               "Late ΔFtop / solar", "Late Ftop / solar")
+               "Late 25-code ΔFtop / solar", "Late half ΔFtop / solar",
+               "Late Ftop / solar")
     table_head = "".join(f"<th>{name}</th>" for name in headers)
     baseline_link = (f"<a href='../{html.escape(args.baseline.name)}/index.html'>"
                      "Baseline case report</a>")
@@ -209,11 +249,14 @@ def main() -> None:
         "img{max-width:100%}</style><h1>Inflow entropy sensitivity</h1>"
         "<p><strong>Transient matched-restart comparison.</strong> A response "
         "at the bottom does not establish a calibrated solar top flux. "
-        "Each run's stationarity and solver status are in its linked report.</p>"
+        "The late short and late-half averages should agree in sign before "
+        "interpreting a persistent upper response. Each run's stationarity "
+        "and solver status are in its linked report.</p>"
         f"<p>Common interval: {start:.1f}–{end:.1f} code time; "
         f"baseline s_in = {args.baseline_s_in:.9e} erg g⁻¹ K⁻¹; "
         f"baseline late top flux = {result['baseline_late_top_over_solar']:.3f} "
-        f"solar. {baseline_link}</p>"
+        f"solar. Late half = {late_half_start:.1f}–{end:.1f} code; "
+        f"late short window = {end-span:.1f}–{end:.1f}. {baseline_link}</p>"
         f"<table><tr>{table_head}</tr>{''.join(cells)}</table>"
         "<img src='entropy_sensitivity.png' alt='entropy sensitivity'>"
         "<p><a href='summary.json'>Numerical results</a></p></html>"
