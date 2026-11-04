@@ -546,6 +546,9 @@ deviation `1.03%`→`0.23%`, and maximum mass drift `1.84%`→`0.54%`.
 The dominant period moved from `12.51` to `9.97` code units. Mean top flux
 changed `1.29`→`0.88 F_sun`, while the stored-energy secular trend decreased
 `+1.47`→`+0.45 F_sun`. The latter is still above the stationarity screen.
+The global mass-weighted vertical-velocity standard deviation fell from
+`0.392` to `0.251 km/s`, so the mean mode itself is weakened, though sparse
+full-volume dumps still show a substantial coherent component.
 The matched plot is in
 `rempel_box_pilot/mass_feedback_tau2_comparison_t400_450/`; the three-case
 spectral report is in `rempel_box_pilot/mass_feedback_diagnostic/`.

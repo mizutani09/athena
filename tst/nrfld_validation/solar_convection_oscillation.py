@@ -97,6 +97,9 @@ def analyze(label: str, run_dir: Path, start: float, end: float,
         "top_flux_std_over_solar": float(np.std(curves["FtotTop"])),
         "mass_drift_std_percent": float(np.std(curves["MassDrift"])),
         "pressure_scale_std_percent": float(np.std(curves["PBNDScale"])),
+        "global_mass_weighted_vz_std_km_s": float(np.std(
+            history["3-mom"][selected] / history["mass"][selected])
+            * velocity / 1.0e5),
         "horizontal_mean_vz_variance_fraction": coherence,
         "full_volume_snapshot_count": snapshots,
     }
@@ -158,6 +161,7 @@ def main() -> None:
             f"{row['bottom_hydro_flux_second_to_first_std_ratio']:.2f}",
             f"{row['mass_drift_std_percent']:.3f}",
             f"{row['pressure_scale_std_percent']:.3f}",
+            f"{row['global_mass_weighted_vz_std_km_s']:.3f}",
             (f"{row['horizontal_mean_vz_variance_fraction']:.3f} "
              f"({row['full_volume_snapshot_count']} dumps)"
              if row["horizontal_mean_vz_variance_fraction"] is not None
@@ -176,6 +180,7 @@ def main() -> None:
         "<th>Period [min]</th><th>Bottom flux std / solar</th>"
         "<th>Late/early flux amplitude</th>"
         "<th>Mass drift std [%]</th><th>PBND scale std [%]</th>"
+        "<th>Global vz std [km/s]</th>"
         "<th>Mean-vz variance fraction</th></tr>"
         f"{cells}</table><img src='oscillation_comparison.png' alt='oscillation'>"
         "<p><a href='summary.json'>Numerical results</a></p></html>"
