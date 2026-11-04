@@ -88,6 +88,16 @@ def main() -> None:
         if item.startswith("mesh/nx3="):
             nx3 = int(item.split("=", 1)[1])
     interior = sampled_interior_residuals(profile, units, nx3, args.reference_flux)
+    grid_estimates = {}
+    for grid_nx3 in (nx3, 2*nx3, 4*nx3):
+        sampled = sampled_interior_residuals(
+            profile, units, grid_nx3, args.reference_flux)
+        grid_estimates[str(grid_nx3)] = {
+            "uppermost_face_z_code": float(sampled["z"][-1]),
+            "uppermost_face_fld_flux_over_solar": float(sampled["discrete_flux"][-1]),
+            "uppermost_face_model_flux_over_solar": float(sampled["model_flux"][-1]),
+            "max_centered_hse_fraction": float(np.max(sampled["hse_fraction"])),
+        }
     z_cm = profile["z_cm"]
     z_code = profile["z"]
     if not np.all(np.diff(z_cm) > 0):
@@ -143,6 +153,7 @@ def main() -> None:
             "max_centered_hse_fraction": float(np.max(interior["hse_fraction"])),
             "uppermost_centered_hse_fraction": float(interior["hse_fraction"][-1]),
         },
+        "sampled_grid_resolution_estimates": grid_estimates,
     }
     args.output_dir.mkdir(parents=True, exist_ok=True)
     (args.output_dir / "summary.json").write_text(json.dumps(result, indent=2) + "\n")
@@ -224,6 +235,15 @@ def main() -> None:
         for key, item in samples.items())
     startup_link = (f"<a href='../{html.escape(args.startup_dir.name)}/index.html'>"
                     "Startup case report</a>")
+    grid_table = "".join(
+        "<tr>" + "".join(f"<td>{item}</td>" for item in (
+            grid_nx3,
+            f"{row['uppermost_face_z_code']:.3f}",
+            f"{row['uppermost_face_fld_flux_over_solar']:.4f}",
+            f"{row['uppermost_face_model_flux_over_solar']:.4f}",
+            f"{row['max_centered_hse_fraction']:.4f}",
+        )) + "</tr>"
+        for grid_nx3, row in grid_estimates.items())
     (args.output_dir / "index.html").write_text(
         "<!doctype html><html lang='en'><meta charset='utf-8'>"
         "<title>Solar convection initial flux audit</title><style>"
@@ -247,6 +267,11 @@ def main() -> None:
         f"<th>Model convection / solar</th></tr>{samples_table}</table>"
         "<img src='initial_flux_audit.png' alt='initial flux audit'>"
         "<h2>Sampled interior grid residuals</h2>"
+        "<p>These higher-resolution rows are resamplings of the initial "
+        "1D profile, not additional 3D runs.</p>"
+        "<table><tr><th>Vertical cells</th><th>Top interior face z</th>"
+        "<th>Sampled FLD flux / solar</th><th>Model flux / solar</th>"
+        f"<th>Max centered HSE fraction</th></tr>{grid_table}</table>"
         "<img src='sampled_interior_residuals.png' alt='interior residuals'>"
         "</html>"
     )

@@ -1117,8 +1117,7 @@ static Real SimpleFluxForGhost(const Real ec, const Real eg, const Real sigma,
   if (sigma <= TINY_NUMBER || dz <= TINY_NUMBER) return 0.0;
   const Real grad = inner ? (ec - eg)/dz : (eg - ec)/dz;
   const Real r = std::abs(grad)/(sigma*std::max(ec, TINY_NUMBER));
-  const Real lambda = fixed_limiter ? ONE_3RD
-      : (2.0 + r)/(6.0 + 2.0*r + r*r);
+  const Real lambda = RadFLD::FluxLimiter(r, fixed_limiter);
   // Positive flux is in the +x3 direction at both boundaries.
   return -c_ph*lambda*grad/sigma;
 }

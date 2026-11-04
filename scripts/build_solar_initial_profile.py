@@ -23,6 +23,20 @@ def flux_limiter(reduced_gradient):
     )
 
 
+def reduced_gradient_for_flux_factor(flux_factor):
+    """Invert Levermore-Pomraning lambda(R)*R=f without a diffusion shortcut.
+
+    The quadratic's positive root is rationalized to retain accuracy for
+    optically thick layers, where f is very small.
+    """
+    if not np.isfinite(flux_factor) or not 0.0 <= flux_factor < 1.0:
+        raise ValueError(f"FLD flux factor must be in [0,1): {flux_factor}")
+    b = 2.0 - 3.0*flux_factor
+    return 12.0*flux_factor / (
+        np.sqrt(b*b + 24.0*flux_factor*(1.0-flux_factor)) + b
+    )
+
+
 class AthenaEosTable:
     """Minimal reader for the Athena general-EOS ASCII table."""
 
@@ -218,9 +232,10 @@ class ProfileBuilder:
         )
         kappa = self.opacity.rosseland(rho, temperature)
         flux_factor = self.flux / (CLIGHT * ARAD * temperature**4)
-        # Grey diffusion gives dE/dtau=3F/c.  The variable FLD limiter is
-        # applied below when diagnosing the flux represented on the grid.
-        reduced_gradient = 3.0 * flux_factor
+        # Match the same FLD closure used by the solver. R=3f is the
+        # diffusion approximation and underestimates the intended flux
+        # near the optically thin surface, even in the continuous profile.
+        reduced_gradient = reduced_gradient_for_flux_factor(flux_factor)
         dlogp_dd = rho * self.args.gravity / pressure
         dlogt_rad_dd = 0.25 * kappa * rho * reduced_gradient
         nabla_ad = self.eos.nabla_ad_from_log_state(np.log10(rho), logu)

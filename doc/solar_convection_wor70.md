@@ -597,8 +597,24 @@ late `tau=2/3` temperature mean is `5109 K` versus `5769 K` in the initial
 1D solar profile. The case report is
 `rempel_box_pilot/face_gravity_hd2_mass_tau2_64x64x32_np4_t450_650/index.html`.
 Thus the boundary mode is decaying, but neither solar flux nor statistical
-stationarity has been established. A continuation to `t=850` is running to
-obtain two longer late windows.
+stationarity has been established. The continuation to `t=850` completed
+2,849/2,849 Newton solves, maximum 32 FGMRES iterations, and no slow-MG
+warnings or fatals. Its `t=750`–`800` and `800`–`850` windows have mean
+upper flux `0.6108` and `0.6096 F_sun`; each spans only about 0.49 vertical
+crossing times. Their stored-energy regression slopes are `-0.257` and
+`-0.251 F_sun`, with endpoint rates about `-0.183` and `-0.144 F_sun`.
+Over `t=750`–`850` as a single window, the trend is `-0.098 F_sun` but
+the endpoint rate is `-0.146 F_sun`, failing the strict thermal screen.
+The `t=850` full-3D optical-depth-`2/3` surface has mean temperature
+`5091 K`. The case HTML is
+`rempel_box_pilot/face_gravity_hd2_mass_tau2_64x64x32_np4_t650_850/index.html`.
+The lower hydro-flux standard deviation remains near `8 F_sun` in the last
+25-code windows, while mass-drift standard deviation stays near `0.07%`.
+The box-wide oscillation is greatly reduced, but not eliminated. Its
+coherent phase can make a longer window's energy slope deceptively small;
+for example `t=650`–`850` gives slope `-0.025 F_sun` and endpoint rate
+`-0.098 F_sun`, while the last two 50-code windows show substantial cooling.
+There is no claim of statistical stationarity or solar agreement.
 An interim `t=450`–`500` diagnostic has least-squares stored-energy trend
 `+0.016 F_sun` but endpoint storage rate `+0.678 F_sun` (sampled ledger
 residual `-0.0006 F_sun`). The small regression slope alone would therefore
@@ -612,7 +628,17 @@ For WOR-74, the profile-derived HD2 inflow entropy is
 the 48 km first cell uses `1.581460760857411e9`. Same-checkpoint
 `t=650`–`750` sensitivity pilots at 96 km use the baseline plus and minus
 `5e6 erg g^-1 K^-1`, with `s_in_from_profile=false` and `tau=2`.
-These pilots do not yet calibrate a steady solar flux. A corrected-source
+Both pilots completed with all reported Newton solves converged and no
+slow-MG warning or fatal. Over their common `t=650.11`–`750` interval,
+the first 25-code-time lower hydro-flux differences are `+1.872` and
+`-1.310 F_sun`; the last 25-code-time differences are `+1.858` and
+`-0.838 F_sun`. The corresponding late upper-flux differences are only
+`-0.00193` and `+0.00117 F_sun` relative to baseline `0.61679 F_sun`.
+The upper response is too small and has the opposite sign to a simple
+steady calibration inference. These pilots measure transient sensitivity,
+not a calibrated solar flux. Their comparison is in
+`rempel_box_pilot/inflow_entropy_sensitivity_t650_750/index.html`.
+A corrected-source
 96 km `t=40`–`100` continuation from the corresponding old-source restart
 completed to make the early 48 km resolution comparison less confounded by
 the gravity-source switch. It converged in 830/830 Newton solves with no
@@ -633,6 +659,11 @@ measured response times. They explain why a bottom-entropy perturbation can
 change the lower hydro flux promptly but leave the top nearly unchanged for
 tens of code units. WOR-75 tracks a discrete initial-equilibrium audit and
 ways to shorten the thermal transient without changing the target physics.
+At the measured `t=650`–`850` 96 km four-rank cost of 3,285 wall seconds
+for 200 code-time units, a linear extrapolation to one whole-box thermal
+time (about 20,000 code units) is around 90 wall hours under similar load.
+This is an order-of-magnitude planning figure, not a convergence-time
+prediction; multiple thermal times or higher resolution would cost more.
 The initial 1D model expects nearly all of `F_sun` to be carried by
 convection at z-code `-3` and `0` (radiative fractions about `6e-6` and
 `1e-4`), while the 3D pgen starts with zero velocity and therefore zero
@@ -659,6 +690,81 @@ audit before assigning the entire flux deficit to discretization.
 The model split, thermal times, startup histories, and sampled interior
 residuals are plotted in
 `rempel_box_pilot/initial_flux_and_thermal_time_diagnostic/index.html`.
+The sampled-grid comparison at vertical cell counts 32, 64, and 128 gives
+uppermost interior radiative fluxes `0.723`, `0.795`, and `0.814 F_sun`
+for the old profile, approaching the continuous model value `0.821 F_sun`.
+The corresponding maximum centered HSE estimates fall `5.62%`, `1.48%`,
+and `0.376%`. These are resamplings of one 1D profile, not additional 3D
+simulations.
+
+The profile builder itself used `R=3F/(cE)` when deriving its temperature
+gradient. That is the diffusion-limit approximation, whereas both the
+generator's diagnostic and the NR solver use the variable Levermore–Pomraning
+limiter. At the top, where `F/(cE)=0.5`, `R=1.5` gives only about
+`0.82 F_sun`. The builder now solves `lambda(R)*R=F/(cE)` algebraically;
+for this top value the matching `R` is 2. A newly generated profile has
+continuous-model upper radiative flux `0.997 F_sun` and sampled 96 km
+uppermost interior flux `0.892 F_sun`. With the *same existing solver
+binary* and corrected gravity source, both profiles completed 120/120
+Newton solves without warnings or fatals through `t=10`. The new profile
+raises the `t=5`–`10` upper flux only from `0.441` to `0.460 F_sun`; the
+initial `tau=2/3` temperature changes from `5769` to `5869 K`. The
+limiter-consistent profile is a real fix to the initial 1D construction,
+but does not remove the early 3D thermal transient. Its matched comparison
+is `rempel_box_pilot/profile_closure_startup_comparison/index.html`.
+The HD2 lower-boundary initialization derives its pressure and entropy from
+each profile: `PBND=227.23` and `s_in=1.58110e9` for the old profile,
+versus `215.82` and `1.58675e9` for the new one. Thus these runs compare
+the *complete* profile-based initial conditions, not a perturbation with
+inflow entropy held fixed. A separate fixed-entropy control is needed before
+attributing longer-time differences solely to the radiation gradient.
+Both old/new profile-based 96 km cases continued from `t=0` to `40`, with
+478/478 Newton solves converged in each, no slow-MG warnings or fatals.
+The new profile gives `t=30`–`40` mean top flux `0.468 F_sun` versus
+`0.451 F_sun` for the old one, and `t=40` full-3D `tau=2/3` surface
+temperature `4912 K` versus `4857 K`. Both remain strongly transient;
+the comparison is
+`rempel_box_pilot/profile_closure_t40_comparison/index.html`.
+An additional new-profile run fixes `s_in` to the old profile's
+`1.581097454e9` instead of deriving it from the new profile. It also
+completed 477/477 Newton solves without warnings/fatals. Its `t=30`–`40`
+top-flux advantage over the old profile is `+0.01696 F_sun`, essentially
+the same as the profile-derived-entropy run's `+0.01711 F_sun`; its `t=40`
+`tau=2/3` surface temperature is `4911 K`. This supports the initial
+thermal structure, rather than the `+5.65e6` inflow-entropy change, as the
+cause of the short-time difference. The initial lower pressure still differs
+because it is derived from each profile; the controlled comparison is
+`rempel_box_pilot/profile_closure_fixed_sin_t40_comparison/index.html`.
+
+The matched *old-profile* zero-temperature-noise control is more decisive
+about convective transport. Through `t=5`–`10`, seeded and zero-noise cases
+have essentially identical top flux (`0.4417 F_sun`). By `t=30`–`40`,
+the 0.1%-seeded case has `0.4512 F_sun` but the zero-noise case only
+`0.2305 F_sun`. At `t=40`, the 3D `tau=2/3` surface temperature is
+`4857 K` versus `4027 K`; vertical RMS speed on that surface is `1.345`
+versus `0.429 km/s`. Both solver runs completed (478 and 477 converged
+Newton solves) with zero slow-MG warnings/fatals. The nonzero speed in
+the zero-noise case includes coherent vertical motion and should not all
+be called convection. Nevertheless the large flux and surface-temperature
+split strongly supports the lack of initially resolved convective transport
+as a major startup-cooling mechanism. See
+`rempel_box_pilot/initial_perturbation_comparison_t0_40/index.html`.
+A third otherwise matched case with 1% initial temperature perturbations
+completed 483/483 Newton solves without warnings/fatals. Its `t=5`–`10`
+upper flux is still `0.4416 F_sun`, virtually identical to 0 and 0.1%
+perturbations, so even tenfold larger noise does not remove the immediate
+cooling. At `t=30`–`40`, however, the mean top flux increases from
+`0.2305` (no noise) and `0.4512` (0.1%) to `0.5013 F_sun` (1%). The
+`t=40` 3D `tau=2/3` surface temperatures are `4027`, `4857`, and
+`4931 K`, respectively. Stronger seeding speeds the emergence of
+convective transport but leaves a large solar-flux deficit and does not
+solve the long thermal relaxation. The three-case plots are in
+`rempel_box_pilot/initial_noise_sweep_t0_40/index.html`.
+The lower radiation ghost target helper also had a local copy of the
+limiter with `6+2R+R^2` in the denominator; the shared FLD limiter uses
+`6+3R+R^2`. The code now calls the shared limiter. This correction is
+negligible at the current deep lower boundary where `R` is tiny, and is
+not included in the startup binary above. Rebuild and verify it separately.
 
 The earlier one-rank startup to `t=1` gave sampled residuals `+0.0801`
 and `-0.0721 F_sun` for the old and new sources, so a one-second diagnostic
