@@ -257,20 +257,30 @@ def summarize(h: dict[str, np.ndarray], log: dict[str, object], units: dict[str,
     report["top_flux_change_over_solar"] = flux_change
     report["vz_rms_relative_change"] = speed_change
     statuses = log["nr_status_counts"]
-    report["stationarity_candidate"] = bool(
-        min(first["vertical_crossing_times"], second["vertical_crossing_times"]) >= 1
-        and max(abs(first["top_total_flux_over_solar"] - 1),
-                abs(second["top_total_flux_over_solar"] - 1)) <= 0.1
-        and flux_change <= 0.05 and speed_change <= 0.1
-        and max(first["max_abs_mass_drift"],
-                second["max_abs_mass_drift"]) <= 0.01
-        and first_ledger is not None and second_ledger is not None
-        and abs(first_ledger["stored_energy_trend_over_solar"]) <= 0.1
-        and abs(second_ledger["stored_energy_trend_over_solar"]) <= 0.1
-        and log["fatal_count"] == 0 and log["completed"]
-        and bool(statuses)
-        and set(statuses).issubset({"converged", "dt_zero_initialization"})
-    )
+    checks = {
+        "both_windows_span_vertical_crossing":
+            min(first["vertical_crossing_times"],
+                second["vertical_crossing_times"]) >= 1,
+        "both_top_fluxes_within_10pct_solar":
+            max(abs(first["top_total_flux_over_solar"] - 1),
+                abs(second["top_total_flux_over_solar"] - 1)) <= 0.1,
+        "top_flux_change_within_5pct_solar": flux_change <= 0.05,
+        "vertical_rms_change_within_10pct": speed_change <= 0.1,
+        "both_mass_drifts_within_1pct":
+            max(first["max_abs_mass_drift"],
+                second["max_abs_mass_drift"]) <= 0.01,
+        "both_energy_trends_within_0p1_solar":
+            first_ledger is not None and second_ledger is not None
+            and abs(first_ledger["stored_energy_trend_over_solar"]) <= 0.1
+            and abs(second_ledger["stored_energy_trend_over_solar"]) <= 0.1,
+        "solver_completed_without_failed_nr":
+            log["fatal_count"] == 0 and log["completed"] and bool(statuses)
+            and set(statuses).issubset({"converged", "dt_zero_initialization"}),
+    }
+    report["stationarity_checks"] = checks
+    report["stationarity_candidate"] = all(checks.values())
+    report["failed_stationarity_checks"] = [
+        name for name, passed in checks.items() if not passed]
     report["reason"] = ("Screening rule passed; compare profiles and resolution next"
                         if report["stationarity_candidate"]
                         else "Screening rule not met; inspect windows and continue/adjust")
@@ -557,6 +567,10 @@ def main() -> None:
                       f"{ledger['stored_energy_trend_over_solar']:+.3f} F_sun"))
         quick.append(("Late stored-energy endpoint rate",
                       f"{ledger['stored_energy_rate_over_solar']:+.3f} F_sun"))
+    if report.get("failed_stationarity_checks"):
+        quick.append(("Unmet screening checks", ", ".join(
+            name.replace("_", " ")
+            for name in report["failed_stationarity_checks"])))
     table = "".join(f"<tr><th>{html.escape(key)}</th><td>{html.escape(value)}</td></tr>"
                     for key, value in quick)
     gallery = "".join(
