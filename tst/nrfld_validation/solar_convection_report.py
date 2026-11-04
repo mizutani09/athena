@@ -53,17 +53,24 @@ def read_history(path: Path, header_from: Path | None = None) -> dict[str, np.nd
 
 def combine_histories(paths: list[Path], header_from: Path | None = None
                       ) -> dict[str, np.ndarray]:
-    """Join restart segments by time, keeping the last row at each timestamp."""
+    """Join restart segments, replacing a parent's post-checkpoint trajectory.
+
+    A numbered checkpoint may precede the last history row of an interrupted
+    run. Its continuation is a new trajectory, so the superseded parent rows
+    must be discarded even when their timestamps do not exactly coincide.
+    """
     segments = [read_history(path, header_from) for path in paths]
     names = set(segments[0])
     if any(set(segment) != names for segment in segments[1:]):
         raise ValueError("History column sets differ between restart segments")
-    combined = {name: np.concatenate([segment[name] for segment in segments])
-                for name in segments[0]}
-    order = np.argsort(combined["time"], kind="stable")
-    times = combined["time"][order]
-    keep = np.r_[np.diff(times) > 0, True]
-    return {name: values[order][keep] for name, values in combined.items()}
+    combined = segments[0]
+    for segment in segments[1:]:
+        if segment["time"][0] <= combined["time"][0]:
+            raise ValueError("Restart segment must begin after its parent begins")
+        keep = combined["time"] < segment["time"][0]
+        combined = {name: np.r_[values[keep], segment[name]]
+                    for name, values in combined.items()}
+    return combined
 
 
 def input_values(path: Path) -> dict[str, float]:
