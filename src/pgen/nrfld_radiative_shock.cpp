@@ -46,7 +46,7 @@ namespace {
 constexpr Real kRadiationConst = 7.5657e-15;  // erg cm^-3 K^-4
 constexpr Real kGasConst = 8.31451e7;         // erg mol^-1 K^-1
 constexpr Real kLightSpeed = 2.99792458e10;   // cm s^-1
-constexpr Real kNoShockPosition = 1.0e99;
+constexpr Real kNoShockPosition = std::numeric_limits<Real>::max();
 
 struct ShockState {
   Real rho;

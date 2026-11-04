@@ -174,7 +174,7 @@ FLD::FLD(MeshBlock *pmb, ParameterInput *pin) :
     stage_diagnostic_start_ = pin->GetOrAddReal(
         "fld", "stage_diagnostic_start", 0.0);
     stage_diagnostic_end_ = pin->GetOrAddReal(
-        "fld", "stage_diagnostic_end", 1.0e99);
+        "fld", "stage_diagnostic_end", std::numeric_limits<Real>::max());
     if (stage_diagnostic_interval_ <= 0 || stage_diagnostic_first_cycles_ < 0
         || !std::isfinite(stage_diagnostic_start_)
         || !std::isfinite(stage_diagnostic_end_)

@@ -345,7 +345,7 @@ class FLD {
   int stage_diagnostic_interval_{1000};
   int stage_diagnostic_first_cycles_{3};
   Real stage_diagnostic_start_{0.0};
-  Real stage_diagnostic_end_{1.0e99};
+  Real stage_diagnostic_end_{std::numeric_limits<Real>::max()};
   Real stage_diagnostic_temperature_unit_{1.0};
 
 };

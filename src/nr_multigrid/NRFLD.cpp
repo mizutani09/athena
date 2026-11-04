@@ -526,6 +526,42 @@ NRFLD::NRFLD(MeshBlock *pmb, ParameterInput *pin) :
           << std::endl;
       ATHENA_ERROR(msg);
     }
+    // The implicit stencil and linearMG scale every active direction by
+    // dt/dx1^2.  Face closure gradients use the individual widths, so a
+    // rectangular cells or non-Cartesian coordinates would silently solve a
+    // different equation.  Reject them until the full operator supports
+    // directional widths and metric factors.  The Newton driver already
+    // rejects nonuniform mesh generators.
+    const Real dx = pmb->pcoord->dx1f(pmb->is);
+    const Real width_tolerance = 64.0*std::numeric_limits<Real>::epsilon();
+    const auto same_width = [dx, width_tolerance](Real width) {
+      return std::isfinite(width) && width > 0.0
+          && std::abs(width-dx) <= width_tolerance*std::max(width, dx);
+    };
+    bool cubic_uniform = std::isfinite(dx) && dx > 0.0
+        && pmb->block_size.x1rat == 1.0;
+    for (int i = pmb->is; i <= pmb->ie; ++i)
+      cubic_uniform = cubic_uniform && same_width(pmb->pcoord->dx1f(i));
+    if (pmb->block_size.nx2 > 1) {
+      cubic_uniform = cubic_uniform && pmb->block_size.x2rat == 1.0;
+      for (int j = pmb->js; j <= pmb->je; ++j)
+        cubic_uniform = cubic_uniform && same_width(pmb->pcoord->dx2f(j));
+    }
+    if (pmb->block_size.nx3 > 1) {
+      cubic_uniform = cubic_uniform && pmb->block_size.x3rat == 1.0;
+      for (int k = pmb->ks; k <= pmb->ke; ++k)
+        cubic_uniform = cubic_uniform && same_width(pmb->pcoord->dx3f(k));
+    }
+    if (std::strcmp(COORDINATE_SYSTEM, "cartesian") != 0 || !cubic_uniform) {
+      std::stringstream msg;
+      msg << "### FATAL ERROR in NRFLD::NRFLD" << std::endl
+          << "NR-FLD implicit diffusion requires Cartesian, uniform, cubic active "
+          << "cells (dx1=dx2=dx3). This MeshBlock has dx1=" << dx
+          << ", dx2=" << pmb->pcoord->dx2f(pmb->js)
+          << ", dx3=" << pmb->pcoord->dx3f(pmb->ks)
+          << ", coordinate system=" << COORDINATE_SYSTEM << "." << std::endl;
+      ATHENA_ERROR(msg);
+    }
     // pmy_mesh(pm),
     // coarse_u_(1, pmb->ncc3, pmb->ncc2, pmb->ncc1,
     //              (pmb->pmy_mesh->multilevel ? AthenaArray<Real>::DataStatus::allocated :

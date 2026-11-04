@@ -4,6 +4,10 @@ This runner automates the diffusion and matter-radiation coupling tests and
 organizes radiative-shock results.  It records reproducibility metadata and
 keeps each test's plotting implementation in a separate file.
 
+For the audited closure, coefficient lagging, mixed-frame split, geometry
+restriction, and conservation limits, see
+[WOR-11 numerical approximations and conservation audit](wor11_numerical_approximations_20261104.md).
+
 For execution-time breakdowns and HD/MHD/FLD/self-gravity scaling experiments,
 see [performance measurements (WOR-20)](PERFORMANCE.md). The separate
 `performance.py` runner creates a timestamped directory in the launch directory.

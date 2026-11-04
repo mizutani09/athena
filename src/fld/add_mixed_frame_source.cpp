@@ -101,7 +101,8 @@ void FLD::EmitForceDiagnostic(const Real dt, const AthenaArray<Real> &prim,
         const Real a_rad_x = -lambda*ex/rho;
         const Real residual_x = a_gas_x + a_rad_x;
         const Real relative = std::abs(residual_x)
-            / std::max(std::abs(a_gas_x) + std::abs(a_rad_x), TINY_NUMBER);
+            / std::max(std::abs(a_gas_x) + std::abs(a_rad_x),
+                       static_cast<Real>(TINY_NUMBER));
         const Real v_flux_x = hydro_u(IM1,k,j,i)/hydro_u(IDN,k,j,i);
         const Real v_after_source_x =
             (hydro_u(IM1,k,j,i) - dt*lambda*ex)/hydro_u(IDN,k,j,i);
@@ -246,7 +247,8 @@ void FLD::AddExplicitSourceTerms(const Real dt, const AthenaArray<Real> &prim,
           const Real total_source = source + drift;
           const Real radiation_before = u_rad(k,j,i);
           const Real radiation_unclipped = radiation_before - dt*total_source;
-          const Real radiation_after = std::max(radiation_unclipped, TINY_NUMBER);
+          const Real radiation_after = std::max(
+              radiation_unclipped, static_cast<Real>(TINY_NUMBER));
           if (NON_BAROTROPIC_EOS) hydro_u(IEN,k,j,i) += dt*total_source;
           u_rad(k,j,i) = radiation_after;
           if (ledger) {
