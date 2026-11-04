@@ -176,6 +176,14 @@ def sampled_energy_ledger(h: dict[str, np.ndarray], indices: np.ndarray,
     potential_integral = float(np.trapezoid(potential_flux, t) * area)
     stored_change = float(h["EtotGrav"][indices][-1]
                           - h["EtotGrav"][indices][0])
+    # Endpoint differences can be dominated by the phase of an oscillation.
+    # The secular storage diagnostic uses all samples in the window instead.
+    centered_time = t - np.mean(t)
+    stored = h["EtotGrav"][indices]
+    centered_stored = stored - np.mean(stored)
+    trend = float(np.dot(centered_time, centered_stored)
+                  / np.dot(centered_time, centered_time)
+                  / (area * flux_ref))
     residual = stored_change - regular_integral - potential_integral
     normalization = area * (t[-1] - t[0]) * flux_ref
     return {
@@ -186,6 +194,7 @@ def sampled_energy_ledger(h: dict[str, np.ndarray], indices: np.ndarray,
         "sampled_potential_boundary_erg": potential_integral,
         "sampled_ledger_residual_erg": residual,
         "stored_energy_rate_over_solar": float(stored_change / normalization),
+        "stored_energy_trend_over_solar": trend,
         "residual_equivalent_solar_flux": float(residual / normalization),
     }
 
@@ -210,7 +219,7 @@ def summarize(h: dict[str, np.ndarray], log: dict[str, object], units: dict[str,
         "log": log,
         "stationarity_rule": "Two late quarters, each >=1 vertical crossing time; "
         "top flux within 10% solar and changes <=5%; vertical RMS changes <=10%; "
-        "mass drift <=1%; |stored energy change rate| <=0.1 solar flux "
+        "mass drift <=1%; |least-squares stored energy trend| <=0.1 solar flux "
         "in each window; all reported NR solves converged; no fatal error.",
         "stationarity_candidate": False,
     }
@@ -231,8 +240,12 @@ def summarize(h: dict[str, np.ndarray], log: dict[str, object], units: dict[str,
     if first_ledger and second_ledger:
         first["stored_energy_rate_over_solar"] = first_ledger[
             "stored_energy_rate_over_solar"]
+        first["stored_energy_trend_over_solar"] = first_ledger[
+            "stored_energy_trend_over_solar"]
         second["stored_energy_rate_over_solar"] = second_ledger[
             "stored_energy_rate_over_solar"]
+        second["stored_energy_trend_over_solar"] = second_ledger[
+            "stored_energy_trend_over_solar"]
     report["early_late_window"] = first
     report["late_window"] = second
     if second_ledger:
@@ -252,8 +265,8 @@ def summarize(h: dict[str, np.ndarray], log: dict[str, object], units: dict[str,
         and max(first["max_abs_mass_drift"],
                 second["max_abs_mass_drift"]) <= 0.01
         and first_ledger is not None and second_ledger is not None
-        and abs(first_ledger["stored_energy_rate_over_solar"]) <= 0.1
-        and abs(second_ledger["stored_energy_rate_over_solar"]) <= 0.1
+        and abs(first_ledger["stored_energy_trend_over_solar"]) <= 0.1
+        and abs(second_ledger["stored_energy_trend_over_solar"]) <= 0.1
         and log["fatal_count"] == 0 and log["completed"]
         and bool(statuses)
         and set(statuses).issubset({"converged", "dt_zero_initialization"})
@@ -540,7 +553,9 @@ def main() -> None:
     if ledger:
         quick.append(("Late sampled energy-ledger residual",
                       f"{ledger['residual_equivalent_solar_flux']:+.3f} F_sun"))
-        quick.append(("Late stored-energy change rate",
+        quick.append(("Late stored-energy secular trend",
+                      f"{ledger['stored_energy_trend_over_solar']:+.3f} F_sun"))
+        quick.append(("Late stored-energy endpoint rate",
                       f"{ledger['stored_energy_rate_over_solar']:+.3f} F_sun"))
     table = "".join(f"<tr><th>{html.escape(key)}</th><td>{html.escape(value)}</td></tr>"
                     for key, value in quick)

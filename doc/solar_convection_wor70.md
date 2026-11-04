@@ -177,8 +177,9 @@ Use `--plan` to inspect the command. The history report's candidate flag
 requires two late windows each spanning a vertical crossing time, flux near
 the solar value and stable between windows, stable vertical velocity RMS,
 small mass drift, and clean solver status. Each late window must also have
-a stored gas+radiation+gravitational energy change rate below `0.1 F_sun`
-in magnitude. An apparently solar top flux
+a least-squares secular trend of stored gas+radiation+gravitational energy
+below `0.1 F_sun` in magnitude. The endpoint difference is also reported,
+but oscillatory phase can make it misleading. An apparently solar top flux
 while the box is heating or cooling rapidly cannot pass. This is a screening
 rule only; solar comparison requires profile and resolution diagnostics.
 Each case HTML plots the current-segment stored-energy change alongside
@@ -393,9 +394,11 @@ about `5251 K` in a `t=200` snapshot to `4924 K` at `t=300`. Thus the
 stationarity screen fails despite robust implicit convergence. The sampled
 energy-ledger residual in the current-segment last quarter is
 `+0.116 F_sun`; its status remains diagnostic until the stage-flux/source
-audit in WOR-72 is complete. The stored-energy change rate in that window
-is `-2.92 F_sun`, independently confirming that the box was thermally
-evolving.
+audit in WOR-72 is complete. The endpoint stored-energy change rate in that
+window is `-2.92 F_sun`, but the all-sample secular trend is only about
+`-0.043 F_sun`. The discrepancy reflects an oscillatory storage signal;
+the other stationarity criteria above still fail. This is why the screening
+rule uses the secular trend rather than the endpoint difference.
 This is a relaxation test, not a claim that 96 km resolves solar granulation.
 A `t=100`→`150` continuation with the HD2 bottom mass-balance feedback
 disabled completed with 750/750 Newton solves converged, 2,587 FGMRES calls,
