@@ -494,6 +494,11 @@ stages and cannot by themselves assign growth to the gravity-source change.
 The plot, exact windows, and JSON are in
 `rempel_box_pilot/acoustic_mode_diagnostic/`. Compare boundary damping on
 the same corrected-source restart before changing the physical setup.
+Rempel (2014), §II.2, introduced HD2 pressure-fluctuation damping after
+finding over-excited standing pressure waves with symmetric fluctuations in
+deeper domains. Our ghost-pressure formula and default `Cdmp=0.95` match its
+stated HD2 equations, but its observation does not establish the cause of
+the growing mode in this FLD/Athena++ run.
 
 The earlier one-rank startup to `t=1` gave sampled residuals `+0.0801`
 and `-0.0721 F_sun` for the old and new sources, so a one-second diagnostic
