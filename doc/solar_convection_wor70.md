@@ -374,9 +374,17 @@ energy-ledger residual in the last quarter is `+0.128 F_sun`; its status
 remains diagnostic until the stage-flux/source audit in WOR-72 is complete.
 This is a relaxation test, not a claim that 96 km resolves solar granulation.
 A `t=100`→`150` continuation with the HD2 bottom mass-balance feedback
-disabled is running to isolate that controller's effect on the large
-bottom-flux swings. A corrected 48 km box is also continuing from `t=10`
-to `t=100` on 12 MPI ranks for a resolution comparison.
+disabled completed with 750/750 Newton solves converged, 2,587 FGMRES calls,
+maximum 32 iterations per call, and no slow-MG warnings or fatal errors.
+Over the matched `t=100.2`→`150` window, feedback **on/off** gives mean top
+flux `0.623/0.615 F_sun`, vertical RMS `1.58/1.48 km/s`, maximum mass drift
+`0.359/0.689%`, and bottom net mass-flux RMS `0.765/1.044` code. The
+feedback improves mass control in this interval and changes top flux only
+about 1.2%; it is not a sufficient explanation for the large thermal
+transience. The paired plot and JSON are in
+`rempel_box_pilot/mass_control_comparison_64x64x32_t100_150/`.
+A corrected 48 km box is continuing from `t=10` to `t=100` on 12 MPI ranks
+for a resolution comparison.
 The pre-fix 64³ continuation was intentionally stopped at `t≈153` after
 writing a `t=150` restart, to free six physical cores for the corrected
 baseline. Between `t=100` and the stop, all 3,303 reported Newton solves
@@ -411,19 +419,35 @@ than the coarse large-box windows, so it does not settle WOR-72.
 
 For WOR-72, matched corrected large-box startups give sampled `t=0`→`10`
 ledger residuals of `+0.187 F_sun` at 96 km and `+0.0286 F_sun` at 48 km.
-The hydro gravity-work source currently uses the cell-centered `rho*v_z`,
-while the continuity update uses Riemann face mass fluxes. An **experimental**
-`problem/gravity_work_face_flux=true` switch instead uses the same face mass
-fluxes and face/cell gravitational-potential differences. The default remains
-`false` pending a matched developed-state test. In a one-rank 96 km startup
-to `t=1` with 16-digit history output every accepted step, the sampled ledger
-residual was `+0.0801 F_sun` with the cell-centered source and
-`-0.0721 F_sun` with the face-flux source. The new source runs and changes
-the ledger, but neither residual is close enough to zero to attribute the
-remaining discrepancy to gravity work alone. The corresponding mean top
-fluxes were `0.798` and `0.792 F_sun`; these very short tests say nothing
-about relaxed solar convection. Use `--history-precision 16` to avoid the
-default six-significant-digit history rounding in further ledger probes.
+The old hydro gravity-work source uses cell-centered `rho*v_z`, while the
+continuity update uses Riemann face mass fluxes. The corrected
+`problem/gravity_work_face_flux=true` source instead uses those same mass
+fluxes and face/cell gravitational-potential differences. In a matched
+96 km **developed-state** restart, `t=100.065`→`110`, four MPI ranks,
+16-digit history and every-step cadence, the sampled ledger residual fell
+from `+0.07591 F_sun` with the old source to `+0.000615 F_sun` with the
+face-flux source. In the second half of that interval the corrected residual
+was only `+0.00000215 F_sun`, versus `+0.1152 F_sun` with the old source.
+Both variants completed 153/153 Newton solves, had no slow-MG warnings or
+fatal errors, and took about 210 seconds. Over `t=100.1`→`110`, mean top
+flux was `0.593` versus `0.575 F_sun`; vertical RMS was `1.550` versus
+`1.556 km/s`. The roughly 3% top-flux difference over a short interval
+means old-source long-run solar flux estimates must be treated as provisional.
+The corrected source is now the default for this problem; set
+`gravity_work_face_flux=false` to reproduce the legacy calculation. The
+matched plot and JSON are in
+`rempel_box_pilot/gravity_work_comparison_64x64x32_np4_t100_110/`.
+The previously reported `t=300` coarse run and the currently running 48 km
+continuation used the legacy source. Their solver-convergence evidence is
+valid, but their long-time solar-flux estimates need a corrected-source
+continuation before physical acceptance.
+
+The earlier one-rank startup to `t=1` gave sampled residuals `+0.0801`
+and `-0.0721 F_sun` for the old and new sources, so a one-second diagnostic
+was insufficient to establish the improvement. The remaining early startup
+discrepancy and the exact RK-stage radiation/boundary flux audit remain in
+WOR-72. Use `--history-precision 16` to avoid default six-significant-digit
+history rounding in short ledger probes.
 
 The large-box pilot uses the generated files under
 `/mnt/d/output/rad/wor70_solar_20261104/profile_3Mm_candidate/input_data`.

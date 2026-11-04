@@ -83,7 +83,7 @@ namespace {
   Real hd2_mass_balance_max_scale = 1.5;
   Real hd2_current_mass = -1.0;
   Real hd2_mass_rate = 0.0;
-  bool gravity_work_face_flux = false;
+  bool gravity_work_face_flux = true;
   bool top_outflow_only;
   bool top_impenetrable;
   std::string top_bc_mode;
@@ -1446,7 +1446,7 @@ void Mesh::InitUserMeshData(ParameterInput *pin) {
   T_ref = pin->GetReal("problem", "T_top")/T_unit;
   grav_acc = pin->GetReal("problem", "grav_acc")/(leng_unit/(time_unit*time_unit));
   gravity_work_face_flux = pin->GetOrAddBoolean(
-      "problem", "gravity_work_face_flux", false);
+      "problem", "gravity_work_face_flux", true);
   z_ref = pin->GetOrAddReal("problem", "z_ref", 0.0);
   use_initial_profile = pin->GetOrAddBoolean(
       "problem", "use_initial_profile", false);
