@@ -480,6 +480,10 @@ def main() -> None:
     report["hd2_mass_balance_relax_time"] = effective_problem_float(
         args.input, overrides, "mass_balance_relax_time")
     report["hd2_Cdmp"] = effective_problem_float(args.input, overrides, "Cdmp")
+    report["hd2_s_in_from_profile"] = effective_problem_bool(
+        args.input, overrides, "s_in_from_profile")
+    report["hd2_s_in_input"] = effective_problem_float(
+        args.input, overrides, "s_in")
     tau_path = args.run_dir / "tau1_slice.json"
     if tau_path.is_file():
         tau_records = json.loads(tau_path.read_text())["records"]
@@ -544,6 +548,9 @@ def main() -> None:
         ("HD2 mass feedback time [code]",
          str(report["hd2_mass_balance_relax_time"])),
         ("HD2 pressure fluctuation Cdmp", str(report["hd2_Cdmp"])),
+        ("HD2 incoming entropy", "from imported profile"
+         if report["hd2_s_in_from_profile"] else
+         str(report["hd2_s_in_input"])),
         ("NR statuses", ", ".join(f"{k}: {v}" for k, v in log["nr_status_counts"].items())),
         ("Late top flux / solar", f"{late['top_total_flux_over_solar']:.3f}" if late else "—"),
         ("Late vertical RMS", f"{late['vz_rms_km_s']:.3f} km/s" if late else "—"),
