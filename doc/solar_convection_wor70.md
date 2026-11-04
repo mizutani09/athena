@@ -616,6 +616,24 @@ These pilots do not yet calibrate a steady solar flux. A corrected-source
 96 km `t=40`–`100` continuation from the corresponding old-source restart
 also runs to make the early 48 km resolution comparison less confounded by
 the gravity-source switch.
+The initial profile's column internal energy, `integral rho*specific_u dz`,
+divided by `F_sun` gives a whole-box thermal time of about `5.24 d`
+(`2.0e4` code-time units). The top 1 Mm gives about `0.44 h`
+(`70` code units), and the top 0.5 Mm about `0.026 h` (`4` code units).
+These energy-over-flux times are scale estimates, not
+measured response times. They explain why a bottom-entropy perturbation can
+change the lower hydro flux promptly but leave the top nearly unchanged for
+tens of code units. WOR-75 tracks a discrete initial-equilibrium audit and
+ways to shorten the thermal transient without changing the target physics.
+The initial 1D model expects nearly all of `F_sun` to be carried by
+convection at z-code `-3` and `0` (radiative fractions about `6e-6` and
+`1e-4`), while the 3D pgen starts with zero velocity and therefore zero
+resolved convective flux. In the 96 km startup, top flux drops from about
+`1.0 F_sun` at `t=0` to a `t=5`–`10` mean of `0.47 F_sun`. This is a
+plausible source of early cooling; the initial discrete FLD and boundary
+residuals still require the WOR-75 audit. The model split, thermal times,
+and startup histories are plotted in
+`rempel_box_pilot/initial_flux_and_thermal_time_diagnostic/index.html`.
 
 The earlier one-rank startup to `t=1` gave sampled residuals `+0.0801`
 and `-0.0721 F_sun` for the old and new sources, so a one-second diagnostic
