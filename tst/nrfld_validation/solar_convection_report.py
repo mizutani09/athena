@@ -177,6 +177,7 @@ def sampled_energy_ledger(h: dict[str, np.ndarray], indices: np.ndarray,
     stored_change = float(h["EtotGrav"][indices][-1]
                           - h["EtotGrav"][indices][0])
     residual = stored_change - regular_integral - potential_integral
+    normalization = area * (t[-1] - t[0]) * flux_ref
     return {
         "start_time_code": float(h["time"][indices][0]),
         "end_time_code": float(h["time"][indices][-1]),
@@ -184,8 +185,8 @@ def sampled_energy_ledger(h: dict[str, np.ndarray], indices: np.ndarray,
         "sampled_hydro_radiation_boundary_erg": regular_integral,
         "sampled_potential_boundary_erg": potential_integral,
         "sampled_ledger_residual_erg": residual,
-        "residual_equivalent_solar_flux": float(residual / (area * (t[-1]-t[0])
-                                                         * flux_ref)),
+        "stored_energy_rate_over_solar": float(stored_change / normalization),
+        "residual_equivalent_solar_flux": float(residual / normalization),
     }
 
 
@@ -209,7 +210,8 @@ def summarize(h: dict[str, np.ndarray], log: dict[str, object], units: dict[str,
         "log": log,
         "stationarity_rule": "Two late quarters, each >=1 vertical crossing time; "
         "top flux within 10% solar and changes <=5%; vertical RMS changes <=10%; "
-        "mass drift <=1%; all reported NR solves converged; no fatal error.",
+        "mass drift <=1%; |stored energy change rate| <=0.1 solar flux "
+        "in each window; all reported NR solves converged; no fatal error.",
         "stationarity_candidate": False,
     }
     ledger = sampled_energy_ledger(h, np.arange(n), units, flux_ref)
@@ -218,15 +220,23 @@ def summarize(h: dict[str, np.ndarray], log: dict[str, object], units: dict[str,
     if quarter < 5:
         report["reason"] = "Fewer than five history samples per late window"
         return report
-    first = window_metrics(h, np.arange(n - 2 * quarter, n - quarter), flux_ref,
+    first_indices = np.arange(n - 2 * quarter, n - quarter)
+    second_indices = np.arange(n - quarter, n)
+    first = window_metrics(h, first_indices, flux_ref,
                            velocity_unit, time_unit, height_cm)
-    second = window_metrics(h, np.arange(n - quarter, n), flux_ref,
+    second = window_metrics(h, second_indices, flux_ref,
                             velocity_unit, time_unit, height_cm)
+    first_ledger = sampled_energy_ledger(h, first_indices, units, flux_ref)
+    second_ledger = sampled_energy_ledger(h, second_indices, units, flux_ref)
+    if first_ledger and second_ledger:
+        first["stored_energy_rate_over_solar"] = first_ledger[
+            "stored_energy_rate_over_solar"]
+        second["stored_energy_rate_over_solar"] = second_ledger[
+            "stored_energy_rate_over_solar"]
     report["early_late_window"] = first
     report["late_window"] = second
-    ledger = sampled_energy_ledger(h, np.arange(n - quarter, n), units, flux_ref)
-    if ledger:
-        report["sampled_energy_ledger_late"] = ledger
+    if second_ledger:
+        report["sampled_energy_ledger_late"] = second_ledger
     flux_change = abs(second["top_total_flux_over_solar"]
                       - first["top_total_flux_over_solar"])
     speed_change = abs(second["vz_rms_km_s"] - first["vz_rms_km_s"])
@@ -236,9 +246,14 @@ def summarize(h: dict[str, np.ndarray], log: dict[str, object], units: dict[str,
     statuses = log["nr_status_counts"]
     report["stationarity_candidate"] = bool(
         min(first["vertical_crossing_times"], second["vertical_crossing_times"]) >= 1
-        and abs(second["top_total_flux_over_solar"] - 1) <= 0.1
+        and max(abs(first["top_total_flux_over_solar"] - 1),
+                abs(second["top_total_flux_over_solar"] - 1)) <= 0.1
         and flux_change <= 0.05 and speed_change <= 0.1
-        and second["max_abs_mass_drift"] <= 0.01
+        and max(first["max_abs_mass_drift"],
+                second["max_abs_mass_drift"]) <= 0.01
+        and first_ledger is not None and second_ledger is not None
+        and abs(first_ledger["stored_energy_rate_over_solar"]) <= 0.1
+        and abs(second_ledger["stored_energy_rate_over_solar"]) <= 0.1
         and log["fatal_count"] == 0 and log["completed"]
         and bool(statuses)
         and set(statuses).issubset({"converged", "dt_zero_initialization"})
@@ -291,6 +306,50 @@ def make_plot(h: dict[str, np.ndarray], units: dict[str, float], flux_ref: float
     image_dir = output.parent / "imgs"
     image_dir.mkdir(exist_ok=True)
     fig.savefig(image_dir / "simple_convection_bottom_mass_flux.png", dpi=150)
+    plt.close(fig)
+
+
+def make_energy_budget_plot(h: dict[str, np.ndarray], units: dict[str, float],
+                            flux_ref: float, output: Path) -> None:
+    """Show cumulative storage and sampled boundary supply for one run segment."""
+    needed = {"EtotGrav", "FhydBottom", "FradBottom", "FtotTop",
+              "BottomMdotNet", "TopMdotOut"}
+    if not needed.issubset(h) or len(h["time"]) < 2:
+        return
+    velocity_unit = np.sqrt(units["egas_unit"] / units["rho_unit"])
+    time_unit = physical_time_unit(units, velocity_unit)
+    t = h["time"] * time_unit
+    area = ((units["x1max"] - units["x1min"])
+            * (units["x2max"] - units["x2min"])
+            * units["leng_unit"]**2)
+    mass_flux_unit = units["rho_unit"] * velocity_unit
+    potential_flux = (mass_flux_unit * units["grav_acc"] * units["leng_unit"]
+                      * (h["BottomMdotNet"] * units["x3min"]
+                         - h["TopMdotOut"] * units["x3max"]))
+    supply = (h["FhydBottom"] + h["FradBottom"] - h["FtotTop"]
+              + potential_flux)
+    integrated = np.r_[0.0, np.cumsum(
+        0.5*(supply[1:] + supply[:-1])*np.diff(t))]
+    stored = (h["EtotGrav"] - h["EtotGrav"][0])/area
+    scale = flux_ref*3600.0
+    residual = stored - integrated
+    average = np.full(len(t), np.nan)
+    average[1:] = residual[1:]/(flux_ref*(t[1:] - t[0]))
+    plt.rcParams.update({"font.size": 13})
+    fig, ax = plt.subplots(2, 1, figsize=(11, 8), sharex=True,
+                           constrained_layout=True)
+    ax[0].plot((t-t[0])/60.0, stored/scale, label="stored energy change")
+    ax[0].plot((t-t[0])/60.0, integrated/scale,
+               label="sampled boundary supply")
+    ax[0].set(ylabel="solar-flux hours", title="Current-segment energy budget")
+    ax[0].legend()
+    ax[1].plot((t-t[0])/60.0, average)
+    ax[1].axhline(0.0, color="black", lw=0.8)
+    ax[1].set(xlabel="time since segment start [min]",
+              ylabel="running residual / solar flux")
+    for axis in ax:
+        axis.grid(alpha=0.25)
+    fig.savefig(output, dpi=160)
     plt.close(fig)
 
 
@@ -356,10 +415,16 @@ def main() -> None:
     parser.add_argument("--reference-flux", type=float, default=6.3e10)
     args = parser.parse_args()
     hst = next(args.run_dir.glob("*.hst"))
+    current = read_history(hst, args.history_header_from)
     h = combine_histories([*args.history_prepend, hst], args.history_header_from)
     log = parse_log(args.run_dir / "run.log")
     units = input_values(args.input)
-    report = summarize(h, log, units, args.reference_flux)
+    # Earlier segments enrich the history plot, but late-window stationarity
+    # must be judged entirely under this segment's solver and source settings.
+    report = summarize(current, log, units, args.reference_flux)
+    report["stationarity_window_scope"] = "current run segment only"
+    report["current_segment_start_code"] = float(current["time"][0])
+    report["plotted_history_start_code"] = float(h["time"][0])
     manifest_path = args.run_dir / "manifest.json"
     overrides = []
     if manifest_path.is_file():
@@ -411,6 +476,8 @@ def main() -> None:
                               reference["temperature_K"]))
     (args.run_dir / "summary.json").write_text(json.dumps(report, indent=2) + "\n")
     make_plot(h, units, args.reference_flux, args.run_dir / "history.png")
+    make_energy_budget_plot(current, units, args.reference_flux,
+                            args.run_dir / "imgs" / "simple_convection_energy_budget.png")
     candidate = report["stationarity_candidate"]
     status = ("Run intentionally stopped; stationarity not established"
               if report.get("intentional_stop_reason") else
@@ -423,6 +490,7 @@ def main() -> None:
         ("Completed", str(log["completed"])),
         ("Final cycle", str(log["final_cycle"])),
         ("Last history time", f"{report['last_history_time_code']:.3f} code"),
+        ("Stationarity window", "current run segment only"),
         ("Wall time", str(log["wall_time"] or "see manifest")),
         ("Slow MG warnings", str(log["slow_mg_warning_count"])),
         ("Gravity work", "face mass flux" if report["gravity_work_face_flux"] else
@@ -472,6 +540,8 @@ def main() -> None:
     if ledger:
         quick.append(("Late sampled energy-ledger residual",
                       f"{ledger['residual_equivalent_solar_flux']:+.3f} F_sun"))
+        quick.append(("Late stored-energy change rate",
+                      f"{ledger['stored_energy_rate_over_solar']:+.3f} F_sun"))
     table = "".join(f"<tr><th>{html.escape(key)}</th><td>{html.escape(value)}</td></tr>"
                     for key, value in quick)
     gallery = "".join(

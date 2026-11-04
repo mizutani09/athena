@@ -166,17 +166,25 @@ python3 tst/nrfld_validation/run_solar_convection.py \
 For a restart, pass `--restart /path/to/previous.final.rst`, choose a new
 `--case`, and increase `--tlim`. If the parent `.hst` lacks its column header,
 also pass `--history-header-from /path/to/original/header-bearing.hst`. A
-short solver-only run can use `--no-slices`. To evaluate stationarity across
-restart boundaries, pass each earlier history with repeated `--history-prepend`;
-duplicate restart timestamps are resolved in favor of the later segment.
-The run's own solver log still determines the nonlinear-solver status in its
-HTML, so the late stationarity windows should lie within the current segment.
+short solver-only run can use `--no-slices`. Pass each earlier history with
+repeated `--history-prepend` to show a continuous history plot; duplicate
+restart timestamps are resolved in favor of the later segment. The report
+evaluates stationarity and the energy ledger from the **current run segment
+only**, so the late windows cannot silently mix two solver/source settings.
+The run's own solver log determines the nonlinear-solver status in its HTML.
 Pass `--movie` on a plotted run to include an inline xz MP4 in its HTML.
 Use `--plan` to inspect the command. The history report's candidate flag
 requires two late windows each spanning a vertical crossing time, flux near
 the solar value and stable between windows, stable vertical velocity RMS,
-small mass drift, and clean solver status. This is a screening rule only;
-solar comparison requires profile and resolution diagnostics.
+small mass drift, and clean solver status. Each late window must also have
+a stored gas+radiation+gravitational energy change rate below `0.1 F_sun`
+in magnitude. An apparently solar top flux
+while the box is heating or cooling rapidly cannot pass. This is a screening
+rule only; solar comparison requires profile and resolution diagnostics.
+Each case HTML plots the current-segment stored-energy change alongside
+integrated sampled boundary supply, with their running residual separately.
+The plot is diagnostic because history fluxes are not exact RK-stage
+integrals.
 The supplied base input samples the xy plane at `z=1.536`; the initial
 optical-depth-one layer is near `z=2.0`, hence the explicit slice override
 above when photospheric structure is the target.
@@ -335,8 +343,9 @@ solar-physics questions remain in WOR-70.
 The corrected 96 km large box reached `t=100` (37.27 physical minutes) at
 cycle 1309. All 1190 Newton solves in the `t=10`→`100` segment converged;
 the log has 3820 FGMRES calls, zero slow-MG warnings, and zero fatals. Its
-late two 25-code-time windows have mean top fluxes `0.543` and `0.585 F_sun`,
-vertical RMS speeds `1.323` and `1.422 km/s`, and only `0.239` and `0.257`
+late two approximately 22-code-time windows have mean top fluxes `0.551`
+and `0.585 F_sun`, vertical RMS speeds `1.341` and `1.440 km/s`, and only
+`0.219` and `0.234`
 full-height crossing times. Maximum mass drift in the final window is
 `0.28%`; mean net bottom mass flux is about `0.11%` of gross up/down flow.
 At `t=100`, the full 3D `tau=2/3` surface has mean temperature `5028 K`,
@@ -364,8 +373,9 @@ consistency check, not evidence of a relaxed solar solution.
 The HTML now also reports a **sampled** energy ledger: stored gas+radiation+
 gravitational energy change minus time-integrated recorded boundary hydro,
 radiation, and potential-energy fluxes. In the coarse box, the residual is
-equivalent to `+0.111 F_sun` over `t=0`→`100` and `+0.0465 F_sun` over the
-last quarter. It persists at about `+0.08 F_sun` in the ongoing `t=100`→`189`
+equivalent to `+0.103 F_sun` over the current `t=10`→`100` segment and
+`+0.0466 F_sun` over its last quarter. It persists at about `+0.08 F_sun`
+in the subsequent `t=100`→`189`
 segment. This is not yet proof of a code conservation error because the
 history samples accepted-step fluxes, not their exact RK-stage integrals.
 The cadence and discrete source/flux audit is tracked separately as WOR-72;
@@ -373,16 +383,19 @@ until then, this residual limits precision claims for solar flux comparison.
 The corrected 96 km box then completed `t=300` (111.8 physical minutes) at
 cycle 4254. In the `t=100`→`300` continuation, all 2,946 reported Newton
 solves converged, with 11,711 FGMRES calls, maximum 31 iterations per call,
-and zero slow-MG warnings or fatal errors. The `t=150`→`225` and
-`t=225`→`300` windows each cover approximately one full-height crossing,
-but their mean top fluxes rise from `0.668` to `0.770 F_sun` and their
-vertical RMS speeds from `1.76` to `2.18 km/s`. The bottom hydro flux even
-changes sign, from `+4.34` to `-4.99 F_sun`; maximum mass drift in the last
-window is `1.06%`. The full-3D `tau=2/3` mean temperature changes from
+and zero slow-MG warnings or fatal errors. In the current-segment late
+windows `t≈200`→`250` and `250`→`300`, mean top flux rises from `0.722`
+to `0.789 F_sun`, vertical RMS from `2.00` to `2.26 km/s`, and neither
+window spans a full-height crossing time (`0.726` and `0.818`). Bottom
+hydro flux means are `-2.39` and `-3.88 F_sun`; maximum mass drift in the
+last window is `1.06%`. The full-3D `tau=2/3` mean temperature changes from
 about `5251 K` in a `t=200` snapshot to `4924 K` at `t=300`. Thus the
 stationarity screen fails despite robust implicit convergence. The sampled
-energy-ledger residual in the last quarter is `+0.128 F_sun`; its status
-remains diagnostic until the stage-flux/source audit in WOR-72 is complete.
+energy-ledger residual in the current-segment last quarter is
+`+0.116 F_sun`; its status remains diagnostic until the stage-flux/source
+audit in WOR-72 is complete. The stored-energy change rate in that window
+is `-2.92 F_sun`, independently confirming that the box was thermally
+evolving.
 This is a relaxation test, not a claim that 96 km resolves solar granulation.
 A `t=100`→`150` continuation with the HD2 bottom mass-balance feedback
 disabled completed with 750/750 Newton solves converged, 2,587 FGMRES calls,
