@@ -9,7 +9,7 @@ import matplotlib.pyplot as plt
 from matplotlib.animation import FuncAnimation, FFMpegWriter
 
 
-def read_hst(path):
+def read_hst(path, header_from=None):
     names = None
     rows = []
     for line in Path(path).read_text().splitlines():
@@ -17,14 +17,21 @@ def read_hst(path):
             names = [x.split("]=")[-1] for x in line[2:].split()]
         elif line.strip() and not line.startswith("#"):
             rows.append([float(x) for x in line.split()])
+    if names is None and header_from is not None:
+        for line in Path(header_from).read_text().splitlines():
+            if line.startswith("# ["):
+                names = [x.split("]=")[-1] for x in line[2:].split()]
+                break
+    if names is None:
+        raise ValueError(f"No history header in {path}; pass --history-header-from")
     return names, np.asarray(rows)
 
 
-def plot_history(outdir):
+def plot_history(outdir, header_from=None):
     imgdir = Path(outdir) / "imgs"
     imgdir.mkdir(parents=True, exist_ok=True)
     hst = next(Path(outdir).glob("*.hst"))
-    names, data = read_hst(hst)
+    names, data = read_hst(hst, header_from)
     col = {name: i for i, name in enumerate(names)}
     time = data[:, col["time"]]
     fig, ax = plt.subplots(2, 2, figsize=(12, 8))
@@ -241,10 +248,12 @@ def main():
         "--plot-zmax", type=float,
         help="limit the displayed movie height without changing input data")
     parser.add_argument("--movie-name", default="simple_convection_xz.mp4")
+    parser.add_argument("--history-header-from", type=Path,
+                        help="Initial .hst when restart output lacks the header")
     args = parser.parse_args()
     if not 0.0 < args.color_percentile <= 100.0:
         parser.error("--color-percentile must be in (0, 100]")
-    plot_history(args.output_dir)
+    plot_history(args.output_dir, args.history_header_from)
     plot_snapshot(args.output_dir)
     if args.movie:
         make_movie(args.output_dir, args.fps, args.scale_zmax,
