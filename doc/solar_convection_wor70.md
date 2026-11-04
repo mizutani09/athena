@@ -249,7 +249,12 @@ reconstructs the `tau=2/3` height and gas temperature over the **entire**
 horizontal surface, rather than one xz slice, and plots its temperature and
 vertical velocity. It also records horizontally averaged full-3D profiles of
 gas temperature, density, vertical RMS speed, and radiative cooling in
-`profiles3d.json`. A one-cycle 128 × 128 × 64 smoke run produced paired full
+`profiles3d.json`. When at least two snapshots fall in the last quarter of
+the recorded interval, `plot_simple_convection_late_profiles3d.py` writes
+their temporal mean and snapshot standard deviation as
+`profiles3d_late_mean.json` and a four-panel plot. This is a descriptive
+window and is not labeled stationary until the separate history screen passes.
+A one-cycle 128 × 128 × 64 smoke run produced paired full
 volumes; at `t=0` the 3D mean `T(tau=2/3)=5703.993 K` versus `5704.008 K` in
 the xz slice, and the mean heights agree within `6e-6` code. This checks the
 full-volume assembly and optical-depth interpolation on the smooth initial

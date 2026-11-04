@@ -307,6 +307,13 @@ def main() -> None:
         surface_records = json.loads(surface_path.read_text())["records"]
         if surface_records:
             report["surface3d_last"] = surface_records[-1]
+    late_profiles_path = args.run_dir / "profiles3d_late_mean.json"
+    if late_profiles_path.is_file():
+        late_profiles = json.loads(late_profiles_path.read_text())
+        report["profiles3d_late_window"] = {
+            key: late_profiles[key]
+            for key in ("window_start_code", "window_end_code", "snapshot_count")
+        }
     (args.run_dir / "summary.json").write_text(json.dumps(report, indent=2) + "\n")
     make_plot(h, units, args.reference_flux, args.run_dir / "history.png")
     candidate = report["stationarity_candidate"]
@@ -348,6 +355,12 @@ def main() -> None:
             ("Last full-3D tau=2/3 coverage",
              f"{100 * surface_last['coverage']:.0f}%"),
         ])
+    late_profiles = report.get("profiles3d_late_window")
+    if late_profiles:
+        quick.append(("Full-3D late profile window",
+                      f"{late_profiles['window_start_code']:.2f}–"
+                      f"{late_profiles['window_end_code']:.2f} code, "
+                      f"{late_profiles['snapshot_count']} snapshots"))
     table = "".join(f"<tr><th>{html.escape(key)}</th><td>{html.escape(value)}</td></tr>"
                     for key, value in quick)
     gallery = "".join(
