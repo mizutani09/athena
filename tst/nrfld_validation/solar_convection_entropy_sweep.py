@@ -14,7 +14,9 @@ matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 import numpy as np
 
-from solar_convection_report import input_values, read_history
+from solar_convection_report import (effective_problem_bool,
+                                     effective_problem_float, input_values,
+                                     read_history)
 
 
 def explicit_entropy(run_dir: Path) -> float:
@@ -47,6 +49,45 @@ def main() -> None:
     args = parser.parse_args()
     paths = [("baseline", args.baseline), *[(label, Path(path))
                                            for label, path in args.variant]]
+    manifests = {label: json.loads((path / "manifest.json").read_text())
+                 for label, path in paths}
+    baseline_manifest = manifests["baseline"]
+    if not effective_problem_bool(args.baseline / "athinput.generated",
+                                  baseline_manifest.get("problem_overrides", []),
+                                  "s_in_from_profile"):
+        raise ValueError("Baseline must derive its inflow entropy from the profile")
+    numerical_prefixes = ("mesh/nx1=", "mesh/nx2=", "mesh/nx3=",
+                          "time/cfl_number=")
+    def numerical_overrides(manifest: dict) -> list[str]:
+        return sorted(arg for arg in manifest["command"]
+                      if arg.startswith(numerical_prefixes))
+    for label, path in paths[1:]:
+        manifest = manifests[label]
+        for key in ("binary_sha256", "base_input_sha256", "data_sha256",
+                    "restart"):
+            if manifest.get(key) != baseline_manifest.get(key):
+                raise ValueError(f"{label}: {key} differs from baseline")
+        if numerical_overrides(manifest) != numerical_overrides(baseline_manifest):
+            raise ValueError(f"{label}: grid or CFL differs from baseline")
+        for key in ("mass_balance_relax_time", "mass_balance_gain",
+                    "mass_balance_rate_gain", "Cdmp"):
+            reference = effective_problem_float(
+                args.baseline / "athinput.generated",
+                baseline_manifest.get("problem_overrides", []), key)
+            candidate = effective_problem_float(
+                path / "athinput.generated",
+                manifest.get("problem_overrides", []), key)
+            if reference != candidate:
+                raise ValueError(f"{label}: {key} differs from baseline")
+        for key in ("mass_balance_on", "gravity_work_face_flux"):
+            reference = effective_problem_bool(
+                args.baseline / "athinput.generated",
+                baseline_manifest.get("problem_overrides", []), key)
+            candidate = effective_problem_bool(
+                path / "athinput.generated",
+                manifest.get("problem_overrides", []), key)
+            if reference != candidate:
+                raise ValueError(f"{label}: {key} differs from baseline")
     histories = {label: read_history(next(path.glob("*.hst")), args.header_from)
                  for label, path in paths}
     start = max(float(h["time"][0]) for h in histories.values())

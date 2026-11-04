@@ -494,6 +494,43 @@ and `+0.000538 F_sun` for cadence `0.2`, `0.1`, and every step (25, 49, and
 ledger mismatch is sampling error. HST cadence `0.05` records every step as
 well, so it provides no additional refinement level. The three-way report is
 `rempel_box_pilot/energy_ledger_cadence_3way_t850_855/index.html`.
+An independent four-CFL check restarts the same `t=850` state with every-step,
+16-digit history and CFL numbers `0.3`, `0.15`, `0.075`, and `0.0375`. All
+four complete `t=855`; their 74, 146, 290, and 579 Newton solves converge
+without slow-MG warnings or fatal errors. Comparing each run over the same
+`t=850.2`–`855` physical interval gives sampled ledger residuals of
+`+0.000363`, `+0.000803`, `+0.000654`, and `+0.000442 F_sun` equivalent.
+The single-interval result is phase-sensitive. A scan of 19 overlapping
+intervals beginning at `t=850.2`–`852.0` and all ending at `855` gives
+residual RMS `0.003909`, `0.001042`, `0.000725`, and `0.000472 F_sun`, and
+maximum absolute values `0.006683`, `0.002353`, `0.001092`, and
+`0.000574 F_sun`. The decreasing envelope favors temporal sampling or
+time-discretization error over a fixed large conservation defect in this
+developed-state window. It does **not** prove exact discrete conservation:
+the analysis linearly interpolates endpoints and integrates sampled
+accepted-step fluxes, rather than accumulating actual RK-stage boundary
+fluxes and sources. Results, plots, and case links are in
+`rempel_box_pilot/energy_ledger_cfl_refinement_t850_855/index.html`; the
+reproducer is `tst/nrfld_validation/solar_convection_ledger_timestep.py`.
+The same `t=850` restart was also run once with two additional history
+columns, `FadvRadBottom` and `FadvRadTop`, from the Godunov radiation-energy
+flux. This closes a previously omitted boundary term in the sampled ledger.
+Over the identical 71-sample `t=850.206253`–`855` interval, the residual is
+`+0.00053833 F_sun` without that term and `+0.00045738 F_sun` with it. The
+net advective-radiation boundary supply is only `+0.00008095 F_sun` on this
+window (mean bottom/top `+0.00007901`/`+0.00000125 F_sun`). Thus the term
+is real but does not account for the remaining mismatch. The run used the
+newer limiter-closure binary; both residuals are evaluated on that *same*
+trajectory, avoiding a cross-binary attribution. The diagnostics append to
+the pgen history without changing the solver, and the reader accepts an old
+header with these two new columns. The comparison and reproducer are
+`rempel_box_pilot/advective_radiation_flux_budget_t850_855/index.html` and
+`tst/nrfld_validation/solar_convection_advective_radiation_audit.py`.
+On this rapidly oscillating boundary, comparing each step's stored-energy
+change rate against left-point, trapezoidal, or right-point sampled supply
+gives RMS mismatches `0.3871`, `0.01856`, and `0.3839 F_sun` respectively.
+This explains why one-sided integration of the HST samples was misleading;
+it still does not identify the exact flux evaluations inside the update.
 The corrected source is now the default for this problem; set
 `gravity_work_face_flux=false` to reproduce the legacy calculation. The
 matched plot and JSON are in
@@ -659,6 +696,42 @@ reached `1.87%`. The mean top flux stayed near `0.608 F_sun` over this
 short window. The controller is evidently overdriven at gain `80` on this
 checkpoint, despite successful implicit solves. The five-case HTML now
 includes both the full amplitude and a zoomed view of gains `0`–`40`.
+An intermediate gain `60` also completed 714/714 Newton solves without
+warnings/fatals, but its lower hydro-flux standard deviation was
+`92.65 F_sun` and its mass-drift standard deviation `0.1181%`.
+The upper mean flux stayed `0.609 F_sun`. Thus gains `60` and `80` are
+clearly worse than `40` on this checkpoint. Gain `50` also completed
+714/714 Newton solves without warnings/fatals; it gave lower hydro-flux
+standard deviation `6.34 F_sun` and mass-drift standard deviation
+`0.0376%`. Compared with gain `40`, it trades a slightly smaller mass
+variation for a larger energy-flux oscillation. In the measured seven-point
+sweep, gain `40` minimizes the lower hydro-flux oscillation; gains `50`–`60`
+bracket the sharp deterioration. No claim of an optimal gain across other
+states or resolutions follows from this one checkpoint.
+Matched long continuations with gains `10` and `40` and the same relaxation
+time `2.0` reached `t=1000`, with all 2,129 and 2,844 Newton steps converged
+respectively and no warnings/fatals. Over `t=851`–`1000`, lower hydro-flux
+standard deviations were `8.05` and `3.74 F_sun`, mass-drift standard
+deviations `0.07285%` and `0.03355%`, while mean upper flux was `0.6096` and
+`0.6054 F_sun`. The dominant period remained about `16.55` code time.
+For gain `10`, the last two 37.5-code windows had upper flux `0.6040` and
+`0.6121 F_sun` and stored-energy endpoint rates `-0.4555` and
+`-0.3956 F_sun`. Each spans only about `0.37` crossing times, and the late
+regression slope `+0.0513 F_sun` is misleadingly small against the endpoint
+change. Its sampled late ledger residual is only `-0.00044 F_sun` equivalent.
+The last two 50-code windows of the gain-`40` case had upper flux `0.6044`
+and `0.6033 F_sun` and stored-energy endpoint rates `+0.0363` and
+`+0.0081 F_sun`; each was only `0.47` or `0.46` vertical crossing times.
+Its sampled late energy-ledger residual was `+0.0000051 F_sun` equivalent.
+Its `t=1000` full-3D `tau=2/3` temperature was `5128 K`, versus `5247 K`
+with gain `10`. The energy-budget appearance is better, but neither the
+window duration nor the solar-flux criterion passes. The comparison HTMLs
+are `rempel_box_pilot/mass_rate40_vs10_t851_1000/index.html` and
+`rempel_box_pilot/mass_rate40_vs10_history_t851_1000/index.html`.
+The gain-`40` `t=800`–`850` HST samples (499 common times) match the shorter
+case bit-for-bit despite different output settings, confirming a controlled
+continuation. A further `t=1000`–`1200` run tests persistence of the
+lower-amplitude state.
 An interim `t=450`–`500` diagnostic has least-squares stored-energy trend
 `+0.016 F_sun` but endpoint storage rate `+0.678 F_sun` (sampled ledger
 residual `-0.0006 F_sun`). The small regression slope alone would therefore

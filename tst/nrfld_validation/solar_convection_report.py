@@ -36,6 +36,11 @@ def read_history(path: Path, header_from: Path | None = None) -> dict[str, np.nd
         raise ValueError(f"History header missing in {path}; pass --history-header-from")
     names = [name for _, name in HEADER.findall(header)]
     values = np.loadtxt(path, comments="#", ndmin=2)
+    # Older restart headers predate the two appended radiation-advection
+    # diagnostics. Their fixed position lets us read a new run from the
+    # original header-bearing startup HST without a hand-written header.
+    if (values.shape[1] == len(names)+2 and names[-1] == "FtotTop"):
+        names.extend(("FadvRadBottom", "FadvRadTop"))
     if values.shape[1] != len(names):
         raise ValueError(f"{path}: {values.shape[1]} columns, {len(names)} names")
     # A continued run may repeat the initial history row. Keep the last value.
@@ -148,10 +153,16 @@ def window_metrics(h: dict[str, np.ndarray], indices: np.ndarray,
         "duration_seconds": float((t[-1] - t[0]) * time_unit),
         "vertical_crossing_times": float((t[-1] - t[0]) * time_unit / crossing),
         "vz_rms_km_s": speed / 1.0e5,
-        "top_total_flux_over_solar": mean("FtotTop") / flux_ref,
-        "top_radiation_flux_over_solar": mean("FradTop") / flux_ref,
+        "top_total_flux_over_solar": float(np.mean(
+            total_top_flux(h)[indices])) / flux_ref,
+        "top_radiation_flux_over_solar": (
+            mean("FradTop") + (mean("FadvRadTop") if "FadvRadTop" in h else 0.0)
+        ) / flux_ref,
         "bottom_hydro_flux_over_solar": mean("FhydBottom") / flux_ref,
-        "bottom_radiation_flux_over_solar": mean("FradBottom") / flux_ref,
+        "bottom_radiation_flux_over_solar": (
+            mean("FradBottom") + (mean("FadvRadBottom")
+                                  if "FadvRadBottom" in h else 0.0)
+        ) / flux_ref,
         "bottom_upflow_code": up,
         "bottom_downflow_magnitude_code": down,
         "bottom_net_mass_flux_code": net,
@@ -161,6 +172,14 @@ def window_metrics(h: dict[str, np.ndarray], indices: np.ndarray,
         "max_abs_mass_drift": float(np.max(np.abs(h["MassDrift"][indices]))),
         "pbnd_scale_mean": mean("PBNDScale"),
     }
+
+
+def total_top_flux(h: dict[str, np.ndarray]) -> np.ndarray:
+    return h["FtotTop"] + h.get("FadvRadTop", 0.0)
+
+
+def total_bottom_flux(h: dict[str, np.ndarray]) -> np.ndarray:
+    return h["FhydBottom"] + h["FradBottom"] + h.get("FadvRadBottom", 0.0)
 
 
 def sampled_energy_ledger(h: dict[str, np.ndarray], indices: np.ndarray,
@@ -184,8 +203,7 @@ def sampled_energy_ledger(h: dict[str, np.ndarray], indices: np.ndarray,
     area = ((units["x1max"] - units["x1min"])
             * (units["x2max"] - units["x2min"])
             * units["leng_unit"]**2)
-    regular_flux = (h["FhydBottom"][indices]
-                    + h["FradBottom"][indices] - h["FtotTop"][indices])
+    regular_flux = total_bottom_flux(h)[indices] - total_top_flux(h)[indices]
     mass_flux_unit = units["rho_unit"] * velocity_unit
     potential_flux = (mass_flux_unit * units["grav_acc"] * units["leng_unit"]
                       * (h["BottomMdotNet"][indices] * units["x3min"]
@@ -209,6 +227,8 @@ def sampled_energy_ledger(h: dict[str, np.ndarray], indices: np.ndarray,
         "end_time_code": float(h["time"][indices][-1]),
         "stored_energy_change_erg": stored_change,
         "sampled_hydro_radiation_boundary_erg": regular_integral,
+        "advective_radiation_recorded": ("FadvRadBottom" in h
+                                         and "FadvRadTop" in h),
         "sampled_potential_boundary_erg": potential_integral,
         "sampled_ledger_residual_erg": residual,
         "stored_energy_rate_over_solar": float(stored_change / normalization),
@@ -317,8 +337,8 @@ def make_plot(h: dict[str, np.ndarray], units: dict[str, float], flux_ref: float
     time_min = h["time"] * time_unit / 60.0
     plt.rcParams.update({"font.size": 13})
     fig, ax = plt.subplots(2, 2, figsize=(13, 9), constrained_layout=True)
-    ax[0, 0].plot(time_min, h["FtotTop"] / flux_ref, label="top total")
-    ax[0, 0].plot(time_min, (h["FhydBottom"] + h["FradBottom"]) / flux_ref,
+    ax[0, 0].plot(time_min, total_top_flux(h) / flux_ref, label="top total")
+    ax[0, 0].plot(time_min, total_bottom_flux(h) / flux_ref,
                   label="bottom total")
     ax[0, 0].axhline(1, color="black", lw=1, ls="--", label="solar flux")
     ax[0, 0].set(ylabel=r"$F/F_\odot$", title="Boundary energy flux")
@@ -356,7 +376,8 @@ def make_plot(h: dict[str, np.ndarray], units: dict[str, float], flux_ref: float
 
 
 def make_energy_budget_plot(h: dict[str, np.ndarray], units: dict[str, float],
-                            flux_ref: float, output: Path) -> None:
+                            flux_ref: float, output: Path,
+                            title: str = "Current-segment energy budget") -> None:
     """Show cumulative storage and sampled boundary supply for one run segment."""
     needed = {"EtotGrav", "FhydBottom", "FradBottom", "FtotTop",
               "BottomMdotNet", "TopMdotOut"}
@@ -372,7 +393,7 @@ def make_energy_budget_plot(h: dict[str, np.ndarray], units: dict[str, float],
     potential_flux = (mass_flux_unit * units["grav_acc"] * units["leng_unit"]
                       * (h["BottomMdotNet"] * units["x3min"]
                          - h["TopMdotOut"] * units["x3max"]))
-    supply = (h["FhydBottom"] + h["FradBottom"] - h["FtotTop"]
+    supply = (total_bottom_flux(h) - total_top_flux(h)
               + potential_flux)
     integrated = np.r_[0.0, np.cumsum(
         0.5*(supply[1:] + supply[:-1])*np.diff(t))]
@@ -387,7 +408,7 @@ def make_energy_budget_plot(h: dict[str, np.ndarray], units: dict[str, float],
     ax[0].plot((t-t[0])/60.0, stored/scale, label="stored energy change")
     ax[0].plot((t-t[0])/60.0, integrated/scale,
                label="sampled boundary supply")
-    ax[0].set(ylabel="solar-flux hours", title="Current-segment energy budget")
+    ax[0].set(ylabel="solar-flux hours", title=title)
     ax[0].legend()
     ax[1].plot((t-t[0])/60.0, average)
     ax[1].axhline(0.0, color="black", lw=0.8)

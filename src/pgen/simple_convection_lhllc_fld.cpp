@@ -117,6 +117,8 @@ namespace {
   Real HistoryBottomRadiationFluxCgs(MeshBlock *pmb, int iout);
   Real HistoryTopHydroFluxCgs(MeshBlock *pmb, int iout);
   Real HistoryTopTotalFluxCgs(MeshBlock *pmb, int iout);
+  Real HistoryBottomAdvectiveRadiationFluxCgs(MeshBlock *pmb, int iout);
+  Real HistoryTopAdvectiveRadiationFluxCgs(MeshBlock *pmb, int iout);
   // Real HistoryL1norm(MeshBlock *pmb, int iout);
 }
 
@@ -1548,7 +1550,7 @@ void Mesh::InitUserMeshData(ParameterInput *pin) {
     EnrollUserNRBoundaryFunction(BoundaryFace::outer_x3, SimpleNROuter);
   }
 
-  AllocateUserHistoryOutput(26);
+  AllocateUserHistoryOutput(28);
   EnrollUserHistoryOutput(0, HistoryTg, "T_gas", UserHistoryOperation::max);
   EnrollUserHistoryOutput(1, HistoryTr, "T_rad", UserHistoryOperation::max);
   EnrollUserHistoryOutput(2, HistoryEg, "e_gas", UserHistoryOperation::max);
@@ -1575,6 +1577,10 @@ void Mesh::InitUserMeshData(ParameterInput *pin) {
   EnrollUserHistoryOutput(23, HistoryBottomRadiationFluxCgs, "FradBottom", UserHistoryOperation::sum);
   EnrollUserHistoryOutput(24, HistoryTopHydroFluxCgs, "FhydTop", UserHistoryOperation::sum);
   EnrollUserHistoryOutput(25, HistoryTopTotalFluxCgs, "FtotTop", UserHistoryOperation::sum);
+  EnrollUserHistoryOutput(26, HistoryBottomAdvectiveRadiationFluxCgs,
+                          "FadvRadBottom", UserHistoryOperation::sum);
+  EnrollUserHistoryOutput(27, HistoryTopAdvectiveRadiationFluxCgs,
+                          "FadvRadTop", UserHistoryOperation::sum);
   // EnrollUserHistoryOutput(7, HistoryL1norm, "L1norm", UserHistoryOperation::sum);
 
   EnrollUserExplicitSourceFunction(AddRadiativeForceAndWork);
@@ -2286,6 +2292,30 @@ Real HistoryTopHydroFluxCgs(MeshBlock *pmb, int iout) {
 
 Real HistoryTopTotalFluxCgs(MeshBlock *pmb, int iout) {
   return HistoryTopHydroFluxCgs(pmb, iout) + HistoryTopFlux(pmb, iout);
+}
+
+Real HistoryBottomAdvectiveRadiationFluxCgs(MeshBlock *pmb, int iout) {
+  (void)iout;
+  if (pmb->block_size.x3min != pmb->pmy_mesh->mesh_size.x3min) return 0.0;
+  Real flux = 0.0;
+  const int k = pmb->ks;
+  for (int j=pmb->js; j<=pmb->je; ++j)
+    for (int i=pmb->is; i<=pmb->ie; ++i)
+      flux += pmb->prfld->u_rad_flux[X3DIR](k,j,i)
+              *pmb->pcoord->GetFace3Area(k,j,i);
+  return flux/HorizontalArea(pmb)*egas_unit*leng_unit/time_unit;
+}
+
+Real HistoryTopAdvectiveRadiationFluxCgs(MeshBlock *pmb, int iout) {
+  (void)iout;
+  if (!IsPhysicalUpperBoundary(pmb)) return 0.0;
+  Real flux = 0.0;
+  const int k = pmb->ke+1;
+  for (int j=pmb->js; j<=pmb->je; ++j)
+    for (int i=pmb->is; i<=pmb->ie; ++i)
+      flux += pmb->prfld->u_rad_flux[X3DIR](k,j,i)
+              *pmb->pcoord->GetFace3Area(k,j,i);
+  return flux/HorizontalArea(pmb)*egas_unit*leng_unit/time_unit;
 }
 
 // Real HistoryL1norm(MeshBlock *pmb, int iout) {
