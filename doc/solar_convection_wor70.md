@@ -505,6 +505,11 @@ finding over-excited standing pressure waves with symmetric fluctuations in
 deeper domains. Our ghost-pressure formula and default `Cdmp=0.95` match its
 stated HD2 equations, but its observation does not establish the cause of
 the growing mode in this FLD/Athena++ run.
+Here `Cdmp` acts only on the pressure departure from the horizontal mean;
+it cannot directly damp the dominant horizontally uniform mode identified
+above. Same-checkpoint tests should therefore prioritize mean-pressure
+mass feedback OFF and a faster feedback relaxation time, with a stronger
+`Cdmp` as a control for the nonuniform component.
 
 The earlier one-rank startup to `t=1` gave sampled residuals `+0.0801`
 and `-0.0721 F_sun` for the old and new sources, so a one-second diagnostic
