@@ -485,6 +485,11 @@ maximum mass drift reaches `1.84%`, and stored-energy secular trends are
 `+1.41` and `+0.65 F_sun`. Thus solver robustness and improved energy
 accounting do **not** establish statistical stationarity. The case HTML is
 `rempel_box_pilot/face_gravity_hd2_64x64x32_np4_cfl03_t500/index.html`.
+At the final full-volume snapshot the optical-depth-`2/3` surface has mean
+temperature `4892 K`, horizontal standard deviation `98 K`, and vertical
+velocity RMS `7.65 km/s`; five snapshots from `t≈460`–`500` give mean
+`T(tau=2/3)=5297 K`, versus `5769 K` for the imported initial 1D profile.
+These are transient coarse-grid measurements, not a solar match.
 The previously reported `t=300` coarse run and the 48 km `t=10`→`40`
 continuation used the legacy source. Their solver-convergence evidence is
 valid, but their long-time solar-flux estimates need a corrected-source
