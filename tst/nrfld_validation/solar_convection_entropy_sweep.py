@@ -233,6 +233,58 @@ def main() -> None:
         "variants": rows,
     }
     args.output_dir.mkdir(parents=True, exist_ok=True)
+    baseline_final_path = (args.baseline_continuation[-1]
+                           if args.baseline_continuation else args.baseline)
+    profile_paths = [baseline_final_path / "profiles3d_late_mean.json"] + [
+        Path(row["final_run_dir"]) / "profiles3d_late_mean.json"
+        for row in rows]
+    profile_figure = ""
+    if all(path.is_file() for path in profile_paths):
+        profiles = [json.loads(path.read_text()) for path in profile_paths]
+        z = np.asarray(profiles[0]["z_code"], dtype=float)
+        reference_temperature = np.asarray(
+            profiles[0]["T_mean_K"]["temporal_mean"], dtype=float)
+        reference_density = np.asarray(
+            profiles[0]["rho_mean_cgs"]["temporal_mean"], dtype=float)
+        fig, axes = plt.subplots(1, 2, figsize=(13, 6), constrained_layout=True,
+                                 sharey=True)
+        profile_metrics = []
+        for row, profile in zip(rows, profiles[1:]):
+            if not np.allclose(profile["z_code"], z, rtol=0, atol=1e-8):
+                raise ValueError(f"{row['label']}: vertical profile grid differs")
+            temperature = np.asarray(profile["T_mean_K"]["temporal_mean"],
+                                     dtype=float)
+            density = np.asarray(profile["rho_mean_cgs"]["temporal_mean"],
+                                 dtype=float)
+            delta_temperature = temperature - reference_temperature
+            delta_density_percent = 100*(density/reference_density-1)
+            axes[0].plot(delta_temperature, z, label=row["label"])
+            axes[1].plot(delta_density_percent, z, label=row["label"])
+            profile_metrics.append({
+                "label": row["label"],
+                "delta_T_K_at_z2": float(np.interp(2.0, z, delta_temperature)),
+                "delta_rho_percent_at_z2": float(np.interp(
+                    2.0, z, delta_density_percent)),
+                "baseline_window_code": [profiles[0]["window_start_code"],
+                                         profiles[0]["window_end_code"]],
+                "variant_window_code": [profile["window_start_code"],
+                                        profile["window_end_code"]],
+            })
+        for axis in axes:
+            axis.axvline(0, color="black", lw=1)
+            axis.set_ylabel("z [code]")
+            axis.grid(alpha=0.25)
+            axis.legend()
+        axes[0].set_xlabel("Δ horizontal-mean T [K]")
+        axes[1].set_xlabel("Δ horizontal-mean density [%]")
+        fig.savefig(args.output_dir / "vertical_profile_response.png", dpi=150)
+        plt.close(fig)
+        result["vertical_profile_comparison"] = profile_metrics
+        profile_figure = ("<p>The vertical profiles average the final ~10 code-time "
+                          "units of each case. A shifted optical-depth surface "
+                          "can change its sampled temperature even when nearby "
+                          "fixed-height cells warm.</p><img src='vertical_profile_response.png' "
+                          "alt='vertical temperature and density response'>")
     (args.output_dir / "summary.json").write_text(json.dumps(result, indent=2) + "\n")
     plt.rcParams.update({"font.size": 13})
     fig, axes = plt.subplots(2, 2, figsize=(14, 9), constrained_layout=True)
@@ -313,6 +365,7 @@ def main() -> None:
         f"late short window = {end-span:.1f}–{end:.1f}. {baseline_link}</p>"
         f"<table><tr>{table_head}</tr>{''.join(cells)}</table>"
         "<img src='entropy_sensitivity.png' alt='entropy sensitivity'>"
+        + profile_figure +
         "<p><a href='summary.json'>Numerical results</a></p></html>"
     )
     print(args.output_dir / "index.html")
