@@ -677,6 +677,11 @@ Its combined HTML is at
 `mach5_trad_peak_audit.py`, `mach5_split_stage_audit.py`, and
 `mach5_wor10_report.py` regenerate the component and combined reports.
 
+The [WOR-67 Mach 5 gas-spike study](wor67_mach5_spike_20261104.md) extends the
+resolution, time-step and AMR checks. Its comparison HTML is at
+`/mnt/d/output/rad/wor67_spike_audit_20261104/index.html`; regenerate it with
+`wor67_spike_audit.py` using the saved completed case directories.
+
 To apply the current gates to older completed reports without rerunning the
 physics or regenerating plots/videos:
 

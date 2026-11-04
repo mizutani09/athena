@@ -107,6 +107,10 @@ def stage_metrics(directory: Path, shock_raw: float) -> dict | None:
                   + (float(post[x]["Er"])-float(pre[x]["Er"])))/dt
                   - float(post[x]["S_diff_implicit"]) for x in points]
         diffusion = max(abs(float(post[x]["S_diff_implicit"])) for x in points)
+        transverse_spread = max(
+            (float(post[x]["Er_transverse_max"])
+             - float(post[x]["Er_transverse_min"]))
+            / max(abs(float(post[x]["Er"])), 1e-300) for x in points)
         return {"cycle": cycle, "dt_s": dt, "sampled_x_cells": len(points),
                 "Tgas_peak_after_explicit_K": peak(pre, "Tgas_K"),
                 "Tgas_peak_after_implicit_K": peak(post, "Tgas_K"),
@@ -115,7 +119,8 @@ def stage_metrics(directory: Path, shock_raw: float) -> dict | None:
                 "largest_same_cell_Tgas_drop_K": max(float(pre[x]["Tgas_K"])
                     - float(post[x]["Tgas_K"]) for x in points),
                 "implicit_energy_budget_relative_error": max(map(abs, budget))
-                    / max(diffusion, 1e-300)}
+                    / max(diffusion, 1e-300),
+                "max_relative_transverse_Er_spread": transverse_spread}
 
     result = summarize(selected[-1])
     result["previous_step"] = summarize(selected[-2]) if len(selected) > 1 else None
@@ -140,7 +145,7 @@ def analyse_case(label: str, directory: Path, analytic: dict, reference: dict,
     width = data["cell_width_cm"]
     near = np.abs(x) <= 60.0
     # The coarsest comparison has no cell center in the first 40 cm.
-    spike = (x >= 0.0) & (x <= max(40.0, float(np.max(width[near]))))
+    spike = np.abs(x) <= max(40.0, float(np.max(width[near])))
     if not np.any(near) or not np.any(spike):
         raise ValueError(f"{label}: no shock-zone samples")
     center = jump_center(analytic["x"], analytic["rho"])
@@ -176,12 +181,24 @@ def analyse_case(label: str, directory: Path, analytic: dict, reference: dict,
         solver = parse_solver_log(directory/"run.log", solver["nr_status_count"])
         solver["global_cycles"] = cycles
     history = read_history(directory/"output")
+    late_steps = (history["time"] >= .02) & (history["time"] < .0395)
+    median_late_dt = float(np.median(history["dt"][late_steps])) if np.any(
+        late_steps) else None
+    late_peak_window = (history["time"] >= .03) & (history["time"] <= .04)
+    if not np.any(late_peak_window):
+        raise ValueError(f"{label}: missing late peak history")
+    late_peak_min = float(np.min(history["Tgas_max"][late_peak_window]))
+    late_peak_max = float(np.max(history["Tgas_max"][late_peak_window]))
+    absorption_time = 1.0/(2.99792458e10*float(input_value(input_file, "kappa_P")))
     previous_history_index = int(np.argmin(abs(history["time"]-previous["time_s"])))
     if abs(history["time"][previous_history_index]-previous["time_s"]) > 1e-5:
         raise ValueError(f"{label}: HST does not cover the previous HDF snapshot")
     if not solver["good"] or solver["relaxed_accepted"]:
         raise ValueError(f"{label}: solver did not converge strictly: {solver}")
     rss = runtime_resources(directory/"resources.txt")
+    rank_memory_file = directory/"rank_memory_snapshot.json"
+    rank_memory = (json.loads(rank_memory_file.read_text())
+                   if rank_memory_file.is_file() else None)
     elapsed = None
     resource_file = directory/"resources.txt"
     if resource_file.is_file():
@@ -204,6 +221,10 @@ def analyse_case(label: str, directory: Path, analytic: dict, reference: dict,
            "levels": levels, "meshblocks_final": meshblocks,
            "profile_cells_within_20cm": int(np.count_nonzero(abs(x) <= 20.0)),
            "cycles": cycles,
+           "median_late_history_dt_s": median_late_dt,
+           "absorption_time_s": absorption_time,
+           "late_dt_over_absorption_time": (median_late_dt/absorption_time
+                                            if median_late_dt else None),
            "gas_peak_point_reference_K": point_peak,
            "gas_peak_fv_projected_reference_K": fv_peak,
            "gas_peak_fv_projection_phase_range_K": [min(phase_peaks),
@@ -223,11 +244,16 @@ def analyse_case(label: str, directory: Path, analytic: dict, reference: dict,
            "max_aligned_change": max(change.values()),
            "gas_peak_change_since_previous_output_K": float(
                history["Tgas_max"][-1]-history["Tgas_max"][previous_history_index]),
+           "late_history_peak_range_K": [late_peak_min, late_peak_max],
+           "late_history_peak_span_K": late_peak_max-late_peak_min,
            "history_last_flux_spread": {k: float(history[k][-1])
                                         for k in ("res_mdot", "res_mom", "res_etot")},
            "history_initial_final_all_energy": [float(history["all-E"][0]),
                                                 float(history["all-E"][-1])],
-           "solver": solver, "max_rss_kib": rss, "wall_seconds": elapsed,
+           "solver": solver, "launcher_max_rss_kib": rss,
+           "sampled_sum_rank_vmhwm_kib": (rank_memory["sum_rank_vmhwm_kib"]
+                                            if rank_memory else None),
+           "wall_seconds": elapsed,
            "stage": stage_metrics(directory, final["shock_raw_cm"])}
     row["accuracy_pass"] = (all(v <= 2.0 for v in row["aligned_L1_percent"].values())
                             and row["shock_position_error_over_domain"] <= .05
@@ -268,20 +294,29 @@ def main() -> None:
               "PASS" if row["accuracy_pass"] else "accuracy_not_met", flush=True)
     cases.sort(key=lambda row: (-row["shock_dx_cm"], -row["cfl"]))
     center = jump_center(analytic["x"], analytic["rho"])
-    fig, ax = plt.subplots(figsize=(11, 6), constrained_layout=True)
+    fig, axes = plt.subplots(1, 2, figsize=(15, 6), constrained_layout=True,
+                             sharey=True)
     mask = np.abs(analytic["x"]-center) <= 40
-    ax.plot(analytic["x"][mask]-center, analytic["tgas"][mask], "k-", lw=2,
-            label="semi-analytic point profile")
-    for row in cases:
+    for ax in axes:
+        ax.plot(analytic["x"][mask]-center, analytic["tgas"][mask], "k-",
+                lw=2, label="semi-analytic point profile")
+    projected_widths = set()
+    colors = plt.cm.viridis(np.linspace(.05, .9, len(cases)))
+    for row, color in zip(cases, colors):
         data = curves[row["label"]]
-        ax.plot(data["x"], data["tgas"], "o-", ms=3, lw=1,
-                label=f"{row['label']}: numerical")
-        ax.plot(data["x"], data["fv"], ":", lw=1,
-                label=f"{row['label']}: FV projection")
-    ax.set(xlim=(-40, 40), xlabel="x - density-jump center [cm]",
-           ylabel="T_gas [K]")
-    ax.grid(alpha=.3)
-    ax.legend(fontsize=9, ncol=2)
+        axes[0].plot(data["x"], data["tgas"], "o-", ms=3, lw=1,
+                     color=color, label=row["label"])
+        width_key = round(row["shock_dx_cm"], 8)
+        if row["layout"] == "none" and width_key not in projected_widths:
+            projected_widths.add(width_key)
+            axes[1].plot(data["x"], data["fv"], "o-", ms=3, lw=1,
+                         color=color, label=f"dx={row['shock_dx_cm']:.2f} cm")
+    for ax, title in zip(axes, ("Numerical profiles", "Finite-volume reference")):
+        ax.set(xlim=(-40, 40), xlabel="x - density-jump center [cm]",
+               title=title)
+        ax.grid(alpha=.3)
+        ax.legend(fontsize=9, ncol=2)
+    axes[0].set_ylabel("T_gas [K]")
     fig.savefig(args.output/"gas_spike_profiles.png", dpi=180)
     plt.close(fig)
     fig, axes = plt.subplots(1, 2, figsize=(12, 5), constrained_layout=True)
@@ -345,22 +380,37 @@ def main() -> None:
             "<p><img src='gas_spike_profiles.png' alt='Gas spike profiles'></p>",
             "<p><img src='convergence.png' alt='Peak convergence'></p>",
             "<p><img src='late_peak_history.png' alt='Late gas-peak history'></p>",
-            "<div class='scroll'><table><tr><th>Case</th><th>dx [cm]</th><th>CFL</th><th>Numerical peak [K]</th><th>FV reference peak [K]</th><th>Peak x from jump [cm]</th><th>Point peak error</th><th>Recovery</th><th>Aligned Tgas L1</th><th>Stage explicit → implicit [K]</th><th>Gate</th></tr>"]
+            "<div class='scroll'><table><tr><th>Case</th><th>dx [cm]</th><th>CFL</th><th>Late dt [µs]</th><th>Numerical peak [K]</th><th>Peak span, t=.03–.04 [K]</th><th>FV reference peak [K]</th><th>Peak x from jump [cm]</th><th>Point peak error</th><th>Recovery</th><th>Aligned Tgas L1</th><th>Stage explicit → implicit [K]</th><th>Gate</th></tr>"]
     for row in cases:
         stage = row["stage"]
         st = ("{:.2f} → {:.2f}".format(stage["Tgas_peak_after_explicit_K"],
                                         stage["Tgas_peak_after_implicit_K"])
               if stage else "—")
-        html.append("<tr><td><a href='{}_near_shock.csv'>{}</a></td><td>{:.3f}</td><td>{:.3f}</td><td>{:.2f}</td><td>{:.2f}</td><td>{:+.2f}</td><td>{:.2%}</td><td>{:.2%}</td><td>{:.3f}%</td><td>{}</td><td>{}</td></tr>".format(
+        html.append("<tr><td><a href='{}_near_shock.csv'>{}</a></td><td>{:.3f}</td><td>{:.3f}</td><td>{:.3f}</td><td>{:.2f}</td><td>{:.2f}</td><td>{:.2f}</td><td>{:+.2f}</td><td>{:.2%}</td><td>{:.2%}</td><td>{:.3f}%</td><td>{}</td><td>{}</td></tr>".format(
             escape(row["label"]), escape(row["label"]), row["shock_dx_cm"],
-            row["cfl"], row["gas_peak_numerical_K"],
+            row["cfl"], 1e6*row["median_late_history_dt_s"],
+            row["gas_peak_numerical_K"],
+            row["late_history_peak_span_K"],
             row["gas_peak_fv_projected_reference_K"],
             row["gas_peak_numerical_x_from_shock_cm"],
             row["gas_peak_relative_error"], row["spike_amplitude_recovery"],
             row["aligned_L1_percent"]["tgas"], st,
             "PASS" if row["accuracy_pass"] else "accuracy_not_met"))
     html.extend(["</table></div>",
-                 "<h2>Stage timing</h2>"])
+                 "<h2>Other accuracy and runtime checks</h2>",
+                 "<div class='scroll'><table><tr><th>Case</th><th>Density L1</th><th>Gas T L1</th><th>Radiation T L1</th><th>Raw shock error / domain</th><th>Previous-output change</th><th>Strict solver</th><th>Wall time [min]</th><th>Sampled sum of rank high-water RSS [MiB]</th></tr>"])
+    for row in cases:
+        html.append("<tr><td>{}</td><td>{:.3f}%</td><td>{:.3f}%</td><td>{:.3f}%</td><td>{:.2%}</td><td>{:.3%}</td><td>{}</td><td>{}</td><td>{}</td></tr>".format(
+            escape(row["label"]), row["aligned_L1_percent"]["rho"],
+            row["aligned_L1_percent"]["tgas"],
+            row["aligned_L1_percent"]["trad"],
+            row["shock_position_error_over_domain"],
+            row["max_aligned_change"],
+            "PASS" if row["solver"]["good"] else "FAIL",
+            f"{row['wall_seconds']/60:.1f}" if row["wall_seconds"] is not None else "—",
+            f"{row['sampled_sum_rank_vmhwm_kib']/1024:.1f}"
+            if row["sampled_sum_rank_vmhwm_kib"] is not None else "—"))
+    html.extend(["</table></div>", "<h2>Stage timing</h2>"])
     for row in cases:
         stage = row["stage"]
         if not stage:
@@ -377,7 +427,7 @@ def main() -> None:
                                  previous["Tgas_peak_after_implicit_K"])
                          if previous else "")))
     html.extend([
-                 "<p>Full aligned L1, raw shock position, peak change since the previous output, solver convergence, energy-flux spread, runtime, RSS and exact paths are in <a href='summary.json'>summary.json</a>. The shock domain has fixed inflow/outflow states, so total energy is not expected to remain constant.</p>",
+                 "<p>Full aligned L1, raw shock position, peak change since the previous output, solver convergence, energy-flux spread, runtime and exact paths are in <a href='summary.json'>summary.json</a>. The sampled rank high-water RSS is a sum of per-process values, so shared pages may be counted more than once; the separate /usr/bin/time RSS is for the MPI launcher. The shock domain has fixed inflow/outflow states, so total energy is not expected to remain constant.</p>",
                  "</body></html>"])
     (args.output/"index.html").write_text("\n".join(html)+"\n")
 

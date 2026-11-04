@@ -18,8 +18,31 @@ A second, diagnostic reference averages the analytic conserved gas density, mome
 | One-level AMR, finest dx=N256 | 23.438 | 878.920 | 10.48% | 891.538 | 882.84–962.78 |
 | Uniform N512, CFL .3 | 11.719 | 905.072 | 22.29% | 928.007 | 909.78–983.46 |
 | Uniform N512, CFL .15 | 11.719 | 903.768 | 21.70% | 928.007 | 909.78–983.46 |
+| Uniform N1024, CFL .3 | 5.859 | 955.085 | 44.88% | 982.142 | 945.74–1008.53 |
 
 Halving CFL at N512 lowers the final peak by only 1.30 K, whereas changing N256 to N512 raises it by 26.27 K. The N512 peak also falls by about 1.94 K between the saved t=.038 and .04 s outputs, so the global aligned L1 stationarity check alone does not establish local peak stationarity. N256/N512 numerical peaks sit half a cell upstream of the density-jump midpoint, while the FV-projected reference peak sits half a cell downstream. That location difference shrinks in physical units as dx decreases.
+
+The median late-step dt is 4.4325 µs for N512/CFL .3 and 2.2162 µs for N512/CFL .15. The radiation absorption time from the fixed Planck opacity is about 0.8495 µs. Thus this CFL pair also probes dt/t_abs from 5.22 to 2.61. N1024/CFL .3 has almost the same absolute dt as N512/CFL .15, permitting a spatial comparison at nearly matched dt.
+
+N1024/CFL .3 completed in 18,360 cycles and 80.1 wall minutes. Its gas peak
+is 955.085 K, a point-peak error of 11.33%, and recovery is 44.88%: both peak
+gates still miss by a small margin. Its density, gas-temperature and
+radiation-temperature aligned L1 values are 0.116%, 0.073% and 0.052%; raw
+shock-position error is 3.06% of the domain width. Every Newton solve
+converged strictly. The peak over t=.03–.04 s ranges from 946.276 to
+961.333 K; the previous saved t=.038 peak is 5.256 K higher than the final
+peak. The median late dt is about 2.217 µs, matching the N512/CFL .15
+control. At this matched dt, increasing resolution raises the final peak by
+51.32 K, again much more than the N512 CFL effect.
+
+The N1024 stage diagnostic resolves the output phase: on the last full
+dt=2.217 µs, the post-explicit local gas peak is 992.467 K and the
+post-implicit peak is 955.012 K, a 37.455 K fall. The final step is
+shortened to 0.136 µs to hit t=.04 exactly and gives 957.396 to 955.091 K.
+The previous full step therefore describes the normal step-size behavior.
+The local implicit gas+radiation energy-budget residual is <7e-13 relative
+to the largest implicit diffusion source. Transverse radiation-energy spread
+at the sampled shock cells is <2e-10 relative.
 
 The N64 bitwise control used a fresh current-source build and the previous WOR-10 binary with exactly the same input. Every dataset in their final HDF5 files agrees bitwise at 0.04 s. The production high-resolution uniform runs use the previous binary; this control checks the current source's default physics behavior after the later opt-in diagnostic changes.
 
