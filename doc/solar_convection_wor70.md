@@ -527,6 +527,18 @@ above. Same-checkpoint tests should therefore prioritize mean-pressure
 mass feedback OFF and a faster feedback relaxation time, with a stronger
 `Cdmp` as a control for the nonuniform component.
 
+A same-checkpoint `t=400`–`450` test with mass feedback disabled completed
+732/732 Newton solves, no warnings or fatals. Compared with the standard
+feedback time constant of 10 code units, lower hydro-flux standard deviation
+rose from `158` to `254 F_sun`, mass-drift standard deviation from `1.03%`
+to `2.18%`, and maximum mass drift from `1.84%` to `6.35%`. Both have a
+dominant period near `12.5` code units. Mean top flux changed from `1.286`
+to `0.742 F_sun`; disabling feedback is not an acceptable physical solution.
+The matched history and spectral HTML reports are
+`rempel_box_pilot/mass_feedback_off_comparison_t400_450/` and
+`rempel_box_pilot/mass_feedback_diagnostic/`. A faster mean-pressure
+feedback control is the next same-checkpoint experiment.
+
 The earlier one-rank startup to `t=1` gave sampled residuals `+0.0801`
 and `-0.0721 F_sun` for the old and new sources, so a one-second diagnostic
 was insufficient to establish the improvement. The remaining early startup
