@@ -1790,6 +1790,18 @@ void MeshBlock::UserWorkInLoop() {
 void Mesh::UserWorkInLoop() {
   UpdateHD2PressureMeans(this);
   UpdateHD2MassBalance(this);
+  // main.cpp has synchronized the post-NR hydro primitives before this
+  // callback. HD2 then changes the pressure means and PBND feedback state.
+  // Reapply the physical lower boundary now so the next explicit stage uses
+  // ghosts from that committed state, just as a checkpoint restart does.
+  if (bottom_bc_mode == "rempel_hd2") {
+    for (int nb = 0; nb < nblocal; ++nb) {
+      MeshBlock *pmb = my_blocks(nb);
+      if (pmb->block_size.x3min == mesh_size.x3min)
+        pmb->pbval->ApplyPhysicalBoundaries(time + dt, dt,
+                                            {&pmb->phydro->hbvar});
+    }
+  }
   if (!profile_written) {
     if (Globals::my_rank == 0 && nblocal > 0)
       WriteInitialProfiles(profile_pin, my_blocks(0)->peos);

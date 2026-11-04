@@ -1030,6 +1030,18 @@ value in the 32 blocks matches exactly between the original output and a
 zero-step restart. The five user-output variables differ at only 13
 locations, with maximum relative difference `3.35e-11` over the full
 array. The source of the first-step divergence remains unresolved.
+Ghost-zone output localized a real HD2 ordering defect: the lower
+hydro boundary ghosts were built before `UserWorkInLoop` updated the
+pressure means and PBND feedback state. A zero-step restart rebuilt them
+from the new state. The old lower ghost density differed by up to
+`0.1103` code units (`1.53e-4` relative to the maximum density).
+Reapplying the physical lower boundary after that HD2 update reduces
+the ghost comparison to float32 output roundoff and keeps a `t=1300`–`1320`
+smoke run converged for 288/288 Newton solves. The first post-restart
+total-energy difference is reduced only from `-1.399e-6` to `-1.304e-6`
+relative, so WOR-76 remains open. Combining the HD2 fix with a post-step
+FLD ghost synchronization did not further reduce the difference; that
+additional generic synchronization was also reverted.
 
 ## Next scientific gates
 
