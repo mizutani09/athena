@@ -461,6 +461,12 @@ def main() -> None:
         "reconstruction, including an approximate FLD gradient. Read exact "
         "top and bottom boundary fluxes from the history metrics above.</p>"
         if (args.run_dir / "flux3d.json").is_file() else "")
+    profile_note = (
+        "<p><strong>Profile reference:</strong> dashed initial solar 1D curves "
+        "are the imported starting stratification, not an independent "
+        "observational benchmark.</p>"
+        if late_profiles_path.is_file() and
+        "reference_profile" in json.loads(late_profiles_path.read_text()) else "")
     energy_note = (
         "<p><strong>Energy ledger:</strong> the reported residual integrates "
         "sampled face fluxes and potential-energy transport. It is a diagnostic "
@@ -482,7 +488,7 @@ def main() -> None:
         "<p><a href='history.png'>History plot</a> · <a href='summary.json'>JSON</a> · "
         "<a href='run.log'>run.log</a></p>"
         f"<table>{table}</table><img src='history.png' alt='history'>"
-        f"<h2>Existing plots</h2>{flux_note}{gallery}"
+        f"<h2>Existing plots</h2>{flux_note}{profile_note}{gallery}"
         + (f"<h2>Movies</h2>{movies}" if movies else "")
         + f"<h2>Metrics</h2><pre>{summary}</pre></html>"
     )

@@ -66,6 +66,8 @@ def main() -> None:
     parser.add_argument("run_dir", type=Path)
     parser.add_argument("--late-fraction", type=float, default=0.25,
                         help="Fraction of recorded time span used for the late mean")
+    parser.add_argument("--reference-profile", type=Path,
+                        help="Imported 1D solar profile for a visual stratification reference")
     args = parser.parse_args()
     if not (0 < args.late_fraction <= 1):
         parser.error("--late-fraction must be in (0, 1]")
@@ -73,9 +75,24 @@ def main() -> None:
     if summary is None:
         print("Too few late full-3D snapshots for a time average")
         return
+    z = np.asarray(summary["z_code"])
+    reference = None
+    if args.reference_profile is not None:
+        raw = np.loadtxt(args.reference_profile, comments="#", ndmin=2)
+        if raw.shape[1] < 5 or not np.all(np.diff(raw[:, 3]) > 0):
+            raise ValueError("Expected a monotonic 1D solar profile with z in column 4")
+        reference = {
+            "temperature_K": np.interp(z, raw[:, 3], raw[:, 1]),
+            "density_cgs": np.interp(z, raw[:, 3], raw[:, 4]),
+        }
+        summary["reference_profile"] = {
+            "description": "Imported 1D initial solar profile; visual reference, not an independent observation",
+            "path": str(args.reference_profile.resolve()),
+            "temperature_K": reference["temperature_K"].tolist(),
+            "density_cgs": reference["density_cgs"].tolist(),
+        }
     output = args.run_dir / "profiles3d_late_mean.json"
     output.write_text(json.dumps(summary, indent=2) + "\n")
-    z = np.asarray(summary["z_code"])
     plt.rcParams.update({"font.size": 13})
     fig, axes = plt.subplots(2, 2, figsize=(13, 10), constrained_layout=True)
     for axis, (key, label, logarithmic) in zip(axes.flat, FIELDS):
@@ -89,6 +106,13 @@ def main() -> None:
         axis.set(xlabel=label, ylabel="z [code]")
         axis.grid(alpha=0.25)
         axis.legend()
+    if reference is not None:
+        axes[0, 0].plot(reference["temperature_K"], z, color="black", ls="--",
+                        label="initial solar 1D")
+        axes[0, 1].plot(reference["density_cgs"], z, color="black", ls="--",
+                        label="initial solar 1D")
+        axes[0, 0].legend()
+        axes[0, 1].legend()
     fig.suptitle("Full 3D late profiles: t={:.3g}–{:.3g} code ({} snapshots)\n"
                  "Transient until history stationarity checks pass".format(
                      summary["window_start_code"], summary["window_end_code"],

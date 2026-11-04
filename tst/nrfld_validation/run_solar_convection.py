@@ -285,7 +285,8 @@ def main() -> None:
             subprocess.run(flux_command, check=True)
             late_profile_command = [sys.executable,
                                     str(repo / "scripts/plot_simple_convection_late_profiles3d.py"),
-                                    str(case)]
+                                    str(case), "--reference-profile",
+                                    str(root / "data" / data_names[2])]
             subprocess.run(late_profile_command, check=True)
     report = Path(__file__).with_name("solar_convection_report.py")
     report_command = [sys.executable, str(report), str(case), "--input",

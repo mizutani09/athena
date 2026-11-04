@@ -346,6 +346,9 @@ in the surface maps: the early uniform state has developed a granulation-like
 pattern. The flux and temperature are still below solar, and the averaging
 windows are too short for stationarity. The case HTML includes the maps,
 movie, 3D profiles and a `t≈80`→`100` three-snapshot profile average.
+The late full-3D temperature and density plots now overlay the imported
+solar 1D starting stratification as a visual reference; it is not an
+independent observation or a stationarity criterion.
 For orientation, a flux of `0.585 F_sun` implies a blackbody effective
 temperature about `5048 K` if the same solar reference is used, close to the
 instantaneous `tau=2/3` mean of `5028 K`. This agreement is a gray-atmosphere
