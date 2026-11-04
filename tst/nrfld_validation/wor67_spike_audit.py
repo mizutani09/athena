@@ -341,10 +341,18 @@ def main() -> None:
         key = round(dx, 8)
         stagger = label_index_by_dx.get(key, 0)
         label_index_by_dx[key] = stagger+1
-        label_offset = (5, (9, -15, 25)[stagger % 3])
+        label_offset = (5, (8, -22, 38)[stagger % 3])
+        label_align = "left"
+        if abs(dx - 6000/1024) < 1e-6:
+            label_offset = (-8, (12, -24, 42)[stagger % 3])
+            label_align = "right"
+        if row["label"] == "N2048":
+            label_offset = (-7, -16)
+            label_align = "right"
         axes[0].plot(dx, row["gas_peak_numerical_K"], "o", color="tab:blue")
         axes[0].annotate(row["label"], (dx, row["gas_peak_numerical_K"]),
-                         xytext=label_offset, textcoords="offset points", fontsize=8)
+                         xytext=label_offset, textcoords="offset points",
+                         ha=label_align, fontsize=8)
         axes[0].plot(dx, row["gas_peak_fv_projected_reference_K"], "s",
                      color="tab:orange")
         lo, hi = row["gas_peak_fv_projection_phase_range_K"]
@@ -352,7 +360,8 @@ def main() -> None:
         axes[1].plot(dx, 100*row["spike_amplitude_recovery"], "o",
                      color="tab:blue")
         axes[1].annotate(row["label"], (dx, 100*row["spike_amplitude_recovery"]),
-                         xytext=label_offset, textcoords="offset points", fontsize=8)
+                         xytext=label_offset, textcoords="offset points",
+                         ha=label_align, fontsize=8)
     axes[0].axhline(cases[0]["gas_peak_point_reference_K"], color="black",
                     ls="--", label="semi-analytic point peak")
     axes[0].set(ylabel="T_gas peak [K]", xlabel="shock cell width [cm]")

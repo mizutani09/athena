@@ -679,8 +679,10 @@ Its combined HTML is at
 
 The [WOR-67 Mach 5 gas-spike study](wor67_mach5_spike_20261104.md) extends the
 resolution, time-step and AMR checks. Its comparison HTML is at
-`/mnt/d/output/rad/wor67_spike_audit_20261104/index.html`; regenerate it with
-`wor67_spike_audit.py` using the saved completed case directories.
+`/mnt/d/output/rad/wor67_spike_audit_20261104/index.html`. Regenerate the
+comparison from the saved completed cases with
+`bash tst/nrfld_validation/wor67_rebuild_report.sh` (or pass another output
+root as its first argument).
 
 To apply the current gates to older completed reports without rerunning the
 physics or regenerating plots/videos:

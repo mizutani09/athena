@@ -19,6 +19,7 @@ A second, diagnostic reference averages the analytic conserved gas density, mome
 | Uniform N512, CFL .3 | 11.719 | 905.072 | 22.29% | 928.007 | 909.78–983.46 |
 | Uniform N512, CFL .15 | 11.719 | 903.768 | 21.70% | 928.007 | 909.78–983.46 |
 | Uniform N1024, CFL .3 | 5.859 | 955.085 | 44.88% | 982.142 | 945.74–1008.53 |
+| Uniform N1024, CFL .15 | 5.859 | 951.570 | 43.30% | 982.142 | 945.74–1008.53 |
 | One-level AMR, finest dx=N1024 | 5.859 | 946.999 | 41.23% | 982.142 | 945.74–1008.53 |
 | Uniform N2048, CFL .3 | 2.930 | 991.437 | 61.30% | 1033.477 | 988.55–1036.79 |
 
@@ -39,7 +40,29 @@ control. At this matched dt, increasing resolution raises the final peak by
 The measured late-dt ratio for N1024/CFL .3 divided by N512/CFL .15 is
 0.999986, so this first spatial comparison is matched in dt to better than
 0.002%. The audit HTML and JSON provide these pairwise values directly.
-Even the highest N1024 history peak in that late interval (961.333 K) is
+The second time-step control completed N1024/CFL .15 in 36,720 strictly
+converged Newton steps. Its median late dt is 1.10807 µs, exactly the same
+recorded value as N2048/CFL .3, while its spatial grid equals N1024/CFL .3.
+Halving dt at N1024 lowers the final peak by 3.515 K and recovery by 1.588
+percentage points; doubling N1024/CFL .15 resolution at matched dt raises
+the peak by 39.867 K and recovery by 18.008 points. This isolates spatial
+resolution as the dominant source of the local peak deficit over these
+tested grids and time steps. The N1024/CFL .15 final peak is 951.570 K,
+11.65% below the analytic point peak, and its recovery is 43.30%; both peak
+gates still fail. Its late t=.03–.04 s peak range is 951.002–964.139 K,
+so even its highest late value misses both the 966.411 K recovery and
+969.391 K point-error thresholds. Aligned L1 is 0.125% (density), 0.067%
+(gas T), and 0.046% (radiation T); the raw shock-position error is 3.06% of
+the domain width and the maximum aligned change is 0.039%. All other gates
+pass. Its preceding full dt=1.10843 µs step changes the hottest cell's
+post-explicit gas temperature 970.036→951.520 K in the implicit update;
+the 18.516 K drop is about half of the N1024/CFL .3 full-step drop. The
+local gas+radiation energy change agrees with the sampled implicit
+diffusion source to 4.5e-13 relative. The shortened final step has
+dt=0.64345 µs, with 962.332→951.576 K across the implicit update. The
+N1024/CFL .15 job took 140.4 wall minutes, with sampled summed rank
+high-water RSS about 313.3 MiB.
+Even the highest N1024/CFL .3 history peak in that late interval (961.333 K) is
 below the 50%-recovery threshold (966.411 K) and the 10%-error threshold
 (969.391 K), so its failure is not due only to choosing the final output
 phase. The discrete density-jump center remains at 183.594 cm for all saved
@@ -96,12 +119,40 @@ upstream of the density-jump center, while the FV-projected peak lies half a
 cell downstream. The analogous uniform N1024 final peak is 8.087 K higher,
 but the sign of the AMR–uniform difference changed across earlier saved
 times, so a systematic AMR bias is not established by one final sample.
+The AMR density-jump midpoint changes from 183.594 cm at t=.038 to
+189.453 cm at t=.04, exactly one finest cell, while the uniform N1024
+midpoint is 183.594 cm at the final time. This changes which neighboring
+cell contains the reported local peak. It may contribute to the 8.087 K
+final AMR–uniform difference; it does not explain away the fact that even
+AMR's highest late-history peak remains below the physical threshold.
 
 The N64 bitwise control used a fresh current-source build and the previous WOR-10 binary with exactly the same input. Every dataset in their final HDF5 files agrees bitwise at 0.04 s. The production high-resolution uniform runs use the previous binary; this control checks the current source's default physics behavior after the later opt-in diagnostic changes.
 
+## Assessment and remaining work
+
+The existing physical gate is met locally by uniform N2048/CFL .3 and is
+missed by N1024 at both CFL values and by one-level AMR with finest N1024
+spacing. Two paired comparisons at effectively identical dt show that
+halving dx raises the peak by 51.318 K (N512 to N1024) and 39.867 K
+(N1024 to N2048), while halving dt at fixed dx lowers it by 1.304 K and
+3.515 K respectively. The measured low-resolution spike deficit is thus
+dominated by spatial under-resolution in these experiments. The stage
+measurements locate the immediate post-explicit peak loss in the implicit
+radiation diffusion update and close its local energy budget; they do not
+indicate an unexplained energy sink or a solver-convergence failure.
+
+N2048 still has only 1.09 cells across the analytic spike half-height
+width. Passing one threshold is not proof of asymptotic convergence or of
+uniform, AMR and SMR equivalence. The next complete physical checks are
+uniform N4096, one-level AMR with finest N2048 spacing, and an SMR case on
+a larger machine. The local sizing pilots quantify their approximate
+resources below. If those completed cases disagree after matching dx,
+dt, reference registration and output phase, investigate the refinement
+interfaces and numerical flux/limiter before changing the acceptance gate.
+
 ## Calculations and reproducibility
 
-The combined HTML is `/mnt/d/output/rad/wor67_spike_audit_20261104/index.html`; it is regenerated as high-resolution cases finish. Simulation inputs, run logs, HDF5, history and resource files are under `/mnt/d/output/rad/wor67_*_20261104`. The baseline N64/128/256 cases are in the WOR-10 output directories; the N512 baseline is `/mnt/d/output/rad/wor10_n512_20261104`. Analysis is `tst/nrfld_validation/wor67_spike_audit.py`.
+The combined HTML is `/mnt/d/output/rad/wor67_spike_audit_20261104/index.html`; regenerate its ten completed local cases with `bash tst/nrfld_validation/wor67_rebuild_report.sh`. Simulation inputs, run logs, HDF5, history and resource files are under `/mnt/d/output/rad/wor67_*_20261104`. The baseline N64/128/256 cases are in the WOR-10 output directories; the N512 baseline is `/mnt/d/output/rad/wor10_n512_20261104`. Analysis is `tst/nrfld_validation/wor67_spike_audit.py`.
 
 Uniform N1024 and N2048 use 4x4 transverse cells and cubic MeshBlocks of 4³ cells, with physical transverse extent scaled to retain cubic cells. Stage CSVs in their `output/` directories sample the final explicit RK2 and implicit FLD updates; the preceding full step is also retained. The N512 CFL control uses the same binary and spatial grid as the baseline. All saved `input.used` files are fully materialized without hidden command-line physics overrides. The `provenance.txt` files record binary SHA-256 and CPU affinity. The high-resolution source comparison build is `/mnt/d/output/rad/wor67_current_build_20261104`.
 
@@ -114,7 +165,7 @@ Their inputs, partial outputs, logs, memory snapshots and stop reasons remain
 under `/mnt/d/output/rad/wor67_smr_base{256,128}_20261104`. The N128 SMR
 two-rank high-water RSS sum was about 0.78 GiB, versus about 1.47 GiB for
 N256. Both had strict solver progress, but neither is a completed physical
-validation case. The freed cores run N1024/CFL .15, an exact same-grid
+validation case. Their freed cores ran N1024/CFL .15, an exact same-grid
 temporal control for N1024/CFL .3 and a dt-matched spatial partner to N2048.
 The SMR HPC preset remains available in the standard radiative-shock runner.
 
