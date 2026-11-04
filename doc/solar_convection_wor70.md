@@ -529,6 +529,14 @@ it cannot directly damp the dominant horizontally uniform mode identified
 above. Same-checkpoint tests should therefore prioritize mean-pressure
 mass feedback OFF and a faster feedback relaxation time, with a stronger
 `Cdmp` as a control for the nonuniform component.
+The imported initial 1D profile gives an acoustic one-way travel time
+`integral dz/sqrt(Gamma1 P/rho) = 4.92 min` across the 3.072 Mm layer;
+the observed `4.65 min` period is close to this timescale. An acoustic
+overtone is plausible, but this estimate does not identify an eigenmode or
+prove which boundary excites it. The controller's `MassRate` matches the
+finite-difference derivative of total-mass drift over `t=400`–`450`
+(correlation approximately 1, amplitude ratio 0.99–1.00), so a gross
+measurement error in that feedback input is not apparent.
 
 A same-checkpoint `t=400`–`450` test with mass feedback disabled completed
 732/732 Newton solves, no warnings or fatals. Compared with the standard

@@ -22,6 +22,24 @@ import numpy as np
 from solar_convection_report import input_values, physical_time_unit, read_history
 
 
+def acoustic_one_way_minutes(path: Path) -> float:
+    """Initial-profile sound travel time across the simulated vertical layer."""
+    with path.open() as source:
+        source.readline()
+        columns = source.readline().lstrip("# ").split()
+    values = np.loadtxt(path)
+    z = values[:, columns.index("z_cm")]
+    pressure = values[:, columns.index("pressure")]
+    density = values[:, columns.index("rho")]
+    gamma1 = values[:, columns.index("gamma1")]
+    if not (np.all(np.isfinite(z)) and np.all(pressure > 0)
+            and np.all(density > 0) and np.all(gamma1 > 0)):
+        raise ValueError(f"{path}: invalid acoustic profile")
+    order = np.argsort(z)
+    sound_speed = np.sqrt(gamma1[order]*pressure[order]/density[order])
+    return float(np.trapezoid(1.0/sound_speed, z[order])/60.0)
+
+
 def vertical_mode_coherence(run_dir: Path, start: float,
                             end: float) -> tuple[float | None, int]:
     """Fraction of vertical-velocity variance in the horizontal mean mode."""
@@ -116,6 +134,8 @@ def main() -> None:
     parser.add_argument("--header-from", type=Path, required=True)
     parser.add_argument("--output-dir", type=Path, required=True)
     parser.add_argument("--reference-flux", type=float, default=6.3e10)
+    parser.add_argument("--reference-profile", type=Path,
+                        help="Initial 1D profile for a rough sound travel time")
     args = parser.parse_args()
     args.output_dir.mkdir(parents=True, exist_ok=True)
     rows = []
@@ -125,6 +145,11 @@ def main() -> None:
                                args.header_from, args.reference_flux)
         rows.append(result)
         curves.append(data)
+    acoustic_minutes = (acoustic_one_way_minutes(args.reference_profile)
+                        if args.reference_profile else None)
+    if acoustic_minutes is not None:
+        for row in rows:
+            row["initial_acoustic_one_way_minutes"] = acoustic_minutes
     (args.output_dir / "summary.json").write_text(json.dumps(rows, indent=2) + "\n")
     plt.rcParams.update({"font.size": 13})
     fig, axes = plt.subplots(2, 2, figsize=(14, 9), constrained_layout=True)
@@ -176,6 +201,10 @@ def main() -> None:
         "img{max-width:100%}</style><h1>Lower-boundary oscillation diagnostic</h1>"
         "<p>The spectral peak establishes a periodic signal; it does not "
         "identify its cause. Flux amplitude uses the solar reference flux.</p>"
+        + (f"<p>Initial 1D sound travel time across the layer: "
+           f"<strong>{acoustic_minutes:.2f} min one-way</strong>. "
+           "This estimate does not identify an eigenmode.</p>"
+           if acoustic_minutes is not None else "") +
         "<table><tr><th>Case</th><th>Window</th><th>Period [code]</th>"
         "<th>Period [min]</th><th>Bottom flux std / solar</th>"
         "<th>Late/early flux amplitude</th>"
