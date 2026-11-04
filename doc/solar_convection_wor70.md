@@ -322,6 +322,24 @@ The first history sample at `t=10.155` has `PBNDScale=0.998040`, following
 to `0.397` code. This verifies that the saved boundary state continues
 without a fresh startup spike. WOR-71 is complete; subsequent thermal and
 solar-physics questions remain in WOR-70.
+
+The corrected 96 km large box reached `t=100` (37.27 physical minutes) at
+cycle 1309. All 1190 Newton solves in the `t=10`→`100` segment converged;
+the log has 3820 FGMRES calls, zero slow-MG warnings, and zero fatals. Its
+late two 25-code-time windows have mean top fluxes `0.543` and `0.585 F_sun`,
+vertical RMS speeds `1.323` and `1.422 km/s`, and only `0.239` and `0.257`
+full-height crossing times. Maximum mass drift in the final window is
+`0.28%`; mean net bottom mass flux is about `0.11%` of gross up/down flow.
+At `t=100`, the full 3D `tau=2/3` surface has mean temperature `5028 K`,
+horizontal standard deviation `76 K`, and vertical-velocity RMS
+`1.98 km/s`. Warm broad upflows and narrow cooler downflow lanes are visible
+in the surface maps: the early uniform state has developed a granulation-like
+pattern. The flux and temperature are still below solar, and the averaging
+windows are too short for stationarity. The case HTML includes the maps,
+movie, 3D profiles and a `t≈80`→`100` three-snapshot profile average.
+The next corrected continuation targets `t=300` to enlarge the statistical
+window; this is a relaxation test, not a claim that 96 km resolves solar
+granulation.
 The pre-fix 64³ continuation was intentionally stopped at `t≈153` after
 writing a `t=150` restart, to free six physical cores for the corrected
 baseline. Between `t=100` and the stop, all 3,303 reported Newton solves
