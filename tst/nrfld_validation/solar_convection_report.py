@@ -104,6 +104,9 @@ def window_metrics(h: dict[str, np.ndarray], indices: np.ndarray,
     crossing = height_cm / speed if speed > 0 else float("inf")
     def mean(name: str) -> float:
         return float(np.mean(h[name][indices]))
+    up = mean("BottomMdotUp")
+    down = -mean("BottomMdotDown")
+    net = mean("BottomMdotNet")
     return {
         "start_time": float(t[0]), "end_time": float(t[-1]),
         "duration_seconds": float((t[-1] - t[0]) * time_unit),
@@ -113,6 +116,12 @@ def window_metrics(h: dict[str, np.ndarray], indices: np.ndarray,
         "top_radiation_flux_over_solar": mean("FradTop") / flux_ref,
         "bottom_hydro_flux_over_solar": mean("FhydBottom") / flux_ref,
         "bottom_radiation_flux_over_solar": mean("FradBottom") / flux_ref,
+        "bottom_upflow_code": up,
+        "bottom_downflow_magnitude_code": down,
+        "bottom_net_mass_flux_code": net,
+        "bottom_net_mean_fraction": abs(net) / max(up + down, 1.0e-30),
+        "bottom_net_rms_fraction": (float(np.sqrt(np.mean(
+            h["BottomMdotNet"][indices]**2))) / max(up + down, 1.0e-30)),
         "max_abs_mass_drift": float(np.max(np.abs(h["MassDrift"][indices]))),
         "pbnd_scale_mean": mean("PBNDScale"),
     }
@@ -121,7 +130,8 @@ def window_metrics(h: dict[str, np.ndarray], indices: np.ndarray,
 def summarize(h: dict[str, np.ndarray], log: dict[str, object], units: dict[str, float],
               flux_ref: float) -> dict[str, object]:
     required = {"time", "VzRms2Mean", "FtotTop", "FradTop", "FhydBottom",
-                "FradBottom", "MassDrift", "PBNDScale"}
+                "FradBottom", "MassDrift", "PBNDScale", "BottomMdotUp",
+                "BottomMdotDown", "BottomMdotNet"}
     missing = required - h.keys()
     if missing:
         raise ValueError(f"Missing history columns: {sorted(missing)}")
@@ -196,6 +206,22 @@ def make_plot(h: dict[str, np.ndarray], units: dict[str, float], flux_ref: float
             a.set_xlabel("physical time [min]")
             a.grid(alpha=0.25)
     fig.savefig(output, dpi=150)
+    plt.close(fig)
+
+    fig, ax = plt.subplots(2, 1, figsize=(11, 8), sharex=True,
+                           constrained_layout=True)
+    ax[0].plot(time_min, h["BottomMdotUp"], label="upflow")
+    ax[0].plot(time_min, -h["BottomMdotDown"], label="downflow magnitude")
+    ax[0].set(ylabel="mass flux [code]", title="Bottom boundary mass transport")
+    ax[0].legend()
+    ax[1].plot(time_min, h["BottomMdotNet"], label="net")
+    ax[1].axhline(0, color="black", lw=1)
+    ax[1].set(xlabel="physical time [min]", ylabel="net mass flux [code]")
+    for axis in ax:
+        axis.grid(alpha=0.25)
+    image_dir = output.parent / "imgs"
+    image_dir.mkdir(exist_ok=True)
+    fig.savefig(image_dir / "simple_convection_bottom_mass_flux.png", dpi=150)
     plt.close(fig)
 
 
@@ -289,6 +315,8 @@ def main() -> None:
         ("Late top flux / solar", f"{late['top_total_flux_over_solar']:.3f}" if late else "—"),
         ("Late vertical RMS", f"{late['vz_rms_km_s']:.3f} km/s" if late else "—"),
         ("Late window crossings", f"{late['vertical_crossing_times']:.3f}" if late else "—"),
+        ("Late bottom net-flow RMS / gross flow",
+         f"{late['bottom_net_rms_fraction']:.3f}" if late else "—"),
     ]
     tau_last = report.get("tau1_slice_last")
     if tau_last and tau_last["T_tau1_mean_K"] is not None:

@@ -138,6 +138,14 @@ still evolving and does **not** pass the stationarity screening. From
 agree within about 0.41% relative. The full case HTML includes 180 finite xz
 movie frames and the optical-depth plot.
 
+The new bottom mass-flux diagnostic separates positive upflow, negative
+downflow, and net transport. In the small-box `t=50`→`75` and `75`→`100`
+windows, the absolute mean net flux is about 0.04% and 0.25% of the combined
+gross up/down flow. The RMS net fraction is 6.8% and 8.9%, exposing residual
+instantaneous oscillations. The boundary supports nearly balanced
+counterflows on average there. Near-zero mean net mass flux alone does not
+establish thermal stationarity.
+
 ## How to repeat and extend
 
 The runner generates an input copy, links external tables, records Git/binary/
@@ -182,6 +190,14 @@ keeps this tracked problem generator and the same photosphere while extending
 the box to 6.144 × 6.144 × 3.072 Mm. The first proposed grid is
 128 × 128 × 64, giving 48 km **cubic cells**. NR-FLD multigrid rejects
 non-cubic cells; the runner now checks this before launching Athena++.
+The initial `tau=1` height is `z≈2.0` code, leaving 0.536 Mm above the
+photosphere, whereas Rempel's small-domain setup places the top about 0.700 Mm
+above it ([§II.2](https://arxiv.org/html/1405.6814v1)). Thus the box size
+matches but the photospheric placement differs by about 0.164 Mm. The
+current 48 km cells are also coarser than the paper's 32 km and finer grids.
+The pgen's optional time-dependent mass-balance adjustment of `P_BND` extends
+Rempel's fixed-pressure HD2 prescription; this difference must be tested
+when interpreting coherent bottom-boundary motion.
 
 The old EOS table ends at `log10(rho/[g cm^-3])=-4.5` and cannot invert the
 deeper hydrostatic profile. The original NATA rho–u source covers through
@@ -221,6 +237,12 @@ single cell, so this topology may leave some solver efficiency available.
 The early `tau=2/3` slice temperature changes from about 5704 K at `t=0`
 to 5290 K at `t=1`, showing the initial thermal transient in the larger box.
 The pilot does not establish granulation statistics or steady solar agreement.
+During the first few code-time units of the deeper box, the bottom flow is
+almost entirely one-way at a time and reverses sign. Its hydro energy flux
+therefore swings by tens to hundreds of solar flux units. This is a strong
+global startup transient, so early bottom flux values must not be interpreted
+as a convective luminosity. A longer run is needed to determine whether the
+coherent motion decays.
 The larger-box input now writes sparse full 3D primitive and user-variable
 volumes every 10 code-time units. `plot_simple_convection_surface3d.py`
 reconstructs the `tau=2/3` height and gas temperature over the **entire**
