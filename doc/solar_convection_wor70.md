@@ -538,6 +538,19 @@ The matched history and spectral HTML reports are
 `rempel_box_pilot/mass_feedback_off_comparison_t400_450/` and
 `rempel_box_pilot/mass_feedback_diagnostic/`. A faster mean-pressure
 feedback control is the next same-checkpoint experiment.
+With feedback enabled but the response time shortened from 10 to 2 code
+units, another same-checkpoint `t=400`–`450` test completed 737/737 Newton
+solves without warnings or fatals. Relative to the standard control, lower
+hydro-flux standard deviation fell `158.2`→`37.6 F_sun`, mass-drift standard
+deviation `1.03%`→`0.23%`, and maximum mass drift `1.84%`→`0.54%`.
+The dominant period moved from `12.51` to `9.97` code units. Mean top flux
+changed `1.29`→`0.88 F_sun`, while the stored-energy secular trend decreased
+`+1.47`→`+0.45 F_sun`. The latter is still above the stationarity screen.
+The matched plot is in
+`rempel_box_pilot/mass_feedback_tau2_comparison_t400_450/`; the three-case
+spectral report is in `rempel_box_pilot/mass_feedback_diagnostic/`.
+The improved control is being continued from `t=450` to `650` so that two
+late windows each span approximately one vertical crossing time.
 
 The earlier one-rank startup to `t=1` gave sampled residuals `+0.0801`
 and `-0.0721 F_sun` for the old and new sources, so a one-second diagnostic
