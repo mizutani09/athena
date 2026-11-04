@@ -388,6 +388,27 @@ def main() -> None:
             key: late_profiles[key]
             for key in ("window_start_code", "window_end_code", "snapshot_count")
         }
+    optical_path = args.run_dir / "optical_profiles3d_late_mean.json"
+    if optical_path.is_file():
+        optical = json.loads(optical_path.read_text())
+        targets = np.asarray(optical["tau_targets"], dtype=float)
+        values = np.asarray([np.nan if x is None else x for x in
+                             optical["temperature_K"]["temporal_mean"]])
+        valid = np.isfinite(values)
+        if valid.sum() >= 2:
+            target = 2.0/3.0
+            report["optical_profile_late"] = {
+                "window_start_code": optical["window_start_code"],
+                "window_end_code": optical["window_end_code"],
+                "snapshot_count": optical["snapshot_count"],
+                "T_tau23_mean_K": float(np.interp(
+                    np.log10(target), np.log10(targets[valid]), values[valid])),
+            }
+            reference = optical.get("reference_profile")
+            if reference:
+                report["optical_profile_late"]["T_tau23_initial_solar_K"] = float(
+                    np.interp(np.log10(target), np.log10(targets),
+                              reference["temperature_K"]))
     (args.run_dir / "summary.json").write_text(json.dumps(report, indent=2) + "\n")
     make_plot(h, units, args.reference_flux, args.run_dir / "history.png")
     candidate = report["stationarity_candidate"]
@@ -439,6 +460,14 @@ def main() -> None:
                       f"{late_profiles['window_start_code']:.2f}–"
                       f"{late_profiles['window_end_code']:.2f} code, "
                       f"{late_profiles['snapshot_count']} snapshots"))
+    optical_late = report.get("optical_profile_late")
+    if optical_late:
+        quick.append(("Late full-3D T at tau=2/3",
+                      f"{optical_late['T_tau23_mean_K']:.0f} K "
+                      f"({optical_late['snapshot_count']} snapshots)"))
+        if "T_tau23_initial_solar_K" in optical_late:
+            quick.append(("Imported solar 1D T at tau=2/3",
+                          f"{optical_late['T_tau23_initial_solar_K']:.0f} K"))
     ledger = report.get("sampled_energy_ledger_late")
     if ledger:
         quick.append(("Late sampled energy-ledger residual",
@@ -464,9 +493,11 @@ def main() -> None:
     profile_note = (
         "<p><strong>Profile reference:</strong> dashed initial solar 1D curves "
         "are the imported starting stratification, not an independent "
-        "observational benchmark.</p>"
+        "observational benchmark. <a href='optical_profiles3d_late_mean.json'>"
+        "Optical-profile data</a>.</p>"
         if late_profiles_path.is_file() and
-        "reference_profile" in json.loads(late_profiles_path.read_text()) else "")
+        "reference_profile" in json.loads(late_profiles_path.read_text()) and
+        optical_path.is_file() else "")
     energy_note = (
         "<p><strong>Energy ledger:</strong> the reported residual integrates "
         "sampled face fluxes and potential-energy transport. It is a diagnostic "

@@ -349,6 +349,14 @@ movie, 3D profiles and a `t≈80`→`100` three-snapshot profile average.
 The late full-3D temperature and density plots now overlay the imported
 solar 1D starting stratification as a visual reference; it is not an
 independent observation or a stationarity criterion.
+An additional Rosseland-optical-depth-aligned full-3D profile removes the
+height shift when comparing the photosphere. In the **legacy gravity-source**
+`t=260`→`300` five-snapshot average, `T(tau=2/3)=5145 K` versus `5770 K`
+in the imported 1D solar starting profile; the discrepancy is concentrated
+near the surface, while the deeper `tau≈10^3` temperatures are close. This
+transient difference is not a final physical validation result. The plot and
+data are `simple_convection_optical_profiles3d_late_mean.png` and
+`optical_profiles3d_late_mean.json` in the case report.
 For orientation, a flux of `0.585 F_sun` implies a blackbody effective
 temperature about `5048 K` if the same solar reference is used, close to the
 instantaneous `tau=2/3` mean of `5028 K`. This agreement is a gray-atmosphere

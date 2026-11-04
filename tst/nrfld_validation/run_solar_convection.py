@@ -277,6 +277,8 @@ def main() -> None:
                                str(repo / "scripts/plot_simple_convection_surface3d.py"),
                                str(case), "--input", str(generated),
                                "--opacity-table", str(root / "data" / data_names[1])]
+            surface_command += ["--reference-profile",
+                                str(root / "data" / data_names[2])]
             subprocess.run(surface_command, check=True)
             flux_command = [sys.executable,
                             str(repo / "scripts/plot_simple_convection_flux3d.py"),

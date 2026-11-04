@@ -63,6 +63,8 @@ def main() -> None:
     parser.add_argument("run_dir", type=Path)
     parser.add_argument("--input", type=Path, required=True)
     parser.add_argument("--opacity-table", type=Path, required=True)
+    parser.add_argument("--reference-profile", type=Path,
+                        help="Imported solar 1D profile used only as a visual reference")
     parser.add_argument("--solar-teff", type=float, default=5772.0)
     args = parser.parse_args()
     units = units_from_input(args.input)
@@ -78,6 +80,9 @@ def main() -> None:
 
     records = []
     vertical_profiles = []
+    optical_profiles = []
+    tau_targets = np.unique(np.r_[np.logspace(-2, 5, 24),
+                                  2.0/3.0, 1.0, 10.0, 100.0])
     last_map = None
     for prim_path, uov_path in pairs:
         prim, (x, y, z), time = read_volume(prim_path, "prim")
@@ -121,6 +126,24 @@ def main() -> None:
                               * velocity_unit / 1.0e5).tolist(),
             "qrad_mean_cgs": np.mean(uov[4], axis=(1, 2)).tolist(),
         })
+        optical_temperature = []
+        optical_density = []
+        optical_coverage = []
+        for target in tau_targets:
+            z_at_tau, T_at_tau = surface_at(tau, z, temp, target)
+            _, rho_at_tau = surface_at(tau, z, rho, target)
+            coverage_at_tau = float(np.mean(np.isfinite(z_at_tau)))
+            optical_coverage.append(coverage_at_tau)
+            optical_temperature.append(float(np.nanmean(T_at_tau))
+                                       if coverage_at_tau >= 0.95 else None)
+            optical_density.append(float(np.nanmean(rho_at_tau))
+                                   if coverage_at_tau >= 0.95 else None)
+        optical_profiles.append({
+            "time_code": time,
+            "temperature_K": optical_temperature,
+            "density_cgs": optical_density,
+            "coverage": optical_coverage,
+        })
         last_map = (x, y, temp23, vz23 * velocity_unit / 1.0e5, time)
 
     (args.run_dir / "surface3d.json").write_text(json.dumps(
@@ -128,6 +151,53 @@ def main() -> None:
     (args.run_dir / "profiles3d.json").write_text(json.dumps(
         {"scope": "horizontal means over full uniform 3D domain",
          "records": vertical_profiles}, indent=2) + "\n")
+    profile_times = np.asarray([item["time_code"] for item in optical_profiles])
+    late_start = profile_times[-1] - 0.25*(profile_times[-1] - profile_times[0])
+    selected_optical = [item for item in optical_profiles
+                        if item["time_code"] >= late_start]
+    late_optical = {
+        "description": "Full 3D horizontal means on Rosseland optical-depth surfaces, "
+                       "then temporal means; not a stationarity claim",
+        "tau_targets": tau_targets.tolist(),
+        "window_start_code": selected_optical[0]["time_code"],
+        "window_end_code": selected_optical[-1]["time_code"],
+        "snapshot_count": len(selected_optical),
+        "records": optical_profiles,
+    }
+    for field in ("temperature_K", "density_cgs"):
+        means, stds, counts = [], [], []
+        for index in range(len(tau_targets)):
+            values = [item[field][index] for item in selected_optical
+                      if item[field][index] is not None]
+            counts.append(len(values))
+            means.append(float(np.mean(values)) if len(values) >= 2 else None)
+            stds.append(float(np.std(values)) if len(values) >= 2 else None)
+        late_optical[field] = {"temporal_mean": means,
+                               "temporal_std": stds,
+                               "snapshot_count": counts}
+    reference = None
+    if args.reference_profile is not None:
+        raw = np.loadtxt(args.reference_profile, comments="#", ndmin=2)
+        if raw.shape[1] < 5:
+            raise ValueError("Expected solar profile with tau in column 3")
+        raw = raw[np.isfinite(raw[:, 2]) & (raw[:, 2] > 0)]
+        if len(raw) < 2:
+            raise ValueError("Solar profile has too few positive tau values")
+        order = np.argsort(raw[:, 2])
+        reference = {
+            "temperature_K": np.interp(np.log10(tau_targets),
+                                         np.log10(raw[order, 2]), raw[order, 1]),
+            "density_cgs": np.interp(np.log10(tau_targets),
+                                      np.log10(raw[order, 2]), raw[order, 4]),
+        }
+        late_optical["reference_profile"] = {
+            "description": "Imported solar 1D starting profile; not an independent observation",
+            "path": str(args.reference_profile.resolve()),
+            "temperature_K": reference["temperature_K"].tolist(),
+            "density_cgs": reference["density_cgs"].tolist(),
+        }
+    (args.run_dir / "optical_profiles3d_late_mean.json").write_text(
+        json.dumps(late_optical, indent=2) + "\n")
     images = args.run_dir / "imgs"
     images.mkdir(exist_ok=True)
     t = np.array([record["time_minutes"] for record in records])
@@ -135,6 +205,36 @@ def main() -> None:
     temp_std = np.array([record["T_tau23_std_K"] for record in records])
     vz_rms = np.array([record["vz_tau23_rms_km_s"] for record in records])
     plt.rcParams.update({"font.size": 13})
+    fig, axes = plt.subplots(1, 2, figsize=(14, 5), constrained_layout=True)
+    for ax, field, ylabel in ((axes[0], "temperature_K", "gas temperature [K]"),
+                              (axes[1], "density_cgs", "density [g cm$^{-3}$]")):
+        values = np.asarray([np.nan if x is None else x
+                             for x in late_optical[field]["temporal_mean"]])
+        scatter = np.asarray([np.nan if x is None else x
+                              for x in late_optical[field]["temporal_std"]])
+        valid = np.isfinite(values)
+        ax.plot(tau_targets[valid], values[valid], label="late 3D mean")
+        lower = values[valid] - scatter[valid]
+        if field == "density_cgs":
+            lower = np.maximum(lower, np.finfo(float).tiny)
+        ax.fill_between(tau_targets[valid], lower,
+                        values[valid] + scatter[valid], alpha=0.2,
+                        label="snapshot std")
+        if reference is not None:
+            ax.plot(tau_targets, reference[field], color="black", ls="--",
+                    label="initial solar 1D")
+        ax.set(xscale="log", xlabel="Rosseland optical depth", ylabel=ylabel)
+        if field == "density_cgs":
+            ax.set_yscale("log")
+        ax.grid(alpha=0.25)
+        ax.legend()
+    fig.suptitle("Full 3D optical-depth profiles, "
+                 f"t={late_optical['window_start_code']:.3g}–"
+                 f"{late_optical['window_end_code']:.3g} code "
+                 "(transient until stationarity passes)")
+    fig.savefig(images / "simple_convection_optical_profiles3d_late_mean.png",
+                dpi=180)
+    plt.close(fig)
     fig, ax = plt.subplots(2, 1, figsize=(10, 8), sharex=True,
                            constrained_layout=True)
     ax[0].plot(t, temp_mean)
