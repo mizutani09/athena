@@ -359,16 +359,55 @@ segment. This is not yet proof of a code conservation error because the
 history samples accepted-step fluxes, not their exact RK-stage integrals.
 The cadence and discrete source/flux audit is tracked separately as WOR-72;
 until then, this residual limits precision claims for solar flux comparison.
-The next corrected continuation targets `t=300` to enlarge the statistical
-window; this is a relaxation test, not a claim that 96 km resolves solar
-granulation.
+The corrected 96 km box then completed `t=300` (111.8 physical minutes) at
+cycle 4254. In the `t=100`→`300` continuation, all 2,946 reported Newton
+solves converged, with 11,711 FGMRES calls, maximum 31 iterations per call,
+and zero slow-MG warnings or fatal errors. The `t=150`→`225` and
+`t=225`→`300` windows each cover approximately one full-height crossing,
+but their mean top fluxes rise from `0.668` to `0.770 F_sun` and their
+vertical RMS speeds from `1.76` to `2.18 km/s`. The bottom hydro flux even
+changes sign, from `+4.34` to `-4.99 F_sun`; maximum mass drift in the last
+window is `1.06%`. The full-3D `tau=2/3` mean temperature changes from
+about `5251 K` in a `t=200` snapshot to `4924 K` at `t=300`. Thus the
+stationarity screen fails despite robust implicit convergence. The sampled
+energy-ledger residual in the last quarter is `+0.128 F_sun`; its status
+remains diagnostic until the stage-flux/source audit in WOR-72 is complete.
+This is a relaxation test, not a claim that 96 km resolves solar granulation.
+A `t=100`→`150` continuation with the HD2 bottom mass-balance feedback
+disabled is running to isolate that controller's effect on the large
+bottom-flux swings. A corrected 48 km box is also continuing from `t=10`
+to `t=100` on 12 MPI ranks for a resolution comparison.
 The pre-fix 64³ continuation was intentionally stopped at `t≈153` after
 writing a `t=150` restart, to free six physical cores for the corrected
 baseline. Between `t=100` and the stop, all 3,303 reported Newton solves
 converged, with 11,973 FGMRES calls and zero slow-MG warnings or fatal errors.
 Its HTML explicitly says "intentionally stopped" and keeps the partial
-history/movie. A fresh corrected 64³, 12-rank, CFL 0.3 run to `t=100` is now
-running, alongside the corrected 48 km large-box comparison.
+history/movie. The corrected 64³, 12-rank, CFL 0.3 run completed `t=100`.
+All `5359/5359` nonzero-step Newton solves converged, with `18,489` FGMRES
+calls, zero slow-MG warnings and zero fatals. Its two late 25-code-time
+windows have mean top fluxes `0.724` and `0.810 F_sun`, vertical RMS speeds
+`2.185` and `2.397 km/s`, and only `0.792` and `0.869` vertical crossing
+times. The last window reaches `2.07%` maximum mass drift. At `t=100`, the
+xz-slice mean `T(tau=2/3)` is `5466 K` with `205 K` horizontal standard
+deviation. The old pre-fix `t=100` case had a late flux of `0.786 F_sun`
+and `1.56%` maximum mass drift; correcting startup does not by itself
+resolve late flux or mass drift. The small box is a long solver and boundary
+test, not a Rempel-size solar validation.
+From the same corrected `t=100` checkpoint, a `t=100`→`102` benchmark on
+CPUs 0–11 measured `220.78 s` for six MPI ranks bound one per physical core
+and `151.55 s` for 12 MPI ranks on the corresponding hyperthreads. Both
+completed 121 cycles with 481 FGMRES calls, zero warnings and zero fatal
+errors; their final recorded top fluxes differ by `0.039%`, reflecting a
+small decomposition dependence. The 12-rank placement is `31%` shorter in
+wall time for this small-box checkpoint while the other two physical cores
+run the coarse large-box continuation. This result should not be generalized to larger
+meshes without a separate benchmark.
+An identical small-box `t=100`→`102` restart with 20-fold finer history
+cadence produced the same 121 cycles and 481 FGMRES calls. Over the common
+`t=100.1`→`102` interval, the sampled energy-ledger residual was
+approximately `-0.0010 F_sun` with ordinary cadence and `-0.0024 F_sun`
+with fine cadence. This short small-box interval has a much smaller residual
+than the coarse large-box windows, so it does not settle WOR-72.
 
 The large-box pilot uses the generated files under
 `/mnt/d/output/rad/wor70_solar_20261104/profile_3Mm_candidate/input_data`.
