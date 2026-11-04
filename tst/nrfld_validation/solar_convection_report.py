@@ -374,6 +374,11 @@ def main() -> None:
         f"<figcaption>{html.escape(path.name)}</figcaption></figure>"
         for path in sorted((args.run_dir / "movies").glob("*.mp4"))
     )
+    flux_note = (
+        "<p><strong>Flux profile:</strong> the 3D curves use cell-center "
+        "reconstruction, including an approximate FLD gradient. Read exact "
+        "top and bottom boundary fluxes from the history metrics above.</p>"
+        if (args.run_dir / "flux3d.json").is_file() else "")
     (args.run_dir / "index.html").write_text(
         "<!doctype html><html lang='en'><meta charset='utf-8'>"
         "<title>Solar convection run</title><style>body{font:19px/1.5 system-ui;"
@@ -389,7 +394,7 @@ def main() -> None:
         "<p><a href='history.png'>History plot</a> · <a href='summary.json'>JSON</a> · "
         "<a href='run.log'>run.log</a></p>"
         f"<table>{table}</table><img src='history.png' alt='history'>"
-        f"<h2>Existing plots</h2>{gallery}"
+        f"<h2>Existing plots</h2>{flux_note}{gallery}"
         + (f"<h2>Movies</h2>{movies}" if movies else "")
         + f"<h2>Metrics</h2><pre>{summary}</pre></html>"
     )

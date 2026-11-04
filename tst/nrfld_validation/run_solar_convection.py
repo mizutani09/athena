@@ -259,6 +259,11 @@ def main() -> None:
                                str(case), "--input", str(generated),
                                "--opacity-table", str(root / "data" / data_names[1])]
             subprocess.run(surface_command, check=True)
+            flux_command = [sys.executable,
+                            str(repo / "scripts/plot_simple_convection_flux3d.py"),
+                            str(case), "--input", str(generated),
+                            "--opacity-table", str(root / "data" / data_names[1])]
+            subprocess.run(flux_command, check=True)
             late_profile_command = [sys.executable,
                                     str(repo / "scripts/plot_simple_convection_late_profiles3d.py"),
                                     str(case)]

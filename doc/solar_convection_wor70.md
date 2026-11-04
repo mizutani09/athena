@@ -254,6 +254,15 @@ the recorded interval, `plot_simple_convection_late_profiles3d.py` writes
 their temporal mean and snapshot standard deviation as
 `profiles3d_late_mean.json` and a four-panel plot. This is a descriptive
 window and is not labeled stationary until the separate history screen passes.
+`plot_simple_convection_flux3d.py` reconstructs interior vertical profiles
+of radiation, convective enthalpy, mean-flow enthalpy, kinetic and gravitational
+flux from full volumes. Its FLD radiation component uses cell-centered
+gradients and the code's Levermore-Pomraning limiter; it is an **approximate
+interior** profile. The history's face fluxes, not the profile end cells,
+are authoritative for the top/bottom energy ledger. The convective enthalpy
+term subtracts transport by the horizontally mean mass flow. A strongly
+varying sum of these profiles is a sign of thermal transience, not a solar
+flux agreement test.
 A one-cycle 128 × 128 × 64 smoke run produced paired full
 volumes; at `t=0` the 3D mean `T(tau=2/3)=5703.993 K` versus `5704.008 K` in
 the xz slice, and the mean heights agree within `6e-6` code. This checks the
