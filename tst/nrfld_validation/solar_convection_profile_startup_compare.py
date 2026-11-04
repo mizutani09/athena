@@ -60,8 +60,8 @@ def main() -> None:
         surfaces = (json.loads(surface_path.read_text()).get("records", [])
                     if surface_path.is_file() else [])
         late = (history["time"] >= 5) & (history["time"] <= 10)
-        if not np.any(late):
-            raise ValueError(f"{run_dir}: no t=5–10 history samples")
+        if history["time"][0] > 5 or history["time"][-1] < 10 or not np.any(late):
+            raise ValueError(f"{run_dir}: history does not cover t=5–10")
         last_ten = (history["time"] >= history["time"][-1]-10)
         long_startup = history["time"][-1] > 20
         items[label] = {
@@ -76,8 +76,11 @@ def main() -> None:
                                                       / args.reference_flux),
                 "top_flux_t5_10_mean_over_solar": float(np.mean(
                     history["FtotTop"][late])/args.reference_flux),
-                "top_flux_t10_over_solar": float(history["FtotTop"][-1]
-                                                  / args.reference_flux),
+                "top_flux_t10_over_solar": float(np.interp(
+                    10.0, history["time"], history["FtotTop"])
+                    / args.reference_flux),
+                "top_flux_final_over_solar": float(history["FtotTop"][-1]
+                                                    / args.reference_flux),
                 "top_flux_last10_mean_over_solar": (
                     float(np.mean(history["FtotTop"][last_ten])/args.reference_flux)
                     if long_startup else None),
