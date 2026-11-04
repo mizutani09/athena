@@ -16,6 +16,7 @@ import numpy as np
 
 from solar_convection_report import (effective_problem_bool,
                                      effective_problem_float, input_values,
+                                     physical_time_unit,
                                      read_history)
 
 
@@ -120,6 +121,8 @@ def main() -> None:
     units = input_values(args.baseline / "athinput.generated")
     area = ((units["x1max"]-units["x1min"])
             * (units["x2max"]-units["x2min"]) * units["leng_unit"]**2)
+    velocity_unit = np.sqrt(units["egas_unit"]/units["rho_unit"])
+    time_unit = physical_time_unit(units, velocity_unit)
     span = min(25.0, 0.5*(end-start))
     late_half_start = start + 0.5*(end-start)
     rows = []
@@ -153,6 +156,13 @@ def main() -> None:
                 delta["FhydBottom"][early])/args.reference_flux),
             "late_delta_bottom_hydro_over_solar": float(np.mean(
                 delta["FhydBottom"][late])/args.reference_flux),
+            "delta_stored_energy_rate_over_solar": float(
+                (delta["EtotGrav"][-1]-delta["EtotGrav"][0])
+                / (area*args.reference_flux*(t[-1]-t[0])*time_unit)),
+            "late_delta_stored_energy_rate_over_solar": float(
+                (delta["EtotGrav"][late][-1]-delta["EtotGrav"][late][0])
+                / (area*args.reference_flux
+                   *(t[late][-1]-t[late][0])*time_unit)),
             "late_absolute_top_over_solar": float(np.mean(
                 history["FtotTop"][selected][late])/args.reference_flux),
             "late_absolute_bottom_hydro_over_solar": float(np.mean(
@@ -231,12 +241,13 @@ def main() -> None:
             f"{row['early_delta_top_over_solar']:+.4f}",
             f"{row['late_delta_top_over_solar']:+.4f}",
             f"{row['late_half_delta_top_over_solar']:+.4f}",
+            f"{row['delta_stored_energy_rate_over_solar']:+.3f}",
             f"{row['late_absolute_top_over_solar']:.3f}",
         )) + "</tr>")
     headers = ("Case", "Δs [erg g⁻¹ K⁻¹]", "Early ΔFhyd,bottom / solar",
                "Late ΔFhyd,bottom / solar", "Early ΔFtop / solar",
                "Late 25-code ΔFtop / solar", "Late half ΔFtop / solar",
-               "Late Ftop / solar")
+               "Δ stored energy rate / solar", "Late Ftop / solar")
     table_head = "".join(f"<th>{name}</th>" for name in headers)
     baseline_link = (f"<a href='../{html.escape(args.baseline.name)}/index.html'>"
                      "Baseline case report</a>")
@@ -251,7 +262,9 @@ def main() -> None:
         "at the bottom does not establish a calibrated solar top flux. "
         "The late short and late-half averages should agree in sign before "
         "interpreting a persistent upper response. Each run's stationarity "
-        "and solver status are in its linked report.</p>"
+        "and solver status are in its linked report. The stored-energy rate "
+        "is the variant-minus-baseline endpoint change over the full common "
+        "interval; oscillation phase can affect it.</p>"
         f"<p>Common interval: {start:.1f}–{end:.1f} code time; "
         f"baseline s_in = {args.baseline_s_in:.9e} erg g⁻¹ K⁻¹; "
         f"baseline late top flux = {result['baseline_late_top_over_solar']:.3f} "
