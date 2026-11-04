@@ -999,6 +999,38 @@ WOR-76 tracks this restart-to-continuous difference. A zero-step restart's
 where the drift returns to a normal value. Do not interpret the zero-step
 sample as physical mass loss.
 
+The same baseline continued to `t=1300` with 1423/1423 further converged
+Newton steps, no slow-MG warnings, and no fatals. The four-segment
+`t=800`–`1300` result has 7122/7122 converged solves. The two final
+125-code-time windows span `1.123` and `1.108` vertical crossing times.
+Their top fluxes are `0.6112` and `0.6148 F_sun`; their bottom hydro
+fluxes are `0.7377` and `0.5873 F_sun`. Both energy endpoint rates
+(`+0.0788` and `-0.0230 F_sun`), both fitted energy trends (`+0.0301`
+and `-0.0150 F_sun`), mass drift (below `0.059%`), top-flux change,
+and vertical RMS stability meet the screening thresholds. Only the
+requirement that both top fluxes lie within 10% of the solar flux fails.
+The final full-3D `tau=2/3` temperature is `5152 K`. See
+`rempel_box_pilot/mass_rate40_combined_t800_1300/index.html`. The whole-box
+thermal time estimate is much longer than this run, so the near-flat top
+flux is not proof of final thermal equilibrium.
+
+The lower hydro-flux oscillation amplitude has decreased over five roughly
+100-code-time windows from `4.557`, `3.562`, `2.830`, `2.299` to
+`1.914 F_sun` standard deviation across `t=800`–`1300`. The dominant
+period in these windows is about `6.2` minutes, and the horizontal-mean
+vertical-velocity variance fraction falls from `0.308` to `0.188`.
+This establishes damping under gain-40 mass feedback at 96 km, but does
+not identify the acoustic mode's cause. The comparison is in
+`rempel_box_pilot/gain40_late_oscillation_t800_1300/index.html`.
+
+For WOR-76, an experimental post-NR FLD ghost synchronization did not
+reduce the continuous-versus-restarted first-step difference and was
+reverted. At the checkpoint time, every full-3D active-cell primitive
+value in the 32 blocks matches exactly between the original output and a
+zero-step restart. The five user-output variables differ at only 13
+locations, with maximum relative difference `3.35e-11` over the full
+array. The source of the first-step divergence remains unresolved.
+
 ## Next scientific gates
 
 1. Continue the corrected Rempel-sized box past `t=300`, compare the HD2
