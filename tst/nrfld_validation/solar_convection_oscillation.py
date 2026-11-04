@@ -12,6 +12,7 @@ import html
 import json
 from pathlib import Path
 
+import h5py
 import matplotlib
 
 matplotlib.use("Agg")
@@ -19,6 +20,38 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 from solar_convection_report import input_values, physical_time_unit, read_history
+
+
+def vertical_mode_coherence(run_dir: Path, start: float,
+                            end: float) -> tuple[float | None, int]:
+    """Fraction of vertical-velocity variance in the horizontal mean mode."""
+    fractions = []
+    for path in sorted(run_dir.glob("*.prim_full.*.athdf")):
+        with h5py.File(path, "r") as source:
+            time = float(source.attrs["Time"])
+            if not start <= time < end:
+                continue
+            if np.any(source["Levels"][...] != 0):
+                raise ValueError(f"{path}: coherence currently requires uniform grid")
+            nz = int(source.attrs["RootGridSize"][2])
+            names = [v.decode() for v in source.attrs["VariableNames"]]
+            vz_index = names.index("vel3")
+            blocks = source["prim"][vz_index]
+            locations = source["LogicalLocations"][...]
+            bz, by, bx = blocks.shape[1:]
+            sums = np.zeros(nz)
+            squares = np.zeros(nz)
+            counts = np.zeros(nz)
+            for block, location in zip(blocks, locations):
+                z = int(location[2])*bz
+                sums[z:z+bz] += np.sum(block, axis=(1, 2))
+                squares[z:z+bz] += np.sum(block**2, axis=(1, 2))
+                counts[z:z+bz] += bx*by
+            mean_z = sums/counts
+            fractions.append(float(np.mean(mean_z**2)
+                                   / (np.sum(squares)/np.sum(counts))))
+    return (float(np.mean(fractions)) if fractions else None,
+            len(fractions))
 
 
 def analyze(label: str, run_dir: Path, start: float, end: float,
@@ -43,6 +76,7 @@ def analyze(label: str, run_dir: Path, start: float, end: float,
     frequency = np.fft.rfftfreq(len(y), dt)
     possible = (frequency >= 1.0/30.0) & (frequency <= 1.0/3.0)
     peak = int(np.argmax(np.where(possible, power, -np.inf)))
+    coherence, snapshots = vertical_mode_coherence(run_dir, start, end)
     result = {
         "label": label, "run_dir": str(run_dir),
         "window_start_code": float(t[0]), "window_end_code": float(t[-1]),
@@ -56,6 +90,8 @@ def analyze(label: str, run_dir: Path, start: float, end: float,
         "top_flux_std_over_solar": float(np.std(curves["FtotTop"])),
         "mass_drift_std_percent": float(np.std(curves["MassDrift"])),
         "pressure_scale_std_percent": float(np.std(curves["PBNDScale"])),
+        "horizontal_mean_vz_variance_fraction": coherence,
+        "full_volume_snapshot_count": snapshots,
     }
     return result, {"time": uniform_t - uniform_t[0], "curves": curves,
                     "period": np.divide(1.0, frequency, out=np.full_like(
@@ -114,6 +150,10 @@ def main() -> None:
             f"{row['bottom_hydro_flux_std_over_solar']:.1f}",
             f"{row['mass_drift_std_percent']:.3f}",
             f"{row['pressure_scale_std_percent']:.3f}",
+            (f"{row['horizontal_mean_vz_variance_fraction']:.3f} "
+             f"({row['full_volume_snapshot_count']} dumps)"
+             if row["horizontal_mean_vz_variance_fraction"] is not None
+             else "—"),
         )) + "</tr>" for row in rows)
     (args.output_dir / "index.html").write_text(
         "<!doctype html><html lang='en'><meta charset='utf-8'>"
@@ -126,7 +166,8 @@ def main() -> None:
         "identify its cause. Flux amplitude uses the solar reference flux.</p>"
         "<table><tr><th>Case</th><th>Window</th><th>Period [code]</th>"
         "<th>Period [min]</th><th>Bottom flux std / solar</th>"
-        "<th>Mass drift std [%]</th><th>PBND scale std [%]</th></tr>"
+        "<th>Mass drift std [%]</th><th>PBND scale std [%]</th>"
+        "<th>Mean-vz variance fraction</th></tr>"
         f"{cells}</table><img src='oscillation_comparison.png' alt='oscillation'>"
         "<p><a href='summary.json'>Numerical results</a></p></html>"
     )

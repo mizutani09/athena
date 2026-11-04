@@ -491,6 +491,12 @@ code time. The legacy mass-feedback-OFF control at `t=100`–`150` has
 `37.4 F_sun` and broad power around 12–17 code time, so feedback is not
 established as the sole cause. These windows are at different evolutionary
 stages and cannot by themselves assign growth to the gravity-source change.
+The full-volume fraction of vertical-velocity variance in the horizontally
+mean mode grows from `0.294` (four legacy dumps at `t=100`–`150`) to `0.471`
+(five legacy dumps at `t=200`–`250`) and `0.710` (five corrected-source dumps
+at `t=350`–`400`). This identifies a box-scale coherent breathing motion,
+not merely local granular fluctuations; the feedback-OFF control has no
+full-volume dumps for the same metric.
 The plot, exact windows, and JSON are in
 `rempel_box_pilot/acoustic_mode_diagnostic/`. Compare boundary damping on
 the same corrected-source restart before changing the physical setup.
