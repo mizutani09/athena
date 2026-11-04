@@ -341,9 +341,10 @@ def main() -> None:
         key = round(dx, 8)
         stagger = label_index_by_dx.get(key, 0)
         label_index_by_dx[key] = stagger+1
+        label_offset = (5, (9, -15, 25)[stagger % 3])
         axes[0].plot(dx, row["gas_peak_numerical_K"], "o", color="tab:blue")
         axes[0].annotate(row["label"], (dx, row["gas_peak_numerical_K"]),
-                         xytext=(4, 5+13*stagger), textcoords="offset points", fontsize=8)
+                         xytext=label_offset, textcoords="offset points", fontsize=8)
         axes[0].plot(dx, row["gas_peak_fv_projected_reference_K"], "s",
                      color="tab:orange")
         lo, hi = row["gas_peak_fv_projection_phase_range_K"]
@@ -351,7 +352,7 @@ def main() -> None:
         axes[1].plot(dx, 100*row["spike_amplitude_recovery"], "o",
                      color="tab:blue")
         axes[1].annotate(row["label"], (dx, 100*row["spike_amplitude_recovery"]),
-                         xytext=(4, 5+13*stagger), textcoords="offset points", fontsize=8)
+                         xytext=label_offset, textcoords="offset points", fontsize=8)
     axes[0].axhline(cases[0]["gas_peak_point_reference_K"], color="black",
                     ls="--", label="semi-analytic point peak")
     axes[0].set(ylabel="T_gas peak [K]", xlabel="shock cell width [cm]")
@@ -493,6 +494,17 @@ def main() -> None:
                                  previous["Tgas_peak_after_explicit_K"],
                                  previous["Tgas_peak_after_implicit_K"])
                          if previous else "")))
+        if previous:
+            cell = previous["hottest_pre_implicit_cell"]
+            html.append("<p>At the previous full step's hottest cell in {}, "
+                        "Δ(E_gas+E_rad)={:.6g} and dt·S_diff={:.6g} "
+                        "(code energy-density units). The reported implicit "
+                        "energy-budget residual is {:.2g} relative to the "
+                        "largest diffusion source.</p>".format(
+                            escape(row["label"]),
+                            cell["total_energy_density_change"],
+                            cell["dt_times_implicit_diffusion_source"],
+                            previous["implicit_energy_budget_relative_error"]))
     html.extend([
                  "<p>Full aligned L1, raw shock position, peak change since the previous output, solver convergence, energy-flux spread, runtime and exact paths are in <a href='summary.json'>summary.json</a>. The sampled rank high-water RSS is a sum of per-process values, so shared pages may be counted more than once; the separate /usr/bin/time RSS is for the MPI launcher. The shock domain has fixed inflow/outflow states, so total energy is not expected to remain constant.</p>",
                  "</body></html>"])

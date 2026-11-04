@@ -19,6 +19,8 @@ A second, diagnostic reference averages the analytic conserved gas density, mome
 | Uniform N512, CFL .3 | 11.719 | 905.072 | 22.29% | 928.007 | 909.78–983.46 |
 | Uniform N512, CFL .15 | 11.719 | 903.768 | 21.70% | 928.007 | 909.78–983.46 |
 | Uniform N1024, CFL .3 | 5.859 | 955.085 | 44.88% | 982.142 | 945.74–1008.53 |
+| One-level AMR, finest dx=N1024 | 5.859 | 946.999 | 41.23% | 982.142 | 945.74–1008.53 |
+| Uniform N2048, CFL .3 | 2.930 | 991.437 | 61.30% | 1033.477 | 988.55–1036.79 |
 
 Halving CFL at N512 lowers the final peak by only 1.30 K, whereas changing N256 to N512 raises it by 26.27 K. The N512 peak also falls by about 1.94 K between the saved t=.038 and .04 s outputs, so the global aligned L1 stationarity check alone does not establish local peak stationarity. N256/N512 numerical peaks sit half a cell upstream of the density-jump midpoint, while the FV-projected reference peak sits half a cell downstream. That location difference shrinks in physical units as dx decreases.
 
@@ -59,9 +61,45 @@ cell. This identifies implicit radiation diffusion out of the hot cell,
 coupled to the gas, as the immediate cause of the post-implicit peak drop;
 it is not an unexplained loss of gas+radiation energy.
 
+Uniform N2048/CFL .3 completed at t=.04 in 36,722 cycles and 216.8 wall
+minutes. It **passes the established gate**: peak 991.437 K, point-peak error
+7.95%, spike recovery 61.30%, aligned L1 0.069% (density), 0.092% (gas T)
+and 0.076% (radiation T), raw shock error 3.06% of domain width, and maximum
+aligned change since the previous output 0.028%. All 36,722 Newton steps
+strictly converged with no relaxed acceptance. The late t=.03–.04 peak
+range is 971.042–1008.810 K; its minimum remains above both peak thresholds,
+though the 10%-error threshold is only 969.391 K. The analytic spike
+half-height width is about 3.188 cm, only 1.09 of these 2.930 cm cells,
+so a passing gate does not yet show asymptotic peak convergence.
+
+The N2048 last full step has dt=1.108 µs, versus 2.217 µs at N1024. Its
+post-explicit peak falls 1015.925→991.525 K in the implicit stage, a 24.40 K
+same-cell drop versus 37.45 K at N1024. At that hottest cell the combined
+gas+radiation energy-density change is -0.00439852, equal to
+`dt*S_diff_implicit` to about 2e-15 absolute. The final shortened step is
+0.158 µs and changes 994.909→991.443 K. The numerical and FV-projected
+peaks are both at +1.465 cm from the density jump, but their values differ
+by 42.04 K at that registration; the FV projection varies by 988.55–1036.79
+K under the explicitly reported half-cell registration sensitivity. No
+peak-optimizing translation is used for the physical gate.
+
+One-level AMR with base N512 (finest dx=5.859 cm) also completed at t=.04
+and retained both levels (130 final MeshBlocks). Its peak is 946.999 K,
+12.08% below the point reference with 41.23% recovery, so it remains
+`accuracy_not_met` at this local resolution. Its aligned density/gas/radiation
+L1 values are 0.141/0.188/0.146%, raw shock error 3.16% of the domain,
+and all 20,143 reported Newton solves strictly converged. The 18,261 global
+cycles and 20,143 solves differ because refined levels subcycle. Its late
+peak range is 946.408–961.434 K; even the highest value is below the 50%
+recovery threshold. The AMR peak at the final output lies half a finest cell
+upstream of the density-jump center, while the FV-projected peak lies half a
+cell downstream. The analogous uniform N1024 final peak is 8.087 K higher,
+but the sign of the AMR–uniform difference changed across earlier saved
+times, so a systematic AMR bias is not established by one final sample.
+
 The N64 bitwise control used a fresh current-source build and the previous WOR-10 binary with exactly the same input. Every dataset in their final HDF5 files agrees bitwise at 0.04 s. The production high-resolution uniform runs use the previous binary; this control checks the current source's default physics behavior after the later opt-in diagnostic changes.
 
-## Running calculations and reproducibility
+## Calculations and reproducibility
 
 The combined HTML is `/mnt/d/output/rad/wor67_spike_audit_20261104/index.html`; it is regenerated as high-resolution cases finish. Simulation inputs, run logs, HDF5, history and resource files are under `/mnt/d/output/rad/wor67_*_20261104`. The baseline N64/128/256 cases are in the WOR-10 output directories; the N512 baseline is `/mnt/d/output/rad/wor10_n512_20261104`. Analysis is `tst/nrfld_validation/wor67_spike_audit.py`.
 
@@ -79,5 +117,28 @@ N256. Both had strict solver progress, but neither is a completed physical
 validation case. The freed cores run N1024/CFL .15, an exact same-grid
 temporal control for N1024/CFL .3 and a dt-matched spatial partner to N2048.
 The SMR HPC preset remains available in the standard radiative-shock runner.
+
+A uniform N4096/CFL .3 sizing pilot used six MPI ranks on the remaining six
+physical cores. Its 100-cycle run took 84.17 wall seconds and advanced only
+to t=5.13e-5 s; a separate 10-cycle run measured 199–200 MiB high-water RSS
+per rank, about 1.17 GiB summed across six ranks. The late pilot dt was
+4.923e-7 s. Holding that early dt and wall rate fixed would require roughly
+81,000 more cycles and 19 hours; the steady runtime could differ, so this is
+only an order-of-magnitude sizing estimate. Memory is feasible on this WSL
+machine, but a full N4096 run is not a practical local follow-up. The pilot
+inputs, logs and per-rank resource files are under
+`/mnt/d/output/rad/wor67_uniform_n4096_{pilot100,rankmem10}_20261104`.
+The standard `radiative_shock_validation.py --preset hpc` runner remains the
+path for full uniform N4096, one-level AMR base N2048 and three-level SMR
+base N1024 comparisons on a larger machine.
+
+A one-level AMR base-N1024 pilot (finest dx=2.930 cm, the local N2048 uniform
+spacing) also completed 100 cycles with six physical-core MPI ranks. It took
+85.08 wall seconds and reached t=1.01e-4 s; a six-rank `/proc` snapshot
+recorded about 0.62 GiB summed high-water RSS. Its last pilot dt was
+9.858e-7 s, giving a rough 40,000 further-cycle and order-10-hour local
+projection at the initial measured rate. This is a sizing run only, marked
+`exploratory_cycle_limit` by the standard runner, not a physical comparison.
+The data are at `/mnt/d/output/rad/wor67_amr_base1024_pilot100_20261104`.
 
 The shock domain has fixed inflow/outflow boundaries. Its integrated mass and energy need not remain constant, so the report records the history's physical-flux spread as a steady-flow diagnostic and, where stage CSVs exist, checks the local implicit gas+radiation energy budget. It does not mislabel open-domain total-energy change as a conservation violation.
