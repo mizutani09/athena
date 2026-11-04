@@ -237,8 +237,9 @@ def summarize(h: dict[str, np.ndarray], log: dict[str, object], units: dict[str,
         "log": log,
         "stationarity_rule": "Two late quarters, each >=1 vertical crossing time; "
         "top flux within 10% solar and changes <=5%; vertical RMS changes <=10%; "
-        "mass drift <=1%; |least-squares stored energy trend| <=0.1 solar flux "
-        "in each window; all reported NR solves converged; no fatal error.",
+        "mass drift <=1%; both |least-squares stored energy trend| and "
+        "|endpoint stored energy rate| <=0.1 solar flux in each window; "
+        "all reported NR solves converged; no fatal error.",
         "stationarity_candidate": False,
     }
     ledger = sampled_energy_ledger(h, np.arange(n), units, flux_ref)
@@ -291,6 +292,10 @@ def summarize(h: dict[str, np.ndarray], log: dict[str, object], units: dict[str,
             first_ledger is not None and second_ledger is not None
             and abs(first_ledger["stored_energy_trend_over_solar"]) <= 0.1
             and abs(second_ledger["stored_energy_trend_over_solar"]) <= 0.1,
+        "both_energy_endpoint_rates_within_0p1_solar":
+            first_ledger is not None and second_ledger is not None
+            and abs(first_ledger["stored_energy_rate_over_solar"]) <= 0.1
+            and abs(second_ledger["stored_energy_rate_over_solar"]) <= 0.1,
         "solver_completed_without_failed_nr":
             log["fatal_count"] == 0 and log["completed"] and bool(statuses)
             and set(statuses).issubset({"converged", "dt_zero_initialization"}),

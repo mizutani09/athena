@@ -176,10 +176,13 @@ Pass `--movie` on a plotted run to include an inline xz MP4 in its HTML.
 Use `--plan` to inspect the command. The history report's candidate flag
 requires two late windows each spanning a vertical crossing time, flux near
 the solar value and stable between windows, stable vertical velocity RMS,
-small mass drift, and clean solver status. Each late window must also have
-a least-squares secular trend of stored gas+radiation+gravitational energy
-below `0.1 F_sun` in magnitude. The endpoint difference is also reported,
-but oscillatory phase can make it misleading. An apparently solar top flux
+small mass drift, and clean solver status. In each late window, both the
+least-squares trend and the endpoint change rate of stored
+gas+radiation+gravitational energy must be below `0.1 F_sun` in magnitude.
+Oscillatory phase makes the endpoint rate sensitive to window placement;
+an endpoint-only failure means the averaging interval is insufficient to
+establish stationarity, not necessarily that secular heating is present.
+An apparently solar top flux
 while the box is heating or cooling rapidly cannot pass. This is a screening
 rule only; solar comparison requires profile and resolution diagnostics.
 Each case HTML plots the current-segment stored-energy change alongside
@@ -397,8 +400,8 @@ energy-ledger residual in the current-segment last quarter is
 audit in WOR-72 is complete. The endpoint stored-energy change rate in that
 window is `-2.92 F_sun`, but the all-sample secular trend is only about
 `-0.043 F_sun`. The discrepancy reflects an oscillatory storage signal;
-the other stationarity criteria above still fail. This is why the screening
-rule uses the secular trend rather than the endpoint difference.
+both measures are therefore required by the conservative screening rule,
+and the other stationarity criteria above also fail.
 This is a relaxation test, not a claim that 96 km resolves solar granulation.
 A `t=100`→`150` continuation with the HD2 bottom mass-balance feedback
 disabled completed with 750/750 Newton solves converged, 2,587 FGMRES calls,
@@ -554,6 +557,10 @@ The matched plot is in
 spectral report is in `rempel_box_pilot/mass_feedback_diagnostic/`.
 The improved control is being continued from `t=450` to `650` so that two
 late windows each span approximately one vertical crossing time.
+An interim `t=450`–`500` diagnostic has least-squares stored-energy trend
+`+0.016 F_sun` but endpoint storage rate `+0.678 F_sun` (sampled ledger
+residual `-0.0006 F_sun`). The small regression slope alone would therefore
+give false confidence; neither measure can yet establish thermal stationarity.
 
 The earlier one-rank startup to `t=1` gave sampled residuals `+0.0801`
 and `-0.0721 F_sun` for the old and new sources, so a one-second diagnostic
