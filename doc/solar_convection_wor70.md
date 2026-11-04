@@ -296,8 +296,27 @@ The top initially emits nearly `F_sun`; cooling until convection develops is
 therefore expected even with a correct lower pressure boundary. A thermal
 relaxation run, not a static snapshot, is required for solar comparison.
 The pre-fix long run remains a solver durability test but is **not** the
-physical baseline for solar validation. A 48 km corrected comparison is
-running to check whether the result holds at the pilot resolution.
+physical baseline for solar validation. The matched 48 km comparison also
+confirms the boundary correction: at `t≈0.5`, bottom net mass flux changes
+from `-10.5947` to `+0.3144` code, mass drift from `-0.7664%` to `+0.0128%`,
+and bottom hydro flux from `-380.95` to `+11.38 F_sun`. Over `t=0`→`2`,
+net-flux RMS falls from `7.318` to `0.1574` code and maximum absolute mass
+drift from `1.3225%` to `0.0266%`. Both full-box `t=10` runs completed all
+Newton solves (old 241/241, fixed 240/240), with zero slow-MG warnings or
+fatals. The **full 3D** `tau=2/3` surface at `t=10` changes from mean
+temperature `4061` to `4465 K` and vertical-velocity RMS from `2.533` to
+`0.033 km/s`; the old nearly uniform downflow has largely disappeared.
+The late top flux remains only about `0.36 F_sun` in both, so this startup
+fix does not establish thermal relaxation. The matched comparison, with
+figures and links to both case reports, is under
+`rempel_box_pilot/hd2_comparison_48km/index.html`.
+
+A corrected 96 km large-box run was restarted from its `t=10` checkpoint.
+The first history sample at `t=10.155` has `PBNDScale=0.998040`, following
+`0.998202` at `t=10`; bottom net mass flux changes smoothly from `0.502`
+to `0.397` code. This verifies that the saved boundary state continues
+without a fresh startup spike. WOR-71 is complete; subsequent thermal and
+solar-physics questions remain in WOR-70.
 The pre-fix 64³ continuation was intentionally stopped at `t≈153` after
 writing a `t=150` restart, to free six physical cores for the corrected
 baseline. Between `t=100` and the stop, all 3,303 reported Newton solves
