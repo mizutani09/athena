@@ -34,6 +34,15 @@ converged strictly. The peak over t=.03–.04 s ranges from 946.276 to
 peak. The median late dt is about 2.217 µs, matching the N512/CFL .15
 control. At this matched dt, increasing resolution raises the final peak by
 51.32 K, again much more than the N512 CFL effect.
+The measured late-dt ratio for N1024/CFL .3 divided by N512/CFL .15 is
+0.999986, so this first spatial comparison is matched in dt to better than
+0.002%. The audit HTML and JSON provide these pairwise values directly.
+Even the highest N1024 history peak in that late interval (961.333 K) is
+below the 50%-recovery threshold (966.411 K) and the 10%-error threshold
+(969.391 K), so its failure is not due only to choosing the final output
+phase. The discrete density-jump center remains at 183.594 cm for all saved
+t=.03–.04 s profiles; subcell movement and physical transients cannot be
+separated from these sparse snapshots alone.
 
 The N1024 stage diagnostic resolves the output phase: on the last full
 dt=2.217 µs, the post-explicit local gas peak is 992.467 K and the
@@ -59,5 +68,16 @@ The combined HTML is `/mnt/d/output/rad/wor67_spike_audit_20261104/index.html`; 
 Uniform N1024 and N2048 use 4x4 transverse cells and cubic MeshBlocks of 4³ cells, with physical transverse extent scaled to retain cubic cells. Stage CSVs in their `output/` directories sample the final explicit RK2 and implicit FLD updates; the preceding full step is also retained. The N512 CFL control uses the same binary and spatial grid as the baseline. All saved `input.used` files are fully materialized without hidden command-line physics overrides. The `provenance.txt` files record binary SHA-256 and CPU affinity. The high-resolution source comparison build is `/mnt/d/output/rad/wor67_current_build_20261104`.
 
 Three MPI jobs initially overlapped on cores 0–3 because separate `mpirun` launches used the same default bindings. Their ranks were moved to disjoint physical cores (0–7 for N2048, 8–11 for N1024, 12–15 for the N512 control), reducing CPU contention. The AMR runner uses explicit no-binding launch plus a restricted core set. The calculation input is unaffected by that runtime scheduling correction.
+
+The full SMR base-N256 and base-N128 attempts, with finest spacing equal to
+uniform N1024 and N512 respectively, advanced only to t=0.000183 and
+t=0.002039 s before the local throughput made a full t=.04 run impractical.
+Their inputs, partial outputs, logs, memory snapshots and stop reasons remain
+under `/mnt/d/output/rad/wor67_smr_base{256,128}_20261104`. The N128 SMR
+two-rank high-water RSS sum was about 0.78 GiB, versus about 1.47 GiB for
+N256. Both had strict solver progress, but neither is a completed physical
+validation case. The freed cores run N1024/CFL .15, an exact same-grid
+temporal control for N1024/CFL .3 and a dt-matched spatial partner to N2048.
+The SMR HPC preset remains available in the standard radiative-shock runner.
 
 The shock domain has fixed inflow/outflow boundaries. Its integrated mass and energy need not remain constant, so the report records the history's physical-flux spread as a steady-flow diagnostic and, where stage CSVs exist, checks the local implicit gas+radiation energy budget. It does not mislabel open-domain total-energy change as a conservation violation.

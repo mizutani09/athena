@@ -371,13 +371,41 @@ def main() -> None:
         index = np.flatnonzero(mask)[::max(1, int(np.count_nonzero(mask)/500))]
         ax.plot(data["history_time"][index], data["history_peak"][index],
                 label=row["label"])
+    point_peak = cases[0]["gas_peak_point_reference_K"]
+    downstream = float(analytic["tgas"][-1])
+    ax.axhline(.9*point_peak, color="tab:red", ls="--",
+               label="10% point-peak error limit")
+    ax.axhline(.5*(point_peak+downstream), color="tab:orange", ls=":",
+               label="50% spike-recovery limit")
     ax.set(xlabel="time [s]", ylabel="post-implicit T_gas max [K]",
            xlim=(.03, .04))
     ax.grid(alpha=.3)
-    ax.legend()
+    ax.legend(ncol=2, fontsize=9)
     fig.savefig(args.output/"late_peak_history.png", dpi=180)
     plt.close(fig)
+    by_label = {row["label"]: row for row in cases}
+    comparisons = []
+    for kind, before_label, after_label in (
+        ("time step at N512", "N512", "N512_dt_half"),
+        ("spatial, matched dt near 2.2 us", "N512_dt_half", "N1024"),
+        ("time step at N1024", "N1024", "N1024_dt_half"),
+        ("spatial, matched dt near 1.1 us", "N1024_dt_half", "N2048")):
+        if before_label not in by_label or after_label not in by_label:
+            continue
+        before, after = by_label[before_label], by_label[after_label]
+        comparisons.append({
+            "kind": kind, "before": before_label, "after": after_label,
+            "peak_change_K": (after["gas_peak_numerical_K"]
+                              - before["gas_peak_numerical_K"]),
+            "recovery_change_percentage_points": 100*(
+                after["spike_amplitude_recovery"]
+                - before["spike_amplitude_recovery"]),
+            "dt_ratio_after_over_before": (after["median_late_history_dt_s"]
+                                           / before["median_late_history_dt_s"]),
+            "dx_ratio_after_over_before": (after["shock_dx_cm"]
+                                           / before["shock_dx_cm"])})
     summary = {"reference": str(args.reference.resolve()), "cases": cases,
+               "comparisons": comparisons,
                "definitions": {"point_peak": "maximum analytic Tgas within 60 cm of density jump",
                                "FV_projection": "average analytic rho, rho*u and total gas energy over each aligned numerical cell, then recover ideal-gas T; diagnostic comparison, not a strict convergence ceiling",
                                "FV_phase_range": "minimum and maximum projected reference peak when density-jump registration is perturbed by plus/minus half one shock cell; sensitivity band only, never optimized for the accuracy gate",
@@ -422,7 +450,20 @@ def main() -> None:
             row["aligned_L1_percent"]["tgas"], st,
             "<span class='pass'>PASS</span>" if row["accuracy_pass"]
             else "<span class='fail'>accuracy_not_met</span>"))
-    html.extend(["</table></div>",
+    html.extend(["</table></div>"])
+    if comparisons:
+        html.extend(["<h2>Time-step and spatial comparisons</h2>",
+                     "<p>Each row changes one intended factor. The measured late dt ratio and shock-cell width ratio show how closely the paired control matches.</p>",
+                     "<div class='scroll'><table><tr><th>Comparison</th><th>Before → after</th><th>Peak change [K]</th><th>Recovery change [percentage points]</th><th>dt ratio</th><th>dx ratio</th></tr>"])
+        for item in comparisons:
+            html.append("<tr><td>{}</td><td>{} → {}</td><td>{:+.2f}</td><td>{:+.2f}</td><td>{:.3f}</td><td>{:.3f}</td></tr>".format(
+                escape(item["kind"]), escape(item["before"]),
+                escape(item["after"]), item["peak_change_K"],
+                item["recovery_change_percentage_points"],
+                item["dt_ratio_after_over_before"],
+                item["dx_ratio_after_over_before"]))
+        html.append("</table></div>")
+    html.extend([
                  "<h2>Other accuracy and runtime checks</h2>",
                  "<div class='scroll'><table><tr><th>Case</th><th>Density L1</th><th>Gas T L1</th><th>Radiation T L1</th><th>Raw shock error / domain</th><th>Previous-output change</th><th>Strict solver</th><th>Wall time [min]</th><th>Sampled sum of rank high-water RSS [MiB]</th></tr>"])
     for row in cases:
