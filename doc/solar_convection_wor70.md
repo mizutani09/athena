@@ -595,3 +595,8 @@ six and two physical cores respectively.
    vertical velocity, radiative/enthalpy/kinetic fluxes, granule scale and
    surface brightness distribution with published definitions. Keep gray FLD
    limitations explicit near optical depth unity.
+4. Once WOR-73's boundary mode is controlled and long-window thermal trends
+   are measured, use WOR-74 to determine whether the imported lower upflow
+   entropy needs calibration for the gray-FLD solar-flux target. Change
+   `s_in_from_profile=false` and an explicit `s_in` only in matched restarts;
+   do not tune a transient top-flux sample.
