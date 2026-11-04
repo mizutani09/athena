@@ -69,6 +69,23 @@ def input_values(path: Path) -> dict[str, float]:
                         "x3min", "x3max", "grav_acc"}}
 
 
+def effective_problem_bool(path: Path, overrides: list[str], key: str) -> bool | None:
+    """Read a problem flag, applying manifest command-line overrides last."""
+    block = re.search(r"^<problem>[ \t]*$.*?(?=^<|\Z)", path.read_text(),
+                      re.M | re.S)
+    value = None
+    if block:
+        match = re.search(rf"^[ \t]*{re.escape(key)}[ \t]*=[ \t]*(true|false|1|0)\b",
+                          block.group(0), re.M | re.I)
+        if match:
+            value = match.group(1).lower() in {"true", "1"}
+    for override in overrides:
+        name, _, raw = override.partition("=")
+        if name == key:
+            value = raw.lower() in {"true", "1"}
+    return value
+
+
 def physical_time_unit(units: dict[str, float], velocity_unit: float) -> float:
     # The pgen treats a negative time_unit as a request to derive it.
     specified = units.get("time_unit", -1.0)
@@ -344,10 +361,16 @@ def main() -> None:
     units = input_values(args.input)
     report = summarize(h, log, units, args.reference_flux)
     manifest_path = args.run_dir / "manifest.json"
+    overrides = []
     if manifest_path.is_file():
         manifest = json.loads(manifest_path.read_text())
+        overrides = manifest.get("problem_overrides", [])
         if manifest.get("intentional_stop_reason"):
             report["intentional_stop_reason"] = manifest["intentional_stop_reason"]
+    report["gravity_work_face_flux"] = effective_problem_bool(
+        args.input, overrides, "gravity_work_face_flux")
+    report["hd2_mass_balance_on"] = effective_problem_bool(
+        args.input, overrides, "mass_balance_on")
     tau_path = args.run_dir / "tau1_slice.json"
     if tau_path.is_file():
         tau_records = json.loads(tau_path.read_text())["records"]
@@ -381,6 +404,10 @@ def main() -> None:
         ("Last history time", f"{report['last_history_time_code']:.3f} code"),
         ("Wall time", str(log["wall_time"] or "see manifest")),
         ("Slow MG warnings", str(log["slow_mg_warning_count"])),
+        ("Gravity work", "face mass flux" if report["gravity_work_face_flux"] else
+         "cell-centered legacy" if report["gravity_work_face_flux"] is False else
+         "unspecified in input"),
+        ("HD2 mass-balance feedback", str(report["hd2_mass_balance_on"])),
         ("NR statuses", ", ".join(f"{k}: {v}" for k, v in log["nr_status_counts"].items())),
         ("Late top flux / solar", f"{late['top_total_flux_over_solar']:.3f}" if late else "—"),
         ("Late vertical RMS", f"{late['vz_rms_km_s']:.3f} km/s" if late else "—"),
