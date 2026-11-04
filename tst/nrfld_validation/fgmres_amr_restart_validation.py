@@ -46,6 +46,8 @@ def solver_metrics(log: str):
               if line.startswith("[LINEAR_FGMRES]")]
     physical = [row for row in nr if row.get("status") != "dt_zero_initialization"]
     return {"newton_calls": len(physical), "fgmres_calls": len(fgmres),
+            "zero_dt_initialization_calls": sum(
+                row.get("status") == "dt_zero_initialization" for row in nr),
             "newton_converged": bool(physical) and all(
                 row.get("status") == "converged" and
                 max(float(row["final_l2"]), float(row["final_max"])) <= 1.00001e-10
@@ -79,6 +81,7 @@ def report_html(root: Path, summary: dict):
         case = summary["cases"].get(tag, {})
         rows.append(f'<tr><th><a href="{tag}/run.log">{escape(tag)}</a></th>'
                     f'<td>{case.get("ranks", "—")}</td><td>{case.get("cycles", "—")}</td>'
+                    f'<td>{case.get("zero_dt_initialization_calls", "—")}</td>'
                     f'<td>{case.get("fgmres_iterations", "—")}</td>'
                     f'<td>{case.get("max_true_fgmres_relative_residual", "—")}</td></tr>')
     comparisons = ''.join(f'<tr><th>{escape(tag)}</th><td>{v["relative_L1"]:.3e}</td>'
@@ -97,7 +100,8 @@ img{{max-width:100%}}a{{color:#075ca8}}@media(max-width:700px){{:root{{font-size
 <p><strong>Status: {escape(summary['status'])}</strong>. A controlled pulse starts on a one-level AMR mesh;
 the refinement rule removes the fine blocks after cycle 2. Direct, restarted, and two-rank calculations
 use the same input and FGMRES restart length 5. The checkpoint is written after cycle 2.</p>
-<table><thead><tr><th>Calculation</th><th>MPI ranks</th><th>Final cycle</th><th>FGMRES iterations</th>
+<table><thead><tr><th>Calculation</th><th>MPI ranks</th><th>Final cycle</th>
+<th>Zero-dt initialization solves</th><th>FGMRES iterations</th>
 <th>Maximum recomputed relative residual</th></tr></thead><tbody>{''.join(rows)}</tbody></table>
 <h2>Final radiation-field comparison to direct</h2><table><thead><tr><th>Calculation</th><th>Relative L1</th>
 <th>Relative max</th></tr></thead><tbody>{comparisons}</tbody></table>
@@ -199,6 +203,8 @@ def main():
         summary["topology_changed"] = topology_change
         summary["status"] = "passed" if (
             topology_change and summary["cases"]["direct"]["fgmres_restart_exercised"]
+            and all(summary["cases"][tag]["zero_dt_initialization_calls"]
+                    == (0 if tag.startswith("restart") else 1) for tag in TAGS)
             and all(summary["cases"][tag]["newton_converged"]
                                     and summary["cases"][tag]["fgmres_converged"]
                                     and summary["cases"][tag]["cycles"] == (2 if tag == "split" else 6)

@@ -1052,8 +1052,10 @@ of only `+125 erg cm^-2 s^-1`, and a top total-flux difference of
 `-0.49 erg cm^-2 s^-1`. A generic AMR/FGMRES validation with changing
 mesh topology and one-/two-rank restarts also passes: all direct and
 restart fields have zero reported relative L1 and maximum differences,
-and all Newton/FGMRES solves converge. Results are under
-`wor76_amr_restart_skip_zero_20261105/summary.json`. The longer
+and all Newton/FGMRES solves converge. The regression now also requires
+one zero-dt initialization solve in fresh starts and none in checkpoint
+restarts; the rerun passes all five cases in
+`wor76_amr_restart_zero_dt_regression_20261105/summary.json`. The longer
 `t=1300` campaigns were launched with the older copied executable before
 this fix; their comparisons all use that same binary.
 
