@@ -473,6 +473,19 @@ fatal errors, and took about 210 seconds. Over `t=100.1`→`110`, mean top
 flux was `0.593` versus `0.575 F_sun`; vertical RMS was `1.550` versus
 `1.556 km/s`. The roughly 3% top-flux difference over a short interval
 means old-source long-run solar flux estimates must be treated as provisional.
+At a later corrected-source `t=850` checkpoint, otherwise identical four-rank
+restarts to `t=855` changed only the HST cadence from `0.1` to `0.001` code
+time. Both completed 74/74 Newton solves. At every common recorded time the
+time, stored energy, and selected boundary fluxes matched exactly. Over the
+shared sampled interval `t=850.137443`–`855`, trapezoidal sampled-ledger
+residuals were `+0.003191` and `+0.001167 F_sun` equivalent respectively;
+left/right rectangle residuals span about `-0.195`/`+0.201 F_sun` at coarse
+cadence and `-0.124`/`+0.126 F_sun` at every-step cadence. Sample timing and
+integration method therefore matter substantially in this oscillating
+boundary state. The remaining every-step residual is not a measured RK-stage
+conservation error. See
+`rempel_box_pilot/energy_ledger_cadence_t850_855/index.html` and
+`tst/nrfld_validation/solar_convection_ledger_cadence.py`.
 The corrected source is now the default for this problem; set
 `gravity_work_face_flux=false` to reproduce the legacy calculation. The
 matched plot and JSON are in
