@@ -409,6 +409,22 @@ approximately `-0.0010 F_sun` with ordinary cadence and `-0.0024 F_sun`
 with fine cadence. This short small-box interval has a much smaller residual
 than the coarse large-box windows, so it does not settle WOR-72.
 
+For WOR-72, matched corrected large-box startups give sampled `t=0`→`10`
+ledger residuals of `+0.187 F_sun` at 96 km and `+0.0286 F_sun` at 48 km.
+The hydro gravity-work source currently uses the cell-centered `rho*v_z`,
+while the continuity update uses Riemann face mass fluxes. An **experimental**
+`problem/gravity_work_face_flux=true` switch instead uses the same face mass
+fluxes and face/cell gravitational-potential differences. The default remains
+`false` pending a matched developed-state test. In a one-rank 96 km startup
+to `t=1` with 16-digit history output every accepted step, the sampled ledger
+residual was `+0.0801 F_sun` with the cell-centered source and
+`-0.0721 F_sun` with the face-flux source. The new source runs and changes
+the ledger, but neither residual is close enough to zero to attribute the
+remaining discrepancy to gravity work alone. The corresponding mean top
+fluxes were `0.798` and `0.792 F_sun`; these very short tests say nothing
+about relaxed solar convection. Use `--history-precision 16` to avoid the
+default six-significant-digit history rounding in further ledger probes.
+
 The large-box pilot uses the generated files under
 `/mnt/d/output/rad/wor70_solar_20261104/profile_3Mm_candidate/input_data`.
 For a fresh run after building the same non-magnetic binary:
@@ -431,9 +447,9 @@ six and two physical cores respectively.
 
 ## Next scientific gates
 
-1. Continue the **corrected** 64³ CFL 0.3 run and assess whether the top flux
-   and vertical RMS settle. If not, inspect the initial stratification and
-   HD2/upper radiation boundary energy budget before increasing resolution.
+1. Continue the corrected Rempel-sized box past `t=300`, compare the HD2
+   mass-balance-off control, and audit its boundary/gravity energy budget.
+   Solver convergence alone does not establish thermal stationarity.
 2. Keep the confirmed, tracked `simple_convection_lhllc_fld` series as the
    baseline. Review the untracked `nrfld_solar_convection` files separately
    before using their safety caps or flux controls in a comparison.

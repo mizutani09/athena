@@ -30,7 +30,8 @@ def digest(path: Path) -> str:
     return h.hexdigest()
 
 
-def solver_input(base: str, solver: str, xy_slice_z: float | None = None) -> str:
+def solver_input(base: str, solver: str, xy_slice_z: float | None = None,
+                 history_precision: int | None = None) -> str:
     if base.count("<nrfld>") != 1:
         raise ValueError("Expected exactly one <nrfld> block")
     block = (f"<nrfld>\nlinear_solver = {solver}\n"
@@ -44,6 +45,19 @@ def solver_input(base: str, solver: str, xy_slice_z: float | None = None) -> str
             raise ValueError("Expected two xy-slice x3_slice entries")
         result = re.sub(r"^x3_slice\s*=\s*[^#\n]+",
                         f"x3_slice = {xy_slice_z:.9g}", result, flags=re.M)
+    if history_precision is not None:
+        output1 = re.search(r"^<output1>[ \t]*$.*?(?=^<|\Z)", result,
+                            re.M | re.S)
+        if output1 is None:
+            raise ValueError("Expected an <output1> history block")
+        block = output1.group(0)
+        setting = f"data_format = %22.{history_precision-1}e"
+        if re.search(r"^[ \t]*data_format[ \t]*=", block, re.M):
+            block = re.sub(r"^[ \t]*data_format[ \t]*=[^\n]*", setting,
+                           block, count=1, flags=re.M)
+        else:
+            block = block.replace("<output1>", "<output1>\n" + setting, 1)
+        result = result[:output1.start()] + block + result[output1.end():]
     return result
 
 
@@ -74,6 +88,8 @@ def main() -> None:
     parser.add_argument("--nlim", type=int, default=1000000)
     parser.add_argument("--history-dt", type=float,
                         help="Override history cadence in code time units")
+    parser.add_argument("--history-precision", type=int,
+                        help="Significant digits in history floating-point columns (6–16)")
     parser.add_argument("--restart", type=Path)
     parser.add_argument("--history-header-from", type=Path,
                         help="Header-bearing .hst for a restart whose parent history has no header")
@@ -168,6 +184,9 @@ def main() -> None:
         if args.history_dt <= 0:
             parser.error("--history-dt must be positive")
         command += [f"output1/dt={args.history_dt}"]
+    if args.history_precision is not None:
+        if not 6 <= args.history_precision <= 16:
+            parser.error("--history-precision must be between 6 and 16")
     command += problem_overrides
     if args.no_slices:
         output_sections = re.findall(r"^<output(\d+)>", base_text, re.M)
@@ -189,7 +208,7 @@ def main() -> None:
         link.symlink_to(target)
     generated = case / "athinput.generated"
     generated.write_text(solver_input(base_text, args.solver,
-                                      args.xy_slice_z))
+                                      args.xy_slice_z, args.history_precision))
     commit = subprocess.check_output(["git", "rev-parse", "HEAD"], cwd=repo,
                                      text=True).strip()
     dirty = bool(subprocess.check_output(["git", "status", "--porcelain"],

@@ -83,6 +83,7 @@ namespace {
   Real hd2_mass_balance_max_scale = 1.5;
   Real hd2_current_mass = -1.0;
   Real hd2_mass_rate = 0.0;
+  bool gravity_work_face_flux = false;
   bool top_outflow_only;
   bool top_impenetrable;
   std::string top_bc_mode;
@@ -1444,6 +1445,8 @@ void Mesh::InitUserMeshData(ParameterInput *pin) {
   rho_ref = pin->GetReal("problem", "rho_top")/rho_unit;
   T_ref = pin->GetReal("problem", "T_top")/T_unit;
   grav_acc = pin->GetReal("problem", "grav_acc")/(leng_unit/(time_unit*time_unit));
+  gravity_work_face_flux = pin->GetOrAddBoolean(
+      "problem", "gravity_work_face_flux", false);
   z_ref = pin->GetOrAddReal("problem", "z_ref", 0.0);
   use_initial_profile = pin->GetOrAddBoolean(
       "problem", "use_initial_profile", false);
@@ -1640,6 +1643,7 @@ void MeshBlock::ProblemGenerator(ParameterInput *pin) {
               << " mass_balance_relax_time=" << hd2_mass_balance_relax_time
               << " mass_balance_gain=" << hd2_mass_balance_gain
               << " mass_balance_rate_gain=" << hd2_mass_balance_rate_gain
+              << " gravity_work_face_flux=" << gravity_work_face_flux
               << " rad_flux_cgs=" << rad_flux_cgs << "\n";
 #if EOS_TABLE_ENABLED
     if (peos->ptable != nullptr) {
@@ -1874,7 +1878,25 @@ void AddRadiativeForceAndWork(MeshBlock *pmb, const Real time, const Real dt,
         for (int i = pmb->is; i <= pmb->ie; ++i) {
           const Real rho = prim(IDN,k,j,i);
           cons(IM3,k,j,i) -= rho*grav_acc*dt;
-          cons(IEN,k,j,i) -= rho*grav_acc*prim(IVZ,k,j,i)*dt;
+          if (gravity_work_face_flux) {
+            // Match gravitational work to the mass flux used by the finite-
+            // volume continuity update. With potential phi=g*z at cell
+            // centers and faces, this makes gas+potential energy conservative
+            // across interior faces at each explicit integration stage.
+            const Real phi_center = grav_acc*pmb->pcoord->x3v(k);
+            const Real phi_lower = grav_acc*pmb->pcoord->x3f(k);
+            const Real phi_upper = grav_acc*pmb->pcoord->x3f(k+1);
+            const Real lower = (phi_center - phi_lower)
+                *pmb->phydro->flux[X3DIR](IDN,k,j,i)
+                *pmb->pcoord->GetFace3Area(k,j,i);
+            const Real upper = (phi_upper - phi_center)
+                *pmb->phydro->flux[X3DIR](IDN,k+1,j,i)
+                *pmb->pcoord->GetFace3Area(k+1,j,i);
+            cons(IEN,k,j,i) -= dt*(lower + upper)
+                /pmb->pcoord->GetCellVolume(k,j,i);
+          } else {
+            cons(IEN,k,j,i) -= rho*grav_acc*prim(IVZ,k,j,i)*dt;
+          }
         }
       }
     }
