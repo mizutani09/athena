@@ -253,8 +253,44 @@ gas temperature, density, vertical RMS speed, and radiative cooling in
 volumes; at `t=0` the 3D mean `T(tau=2/3)=5703.993 K` versus `5704.008 K` in
 the xz slice, and the mean heights agree within `6e-6` code. This checks the
 full-volume assembly and optical-depth interpolation on the smooth initial
-state. It does not test a convectively structured surface. A t=10 full-box
-run with full-volume outputs is in progress.
+state. It does not test a convectively structured surface. The pre-fix 128 ×
+128 × 64 full-box run reached `t=10` in 241 cycles; every nonzero-step Newton
+solve converged, with no slow-MG warning or fatal. At `t=10`, the full 3D
+`tau=2/3` mean temperature was 4061 K, its horizontal standard deviation
+only 0.20 K, and the vertical velocity there was almost uniformly downward
+at 2.53 km/s. The top flux in the last quarter was 0.364 solar and the
+bottom flow was still coherent. This is an early transient, not granulation.
+The simulation itself finished normally, but its wrapper session ended before
+postprocessing; the plots, movie, JSON and HTML were recovered from the saved
+HDF5/restart files, and the manifest records that recovery.
+
+## HD2 lower-boundary initialization defect (WOR-71)
+
+The previously implicit `PBND` was initialized from the center of the first
+cell, while the HD2 formula treats it as the **boundary-face pressure**.
+Both dynamic pressure means were also initialized from that first cell,
+instead of the first and second cells separately. For the 48 km initial
+profile, a centered estimate of the first-cell pressure-force residual is
+about 51% of gravity on the first step and 26% after the means update. With
+the two-cell log-linear face pressure and means it is about 0.9%. This is an
+estimate, not the finite-volume Riemann flux residual.
+
+Setting the temperature perturbation amplitude to zero in the old 96 km
+coarse-grid run leaves the `t≈0.56` bottom net mass flux, mass drift, and
+bottom hydro energy flux unchanged to the displayed precision. The large
+startup wave therefore is not primarily seeded by the temperature noise.
+With the corrected initialization at the same resolution, EOS, opacity,
+profile, CFL, rank count and CPU placement, the `t≈0.5` bottom net mass flux
+changes from -27.31 to +0.93 code units, mass drift from -1.34% to +0.028%,
+and bottom hydro flux from -976 to +33.8 solar units. The `t=0`→`2` net-mass-
+flux RMS falls from 17.18 to 0.71 code units. The corrected `t=10` run
+completes 120/120 Newton steps with zero slow-MG warning and fatal; its
+`tau=2/3` temperature is 4737 K versus 4165 K with the old boundary. The
+top flux at `t≈1` stays close to 0.71 solar in both runs, so the boundary
+fix does not remove the separate initial photospheric cooling transient.
+The pre-fix long run remains a solver durability test but is **not** the
+physical baseline for solar validation. A 48 km corrected comparison is
+running to check whether the result holds at the pilot resolution.
 
 The large-box pilot uses the generated files under
 `/mnt/d/output/rad/wor70_solar_20261104/profile_3Mm_candidate/input_data`.
