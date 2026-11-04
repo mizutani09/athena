@@ -637,16 +637,20 @@ for example `t=650`–`850` gives slope `-0.025 F_sun` and endpoint rate
 `-0.098 F_sun`, while the last two 50-code windows show substantial cooling.
 There is no claim of statistical stationarity or solar agreement.
 Matched `t=800`–`850` continuations from the same checkpoint varied the HD2
-mass-rate correction gain from `0` to `10`, `20`, `40`, and `80`. All five finished
+mass-rate correction gain from `0` to `10`, `20`, and `40`, with the pressure
+relaxation time fixed at `2.0`. All four finished
 714/714 Newton solves without slow-MG warnings or fatals. The lower hydro-flux
-standard deviations are `10.92`, `7.90`, `6.44`, `4.95`, and `7.97 F_sun`;
+standard deviations are `10.92`, `7.90`, `6.44`, and `4.95 F_sun`;
 mass-drift standard deviations decrease from `0.0822%` to `0.0721%`,
-`0.0607%`, and `0.0433%`, then rise to `0.0753%`. The dominant period remains
+`0.0607%`, and `0.0433%`. The dominant period remains
 about `16.6` code time in every case. The mean top flux is nearly unchanged
 (`0.612` to `0.608 F_sun`). Gain `40` best damps this coherent boundary
-oscillation in this matched window; gain `80` worsens it. Neither fixes the
-large thermal flux deficit. The
+oscillation among the four measured gains, but does not fix the large thermal
+flux deficit. The
 comparison is `rempel_box_pilot/mass_rate_gain_sweep_t800_850/index.html`.
+The first gain-`80` run accidentally used the default pressure relaxation
+time `10.0` and cannot be compared as a gain-only control. Its output is
+retained with suffix `_invalid_relax10`; a corrected gain-`80` run is underway.
 An interim `t=450`–`500` diagnostic has least-squares stored-energy trend
 `+0.016 F_sun` but endpoint storage rate `+0.678 F_sun` (sampled ledger
 residual `-0.0006 F_sun`). The small regression slope alone would therefore

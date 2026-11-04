@@ -19,7 +19,9 @@ matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 import numpy as np
 
-from solar_convection_report import input_values, physical_time_unit, read_history
+from solar_convection_report import (effective_problem_bool,
+                                     effective_problem_float, input_values,
+                                     physical_time_unit, read_history)
 
 
 def acoustic_one_way_minutes(path: Path) -> float:
@@ -137,12 +139,34 @@ def main() -> None:
     parser.add_argument("--reference-profile", type=Path,
                         help="Initial 1D profile for a rough sound travel time")
     args = parser.parse_args()
+    fixed_keys = ("mass_balance_relax_time", "mass_balance_gain",
+                  "mass_balance_min_scale", "mass_balance_max_scale", "Cdmp")
+    controls = []
+    for label, raw_path, _, _ in args.case:
+        run_dir = Path(raw_path)
+        manifest = json.loads((run_dir / "manifest.json").read_text())
+        overrides = manifest.get("problem_overrides", [])
+        source = run_dir / "athinput.generated"
+        values = {key: effective_problem_float(source, overrides, key)
+                  for key in fixed_keys}
+        values["mass_balance_on"] = effective_problem_bool(
+            source, overrides, "mass_balance_on")
+        values["mass_balance_rate_gain"] = effective_problem_float(
+            source, overrides, "mass_balance_rate_gain")
+        controls.append((label, values))
+    for label, values in controls[1:]:
+        for key in (*fixed_keys, "mass_balance_on"):
+            if values[key] != controls[0][1][key]:
+                raise ValueError(f"{label}: {key}={values[key]} differs from "
+                                 f"{controls[0][0]}={controls[0][1][key]}; "
+                                 "not a matched gain sweep")
     args.output_dir.mkdir(parents=True, exist_ok=True)
     rows = []
     curves = []
-    for label, path, start, end in args.case:
+    for (label, path, start, end), (_, settings) in zip(args.case, controls):
         result, data = analyze(label, Path(path), float(start), float(end),
                                args.header_from, args.reference_flux)
+        result.update(settings)
         rows.append(result)
         curves.append(data)
     acoustic_minutes = (acoustic_one_way_minutes(args.reference_profile)
@@ -179,6 +203,8 @@ def main() -> None:
     cells = "".join(
         "<tr>" + "".join(f"<td>{html.escape(value)}</td>" for value in (
             row["label"],
+            f"{row['mass_balance_rate_gain']:.0f}",
+            f"{row['mass_balance_relax_time']:.1f}",
             f"{row['window_start_code']:.1f}–{row['window_end_code']:.1f}",
             f"{row['dominant_period_code']:.2f}",
             f"{row['dominant_period_minutes']:.2f}",
@@ -205,7 +231,8 @@ def main() -> None:
            f"<strong>{acoustic_minutes:.2f} min one-way</strong>. "
            "This estimate does not identify an eigenmode.</p>"
            if acoustic_minutes is not None else "") +
-        "<table><tr><th>Case</th><th>Window</th><th>Period [code]</th>"
+        "<table><tr><th>Case</th><th>Rate gain</th>"
+        "<th>Relax time [code]</th><th>Window</th><th>Period [code]</th>"
         "<th>Period [min]</th><th>Bottom flux std / solar</th>"
         "<th>Late/early flux amplitude</th>"
         "<th>Mass drift std [%]</th><th>PBND scale std [%]</th>"
