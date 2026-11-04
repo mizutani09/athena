@@ -474,6 +474,17 @@ The corrected source is now the default for this problem; set
 `gravity_work_face_flux=false` to reproduce the legacy calculation. The
 matched plot and JSON are in
 `rempel_box_pilot/gravity_work_comparison_64x64x32_np4_t100_110/`.
+The 96 km corrected-source continuation from the legacy `t=300` checkpoint
+completed to `t=500` with 3,052/3,052 Newton solves converged, 12,530
+FGMRES calls (maximum 38 iterations), and no slow-MG warning or fatal error.
+The sampled `t=300`–`500` energy-ledger residual was `-0.0070 F_sun`,
+supporting the corrected gravitational work over a long developed-state run.
+The `t=400`–`450` and `450`–`500` windows span 1.12 and 1.19 vertical
+crossing times, respectively, but top flux rises `1.285`→`1.362 F_sun`,
+maximum mass drift reaches `1.84%`, and stored-energy secular trends are
+`+1.41` and `+0.65 F_sun`. Thus solver robustness and improved energy
+accounting do **not** establish statistical stationarity. The case HTML is
+`rempel_box_pilot/face_gravity_hd2_64x64x32_np4_cfl03_t500/index.html`.
 The previously reported `t=300` coarse run and the 48 km `t=10`→`40`
 continuation used the legacy source. Their solver-convergence evidence is
 valid, but their long-time solar-flux estimates need a corrected-source
