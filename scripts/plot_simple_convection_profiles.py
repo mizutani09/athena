@@ -6,7 +6,7 @@ import h5py
 import numpy as np
 import matplotlib.pyplot as plt
 
-from plot_simple_convection_movies import read_plane
+from plot_simple_convection_movies import pairs, read_plane
 
 
 def read_profile(path):
@@ -74,14 +74,54 @@ def plot_cooling(outdir):
     plt.close(fig)
 
 
+def plot_slice_stratification(outdir, initial, temperature_unit=None):
+    """Show how one xz slice evolves; this is not a full 3D horizontal mean."""
+    frames = pairs(outdir, "xz")
+    if len(frames) < 2:
+        return
+    width = max(1, len(frames)//5)
+    selected = {"early": frames[:width], "late": frames[-width:]}
+    fig, ax = plt.subplots(1, 3, figsize=(15, 5), constrained_layout=True)
+    z = None
+    for label, frame_pairs in selected.items():
+        rho, temp, vz2 = [], [], []
+        for prim_path, uov_path in frame_pairs:
+            prim, _, z = read_plane(prim_path, "prim", "xz")
+            uov, _, _ = read_plane(uov_path, "user_out_var", "xz")
+            rho.append(np.nanmean(prim[0], axis=1))
+            temp.append(np.nanmean(uov[2], axis=1))
+            vz2.append(np.nanmean(prim[4]**2, axis=1))
+        ax[0].plot(np.nanmean(temp, axis=0), z, label=label)
+        ax[1].plot(np.nanmean(rho, axis=0), z, label=label)
+        ax[2].plot(np.sqrt(np.nanmean(vz2, axis=0)), z, label=label)
+    if temperature_unit is not None:
+        ax[0].plot(np.interp(z, initial["z"], initial["temperature"])
+                   * temperature_unit, z, color="black", ls="--", label="initial")
+    ax[1].plot(np.interp(z, initial["z"], initial["rho"]), z,
+               color="black", ls="--", label="initial")
+    ax[0].set(xlabel="gas temperature [K]", ylabel="z [code]")
+    ax[1].set(xlabel="density [code]", xscale="log")
+    ax[2].set(xlabel="vertical RMS speed [code]")
+    for a in ax:
+        a.grid(alpha=0.25)
+        a.legend(fontsize=10)
+    fig.suptitle("Mean along one xz slice; not a full 3D horizontal mean")
+    fig.savefig(Path(outdir) / "imgs" / "simple_convection_slice_stratification.png",
+                dpi=180)
+    plt.close(fig)
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("output_dir", type=Path)
     ap.add_argument("--profile", type=Path, default=None)
+    ap.add_argument("--temperature-unit", type=float,
+                    help="Kelvin per code temperature for the initial profile")
     args = ap.parse_args()
     profile = args.profile or next(args.output_dir.glob("*profiles*.txt"))
-    plot_initial(read_profile(profile), args.output_dir)
+    initial = read_profile(profile)
+    plot_initial(initial, args.output_dir)
     plot_cooling(args.output_dir)
+    plot_slice_stratification(args.output_dir, initial, args.temperature_unit)
     print(f"Wrote profile and cooling plots to {args.output_dir}")
 
 

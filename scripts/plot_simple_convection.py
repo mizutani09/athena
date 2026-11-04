@@ -124,16 +124,20 @@ def plot_snapshot(outdir):
     dtemp = (uov[2] - t0[:, None]) / t0[:, None]
     drho = (prim[0] - prim0[0]) / np.maximum(np.abs(prim0[0]), 1.0e-30)
     dpress = (prim[1] - prim0[1]) / np.maximum(np.abs(prim0[1]), 1.0e-30)
+    # A restart's first frame is the start of this output segment, not t=0.
+    with h5py.File(prim_paths[0], "r") as h:
+        reference_time = float(h.attrs["Time"])
     # Athena++ primitive output order is rho, press, vel1, vel2, vel3.
     fields = [(prim[4], "vz", "RdBu_r"),
-              (drho, "(rho - rho0) / rho0", "RdBu_r"),
-              (dpress, "(P - P0) / P0", "RdBu_r"),
-              (dtemp, "(Tgas - T0) / T0", "RdBu_r")]
+              (drho, "(rho - rho_start) / rho_start", "RdBu_r"),
+              (dpress, "(P - P_start) / P_start", "RdBu_r"),
+              (dtemp, "(Tgas - T_start) / T_start", "RdBu_r")]
     fig, axes = plt.subplots(2, 2, figsize=(12, 8), constrained_layout=True)
     for axis, (field, title, cmap) in zip(axes.flat, fields):
         image = axis.pcolormesh(x, z, field, shading="auto", cmap=cmap)
         axis.set(xlabel="x", ylabel="z", title=title)
         fig.colorbar(image, ax=axis)
+    fig.suptitle(f"Reference: first frame of this output segment at t={reference_time:.3g}")
     fig.savefig(imgdir / "simple_convection_snapshot.png", dpi=160)
     plt.close(fig)
 
@@ -202,8 +206,8 @@ def make_movie(outdir, fps=6, scale_zmax=None, color_percentile=100.0,
                               vmin=-tlim, vmax=tlim)
     vz_title = "vz - horizontal mean" if vz_fluctuation else "vz"
     axes[0].set(xlabel="x", ylabel="z", title=vz_title)
-    temp_title = "dT/T0 - horizontal mean" if temp_fluctuation \
-        else "(Tgas - T0) / T0"
+    temp_title = "dT/T_start - horizontal mean" if temp_fluctuation \
+        else "(Tgas - T_start) / T_start"
     axes[1].set(xlabel="x", ylabel="z", title=temp_title)
     if plot_zmax is not None:
         axes[0].set_ylim(z[0], plot_zmax)

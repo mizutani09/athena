@@ -64,10 +64,28 @@ speed ratio against an old binary. Historical MG runs under
 `/mnt/d/output/rad/test_20260903/conv/` do exhibit frequent slow-convergence
 and divergent-V-cycle messages, but their inputs and code versions differ.
 
+A second controlled pair restarted the **same** developed FGMRES checkpoint
+near `t=60` and ran 24 cycles to `t=60.4` at CFL 0.3 on four MPI ranks confined
+to CPUs 12–15. MG completed in 48.34 s and FGMRES in 66.58 s. Both reported
+24/24 converged Newton steps, zero slow-MG warnings and zero fatals; the final
+stored top flux differs by only `4.2e-6` relative. Thus the early FGMRES speed
+advantage does **not** persist for every state or rank count. MG uses its
+`threshold=0` automatic V-cycle stopping rule, while FGMRES uses a relative
+linear residual target of `1e-8`; both passed the same nonlinear acceptance
+criterion. The comparison establishes successful solver operation, not a
+universal FGMRES speedup. The 12-rank long run was isolated on CPUs 0–11
+while this pair used CPUs 12–15; shared memory bandwidth may still affect
+absolute timings.
+
 The CFL 0.5 run reached converged Newton solves immediately before radiation
 energy became negative in the stage update. This does not isolate the source
 of negativity or show a universal 3D CFL ceiling. The current RK2 code allows
 `cfl_limit=1`; CFL 0.3 is the empirically safe commissioning value here.
+From the developed `t≈60` checkpoint on four ranks, FGMRES also completed
+18 cycles at CFL 0.4 and 15 cycles at CFL 0.5 to the same `t=60.4`, with every
+Newton solve converged and no fatal error. These are short restart tests, not
+long-run stability evidence. The different initial and developed outcomes
+point to state dependence; they do not justify raising the production CFL yet.
 
 At `t=10`, the last-quarter mean top flux is only 0.322 times the solar
 reference `6.3e10 erg cm^-2 s^-1`, compared with 0.416 in the preceding
@@ -77,13 +95,42 @@ measurements and do not establish solar agreement or statistical stationarity.
 The `t=10` xz slice is still dominated by horizontally coherent vertical
 structure; it is not evidence of developed granulation. The first snapshot
 has a solar-size top flux by construction, which then declines, so its initial
-agreement must not be presented as a validation result.
+agreement must not be presented as a validation result. At fixed initial
+optical-depth-one height `z≈2.0` (not a recomputed optical-depth surface),
+the slice-mean gas temperature falls from about 5,520 K in the first fifth
+of output frames to about 3,956 K in the last fifth. This large transient
+cooling motivates an energy-budget and initial-relaxation review.
+
+The imposed lower **radiation** flux is `9.81981111e6 erg cm^-2 s^-1`,
+only `1.56e-4` of the solar reference. In this HD2 setup, incoming gas
+entropy is expected to carry the remaining energy; a low lower radiative
+flux is therefore intentional. The lower **hydrodynamic** flux has so far
+oscillated through several solar fluxes and must be averaged after the flow
+relaxes. Between `t=10.1` and `54.3`, the change in stored gas + radiation +
+gravitational energy is `8.22e29 erg`; trapezoidal integration of the sampled
+bottom-minus-top boundary flux gives `8.31e29 erg` (about 1.0% difference).
+This sampled ledger does not establish an exact discrete conservation identity,
+but does not indicate a large missing energy term over this interval.
+
+The new `plot_simple_convection_tau.py` reconstructs the Rosseland `tau=1`
+surface from xz-slice density and gas temperature using the **same** rho–T
+opacity table. Its initial mean height is `z=2.004303` code, agreeing with
+the generator's printed initial profile (`2.004311`) to `8e-6` code. The
+initial slice-mean gas temperature at that surface is about 6072 K; it falls
+to 4585 K by `t=10`, then rises to about 5782 K by `t≈71.5` (one snapshot,
+horizontal slice standard deviation 167 K). The `tau=1` height moves from
+`z≈2.00` to `1.80` and then `2.11`; comparing temperature at a fixed height
+would obscure this motion. This is a **single xz slice**, not a 3D surface
+average, and the run is still thermally evolving. Near agreement with solar
+effective temperature at one time is not validation of a steady atmosphere.
 
 ## How to repeat and extend
 
 The runner generates an input copy, links external tables, records Git/binary/
 table hashes and the full command, runs MPI, then writes `summary.json`, a
-large-font `index.html`, history and slice plots. It rejects an existing nonempty
+large-font case `index.html`, history and slice plots, and an output-root
+`index.html` linking the cases. The plotting scripts require Python with
+`numpy`, `scipy`, `h5py`, and `matplotlib`. The runner rejects an existing nonempty
 case directory. Build the binary first as above, then:
 
 ```bash
@@ -91,16 +138,25 @@ python3 tst/nrfld_validation/run_solar_convection.py \
   --data-dir /mnt/d/output/rad/test_20260903/conv/data \
   --output-root /mnt/d/output/rad/wor70_solar_20261104 \
   --case fgmres_cfl03_64_np12_new --solver fgmres \
-  --cfl 0.3 --nx 64 --ranks 12 --tlim 10
+  --cfl 0.3 --nx 64 --ranks 12 --tlim 10 --xy-slice-z 2.0
 ```
 
 For a restart, pass `--restart /path/to/previous.final.rst`, choose a new
-`--case`, and increase `--tlim`. A short solver-only run can use `--no-slices`.
+`--case`, and increase `--tlim`. If the parent `.hst` lacks its column header,
+also pass `--history-header-from /path/to/original/header-bearing.hst`. A
+short solver-only run can use `--no-slices`. To evaluate stationarity across
+restart boundaries, pass each earlier history with repeated `--history-prepend`;
+duplicate restart timestamps are resolved in favor of the later segment.
+The run's own solver log still determines the nonlinear-solver status in its
+HTML, so the late stationarity windows should lie within the current segment.
 Use `--plan` to inspect the command. The history report's candidate flag
 requires two late windows each spanning a vertical crossing time, flux near
 the solar value and stable between windows, stable vertical velocity RMS,
 small mass drift, and clean solver status. This is a screening rule only;
 solar comparison requires profile and resolution diagnostics.
+The supplied base input samples the xy plane at `z=1.536`; the initial
+optical-depth-one layer is near `z=2.0`, hence the explicit slice override
+above when photospheric structure is the target.
 
 ## Next scientific gates
 
