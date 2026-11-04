@@ -382,17 +382,17 @@ def make_campaign_index(root: Path) -> None:
         summary = case / "summary.json"
         if not case.is_dir():
             continue
-        if not summary.is_file():
+        item = json.loads(summary.read_text()) if summary.is_file() else None
+        if not isinstance(item, dict) or "log" not in item:
             if (case / "index.html").is_file():
                 cells = [
                     f"<a href='{html.escape(case.name)}/index.html'>"
                     f"{html.escape(case.name)}</a>",
-                    "sub-campaign", "see linked report", "—", "—", "—",
+                    "analysis", "see linked report", "—", "—", "—",
                 ]
                 rows.append("<tr>" + "".join(f"<td>{x}</td>" for x in cells)
                             + "</tr>")
             continue
-        item = json.loads(summary.read_text())
         log = item["log"]
         statuses = log["nr_status_counts"]
         solver_ok = (log["completed"] and log["fatal_count"] == 0
