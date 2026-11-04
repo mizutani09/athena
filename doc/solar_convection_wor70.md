@@ -496,9 +496,18 @@ These are transient coarse-grid measurements, not a solar match.
 The previously reported `t=300` coarse run and the 48 km `t=10`→`40`
 continuation used the legacy source. Their solver-convergence evidence is
 valid, but their long-time solar-flux estimates need a corrected-source
-continuation before physical acceptance. Corrected-source continuations now
-run from these checkpoints to `t=500` at 96 km and `t=100` at 48 km;
-the source switch is explicit in each manifest and report.
+continuation before physical acceptance. The corrected-source 48 km,
+128×128×64, 12-rank continuation from `t=40` to `100` completed 1,739/1,739
+Newton solves, maximum 32 FGMRES iterations, and zero slow-MG warnings or
+fatals. In its final `t=85.1`–`100` window, mean top flux is
+`0.524 F_sun`, maximum mass drift `0.188%`, and stored-energy trend and
+endpoint rate are `+2.66` and `+2.30 F_sun`. This window spans only 0.15
+vertical crossing times, so the run is transient. At `t=100`, the full-3D
+`tau=2/3` surface has mean temperature `4990 K` and vertical-velocity RMS
+`1.72 km/s`; the two-snapshot `t=90`–`100` optical-depth mean gives
+`4981 K`, versus `5769 K` in the imported initial 1D profile. The case
+HTML is `rempel_box_pilot/face_gravity_hd2_128x128x64_np12_cfl03_t100/index.html`.
+The source switch is explicit in both corrected-run manifests and reports.
 
 The large-box lower hydro flux, total-mass drift, and pressure controller
 show a coherent oscillation, investigated separately in WOR-73. A matched
