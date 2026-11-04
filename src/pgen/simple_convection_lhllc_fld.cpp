@@ -413,20 +413,28 @@ static void InitializeHD2BoundaryState(MeshBlock *pmb) {
       pmb->block_size.x3min != pmb->pmy_mesh->mesh_size.x3min) return;
 
   Real rho_b, p_b, erad_b;
+  Real rho_b2, p_b2, erad_b2;
   SimplePolytrope(pmb->pcoord->x3v(pmb->ks), rho_b, p_b, erad_b);
+  SimplePolytrope(pmb->pcoord->x3v(pmb->ks + 1), rho_b2, p_b2, erad_b2);
   const Real egas_b = GasEgasFromRhoP(pmb->peos, rho_b, p_b);
+  const Real egas_b2 = GasEgasFromRhoP(pmb->peos, rho_b2, p_b2);
   const Real eos_p_b = GasPresFromRhoEg(pmb->peos, rho_b, egas_b);
-  if (bottom_pbnd <= 0.0) bottom_pbnd = eos_p_b;
+  const Real eos_p_b2 = GasPresFromRhoEg(pmb->peos, rho_b2, egas_b2);
+  // HD2's P_BND is the pressure at the lower *face*, not at cell center ks.
+  // A log-linear extrapolation of the two initial cell pressures makes the
+  // first ghost pressure P1^2/P2, consistent with the initial stratification.
+  if (bottom_pbnd <= 0.0)
+    bottom_pbnd = eos_p_b*std::sqrt(eos_p_b/std::max(eos_p_b2, TINY_NUMBER));
   if (bottom_s_in_from_profile)
-    bottom_s_in = GasEntropyFromRhoP(pmb->peos, rho_b, bottom_pbnd);
+    bottom_s_in = GasEntropyFromRhoP(pmb->peos, rho_b, eos_p_b);
 
   // Pressure means are dynamic state: retain them on restart, while using the
   // initial boundary pressure only for a new run or a legacy restart without
   // the HD2 state extension.
   Real &pbar1 = HD2State(pmb->pmy_mesh, kHD2PressureMean1);
   Real &pbar2 = HD2State(pmb->pmy_mesh, kHD2PressureMean2);
-  if (!(pbar1 > 0.0)) pbar1 = bottom_pbnd;
-  if (!(pbar2 > 0.0)) pbar2 = bottom_pbnd;
+  if (!(pbar1 > 0.0)) pbar1 = eos_p_b;
+  if (!(pbar2 > 0.0)) pbar2 = eos_p_b2;
 }
 
 static Real GasNablaAdFromRhoP(EquationOfState *peos, const Real rho,
