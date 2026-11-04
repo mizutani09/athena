@@ -474,10 +474,26 @@ The corrected source is now the default for this problem; set
 `gravity_work_face_flux=false` to reproduce the legacy calculation. The
 matched plot and JSON are in
 `rempel_box_pilot/gravity_work_comparison_64x64x32_np4_t100_110/`.
-The previously reported `t=300` coarse run and the currently running 48 km
+The previously reported `t=300` coarse run and the 48 km `t=10`→`40`
 continuation used the legacy source. Their solver-convergence evidence is
 valid, but their long-time solar-flux estimates need a corrected-source
-continuation before physical acceptance.
+continuation before physical acceptance. Corrected-source continuations now
+run from these checkpoints to `t=500` at 96 km and `t=100` at 48 km;
+the source switch is explicit in each manifest and report.
+
+The large-box lower hydro flux, total-mass drift, and pressure controller
+show a coherent oscillation, investigated separately in WOR-73. A matched
+50-code-time spectral diagnostic gives the legacy `t=100`–`150` lower-flux
+standard deviation `27.5 F_sun` and dominant period `12.47` code time
+(`4.65 min`); legacy `t=200`–`250` has `56.3 F_sun` at `12.50` code time.
+The corrected-source `t=350`–`400` window has `136 F_sun` at `12.52`
+code time. The legacy mass-feedback-OFF control at `t=100`–`150` has
+`37.4 F_sun` and broad power around 12–17 code time, so feedback is not
+established as the sole cause. These windows are at different evolutionary
+stages and cannot by themselves assign growth to the gravity-source change.
+The plot, exact windows, and JSON are in
+`rempel_box_pilot/acoustic_mode_diagnostic/`. Compare boundary damping on
+the same corrected-source restart before changing the physical setup.
 
 The earlier one-rank startup to `t=1` gave sampled residuals `+0.0801`
 and `-0.0721 F_sun` for the old and new sources, so a one-second diagnostic
