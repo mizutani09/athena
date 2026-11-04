@@ -15,7 +15,7 @@ matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 import numpy as np
 
-from solar_convection_report import read_history
+from solar_convection_report import input_values, parse_log, read_history, sampled_energy_ledger
 
 
 def load_profile(path: Path) -> dict[str, np.ndarray]:
@@ -24,6 +24,40 @@ def load_profile(path: Path) -> dict[str, np.ndarray]:
         columns = stream.readline().lstrip("# ").split()
     values = np.loadtxt(path)
     return {name: values[:, index] for index, name in enumerate(columns)}
+
+
+def sampled_interior_residuals(profile: dict[str, np.ndarray], units: dict[str, float],
+                               nx3: int, reference_flux: float) -> dict[str, np.ndarray]:
+    """Estimate 1D face FLD flux and centered HSE error on the actual z grid.
+
+    This mirrors the NR face opacity and limiter using the imported profile
+    sampled at cell centers. It excludes ghost faces, temperature noise, and
+    C++ EOS/opacity interpolation, so it is a diagnostic, not an exact solver
+    residual.
+    """
+    z = np.linspace(units["x3min"], units["x3max"], nx3, endpoint=False)
+    z += 0.5*(units["x3max"]-units["x3min"])/nx3
+    dz = (units["x3max"]-units["x3min"])*units["leng_unit"]/nx3
+    center = {key: np.interp(z, profile["z"], profile[key])
+              for key in ("rho", "pressure", "erad", "kappa_R")}
+    sigma = center["rho"]*center["kappa_R"]
+    arithmetic = 0.5*(sigma[1:]+sigma[:-1])
+    harmonic = 2*sigma[1:]*sigma[:-1]/(sigma[1:]+sigma[:-1])
+    sigma_face = np.minimum(arithmetic, np.maximum(harmonic, 4/(3*dz)))
+    e_face = 0.5*(center["erad"][1:]+center["erad"][:-1])
+    grad_e = np.diff(center["erad"])/dz
+    reduced_gradient = np.abs(grad_e)/(sigma_face*e_face)
+    limiter = (2+reduced_gradient)/(6+3*reduced_gradient+reduced_gradient**2)
+    discrete_flux = -2.99792458e10*limiter*grad_e/sigma_face
+    face_z = 0.5*(z[1:]+z[:-1])
+    model_flux = np.interp(face_z, profile["z"], profile["flux_rad"])
+    # The input's problem/grav_acc is in physical cm/s^2; pgen converts it
+    # to code units. input_values() returns that original physical value.
+    gravity = units["grav_acc"]
+    rho_face = 0.5*(center["rho"][1:]+center["rho"][:-1])
+    hse = np.abs(np.diff(center["pressure"])/dz+rho_face*gravity)/(rho_face*gravity)
+    return {"z": face_z, "discrete_flux": discrete_flux/reference_flux,
+            "model_flux": model_flux/reference_flux, "hse_fraction": hse}
 
 
 def main() -> None:
@@ -40,6 +74,20 @@ def main() -> None:
         raise ValueError(f"{args.profile}: missing model flux target")
     model_flux = float(match.group(1))
     history = read_history(next(args.startup_dir.glob("*.hst")))
+    units = input_values(args.startup_dir / "athinput.generated")
+    log = parse_log(args.startup_dir / "run.log")
+    mesh = re.search(r"^<mesh>\s*$(.*?)(?=^<|\Z)",
+                     (args.startup_dir / "athinput.generated").read_text(),
+                     re.M | re.S)
+    if mesh is None or (nmatch := re.search(r"^\s*nx3\s*=\s*(\d+)",
+                                         mesh.group(1), re.M)) is None:
+        raise ValueError("Cannot read mesh/nx3 from generated input")
+    nx3 = int(nmatch.group(1))
+    manifest = json.loads((args.startup_dir / "manifest.json").read_text())
+    for item in manifest.get("command", []):
+        if item.startswith("mesh/nx3="):
+            nx3 = int(item.split("=", 1)[1])
+    interior = sampled_interior_residuals(profile, units, nx3, args.reference_flux)
     z_cm = profile["z_cm"]
     z_code = profile["z"]
     if not np.all(np.diff(z_cm) > 0):
@@ -51,6 +99,8 @@ def main() -> None:
     first = int(np.argmin(abs(history["time"])))
     last = int(np.argmin(abs(history["time"]-10.0)))
     late = (history["time"] >= 5.0) & (history["time"] <= 10.0)
+    ledger = sampled_energy_ledger(
+        history, np.arange(len(history["time"])), units, args.reference_flux)
     samples = {}
     for z in (-3.0, 0.0, 2.0, 3.0):
         samples[f"z_code_{z:+.1f}"] = {
@@ -81,6 +131,18 @@ def main() -> None:
         "top_flux_t5_10_mean_over_solar": float(np.mean(
             history["FtotTop"][late])/args.reference_flux),
         "startup_history_end_code": float(history["time"][-1]),
+        "solver": log,
+        "startup_sampled_energy_ledger": ledger,
+        "interior_discrete_profile_estimate": {
+            "method": "profile interpolated to cell centers; NR face-opacity and limiter; "
+                      "no ghost face, perturbation, or exact EOS/opacity inversion",
+            "nx3": nx3,
+            "uppermost_face_z_code": float(interior["z"][-1]),
+            "uppermost_face_fld_flux_over_solar": float(interior["discrete_flux"][-1]),
+            "uppermost_face_model_flux_over_solar": float(interior["model_flux"][-1]),
+            "max_centered_hse_fraction": float(np.max(interior["hse_fraction"])),
+            "uppermost_centered_hse_fraction": float(interior["hse_fraction"][-1]),
+        },
     }
     args.output_dir.mkdir(parents=True, exist_ok=True)
     (args.output_dir / "summary.json").write_text(json.dumps(result, indent=2) + "\n")
@@ -114,6 +176,23 @@ def main() -> None:
         axis.grid(alpha=0.25)
     fig.savefig(args.output_dir / "initial_flux_audit.png", dpi=160)
     plt.close(fig)
+    fig, axes = plt.subplots(1, 3, figsize=(16, 4.8), constrained_layout=True)
+    axes[0].semilogy(interior["z"], interior["model_flux"], label="1D model")
+    axes[0].semilogy(interior["z"], interior["discrete_flux"], label="sampled FLD faces")
+    axes[0].set(title="Interior radiative flux", xlabel="height [code]",
+                ylabel=r"$F_{rad}/F_\odot$")
+    axes[0].legend()
+    axes[1].plot(interior["z"], interior["discrete_flux"]-interior["model_flux"])
+    axes[1].axhline(0, color="black", lw=1)
+    axes[1].set(title="Grid minus 1D model", xlabel="height [code]",
+                ylabel=r"$\Delta F_{rad}/F_\odot$")
+    axes[2].semilogy(interior["z"], interior["hse_fraction"])
+    axes[2].set(title="Centered hydrostatic estimate", xlabel="height [code]",
+                ylabel=r"$|dP/dz+\rho g|/(\rho g)$")
+    for axis in axes:
+        axis.grid(alpha=0.25)
+    fig.savefig(args.output_dir / "sampled_interior_residuals.png", dpi=160)
+    plt.close(fig)
     table = "".join(
         f"<tr><th>{html.escape(label)}</th><td>{value:.5g}</td></tr>"
         for label, value in (
@@ -127,6 +206,16 @@ def main() -> None:
             ("Initial top flux / solar", result["initial_top_flux_over_solar"]),
             ("t=5–10 mean top flux / solar",
              result["top_flux_t5_10_mean_over_solar"]),
+            ("t=0–10 stored-energy rate / solar",
+             ledger["stored_energy_rate_over_solar"] if ledger else float("nan")),
+            ("t=0–10 sampled ledger residual / solar",
+             ledger["residual_equivalent_solar_flux"] if ledger else float("nan")),
+            ("Uppermost interior FLD face / solar",
+             result["interior_discrete_profile_estimate"]["uppermost_face_fld_flux_over_solar"]),
+            ("Same face in 1D model / solar",
+             result["interior_discrete_profile_estimate"]["uppermost_face_model_flux_over_solar"]),
+            ("Maximum centered HSE fraction",
+             result["interior_discrete_profile_estimate"]["max_centered_hse_fraction"]),
         ))
     samples_table = "".join(
         f"<tr><td>{html.escape(key)}</td>"
@@ -145,13 +234,21 @@ def main() -> None:
         "<p><strong>The 1D model assumes deep convective transport.</strong> "
         "The 3D calculation starts from zero velocity. Missing initial "
         "convective transport is a plausible cause of the early flux drop; "
-        "the discrete FLD and boundary residuals still need an audit.</p>"
+        "the discrete FLD and boundary residuals still need an audit. "
+        "The energy ledger below uses sampled output fluxes, so its residual "
+        "is diagnostic rather than a conservation acceptance test. The "
+        "interior face estimate samples the imported profile on the run grid; "
+        "it excludes ghost faces, temperature noise, and exact C++ table "
+        "interpolation.</p>"
         f"<p>{startup_link} · <a href='summary.json'>JSON</a></p>"
         f"<table>{table}</table>"
         "<h2>Initial 1D model flux by height</h2><table><tr>"
         "<th>Height [code]</th><th>Radiation / solar</th>"
         f"<th>Model convection / solar</th></tr>{samples_table}</table>"
-        "<img src='initial_flux_audit.png' alt='initial flux audit'></html>"
+        "<img src='initial_flux_audit.png' alt='initial flux audit'>"
+        "<h2>Sampled interior grid residuals</h2>"
+        "<img src='sampled_interior_residuals.png' alt='interior residuals'>"
+        "</html>"
     )
     print(args.output_dir / "index.html")
 

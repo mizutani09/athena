@@ -614,8 +614,16 @@ the 48 km first cell uses `1.581460760857411e9`. Same-checkpoint
 `5e6 erg g^-1 K^-1`, with `s_in_from_profile=false` and `tau=2`.
 These pilots do not yet calibrate a steady solar flux. A corrected-source
 96 km `t=40`–`100` continuation from the corresponding old-source restart
-also runs to make the early 48 km resolution comparison less confounded by
-the gravity-source switch.
+completed to make the early 48 km resolution comparison less confounded by
+the gravity-source switch. It converged in 830/830 Newton solves with no
+slow-MG warnings or fatals. Over the matched `t=41`–`100` window, mean top
+flux is `0.538 F_sun` at 96 km versus `0.489 F_sun` at 48 km; maximum
+mass drift is `0.279%` versus `0.188%`. At `t=100`, the 96 km full-volume
+`tau=2/3` surface has mean temperature `5026 K` and vertical-velocity RMS
+`1.97 km/s`, versus `4990 K` and `1.72 km/s` at 48 km. This is a transient
+resolution comparison, not a convergence or solar-agreement claim. The
+matched plot and metrics are in
+`rempel_box_pilot/resolution_comparison_face_gravity_t41_100/index.html`.
 The initial profile's column internal energy, `integral rho*specific_u dz`,
 divided by `F_sun` gives a whole-box thermal time of about `5.24 d`
 (`2.0e4` code-time units). The top 1 Mm gives about `0.44 h`
@@ -629,10 +637,27 @@ The initial 1D model expects nearly all of `F_sun` to be carried by
 convection at z-code `-3` and `0` (radiative fractions about `6e-6` and
 `1e-4`), while the 3D pgen starts with zero velocity and therefore zero
 resolved convective flux. In the 96 km startup, top flux drops from about
-`1.0 F_sun` at `t=0` to a `t=5`–`10` mean of `0.47 F_sun`. This is a
-plausible source of early cooling; the initial discrete FLD and boundary
-residuals still require the WOR-75 audit. The model split, thermal times,
-and startup histories are plotted in
+`1.0 F_sun` at `t=0` to a `t=5`–`10` mean of `0.47 F_sun` with the
+legacy gravity source. A fresh corrected-source `t=0`–`10` run converged
+120/120 Newton solves, with no slow-MG warnings or fatals; its mean top
+flux at `t=5`–`10` is `0.441 F_sun`. A matched control with zero initial
+temperature noise also gives `0.441 F_sun`, so the imposed 0.1% temperature
+perturbation is not the cause of the early top-flux drop. Both corrected
+cases begin at `0.997 F_sun` at the top boundary.
+
+A 1D diagnostic sampling the imported profile at the actual 96 km cell
+centers, then applying the NR face-opacity and FLD limiter formulas, gives
+`0.723 F_sun` through the uppermost *interior* face at `z=2.88`, versus
+`0.821 F_sun` from the continuous-profile diagnostic at the same height.
+The approximate centered hydrostatic residual reaches `5.6%` at the upper
+face. The initial top-boundary flux of `0.997 F_sun` therefore exceeds
+both the sampled interior radiative flux and the initial resolved convective
+flux (zero), providing a concrete early-cooling mechanism. This sampled
+estimate excludes ghost faces, temperature noise, and exact C++ EOS/opacity
+interpolation; the boundary and stage-by-stage residuals still need an exact
+audit before assigning the entire flux deficit to discretization.
+The model split, thermal times, startup histories, and sampled interior
+residuals are plotted in
 `rempel_box_pilot/initial_flux_and_thermal_time_diagnostic/index.html`.
 
 The earlier one-rank startup to `t=1` gave sampled residuals `+0.0801`
