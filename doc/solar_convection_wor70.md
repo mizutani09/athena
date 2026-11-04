@@ -350,6 +350,15 @@ For orientation, a flux of `0.585 F_sun` implies a blackbody effective
 temperature about `5048 K` if the same solar reference is used, close to the
 instantaneous `tau=2/3` mean of `5028 K`. This agreement is a gray-atmosphere
 consistency check, not evidence of a relaxed solar solution.
+The HTML now also reports a **sampled** energy ledger: stored gas+radiation+
+gravitational energy change minus time-integrated recorded boundary hydro,
+radiation, and potential-energy fluxes. In the coarse box, the residual is
+equivalent to `+0.111 F_sun` over `t=0`→`100` and `+0.0465 F_sun` over the
+last quarter. It persists at about `+0.08 F_sun` in the ongoing `t=100`→`189`
+segment. This is not yet proof of a code conservation error because the
+history samples accepted-step fluxes, not their exact RK-stage integrals.
+The cadence and discrete source/flux audit is tracked separately as WOR-72;
+until then, this residual limits precision claims for solar flux comparison.
 The next corrected continuation targets `t=300` to enlarge the statistical
 window; this is a relaxation test, not a claim that 96 km resolves solar
 granulation.

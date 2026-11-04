@@ -65,7 +65,8 @@ def input_values(path: Path) -> dict[str, float]:
     text = path.read_text()
     return {name: float(value) for name, value in KEY_VALUE.findall(text)
             if name in {"rho_unit", "egas_unit", "leng_unit", "time_unit",
-                        "x3min", "x3max"}}
+                        "x1min", "x1max", "x2min", "x2max",
+                        "x3min", "x3max", "grav_acc"}}
 
 
 def physical_time_unit(units: dict[str, float], velocity_unit: float) -> float:
@@ -127,6 +128,50 @@ def window_metrics(h: dict[str, np.ndarray], indices: np.ndarray,
     }
 
 
+def sampled_energy_ledger(h: dict[str, np.ndarray], indices: np.ndarray,
+                          units: dict[str, float], flux_ref: float
+                          ) -> dict[str, float] | None:
+    """Integrate sampled face fluxes and compare stored gas+rad+gravity energy.
+
+    The HST face fluxes are sampled after accepted steps, not the exact
+    time-integrated stage fluxes. This is a diagnostic, not a conservation
+    acceptance criterion.
+    """
+    needed = {"EtotGrav", "FhydBottom", "FradBottom", "FtotTop",
+              "BottomMdotNet", "TopMdotOut"}
+    geometry = {"x1min", "x1max", "x2min", "x2max", "x3min", "x3max",
+                "grav_acc", "rho_unit", "egas_unit", "leng_unit"}
+    if not needed.issubset(h) or not geometry.issubset(units) or len(indices) < 2:
+        return None
+    velocity_unit = np.sqrt(units["egas_unit"] / units["rho_unit"])
+    time_unit = physical_time_unit(units, velocity_unit)
+    t = h["time"][indices] * time_unit
+    area = ((units["x1max"] - units["x1min"])
+            * (units["x2max"] - units["x2min"])
+            * units["leng_unit"]**2)
+    regular_flux = (h["FhydBottom"][indices]
+                    + h["FradBottom"][indices] - h["FtotTop"][indices])
+    mass_flux_unit = units["rho_unit"] * velocity_unit
+    potential_flux = (mass_flux_unit * units["grav_acc"] * units["leng_unit"]
+                      * (h["BottomMdotNet"][indices] * units["x3min"]
+                         - h["TopMdotOut"][indices] * units["x3max"]))
+    regular_integral = float(np.trapezoid(regular_flux, t) * area)
+    potential_integral = float(np.trapezoid(potential_flux, t) * area)
+    stored_change = float(h["EtotGrav"][indices][-1]
+                          - h["EtotGrav"][indices][0])
+    residual = stored_change - regular_integral - potential_integral
+    return {
+        "start_time_code": float(h["time"][indices][0]),
+        "end_time_code": float(h["time"][indices][-1]),
+        "stored_energy_change_erg": stored_change,
+        "sampled_hydro_radiation_boundary_erg": regular_integral,
+        "sampled_potential_boundary_erg": potential_integral,
+        "sampled_ledger_residual_erg": residual,
+        "residual_equivalent_solar_flux": float(residual / (area * (t[-1]-t[0])
+                                                         * flux_ref)),
+    }
+
+
 def summarize(h: dict[str, np.ndarray], log: dict[str, object], units: dict[str, float],
               flux_ref: float) -> dict[str, object]:
     required = {"time", "VzRms2Mean", "FtotTop", "FradTop", "FhydBottom",
@@ -150,6 +195,9 @@ def summarize(h: dict[str, np.ndarray], log: dict[str, object], units: dict[str,
         "mass drift <=1%; all reported NR solves converged; no fatal error.",
         "stationarity_candidate": False,
     }
+    ledger = sampled_energy_ledger(h, np.arange(n), units, flux_ref)
+    if ledger:
+        report["sampled_energy_ledger_full"] = ledger
     if quarter < 5:
         report["reason"] = "Fewer than five history samples per late window"
         return report
@@ -159,6 +207,9 @@ def summarize(h: dict[str, np.ndarray], log: dict[str, object], units: dict[str,
                             velocity_unit, time_unit, height_cm)
     report["early_late_window"] = first
     report["late_window"] = second
+    ledger = sampled_energy_ledger(h, np.arange(n - quarter, n), units, flux_ref)
+    if ledger:
+        report["sampled_energy_ledger_late"] = ledger
     flux_change = abs(second["top_total_flux_over_solar"]
                       - first["top_total_flux_over_solar"])
     speed_change = abs(second["vz_rms_km_s"] - first["vz_rms_km_s"])
@@ -361,6 +412,10 @@ def main() -> None:
                       f"{late_profiles['window_start_code']:.2f}–"
                       f"{late_profiles['window_end_code']:.2f} code, "
                       f"{late_profiles['snapshot_count']} snapshots"))
+    ledger = report.get("sampled_energy_ledger_late")
+    if ledger:
+        quick.append(("Late sampled energy-ledger residual",
+                      f"{ledger['residual_equivalent_solar_flux']:+.3f} F_sun"))
     table = "".join(f"<tr><th>{html.escape(key)}</th><td>{html.escape(value)}</td></tr>"
                     for key, value in quick)
     gallery = "".join(
@@ -379,6 +434,11 @@ def main() -> None:
         "reconstruction, including an approximate FLD gradient. Read exact "
         "top and bottom boundary fluxes from the history metrics above.</p>"
         if (args.run_dir / "flux3d.json").is_file() else "")
+    energy_note = (
+        "<p><strong>Energy ledger:</strong> the reported residual integrates "
+        "sampled face fluxes and potential-energy transport. It is a diagnostic "
+        "for follow-up, not an exact discrete conservation test.</p>"
+        if ledger else "")
     (args.run_dir / "index.html").write_text(
         "<!doctype html><html lang='en'><meta charset='utf-8'>"
         "<title>Solar convection run</title><style>body{font:19px/1.5 system-ui;"
@@ -391,6 +451,7 @@ def main() -> None:
         "</style><h1>Non-magnetic solar convection</h1><p class='status'>"
         + status + "</p><p>Screening only. Full solar comparison requires vertical "
         "profiles, optical-depth diagnostics, and resolution tests.</p>"
+        + energy_note +
         "<p><a href='history.png'>History plot</a> · <a href='summary.json'>JSON</a> · "
         "<a href='run.log'>run.log</a></p>"
         f"<table>{table}</table><img src='history.png' alt='history'>"
