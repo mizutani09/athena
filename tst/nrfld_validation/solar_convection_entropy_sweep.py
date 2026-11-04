@@ -157,6 +157,8 @@ def main() -> None:
                "Late ΔFhyd,bottom / solar", "Early ΔFtop / solar",
                "Late ΔFtop / solar", "Late Ftop / solar")
     table_head = "".join(f"<th>{name}</th>" for name in headers)
+    baseline_link = (f"<a href='../{html.escape(args.baseline.name)}/index.html'>"
+                     "Baseline case report</a>")
     (args.output_dir / "index.html").write_text(
         "<!doctype html><html lang='en'><meta charset='utf-8'>"
         "<title>Solar convection entropy sensitivity</title><style>"
@@ -170,7 +172,7 @@ def main() -> None:
         f"<p>Common interval: {start:.1f}–{end:.1f} code time; "
         f"baseline s_in = {args.baseline_s_in:.9e} erg g⁻¹ K⁻¹; "
         f"baseline late top flux = {result['baseline_late_top_over_solar']:.3f} "
-        "solar.</p>"
+        f"solar. {baseline_link}</p>"
         f"<table><tr>{table_head}</tr>{''.join(cells)}</table>"
         "<img src='entropy_sensitivity.png' alt='entropy sensitivity'>"
         "<p><a href='summary.json'>Numerical results</a></p></html>"
