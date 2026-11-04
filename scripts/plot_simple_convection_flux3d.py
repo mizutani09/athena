@@ -153,10 +153,14 @@ def main() -> None:
                        ("convective_enthalpy", "convective enthalpy"),
                        ("mean_flow_enthalpy", "mean-flow enthalpy"),
                        ("kinetic", "kinetic")):
-        axes[0].plot(np.asarray(selected[key]) / SOLAR_FLUX, z, label=label)
+        values = np.asarray(selected[key], dtype=float) / SOLAR_FLUX
+        values[[0, -1]] = np.nan  # boundary faces require the HST fluxes
+        axes[0].plot(values, z, label=label)
     for key, label in (("total", "hydro + radiation + gravity"),
                        ("gravitational", "gravitational")):
-        axes[1].plot(np.asarray(selected[key]) / SOLAR_FLUX, z, label=label)
+        values = np.asarray(selected[key], dtype=float) / SOLAR_FLUX
+        values[[0, -1]] = np.nan
+        axes[1].plot(values, z, label=label)
     for axis in axes:
         axis.axvline(1, color="black", lw=1, ls="--", label="solar flux")
         if photosphere_z is not None:
