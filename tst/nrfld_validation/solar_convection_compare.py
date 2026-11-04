@@ -45,7 +45,8 @@ def early_metrics(h: dict[str, np.ndarray], summary: dict[str, object],
         "net_rms_t0_2_code": float(np.sqrt(np.mean(h["BottomMdotNet"][early]**2))),
         "max_mass_drift_t0_2_percent": float(100 * np.max(abs(h["MassDrift"][early]))),
         "late_top_flux_solar": float(np.mean(h["FtotTop"][late]) / 6.3e10),
-        "last_tau23_T_K": float(tau["T_tau23_mean_K"][-1]),
+        "tau23_T_at_t10_K": float(tau["T_tau23_mean_K"][
+            np.argmin(abs(tau["time_code"] - 10))]),
         "cycles": int(summary["log"]["final_cycle"]),
     }
 
@@ -91,7 +92,7 @@ def main() -> None:
         "net_rms_t0_2_code": "Bottom net flux RMS, t=0–2 [code]",
         "max_mass_drift_t0_2_percent": "Maximum |mass drift|, t=0–2 [%]",
         "late_top_flux_solar": "Mean top flux, t=8–10 / solar",
-        "last_tau23_T_K": "Last xz-slice T at tau=2/3 [K]",
+        "tau23_T_at_t10_K": "xz-slice T at tau=2/3 near t=10 [K]",
         "cycles": "Completed cycles",
     }
     rows = "".join(
