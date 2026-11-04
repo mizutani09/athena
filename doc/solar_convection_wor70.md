@@ -615,6 +615,16 @@ coherent phase can make a longer window's energy slope deceptively small;
 for example `t=650`–`850` gives slope `-0.025 F_sun` and endpoint rate
 `-0.098 F_sun`, while the last two 50-code windows show substantial cooling.
 There is no claim of statistical stationarity or solar agreement.
+Matched `t=800`–`850` continuations from the same checkpoint varied the HD2
+mass-rate correction gain from `0` to `10`, `20`, and `40`. All four finished
+714/714 Newton solves without slow-MG warnings or fatals. The lower hydro-flux
+standard deviations decrease from `10.92` to `7.90`, `6.44`, and `4.95 F_sun`;
+mass-drift standard deviations decrease from `0.0822%` to `0.0721%`,
+`0.0607%`, and `0.0433%`. The dominant period remains about `16.63` code
+time in every case. The mean top flux is nearly unchanged (`0.612` to
+`0.608 F_sun`). Stronger mass correction therefore damps this coherent
+boundary oscillation but has not fixed the large thermal flux deficit. The
+comparison is `rempel_box_pilot/mass_rate_gain_sweep_t800_850/index.html`.
 An interim `t=450`–`500` diagnostic has least-squares stored-energy trend
 `+0.016 F_sun` but endpoint storage rate `+0.678 F_sun` (sampled ledger
 residual `-0.0006 F_sun`). The small regression slope alone would therefore
@@ -760,6 +770,14 @@ cooling. At `t=30`–`40`, however, the mean top flux increases from
 convective transport but leaves a large solar-flux deficit and does not
 solve the long thermal relaxation. The three-case plots are in
 `rempel_box_pilot/initial_noise_sweep_t0_40/index.html`.
+Full-3D horizontal-mean temperature profiles at `t=0,10,20,30,40`
+localize this cooling to the upper layers. At `t=40`, the mean temperature
+change over the upper 1 Mm is `-2530 K` without an initial perturbation,
+`-1014 K` with 0.1%, `-846 K` with 1%, and `-1031 K` for the
+FLD-consistent profile with the old inflow entropy. These are differences
+from each case's own initial 3D state, not an energy budget. The plots and
+height-resolved arrays are in
+`rempel_box_pilot/thermal_stratification_t0_40/index.html`.
 The lower radiation ghost target helper also had a local copy of the
 limiter with `6+2R+R^2` in the denominator; the shared FLD limiter uses
 `6+3R+R^2`. The code now calls the shared limiter. This correction is
