@@ -960,6 +960,9 @@ MPI placement can be varied explicitly with `--mpi-map-by core
 `hwthread` defaults. Compare wall time on an identical checkpoint before
 selecting a faster placement; the current 12-rank and four-rank runs use
 six and two physical cores respectively.
+For an expensive restart, `--checkpoint-dt 1` overrides the input's
+`<output6>` restart cadence without changing the numerical timestep;
+this limits lost work if a local session ends before its target time.
 
 ## Long-run continuity and entropy response
 
@@ -1023,6 +1026,60 @@ This establishes damping under gain-40 mass feedback at 96 km, but does
 not identify the acoustic mode's cause. The comparison is in
 `rempel_box_pilot/gain40_late_oscillation_t800_1300/index.html`.
 
+The baseline reached `t=1500` after a session SIGTERM at `t≈1455` and a
+numbered-checkpoint continuation from `t≈1450`. Across the six executed
+segments since `t=800`, all `10044/10044` Newton solves converged, with no
+slow-MG warnings or fatals. The joined history discards parent samples
+after each checkpoint rewind. Its last two approximately 175-code-time
+windows span `1.549` and `1.528` vertical crossing times; mean top fluxes
+are `0.6150` and `0.6201 F_sun`, stored-energy endpoint rates are
+`-0.0069` and `+0.0326 F_sun`, and maximum mass drift is below `0.056%`.
+All stationarity-screen checks except the `0.9`–`1.1 F_sun` target pass.
+This remains a subsolar transient or quasi-steady result, since the whole-box
+thermal-time estimate is much longer. The combined report is
+`rempel_box_pilot/mass_rate40_combined_t800_1500/index.html`.
+The sampled boundary/gravity energy-ledger residual over the last window is
+only `+5.03e-6 F_sun` equivalent, far below the `0.38 F_sun` top-flux
+shortfall. This is still not an exact RK-stage conservation audit.
+At `t=1500`, the full-3D `tau=2/3` surface has mean `T=5145 K`. The
+`0.6201 F_sun` late top flux corresponds to a Stefan–Boltzmann effective
+temperature of `5123 K`; their approximate agreement is consistent with
+the cool radiating surface implied by the low flux, without establishing
+global thermal equilibrium.
+Four later 50-code-time windows show continued boundary-mode damping:
+the lower hydro-flux standard deviation falls through `1.536`, `1.251`,
+`0.999`, and `0.879 F_sun` from `t=1300` to `1500`, while the dominant
+period stays near `6.2 min`. The horizontal-mean vertical-velocity variance
+fraction is near `0.16`–`0.17`. See
+`rempel_box_pilot/gain40_late_oscillation_t1300_1500/index.html`.
+
+A matched `t=1300`–`1500` continuation with inflow entropy raised by
+`3e6 erg g^-1 K^-1` adds a stored-energy rate of `+0.807 F_sun` relative
+to the baseline over the full interval, and `+0.290 F_sun` over the last
+25 code-time units. The last-25 upper flux difference is `-0.00474 F_sun`,
+while the last-half difference is `+0.000754 F_sun`: its sign depends on
+the averaging window, so this is not a steady entropy calibration.
+In the final approximately 10-code-time 3D mean profile, the variant is
+`204 K` warmer and `4.20%` denser at fixed `z=2`. Its `tau=2/3` surface
+lies about `0.026` code length higher and has a mean temperature `40 K`
+lower than the baseline, showing why a moving optical-depth surface and
+fixed-height thermal response must be inspected separately. The matched
+time series and vertical differences are in
+`rempel_box_pilot/inflow_entropy_sensitivity_plus3e6_t1300_1500/index.html`.
+The matched `+1e6` run also reached `t=1500`; its two segments have
+`1423/1423` and `1432/1432` converged Newton solves, with no warnings or
+fatals. Compared with the same baseline, the full-interval stored-energy
+rate increases by `+0.263 F_sun` and the last-25 rate by `+0.107 F_sun`.
+The upper-flux response is `+0.00750 F_sun` over the last 25 code-time
+units but only `+0.00134 F_sun` over the last half. For `+3e6`, those
+values are `-0.00474` and `+0.000754 F_sun`. This inconsistent late
+upper response rules out a steady linear sensitivity estimate on the
+present interval. At fixed `z=2`, the `+1e6` case is about `194 K`
+warmer and `1.81%` denser than baseline in a common two-snapshot average
+near `t=1490` and `1500`. The three-case comparison, with exactly matched
+profile snapshot times and linked run reports, is
+`rempel_box_pilot/inflow_entropy_sensitivity_t1300_1500/index.html`.
+
 For WOR-76, an experimental post-NR FLD ghost synchronization did not
 reduce the continuous-versus-restarted first-step difference and was
 reverted. At the checkpoint time, every full-3D active-cell primitive
@@ -1058,6 +1115,11 @@ restarts; the rerun passes all five cases in
 `wor76_amr_restart_zero_dt_regression_20261105/summary.json`. The longer
 `t=1300` campaigns were launched with the older copied executable before
 this fix; their comparisons all use that same binary.
+An additional corrected-binary solar restart from the old `t=1300`
+checkpoint reaches `t=1320` with `288/288` Newton solves converged and no
+slow-MG warnings or fatals. Its `t=1310`–`1320` mean top-flux difference
+from the old-binary run is `+1.20e-5 F_sun`; this short check does not
+replace the longer matched-old-binary entropy comparison.
 
 ## Next scientific gates
 

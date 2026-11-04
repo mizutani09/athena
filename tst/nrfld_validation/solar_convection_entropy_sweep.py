@@ -235,27 +235,38 @@ def main() -> None:
     args.output_dir.mkdir(parents=True, exist_ok=True)
     baseline_final_path = (args.baseline_continuation[-1]
                            if args.baseline_continuation else args.baseline)
-    profile_paths = [baseline_final_path / "profiles3d_late_mean.json"] + [
-        Path(row["final_run_dir"]) / "profiles3d_late_mean.json"
+    profile_paths = [baseline_final_path / "profiles3d.json"] + [
+        Path(row["final_run_dir"]) / "profiles3d.json"
         for row in rows]
     profile_figure = ""
     if all(path.is_file() for path in profile_paths):
-        profiles = [json.loads(path.read_text()) for path in profile_paths]
-        z = np.asarray(profiles[0]["z_code"], dtype=float)
-        reference_temperature = np.asarray(
-            profiles[0]["T_mean_K"]["temporal_mean"], dtype=float)
-        reference_density = np.asarray(
-            profiles[0]["rho_mean_cgs"]["temporal_mean"], dtype=float)
+        raw_profiles = [json.loads(path.read_text())["records"]
+                        for path in profile_paths]
+        if len(raw_profiles[0]) < 2:
+            raise ValueError("Need two baseline full-3D profiles")
+        target_times = [entry["time_code"] for entry in raw_profiles[0][-2:]]
+        profiles = []
+        for records in raw_profiles:
+            selected = [min(records, key=lambda entry: abs(
+                entry["time_code"] - target)) for target in target_times]
+            if any(abs(entry["time_code"] - target) > 0.1
+                   for entry, target in zip(selected, target_times)):
+                raise ValueError("Full-3D snapshot times differ by >0.1 code")
+            profiles.append(selected)
+        z = np.asarray(profiles[0][0]["z_code"], dtype=float)
+        def mean_profile(records: list[dict], field: str) -> np.ndarray:
+            if any(not np.allclose(record["z_code"], z, rtol=0, atol=1e-8)
+                   for record in records):
+                raise ValueError("Vertical profile grid differs")
+            return np.mean([record[field] for record in records], axis=0)
+        reference_temperature = mean_profile(profiles[0], "T_mean_K")
+        reference_density = mean_profile(profiles[0], "rho_mean_cgs")
         fig, axes = plt.subplots(1, 2, figsize=(13, 6), constrained_layout=True,
                                  sharey=True)
         profile_metrics = []
         for row, profile in zip(rows, profiles[1:]):
-            if not np.allclose(profile["z_code"], z, rtol=0, atol=1e-8):
-                raise ValueError(f"{row['label']}: vertical profile grid differs")
-            temperature = np.asarray(profile["T_mean_K"]["temporal_mean"],
-                                     dtype=float)
-            density = np.asarray(profile["rho_mean_cgs"]["temporal_mean"],
-                                 dtype=float)
+            temperature = mean_profile(profile, "T_mean_K")
+            density = mean_profile(profile, "rho_mean_cgs")
             delta_temperature = temperature - reference_temperature
             delta_density_percent = 100*(density/reference_density-1)
             axes[0].plot(delta_temperature, z, label=row["label"])
@@ -265,10 +276,10 @@ def main() -> None:
                 "delta_T_K_at_z2": float(np.interp(2.0, z, delta_temperature)),
                 "delta_rho_percent_at_z2": float(np.interp(
                     2.0, z, delta_density_percent)),
-                "baseline_window_code": [profiles[0]["window_start_code"],
-                                         profiles[0]["window_end_code"]],
-                "variant_window_code": [profile["window_start_code"],
-                                        profile["window_end_code"]],
+                "baseline_snapshot_times_code": [entry["time_code"]
+                                                 for entry in profiles[0]],
+                "variant_snapshot_times_code": [entry["time_code"]
+                                                for entry in profile],
             })
         for axis in axes:
             axis.axvline(0, color="black", lw=1)
