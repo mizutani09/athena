@@ -43,6 +43,12 @@ The previous full step therefore describes the normal step-size behavior.
 The local implicit gas+radiation energy-budget residual is <7e-13 relative
 to the largest implicit diffusion source. Transverse radiation-energy spread
 at the sampled shock cells is <2e-10 relative.
+At the cell with the largest pre-implicit gas temperature, gas energy density
+falls by 0.005863 and radiation energy density by 0.000253 in code units on
+that full step. Their sum, -0.006116, agrees with `dt*S_diff_implicit` at that
+cell. This identifies implicit radiation diffusion out of the hot cell,
+coupled to the gas, as the immediate cause of the post-implicit peak drop;
+it is not an unexplained loss of gas+radiation energy.
 
 The N64 bitwise control used a fresh current-source build and the previous WOR-10 binary with exactly the same input. Every dataset in their final HDF5 files agrees bitwise at 0.04 s. The production high-resolution uniform runs use the previous binary; this control checks the current source's default physics behavior after the later opt-in diagnostic changes.
 

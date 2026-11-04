@@ -103,6 +103,11 @@ def stage_metrics(directory: Path, shock_raw: float) -> dict | None:
         def peak(rows: dict, field: str) -> float:
             return max(float(rows[x][field]) for x in points)
         dt = float(pre[points[0]]["dt"])
+        hottest_x = max(points, key=lambda x: float(pre[x]["Tgas_K"]))
+        hottest_gas_change = (float(post[hottest_x]["egas"])
+                              - float(pre[hottest_x]["egas"]))
+        hottest_radiation_change = (float(post[hottest_x]["Er"])
+                                    - float(pre[hottest_x]["Er"]))
         budget = [((float(post[x]["egas"])-float(pre[x]["egas"]))
                   + (float(post[x]["Er"])-float(pre[x]["Er"])))/dt
                   - float(post[x]["S_diff_implicit"]) for x in points]
@@ -118,6 +123,16 @@ def stage_metrics(directory: Path, shock_raw: float) -> dict | None:
                 "Trad_peak_after_implicit_K": peak(post, "Trad_K"),
                 "largest_same_cell_Tgas_drop_K": max(float(pre[x]["Tgas_K"])
                     - float(post[x]["Tgas_K"]) for x in points),
+                "hottest_pre_implicit_cell": {
+                    "x_cm": hottest_x,
+                    "Tgas_after_explicit_K": float(pre[hottest_x]["Tgas_K"]),
+                    "Tgas_after_implicit_K": float(post[hottest_x]["Tgas_K"]),
+                    "gas_energy_density_change": hottest_gas_change,
+                    "radiation_energy_density_change": hottest_radiation_change,
+                    "total_energy_density_change": (hottest_gas_change
+                                                     + hottest_radiation_change),
+                    "dt_times_implicit_diffusion_source":
+                        dt*float(post[hottest_x]["S_diff_implicit"])},
                 "implicit_energy_budget_relative_error": max(map(abs, budget))
                     / max(diffusion, 1e-300),
                 "max_relative_transverse_Er_spread": transverse_spread}
@@ -370,10 +385,20 @@ def main() -> None:
                                "aligned_L1": "density-jump registration only, over -3000..1000 cm",
                                "history_flux_spread": "within-block relative spread of physical mass/momentum/energy flux; open-domain diagnostic, not exact discrete conservation"}}
     (args.output/"summary.json").write_text(json.dumps(summary, indent=2)+"\n")
+    finest_uniform = min((row for row in cases if row["layout"] == "none"),
+                         key=lambda row: (row["shock_dx_cm"], -row["cfl"]))
     html = ["<!doctype html><html lang='en'><head><meta charset='utf-8'>",
             "<title>WOR-67 Mach 5 gas spike</title>",
-            "<style>body{font:20px/1.5 system-ui;max-width:1300px;margin:32px auto;padding:0 20px}h1,h2{line-height:1.2}table{border-collapse:collapse;width:100%}th,td{border:1px solid #bbb;padding:8px;text-align:right}th:first-child,td:first-child{text-align:left}th{background:#eef3fa}img{max-width:100%}.scroll{overflow-x:auto}strong{color:#17537d}</style></head><body>",
+            "<style>body{font:20px/1.5 system-ui;max-width:1300px;margin:32px auto;padding:0 20px}h1,h2{line-height:1.2}table{border-collapse:collapse;width:100%}th,td{border:1px solid #bbb;padding:8px;text-align:right}th:first-child,td:first-child{text-align:left}th{background:#eef3fa}img{max-width:100%}.scroll{overflow-x:auto}strong{color:#17537d}.pass{color:#14743f;font-weight:700}.fail{color:#a13b2b;font-weight:700}</style></head><body>",
             "<h1>WOR-67: Mach 5 gas-temperature spike</h1>",
+            "<p><strong>Finest completed uniform case ({label}, dx={dx:.3f} cm):</strong> {peak:.2f} K peak, {error:.2%} point-peak error, {recovery:.2%} amplitude recovery; <span class='{class_name}'>{status}</span>.</p>".format(
+                label=escape(finest_uniform["label"]),
+                dx=finest_uniform["shock_dx_cm"],
+                peak=finest_uniform["gas_peak_numerical_K"],
+                error=finest_uniform["gas_peak_relative_error"],
+                recovery=finest_uniform["spike_amplitude_recovery"],
+                class_name="pass" if finest_uniform["accuracy_pass"] else "fail",
+                status="PASS" if finest_uniform["accuracy_pass"] else "accuracy_not_met"),
             "<p><strong>Reference point peak:</strong> {:.2f} K. The finite-volume projection averages the analytic conserved gas state over each numerical cell before converting to temperature; it is a diagnostic comparison, not a strict accuracy ceiling.</p>".format(cases[0]["gas_peak_point_reference_K"]),
             "<p>The orange vertical bars vary the density-jump registration by ±half a shock cell to show sampling sensitivity. The reported accuracy gate uses the original density-jump registration; it does not select the best shift.</p>",
             "<p><strong>Physical gate:</strong> aligned density, gas and radiation L1 ≤2%; raw shock-position error ≤5% of domain width; aligned change since previous output ≤1%; point-peak error ≤10%; spike-amplitude recovery ≥50%. All cases also require strict Newton/FGMRES convergence.</p>",
@@ -395,7 +420,8 @@ def main() -> None:
             row["gas_peak_numerical_x_from_shock_cm"],
             row["gas_peak_relative_error"], row["spike_amplitude_recovery"],
             row["aligned_L1_percent"]["tgas"], st,
-            "PASS" if row["accuracy_pass"] else "accuracy_not_met"))
+            "<span class='pass'>PASS</span>" if row["accuracy_pass"]
+            else "<span class='fail'>accuracy_not_met</span>"))
     html.extend(["</table></div>",
                  "<h2>Other accuracy and runtime checks</h2>",
                  "<div class='scroll'><table><tr><th>Case</th><th>Density L1</th><th>Gas T L1</th><th>Radiation T L1</th><th>Raw shock error / domain</th><th>Previous-output change</th><th>Strict solver</th><th>Wall time [min]</th><th>Sampled sum of rank high-water RSS [MiB]</th></tr>"])
