@@ -88,6 +88,8 @@ def main() -> None:
     parser.add_argument("--nlim", type=int, default=1000000)
     parser.add_argument("--history-dt", type=float,
                         help="Override history cadence in code time units")
+    parser.add_argument("--checkpoint-dt", type=float,
+                        help="Override <output6> restart cadence for expensive runs")
     parser.add_argument("--history-precision", type=int,
                         help="Significant digits in history floating-point columns (6–16)")
     parser.add_argument("--restart", type=Path)
@@ -159,6 +161,13 @@ def main() -> None:
         parser.error("--ranks must be between 1 and the MeshBlock count")
     if args.movie and args.no_slices:
         parser.error("--movie requires slice outputs")
+    if args.checkpoint_dt is not None:
+        restart_block = re.search(r"^<output6>\s*$(.*?)(?=^<|\Z)",
+                                  base_text, re.M | re.S)
+        if args.checkpoint_dt <= 0 or args.no_slices or not restart_block or not re.search(
+                r"^\s*file_type\s*=\s*rst\s*$", restart_block.group(1), re.M):
+            parser.error("--checkpoint-dt requires a positive cadence and "
+                         "<output6> restart output enabled")
     if args.restart and not args.restart.is_file():
         parser.error(f"Restart not found: {args.restart}")
     if args.history_header_from and not args.history_header_from.is_file():
@@ -184,6 +193,8 @@ def main() -> None:
         if args.history_dt <= 0:
             parser.error("--history-dt must be positive")
         command += [f"output1/dt={args.history_dt}"]
+    if args.checkpoint_dt is not None:
+        command += [f"output6/dt={args.checkpoint_dt}"]
     if args.history_precision is not None:
         if not 6 <= args.history_precision <= 16:
             parser.error("--history-precision must be between 6 and 16")
