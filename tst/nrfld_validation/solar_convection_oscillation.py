@@ -71,6 +71,9 @@ def analyze(label: str, run_dir: Path, start: float, end: float,
                        ("MassDrift", 0.01), ("PBNDScale", 0.01)):
         curves[key] = np.interp(uniform_t, t, history[key][selected]) / scale
     y = curves["FhydBottom"]
+    halfway = 0.5*(uniform_t[0] + uniform_t[-1])
+    first_std = float(np.std(y[uniform_t < halfway]))
+    second_std = float(np.std(y[uniform_t >= halfway]))
     trend = np.polyval(np.polyfit(uniform_t, y, 1), uniform_t)
     power = np.abs(np.fft.rfft((y - trend)*np.hanning(len(y))))**2
     frequency = np.fft.rfftfreq(len(y), dt)
@@ -86,6 +89,10 @@ def analyze(label: str, run_dir: Path, start: float, end: float,
         "dominant_period_minutes": float(time_unit/frequency[peak]/60.0),
         "bottom_hydro_flux_mean_over_solar": float(np.mean(curves["FhydBottom"])),
         "bottom_hydro_flux_std_over_solar": float(np.std(curves["FhydBottom"])),
+        "bottom_hydro_flux_first_half_std_over_solar": first_std,
+        "bottom_hydro_flux_second_half_std_over_solar": second_std,
+        "bottom_hydro_flux_second_to_first_std_ratio":
+            second_std/first_std if first_std > 0 else None,
         "top_flux_mean_over_solar": float(np.mean(curves["FtotTop"])),
         "top_flux_std_over_solar": float(np.std(curves["FtotTop"])),
         "mass_drift_std_percent": float(np.std(curves["MassDrift"])),
@@ -148,6 +155,7 @@ def main() -> None:
             f"{row['dominant_period_code']:.2f}",
             f"{row['dominant_period_minutes']:.2f}",
             f"{row['bottom_hydro_flux_std_over_solar']:.1f}",
+            f"{row['bottom_hydro_flux_second_to_first_std_ratio']:.2f}",
             f"{row['mass_drift_std_percent']:.3f}",
             f"{row['pressure_scale_std_percent']:.3f}",
             (f"{row['horizontal_mean_vz_variance_fraction']:.3f} "
@@ -166,6 +174,7 @@ def main() -> None:
         "identify its cause. Flux amplitude uses the solar reference flux.</p>"
         "<table><tr><th>Case</th><th>Window</th><th>Period [code]</th>"
         "<th>Period [min]</th><th>Bottom flux std / solar</th>"
+        "<th>Late/early flux amplitude</th>"
         "<th>Mass drift std [%]</th><th>PBND scale std [%]</th>"
         "<th>Mean-vz variance fraction</th></tr>"
         f"{cells}</table><img src='oscillation_comparison.png' alt='oscillation'>"
