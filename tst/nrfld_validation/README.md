@@ -669,6 +669,14 @@ converge, but their accuracy verdict is `accuracy_not_met`. This is an explicit
 resolution limitation, not a failure to finish the calculation. The fast and
 full pulse and equilibrium reports satisfy their respective gates.
 
+The separate [WOR-10 Mach 5 T_rad audit](wor10_mach5_trad_peak_20261104.md)
+compares post-explicit and post-implicit peaks, N64–N512 resolution, time step,
+downstream extent, reconstruction, solver tolerance, and mixed-frame controls.
+Its combined HTML is at
+`/mnt/d/output/rad/wor10_complete_audit_20261104/index.html`. The scripts
+`mach5_trad_peak_audit.py`, `mach5_split_stage_audit.py`, and
+`mach5_wor10_report.py` regenerate the component and combined reports.
+
 To apply the current gates to older completed reports without rerunning the
 physics or regenerating plots/videos:
 
