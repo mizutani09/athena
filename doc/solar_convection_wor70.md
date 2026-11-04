@@ -288,9 +288,23 @@ completes 120/120 Newton steps with zero slow-MG warning and fatal; its
 `tau=2/3` temperature is 4737 K versus 4165 K with the old boundary. The
 top flux at `t≈1` stays close to 0.71 solar in both runs, so the boundary
 fix does not remove the separate initial photospheric cooling transient.
+The 1D builder labels the missing radiative flux as a future convective
+contribution: at optical depth about 3, the imported profile has only
+`F_rad≈0.34 F_sun` and an inferred convective fraction near 0.66. The actual
+3D initial state has zero velocity, hence zero convective enthalpy transport.
+The top initially emits nearly `F_sun`; cooling until convection develops is
+therefore expected even with a correct lower pressure boundary. A thermal
+relaxation run, not a static snapshot, is required for solar comparison.
 The pre-fix long run remains a solver durability test but is **not** the
 physical baseline for solar validation. A 48 km corrected comparison is
 running to check whether the result holds at the pilot resolution.
+The pre-fix 64³ continuation was intentionally stopped at `t≈153` after
+writing a `t=150` restart, to free six physical cores for the corrected
+baseline. Between `t=100` and the stop, all 3,303 reported Newton solves
+converged, with 11,973 FGMRES calls and zero slow-MG warnings or fatal errors.
+Its HTML explicitly says "intentionally stopped" and keeps the partial
+history/movie. A fresh corrected 64³, 12-rank, CFL 0.3 run to `t=100` is now
+running, alongside the corrected 48 km large-box comparison.
 
 The large-box pilot uses the generated files under
 `/mnt/d/output/rad/wor70_solar_20261104/profile_3Mm_candidate/input_data`.
@@ -314,7 +328,7 @@ six and two physical cores respectively.
 
 ## Next scientific gates
 
-1. Continue the 64³ CFL 0.3 run beyond `t=100`; assess whether the top flux
+1. Continue the **corrected** 64³ CFL 0.3 run and assess whether the top flux
    and vertical RMS settle. If not, inspect the initial stratification and
    HD2/upper radiation boundary energy budget before increasing resolution.
 2. Keep the confirmed, tracked `simple_convection_lhllc_fld` series as the

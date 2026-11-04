@@ -141,7 +141,8 @@ def summarize(h: dict[str, np.ndarray], log: dict[str, object], units: dict[str,
     time_unit = physical_time_unit(units, velocity_unit)
     height_cm = (units["x3max"] - units["x3min"]) * units["leng_unit"]
     report: dict[str, object] = {
-        "samples": n, "time_unit_seconds": time_unit,
+        "samples": n, "last_history_time_code": float(h["time"][-1]),
+        "time_unit_seconds": time_unit,
         "vertical_box_height_cm": height_cm, "reference_flux_cgs": flux_ref,
         "log": log,
         "stationarity_rule": "Two late quarters, each >=1 vertical crossing time; "
@@ -247,11 +248,13 @@ def make_campaign_index(root: Path) -> None:
         solver_ok = (log["completed"] and log["fatal_count"] == 0
                      and bool(statuses)
                      and set(statuses).issubset({"converged", "dt_zero_initialization"}))
+        intentionally_stopped = bool(item.get("intentional_stop_reason"))
         late = item.get("late_window", {})
         ratio = late.get("top_total_flux_over_solar")
         cells = [
             f"<a href='{html.escape(case.name)}/index.html'>{html.escape(case.name)}</a>",
-            "<strong>PASS</strong>" if solver_ok else "incomplete / failed",
+            ("<strong>PASS</strong>" if solver_ok else
+             "intentionally stopped" if intentionally_stopped else "incomplete / failed"),
             "candidate" if item["stationarity_candidate"] else "not established",
             str(log["final_cycle"] if log["final_cycle"] is not None else "—"),
             f"{ratio:.3f}" if ratio is not None else "—",
@@ -289,6 +292,11 @@ def main() -> None:
     log = parse_log(args.run_dir / "run.log")
     units = input_values(args.input)
     report = summarize(h, log, units, args.reference_flux)
+    manifest_path = args.run_dir / "manifest.json"
+    if manifest_path.is_file():
+        manifest = json.loads(manifest_path.read_text())
+        if manifest.get("intentional_stop_reason"):
+            report["intentional_stop_reason"] = manifest["intentional_stop_reason"]
     tau_path = args.run_dir / "tau1_slice.json"
     if tau_path.is_file():
         tau_records = json.loads(tau_path.read_text())["records"]
@@ -302,13 +310,17 @@ def main() -> None:
     (args.run_dir / "summary.json").write_text(json.dumps(report, indent=2) + "\n")
     make_plot(h, units, args.reference_flux, args.run_dir / "history.png")
     candidate = report["stationarity_candidate"]
-    status = "Stationarity screening passed" if candidate else "Stationarity not established"
+    status = ("Run intentionally stopped; stationarity not established"
+              if report.get("intentional_stop_reason") else
+              "Stationarity screening passed" if candidate else
+              "Stationarity not established")
     summary = html.escape(json.dumps(report, indent=2, ensure_ascii=False))
     late = report.get("late_window", {})
     log = report["log"]
     quick = [
         ("Completed", str(log["completed"])),
         ("Final cycle", str(log["final_cycle"])),
+        ("Last history time", f"{report['last_history_time_code']:.3f} code"),
         ("Wall time", str(log["wall_time"] or "see manifest")),
         ("Slow MG warnings", str(log["slow_mg_warning_count"])),
         ("NR statuses", ", ".join(f"{k}: {v}" for k, v in log["nr_status_counts"].items())),
@@ -318,6 +330,8 @@ def main() -> None:
         ("Late bottom net-flow RMS / gross flow",
          f"{late['bottom_net_rms_fraction']:.3f}" if late else "—"),
     ]
+    if report.get("intentional_stop_reason"):
+        quick.insert(1, ("Stop reason", report["intentional_stop_reason"]))
     tau_last = report.get("tau1_slice_last")
     if tau_last and tau_last["T_tau1_mean_K"] is not None:
         quick.extend([
