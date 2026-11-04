@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Track the Rosseland tau=1 surface in one xz slice of a convection run.
+"""Track Rosseland tau=1 and tau=2/3 surfaces in one xz convection slice.
 
 This is a slice diagnostic, not a horizontal mean over the full 3D box.  The
 opacity lookup matches the tabulated rho-T logarithmic interpolation used by
@@ -48,9 +48,9 @@ def opacity_interpolator(path: Path) -> RegularGridInterpolator:
                                    bounds_error=False, fill_value=None)
 
 
-def frame_tau1(prim_path: Path, uov_path: Path,
-               opacity: RegularGridInterpolator, units: dict[str, float]
-               ) -> dict[str, float]:
+def frame_tau_surfaces(prim_path: Path, uov_path: Path,
+                       opacity: RegularGridInterpolator, units: dict[str, float]
+                       ) -> dict[str, float]:
     with h5py.File(prim_path, "r") as source:
         time = float(source.attrs["Time"])
     prim, _, z = read_plane(prim_path, "prim", "xz")
@@ -66,23 +66,29 @@ def frame_tau1(prim_path: Path, uov_path: Path,
     if not np.allclose(np.diff(z), dz):
         raise ValueError("Expected a uniform vertical slice grid")
     tau = np.cumsum((sigma * dz)[::-1], axis=0)[::-1] - 0.5 * sigma * dz
-    surface_z = np.full(rho.shape[1], np.nan)
-    surface_temp = np.full(rho.shape[1], np.nan)
-    for j in range(rho.shape[1]):
-        if tau[-1, j] <= 1.0 <= tau[0, j]:
-            surface_z[j] = np.interp(1.0, tau[::-1, j], z[::-1])
-            surface_temp[j] = np.interp(surface_z[j], z, temp[:, j])
-    coverage = float(np.mean(np.isfinite(surface_z)))
-    return {
+    result = {
         "time_code": time,
         "time_minutes": time * units["time_unit"] / 60.0,
-        "coverage": coverage,
         "tau_top_mean": float(np.mean(tau[-1])),
-        "z_tau1_mean_code": float(np.nanmean(surface_z)) if coverage else None,
-        "z_tau1_std_code": float(np.nanstd(surface_z)) if coverage else None,
-        "T_tau1_mean_K": float(np.nanmean(surface_temp)) if coverage else None,
-        "T_tau1_std_K": float(np.nanstd(surface_temp)) if coverage else None,
     }
+    for target, suffix in ((1.0, "tau1"), (2.0 / 3.0, "tau23")):
+        surface_z = np.full(rho.shape[1], np.nan)
+        surface_temp = np.full(rho.shape[1], np.nan)
+        for j in range(rho.shape[1]):
+            if tau[-1, j] <= target <= tau[0, j]:
+                surface_z[j] = np.interp(target, tau[::-1, j], z[::-1])
+                surface_temp[j] = np.interp(surface_z[j], z, temp[:, j])
+        coverage = float(np.mean(np.isfinite(surface_z)))
+        result[f"{suffix}_coverage"] = coverage
+        result[f"z_{suffix}_mean_code"] = (float(np.nanmean(surface_z))
+                                           if coverage else None)
+        result[f"z_{suffix}_std_code"] = (float(np.nanstd(surface_z))
+                                          if coverage else None)
+        result[f"T_{suffix}_mean_K"] = (float(np.nanmean(surface_temp))
+                                        if coverage else None)
+        result[f"T_{suffix}_std_K"] = (float(np.nanstd(surface_temp))
+                                       if coverage else None)
+    return result
 
 
 def main() -> None:
@@ -97,7 +103,8 @@ def main() -> None:
     frames = pairs(args.run_dir, "xz")
     if not frames:
         raise ValueError(f"No paired xz slices in {args.run_dir}")
-    records = [frame_tau1(prim, uov, opacity, units) for prim, uov in frames]
+    records = [frame_tau_surfaces(prim, uov, opacity, units)
+               for prim, uov in frames]
     (args.run_dir / "tau1_slice.json").write_text(
         json.dumps({"scope": "one xz slice", "records": records}, indent=2) + "\n")
 
@@ -106,10 +113,13 @@ def main() -> None:
     zstd = np.array([record["z_tau1_std_code"] for record in records], dtype=float)
     temp = np.array([record["T_tau1_mean_K"] for record in records], dtype=float)
     tstd = np.array([record["T_tau1_std_K"] for record in records], dtype=float)
-    coverage = np.array([record["coverage"] for record in records])
+    t23 = np.array([record["T_tau23_mean_K"] for record in records], dtype=float)
+    t23std = np.array([record["T_tau23_std_K"] for record in records], dtype=float)
+    coverage1 = np.array([record["tau1_coverage"] for record in records])
+    coverage23 = np.array([record["tau23_coverage"] for record in records])
     zscale = units["leng_unit"] / 1.0e5
     plt.rcParams.update({"font.size": 13})
-    fig, ax = plt.subplots(3, 1, figsize=(11, 10), sharex=True,
+    fig, ax = plt.subplots(4, 1, figsize=(11, 12), sharex=True,
                            constrained_layout=True)
     ax[0].plot(t, z * zscale)
     ax[0].fill_between(t, (z-zstd)*zscale, (z+zstd)*zscale, alpha=0.2)
@@ -117,12 +127,21 @@ def main() -> None:
               title="Rosseland optical-depth-one surface in one xz slice")
     ax[1].plot(t, temp)
     ax[1].fill_between(t, temp-tstd, temp+tstd, alpha=0.2)
-    ax[1].axhline(args.solar_teff, color="black", lw=1, ls="--",
-                  label=f"solar Teff = {args.solar_teff:g} K")
+    gray_tau1 = args.solar_teff * (5.0 / 4.0) ** 0.25
+    ax[1].axhline(gray_tau1, color="black", lw=1, ls="--",
+                  label=f"gray Eddington at tau=1: {gray_tau1:.0f} K")
     ax[1].set(ylabel="gas temperature at tau=1 [K]")
     ax[1].legend()
-    ax[2].plot(t, coverage)
-    ax[2].set(xlabel="physical time [min]", ylabel="slice coverage", ylim=(-0.02, 1.02))
+    ax[2].plot(t, t23)
+    ax[2].fill_between(t, t23-t23std, t23+t23std, alpha=0.2)
+    ax[2].axhline(args.solar_teff, color="black", lw=1, ls="--",
+                  label=f"solar Teff = {args.solar_teff:g} K")
+    ax[2].set(ylabel="gas temperature at tau=2/3 [K]")
+    ax[2].legend()
+    ax[3].plot(t, coverage1, label="tau=1")
+    ax[3].plot(t, coverage23, ls="--", label="tau=2/3")
+    ax[3].set(xlabel="physical time [min]", ylabel="slice coverage", ylim=(-0.02, 1.02))
+    ax[3].legend()
     for axis in ax:
         axis.grid(alpha=0.25)
     image_dir = args.run_dir / "imgs"

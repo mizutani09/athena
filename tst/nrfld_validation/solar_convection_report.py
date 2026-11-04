@@ -203,7 +203,17 @@ def make_campaign_index(root: Path) -> None:
     rows = []
     for case in sorted(root.iterdir()):
         summary = case / "summary.json"
-        if not case.is_dir() or not summary.is_file():
+        if not case.is_dir():
+            continue
+        if not summary.is_file():
+            if (case / "index.html").is_file():
+                cells = [
+                    f"<a href='{html.escape(case.name)}/index.html'>"
+                    f"{html.escape(case.name)}</a>",
+                    "sub-campaign", "see linked report", "—", "—", "—",
+                ]
+                rows.append("<tr>" + "".join(f"<td>{x}</td>" for x in cells)
+                            + "</tr>")
             continue
         item = json.loads(summary.read_text())
         log = item["log"]
@@ -258,6 +268,11 @@ def main() -> None:
         tau_records = json.loads(tau_path.read_text())["records"]
         if tau_records:
             report["tau1_slice_last"] = tau_records[-1]
+    surface_path = args.run_dir / "surface3d.json"
+    if surface_path.is_file():
+        surface_records = json.loads(surface_path.read_text())["records"]
+        if surface_records:
+            report["surface3d_last"] = surface_records[-1]
     (args.run_dir / "summary.json").write_text(json.dumps(report, indent=2) + "\n")
     make_plot(h, units, args.reference_flux, args.run_dir / "history.png")
     candidate = report["stationarity_candidate"]
@@ -279,8 +294,17 @@ def main() -> None:
     if tau_last and tau_last["T_tau1_mean_K"] is not None:
         quick.extend([
             ("Last slice T at tau=1", f"{tau_last['T_tau1_mean_K']:.0f} K"),
+            ("Last slice T at tau=2/3", f"{tau_last['T_tau23_mean_K']:.0f} K"),
             ("Last slice tau=1 height", f"{tau_last['z_tau1_mean_code']:.3f} code"),
-            ("Last slice coverage", f"{100 * tau_last['coverage']:.0f}%"),
+            ("Last slice tau=1 coverage", f"{100 * tau_last['tau1_coverage']:.0f}%"),
+        ])
+    surface_last = report.get("surface3d_last")
+    if surface_last:
+        quick.extend([
+            ("Last full-3D T at tau=2/3",
+             f"{surface_last['T_tau23_mean_K']:.0f} K"),
+            ("Last full-3D tau=2/3 coverage",
+             f"{100 * surface_last['coverage']:.0f}%"),
         ])
     table = "".join(f"<tr><th>{html.escape(key)}</th><td>{html.escape(value)}</td></tr>"
                     for key, value in quick)
@@ -290,8 +314,9 @@ def main() -> None:
         for path in sorted((args.run_dir / "imgs").glob("*.png"))
     )
     movies = "".join(
-        f"<li><a href='{html.escape(path.relative_to(args.run_dir).as_posix())}'>"
-        f"{html.escape(path.name)}</a></li>"
+        f"<figure><video controls preload='metadata' style='max-width:100%' "
+        f"src='{html.escape(path.relative_to(args.run_dir).as_posix())}'></video>"
+        f"<figcaption>{html.escape(path.name)}</figcaption></figure>"
         for path in sorted((args.run_dir / "movies").glob("*.mp4"))
     )
     (args.run_dir / "index.html").write_text(
@@ -310,7 +335,7 @@ def main() -> None:
         "<a href='run.log'>run.log</a></p>"
         f"<table>{table}</table><img src='history.png' alt='history'>"
         f"<h2>Existing plots</h2>{gallery}"
-        + (f"<h2>Movies</h2><ul>{movies}</ul>" if movies else "")
+        + (f"<h2>Movies</h2>{movies}" if movies else "")
         + f"<h2>Metrics</h2><pre>{summary}</pre></html>"
     )
     make_campaign_index(args.run_dir.parent)

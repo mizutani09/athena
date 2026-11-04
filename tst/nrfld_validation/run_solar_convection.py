@@ -19,8 +19,7 @@ import time
 from pathlib import Path
 
 
-DATA_NAMES = ("AthenaNataEosTable_solar_wide.tab",
-              "opacity_table_rhoT_3p0_6p3.h5", "solar_initial_profile.dat")
+DATA_KEYS = ("eos_file_name", "opacity_table_file", "initial_profile_file")
 
 
 def digest(path: Path) -> str:
@@ -59,12 +58,18 @@ def main() -> None:
     parser.add_argument("--case", required=True, help="New run-directory name")
     parser.add_argument("--solver", choices=("mg", "fgmres"), required=True)
     parser.add_argument("--cfl", type=float, required=True)
-    parser.add_argument("--nx", type=int, required=True,
-                        help="Cubic grid size; physical box remains the input's 1.536 Mm cube")
+    parser.add_argument("--nx", type=int,
+                        help="Cubic grid size; box extent remains set by the input")
+    parser.add_argument("--nx1", type=int, help="Non-cubic x1 grid size")
+    parser.add_argument("--nx2", type=int, help="Non-cubic x2 grid size")
+    parser.add_argument("--nx3", type=int, help="Non-cubic x3 grid size")
     parser.add_argument("--ranks", type=int, required=True)
-    parser.add_argument("--mpi-bind-to", choices=("hwthread", "none"),
+    parser.add_argument("--mpi-bind-to", choices=("hwthread", "core", "none"),
                         default="hwthread",
                         help="Use none with an outer taskset CPU mask")
+    parser.add_argument("--mpi-map-by", choices=("hwthread", "core"),
+                        default="hwthread",
+                        help="Map ranks to logical CPUs or physical cores")
     parser.add_argument("--tlim", type=float, required=True)
     parser.add_argument("--nlim", type=int, default=1000000)
     parser.add_argument("--history-dt", type=float,
@@ -78,19 +83,49 @@ def main() -> None:
                         help="Code-coordinate height of xy slices, e.g. 2.0 near initial tau=1")
     parser.add_argument("--no-slices", action="store_true",
                         help="Disable HDF5 slices and restart output for a short solver test")
+    parser.add_argument("--movie", action="store_true",
+                        help="Create an xz MP4 from the slice outputs")
     parser.add_argument("--plan", action="store_true", help="Print command without writing/running")
     args = parser.parse_args()
     repo = args.repo.resolve()
     binary = (args.binary or repo / "bin/athena").resolve()
     base_input = (args.base_input or repo / "inputs/radiation"
                   / "athinput.simple_convection_lhllc_fld_general_hpc_256").resolve()
+    if not base_input.is_file():
+        parser.error(f"Input file not found: {base_input}")
+    base_text = base_input.read_text()
+    data_names = []
+    for key in DATA_KEYS:
+        match = re.search(rf"^\s*{key}\s*=\s*([^#\s]+)", base_text, re.M)
+        if not match or Path(match.group(1)).parent != Path("data"):
+            parser.error(f"Expected {key} = data/<filename> in {base_input}")
+        data_names.append(Path(match.group(1)).name)
     data_dir = args.data_dir.resolve()
     root = args.output_root.resolve()
     case = root / args.case
-    if args.nx % 16 or args.nx < 16:
-        parser.error("--nx must be a multiple of the input's 16-cell MeshBlock")
-    if args.ranks < 1 or args.ranks > (args.nx // 16) ** 3:
+    if args.nx is not None and any(x is not None for x in (args.nx1, args.nx2, args.nx3)):
+        parser.error("Use either --nx or all of --nx1, --nx2, --nx3")
+    dims = ((args.nx,) * 3 if args.nx is not None
+            else (args.nx1, args.nx2, args.nx3))
+    if any(x is None or x < 16 or x % 16 for x in dims):
+        parser.error("Set three grid sizes, each a multiple of the 16-cell MeshBlock")
+    spacing = []
+    for axis, cells in enumerate(dims, start=1):
+        endpoints = []
+        for suffix in ("min", "max"):
+            match = re.search(rf"^\s*x{axis}{suffix}\s*=\s*([^#\s]+)",
+                              base_text, re.M)
+            if not match:
+                parser.error(f"Missing x{axis}{suffix} in {base_input}")
+            endpoints.append(float(match.group(1)))
+        spacing.append((endpoints[1] - endpoints[0]) / cells)
+    if max(spacing) - min(spacing) > 1.0e-10 * max(spacing):
+        parser.error("NR-FLD multigrid requires cubic cells; choose grid sizes "
+                     "proportional to the three box lengths")
+    if args.ranks < 1 or args.ranks > (dims[0] // 16) * (dims[1] // 16) * (dims[2] // 16):
         parser.error("--ranks must be between 1 and the MeshBlock count")
+    if args.movie and args.no_slices:
+        parser.error("--movie requires slice outputs")
     if args.restart and not args.restart.is_file():
         parser.error(f"Restart not found: {args.restart}")
     if args.history_header_from and not args.history_header_from.is_file():
@@ -98,18 +133,18 @@ def main() -> None:
     for earlier in args.history_prepend:
         if not earlier.is_file():
             parser.error(f"Earlier history file not found: {earlier}")
-    for path in (binary, base_input, *(data_dir / name for name in DATA_NAMES)):
+    for path in (binary, base_input, *(data_dir / name for name in data_names)):
         if not path.is_file():
             parser.error(f"Required file not found: {path}")
     command = (["mpirun", "--use-hwthread-cpus", "--bind-to", args.mpi_bind_to,
-                "--map-by", "hwthread", "-np", str(args.ranks)]
+                "--map-by", args.mpi_map_by, "-np", str(args.ranks)]
                if args.ranks > 1 else [])
     command += [str(binary)]
     if args.restart:
         command += ["-r", str(args.restart.resolve())]
     command += ["-i", str(case / "athinput.generated"), "-d", str(case),
-                f"mesh/nx1={args.nx}", f"mesh/nx2={args.nx}",
-                f"mesh/nx3={args.nx}", f"time/cfl_number={args.cfl}",
+                f"mesh/nx1={dims[0]}", f"mesh/nx2={dims[1]}",
+                f"mesh/nx3={dims[2]}", f"time/cfl_number={args.cfl}",
                 f"time/tlim={args.tlim}", f"time/nlim={args.nlim}",
                 "time/ncycle_out=100"]
     if args.history_dt is not None:
@@ -117,7 +152,8 @@ def main() -> None:
             parser.error("--history-dt must be positive")
         command += [f"output1/dt={args.history_dt}"]
     if args.no_slices:
-        command += [f"output{n}/dt=-1" for n in range(2, 7)]
+        output_sections = re.findall(r"^<output(\d+)>", base_text, re.M)
+        command += [f"output{n}/dt=-1" for n in output_sections if int(n) >= 2]
     if args.plan:
         print("cwd:", root, "\ncommand:", " ".join(command))
         return
@@ -125,7 +161,7 @@ def main() -> None:
         parser.error(f"Refusing to reuse nonempty run directory: {case}")
     case.mkdir(parents=True, exist_ok=True)
     (root / "data").mkdir(parents=True, exist_ok=True)
-    for name in DATA_NAMES:
+    for name in data_names:
         link = root / "data" / name
         target = (data_dir / name).resolve()
         if link.is_symlink() and link.resolve() == target:
@@ -134,7 +170,7 @@ def main() -> None:
             parser.error(f"Output data link points elsewhere: {link}")
         link.symlink_to(target)
     generated = case / "athinput.generated"
-    generated.write_text(solver_input(base_input.read_text(), args.solver,
+    generated.write_text(solver_input(base_text, args.solver,
                                       args.xy_slice_z))
     commit = subprocess.check_output(["git", "rev-parse", "HEAD"], cwd=repo,
                                      text=True).strip()
@@ -145,9 +181,10 @@ def main() -> None:
         "git_dirty": dirty, "binary_sha256": digest(binary),
         "launch_cpu_affinity": sorted(os.sched_getaffinity(0)),
         "mpi_bind_to": args.mpi_bind_to,
+        "mpi_map_by": args.mpi_map_by,
         "base_input_sha256": digest(base_input),
         "generated_input_sha256": digest(generated),
-        "data_sha256": {name: digest((data_dir / name).resolve()) for name in DATA_NAMES},
+        "data_sha256": {name: digest((data_dir / name).resolve()) for name in data_names},
         "restart": str(args.restart.resolve()) if args.restart else None,
         "history_header_from": (str(args.history_header_from.resolve())
                                 if args.history_header_from else None),
@@ -178,6 +215,8 @@ def main() -> None:
     if not args.no_slices:
         plot = repo / "scripts/plot_simple_convection.py"
         plot_command = [sys.executable, str(plot), str(case)]
+        if args.movie:
+            plot_command += ["--movie"]
         if history:
             plot_command += ["--history-header-from", str(history)]
         subprocess.run(plot_command, check=True)
@@ -193,8 +232,14 @@ def main() -> None:
                        str(repo / "scripts/plot_simple_convection_tau.py"),
                        str(case), "--input", str(generated),
                        "--opacity-table",
-                       str(root / "data" / "opacity_table_rhoT_3p0_6p3.h5")]
+                       str(root / "data" / data_names[1])]
         subprocess.run(tau_command, check=True)
+        if any(case.glob("*.prim_full.*.athdf")):
+            surface_command = [sys.executable,
+                               str(repo / "scripts/plot_simple_convection_surface3d.py"),
+                               str(case), "--input", str(generated),
+                               "--opacity-table", str(root / "data" / data_names[1])]
+            subprocess.run(surface_command, check=True)
     report = Path(__file__).with_name("solar_convection_report.py")
     report_command = [sys.executable, str(report), str(case), "--input",
                       str(generated)]

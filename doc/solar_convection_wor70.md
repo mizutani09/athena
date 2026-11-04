@@ -112,17 +112,31 @@ bottom-minus-top boundary flux gives `8.31e29 erg` (about 1.0% difference).
 This sampled ledger does not establish an exact discrete conservation identity,
 but does not indicate a large missing energy term over this interval.
 
-The new `plot_simple_convection_tau.py` reconstructs the Rosseland `tau=1`
-surface from xz-slice density and gas temperature using the **same** rho–T
+The new `plot_simple_convection_tau.py` reconstructs Rosseland `tau=1` and
+`tau=2/3` surfaces from xz-slice density and gas temperature using the **same** rho–T
 opacity table. Its initial mean height is `z=2.004303` code, agreeing with
 the generator's printed initial profile (`2.004311`) to `8e-6` code. The
-initial slice-mean gas temperature at that surface is about 6072 K; it falls
-to 4585 K by `t=10`, then rises to about 5782 K by `t≈71.5` (one snapshot,
-horizontal slice standard deviation 167 K). The `tau=1` height moves from
-`z≈2.00` to `1.80` and then `2.11`; comparing temperature at a fixed height
-would obscure this motion. This is a **single xz slice**, not a 3D surface
-average, and the run is still thermally evolving. Near agreement with solar
-effective temperature at one time is not validation of a steady atmosphere.
+initial slice-mean gas temperature is 6072 K at `tau=1` and 5754 K at
+`tau=2/3`. The latter is the appropriate gray-atmosphere comparison with
+solar `Teff≈5772 K`; gray Eddington gives about 6103 K at `tau=1`. By `t=10`,
+the respective temperatures fall to 4585 K and 4345 K, while the `tau=1`
+height moves from `z≈2.00` to `1.80`. At `t≈76`, the `tau=2/3` slice mean is
+about 5443 K and `tau=1` height is `z≈2.28`, illustrating continued evolution.
+This is a **single xz slice**, not a 3D surface average. Even a momentary
+temperature match at one optical depth does not establish a steady atmosphere.
+
+The 12-rank CFL 0.3 continuation reached `t=100` at cycle 5,425 after
+1:16:29 wall time for the `t=10`→`100` segment. All 5,056 nonzero-step Newton
+solves converged; there were 17,729 FGMRES calls, **zero** slow-MG warnings,
+zero relaxed accepts and zero fatals. The final two 25-code-time windows have
+mean top total fluxes `0.737` and `0.786 F_sun`, and mean vertical RMS speeds
+`2.12` and `2.27 km/s`. Each covers only 0.77–0.82 full-box crossing times;
+the maximum mass drift is 1.56%. At `t=100`, the xz-slice mean
+`T(tau=2/3)=5467 K`, with 211 K spatial standard deviation. The state is
+still evolving and does **not** pass the stationarity screening. From
+`t=10.1`→`100`, sampled boundary-flux integration and stored-energy change
+agree within about 0.41% relative. The full case HTML includes 180 finite xz
+movie frames and the optical-depth plot.
 
 ## How to repeat and extend
 
@@ -149,6 +163,7 @@ restart boundaries, pass each earlier history with repeated `--history-prepend`;
 duplicate restart timestamps are resolved in favor of the later segment.
 The run's own solver log still determines the nonlinear-solver status in its
 HTML, so the late stationarity windows should lie within the current segment.
+Pass `--movie` on a plotted run to include an inline xz MP4 in its HTML.
 Use `--plan` to inspect the command. The history report's candidate flag
 requires two late windows each spanning a vertical crossing time, flux near
 the solar value and stable between windows, stable vertical velocity RMS,
@@ -158,15 +173,96 @@ The supplied base input samples the xy plane at `z=1.536`; the initial
 optical-depth-one layer is near `z=2.0`, hence the explicit slice override
 above when photospheric structure is the target.
 
+## Rempel-sized non-magnetic pilot
+
+The user confirmed that the August–September `simple_convection_lhllc_fld`
+series is the one to continue. A separate input,
+`inputs/radiation/athinput.simple_convection_lhllc_fld_general_6Mm_box`,
+keeps this tracked problem generator and the same photosphere while extending
+the box to 6.144 × 6.144 × 3.072 Mm. The first proposed grid is
+128 × 128 × 64, giving 48 km **cubic cells**. NR-FLD multigrid rejects
+non-cubic cells; the runner now checks this before launching Athena++.
+
+The old EOS table ends at `log10(rho/[g cm^-3])=-4.5` and cannot invert the
+deeper hydrostatic profile. The original NATA rho–u source covers through
+`-2.0`; converting it with the same tool and extending the selected density
+range to `-3.0` produces a table whose entire overlap with the old table is
+**bit-for-bit identical**. This is a table-range extension, not an EOS model
+change. The resulting initial profile spans `z=-3.072` to `+3.072` code;
+its maximum hydrostatic residual is `2.95e-5`, EOS density margin is 1.223 dex,
+and `tau=1` lies at `z=2.00002`. Its bottom density is `5.98e-5 g cm^-3`
+and bottom radiative flux is `3.54e5 erg cm^-2 s^-1`. The EOS/profile hashes
+are in the pilot's manifest.
+
+To regenerate the external files in a fresh output location:
+
+```bash
+python3 scripts/convert_nata_eos_table.py \
+  /home/kosuke/simulation/nata_eos/runs/athena_solar_fine_safe/nata_eos_rho_u_table.dat \
+  /path/to/AthenaNataEosTable_solar_deep.tab \
+  --logrho-min -10.5 --logrho-max -3.0 \
+  --logx2-min 11.2 --logx2-max 14.5 --dlogx2 0.02
+python3 scripts/build_solar_initial_profile.py \
+  --eos-table /path/to/AthenaNataEosTable_solar_deep.tab \
+  --opacity-table /path/to/opacity_table_rhoT_3p0_6p3.h5 \
+  --output-dir /path/to/profile_dir \
+  --zmin -3.072 --zmax 3.072 --nz 2049
+```
+
+Place/symlink these three files by their input names in a single `--data-dir`.
+The 64 × 64 × 32, one-rank, two-cycle preflight completed in 7.65 s with
+2/2 nonzero-step Newton solves converged and no warning/fatal. It establishes
+input and boundary compatibility only; it is not a solar validation run.
+The 128 × 128 × 64, 12-rank, CFL 0.3 pilot then reached `t=1` in 25 cycles
+and 78.82 s: 25/25 Newton converged, no slow-MG warning or fatal, with a
+measured sum of rank RSS around 4.3 GiB. This is comfortably below the WSL
+19 GiB memory limit. The coarsest MG grid reports that it is not reduced to a
+single cell, so this topology may leave some solver efficiency available.
+The early `tau=2/3` slice temperature changes from about 5704 K at `t=0`
+to 5290 K at `t=1`, showing the initial thermal transient in the larger box.
+The pilot does not establish granulation statistics or steady solar agreement.
+The larger-box input now writes sparse full 3D primitive and user-variable
+volumes every 10 code-time units. `plot_simple_convection_surface3d.py`
+reconstructs the `tau=2/3` height and gas temperature over the **entire**
+horizontal surface, rather than one xz slice, and plots its temperature and
+vertical velocity. It also records horizontally averaged full-3D profiles of
+gas temperature, density, vertical RMS speed, and radiative cooling in
+`profiles3d.json`. A one-cycle 128 × 128 × 64 smoke run produced paired full
+volumes; at `t=0` the 3D mean `T(tau=2/3)=5703.993 K` versus `5704.008 K` in
+the xz slice, and the mean heights agree within `6e-6` code. This checks the
+full-volume assembly and optical-depth interpolation on the smooth initial
+state. It does not test a convectively structured surface. A t=10 full-box
+run with full-volume outputs is in progress.
+
+The large-box pilot uses the generated files under
+`/mnt/d/output/rad/wor70_solar_20261104/profile_3Mm_candidate/input_data`.
+For a fresh run after building the same non-magnetic binary:
+
+```bash
+python3 tst/nrfld_validation/run_solar_convection.py \
+  --base-input inputs/radiation/athinput.simple_convection_lhllc_fld_general_6Mm_box \
+  --data-dir /mnt/d/output/rad/wor70_solar_20261104/profile_3Mm_candidate/input_data \
+  --output-root /mnt/d/output/rad/wor70_solar_20261104/rempel_box_pilot \
+  --case fgmres_128x128x64_new --solver fgmres --cfl 0.3 \
+  --nx1 128 --nx2 128 --nx3 64 --ranks 12 --tlim 10 \
+  --xy-slice-z 2.0 --movie
+```
+
+MPI placement can be varied explicitly with `--mpi-map-by core
+--mpi-bind-to core` for one rank per physical core, or left at the
+`hwthread` defaults. Compare wall time on an identical checkpoint before
+selecting a faster placement; the current 12-rank and four-rank runs use
+six and two physical cores respectively.
+
 ## Next scientific gates
 
-1. Continue the 64³ CFL 0.3 run far beyond `t=10`; assess whether the top flux
+1. Continue the 64³ CFL 0.3 run beyond `t=100`; assess whether the top flux
    and vertical RMS settle. If not, inspect the initial stratification and
    HD2/upper radiation boundary energy budget before increasing resolution.
-2. Determine which of the untracked `nrfld_solar_convection` files is intended
-   for the Rempel-sized box. Review its many safety caps and flux controls,
-   establish ownership, and bring a tested version under Git before production.
-3. Run a non-magnetic 6.144 × 6.144 × 3.072 Mm pilot with at least two grid
+2. Keep the confirmed, tracked `simple_convection_lhllc_fld` series as the
+   baseline. Review the untracked `nrfld_solar_convection` files separately
+   before using their safety caps or flux controls in a comparison.
+3. Extend the non-magnetic 6.144 × 6.144 × 3.072 Mm pilot with at least two grid
    spacings. Compare time-averaged optical-depth-aligned temperature/density,
    vertical velocity, radiative/enthalpy/kinetic fluxes, granule scale and
    surface brightness distribution with published definitions. Keep gray FLD
