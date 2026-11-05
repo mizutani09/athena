@@ -1170,3 +1170,29 @@ and `rempel_box_pilot/restartfix_48km_t100_110_comparison/index.html`.
    entropy needs calibration for the gray-FLD solar-flux target. Change
    `s_in_from_profile=false` and an explicit `s_in` only in matched restarts;
    do not tune a transient top-flux sample.
+
+## Cost and continuation strategy
+
+The measured wall times with the corrected binary are 2017 s for 100 code
+units on the 96 km `64×64×32` grid (4 local MPI ranks), and 1716 s for 10
+code units on the 48 km `128×128×64` grid (12 local MPI ranks). Extrapolating
+the roughly `2×10^4`-code-unit whole-box internal-energy-over-solar-flux
+time would require about 112 hours and 40 days locally, respectively.
+These are resource estimates, not predictions of the physical equilibration
+time. The 12-rank 48 km run uses roughly 4.3 GiB of rank RSS in aggregate;
+a 24 km `256×256×128` run needs an HPC memory and runtime pilot before
+allocation. Keep the same 6.144×6.144×3.072 Mm geometry and cubic cells.
+
+For a long HPC continuation, start from the corrected-binary 96 km
+`t=1600` checkpoint, use CFL 0.3, HD2 gain 40 and relaxation time 2,
+and save restart files regularly. Record source and binary hashes and
+the three external table/profile hashes. Review consecutive windows of
+at least one vertical convective crossing each for top flux, stored-energy
+trend, lower hydro flux oscillation, mass drift, optical-depth-aligned
+temperature and velocity, and Newton/FGMRES warnings. Run matched entropy
+variants from one late checkpoint only after these trends stabilize.
+The 48 km case is currently a solver/restart screening run: its `t=100`–`110`
+interval covers much less than a crossing time and cannot validate the
+solar surface. Advance it only as a short local restart check; a physically
+useful 48 km comparison should be scheduled on HPC after the 96 km thermal
+state is understood.
