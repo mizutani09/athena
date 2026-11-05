@@ -98,3 +98,47 @@ AMR job 335316 was still running near `t = 0.03275 s` at 15:54 JST; SMR job
 had an unsatisfied dependency on the failed Slurm step 335306, it was canceled
 and replaced with job 335517, dependent on successful recovery jobs
 335514, 335515, and 335516. The physical AMR/SMR comparison remains pending.
+
+## 2026-11-05 17:10 JST update: AMR completed and two-layout audit
+
+AMR solve job 335316 reached `t = 0.04 s` after 36,517 global cycles. It
+performed 40,010 strict Newton solves (including AMR subcycles), with zero
+relaxed acceptances. Like uniform, its Slurm batch step exited 1 only when
+the optional MP4 writer could not find `ffmpeg`. Recovery job 335515
+successfully reprocessed the saved output in 17 seconds without a new solve.
+The recovered `summary.json` is `passed`; the final output SHA-256 is
+`7c97b2b06272c17a1c58077eaac300554210289060db84c3b34af71e4c9e134e`.
+Both full runs have the same executable and source snapshot hashes listed
+above, as well as the same final saved time (`0.03999999910593033 s`).
+
+| Metric | Uniform N2048 | AMR base N1024, finest N2048 |
+| --- | ---: | ---: |
+| Numerical Tgas peak | 991.437 K | 1002.528 K |
+| Point peak error | 7.953% | 6.924% |
+| Spike amplitude recovery | 61.305% | 66.315% |
+| Aligned rho/Tgas/Trad L1 | 0.0686/0.0915/0.0759% | 0.0544/0.1760/0.1709% |
+| Raw shock center | 183.594 cm | 183.594 cm |
+| Median late dt | 1.10807 µs | 1.12012 µs |
+| Wall time | 14,734 s | 17,216 s |
+| Final MeshBlocks | 512 L0 | 257 total, L0 and L1 |
+
+Interim audit job 335563 completed successfully. Its HTML and JSON are at
+`/work/mizutaniks/wor67/output/wor67_hpc_comparison_uniform_amr_n2048/`.
+Both layouts pass every current accuracy gate. The shock and gas peak are
+inside the AMR fine patch: its fine cell centers extend from approximately
+`-10.254` to `+10.254 cm` relative to the density jump, with coarse cells
+outside the patch. The finest shock cell width is `2.9296875 cm` in both
+cases, but AMR's late median timestep is 1.09% larger. The different grids
+and timesteps mean that the final peak difference cannot be isolated to one
+numerical cause.
+
+The peak history requires caution. From `t = 0.03` to `0.04 s`, uniform spans
+`971.042–1008.810 K` and AMR spans `971.001–1009.370 K`. Their history means
+are `990.927` and `994.518 K` respectively, a difference of only `3.591 K`
+versus the `11.091 K` final-snapshot difference. The time of the late minimum
+is `0.0357534 s` for uniform and `0.0331782 s` for AMR. The oscillations are
+out of phase; a single-time peak advantage is therefore not yet evidence of
+an intrinsic AMR improvement. The existing aligned-profile steady gate still
+passes, since it measures the full profile rather than peak constancy. SMR
+full job 335321 remains pending on `QOSMaxJobsPerUserLimit`; recovery job
+335516 and three-layout audit job 335517 remain queued by dependency.
