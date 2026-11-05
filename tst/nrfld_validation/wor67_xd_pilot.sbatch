@@ -35,7 +35,7 @@ command -v mpirun
 WOR67_RANKS=${WOR67_RANKS:-8}
 WOR67_OUTPUT_ROOT=${WOR67_OUTPUT_ROOT:-/work/mizutaniks/wor67/output}
 cd /work/mizutaniks/wor67/athena
-test "$(git rev-parse --short HEAD)" = 9419d224
+test "$(git rev-parse HEAD:src)" = "$(git rev-parse 9419d224:src)"
 
 python3 tst/nrfld_validation/radiative_shock_validation.py \
   --output-root "$WOR67_OUTPUT_ROOT" --run-name "$WOR67_RUN_NAME" \
