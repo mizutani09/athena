@@ -69,3 +69,32 @@ not been submitted.
 
 No conclusion about the full-time spike or AMR/SMR equivalence is available
 yet. Pilot outputs must not be treated as final physical measurements.
+
+## 2026-11-05 15:58 JST update: uniform completed, analysis recovered
+
+Uniform simulation job 335306 reached `t = 0.04 s` after 36,722 cycles,
+with 36,722 strict Newton convergences and zero relaxed acceptances. Its
+Slurm batch step returned exit 1 only because the optional MP4 writer could
+not find `ffmpeg` after the solve and most analysis had completed. The saved
+final output SHA-256 is
+`3be289220f77cd037a843106bcb2c3897f32d2351d2855330c6a0be5d140e268`.
+The runner now skips MP4 creation if `ffmpeg` is unavailable and omits the
+video element from HTML. Recovery job 335514 ran `--postprocess` over the
+existing outputs from a separate analysis worktree at `dad399ee`, without
+rerunning the solver; it completed in 15 seconds. The source tree used for
+analysis has the same `src` tree as `9419d224`.
+
+The recovered uniform `summary.json` is `passed`: numerical peak 991.437 K,
+semi-analytic point peak 1077.101 K, relative peak error 7.9532%, and spike
+amplitude recovery 61.3047%. Aligned L1 errors are 0.06860% (rho), 0.09155%
+(Tgas), and 0.07589% (Trad). Raw shock position error divided by domain width
+is 3.0599%, and previous aligned snapshot change is 0.02837%. All are within
+the issue's gates. The result reproduces the prior local uniform N2048 peak.
+The summary retains the original `ffmpeg` error as `recovered_analysis_error`.
+
+AMR job 335316 was still running near `t = 0.03275 s` at 15:54 JST; SMR job
+335321 was pending on `QOSMaxJobsPerUserLimit`. Recovery jobs 335515 and
+335516 will run after those jobs finish. Because the original audit job 335322
+had an unsatisfied dependency on the failed Slurm step 335306, it was canceled
+and replaced with job 335517, dependent on successful recovery jobs
+335514, 335515, and 335516. The physical AMR/SMR comparison remains pending.
