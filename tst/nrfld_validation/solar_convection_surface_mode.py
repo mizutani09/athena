@@ -48,7 +48,22 @@ def main() -> None:
     parser.add_argument("--output-dir", type=Path, required=True)
     parser.add_argument("--opacity-table", type=Path, required=True,
                         help="Rosseland opacity table used to locate tau=1")
+    parser.add_argument("--start-time", type=float, default=800.0)
+    parser.add_argument("--end-time", type=float, default=1600.0)
+    parser.add_argument("--window-width", type=float, default=100.0)
+    parser.add_argument("--period-code", type=float,
+                        help="Fit the same known period in every window; "
+                             "useful after the coherent mode becomes weak")
     args = parser.parse_args()
+    if not np.isfinite(args.window_width) or args.window_width <= 0:
+        parser.error("--window-width must be finite and positive")
+    span = (args.end_time - args.start_time) / args.window_width
+    if (not np.isfinite(span) or span < 1
+            or not np.isclose(span, round(span))):
+        parser.error("Time range must contain whole, positive windows")
+    if args.period_code is not None and (not np.isfinite(args.period_code)
+                                         or args.period_code <= 0):
+        parser.error("--period-code must be finite and positive")
     summary = json.loads(args.source_summary.read_text())
     runs = [Path(item).resolve() for item in summary["source_runs"]]
     runs += [item.resolve() for item in args.extra_run]
@@ -57,7 +72,9 @@ def main() -> None:
     time_unit = physical_time_unit(units, velocity_unit)
     opacity = opacity_interpolator(args.opacity_table.resolve())
     surface_rows = []
-    for item in collect(runs, "xz"):
+    for item in collect(runs, "xz", end_time=args.end_time):
+        if item.time < args.start_time:
+            continue
         frame = load(item, "xz", velocity_unit, units["leng_unit"],
                      units["rho_unit"], opacity)
         height_km = np.asarray(frame["tau1_height_mm"]) * 1000.0
@@ -68,7 +85,9 @@ def main() -> None:
     surface = np.asarray(surface_rows)
 
     plane_rows = []
-    for item in collect(runs, "xy"):
+    for item in collect(runs, "xy", end_time=args.end_time):
+        if item.time < args.start_time:
+            continue
         prim, _, _ = read_plane(item.prim, "prim", "xy")
         velocity = prim[4] * velocity_unit / 1e5
         plane_rows.append((item.time, float(np.mean(velocity)),
@@ -76,19 +95,25 @@ def main() -> None:
                            float(np.mean(velocity**2))))
     plane = np.asarray(plane_rows)
 
-    late_surface = surface[(surface[:, 0] >= 1500) & (surface[:, 0] <= 1600)]
-    late_plane = plane[(plane[:, 0] >= 1500) & (plane[:, 0] <= 1600)]
+    late_start = args.end_time - args.window_width
+    late_surface = surface[(surface[:, 0] >= late_start) &
+                           (surface[:, 0] <= args.end_time)]
+    late_plane = plane[(plane[:, 0] >= late_start) &
+                       (plane[:, 0] <= args.end_time)]
     if len(late_surface) < 20 or len(late_plane) < 20:
-        raise ValueError("Need full late 1500–1600 interval")
-    period = dominant_period(late_surface[:, 0], late_surface[:, 1])
+        raise ValueError("Need at least 20 samples in the final window")
+    late_peak = dominant_period(late_surface[:, 0], late_surface[:, 1])
+    period = args.period_code if args.period_code is not None else late_peak
     windows = []
-    for start in range(800, 1600, 100):
-        z = surface[(surface[:, 0] >= start) & (surface[:, 0] < start+100)]
-        v = plane[(plane[:, 0] >= start) & (plane[:, 0] < start+100)]
+    for index in range(round(span)):
+        start = args.start_time + index*args.window_width
+        end = start + args.window_width
+        z = surface[(surface[:, 0] >= start) & (surface[:, 0] < end)]
+        v = plane[(plane[:, 0] >= start) & (plane[:, 0] < end)]
         if len(z) < 20 or len(v) < 20:
-            raise ValueError(f"Too few samples in t={start}–{start+100}")
+            raise ValueError(f"Too few samples in t={start}–{end}")
         windows.append({
-            "start_time_code": start, "end_time_code": start+100,
+            "start_time_code": start, "end_time_code": end,
             "tau1_mean_height_km": float(np.mean(z[:, 1])),
             "tau1_height_std_km": float(np.std(z[:, 1])),
             "tau1_harmonic_amplitude_km": harmonic_amplitude(
@@ -111,8 +136,14 @@ def main() -> None:
         "source_runs": [str(run) for run in runs],
         "tau1_opacity_table": str(args.opacity_table.resolve()),
         "time_unit_seconds": time_unit,
+        "analyzed_start_code": args.start_time,
+        "analyzed_end_code": args.end_time,
+        "window_width_code": args.window_width,
         "late_period_code": period,
         "late_period_minutes": period*time_unit/60,
+        "late_spectral_peak_code": late_peak,
+        "fit_period_origin": ("fixed_reference" if args.period_code is not None
+                              else "late_spectral_peak"),
         "late_xy_mean_vz_to_tau1_height_speed_correlation": correlation,
         "late_tau1_height_range_km": [float(np.min(late_surface[:, 1])),
                                       float(np.max(late_surface[:, 1]))],
@@ -163,7 +194,8 @@ def main() -> None:
         "table{border-collapse:collapse}th,td{padding:.5rem .7rem;"
         "border-bottom:1px solid #ddd;text-align:left}</style>"
         "<h1>Coherent vertical motion in the solar box</h1>"
-        f"<p><strong>Late period: {period*time_unit/60:.2f} min.</strong> "
+        f"<p><strong>{'Reference fit period' if args.period_code is not None else 'Late spectral peak'}: "
+        f"{period*time_unit/60:.2f} min.</strong> "
         "The mean motion and optical-depth-one surface both oscillate. "
         "Their amplitudes decline over this run; the physical or numerical "
         "excitation mechanism remains under investigation.</p>"

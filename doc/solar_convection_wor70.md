@@ -1265,3 +1265,37 @@ python3 tst/nrfld_validation/solar_convection_surface_mode.py \
 Then regenerate the campaign `index.html` by calling
 `solar_convection_report.make_campaign_index(root)`. The same script accepts
 a new combined report and more `--extra-run` arguments for an HPC campaign.
+
+## Live continuation: t=1600–5000 interim result (2026-11-05)
+
+The corrected 96 km gain-40 case continues from its `t=1600` final restart
+under the same binary, generated input, four-rank placement, CFL 0.3,
+FGMRES and HD2 controls. The new run directory is
+`rempel_box_pilot/face_gravity_hd2_mass_tau2_rate40_current_64x64x32_np4_t1600_5000`.
+It targets `t=5000` and writes a checkpoint every 10 code-time units. At the
+interim check after about 4.7 wall hours, the history had reached `t≈3038`;
+all 20,577 logged Newton solves had converged, with no fatal error or slow-MG
+warning. The run remains active. The free disk and memory capacity were ample
+at this check; this statement is not a guarantee for the remaining run.
+
+The frozen `rempel_box_pilot/preview_t1600_2900/index.html` contains three
+220-frame videos over `t=1600–2900`, with the measured τ=1 xz contour and
+both raw and plane-mean-subtracted xy velocity. Freezing at `t=2900` avoids
+reading an output file while the simulation is writing it. The preview also
+links to detailed surface-mode and boundary-flux plots and JSON summaries.
+The fitted **same 6.234 min reference period** from `t=1500–1600` gives
+fixed-z xy-plane mean `v_z` amplitudes of `0.242` km/s at `t=1600–1700`
+and `0.015` km/s at `t=2800–2900`. The one-xz-slice τ=1-height amplitudes
+are `5.3` and `0.8` km; local opacity and thermal changes also affect this
+optical surface. The lower hydro-flux standard deviation decreases from
+`0.786` to `0.112 F_sun` in those windows. The upper total flux averages
+`0.620` and `0.627 F_sun`: stronger mode damping has **not** established
+solar-flux agreement or thermal stationarity. Reassess after `t=5000` before
+drawing long-time conclusions.
+
+The movie generator accepts `--end-time` for a reproducible frozen snapshot
+of a live run, and the surface-mode diagnostic accepts `--start-time`,
+`--end-time`, `--window-width`, and `--period-code`. Fixing the previously
+measured period is important when the late coherent peak has become weaker
+than unrelated fluctuations; a late-window FFT peak alone then need not
+represent the original mode.

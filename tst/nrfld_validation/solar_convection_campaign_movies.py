@@ -11,6 +11,7 @@ from __future__ import annotations
 import argparse
 import json
 import sys
+import time
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -47,7 +48,8 @@ def first_history_time(run: Path) -> float:
     raise ValueError(f"History has no samples: {paths[0]}")
 
 
-def collect(runs: list[Path], plane: str) -> list[Slice]:
+def collect(runs: list[Path], plane: str,
+            end_time: float | None = None) -> list[Slice]:
     starts = [first_history_time(run) for run in runs]
     if any(b <= a for a, b in zip(starts, starts[1:])):
         raise ValueError("Source runs are not in increasing restart-time order")
@@ -55,10 +57,16 @@ def collect(runs: list[Path], plane: str) -> list[Slice]:
     for index, run in enumerate(runs):
         cutoff = starts[index + 1] if index + 1 < len(runs) else np.inf
         for prim, uov in pairs(run, plane):
-            with h5py.File(prim) as handle:
-                time = float(handle.attrs["Time"])
-            if time < cutoff - 1e-7:
-                records.append(Slice(time, prim, uov, run))
+            try:
+                with h5py.File(prim) as handle:
+                    frame_time = float(handle.attrs["Time"])
+            except OSError:
+                if end_time is not None and time.time() - prim.stat().st_mtime < 120:
+                    continue  # A live run may be writing its newest frame.
+                raise
+            if frame_time < cutoff - 1e-7 and (end_time is None or
+                                                 frame_time <= end_time + 1e-7):
+                records.append(Slice(frame_time, prim, uov, run))
     records.sort(key=lambda item: item.time)
     if len(records) < 3 or any(b.time <= a.time for a, b in zip(records, records[1:])):
         raise ValueError(f"Missing or overlapping {plane} time-ordered slices")
@@ -186,11 +194,15 @@ def main() -> None:
                         help="Campaign root; writes movies/ beneath it")
     parser.add_argument("--max-frames", type=int, default=220)
     parser.add_argument("--fps", type=int, default=8)
+    parser.add_argument("--end-time", type=float,
+                        help="Use completed frames through this code time")
     parser.add_argument("--opacity-table", type=Path,
                         help="Rosseland table for the xz tau=1 contour")
     args = parser.parse_args()
     if args.max_frames < 3 or args.fps < 1:
         parser.error("--max-frames must be >=3 and --fps must be >=1")
+    if args.end_time is not None and not np.isfinite(args.end_time):
+        parser.error("--end-time must be finite")
     summary = json.loads(args.source_summary.read_text())
     runs = [Path(item).resolve() for item in summary["source_runs"]]
     runs += [item.resolve() for item in args.extra_run]
@@ -208,6 +220,7 @@ def main() -> None:
     manifest = {"source_summary": str(args.source_summary.resolve()),
                 "source_runs": [str(run) for run in runs],
                 "max_frames": args.max_frames, "fps": args.fps,
+                "end_time_code": args.end_time,
                 "time_unit_seconds": time_unit,
                 "tau1_opacity_table": (str(args.opacity_table.resolve())
                                        if args.opacity_table else None),
@@ -221,7 +234,7 @@ def main() -> None:
             "data_sha256": source.get("data_sha256"),
         }
     for plane in ("xz", "xy"):
-        records = collect(runs, plane)
+        records = collect(runs, plane, end_time=args.end_time)
         sampled = choose(records, args.max_frames)
         frames = [load(record, plane, velocity_unit, length_unit,
                        units["rho_unit"], opacity)
