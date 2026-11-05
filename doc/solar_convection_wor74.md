@@ -66,6 +66,52 @@ flux lag and the `~2e4`-code-time box heat time require a long-window check
 of both the top flux and stored energy. The fixed `t=5000–5500` sweep is the
 response-measurement stage for that controller, not the feedback itself.
 
+### Bounded local feedback pilot
+
+`tst/nrfld_validation/run_solar_entropy_feedback.py` provides a restart-based
+outer-loop test. From the same `t=5000` state it runs both a fixed-entropy
+control and a feedback branch in four matched 25-code-time segments through
+`t=5100`. The same restart schedule isolates entropy changes. After each
+non-final segment it averages the top radiative flux over the last 20
+code-time units and applies
+
+`delta_s = (segment_duration/tau_KH)*(1-<F_top>/F_sun)*(1e6 / response)`,
+
+where `tau_KH=2e4` code time and `response=0.322326259 F_sun` per `1e6`
+entropy units is the **measured short-time bottom-flux response** from the
+`+1e6` smoke comparison. This converts the slow flux error into entropy
+units; it is a provisional controller gain, not a measured long-time
+photospheric derivative. The absolute update is capped at
+`5e4 erg g^-1 K^-1` per segment. Both branches use 16 MPI ranks and keep
+only HST and restart outputs. Every two seconds the driver records WSL
+available memory, swap use, and summed Athena rank RSS. It stops the
+current process group if available memory falls below 3 GiB, used swap rises
+above 4 GiB, or total wall time reaches 27 minutes.
+
+The exact local command is:
+
+```bash
+python3 tst/nrfld_validation/run_solar_entropy_feedback.py \
+  --restart /mnt/d/output/rad/wor70_solar_20261104/rempel_box_pilot/face_gravity_hd2_mass_tau2_rate40_current_64x64x32_np4_t4255_5000_resume/simple_convection_general_6Mm_box.final.rst \
+  --header-from /mnt/d/output/rad/wor70_solar_20261104/rempel_box_pilot/face_gravity_hd2_initial_flux_64x64x32_np4_t10/simple_convection_general_6Mm_box.hst \
+  --base-input inputs/radiation/athinput.simple_convection_lhllc_fld_general_6Mm_box \
+  --data-dir /mnt/d/output/rad/wor70_solar_20261104/rempel_box_pilot/data \
+  --output-root /mnt/d/output/rad/wor74_feedback_20261105/feedback_t5000_5100 \
+  --initial-s-in 1.581097454457282e9
+```
+
+The driver writes a summary HTML, JSON, flux and entropy plot, and a
+`memory_monitor.csv`. This checks the controller and restart continuity;
+100 code-time units are much shorter than the thermal relaxation time.
+An initial matched two-segment `t=5000–5004` smoke test completed. The first
+fixed and feedback segments were identical in top and bottom flux. After a
+positive `115.84 erg g^-1 K^-1` entropy update, the second segment's bottom
+hydro flux differed by at most `3.9e-5 F_sun`; the top differed by at most
+`5.1e-12 F_sun`, as expected on such a short interval. Peak summed Athena
+rank RSS was `1.09 GiB`, minimum WSL available memory was `17.95 GiB`, and
+swap use stayed near `0.20 GiB`. The smoke report is
+`/mnt/d/output/rad/wor74_feedback_20261105/controller_smoke_matched_t5000_5004/index.html`.
+
 ## Local CPU test
 
 WSL currently exposes 16 logical CPUs arranged as eight pairs of sibling

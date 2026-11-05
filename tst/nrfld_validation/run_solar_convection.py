@@ -101,6 +101,8 @@ def main() -> None:
                         help="Code-coordinate height of xy slices, e.g. 2.0 near initial tau=1")
     parser.add_argument("--no-slices", action="store_true",
                         help="Disable HDF5 slices and restart output for a short solver test")
+    parser.add_argument("--history-and-restart-only", action="store_true",
+                        help="Keep HST and restart outputs; disable HDF5 plots for a lightweight continuation")
     parser.add_argument("--movie", action="store_true",
                         help="Create an xz MP4 from the slice outputs")
     parser.add_argument("--problem-set", action="append", default=[],
@@ -159,7 +161,9 @@ def main() -> None:
                      "proportional to the three box lengths")
     if args.ranks < 1 or args.ranks > (dims[0] // 16) * (dims[1] // 16) * (dims[2] // 16):
         parser.error("--ranks must be between 1 and the MeshBlock count")
-    if args.movie and args.no_slices:
+    if args.no_slices and args.history_and_restart_only:
+        parser.error("Choose only one reduced-output mode")
+    if args.movie and (args.no_slices or args.history_and_restart_only):
         parser.error("--movie requires slice outputs")
     if args.checkpoint_dt is not None:
         restart_block = re.search(r"^<output6>\s*$(.*?)(?=^<|\Z)",
@@ -202,6 +206,10 @@ def main() -> None:
     if args.no_slices:
         output_sections = re.findall(r"^<output(\d+)>", base_text, re.M)
         command += [f"output{n}/dt=-1" for n in output_sections if int(n) >= 2]
+    if args.history_and_restart_only:
+        output_sections = re.findall(r"^<output(\d+)>", base_text, re.M)
+        command += [f"output{n}/dt=-1" for n in output_sections
+                    if int(n) >= 2 and int(n) != 6]
     if args.plan:
         print("cwd:", root, "\ncommand:", " ".join(command))
         return
@@ -261,7 +269,7 @@ def main() -> None:
                            for line in history.read_text().splitlines()):
         raise SystemExit("Restart history lacks column names; pass "
                          "--history-header-from with an original header-bearing .hst")
-    if not args.no_slices:
+    if not args.no_slices and not args.history_and_restart_only:
         plot = repo / "scripts/plot_simple_convection.py"
         plot_command = [sys.executable, str(plot), str(case)]
         if args.movie:
