@@ -400,7 +400,11 @@ def analyze_case(root: Path, case: str) -> dict:
     fig.savefig(figures/f"{case}_history.png", dpi=180)
     fig.savefig(figures/f"{case}_history.pdf")
     plt.close(fig)
-    report["video"] = str(make_movie(root, case, paths, analytic).relative_to(root))
+    if FFMpegWriter.isAvailable():
+        report["video"] = str(make_movie(root, case, paths, analytic).relative_to(root))
+    else:
+        report["video"] = None
+        report["video_unavailable_reason"] = "ffmpeg is not installed"
     return report
 
 
@@ -420,6 +424,11 @@ def write_html(root: Path, summary: dict):
         peak = data["analysis"]["gas_temperature_peak"]
         far = data["analysis"]["initial_far_state_relative_difference"]
         far_max = max(value for sides in far.values() for value in sides.values())
+        video = data["analysis"].get("video")
+        video_html = (f'<div class="plot"><h3>Shock-aligned evolution</h3>'
+                      f'<video controls preload="metadata" width="920"><source '
+                      f'src="{escape(video)}" type="video/mp4"></video></div>'
+                      if video else "")
         cards.append(f'''<section><h2>{escape(case.upper())}</h2>
 <p><strong>t = {m['time_s']:.5g} s</strong> · {data['execution']['cycles']} cycles ·
 {data['execution']['snapshots']} snapshots · {m['profile_points']} profile cells ·
@@ -441,8 +450,7 @@ FGMRES calls {solver['fgmres_calls']}. Launcher maximum RSS {data['execution']['
 <div class="plot"><h3>Shock aligned</h3><img src="figures/{case}_aligned.png" alt="{case} aligned profile"></div>
 <div class="plot"><h3>Raw coordinates</h3><img src="figures/{case}_raw.png" alt="{case} raw profile"></div>
 <div class="plot"><h3>Error and shock-position history</h3><img src="figures/{case}_history.png" alt="{case} error history"></div>
-<div class="plot"><h3>Shock-aligned evolution</h3><video controls preload="metadata" width="920"><source
-src="video/{case}.mp4" type="video/mp4"></video></div>
+{video_html}
 <p><a href="cases/{case}/comparison.csv">Comparison CSV</a> ·
 <a href="cases/{case}/error_history.csv">History CSV</a> ·
 <a href="cases/{case}/input.used">Effective input</a> ·
@@ -601,11 +609,11 @@ def main() -> int:
         if "error" in summary:
             summary["recovered_analysis_error"] = {
                 "message": summary.pop("error"),
-                "resolution": "Rechecked the saved AMR substep logs with the corrected Newton event count."}
+                "resolution": "Reprocessed the saved simulation output without rerunning the solver."}
         if "error" in manifest:
             manifest["recovered_analysis_error"] = {
                 "message": manifest.pop("error"),
-                "resolution": "Rechecked the saved AMR substep logs with the corrected Newton event count."}
+                "resolution": "Reprocessed the saved simulation output without rerunning the solver."}
         summary["finished_at"] = utc_now()
         manifest["status"] = summary["status"]
         manifest["analysis_script_sha256"] = sha256_file(Path(__file__))
