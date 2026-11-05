@@ -79,11 +79,22 @@ def main() -> None:
         if (log["fatal_count"] or not statuses
                 or not statuses.issubset({"converged", "dt_zero_initialization"})):
             raise ValueError(f"{run}: fatal or nonconverged Newton solve")
-        if not log["completed"] and (index == len(args.run)-1
-                                     or not manifest.get("interruption_reason")
-                                     or manifest.get("exit_code") != 143):
-            raise ValueError(f"{run}: incomplete without a documented "
-                             "SIGTERM and completed continuation")
+        if not log["completed"]:
+            if index == len(args.run)-1 or not manifest.get("interruption_reason"):
+                raise ValueError(f"{run}: incomplete without a documented "
+                                 "interruption and completed continuation")
+            # A terminated runner records 143. If its launcher is killed too,
+            # it cannot record an exit code; require the exact documented
+            # checkpoint and successor instead of inventing an exit status.
+            interrupted_runner = manifest.get("exit_code") == 143
+            killed_launcher = (
+                "exit_code" not in manifest
+                and manifest.get("last_checkpoint") == manifests[index+1]["restart"]
+                and Path(manifest.get("resume_case", "")).resolve()
+                == args.run[index+1].resolve())
+            if not (interrupted_runner or killed_launcher):
+                raise ValueError(f"{run}: incomplete without a verifiable "
+                                 "checkpoint continuation")
     histories = [next(run.glob("*.hst")) for run in args.run]
     segments = [read_history(path, args.header_from) for path in histories]
     names = set(segments[0])
@@ -149,25 +160,66 @@ def main() -> None:
         f"segment {i+1}</a>" for i, run in enumerate(args.run))
     verdict = "PASS" if report["stationarity_candidate"] else "NOT ESTABLISHED"
     interruption_note = (
-        "<p><strong>Interrupted segment:</strong> one execution session ended "
-        "with SIGTERM and was resumed from its numbered checkpoint. "
+        "<p><strong>Interrupted segment:</strong> one execution session stopped "
+        "and was resumed from its numbered checkpoint. "
         "The joined plot removes overlapping HST rows from that restart. "
         "Solver convergence is aggregated over both attempts.</p>"
         if report["interrupted_segments"] else "")
+    movie_section = ""
+    movie_manifest = args.output_dir / "movies" / "manifest.json"
+    if movie_manifest.is_file():
+        movie_data = json.loads(movie_manifest.read_text())
+        cards = []
+        for key, title in (("xz", "Vertical slice with τ=1 contour"),
+                           ("xy", "Horizontal slice: raw vertical velocity"),
+                           ("xy_fluct", "Horizontal slice: plane mean removed")):
+            item = movie_data.get("movies", {}).get(key)
+            if not item or not (args.output_dir / "movies" / item["file"]).is_file():
+                continue
+            poster = args.output_dir / "movies" / item["poster"]
+            poster_attr = (f" poster='movies/{html.escape(poster.name)}'"
+                           if poster.is_file() else "")
+            cards.append(
+                f"<figure><video controls preload='metadata'{poster_attr}>"
+                f"<source src='movies/{html.escape(item['file'])}' type='video/mp4'>"
+                "Your browser does not support MP4 video.</video>"
+                f"<figcaption><strong>{html.escape(title)}</strong> · "
+                f"{item['rendered_frames']} frames · "
+                f"t={item['first_time_code']:.1f}–"
+                f"{item['last_time_code']:.1f}</figcaption></figure>")
+        if cards:
+            movie_section = "<h2>Evolution movies</h2>" + "".join(cards)
+    mode_section = ""
+    if (args.output_dir / "surface_mode" / "index.html").is_file():
+        mode_section = (
+            "<p><a href='surface_mode/index.html'>Coherent vertical-mode "
+            "history and fixed-period amplitudes</a></p>")
+    if (args.output_dir / "flux_oscillation" / "index.html").is_file():
+        mode_section += (
+            "<p><a href='flux_oscillation/index.html'>Lower-boundary flux "
+            "oscillation across early and late windows</a></p>")
+    flux_note = ""
+    if report["failed_stationarity_checks"] == ["both_top_fluxes_within_10pct_solar"]:
+        flux_note = (
+            "<p><strong>All listed stability and solver checks pass except "
+            "solar-flux agreement.</strong> The upper flux is stable in the "
+            "late windows but remains below the solar target.</p>")
     (args.output_dir/"index.html").write_text(
         "<!doctype html><html lang='en'><meta charset='utf-8'>"
         "<title>Solar convection continuation screen</title><style>"
-        "body{font:19px/1.5 system-ui;max-width:1250px;margin:2rem auto;"
+        "body{font:22px/1.5 system-ui;max-width:1250px;margin:2rem auto;"
         "padding:0 1rem;color:#172b3a}table{border-collapse:collapse}"
         "th,td{padding:.5rem .75rem;border-bottom:1px solid #ddd;text-align:left}"
-        "img{max-width:100%}.pass{font-weight:bold;color:#117347}"
+        "img{max-width:100%}video{width:100%;max-width:1050px}"
+        "figure{margin:2rem 0}figcaption{margin-top:.5rem}"
+        ".pass{font-weight:bold;color:#117347}"
         ".fail{font-weight:bold;color:#a12929}</style>"
         "<h1>Solar convection: combined continuation</h1>"
         f"<p><strong>Stationarity screen: {verdict}.</strong> "
         "The joined runs have identical binary and physics inputs. "
         "A screen pass would still require optical-profile and resolution "
         "comparison with the Sun.</p>"
-        +interruption_note+
+        +interruption_note+flux_note+
         f"<p>{links} · <a href='summary.json'>JSON</a></p>"
         "<h2>Late windows</h2><table><tr><th>Window</th><th>Code time</th>"
         "<th>Crossings</th><th>Top / solar</th><th>Bottom hydro / solar</th>"
@@ -175,7 +227,7 @@ def main() -> None:
         "<th>Max |mass drift| [%]</th></tr>"
         +windows_html+"</table>"
         "<h2>Acceptance checks</h2><table><tr><th>Check</th><th>Result</th></tr>"
-        +checks_html+"</table>"
+        +checks_html+"</table>"+mode_section+movie_section+
         "<img src='history.png' alt='joined history'>"
         "<img src='energy_budget.png' alt='joined energy budget'></html>"
     )

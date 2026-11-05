@@ -1299,3 +1299,38 @@ of a live run, and the surface-mode diagnostic accepts `--start-time`,
 measured period is important when the late coherent peak has become weaker
 than unrelated fluctuations; a late-window FFT peak alone then need not
 represent the original mode.
+
+## Completed continuation to t=5000
+
+The local session stopped externally at `t=4255.601` without a solver fatal.
+Its last complete numbered restart is `.00426.rst` at `t=4255.041`; the
+separate `t4255_5000_resume` run completed at `t=5000`, with 10,612/10,612
+Newton solves converged, no fatal errors, and no slow-MG warnings. The
+checkpoint repeat loses only about 0.56 code-time units. The new binary,
+generated input, EOS, opacity, and profile hashes match the interrupted
+segment. Six overlapping history samples agree to maximum relative
+differences of `3.3e-13` in mass, `1.0e-10` in top total flux, and `2.0e-8`
+in bottom hydro flux.
+
+The joined `rempel_box_pilot/mass_rate40_combined_t1600_5000/index.html`
+removes five overlapping parent history samples and reports 48,525/48,525
+converged Newton solves, zero slow-MG warnings, and zero fatals. Its two
+late windows are `t=3300–4150` and `4150–5000`, each spanning over seven
+vertical crossing times. Top total flux averages `0.6268` and `0.6257`
+`F_sun`; bottom hydro flux averages `0.6291` and `0.6236 F_sun`; the
+stored-energy trends are `+0.0031` and `+0.0005 F_sun`. Mass drift stays
+below `0.030%`. All implemented window-stability and solver checks pass;
+the sole failed screen is **top flux within 10% of the solar target**. The
+box approaches a stable reduced-flux state under these boundary settings,
+but this does not demonstrate reproduction of the solar convection zone.
+The late τ=2/3 temperature from 19 full-volume snapshots is `5152 K`,
+compared with `5769 K` in the imported starting 1D profile.
+
+At the fixed 6.234 min reference period, xy-plane mean vertical-velocity
+amplitude is `0.242 km/s` at `t=1600–1700` and `0.0185 km/s` at
+`t=4900–5000`; its fixed-plane kinetic-energy share is `1.11%` and
+`0.055%`. The lower hydro-flux standard deviation falls from `0.786`
+`F_sun` at `t=1600–1700` to `0.123 F_sun` at `t=4800–4900`.
+The oscillation is much weaker but remains measurable and is not proved
+absent. The joined HTML links the full `t=1600–5000` xz and xy movies,
+surface-mode time history, and boundary-flux comparison.
