@@ -1149,6 +1149,14 @@ and is not a resolution-convergence or solar-flux test. The corrected
 run report and matched comparison are at
 `rempel_box_pilot/face_gravity_hd2_mass_tau2_rate40_restartfix_128x128x64_np12_t100_110/index.html`
 and `rempel_box_pilot/restartfix_48km_t100_110_comparison/index.html`.
+The same corrected binary restarted again from its `t=110` checkpoint
+and completed `t=120`: all `304/304` Newton solves converged, with no
+slow-MG warnings or fatals, and maximum mass drift below `0.047%` in the
+last short window. The `t≈117.6`–`120` mean top flux is `0.5585 F_sun`,
+while stored energy rises at `5.62 F_sun` equivalent; this is an obvious
+startup/feedback transient. The `t=120` 3D `tau=2/3` mean temperature is
+`5087.8 K`. The report includes the preceding corrected-binary history:
+`rempel_box_pilot/face_gravity_hd2_mass_tau2_rate40_restartfix_128x128x64_np12_t110_120/index.html`.
 
 ## Next scientific gates
 
