@@ -112,6 +112,36 @@ rank RSS was `1.09 GiB`, minimum WSL available memory was `17.95 GiB`, and
 swap use stayed near `0.20 GiB`. The smoke report is
 `/mnt/d/output/rad/wor74_feedback_20261105/controller_smoke_matched_t5000_5004/index.html`.
 
+The full 16-rank `t=5000–5100` matched pilot also completed in **21.96 wall
+minutes**, within the 27-minute guard. Its report and raw summary are
+`/mnt/d/output/rad/wor74_feedback_20261105/feedback_t5000_5100/index.html`
+and the adjacent `summary.json`. The first 25-code-time HST files in the
+fixed and feedback branches have identical SHA256 hashes. The controller
+applied three positive entropy increments of `1445.40`, `1470.94`, and
+`1426.57 erg g^-1 K^-1` at `t=5025`, `5050`, and `5075`; the total applied
+change was `4342.91 erg g^-1 K^-1`, or `2.75e-6` of the initial entropy.
+The late `t=5075–5100` means were:
+
+| Branch | Top radiation / `F_sun` | Bottom hydro / `F_sun` |
+| --- | ---: | ---: |
+| Fixed entropy | 0.627433335 | 0.556569377 |
+| Slow feedback | 0.627433053 | 0.557982875 |
+
+Thus the bottom hydro-flux difference was `+0.00141350 F_sun`, whereas the
+top radiative-flux difference was only `-2.82e-7 F_sun`. The feedback has
+started to act at the lower boundary; this short test **does not establish
+solar-flux calibration or statistical stationarity**. The box heat time is
+about `2e4` code units, two orders of magnitude longer than this pilot, and
+the last 25-code-time window spans only about 0.22 vertical crossing times.
+Both branches reported `1445/1445` converged Newton solves, no slow-MG
+warnings or fatal errors, and maximum segment mass drift below `0.028%`.
+During the run the peak summed Athena rank RSS was `1123 MiB` (`1.10 GiB`),
+minimum WSL available memory was `18374 MiB` (`17.94 GiB`), and peak used
+swap was `203 MiB`; swap did not grow. The 657 monitor records are in
+`memory_monitor.csv` next to the report. A longer thermal-time test should
+check the top-flux response, stored-energy trend, and controller gain before
+calling the entropy calibrated.
+
 ## Local CPU test
 
 WSL currently exposes 16 logical CPUs arranged as eight pairs of sibling
