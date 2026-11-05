@@ -455,10 +455,12 @@ def make_campaign_index(root: Path) -> None:
         ratio = late.get("top_total_flux_over_solar")
         cells = [
             f"<a href='{html.escape(case.name)}/index.html'>{html.escape(case.name)}</a>",
-            ("<strong>PASS</strong>" if solver_ok else
+            ("<strong class='pass'>PASS</strong>" if solver_ok else
              "intentionally stopped" if intentionally_stopped else
              "interrupted" if interrupted else "incomplete / failed"),
-            "candidate" if item["stationarity_candidate"] else "not established",
+            ("<strong class='pass'>candidate</strong>"
+             if item["stationarity_candidate"] else
+             "<span class='pending'>not established</span>"),
             str(log["final_cycle"] if log["final_cycle"] is not None else "—"),
             f"{ratio:.3f}" if ratio is not None else "—",
             str(log["slow_mg_warning_count"]),
@@ -467,16 +469,59 @@ def make_campaign_index(root: Path) -> None:
     headers = ("Case", "Solver completion", "Stationarity", "Final cycle",
                "Late top flux / solar", "Slow MG warnings")
     table = "<tr>" + "".join(f"<th>{x}</th>" for x in headers) + "</tr>"
+    movies = []
+    movie_manifest = root / "movies" / "manifest.json"
+    binary_note = ""
+    if movie_manifest.is_file():
+        movie_data = json.loads(movie_manifest.read_text())
+        binaries = {item.get("binary_sha256") for item in
+                    movie_data.get("source_provenance", {}).values()}
+        if len(binaries) > 1:
+            binary_note = ("<strong>The executable changes at a checkpoint"
+                           " in this sequence.</strong> Source hashes are"
+                           " listed in the movie manifest. ")
+        for plane, description in (("xz", "Vertical slice: temperature and flow"),
+                                   ("xy", "Near-surface horizontal slice")):
+            item = movie_data.get("movies", {}).get(plane)
+            if not item:
+                continue
+            path = root / "movies" / item["file"]
+            if not path.is_file():
+                continue
+            poster = root / "movies" / item["poster"]
+            poster_attr = (f" poster='movies/{html.escape(poster.name)}'"
+                           if poster.is_file() else "")
+            movies.append(
+                f"<figure><video controls preload='metadata'{poster_attr}>"
+                f"<source src='movies/{html.escape(path.name)}' type='video/mp4'>"
+                "Your browser does not support MP4 video.</video>"
+                f"<figcaption><strong>{html.escape(description)}</strong> · "
+                f"t={item['first_time_code']:.0f}–{item['last_time_code']:.0f} "
+                f"code units · {item['rendered_frames']} frames</figcaption></figure>"
+            )
+    movie_section = (
+        "<h2>Evolution movies</h2><p>Frames show the selected long-run "
+        "continuation. The horizontal slice is at a fixed height near the "
+        "initial photosphere. The movies show evolving flow; they do not "
+        "establish thermal stationarity. " + binary_note +
+        "<a href='movies/manifest.json'>Movie sources and sampling</a>.</p>"
+        + "".join(movies) if movies else "")
     (root / "index.html").write_text(
         "<!doctype html><html lang='en'><meta charset='utf-8'>"
         "<title>Solar convection campaign</title>"
-        "<style>body{font:19px/1.5 system-ui;max-width:1200px;margin:2rem auto;"
-        "padding:0 1rem;color:#172b3a}h1{font-size:2rem}table{border-collapse:collapse}"
+        "<style>body{font:22px/1.55 system-ui;max-width:1250px;margin:2rem auto;"
+        "padding:0 1rem;color:#172b3a}h1{font-size:2.2rem}"
+        "h2{font-size:1.6rem}video{display:block;width:100%;max-width:1050px}"
+        "figcaption{margin-top:.5rem}figure{margin:2rem 0}"
+        ".table-scroll{overflow-x:auto}table{border-collapse:collapse}"
         "th,td{padding:.5rem .75rem;border-bottom:1px solid #ddd;text-align:left}"
-        "strong{color:#117347}</style><h1>Non-magnetic solar convection</h1>"
+        "th{white-space:nowrap}strong{font-weight:700}"
+        ".pass{color:#117347}.pending{color:#9a5700}</style>"
+        "<h1>Non-magnetic solar convection</h1>"
         "<p><strong>Solver completion</strong> and statistical stationarity are "
         "separate checks. A short solver pass does not establish solar agreement.</p>"
-        f"<table>{table}{''.join(rows)}</table></html>"
+        + movie_section + "<h2>Runs and analyses</h2>"
+        f"<div class='table-scroll'><table>{table}{''.join(rows)}</table></div></html>"
     )
 
 
@@ -676,13 +721,14 @@ def main() -> None:
         if ledger else "")
     (args.run_dir / "index.html").write_text(
         "<!doctype html><html lang='en'><meta charset='utf-8'>"
-        "<title>Solar convection run</title><style>body{font:19px/1.5 system-ui;"
-        "max-width:1100px;margin:2rem auto;padding:0 1rem;color:#172b3a}"
-        "h1{font-size:2rem}.status{font-weight:700;color:"
+        "<title>Solar convection run</title><style>body{font:22px/1.55 system-ui;"
+        "max-width:1150px;margin:2rem auto;padding:0 1rem;color:#172b3a}"
+        "h1{font-size:2.2rem}h2{font-size:1.6rem}"
+        "video{width:100%;max-width:1050px}.status{font-weight:700;color:"
         + ("#117347" if candidate else "#a14b08") + "}img{max-width:100%}"
         "table{border-collapse:collapse}th,td{border-bottom:1px solid #ddd;"
         "padding:.4rem 1rem;text-align:left}th{font-weight:650}"
-        "pre{font-size:15px;white-space:pre-wrap;background:#f3f6f8;padding:1rem}"
+        "pre{font-size:18px;white-space:pre-wrap;background:#f3f6f8;padding:1rem}"
         "</style><h1>Non-magnetic solar convection</h1><p class='status'>"
         + status + "</p><p>Screening only. Full solar comparison requires vertical "
         "profiles, optical-depth diagnostics, and resolution tests.</p>"

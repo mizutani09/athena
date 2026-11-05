@@ -1190,6 +1190,15 @@ These are resource estimates, not predictions of the physical equilibration
 time. The 12-rank 48 km run uses roughly 4.3 GiB of rank RSS in aggregate;
 a 24 km `256×256×128` run needs an HPC memory and runtime pilot before
 allocation. Keep the same 6.144×6.144×3.072 Mm geometry and cubic cells.
+The HPC resolution sequence should extend from 48 km (`128×128×64`) to
+24 km (`256×256×128`), 12 km (`512×512×256`), and, if the short resource
+pilot succeeds, 8 km (`768×768×384`). Linear scaling from the measured
+48 km rank RSS gives about 35, 275, and 930 GiB for the latter three
+grids before rank-count and I/O overhead. An 8 km pilot should provision
+roughly 1.5–2 TiB until actual peak use is measured. The 8 km level is an
+ambitious convergence target, partly motivated by the small-scale *magnetic*
+spectrum in [Rempel (2014)](https://arxiv.org/abs/1405.6814); it is
+not a demonstrated threshold for this non-magnetic gray-FLD model.
 
 For a long HPC continuation, start from the corrected-binary 96 km
 `t=1600` checkpoint, use CFL 0.3, HD2 gain 40 and relaxation time 2,
@@ -1204,3 +1213,32 @@ interval covers much less than a crossing time and cannot validate the
 solar surface. Advance it only as a short local restart check; a physically
 useful 48 km comparison should be scheduled on HPC after the 96 km thermal
 state is understood.
+
+## Campaign movies
+
+The campaign root `rempel_box_pilot/index.html` now embeds two H.264 MP4
+movies of the `t≈800`–`1600` 96 km baseline: an xz vertical section and an
+xy section at the fixed `z=2` code height near the initial photosphere.
+They show horizontal-mean-subtracted gas-temperature fluctuations and
+vertical velocity with fixed color scales, coordinates in Mm, and physical
+time in hours. Each uses 220 approximately uniform frames from the ordered
+checkpoint continuation. The movie manifest records every source run,
+binary hash and sampled range; the executable changes at `t=1500` after
+the restart fix. The videos illustrate the flow but are not a thermal
+stationarity test. The main HTML uses a 22 px body font and links to each
+case report. Both videos are under 8 MiB and use `yuv420p` for browser
+playback.
+
+Regenerate the movies after adding long-run segments with:
+
+```bash
+python3 tst/nrfld_validation/solar_convection_campaign_movies.py \
+  --source-summary /mnt/d/output/rad/wor70_solar_20261104/rempel_box_pilot/mass_rate40_combined_t800_1500/summary.json \
+  --extra-run /mnt/d/output/rad/wor70_solar_20261104/rempel_box_pilot/face_gravity_hd2_mass_tau2_rate40_current_64x64x32_np4_t1500_1600 \
+  --output-root /mnt/d/output/rad/wor70_solar_20261104/rempel_box_pilot \
+  --max-frames 220 --fps 8
+```
+
+Then regenerate the campaign `index.html` by calling
+`solar_convection_report.make_campaign_index(root)`. The same script accepts
+a new combined report and more `--extra-run` arguments for an HPC campaign.
