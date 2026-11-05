@@ -32,6 +32,7 @@ def explicit_entropy(run_dir: Path) -> float:
 
 
 def rolling_mean(y: np.ndarray, samples: int) -> np.ndarray:
+    samples = min(max(1, samples), len(y))
     kernel = np.ones(samples)
     return np.convolve(y, kernel, mode="same") / np.convolve(
         np.ones(len(y)), kernel, mode="same")
@@ -243,7 +244,14 @@ def main() -> None:
         raw_profiles = [json.loads(path.read_text())["records"]
                         for path in profile_paths]
         if len(raw_profiles[0]) < 2:
-            raise ValueError("Need two baseline full-3D profiles")
+            # A short restart can span more than five code-time units yet
+            # finish before the next full-volume output. The history-based
+            # sensitivity is still useful; omit only the time-averaged 3D
+            # profile comparison in that case.
+            raw_profiles = []
+    else:
+        raw_profiles = []
+    if raw_profiles:
         target_times = [entry["time_code"] for entry in raw_profiles[0][-2:]]
         profiles = []
         for records in raw_profiles:

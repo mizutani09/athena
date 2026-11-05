@@ -1326,6 +1326,10 @@ but this does not demonstrate reproduction of the solar convection zone.
 The late τ=2/3 temperature from 19 full-volume snapshots is `5152 K`,
 compared with `5769 K` in the imported starting 1D profile.
 
+The matched inflow-entropy calibration campaign prepared from the `t=5000`
+checkpoint, including the 4/8/12/16-rank local benchmark and short boundary
+response test, is documented in `doc/solar_convection_wor74.md`.
+
 At the fixed 6.234 min reference period, xy-plane mean vertical-velocity
 amplitude is `0.242 km/s` at `t=1600–1700` and `0.0185 km/s` at
 `t=4900–5000`; its fixed-plane kinetic-energy share is `1.11%` and
