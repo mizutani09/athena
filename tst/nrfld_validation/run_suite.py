@@ -320,7 +320,12 @@ def binary_configuration(
     timeout: float,
     command_records: list[dict[str, Any]],
 ) -> dict[str, str]:
-    command = [str(executable), "-c"]
+    # A direct MPI_Init from the Slurm batch shell may inherit PMI state without
+    # an MPI job step (Intel MPI on XD2000 reports PMI2_Job_GetId failure).
+    # Launch the one-rank configuration probe through the same MPI launcher as
+    # the actual simulation when running inside a Slurm allocation.
+    command = (["mpirun", "-np", "1"] if os.environ.get("SLURM_JOB_ID") else [])
+    command += [str(executable), "-c"]
     try:
         record = checked(command, case_dir, case_dir / "config.log", timeout, "binary_config")
     except CommandExecutionError as error:
