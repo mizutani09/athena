@@ -1216,18 +1216,35 @@ state is understood.
 
 ## Campaign movies
 
-The campaign root `rempel_box_pilot/index.html` now embeds two H.264 MP4
-movies of the `t≈800`–`1600` 96 km baseline: an xz vertical section and an
-xy section at the fixed `z=2` code height near the initial photosphere.
-They show horizontal-mean-subtracted gas-temperature fluctuations and
-vertical velocity with fixed color scales, coordinates in Mm, and physical
-time in hours. Each uses 220 approximately uniform frames from the ordered
-checkpoint continuation. The movie manifest records every source run,
-binary hash and sampled range; the executable changes at `t=1500` after
-the restart fix. The videos illustrate the flow but are not a thermal
+The campaign root `rempel_box_pilot/index.html` embeds three H.264 MP4
+movies of the `t≈800`–`1600` 96 km baseline: an xz vertical section with
+the Rosseland τ=1 contour, and two xy sections at fixed `z=2` code height
+near the initial photosphere. One xy movie shows absolute vertical velocity;
+the other subtracts each frame's plane mean, exposing the local convective
+structure separately from the coherent vertical motion. They show gas
+temperature fluctuations with fixed color scales, coordinates in Mm, and
+physical time in hours. Each uses 220 approximately uniform frames from the
+ordered checkpoint continuation. The movie manifest records every source
+run, binary hash and sampled range; the executable changes at `t=1500`
+after the restart fix. The videos illustrate the flow but are not a thermal
 stationarity test. The main HTML uses a 22 px body font and links to each
-case report. Both videos are under 8 MiB and use `yuv420p` for browser
-playback.
+case report. The videos use `yuv420p` for browser playback.
+
+The companion `surface_mode_diagnostic_t800_1600/index.html` quantifies the
+coherent motion visible in those videos. The late τ=1-height period is
+about 6.23 min. In successive 100-code-unit windows from `t=800` to `1600`,
+the fitted τ=1 height amplitude decreases from 85.9 to 17.3 km; the fixed
+xy-plane mean vertical-velocity amplitude decreases from 1.39 to
+0.27 km/s. Its share of the plane's vertical velocity energy falls from
+24.5% to 1.4%. During `t=1500`–`1600`, the correlation between the plane
+mean vertical velocity and the τ=1-height derivative is 0.71. This is a
+real coherent mode in the calculated state, not merely a changing color
+scale. The optical surface can also move through opacity and thermal
+changes, so the correlation alone does not establish a material surface or
+the source of the mode. The likely box-acoustic or boundary mechanism still
+requires investigation in WOR-73. Short time-window statistics may be
+biased; the boundary-flux oscillation and unresolved top-flux deficit remain
+separate reasons not to claim a stationary solar state.
 
 Regenerate the movies after adding long-run segments with:
 
@@ -1236,7 +1253,13 @@ python3 tst/nrfld_validation/solar_convection_campaign_movies.py \
   --source-summary /mnt/d/output/rad/wor70_solar_20261104/rempel_box_pilot/mass_rate40_combined_t800_1500/summary.json \
   --extra-run /mnt/d/output/rad/wor70_solar_20261104/rempel_box_pilot/face_gravity_hd2_mass_tau2_rate40_current_64x64x32_np4_t1500_1600 \
   --output-root /mnt/d/output/rad/wor70_solar_20261104/rempel_box_pilot \
-  --max-frames 220 --fps 8
+  --max-frames 220 --fps 8 \
+  --opacity-table /mnt/d/output/rad/wor70_solar_20261104/rempel_box_pilot/data/opacity_table_rhoT_3p0_6p3.h5
+python3 tst/nrfld_validation/solar_convection_surface_mode.py \
+  --source-summary /mnt/d/output/rad/wor70_solar_20261104/rempel_box_pilot/mass_rate40_combined_t800_1500/summary.json \
+  --extra-run /mnt/d/output/rad/wor70_solar_20261104/rempel_box_pilot/face_gravity_hd2_mass_tau2_rate40_current_64x64x32_np4_t1500_1600 \
+  --output-dir /mnt/d/output/rad/wor70_solar_20261104/rempel_box_pilot/surface_mode_diagnostic_t800_1600 \
+  --opacity-table /mnt/d/output/rad/wor70_solar_20261104/rempel_box_pilot/data/opacity_table_rhoT_3p0_6p3.h5
 ```
 
 Then regenerate the campaign `index.html` by calling

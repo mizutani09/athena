@@ -472,16 +472,27 @@ def make_campaign_index(root: Path) -> None:
     movies = []
     movie_manifest = root / "movies" / "manifest.json"
     binary_note = ""
+    overlay_note = ""
+    fluct_note = ""
     if movie_manifest.is_file():
         movie_data = json.loads(movie_manifest.read_text())
+        if movie_data.get("tau1_opacity_table"):
+            overlay_note = ("The dashed line in the vertical slice marks "
+                            "Rosseland τ=1. ")
+        if "xy_fluct" in movie_data.get("movies", {}):
+            fluct_note = ("The second horizontal movie removes its "
+                          "plane-mean vertical velocity to show the "
+                          "remaining pattern. ")
         binaries = {item.get("binary_sha256") for item in
                     movie_data.get("source_provenance", {}).values()}
         if len(binaries) > 1:
             binary_note = ("<strong>The executable changes at a checkpoint"
                            " in this sequence.</strong> Source hashes are"
                            " listed in the movie manifest. ")
-        for plane, description in (("xz", "Vertical slice: temperature and flow"),
-                                   ("xy", "Near-surface horizontal slice")):
+        for plane, description in (
+                ("xz", "Vertical slice with Rosseland τ=1 contour"),
+                ("xy", "Near-surface horizontal slice: raw vertical velocity"),
+                ("xy_fluct", "Same horizontal slice: plane mean motion removed")):
             item = movie_data.get("movies", {}).get(plane)
             if not item:
                 continue
@@ -499,12 +510,28 @@ def make_campaign_index(root: Path) -> None:
                 f"t={item['first_time_code']:.0f}–{item['last_time_code']:.0f} "
                 f"code units · {item['rendered_frames']} frames</figcaption></figure>"
             )
+    mode_report = root / "surface_mode_diagnostic_t800_1600"
+    mode_note = ""
+    if (mode_report / "index.html").is_file() and (mode_report / "summary.json").is_file():
+        mode = json.loads((mode_report / "summary.json").read_text())
+        late = mode["windows"][-1]
+        mode_note = (
+            "<p><strong>Coherent vertical oscillation:</strong> "
+            f"late period {mode['late_period_minutes']:.2f} min, "
+            f"τ=1 height amplitude {late['tau1_harmonic_amplitude_km']:.1f} km, "
+            "fixed-height plane-mean vertical-velocity amplitude "
+            f"{late['xy_mean_vz_harmonic_amplitude_km_s']:.2f} km/s. "
+            "Its excitation and effect on long-time statistics remain under "
+            "investigation. <a href='surface_mode_diagnostic_t800_1600/index.html'>"
+            "Time history and quantitative diagnostic</a>.</p>")
     movie_section = (
         "<h2>Evolution movies</h2><p>Frames show the selected long-run "
         "continuation. The horizontal slice is at a fixed height near the "
-        "initial photosphere. The movies show evolving flow; they do not "
+        "initial photosphere. " + overlay_note + fluct_note +
+        "The movies show evolving flow; they do not "
         "establish thermal stationarity. " + binary_note +
         "<a href='movies/manifest.json'>Movie sources and sampling</a>.</p>"
+        + mode_note
         + "".join(movies) if movies else "")
     (root / "index.html").write_text(
         "<!doctype html><html lang='en'><meta charset='utf-8'>"
