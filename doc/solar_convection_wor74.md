@@ -142,6 +142,57 @@ swap was `203 MiB`; swap did not grow. The 657 monitor records are in
 check the top-flux response, stored-energy trend, and controller gain before
 calling the entropy calibrated.
 
+### Long feedback trajectory started from t=0
+
+The separate `tst/nrfld_validation/run_solar_entropy_feedback_long.py`
+driver starts the 96 km box from the same 1D profile as the fixed baseline,
+but sets the known profile-derived entropy explicitly at `t=0` and applies
+the slow feedback between 100-code-time restart segments. It keeps the
+HD2 mass-rate gain `40`, relaxation time `2`, CFL `0.3`, and 16 MPI ranks.
+The 96 km short-time bottom response `0.322326259 F_sun` per `1e6` entropy
+units is a provisional gain. The top radiative flux is averaged over each
+completed segment; the update uses `tau_KH=2e4` code-time units and a
+`5e4 erg g^-1 K^-1` per-segment cap. This is an exploratory long transient,
+not a calibrated solar solution. The earlier fixed run changed mass-control
+settings during startup, so it is not an exactly matched control trajectory.
+
+The new campaign root is
+`/mnt/d/output/rad/wor74_feedback_20261105/from_t0_96km_t5000/`.
+The first `t=0–100` segment completed with `1309/1309` converged Newton
+solves, zero slow-MG warnings, and a `0.0459%` maximum late-window mass
+drift. Its simulation wall time was `561.39 s`; the driver spent `571.19 s`
+including plots and analysis. The segment-mean top radiation and bottom
+hydro fluxes were `0.488587` and `1.135891 F_sun`. The next entropy is
+`1.581105387610293e9 erg g^-1 K^-1`, an increment of `7933.153`.
+These are startup transients, not steady calibration measurements. Peak
+summed Athena rank RSS was `1.108 GiB`, minimum WSL available memory
+`18.030 GiB`, and peak used swap `0.284 GiB`. The driver stops if WSL
+available memory falls below `3 GiB`, used swap exceeds `4 GiB`, or disk
+free space falls below `50 GiB`.
+
+The t=100 checkpoint passed its SHA256 and report checks. The same branch
+was resumed in the background toward `t=5000`. The driver writes an atomic
+`state.json`, a large-font `index.html` with a progress plot and case links,
+`memory_monitor.csv` every five seconds, and a `driver.log`. A completed
+segment can be resumed with the same arguments plus `--resume`; the target
+may be increased to `t=20000` later without repeating completed segments.
+If an interrupted case directory already exists, the next attempt uses a
+new retry name and restarts from the last verified completed checkpoint.
+For live checks:
+
+```bash
+tail -n 3 /mnt/d/output/rad/wor74_feedback_20261105/from_t0_96km_t5000/driver.log
+tail -n 3 /mnt/d/output/rad/wor74_feedback_20261105/from_t0_96km_t5000/memory_monitor.csv
+python3 -m json.tool /mnt/d/output/rad/wor74_feedback_20261105/from_t0_96km_t5000/state.json | head -40
+```
+
+The first segment's total wall time is `9.52 min / 100 code-time`; the
+`t=5000–5100` pilot needed about `10.8 min / 100 code-time` for simulation
+without slices. With current sparse plots and possible throughput changes,
+allow roughly **8–12 wall hours to t=5000**, and **32–50 wall hours to
+t≈20000** (the approximate whole-box thermal time). These are resource
+estimates, not predictions of when the top flux becomes stationary or solar.
+
 ## Local CPU test
 
 WSL currently exposes 16 logical CPUs arranged as eight pairs of sibling
