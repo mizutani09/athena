@@ -1,4 +1,4 @@
-# WOR-74: inflow-entropy calibration preparation
+# WOR-74: inflow-entropy sensitivity and feedback preparation
 
 The non-magnetic 6.144 × 6.144 × 3.072 Mm, 96 km solar-box run reached
 `t=5000`. In its last `t=4150–5000` window, the mean top flux was
@@ -15,15 +15,20 @@ balanced at a reduced flux. Its late state is the common restart for WOR-74.
 - Baseline effective HD2 upflow entropy:
   `1.581097454457282e9 erg g^-1 K^-1`. The matched variants set
   `s_in_from_profile=false` and add `-1e6`, `+1e6`, or `+2e6` in the same
-  units. The baseline keeps `s_in_from_profile=true`.
+  units. The baseline keeps `s_in_from_profile=true`. This starting value is
+  the tabulated-EOS entropy of the imported 1D profile at the first bottom
+  cell center. It has **not** been calibrated against the measured 3D flux.
+  The offsets are small sensitivity probes (±`1e6` is ±0.063% of the
+  baseline), not inferred solar-flux solutions.
 - All cases retain CFL `0.3`, `64×64×32`, HD2 mass relaxation time `2`,
   mass-rate gain `40`, the same binary and source checkpoint. The prepared
   plan checks the binary, input, and external-data hashes against the parent
   run before producing commands.
 
-The first prepared interval ends at `t=5500`. It measures the response to
-small entropy changes and checks solver stability. **Do not infer a calibrated
-entropy from a transient upper flux.** The full-box internal-energy divided
+The first prepared interval ends at `t=5500`. It is a *fixed-entropy
+sensitivity sweep* measuring the response to small changes and checking
+solver stability. It is not an entropy-feedback run. **Do not infer a
+calibrated entropy from a transient upper flux.** The full-box internal-energy divided
 by `F_sun` corresponds to about `2×10^4` code-time units. Continue promising
 branches from their own checkpoints until at least two late windows, each at
 least one vertical crossing time long, show stable flux and energy storage.
@@ -33,6 +38,33 @@ resolution. WOR-74's acceptance rules also require top flux
 trend `≤0.1 F_sun` in magnitude, mass drift `≤1%`, and all NR solves
 converged. Compare optical-depth-aligned thermodynamics, mean profiles, and
 bottom hydro and mass fluxes as well as the top flux.
+
+## Relation to the MURaM flux feedback
+
+[Rempel (2014)](https://arxiv.org/pdf/1405.6814), §2.2, states that the entropy of lower-boundary upflows is
+chosen to give a photospheric energy flux within a few percent of solar. The
+paper does not give an entropy update equation. The earlier MURaM method
+paper, [Vögler et al. (2005)](https://www.aanda.org/articles/aa/pdf/2005/01/aa1507.pdf), §2.3.2, **does** prescribe a feedback: it
+updates the *specific internal energy* of inflows from the upper radiative
+flux error on the box Kelvin–Helmholtz time, rather than holding that inflow
+energy fixed. Its equation (20) is
+
+`epsilon_in <- epsilon_in * [1 + (dt/tau_KH)*(F_sun-F_top)/F_sun]`,
+
+with `tau_KH = E_internal/(A*F_sun)`. The present Athena++ HD2 boundary
+holds `s_in` fixed and has no corresponding luminosity feedback. Its existing
+feedback changes the lower pressure to control *mass*, not energy flux.
+
+Before using the fixed-sensitivity results as a final calibration, implement
+and verify a slow luminosity feedback for this tabulated-EOS entropy
+boundary. The MURaM formula must not be applied by multiplying `s_in`:
+specific entropy and specific internal energy have different thermodynamic
+meanings. Convert through the EOS or use a measured entropy-to-flux response
+with a conservative update timescale, preserve the controller state on
+restart, and compare against an identical fixed-entropy control. The upper
+flux lag and the `~2e4`-code-time box heat time require a long-window check
+of both the top flux and stored energy. The fixed `t=5000–5500` sweep is the
+response-measurement stage for that controller, not the feedback itself.
 
 ## Local CPU test
 

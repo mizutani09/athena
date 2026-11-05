@@ -127,7 +127,8 @@ def main() -> None:
         comparison += ["--variant", name, str(output_dir / name)]
     output_dir.mkdir(parents=True, exist_ok=True)
     plan = {
-        "purpose": "Matched transient sensitivity, followed by long-window solar-flux calibration",
+        "phase": "fixed_entropy_sensitivity",
+        "purpose": "Measure the entropy-to-flux response before slow luminosity feedback",
         "source_restart": str(restart), "source_restart_sha256": sha256(restart),
         "source_manifest": str(source_manifest),
         "binary_sha256": source["binary_sha256"],
@@ -141,7 +142,7 @@ def main() -> None:
         "cpu_mask": args.cpu_mask, "tlim_code": args.tlim,
         "checkpoint_dt_code": args.checkpoint_dt,
         "commands": commands, "comparison_command": comparison,
-        "interpretation": "Do not calibrate from a transient top-flux sample. Compare >=1 crossing-time late windows and stored-energy trends.",
+        "interpretation": "These commands hold entropy fixed. They do not implement luminosity feedback or establish a solar calibration. Compare >=1 crossing-time late windows and stored-energy trends.",
     }
     (output_dir / "plan.json").write_text(json.dumps(plan, indent=2) + "\n")
     script = "#!/usr/bin/env bash\nset -euo pipefail\n"
