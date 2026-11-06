@@ -83,7 +83,8 @@ hash are in `diffusion/manifest.json`.
 Artifact root: `/home/kosuke/simulation/test/rad_nr/wor95_20261107/`.
 `summary.json`, `amr_summary.csv`, `diffusion_samples.csv`,
 `amr_blocks.png`, both `diffusion*/convergence.png`, manifests, exact
-inputs, and raw logs are retained there.
+inputs, and raw logs are retained there. The JSON/CSV and figures are also
+versioned beside this report in `wor95_results_20261107/`.
 
 ## Scope and outstanding provenance
 
