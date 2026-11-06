@@ -33,6 +33,8 @@ export I_MPI_HYDRA_BOOTSTRAP=slurm
 : "${WOR67_PPN:?}"
 : "${ATHENA_NRFLD_ENERGY_LEDGER:?}"
 : "${ATHENA_NRFLD_INTERFACE_LEDGER:?}"
+WOR67_STEPS=${WOR67_STEPS:-1}
+test "$WOR67_STEPS" -ge 1
 test -x "$WOR67_BINARY"
 test -f "$WOR67_RESTART"
 test -f "$WOR67_INPUT"
@@ -44,6 +46,7 @@ cp "$WOR67_INPUT" "$case_dir/input.used"
 {
   printf 'job_id=%s\nnodes=%s\nranks=%s\n' \
     "$SLURM_JOB_ID" "$SLURM_JOB_NUM_NODES" "$SLURM_NTASKS"
+  printf 'start_cycle=%s\nsteps=%s\n' "$WOR67_CYCLE" "$WOR67_STEPS"
   printf 'exe_sha256=%s\nrestart_sha256=%s\ninput_sha256=%s\n' \
     "$(sha256sum "$WOR67_BINARY" | cut -d' ' -f1)" \
     "$(sha256sum "$WOR67_RESTART" | cut -d' ' -f1)" \
@@ -53,7 +56,7 @@ cd "$case_dir"
 mpirun -np "$SLURM_NTASKS" -ppn "$WOR67_PPN" \
   -outfile-pattern "$case_dir/rank.%r.log" \
   "$WOR67_BINARY" -r "$WOR67_RESTART" -i input.used -d output \
-  'time/tlim=0.04001' "time/nlim=$((WOR67_CYCLE+1))" \
+  'time/tlim=0.041' "time/nlim=$((WOR67_CYCLE+WOR67_STEPS))" \
   'output1/dt=-1' 'output2/dt=-1' 'output3/dt=1e-12' \
   >launcher.log 2>&1
 test "$(find "$case_dir" -maxdepth 1 -name 'rank.*.log' | wc -l)" -eq "$SLURM_NTASKS"

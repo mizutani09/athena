@@ -118,6 +118,12 @@ def audit(label: str, run_source: Path, ranks: int) -> dict:
                                    "relative_mismatch": float(abs(balance)/scale)
                                    if scale else 0.0})
     coarse_fine_rows = [r for r in interface_rows if r["coarse_fine"]]
+    same_level_rows = [r for r in interface_rows if r["internal"]
+                       and not r["coarse_fine"]]
+    boundary_rows = [r for r in interface_rows if not r["internal"]]
+    def weighted_mismatch(rows: list[dict]) -> float | None:
+        scale = sum(abs(r["left_delta"]) + abs(r["right_delta"]) for r in rows)
+        return sum(abs(r["balance"]) for r in rows)/scale if scale else None
     return {"label": label, "run_source": str(run_source.resolve()), "ranks": ranks,
             "stage_count": len(stages), "cycle_count": len(set(s["cycle"] for s in stages)),
             "max_interior_fraction": max(s["interior_fraction_of_rank_diffusion"]
@@ -128,6 +134,11 @@ def audit(label: str, run_source: Path, ranks: int) -> dict:
             "sum_diffusion_delta": sum(s["diffusion_delta"] for s in stages),
             "stages": stages, "interface_rows": interface_rows,
             "coarse_fine_count": len(coarse_fine_rows),
+            "coarse_fine_weighted_mismatch": weighted_mismatch(coarse_fine_rows),
+            "same_level_weighted_mismatch": weighted_mismatch(same_level_rows),
+            "physical_boundary_delta": sum(r["balance"] for r in boundary_rows),
+            "max_abs_coarse_fine_balance": max((abs(r["balance"])
+                                                 for r in coarse_fine_rows), default=None),
             "max_coarse_fine_mismatch": max((r["relative_mismatch"]
                                               for r in coarse_fine_rows), default=None),
             "sum_coarse_fine_balance": sum(r["balance"] for r in coarse_fine_rows)}
