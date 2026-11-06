@@ -195,6 +195,9 @@ FLD::FLD(MeshBlock *pmb, ParameterInput *pin) :
       pin->GetOrAddBoolean("fld", "include_mixed_frame_terms", true);
   if (NRFLDPrototype::Enabled()) {
     const bool variable_trial = NRFLDPrototype::VariableLimiterTrial();
+    const bool test_c = std::string(PROBLEM_GENERATOR) == "nrfld_diff_amr_interface";
+    const bool mach5 = std::string(PROBLEM_GENERATOR) == "nrfld_radiative_shock"
+        && NRFLDPrototype::Mach5Trial();
     bool periodic = true;
     for (int face=0; face<6; ++face)
       periodic &= pmb->pmy_mesh->mesh_bcs[face] == BoundaryFlag::periodic;
@@ -206,27 +209,37 @@ FLD::FLD(MeshBlock *pmb, ParameterInput *pin) :
         /pmb->block_size.nx3;
     const bool cubic = std::abs(dx2/dx1-1.0) < 1.0e-12
         && std::abs(dx3/dx1-1.0) < 1.0e-12;
-    if (std::string(PROBLEM_GENERATOR) != "nrfld_diff_amr_interface"
+    const bool mach5_boundaries =
+        pmb->pmy_mesh->mesh_bcs[0] == BoundaryFlag::user
+        && pmb->pmy_mesh->mesh_bcs[1] == BoundaryFlag::user
+        && pmb->pmy_mesh->mesh_bcs[2] == BoundaryFlag::periodic
+        && pmb->pmy_mesh->mesh_bcs[3] == BoundaryFlag::periodic
+        && pmb->pmy_mesh->mesh_bcs[4] == BoundaryFlag::periodic
+        && pmb->pmy_mesh->mesh_bcs[5] == BoundaryFlag::periodic;
+    if ((!test_c && !mach5)
           || std::string(COORDINATE_SYSTEM) != "cartesian"
           || ((is_couple || !only_rad) && !NRFLDPrototype::CoupledTrial())
           || ((is_couple || !only_rad) && NRFLDPrototype::DifferenceJv())
           || (NRFLDPrototype::TangentialReconstruction()
-              && (!NRFLDPrototype::SharedCoeff() || is_couple || !only_rad
-                  || pmb->pmy_mesh->adaptive))
+              && !NRFLDPrototype::SharedCoeff())
           || cut_diff
           || (!fixed_flux_limiter && !variable_trial)
-          || fixed_u_rad || include_mixed_frame_terms || !periodic || !cubic
+          || fixed_u_rad || !cubic
+          || (test_c && (include_mixed_frame_terms || !periodic))
+          || (mach5 && (!fixed_flux_limiter || !is_couple || only_rad
+                        || !mach5_boundaries))
           || (pmb->pmy_mesh->adaptive && !NRFLDPrototype::RegridTrial())) {
       std::stringstream msg;
       msg << "### FATAL ERROR in function [FLD::FLD]" << std::endl
-          << "ATHENA_NRFLD_CONSERVATIVE_PROTOTYPE currently requires the "
-          << "static nrfld_diff_amr_interface test on a periodic Cartesian "
-          << "cubic mesh with no mixed-frame terms. Coupled trials require "
+          << "ATHENA_NRFLD_CONSERVATIVE_PROTOTYPE requires either periodic "
+          << "Test C or an explicitly enabled Mach 5 trial on a Cartesian "
+          << "cubic mesh with user x1 and periodic transverse boundaries. "
+          << "Coupled trials require "
           << "ATHENA_NRFLD_EXPERIMENTAL_COUPLED=1 and "
           << "ATHENA_NRFLD_CONSERVATIVE_DIFFERENCE_JV=0. Variable-limiter "
           << "trials require ATHENA_NRFLD_EXPERIMENTAL_VARIABLE_LIMITER=1. "
-          << "Tangential reconstruction additionally requires shared "
-          << "coefficients, radiation-only, and static AMR.";
+          << "Tangential reconstruction requires shared coefficients. "
+          << "Adaptive regrid requires ATHENA_NRFLD_EXPERIMENTAL_REGRID=1.";
       ATHENA_ERROR(msg);
     }
   }

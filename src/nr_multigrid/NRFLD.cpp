@@ -190,6 +190,7 @@ NRFLDDriver::NRFLDDriver(Mesh *pm, ParameterInput *pin)
               << " coupled_trial=" << NRFLDPrototype::CoupledTrial()
               << " tangential_reconstruction="
               << NRFLDPrototype::TangentialReconstruction()
+              << " mach5_trial=" << NRFLDPrototype::Mach5Trial()
               << std::endl;
   }
   relaxed_l2_eps_ = pin->GetOrAddReal(

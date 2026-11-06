@@ -34,6 +34,10 @@ inline bool RegridTrial() {
   return Flag("ATHENA_NRFLD_EXPERIMENTAL_REGRID");
 }
 
+inline bool Mach5Trial() {
+  return Flag("ATHENA_NRFLD_EXPERIMENTAL_MACH5");
+}
+
 inline bool DifferenceJv() {
   const char *value = std::getenv("ATHENA_NRFLD_CONSERVATIVE_DIFFERENCE_JV");
   return value == nullptr || std::strcmp(value, "0") != 0;
