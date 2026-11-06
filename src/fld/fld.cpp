@@ -31,6 +31,7 @@
 #include "../mesh/mesh.hpp"
 #include "../parameter_input.hpp"
 #include "../utils/buffer_utils.hpp"
+#include "../utils/nrfld_prototype_flags.hpp"
 #include "fld.hpp"
 
 namespace {
@@ -192,7 +193,8 @@ FLD::FLD(MeshBlock *pmb, ParameterInput *pin) :
   fixed_u_rad = pin->GetOrAddBoolean("fld", "fixed_u_rad", false);
   include_mixed_frame_terms =
       pin->GetOrAddBoolean("fld", "include_mixed_frame_terms", true);
-  if (std::getenv("ATHENA_NRFLD_CONSERVATIVE_PROTOTYPE") != nullptr) {
+  if (NRFLDPrototype::Enabled()) {
+    const bool variable_trial = NRFLDPrototype::VariableLimiterTrial();
     bool periodic = true;
     for (int face=0; face<6; ++face)
       periodic &= pmb->pmy_mesh->mesh_bcs[face] == BoundaryFlag::periodic;
@@ -206,15 +208,17 @@ FLD::FLD(MeshBlock *pmb, ParameterInput *pin) :
         && std::abs(dx3/dx1-1.0) < 1.0e-12;
     if (std::string(PROBLEM_GENERATOR) != "nrfld_diff_amr_interface"
           || std::string(COORDINATE_SYSTEM) != "cartesian"
-          || is_couple || !only_rad || cut_diff || !fixed_flux_limiter
+          || is_couple || !only_rad || cut_diff
+          || (!fixed_flux_limiter && !variable_trial)
           || fixed_u_rad || include_mixed_frame_terms || !periodic || !cubic
           || pmb->pmy_mesh->adaptive) {
       std::stringstream msg;
       msg << "### FATAL ERROR in function [FLD::FLD]" << std::endl
           << "ATHENA_NRFLD_CONSERVATIVE_PROTOTYPE currently requires the "
           << "static nrfld_diff_amr_interface test on a periodic Cartesian "
-          << "cubic mesh with radiation-only, uncoupled, fixed-limiter "
-          << "diffusion and no mixed-frame terms.";
+          << "cubic mesh with radiation-only, uncoupled "
+          << "diffusion and no mixed-frame terms. Variable-limiter trials "
+          << "also require ATHENA_NRFLD_EXPERIMENTAL_VARIABLE_LIMITER.";
       ATHENA_ERROR(msg);
     }
   }

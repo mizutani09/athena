@@ -32,6 +32,7 @@
 #include "../../mesh/mesh.hpp"
 #include "../../parameter_input.hpp"
 #include "../../task_list/linmg_task_list.hpp"
+#include "../../utils/nrfld_prototype_flags.hpp"
 #include "linearMG.hpp"
 
 #ifdef MPI_PARALLEL
@@ -1394,7 +1395,7 @@ void linearMGDriver::SolveFGMRES(int stage) {
   };
   auto apply_operator = [&](const BlockVector &x, BlockVector &y) {
     load_delta(x);
-    if (std::getenv("ATHENA_NRFLD_CONSERVATIVE_PROTOTYPE") != nullptr) {
+    if (NRFLDPrototype::Enabled() && NRFLDPrototype::DifferenceJv()) {
       // A secant of the frozen-coefficient radiation residual.  The Newton
       // state and Krylov direction already have identical coarse/fine ghost
       // operators, so this includes the shared interface flux in Jv.  Keep

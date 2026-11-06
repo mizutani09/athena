@@ -24,6 +24,7 @@
 #include "../hydro/hydro.hpp"
 #include "../mesh/mesh.hpp"
 #include "../newton_raphson/Newton_Raphson.hpp"
+#include "../utils/nrfld_prototype_flags.hpp"
 #include "bvals.hpp"
 
 
@@ -117,7 +118,7 @@ void BoundaryValues::ProlongateBoundariesPostMG(CellCenteredBoundaryVariable* pb
     // Step 3. Finally, the ghost-ghost zones are ready for prolongation:
     ProlongateGhostCellsPostMG(pbvar, si, ei, sj, ej, sk, ek,
                               constant_correction, tangent_correction, base_coarse);
-    if (std::getenv("ATHENA_NRFLD_CONSERVATIVE_PROTOTYPE") != nullptr
+    if (NRFLDPrototype::Enabled()
         && pmb->pnr != nullptr && pbvar == &pmb->pnr->delta_bvar)
       ApplyNRFLDTwoPointGhost(nb, *pbvar->var_cc, *pbvar->coarse_buf);
   } // end loop over nneighbor

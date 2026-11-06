@@ -42,6 +42,7 @@ Real erad_amplitude;
 Real pulse_center;
 Real pulse_width;
 int profile_axis;
+Real transverse_amplitude;
 int test_regrid_cycle;
 
 int ControlledRefinement(MeshBlock *pmb) {
@@ -111,6 +112,7 @@ void Mesh::InitUserMeshData(ParameterInput *pin) {
   pulse_center = pin->GetOrAddReal("problem", "pulse_center", slab_left);
   pulse_width = pin->GetOrAddReal("problem", "pulse_width", 0.08);
   profile_axis = pin->GetOrAddInteger("problem", "profile_axis", 1);
+  transverse_amplitude = pin->GetOrAddReal("problem", "transverse_amplitude", 0.0);
   test_regrid_cycle = pin->GetOrAddInteger("problem", "test_regrid_cycle", -1);
   if (adaptive && test_regrid_cycle >= 0) {
     EnrollUserRefinementCondition(ControlledRefinement);
@@ -119,12 +121,13 @@ void Mesh::InitUserMeshData(ParameterInput *pin) {
   if (!(density_low > 0.0) || !(density_high > 0.0)
       || !(slab_left < slab_right) || interface_width < 0.0
       || !(erad_background > 0.0) || erad_amplitude < 0.0
-      || !(pulse_width > 0.0) || profile_axis < 1 || profile_axis > 3) {
+      || !(pulse_width > 0.0) || profile_axis < 1 || profile_axis > 3
+      || std::abs(transverse_amplitude) >= erad_background) {
     std::stringstream msg;
     msg << "### FATAL ERROR in nrfld_diff_amr_interface\n"
         << "Require positive densities/background/pulse_width, non-negative "
         << "interface_width/amplitude, slab_left < slab_right, and "
-        << "profile_axis in [1,3].";
+        << "profile_axis in [1,3], and |transverse_amplitude| < background.";
     ATHENA_ERROR(msg);
   }
 
@@ -139,6 +142,7 @@ void Mesh::InitUserMeshData(ParameterInput *pin) {
               << " slab_right=" << slab_right
               << " interface_width=" << interface_width
               << " profile_axis=" << profile_axis
+              << " transverse_amplitude=" << transverse_amplitude
               << " pulse_center=" << pulse_center
               << " pulse_width=" << pulse_width << std::endl;
   }
@@ -175,7 +179,18 @@ void MeshBlock::ProblemGenerator(ParameterInput *pin) {
         phydro->u(IM3,k,j,i) = 0.0;
         if (NON_BAROTROPIC_EOS) phydro->u(IEN,k,j,i) = gas_energy;
         prfld->u_gas(k,j,i) = gas_energy;
-        prfld->u_rad(k,j,i) = RadiationProfile(position);
+        const int transverse_axis = profile_axis == 3 ? 1 : profile_axis+1;
+        const Real transverse_position = transverse_axis == 1 ? pcoord->x1v(i)
+            : transverse_axis == 2 ? pcoord->x2v(j) : pcoord->x3v(k);
+        const RegionSize &domain = pmy_mesh->mesh_size;
+        const Real transverse_min = transverse_axis == 1 ? domain.x1min
+            : transverse_axis == 2 ? domain.x2min : domain.x3min;
+        const Real transverse_max = transverse_axis == 1 ? domain.x1max
+            : transverse_axis == 2 ? domain.x2max : domain.x3max;
+        const Real transverse_phase = 2.0*PI*(transverse_position-transverse_min)
+            /(transverse_max-transverse_min);
+        prfld->u_rad(k,j,i) = RadiationProfile(position)
+            + transverse_amplitude*std::cos(transverse_phase);
       }
     }
   }

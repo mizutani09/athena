@@ -1699,6 +1699,7 @@ void Mesh::Initialize(int res_flag, ParameterInput *pin) {
       if (NRMGFLD_ENABLED) {
         pmb->pnr->nrbvar.SetupPersistentMPI();
         pmb->pnr->delta_bvar.SetupPersistentMPI();
+        pmb->pnr->SetupInterfaceBoundaryMPI();
       }
     }
 

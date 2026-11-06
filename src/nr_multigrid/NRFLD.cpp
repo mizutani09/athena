@@ -28,6 +28,7 @@
 #include "../linear_solver/linear_solver.hpp"
 #include "../mesh/mesh.hpp"
 #include "../parameter_input.hpp"
+#include "../utils/nrfld_prototype_flags.hpp"
 #include "NRFLD.hpp"
 
 
@@ -178,6 +179,20 @@ NRFLDDriver::NRFLDDriver(Mesh *pm, ParameterInput *pin)
     std::stringstream msg;
     msg << "Invalid global_jacobian_iteration/epsilon";
     ATHENA_ERROR(msg);
+  }
+  if (global_jv_ && NRFLDPrototype::SharedCoeff()) {
+    std::stringstream msg;
+    msg << "global_jacobian_check does not yet account for exchanged "
+        << "coarse/fine face moments; disable it for this prototype.";
+    ATHENA_ERROR(msg);
+  }
+  if (Globals::my_rank == 0 && NRFLDPrototype::Enabled()) {
+    std::cout << "[NRFLD_CONSERVATIVE_CONFIG] shared_coeff="
+              << NRFLDPrototype::SharedCoeff()
+              << " difference_jv=" << NRFLDPrototype::DifferenceJv()
+              << " variable_limiter_trial="
+              << NRFLDPrototype::VariableLimiterTrial()
+              << std::endl;
   }
   relaxed_l2_eps_ = pin->GetOrAddReal(
       "nrfld", "nr_accept_l2_threshold", -1.0);
@@ -358,6 +373,79 @@ NRFLDDriver::~NRFLDDriver() {
   if (NRMGFLD_ENABLED) {
     if (trace_dtor) std::cout << "[DTOR] NRFLDDriver delete plmgd_" << std::endl;
     delete plmgd_;
+  }
+}
+
+void NRFLDDriver::SyncInterfaceFaceMoments() {
+  if (!NRFLDPrototype::SharedCoeff()) return;
+  // Each fine face sends D and D*Er.  The first-layer restriction in
+  // bvals_cc.cpp averages four fine faces and works across MPI ranks.
+  for (NewtonRaphson *base : vnr_) {
+    NRFLD *nr = static_cast<NRFLD*>(base);
+    MeshBlock *mb = nr->pmy_block_;
+    AthenaArray<Real> &moment = nr->interface_moments_;
+    for (int k=mb->ks; k<=mb->ke; ++k)
+      for (int j=mb->js; j<=mb->je; ++j)
+        for (int i=mb->is; i<=mb->ie; ++i)
+          for (int face=0; face<6; ++face) {
+            const Real d = nr->derivetive_(
+                NewtonRaphsonFLD::dFr_dEr_xm+face,k,j,i);
+            moment(2*face,k,j,i) = d;
+            moment(2*face+1,k,j,i) = d*nr->u_(k,j,i);
+          }
+    nr->interface_bvar_->StartReceiving(BoundaryCommSubset::all);
+  }
+  for (NewtonRaphson *base : vnr_)
+    static_cast<NRFLD*>(base)->interface_bvar_->SendBoundaryBuffers();
+  bool complete = false;
+  while (!complete) {
+    complete = true;
+    for (NewtonRaphson *base : vnr_)
+      complete &= static_cast<NRFLD*>(base)->interface_bvar_->ReceiveBoundaryBuffers();
+  }
+  for (NewtonRaphson *base : vnr_) {
+    NRFLD *nr = static_cast<NRFLD*>(base);
+    nr->interface_bvar_->SetBoundaries();
+    nr->interface_bvar_->ClearBoundary(BoundaryCommSubset::all);
+  }
+  for (NewtonRaphson *base : vnr_) {
+    NRFLD *nr = static_cast<NRFLD*>(base);
+    MeshBlock *mb = nr->pmy_block_;
+    const int level = mb->loc.level;
+    const bool finer[6] = {
+        mb->pbval->nblevel[1][1][0] > level,
+        mb->pbval->nblevel[1][1][2] > level,
+        mb->pbval->nblevel[1][0][1] > level,
+        mb->pbval->nblevel[1][2][1] > level,
+        mb->pbval->nblevel[0][1][1] > level,
+        mb->pbval->nblevel[2][1][1] > level};
+    for (int k=mb->ks; k<=mb->ke; ++k)
+      for (int j=mb->js; j<=mb->je; ++j)
+        for (int i=mb->is; i<=mb->ie; ++i) {
+          const bool at_face[6] = {i==mb->is,i==mb->ie,j==mb->js,j==mb->je,
+                                   k==mb->ks,k==mb->ke};
+          const int ghost_i[6] = {i-1,i+1,i,i,i,i};
+          const int ghost_j[6] = {j,j,j-1,j+1,j,j};
+          const int ghost_k[6] = {k,k,k,k,k-1,k+1};
+          for (int face=0; face<6; ++face) {
+            if (!finer[face] || !at_face[face]) continue;
+            const int gi=ghost_i[face], gj=ghost_j[face], gk=ghost_k[face];
+            const int opposite = face^1;
+            const Real dbar = nr->interface_moments_(2*opposite,gk,gj,gi);
+            const Real debar = nr->interface_moments_(2*opposite+1,gk,gj,gi);
+            if (!(dbar > 0.0) || !std::isfinite(dbar)
+                || !std::isfinite(debar)) {
+              std::stringstream msg;
+              msg << "Missing coarse/fine FLD face moments at gid=" << mb->gid
+                  << " face=" << face << " cell=(" << k << "," << j << ","
+                  << i << ") D=" << dbar << " DE=" << debar;
+              ATHENA_ERROR(msg);
+            }
+            nr->u_(gk,gj,gi) = debar/dbar;
+            nr->derivetive_(NewtonRaphsonFLD::dFr_dEr_xm+face,k,j,i)
+                = (4.0/3.0)*dbar;
+          }
+        }
   }
 }
 
@@ -982,8 +1070,7 @@ void NRFLD::CalculateCoefficientsOnce(const AthenaArray<Real> &u_pre,
   // d_c=2*d_f the center distance is 3*d_c/4, so a coarse face represented
   // by a ghost value at d_c needs a 4/3 coefficient.  The fine ghost is set
   // to the corresponding center-to-center linear value in bvals_refine.cpp.
-  if (std::getenv("ATHENA_NRFLD_CONSERVATIVE_PROTOTYPE") != nullptr
-      && !pfld->cut_diff) {
+  if (NRFLDPrototype::Enabled() && !pfld->cut_diff) {
     MeshBlock *mb = pmy_block_;
     const int level = mb->loc.level;
     const bool finer[6] = {

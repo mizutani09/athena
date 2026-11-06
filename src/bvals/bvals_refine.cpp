@@ -71,6 +71,7 @@
 #include "../newton_raphson/Newton_Raphson.hpp"
 #include "../nr_radiation/radiation.hpp"
 #include "../scalars/scalars.hpp"
+#include "../utils/nrfld_prototype_flags.hpp"
 #include "./bvals.hpp"
 #include "cc/hydro/bvals_hydro.hpp"
 #include "fc/bvals_fc.hpp"
@@ -826,7 +827,7 @@ void BoundaryValues::ProlongateGhostCells(const NeighborBlock& nb,
     int nu = var_cc->GetDim4() - 1;
     pmr->ProlongateCellCenteredValues(*coarse_cc, *var_cc, 0, nu,
                                       si, ei, sj, ej, sk, ek);
-    if (std::getenv("ATHENA_NRFLD_CONSERVATIVE_PROTOTYPE") != nullptr
+    if (NRFLDPrototype::Enabled()
         && pmb->pnr != nullptr
         && (var_cc == &pmb->pnr->u_ || var_cc == &pmb->pnr->delta_u_))
       ApplyNRFLDTwoPointGhost(nb, *var_cc, *coarse_cc);

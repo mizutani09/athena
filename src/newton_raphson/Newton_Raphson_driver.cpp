@@ -31,6 +31,7 @@
 #include "../linear_solver/linearMG/linearMG.hpp"
 #include "../linear_solver/linear_solver.hpp"
 #include "../task_list/nr_task_list.hpp"
+#include "../utils/nrfld_prototype_flags.hpp"
 
 #ifdef MPI_PARALLEL
 #include <mpi.h>
@@ -445,8 +446,7 @@ NewtonSolveResult NewtonRaphsonDriver::Solve_general(int stage, Real dt) {
     MeshBlock *pmb = pnr->pmy_block_;
     pnr->LoadVariables();
   }
-  if (dt_ > 0.0
-      && std::getenv("ATHENA_NRFLD_CONSERVATIVE_PROTOTYPE") != nullptr) {
+  if (dt_ > 0.0 && NRFLDPrototype::Enabled()) {
     // LoadVariables copies the radiation state before Newton's own coarse/fine
     // exchange.  The prototype's interface stencil must be present even for
     // the initial residual and Jacobian, not just after the first correction.
@@ -456,15 +456,33 @@ NewtonSolveResult NewtonRaphsonDriver::Solve_general(int stage, Real dt) {
 
   // calc coefficients for initial setup
   // std::cout << "Number of NewtonRaphson objects: " << vnr_.size() << std::endl;
+  const bool shared_face_coeff = NRFLDPrototype::SharedCoeff();
+  if (shared_face_coeff) {
 #pragma omp parallel for num_threads(nthreads_)
-  for (int b = 0; b < static_cast<int>(vnr_.size()); ++b) {
-    NewtonRaphson *pnr = vnr_[b];
-    MeshBlock *pmb = pnr->pmy_block_;
-    pnr->CalculateCoefficientsOnce(pnr->u_, pmb->phydro->w,
-                                  pnr->def_coeff_, pnr->derivetive_);
-    pnr->CalculateCoefficients(pnr->uold_, pnr->u_,
-      pnr->def_coeff_, pnr->coeff_, pnr->derivetive_, pnr->src_,
-      dt_);
+    for (int b = 0; b < static_cast<int>(vnr_.size()); ++b) {
+      NewtonRaphson *pnr = vnr_[b];
+      MeshBlock *pmb = pnr->pmy_block_;
+      pnr->CalculateCoefficientsOnce(pnr->u_, pmb->phydro->w,
+                                     pnr->def_coeff_, pnr->derivetive_);
+    }
+    SyncInterfaceFaceMoments();
+#pragma omp parallel for num_threads(nthreads_)
+    for (int b = 0; b < static_cast<int>(vnr_.size()); ++b) {
+      NewtonRaphson *pnr = vnr_[b];
+      pnr->CalculateCoefficients(pnr->uold_, pnr->u_,
+          pnr->def_coeff_, pnr->coeff_, pnr->derivetive_, pnr->src_, dt_);
+    }
+  } else {
+#pragma omp parallel for num_threads(nthreads_)
+    for (int b = 0; b < static_cast<int>(vnr_.size()); ++b) {
+      NewtonRaphson *pnr = vnr_[b];
+      MeshBlock *pmb = pnr->pmy_block_;
+      pnr->CalculateCoefficientsOnce(pnr->u_, pmb->phydro->w,
+                                    pnr->def_coeff_, pnr->derivetive_);
+      pnr->CalculateCoefficients(pnr->uold_, pnr->u_,
+        pnr->def_coeff_, pnr->coeff_, pnr->derivetive_, pnr->src_,
+        dt_);
+    }
   }
   // Optional physics-specific finite-difference checks run after the initial
   // residual and Jacobian have been assembled, and must restore that state.
@@ -966,6 +984,8 @@ void NewtonRaphsonDriver::SolveOneCycle(bool solve_direction) {
     RunDirectionDiagnostic();
   }
   nrtlist_post_->DoTaskListOneStage(stage_);
+  if (NRFLDPrototype::SharedCoeff())
+    SyncInterfaceFaceMoments();
   return;
 }
 

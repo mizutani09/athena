@@ -22,12 +22,21 @@ def fields(line: str) -> dict[str, str]:
 
 
 def run_case(repo: Path, binary: Path, root: Path, layout: str,
-             contrast: float, dt: float, linear_solver: str = "mg") -> dict:
+             contrast: float, dt: float, linear_solver: str = "mg",
+             variable_limiter: bool = False,
+             transverse_amplitude: float = 0.0) -> dict:
     case = root / f"{layout}_contrast{contrast:g}"
     case.mkdir()
     source = (repo / "inputs/radiation/athinput.nrfld_diff_amr_interface").read_text()
     source = source.replace("file_type = hst", "file_type = hst\ndata_format = %.16e")
     source = source.replace("diagnostic_verbosity = 1", "diagnostic_verbosity = 0")
+    if variable_limiter:
+        source = source.replace("fixed_flux_limiter        = true",
+                                "fixed_flux_limiter        = false")
+    if transverse_amplitude:
+        source = source.replace("density_low    = 1.0",
+                                f"transverse_amplitude = {transverse_amplitude:.17g}\n"
+                                "density_low    = 1.0")
     if linear_solver == "fgmres":
         source = source.replace("fas             = false",
                                 "fas             = false\nlinear_solver = fgmres\n"
@@ -56,7 +65,7 @@ def run_case(repo: Path, binary: Path, root: Path, layout: str,
         raise RuntimeError(f"{case}: Athena exit={proc.returncode}, history={history}")
     rows = [list(map(float, line.split())) for line in history[0].read_text().splitlines()
             if line and not line.startswith("#")]
-    if len(rows) != 2:
+    if len(rows) < 2 or rows[-1][0] <= rows[0][0]:
         raise RuntimeError(f"{case}: expected initial and final history rows")
     nr = [data for line in log.splitlines() if line.startswith("[NR] status=")
           if float((data := fields(line))["dt"]) > 0.0]
@@ -92,14 +101,18 @@ def main() -> int:
     parser.add_argument("--require-conservation", action="store_true")
     parser.add_argument("--tolerance", type=float, default=1e-10)
     parser.add_argument("--linear-solver", choices=("mg", "fgmres"), default="mg")
+    parser.add_argument("--variable-limiter", action="store_true")
+    parser.add_argument("--transverse-amplitude", type=float, default=0.0)
+    parser.add_argument("--contrasts", type=float, nargs="+", default=(1.0, 1.15))
     args = parser.parse_args()
     repo = Path(__file__).resolve().parents[2]
     binary = args.binary.resolve()
     root = args.output.resolve()
     root.mkdir(parents=True, exist_ok=False)
     summary = [run_case(repo, binary, root, layout, contrast, args.dt,
-                        args.linear_solver)
-               for contrast in (1.0, 1.15)
+                        args.linear_solver, args.variable_limiter,
+                        args.transverse_amplitude)
+               for contrast in args.contrasts
                for layout in ("uniform_coarse", "uniform_fine",
                               "amr_aligned", "amr_shifted")]
     (root / "summary.json").write_text(json.dumps(summary, indent=2) + "\n")

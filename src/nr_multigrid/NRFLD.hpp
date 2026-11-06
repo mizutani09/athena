@@ -233,6 +233,7 @@ class NRFLDDriver : public NewtonRaphsonDriver {
   void RunJacobianDiagnostics() final;
   void RunDirectionDiagnostic() final;
   void RunCommittedDiagnostic() final;
+  void SyncInterfaceFaceMoments() final;
 
   // void Solve(int step, Real dt = 0.0) final;
 

@@ -16,6 +16,7 @@
 #include <iostream>
 #include <unordered_map>
 #include <vector>
+#include <memory>
 
 // Athena++ headers
 #include "../athena.hpp"
@@ -176,6 +177,7 @@ class NewtonRaphson {
   void SetBoundary();
   void ProlongateBoundary(Real dt);
   void ClearBoundary();
+  void SetupInterfaceBoundaryMPI();
   friend class NewtonRaphsonTaskList;
 
   friend class NewtonRaphsonDriver;
@@ -206,6 +208,9 @@ class NewtonRaphson {
   
   NRBoundaryVariable nrbvar;
   CellCenteredBoundaryVariable delta_bvar;
+  // Opt-in coarse/fine face coefficient moments (D and D*Er for six faces).
+  AthenaArray<Real> interface_moments_, coarse_interface_moments_;
+  std::unique_ptr<CellCenteredBoundaryVariable> interface_bvar_;
   BoundaryFlag nr_block_bcs_[6];
   linearMG *plmg_; // to be set in derived class constructors
 protected:
@@ -252,6 +257,7 @@ class NewtonRaphsonDriver {
   virtual void RunJacobianDiagnostics();
   virtual void RunDirectionDiagnostic() {}
   virtual void RunCommittedDiagnostic() {}
+  virtual void SyncInterfaceFaceMoments() {}
   // void CalculateMatrix();
 
   // // small functions
