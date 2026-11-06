@@ -308,14 +308,47 @@ instead converts the top-flux error into entropy units using a measured
 short-time **bottom** response. It is an exploratory adaptation, not the
 published formula or a calibrated long-time transfer function.
 
+## Matched fixed-entropy continuations from t=9100 to 9400
+
+The 96 km, 64×64×32, 16-rank FGMRES/HD2 comparison restarts the **same**
+`t=9100` checkpoint with fixed `s_in=1.5818564851845095e9` or offsets of
+`+1e6` and `+3e6 erg g^-1 K^-1`. No other numerical or boundary control
+changes. All three runs reached `t=9400`; all 12,909 Newton solves converged,
+with no fatal or slow-multigrid warning. The late mass drift is below 0.03%.
+The sampled energy-ledger residual is below `6e-5 F_sun` in each late window.
+
+| Case | Early lower / `F_sun` | Early upper / `F_sun` | Early storage trend / `F_sun` | Late lower / `F_sun` | Late upper / `F_sun` | Late storage trend / `F_sun` |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: |
+| Fixed | 0.626 | 0.632 | -0.012 | 0.673 | 0.633 | +0.053 |
+| `s_in+1e6` | 0.996 | 0.632 | +0.360 | 0.681 | 0.625 | +0.050 |
+| `s_in+3e6` | 1.879 | 0.631 | +1.254 | 0.704 | 0.625 | +0.081 |
+
+Early is the first 50 code-time units; late is `t=9300–9400`. The late
+lower-face `+1e6` change relative to fixed is only `+0.0076 F_sun`, despite
+upward/downward hydro-face changes of `+2.572/-2.564 F_sun`. For `+3e6`,
+the net is `+0.0308 F_sun` from `+1.702/-1.671 F_sun`. The added input
+mainly raises the entropy of both flow directions: the EOS-derived,
+mass-flux-weighted upflow-minus-downflow entropy contrast (`10^6` cgs units)
+is initially `1.987/2.686/4.105`, but in the late window it is
+`1.998/2.059/2.120` for fixed/`+1e6`/`+3e6` respectively. At `t=9400`
+the three surface `tau=2/3` temperatures are approximately
+`5201/5178/5170 K`; increasing inflow entropy did not warm the emitting
+surface in this 300-code-time interval.
+
+The early lower-flux response is real but transient and cannot calibrate a
+steady solar upper flux. This 300-code-time test spans about 2.6 vertical
+crossings and only about 1.5% of the estimated whole-box thermal time.
+It does not establish the ultimate flux after full thermal relaxation.
+The result files and large-font HTML are at
+`/mnt/d/output/rad/wor74_fixed_steps_20261106/from_t9100_to9400_np16/comparison/index.html`;
+`comparison/summary.json` contains the unrounded values and EOS snapshots.
+
 ## Gate before another long run
 
-1. The exact lower-face directional hydro-energy diagnostics are now added
-   and validated for short matched restarts. To establish the *steady*
-   top-flux sensitivity, these diagnostics and mass-weighted up/down entropy
-   must eventually be followed beyond one crossing time from the same
-   relaxed checkpoint. The 120-code-time matched test is far shorter than
-   the full-box thermal time, so no long production run is justified yet.
+1. The exact lower-face directional hydro-energy diagnostics are validated
+   in the 300-code-time matched comparison above. This is still far shorter
+   than the whole-box thermal time, and its large initial lower-flux response
+   has nearly vanished. Do not infer a steady `dF_top/ds_in` from it.
 2. Separate startup/profile and radiation-closure effects from the
    entropy-control effect. The t=0 1D profile produces solar initial top
    flux, but its 3D relaxed flux is ~0.63 solar. A static/discrete radiative
