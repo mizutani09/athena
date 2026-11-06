@@ -610,25 +610,41 @@ void Multigrid::CalculateDefectBlock() {
 //----------------------------------------------------------------------------------------
 //! \brief Compare the rediscretized coarse action with R A_h P for the actual correction.
 //!
-//! The fine residual before prolongation is r_h and the residual immediately after adding
-//! the coarse correction is r'_h.  Their difference is A_h P e_H without requiring a
-//! second operator application.  On the coarse grid, A_H e_H = b_H-r_H.  Restricting the
-//! former therefore gives a direct, mode-specific Galerkin mismatch diagnostic.
-void Multigrid::PrintGalerkinMismatch(const AthenaArray<Real> &fine_defect_before,
+//! Apply both operators to the correction that was actually transferred.  In
+//! FAS, ProlongateAndCorrectBlock has already replaced u_H in place by
+//! u_H-uold_H before this diagnostic runs.  Subtracting uold_H again would
+//! compare a different vector.  Using the fine data difference also includes
+//! the boundary update caused by prolongation.
+void Multigrid::PrintGalerkinMismatch(const AthenaArray<Real> &fine_data_before,
                                       int driver_coarse_level, int vcycle) {
   const int fine_level = current_level_;
   const int coarse_level = fine_level - 1;
-  if (coarse_level < 0 || fine_defect_before.GetSize() == 0) return;
+  if (coarse_level < 0 || fine_data_before.GetSize() == 0) return;
 
-  const AthenaArray<Real> &fine_after = def_[fine_level];
-  const AthenaArray<Real> &coarse_src = src_[coarse_level];
-  const AthenaArray<Real> &coarse_def = def_[coarse_level];
-  const Real scale = pmy_driver_->coarse_corr_scale_;
-  const int ll = nlevel_ - fine_level;
+  AthenaArray<Real> fine_delta(u_[fine_level]);
+  for (std::size_t q = 0; q < fine_delta.GetSize(); ++q)
+    fine_delta.data()[q] -= fine_data_before.data()[q];
+  AthenaArray<Real> fine_zero(fine_delta), fine_action(fine_delta);
+  fine_zero.ZeroClear();
+  const int fine_ll = nlevel_ - 1 - fine_level;
   const int is = ngh_, js = ngh_, ks = ngh_;
-  const int cie = is + (size_.nx1 >> (ll + 1)) - 1;
-  const int cje = js + (size_.nx2 >> (ll + 1)) - 1;
-  const int cke = ks + (size_.nx3 >> (ll + 1)) - 1;
+  const int fie = is + (size_.nx1 >> fine_ll) - 1;
+  const int fje = js + (size_.nx2 >> fine_ll) - 1;
+  const int fke = ks + (size_.nx3 >> fine_ll) - 1;
+  CalculateDefect(fine_action, fine_delta, fine_zero, coeff_[fine_level],
+                  matrix_[fine_level], -fine_ll, is, fie, js, fje, ks, fke, false);
+
+  AthenaArray<Real> coarse_delta(u_[coarse_level]);
+  AthenaArray<Real> coarse_zero(coarse_delta), coarse_action(coarse_delta);
+  coarse_zero.ZeroClear();
+  const Real scale = pmy_driver_->coarse_corr_scale_;
+  const int coarse_ll = nlevel_ - 1 - coarse_level;
+  const int cie = is + (size_.nx1 >> coarse_ll) - 1;
+  const int cje = js + (size_.nx2 >> coarse_ll) - 1;
+  const int cke = ks + (size_.nx3 >> coarse_ll) - 1;
+  CalculateDefect(coarse_action, coarse_delta, coarse_zero,
+                  coeff_[coarse_level], matrix_[coarse_level], -coarse_ll,
+                  is, cie, js, cje, ks, cke, false);
 
   Real ahp2 = 0.0, ah2 = 0.0, mismatch2 = 0.0, dot = 0.0;
   Real max_relative = 0.0;
@@ -639,14 +655,8 @@ void Multigrid::PrintGalerkinMismatch(const AthenaArray<Real> &fine_defect_befor
         const int fj = 2*j - js;
         for (int i = is; i <= cie; ++i) {
           const int fi = 2*i - is;
-          Real rahp = 0.0;
-          for (int ok = 0; ok < 2; ++ok)
-            for (int oj = 0; oj < 2; ++oj)
-              for (int oi = 0; oi < 2; ++oi)
-                rahp += fine_defect_before(n, fk+ok, fj+oj, fi+oi)
-                      - fine_after(n, fk+ok, fj+oj, fi+oi);
-          rahp *= 0.125;
-          const Real ahe = scale*(coarse_src(n,k,j,i) - coarse_def(n,k,j,i));
+          const Real rahp = -RestrictOne(fine_action, n, fi, fj, fk);
+          const Real ahe = -scale*coarse_action(n,k,j,i);
           const Real mismatch = rahp - ahe;
           ahp2 += rahp*rahp;
           ah2 += ahe*ahe;

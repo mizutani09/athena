@@ -1129,6 +1129,125 @@ void MultigridDriver::OneStepToCoarser(int nsmooth) {
 }
 
 
+// Compare the action of the actual octet correction with the parent operator.
+// The fine difference includes the ghost update made when the correction crosses
+// an AMR boundary.  This is diagnostic only and leaves the solution untouched.
+void MultigridDriver::PrintAMROperatorMismatch(
+    const std::vector<AthenaArray<Real>> &fine_before, int coarse_level) {
+  const int flev = coarse_level - nrootlevel_ + 1;
+  const int ngh = mgroot_->ngh_;
+  if (flev < 0 || flev >= nreflevel_
+      || fine_before.size() != static_cast<std::size_t>(noctets_[flev])) return;
+
+  // Prolongation updates the interior.  The boundary fill is also part of the
+  // fine-grid correction operator, so include it before taking the difference.
+  SetBoundariesOctets(false, false, false);
+  long double fine2 = 0.0L, coarse2 = 0.0L, mismatch2 = 0.0L, dot = 0.0L;
+  long double fine_before2 = 0.0L, fine_after2 = 0.0L;
+  int samples = 0;
+  for (int o = 0; o < noctets_[flev]; ++o) {
+    MGOctet &fine = octets_[flev][o];
+    AthenaArray<Real> fine_delta(fine.u);
+    for (std::size_t q = 0; q < fine_delta.GetSize(); ++q)
+      fine_delta.data()[q] -= fine_before[o].data()[q];
+    AthenaArray<Real> fine_zero(fine.u);
+    fine_zero.ZeroClear();
+    AthenaArray<Real> fine_action(fine.u);
+    mgroot_->CalculateDefect(fine_action, fine_delta, fine_zero,
+                             fine.coeff, fine.matrix, flev+1,
+                             os_, oe_, os_, oe_, os_, oe_, false);
+
+    AthenaArray<Real> before_defect(fine.u), after_defect(fine.u);
+    mgroot_->CalculateDefect(before_defect, fine_before[o], fine.src,
+                             fine.coeff, fine.matrix, flev+1,
+                             os_, oe_, os_, oe_, os_, oe_, false);
+    mgroot_->CalculateDefect(after_defect, fine.u, fine.src,
+                             fine.coeff, fine.matrix, flev+1,
+                             os_, oe_, os_, oe_, os_, oe_, false);
+
+    const AthenaArray<Real> *parent_u, *parent_old, *parent_coeff, *parent_matrix;
+    int pi, pj, pk, parent_rlev;
+    if (flev == 0) {
+      const LogicalLocation &loc = fine.loc;
+      pi = static_cast<int>(loc.lx1) + ngh;
+      pj = static_cast<int>(loc.lx2) + ngh;
+      pk = static_cast<int>(loc.lx3) + ngh;
+      const int root_level = mgroot_->current_level_;
+      parent_u = &mgroot_->u_[root_level];
+      parent_old = &mgroot_->uold_[root_level];
+      parent_coeff = &mgroot_->coeff_[root_level];
+      parent_matrix = &mgroot_->matrix_[root_level];
+      parent_rlev = root_level - (mgroot_->nlevel_ - 1);
+    } else {
+      const LogicalLocation &loc = fine.loc;
+      LogicalLocation parent_loc;
+      parent_loc.lx1 = loc.lx1 >> 1;
+      parent_loc.lx2 = loc.lx2 >> 1;
+      parent_loc.lx3 = loc.lx3 >> 1;
+      parent_loc.level = loc.level - 1;
+      MGOctet &parent = octets_[flev-1][octetmap_[flev-1][parent_loc]];
+      pi = static_cast<int>(loc.lx1 & 1) + ngh;
+      pj = static_cast<int>(loc.lx2 & 1) + ngh;
+      pk = static_cast<int>(loc.lx3 & 1) + ngh;
+      parent_u = &parent.u;
+      parent_old = &parent.uold;
+      parent_coeff = &parent.coeff;
+      parent_matrix = &parent.matrix;
+      parent_rlev = flev;
+    }
+    AthenaArray<Real> parent_delta(*parent_u);
+    if (ffas_)
+      for (std::size_t q = 0; q < parent_delta.GetSize(); ++q)
+        parent_delta.data()[q] -= parent_old->data()[q];
+    AthenaArray<Real> parent_zero(*parent_u);
+    parent_zero.ZeroClear();
+    AthenaArray<Real> parent_action(*parent_u);
+    mgroot_->CalculateDefect(parent_action, parent_delta, parent_zero,
+                             *parent_coeff, *parent_matrix, parent_rlev,
+                             pi, pi, pj, pj, pk, pk, false);
+
+    for (int v = 0; v < nvar_; ++v) {
+      // CalculateDefect returns -A delta for a zero source.  The signs cancel.
+      const long double rap = RestrictOne(fine_action, v, ngh, ngh, ngh);
+      const long double ah = coarse_corr_scale_*parent_action(v,pk,pj,pi);
+      const long double error = rap - ah;
+      fine2 += rap*rap;
+      coarse2 += ah*ah;
+      mismatch2 += error*error;
+      dot += rap*ah;
+      for (int k = os_; k <= oe_; ++k)
+        for (int j = os_; j <= oe_; ++j)
+          for (int i = os_; i <= oe_; ++i) {
+            const long double b = before_defect(v,k,j,i);
+            const long double a = after_defect(v,k,j,i);
+            fine_before2 += b*b;
+            fine_after2 += a*a;
+          }
+      ++samples;
+    }
+  }
+  // Octets and the root grid are replicated on every rank; reducing here would
+  // multiply the norms and sample count by the number of MPI ranks.
+  if (Globals::my_rank == 0) {
+    const long double scale = std::max({fine2, coarse2,
+                                       std::numeric_limits<long double>::min()});
+    std::cout << "[NRFLD AMR Galerkin] vcycle=" << stage_diagnostic_vcycle_
+              << " coarse_level=" << coarse_level
+              << " fine_level=" << coarse_level+1
+              << " transfer=" << (flev == 0 ? "root_to_octet" : "octet_to_octet")
+              << " samples=" << samples
+              << " rahp_l2=" << std::sqrt(fine2)
+              << " scaled_ahe_l2=" << std::sqrt(coarse2)
+              << " mismatch_relative_l2=" << std::sqrt(mismatch2/scale)
+              << " cosine=" << dot/std::sqrt(std::max(fine2*coarse2,
+                                                std::numeric_limits<long double>::min()))
+              << " fine_residual_before=" << std::sqrt(fine_before2)
+              << " fine_residual_after=" << std::sqrt(fine_after2)
+              << std::endl;
+  }
+}
+
+
 //----------------------------------------------------------------------------------------
 //! \fn void MultigridDriver::SolveVCycle(int npresmooth, int npostsmooth)
 //! \brief Solve the V-cycle starting from the current level
@@ -1240,24 +1359,28 @@ void MultigridDriver::SolveVCycle(int npresmooth, int npostsmooth) {
         mgtlist_->DoTaskListOneStage(this);
         before_prolong = stage_defect();
         fine_defect_before.reserve(vmg_.size());
-        if (residual_minimizing_prolongation_)
+        if (residual_minimizing_prolongation_ || stage_diagnostics_active_)
           fine_data_before.reserve(vmg_.size());
         for (auto *base : vmg_) {
           Multigrid *pmg = static_cast<Multigrid*>(base);
           fine_defect_before.push_back(
               pmg->GetDefectAtLevel(pmg->GetCurrentLevel() + 1));
-          if (residual_minimizing_prolongation_)
+          if (residual_minimizing_prolongation_ || stage_diagnostics_active_)
             fine_data_before.push_back(
                 pmg->u_[pmg->GetCurrentLevel() + 1]);
         }
       }
       OneStepToFiner(0);
+      if (coarse_valid && stage_diagnostics_active_) {
+        mgtlist_->SetMGTaskListBoundaryCommunication();
+        mgtlist_->DoTaskListOneStage(this);
+      }
       Real level_after_prolong = stage_defect();
       if (coarse_valid && stage_diagnostics_active_) {
         std::size_t block = 0;
         for (auto *base : vmg_) {
           Multigrid *pmg = static_cast<Multigrid*>(base);
-          pmg->PrintGalerkinMismatch(fine_defect_before[block++], coarse_level,
+          pmg->PrintGalerkinMismatch(fine_data_before[block++], coarse_level,
                                      stage_diagnostic_vcycle_);
         }
       }
@@ -1344,7 +1467,26 @@ void MultigridDriver::SolveVCycle(int npresmooth, int npostsmooth) {
         after_post = level_after_smooth;
       }
     } else {
-      OneStepToFiner(npostsmooth);
+      const int flev = coarse_level - nrootlevel_ + 1;
+      if (stage_diagnostics_active_ && flev >= 0 && flev < nreflevel_) {
+        std::vector<AthenaArray<Real>> fine_before;
+        fine_before.reserve(noctets_[flev]);
+        for (int o = 0; o < noctets_[flev]; ++o)
+          fine_before.emplace_back(octets_[flev][o].u);
+        OneStepToFiner(0);
+        PrintAMROperatorMismatch(fine_before, coarse_level);
+        for (int n = 0; n < npostsmooth; ++n) {
+          const int first_color = (symmetric_rb_ || consistent_rb_colors_) ? 0 : coffset_;
+          SetBoundariesOctets(false, false, false);
+          SmoothOctets(first_color);
+          if (redblack_) {
+            SetBoundariesOctets(false, false, false);
+            SmoothOctets(1-first_color);
+          }
+        }
+      } else {
+        OneStepToFiner(npostsmooth);
+      }
     }
   }
   if (stage_diagnostics_active_ && Globals::my_rank == 0) {

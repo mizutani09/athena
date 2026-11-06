@@ -139,7 +139,7 @@ class Multigrid {
   AthenaArray<Real>& GetCurrentOldData() { return uold_[current_level_]; }
   AthenaArray<Real>& GetCurrentCoefficient() { return coeff_[current_level_]; }
   AthenaArray<Real>& GetDefectAtLevel(int level) { return def_[level]; }
-  void PrintGalerkinMismatch(const AthenaArray<Real> &fine_defect_before,
+  void PrintGalerkinMismatch(const AthenaArray<Real> &fine_data_before,
                              int driver_coarse_level, int vcycle);
 
   // actual implementations of Multigrid operations
@@ -225,6 +225,8 @@ class MultigridDriver {
   void TransferCoefficientFromBlocksToRoot(int n);
   void OneStepToFiner(int nsmooth);
   void OneStepToCoarser(int nsmooth);
+  void PrintAMROperatorMismatch(
+      const std::vector<AthenaArray<Real>> &fine_before, int coarse_level);
   void FMGProlongate();
   void SolveVCycle(int npresmooth, int npostsmooth);
   void SolveFMGCycle();
