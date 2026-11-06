@@ -99,3 +99,32 @@ the defect and alter the state; it is not a conservative discretization.
 The audit's `--require-conservation` flag is intended to fail on the current
 AMR solver; it becomes a passing regression gate when a conservative operator
 is implemented.
+
+## Follow-up scope check (2026-11-06)
+
+The smallest apparent patch was tested: set the Newton radiation boundary
+variable's `fflux` constructor argument from `false` to `true`, rebuild, and
+rerun all eight periodic audit cases. Every whole-domain radiation-energy
+change was numerically identical to the baseline, including the aligned AMR
+case's `−1.029953143683e−5`. The flag was restored. It only allocates/enables
+the boundary-variable machinery; the Newton task list never populates the
+implicit face-flux arrays or calls `SendFluxCorrection` and
+`ReceiveFluxCorrection`.
+
+The production correction spans at least four coupled parts:
+
+1. A common coarse/fine face-flux rule for all three directions, variable
+   opacity and limiter, and the coarse/fine face-area sum.
+2. The same rule in the initial Newton residual, every line-search defect,
+   and the committed-state ledger. The two residual evaluations currently
+   live in separate NRFLD paths.
+3. A matching cross-block Jacobian or matrix-free action and a multigrid
+   preconditioner that still converges with the new operator.
+4. MPI exchange, AMR topology changes, and regression checks in radiation-only
+   and coupled Mach 5 runs.
+
+This is a multi-module solver change rather than a small boundary flag or
+interpolation edit. A rough engineering estimate is several hundred lines,
+about 1–3 weeks for an implementation and the needed local/MPI/XD validation;
+the first single-rank constant-coefficient prototype could be shorter but
+would not be safe to adopt for production.
