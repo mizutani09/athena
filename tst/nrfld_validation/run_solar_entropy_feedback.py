@@ -55,7 +55,7 @@ def memory_status(case: Path) -> dict[str, float]:
         if not proc.name.isdigit():
             continue
         try:
-            if (proc / "comm").read_text().strip() != "athena":
+            if (proc / "comm").read_text().strip() not in {"athena", "athena.frozen"}:
                 continue
             if case_bytes not in (proc / "cmdline").read_bytes():
                 continue
