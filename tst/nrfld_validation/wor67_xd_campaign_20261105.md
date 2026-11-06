@@ -142,3 +142,64 @@ an intrinsic AMR improvement. The existing aligned-profile steady gate still
 passes, since it measures the full profile rather than peak constancy. SMR
 full job 335321 remains pending on `QOSMaxJobsPerUserLimit`; recovery job
 335516 and three-layout audit job 335517 remain queued by dependency.
+
+## 2026-11-06 final N2048-equivalent comparison
+
+SMR solve job 335321 reached `t = 0.04 s` after 36,664 cycles, with 36,664
+strict Newton convergences, zero relaxed acceptances, and 121,996 FGMRES
+calls. Its solver wall time was 62,267 seconds (17 h 17 min 47 s). As for the
+other layouts, the Slurm batch step returned 1 only because optional movie
+generation could not find `ffmpeg`. Recovery job 335516 completed in 15
+seconds without a new solve. The saved SMR final output SHA-256 is
+`8bfa6dcc2da4ca31495f8379a15346d3340831f579110efafb4523a66e03b477`.
+The three layouts used the same source snapshot, executable, physical
+reference, and final saved time (`0.03999999910593033 s`).
+
+| Metric | Uniform N2048 | AMR base N1024 | SMR base N512 |
+| --- | ---: | ---: | ---: |
+| Finest shock dx [cm] | 2.9296875 | 2.9296875 | 2.9296875 |
+| Final Tgas peak [K] | 991.437 | 1002.528 | 997.696 |
+| Point peak error [%] | 7.953 | 6.924 | 7.372 |
+| Spike amplitude recovery [%] | 61.305 | 66.315 | 64.132 |
+| Aligned rho/Tgas/Trad L1 [%] | 0.0686 / 0.0915 / 0.0759 | 0.0544 / 0.1760 / 0.1709 | 0.0627 / 0.0822 / 0.0697 |
+| Raw shock center [cm] | 183.594 | 183.594 | 183.594 |
+| Median late dt [µs] | 1.10807 | 1.12012 | 1.11173 |
+| Tgas peak mean, t=.03–.04 s [K] | 990.927 | 994.518 | 991.341 |
+| Tgas peak range, t=.03–.04 s [K] | 971.042–1008.810 | 971.001–1009.370 | 971.104–1009.030 |
+| Strict Newton solves | 36,722 | 40,010 | 36,664 |
+| Solver wall time [s] | 14,734 | 17,216 | 62,267 |
+| Slurm job-step MaxRSS [KiB] | 1,665,884 | 3,055,576 | 8,911,792 |
+
+All three layouts pass the existing physical gates and reached the intended
+finest level at the shock. The final peak spread is 11.091 K, while the
+late-window mean spread is 3.591 K and each late history spans about 38 K.
+The final-time AMR/SMR peak differences therefore do not establish an
+intrinsic layout advantage. Median late timesteps also differ slightly, so
+these are not exact matched-dt spatial comparisons. The semi-analytic spike
+half-height width is only 3.188 cm, or 1.088 cells at this finest dx; this
+resolution is not an asymptotic convergence demonstration. The finite-volume
+projected reference peak at the nominal alignment is 1033.477 K, with a
+988.549–1036.788 K range under a ±half-cell registration perturbation; this
+range is a sampling diagnostic, not an adjusted accuracy gate.
+
+The HST final `res_etot` relative spreads are 0.02261, 0.13769, and 0.01744
+for uniform, AMR, and SMR respectively. They are within-block physical-flux
+diagnostics in an open domain, not exact discrete conservation residuals.
+The larger AMR value warrants boundary and flux inspection before claiming
+conservation equivalence. Per-rank RSS snapshots were unavailable; the
+Slurm job-step MaxRSS values above are proxies and must not be interpreted
+as rank sums.
+
+The automatic three-layout audit job 335517 completed, and job 336152
+regenerated its report with late-window peak means and an explicit phase
+caution. The final report is at
+`/work/mizutaniks/wor67/output/wor67_hpc_comparison_n2048/index.html`.
+The same directory contains `summary.json`, `gas_spike_profiles.png`,
+`convergence.png`, `late_peak_history.png`, and near-shock CSVs for each
+layout. All images and the HTML are nonempty and the final audit exited 0.
+
+The next prescribed step is N4096-equivalent pilot sizing for uniform,
+one-level AMR, and three-level SMR, followed by full runs if resources and
+strict convergence permit. This is needed to test spatial convergence and
+whether the peak-phase variation decreases at finer resolution. WOR-67
+therefore remains In Progress.
