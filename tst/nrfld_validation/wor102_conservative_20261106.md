@@ -22,6 +22,7 @@ also off unless set to `1`.
 | `ATHENA_NRFLD_EXPERIMENTAL_VARIABLE_LIMITER=1` | Permit variable-limiter Test C | Trial gate; coefficient exchange remains independently switchable |
 | `ATHENA_NRFLD_EXPERIMENTAL_COUPLED=1` | Permit coupled Test C | Requires `DIFFERENCE_JV=0` |
 | `ATHENA_NRFLD_EXPERIMENTAL_REGRID=1` | Permit adaptive Test C | More blocks and boundary exchanges during refinement |
+| `ATHENA_NRFLD_EXPERIMENTAL_NONLINEAR_JV=1` | Refresh the variable limiter at each Newton trial and differentiate that residual | Radiation-only static AMR, shared coefficients and FGMRES only; four closure evaluations per Jv |
 | `nrfld/global_jacobian_check=true` | Run global Jv diagnostic | Additional residual/coefficient evaluations; default false |
 
 ## Interface stencil
@@ -36,8 +37,8 @@ ghost operation is applied to the Newton iterate and to each Krylov direction.
 
 FGMRES uses a finite-difference secant of the frozen-coefficient radiation
 residual for `Jv`, with the existing MG V-cycle as a preconditioner. The
-secant is evaluated in long double to avoid cancellation. The implementation
-does not yet differentiate a refreshed, nonlinear flux limiter.
+secant is evaluated in long double to avoid cancellation. A separately gated
+trial below differentiates a refreshed, nonlinear flux limiter.
 
 ## Local results
 
@@ -72,8 +73,8 @@ history values and seven FGMRES iterations. The density-ratio `0.1` and
 The prototype remains limited to periodic Cartesian Test C. Coupled and
 adaptive runs below are controlled probes, not production validation.
 Physical boundaries, moving AMR interfaces, and production Mach 5 remain
-untested. A nonlinear residual Jv (or an equivalent validated Jacobian),
-profile accuracy for variable closure, and performance measurements remain
+untested. The separately gated nonlinear Jv is validated only in local Test C
+cases. Production-scale profile accuracy and performance measurements remain
 before an XD A/B run.
 
 ## Follow-up local tests: variable limiter and profile accuracy
@@ -259,8 +260,8 @@ five-step refine/derefine probe (`|ΔEr/Er|=3.61e-14`), and the coupled five-ste
 trial (Newton iterations `22,12,4,4,4`, cumulative diffusion ledger
 `-5.06e-15`). At N64, the frozen global Jv relative mismatch was
 `1.29e-11` on same-level block faces and `6.63e-12` on coarse/fine faces
-at epsilon `1e-4`. The refreshed-limiter mismatch remains nonzero; the
-nonlinear Jv is still outstanding.
+at epsilon `1e-4`. The refreshed-limiter mismatch in the lagged solver is
+nonzero; a separately gated nonlinear Jv trial is described below.
 
 Reproduce both profile conditions with:
 
@@ -270,4 +271,90 @@ python3 tst/nrfld_validation/wor102_profile_comparison.py \
 python3 tst/nrfld_validation/wor102_profile_comparison.py \
   --binary bin/athena --output /tmp/wor102_moderate --resolutions 32 64 \
   --contrast 1.15 --transverse-amplitude 0.3 --plot
+```
+
+## Additional closure and optical-depth configurations
+
+The same one-step, N32 update-error comparison was repeated at fixed
+`dt=5e-5` for opacity `0.04` (thin), `0.4` (standard), and `4` (thick),
+transverse amplitude `0`, `0.3`, or `0.8`, and density ratio `0.1`, `1.15`,
+or `10`. Every case converged. The ratio below divides the shared-face
+update L1 error by the existing-stencil update L1 error; a value below one
+means the shared-face trial was closer to the uniform fine solution. The
+reference uses the lagged closure in this table.
+
+| Opacity / amplitude / density ratio | Existing update L1 | Shared update L1 | Ratio | Existing diffusion ledger | Shared diffusion ledger |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| 0.4 / 0 / 1.15 | 4.057e-6 | 4.601e-6 | 1.134 | -1.803e-7 | -1.028e-20 |
+| 0.4 / 0.3 / 10 | 6.691e-5 | 8.228e-5 | 1.230 | -1.166e-7 | -6.204e-25 |
+| 4 / 0.3 / 1.15 | 9.757e-6 | 1.270e-5 | 1.301 | -1.430e-8 | -2.958e-22 |
+| 4 / 0.8 / 0.1 | 7.917e-5 | 1.151e-4 | 1.454 | +4.053e-9 | +1.390e-22 |
+| 4 / 0.8 / 10 | 1.874e-5 | 2.344e-5 | 1.251 | -3.897e-9 | +5.630e-23 |
+| 0.04 / 0 / 0.1 | 6.391e-5 | 4.916e-5 | 0.769 | -3.215e-6 | -1.055e-19 |
+| 0.04 / 0.3 / 0.1 | 8.225e-4 | 2.979e-4 | 0.362 | -3.371e-7 | +5.445e-20 |
+| 0.04 / 0.3 / 1.15 | 2.975e-4 | 3.478e-4 | 1.169 | -1.398e-6 | -1.352e-20 |
+| 0.04 / 0.8 / 0.1 | 1.996e-3 | 7.679e-4 | 0.385 | -4.666e-6 | -7.470e-20 |
+| 0.04 / 0.8 / 10 | 1.052e-3 | 1.211e-3 | 1.151 | -2.641e-7 | -4.642e-20 |
+
+At N64, the thick/strong/ratio-0.1 case had a shared/existing error ratio
+`2.102`, while the thin/strong/ratio-0.1 case had a ratio `0.183` with the
+assembled frozen Jv. In that thin case the existing solver's diffusion
+ledger was `+1.162e-5` and the shared-face ledger was `+1.482e-19`. The
+default frozen secant Jv stalled in the second FGMRES solve (200 iterations,
+relative residual `2.96e-3`); the assembled frozen Jv converged in two
+Newton steps and 18 total FGMRES iterations for the shared-face variant.
+Thus conservation is robust in this sweep, but accuracy and solver behavior
+depend substantially on the physical parameters.
+
+## Experimental nonlinear-limiter Jv
+
+`ATHENA_NRFLD_EXPERIMENTAL_NONLINEAR_JV=1` is a separate opt-in trial. The
+lagged solver computes the limiter once for a timestep. This trial instead
+recomputes it after each Newton trial or rollback, and FGMRES applies a
+two-scale centered difference of the same refreshed residual. Richardson
+combination removes the leading centered-difference error. Each Jv therefore
+requires four coefficient/face exchanges and residual evaluations, in
+addition to the existing frozen MG preconditioner. The flag is gated to
+periodic Cartesian Test C, radiation-only, static AMR, shared coefficients,
+variable limiter, and `nrfld/linear_solver=fgmres`.
+
+For standard opacity, density ratio `0.1`, amplitude `0.8`, N32, the uniform
+fine nonlinear reference converged in three Newton steps / 18 FGMRES
+iterations; the AMR shared-face case converged in four / 29. Its one-step
+update L1 error was `3.849e-4` against that **nonlinear** reference and its
+diffusion ledger was `+4.06e-21`. A four-rank run reproduced the final Er
+integral to the printed precision. The independent one-sided global Jv
+diagnostic at the coarse/fine face gave relative L2 `2.59e-8` for a smooth
+direction at epsilon `1e-4` and `2.72e-7` for the first Newton direction;
+the lagged/frozen Jv mismatch on the same Newton direction was `2.32e-3`.
+The FGMRES linearity check gave additivity `8.58e-9` and homogeneity
+`5.17e-14`. These values support the local nonlinear derivative but do not
+establish production robustness.
+Five N32 steps at the same physical parameters converged in Newton counts
+`4,4,3,3,3`; the cumulative Er integral changed by `-1.96e-15` relative.
+
+For the difficult N64 thin/strong/ratio-0.1 AMR case, the nonlinear trial
+converged in nine Newton steps, with FGMRES counts `19,11,10,10,10,10,10,10,10`
+and final L2 `2.92e-12`; its diffusion ledger was `-8.40e-20`. A single
+centered difference at a smaller perturbation had stalled at the 200-iteration
+FGMRES limit, motivating the two-scale derivative. The nonlinear model costs
+many more closure exchanges than the frozen variants. The lagged uniform
+fine reference is not a valid accuracy comparator for it; use
+`--nonlinear-jv` to run a matching nonlinear uniform fine reference.
+That N64 nonlinear reference converged in five Newton steps / 47 FGMRES
+iterations. Against it, the nonlinear shared-face AMR update L1 error was
+`3.075e-4` (interface mean `1.085e-3`). The single-run wall times were
+`37.0 s` for the uniform fine reference and `45.6 s` for the AMR case;
+the corresponding frozen assembled-Jv cases took `2.70 s` and `1.96 s`.
+These timings include process startup and output, and quantify only this
+small local case. The nonlinear AMR result is close to the frozen result
+(`2.949e-4`) but solves a different discrete nonlinear equation.
+
+Reproduce the matching nonlinear-reference comparison with:
+
+```sh
+python3 tst/nrfld_validation/wor102_profile_comparison.py \
+  --binary bin/athena --output /tmp/wor102_nonlinear_thin \
+  --resolutions 64 --opacity 0.04 --contrast 0.1 \
+  --transverse-amplitude 0.8 --nonlinear-jv
 ```

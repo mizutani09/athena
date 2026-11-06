@@ -30,6 +30,7 @@
 #include "../../hydro/hydro.hpp"
 #include "../../linear_solver/linear_solver.hpp"
 #include "../../mesh/mesh.hpp"
+#include "../../nr_multigrid/NRFLD.hpp"
 #include "../../parameter_input.hpp"
 #include "../../task_list/linmg_task_list.hpp"
 #include "../../utils/nrfld_prototype_flags.hpp"
@@ -176,6 +177,12 @@ linearMGDriver::linearMGDriver(Mesh *pm, ParameterInput *pin, NewtonRaphsonDrive
     std::stringstream msg;
     msg << "### FATAL ERROR in linearMGDriver::linearMGDriver" << std::endl
         << "nrfld/linear_solver must be mg, fgmres, or uniform_pcg." << std::endl;
+    ATHENA_ERROR(msg);
+  }
+  if (NRFLDPrototype::NonlinearLimiterJv() && !fgmres_) {
+    std::stringstream msg;
+    msg << "ATHENA_NRFLD_EXPERIMENTAL_NONLINEAR_JV requires "
+        << "nrfld/linear_solver=fgmres.";
     ATHENA_ERROR(msg);
   }
   fgmres_threshold_ = pin->GetOrAddReal("nrfld", "fgmres_threshold", 1.0e-8);
@@ -1395,6 +1402,19 @@ void linearMGDriver::SolveFGMRES(int stage) {
   };
   auto apply_operator = [&](const BlockVector &x, BlockVector &y) {
     load_delta(x);
+    if (NRFLDPrototype::NonlinearLimiterJv()) {
+      static_cast<NRFLDDriver*>(pnrd_)->ApplyNonlinearJacobian(stage);
+      for (std::size_t b=0; b<y.size(); ++b) {
+        NRFLD *nr=static_cast<NRFLD*>(static_cast<linearMG*>(vmg_[b])->pnr_);
+        MeshBlock *pmb=nr->pmy_block_;
+        y[b].ZeroClear();
+        for (int k=pmb->ks;k<=pmb->ke;++k)
+          for (int j=pmb->js;j<=pmb->je;++j)
+            for (int i=pmb->is;i<=pmb->ie;++i)
+              at(y,b,k,j,i)=nr->nonlinear_jv_(k,j,i);
+      }
+      return;
+    }
     if (NRFLDPrototype::Enabled() && NRFLDPrototype::DifferenceJv()) {
       // A secant of the frozen-coefficient radiation residual.  The Newton
       // state and Krylov direction already have identical coarse/fine ghost

@@ -737,6 +737,8 @@ NewtonSolveResult NewtonRaphsonDriver::Solve_general(int stage, Real dt) {
         NewtonRaphson *pnr = *itr;
         pnr->RestoreIterate();
       }
+      if (NRFLDPrototype::NonlinearLimiterJv())
+        RefreshPrototypeNonlinearClosure();
 
       // Optional coarse-correction damping is retained as an expert fallback.
       // It is disabled by default: changing the linear solve before trying a
@@ -852,6 +854,8 @@ NewtonSolveResult NewtonRaphsonDriver::Solve_general(int stage, Real dt) {
         for (auto itr = vnr_.begin(); itr < vnr_.end(); itr++) {
           (*itr)->RestoreIterate();
         }
+        if (NRFLDPrototype::NonlinearLimiterJv())
+          RefreshPrototypeNonlinearClosure();
         norms = old_norms;
         def = norms.l2_norm;
         defmax = norms.max_norm;
@@ -865,6 +869,8 @@ NewtonSolveResult NewtonRaphsonDriver::Solve_general(int stage, Real dt) {
       for (auto itr = vnr_.begin(); itr < vnr_.end(); itr++) {
         (*itr)->RestoreIterate();
       }
+      if (NRFLDPrototype::NonlinearLimiterJv())
+        RefreshPrototypeNonlinearClosure();
       norms = old_norms;
       def = norms.l2_norm;
       defmax = norms.max_norm;
@@ -984,7 +990,9 @@ void NewtonRaphsonDriver::SolveOneCycle(bool solve_direction) {
     RunDirectionDiagnostic();
   }
   nrtlist_post_->DoTaskListOneStage(stage_);
-  if (NRFLDPrototype::SharedCoeff())
+  if (NRFLDPrototype::NonlinearLimiterJv())
+    RefreshPrototypeNonlinearClosure();
+  else if (NRFLDPrototype::SharedCoeff())
     SyncInterfaceFaceMoments();
   return;
 }
