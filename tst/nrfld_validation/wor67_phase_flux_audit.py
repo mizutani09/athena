@@ -66,8 +66,11 @@ def case_data(label: str, directory: Path, target: float) -> tuple[dict, dict]:
            "late_peak_range_K": [float(np.min(history["Tgas_max"][late])),
                                  float(np.max(history["Tgas_max"][late]))],
            "late_res_etot_median": float(np.median(history["res_etot"][late])),
+           "late_res_etot_p95": float(np.percentile(history["res_etot"][late], 95)),
            "late_res_etot_max": float(np.max(history["res_etot"][late])),
            "late_res_etot_last": float(history["res_etot"][-1]),
+           "late_peak_res_etot_correlation": float(np.corrcoef(
+               history["Tgas_max"][late], history["res_etot"][late])[0, 1]),
            "late_history_shock_positions_cm": sorted(set(float(v) for v in history["x_shock"][late])),
            "saved_late_snapshot_count": len(late_snapshots),
            "saved_snapshot_peak_phase_correlation": correlation,
