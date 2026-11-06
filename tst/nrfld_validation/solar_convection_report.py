@@ -36,11 +36,16 @@ def read_history(path: Path, header_from: Path | None = None) -> dict[str, np.nd
         raise ValueError(f"History header missing in {path}; pass --history-header-from")
     names = [name for _, name in HEADER.findall(header)]
     values = np.loadtxt(path, comments="#", ndmin=2)
-    # Older restart headers predate the two appended radiation-advection
-    # diagnostics. Their fixed position lets us read a new run from the
-    # original header-bearing startup HST without a hand-written header.
-    if (values.shape[1] == len(names)+2 and names[-1] == "FtotTop"):
-        names.extend(("FadvRadBottom", "FadvRadTop"))
+    # Older restart headers predate appended radiation-advection and
+    # directional lower hydro-flux diagnostics. Their fixed order lets us
+    # read a new restart from the original header-bearing startup HST.
+    appended = ("FadvRadBottom", "FadvRadTop",
+                "FhydUpBottom", "FhydDownBottom")
+    extra = values.shape[1] - len(names)
+    if names[-1] == "FtotTop" and extra in (2, 4):
+        names.extend(appended[:extra])
+    elif names[-1] == "FadvRadTop" and extra == 2:
+        names.extend(appended[2:])
     if values.shape[1] != len(names):
         raise ValueError(f"{path}: {values.shape[1]} columns, {len(names)} names")
     # A continued run may repeat the initial history row. Keep the last value.

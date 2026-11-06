@@ -46,6 +46,31 @@ useful hydrostatic/radiative starting state, but was not a thermally relaxed
 5150–5175 K, consistent in scale with the effective temperature of a
 0.628-solar-flux atmosphere (~5138 K for a 5772 K solar reference).
 
+### Does simply waiting raise the surface flux?
+
+`tst/nrfld_validation/solar_convection_wait_diagnostic.py` joins all 50
+history segments and reports nonoverlapping 500-code-time means in
+`wait_diagnostic/index.html` under the campaign root. At `t=0`, the exact
+boundary budget is `F_top=0.996703 F_sun` but
+`F_bottom=5.62467e-6 F_sun`: there is no initial convective motion or
+hydro-energy input. The cell-centered interior FLD reconstruction near
+`z=0` gives only `8.76e-5 F_sun` of radiation, whereas the upper interior
+cell gives about `1.05 F_sun`. The 1D starting profile is not a *discrete
+whole-box energy equilibrium*; an initially solar-looking top flux alone
+cannot imply that the box should maintain it. The interior reconstruction
+is approximate and is not substituted for the exact boundary budget.
+
+After the first 500 code-time units, all nine 500-code means of top flux
+from `t=500` to `5000` fall between `0.62538` and `0.62894 F_sun`. Their
+descriptive linear slope is only `+0.000275 F_sun` per 1000 code units,
+far smaller than the `0.37 F_sun` deficit and not a basis for a long-time
+extrapolation. The lower flux also stays near 0.63 solar. Thus the
+**measured slow-feedback trajectory** has no observed approach to solar
+flux by `t=5000`. A fixed-`s_in` control exists only through `t=5120`;
+it also has no clear upward trend over that short interval, but its
+eventual equilibrium is not measured. Continued feedback could eventually
+alter this, but its long-time response has not been established.
+
 ## The entropy command did reach the fluid
 
 The input entropy rose from `1.581097454457282e9` to
@@ -137,12 +162,63 @@ The top response begins to appear around `t≈5050`, but remains three
 orders of magnitude below the extra bottom input in the full-window mean.
 It oscillates, so a short positive interval cannot be interpreted as a
 steady response. The bottom response weakens in the last window, consistent
-with recirculation or hydrodynamic adjustment, but the HST does not yet
+with recirculation or hydrodynamic adjustment. The original HST did not
 separate upward and downward hydro energy fluxes. Both extension runs reached
 `t=5120`: 1444/1444 Newton solves converged in each, with no fatal or
 slow-multigrid warning. The upper hydro flux remained exactly zero in both.
 This extension strengthens the storage-and-lag explanation while leaving
 the eventual `F_top(s_in)` unknown.
+
+### Exact directional lower-face energy flux
+
+Two new **20-code-time diagnostic-only** restarts from the same `t=5000`
+checkpoint use identical physics and controls and add `FhydUpBottom` and
+`FhydDownBottom` to the HST. They split the *same Godunov lower-face hydro
+energy flux* according to the sign of face mass flux. The split closes to
+`<2e-13 F_sun` against `FhydBottom`. Both 16-rank runs reached `t=5020`,
+with 285/285 Newton solves converged and no fatal or slow-MG warning.
+Their report is
+`/mnt/d/output/rad/wor74_directional_20261106/summary/index.html`.
+The new instrumented trajectories have **identical sample times, lower net
+hydro flux, and upper flux** to the corresponding original 20-code runs;
+the additional HST outputs did not alter the computed solution.
+
+| Lower-face hydro term, t=5000–5020 | Fixed `s_in` | `s_in + 1e6` | Difference |
+| --- | ---: | ---: | ---: |
+| Upward / `F_sun` | +163.6263 | +168.0100 | +4.3837 |
+| Downward / `F_sun` | −163.0464 | −167.0820 | −4.0356 |
+| Net / `F_sun` | +0.57991 | +0.92801 | +0.34810 |
+| Upward mass [g cm⁻² s⁻¹] | +1.01132 | +1.03642 | +0.02510 |
+| Downward mass [g cm⁻² s⁻¹] | −1.01151 | −1.03649 | −0.02498 |
+
+The extra upward hydro energy is mostly offset by more energy carried
+downward through the same boundary. The gross mass circulation rises by
+about 2.5% in both directions; the net energy-input change is only
+`+0.348 F_sun`. That residual matches the independently measured extra
+stored-energy rate (`+0.340 F_sun`) to the accuracy of the sampled ledger.
+This is a hydro-energy split, not a conserved entropy-flux measurement; it
+does not imply that every extra upward entropy parcel physically returns
+within 20 code units. The direction split shows the immediate cancellation
+mechanism, while the eventual photospheric response remains unknown.
+
+### Why restart at t=5000 for a sensitivity measurement?
+
+Starting all branches from the *same* `t=5000` checkpoint removes the large
+startup transient and isolates the effect of a specified entropy change.
+It is a better local response experiment than comparing two independently
+started `t=0` boxes. The checkpoint carries the history of the old feedback
+controller, but this common history cancels in a matched comparison.
+
+There are three different future questions: (a) a fixed-entropy control
+asks whether the current low-flux state drifts thermally; (b) a continued
+slow-feedback branch asks whether the existing controller eventually works;
+and (c) several *fixed* entropy offsets measure the actual steady
+`F_top(s_in)` relation needed for calibration. The present 20- and
+120-code-time pairs answer only the **transient** part of (c). The existing
+feedback trajectory does not show a rise toward solar flux by `t=5000`,
+but this does not rule out a much later response. The strong initial
+whole-box flux mismatch and unverified gray-FLD photospheric closure should
+be resolved before committing to another long run of any branch.
 
 The cell-centered entropy audit can be reproduced with:
 
@@ -180,13 +256,12 @@ published formula or a calibrated long-time transfer function.
 
 ## Gate before another long run
 
-1. Measure a *matched*, fixed-entropy long-enough response from the same
-   relaxed checkpoint, with both bottom and top fluxes and
-   mass-weighted up/down entropy. Add separate upflow and downflow
-   hydro-energy face-flux diagnostics if exact cancellation is needed;
-   the current HST records their net only. The 120-code-time matched test
-   gives a first recirculation check, but is far shorter than the full-box
-   thermal time and does not establish a steady response.
+1. The exact lower-face directional hydro-energy diagnostics are now added
+   and validated for short matched restarts. To establish the *steady*
+   top-flux sensitivity, these diagnostics and mass-weighted up/down entropy
+   must eventually be followed beyond one crossing time from the same
+   relaxed checkpoint. The 120-code-time matched test is far shorter than
+   the full-box thermal time, so no long production run is justified yet.
 2. Separate startup/profile and radiation-closure effects from the
    entropy-control effect. The t=0 1D profile produces solar initial top
    flux, but its 3D relaxed flux is ~0.63 solar. A static/discrete radiative

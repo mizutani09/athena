@@ -114,6 +114,8 @@ namespace {
   Real HistoryBottomEntropyExcess(MeshBlock *pmb, int iout);
   Real HistoryConservedEnergy(MeshBlock *pmb, int iout);
   Real HistoryBottomHydroFluxCgs(MeshBlock *pmb, int iout);
+  Real HistoryBottomHydroUpFluxCgs(MeshBlock *pmb, int iout);
+  Real HistoryBottomHydroDownFluxCgs(MeshBlock *pmb, int iout);
   Real HistoryBottomRadiationFluxCgs(MeshBlock *pmb, int iout);
   Real HistoryTopHydroFluxCgs(MeshBlock *pmb, int iout);
   Real HistoryTopTotalFluxCgs(MeshBlock *pmb, int iout);
@@ -1550,7 +1552,7 @@ void Mesh::InitUserMeshData(ParameterInput *pin) {
     EnrollUserNRBoundaryFunction(BoundaryFace::outer_x3, SimpleNROuter);
   }
 
-  AllocateUserHistoryOutput(28);
+  AllocateUserHistoryOutput(30);
   EnrollUserHistoryOutput(0, HistoryTg, "T_gas", UserHistoryOperation::max);
   EnrollUserHistoryOutput(1, HistoryTr, "T_rad", UserHistoryOperation::max);
   EnrollUserHistoryOutput(2, HistoryEg, "e_gas", UserHistoryOperation::max);
@@ -1581,6 +1583,10 @@ void Mesh::InitUserMeshData(ParameterInput *pin) {
                           "FadvRadBottom", UserHistoryOperation::sum);
   EnrollUserHistoryOutput(27, HistoryTopAdvectiveRadiationFluxCgs,
                           "FadvRadTop", UserHistoryOperation::sum);
+  EnrollUserHistoryOutput(28, HistoryBottomHydroUpFluxCgs,
+                          "FhydUpBottom", UserHistoryOperation::sum);
+  EnrollUserHistoryOutput(29, HistoryBottomHydroDownFluxCgs,
+                          "FhydDownBottom", UserHistoryOperation::sum);
   // EnrollUserHistoryOutput(7, HistoryL1norm, "L1norm", UserHistoryOperation::sum);
 
   EnrollUserExplicitSourceFunction(AddRadiativeForceAndWork);
@@ -2275,6 +2281,33 @@ Real HistoryBottomHydroFluxCgs(MeshBlock *pmb, int iout) {
       flux += pmb->phydro->flux[X3DIR](IEN,k,j,i)
              *pmb->pcoord->GetFace3Area(k,j,i);
   return flux/HorizontalArea(pmb)*egas_unit*leng_unit/time_unit;
+}
+
+static Real HistoryBottomHydroDirectionalFluxCgs(MeshBlock *pmb,
+                                                 const bool upflow) {
+  if (pmb->block_size.x3min != pmb->pmy_mesh->mesh_size.x3min) return 0.0;
+  Real flux = 0.0;
+  const int k = pmb->ks;
+  for (int j=pmb->js; j<=pmb->je; ++j) {
+    for (int i=pmb->is; i<=pmb->ie; ++i) {
+      const Real mdot = pmb->phydro->flux[X3DIR](IDN,k,j,i);
+      if ((upflow && mdot > 0.0) || (!upflow && mdot < 0.0)) {
+        flux += pmb->phydro->flux[X3DIR](IEN,k,j,i)
+                *pmb->pcoord->GetFace3Area(k,j,i);
+      }
+    }
+  }
+  return flux/HorizontalArea(pmb)*egas_unit*leng_unit/time_unit;
+}
+
+Real HistoryBottomHydroUpFluxCgs(MeshBlock *pmb, int iout) {
+  (void)iout;
+  return HistoryBottomHydroDirectionalFluxCgs(pmb, true);
+}
+
+Real HistoryBottomHydroDownFluxCgs(MeshBlock *pmb, int iout) {
+  (void)iout;
+  return HistoryBottomHydroDirectionalFluxCgs(pmb, false);
 }
 
 Real HistoryBottomRadiationFluxCgs(MeshBlock *pmb, int iout) {
