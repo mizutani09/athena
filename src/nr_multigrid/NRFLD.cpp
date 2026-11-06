@@ -365,7 +365,8 @@ void NRFLDDriver::RunCommittedDiagnostic() {
   if (vnr_.empty() || dt_ <= 0.0) return;
   FLD *first = static_cast<NRFLD*>(vnr_.front())->pmy_block_->prfld;
   if (std::getenv("ATHENA_NRFLD_ENERGY_LEDGER") != nullptr
-      && first->is_couple && !first->only_rad && !first->fixed_u_rad) {
+      && ((first->is_couple && !first->only_rad && !first->fixed_u_rad)
+          || first->only_rad)) {
     const bool interface_ledger =
         (std::getenv("ATHENA_NRFLD_INTERFACE_LEDGER") != nullptr);
     long double gas_delta = 0.0L, radiation_delta = 0.0L;
@@ -408,7 +409,8 @@ void NRFLDDriver::RunCommittedDiagnostic() {
               if (interface_ledger && face == XPlus && i == mb->ie)
                 xplus_delta += static_cast<long double>(dt_*face_term*idx2)*volume;
             }
-            const Real dg = nr->u_gas_(k,j,i)-fld->u_gas(k,j,i);
+            const Real dg = first->only_rad ? 0.0
+                : nr->u_gas_(k,j,i)-fld->u_gas(k,j,i);
             const Real dr = center-nr->uold_(k,j,i);
             const Real dd = dt_*face_sum*idx2;
             const Real residual = (dg+dr)-dd;
