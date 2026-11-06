@@ -201,6 +201,60 @@ does not imply that every extra upward entropy parcel physically returns
 within 20 code units. The direction split shows the immediate cancellation
 mechanism, while the eventual photospheric response remains unknown.
 
+### Rolling-feedback continuation stopped at t=9100 for flux reassessment
+
+The separate 500-code rolling-feedback continuation was intentionally stopped
+at its verified `t=9100` checkpoint. It had used the faster 10,000-code
+relaxation time and raised the prescribed entropy by `+0.7590e6` relative
+to the initial profile, but the lower and upper fluxes stayed near `0.64`
+and `0.63 F_sun`. The current controller's cumulative limit is `+1e6`, so
+letting it run to `t=20000` without understanding the lower-flux response
+would spend substantial compute time with little evidence of solar-flux
+convergence. Its snapshot report and three movies are in
+`/mnt/d/output/rad/wor74_feedback_20261106/from_t5000_96km_rolling500_t20000/interim_t5000_9000/overview.html`.
+
+The exact HST lower-face flux and the EOS-based, first-interior-cell entropy
+diagnostic give the following comparable 500-code windows. Entropy values
+below are changes between the windows, not absolute values.
+
+| Quantity | t=4500–5000 | t=8600–9100 | Change |
+| --- | ---: | ---: | ---: |
+| Prescribed `s_in` | 1.581370544e9 | 1.581830349e9 | +459,805 |
+| Upflow entropy | 1.581326748e9 | 1.581793367e9 | +466,619 |
+| Downflow entropy | 1.579281817e9 | 1.579744623e9 | +462,806 |
+| Upflow−downflow entropy contrast | 2,044,931 | 2,048,744 | +3,813 |
+| Upper total flux / `F_sun` | 0.62729 | 0.62956 | +0.00227 |
+| Lower total flux / `F_sun` | 0.62407 | 0.64518 | +0.02111 |
+
+The entropy contrast changed by only `0.19%` despite the larger common shift
+in the two streams. Over `t=8600–9100`, the exact face hydro energy flux was
+`+163.764 F_sun` upward and `−163.118 F_sun` downward, leaving
+`+0.645 F_sun` net. The matching EOS analysis and plot are in the campaign's
+`entropy_transport_t9100/index.html`. Thus the input entropy is being
+applied, but the slow common shift of upflows and downflows provides very
+little persistent increase in net lower energy input.
+
+The user's recollection of fixed-entropy trials is correct but refers to
+transient windows. From the same `t=1300` checkpoint, the fixed `+1e6`
+branch had lower hydro flux `0.907 F_sun` and the `+3e6` branch
+`1.084 F_sun` in the last 25 code units at `t=1500`; the upper flux was
+only `0.630` and `0.618 F_sun`, respectively. Relative stored-energy rates
+were `+0.107` and `+0.290 F_sun`. A different matched `t=5000` checkpoint
+with fixed `+1e6` still had lower hydro flux `0.805 F_sun` near `t=5120`,
+with an extra storage rate `+0.235 F_sun`. Those short branches prove an
+immediate lower-boundary response, not that the lower flux stays solar after
+downflows and the full box adjust.
+
+For a statistically stationary box without another energy source, the
+long-time upper flux must be supplied by the lower total flux, up to the
+small mass/potential terms. A temporary `F_top > F_bottom` can draw on
+stored energy. The current run has neither a solar lower input nor a solar
+upper output. Before another long run, measure the *sustained* lower-flux
+response to one or more **fixed** entropy steps from the same `t=9100`
+checkpoint over several convective crossing times, including the directional
+face fluxes, EOS up/down entropy contrast, and stored-energy rate. Only then
+set an entropy target and feedback gain for a longer calibration.
+
 ### Why restart at t=5000 for a sensitivity measurement?
 
 Starting all branches from the *same* `t=5000` checkpoint removes the large
