@@ -45,7 +45,8 @@ grep -Eq '^linear_solver = fgmres$' "$case_dir/input.used"
 {
   printf 'job_id=%s\nmode=%s\nsteps=%s\nranks=%s\n' \
     "$SLURM_JOB_ID" "$WOR102_MODE" "$WOR102_STEPS" "$SLURM_NTASKS"
-  printf 'source_commit=%s\n' "$(git -C "$repo" rev-parse HEAD)"
+  printf 'binary_source_commit=%s\n' "$(sed -n 's/^source_commit=//p' "$root/build/provenance.txt")"
+  printf 'run_script_commit=%s\n' "$(git -C "$repo" rev-parse HEAD)"
   printf 'exe_sha256=%s\nrestart_sha256=%s\ninput_sha256=%s\n' \
     "$(sha256sum "$binary" | cut -d' ' -f1)" \
     "$(sha256sum "$restart" | cut -d' ' -f1)" \
