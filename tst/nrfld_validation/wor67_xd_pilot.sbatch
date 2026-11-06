@@ -32,13 +32,18 @@ command -v mpirun
 : "${WOR67_LAYOUT:?}"
 : "${WOR67_NX1:?}"
 : "${WOR67_RUN_NAME:?}"
-WOR67_RANKS=${WOR67_RANKS:-8}
+WOR67_RANKS=${WOR67_RANKS:-${SLURM_NTASKS}}
 WOR67_OUTPUT_ROOT=${WOR67_OUTPUT_ROOT:-/work/mizutaniks/wor67/output}
-cd /work/mizutaniks/wor67/athena
+WOR67_REPO_DIR=${WOR67_REPO_DIR:-/work/mizutaniks/wor67/athena-analysis}
+cd "$WOR67_REPO_DIR"
 test "$(git rev-parse HEAD:src)" = "$(git rev-parse 9419d224:src)"
+reuse=()
+if [[ -n "${WOR67_REUSE_BUILD:-}" ]]; then
+  reuse=(--reuse-build "$WOR67_REUSE_BUILD")
+fi
 
 python3 tst/nrfld_validation/radiative_shock_validation.py \
   --output-root "$WOR67_OUTPUT_ROOT" --run-name "$WOR67_RUN_NAME" \
   --case mach5 --preset hpc --layout "$WOR67_LAYOUT" \
   --nx1-mach5 "$WOR67_NX1" --slab 4 --mpi-ranks "$WOR67_RANKS" \
-  --build-jobs 8 --nlim 100 --run-timeout 1500
+  --build-jobs 8 --nlim 100 --run-timeout 1500 "${reuse[@]}"
