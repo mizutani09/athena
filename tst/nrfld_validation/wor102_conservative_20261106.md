@@ -22,7 +22,6 @@ also off unless set to `1`.
 | `ATHENA_NRFLD_EXPERIMENTAL_VARIABLE_LIMITER=1` | Permit variable-limiter Test C | Trial gate; coefficient exchange remains independently switchable |
 | `ATHENA_NRFLD_EXPERIMENTAL_COUPLED=1` | Permit coupled Test C | Requires `DIFFERENCE_JV=0` |
 | `ATHENA_NRFLD_EXPERIMENTAL_REGRID=1` | Permit adaptive Test C | More blocks and boundary exchanges during refinement |
-| `ATHENA_NRFLD_EXPERIMENTAL_NONLINEAR_JV=1` | Refresh the variable limiter at each Newton trial and differentiate that residual | Radiation-only static AMR, shared coefficients and FGMRES only; four closure evaluations per Jv |
 | `nrfld/global_jacobian_check=true` | Run global Jv diagnostic | Additional residual/coefficient evaluations; default false |
 
 ## Interface stencil
@@ -37,8 +36,8 @@ ghost operation is applied to the Newton iterate and to each Krylov direction.
 
 FGMRES uses a finite-difference secant of the frozen-coefficient radiation
 residual for `Jv`, with the existing MG V-cycle as a preconditioner. The
-secant is evaluated in long double to avoid cancellation. A separately gated
-trial below differentiates a refreshed, nonlinear flux limiter.
+secant is evaluated in long double to avoid cancellation. The implementation
+intentionally keeps the flux limiter fixed during each Newton solve.
 
 ## Local results
 
@@ -70,11 +69,12 @@ history values and seven FGMRES iterations. The density-ratio `0.1` and
 
 ## Limits before production adoption
 
-The prototype remains limited to periodic Cartesian Test C. Coupled and
-adaptive runs below are controlled probes, not production validation.
+The prototype keeps the flux limiter fixed during each Newton solve, as
+required by the selected solver policy. It remains limited to periodic
+Cartesian Test C. Coupled and adaptive runs below are controlled probes,
+not production validation.
 Physical boundaries, moving AMR interfaces, and production Mach 5 remain
-untested. The separately gated nonlinear Jv is validated only in local Test C
-cases. Production-scale profile accuracy and performance measurements remain
+untested. Profile accuracy for variable closure and performance measurements remain
 before an XD A/B run.
 
 ## Follow-up local tests: variable limiter and profile accuracy
@@ -260,8 +260,9 @@ five-step refine/derefine probe (`|ΔEr/Er|=3.61e-14`), and the coupled five-ste
 trial (Newton iterations `22,12,4,4,4`, cumulative diffusion ledger
 `-5.06e-15`). At N64, the frozen global Jv relative mismatch was
 `1.29e-11` on same-level block faces and `6.63e-12` on coarse/fine faces
-at epsilon `1e-4`. The refreshed-limiter mismatch in the lagged solver is
-nonzero; a separately gated nonlinear Jv trial is described below.
+at epsilon `1e-4`. The refreshed-limiter diagnostic tests a different
+equation from the selected fixed-limiter solve, so its nonzero mismatch is
+not a production Jv defect.
 
 Reproduce both profile conditions with:
 
@@ -306,55 +307,17 @@ Newton steps and 18 total FGMRES iterations for the shared-face variant.
 Thus conservation is robust in this sweep, but accuracy and solver behavior
 depend substantially on the physical parameters.
 
-## Experimental nonlinear-limiter Jv
+## Fixed-limiter policy and remaining adoption gates
 
-`ATHENA_NRFLD_EXPERIMENTAL_NONLINEAR_JV=1` is a separate opt-in trial. The
-lagged solver computes the limiter once for a timestep. This trial instead
-recomputes it after each Newton trial or rollback, and FGMRES applies a
-two-scale centered difference of the same refreshed residual. Richardson
-combination removes the leading centered-difference error. Each Jv therefore
-requires four coefficient/face exchanges and residual evaluations, in
-addition to the existing frozen MG preconditioner. The flag is gated to
-periodic Cartesian Test C, radiation-only, static AMR, shared coefficients,
-variable limiter, and `nrfld/linear_solver=fgmres`.
-
-For standard opacity, density ratio `0.1`, amplitude `0.8`, N32, the uniform
-fine nonlinear reference converged in three Newton steps / 18 FGMRES
-iterations; the AMR shared-face case converged in four / 29. Its one-step
-update L1 error was `3.849e-4` against that **nonlinear** reference and its
-diffusion ledger was `+4.06e-21`. A four-rank run reproduced the final Er
-integral to the printed precision. The independent one-sided global Jv
-diagnostic at the coarse/fine face gave relative L2 `2.59e-8` for a smooth
-direction at epsilon `1e-4` and `2.72e-7` for the first Newton direction;
-the lagged/frozen Jv mismatch on the same Newton direction was `2.32e-3`.
-The FGMRES linearity check gave additivity `8.58e-9` and homogeneity
-`5.17e-14`. These values support the local nonlinear derivative but do not
-establish production robustness.
-Five N32 steps at the same physical parameters converged in Newton counts
-`4,4,3,3,3`; the cumulative Er integral changed by `-1.96e-15` relative.
-
-For the difficult N64 thin/strong/ratio-0.1 AMR case, the nonlinear trial
-converged in nine Newton steps, with FGMRES counts `19,11,10,10,10,10,10,10,10`
-and final L2 `2.92e-12`; its diffusion ledger was `-8.40e-20`. A single
-centered difference at a smaller perturbation had stalled at the 200-iteration
-FGMRES limit, motivating the two-scale derivative. The nonlinear model costs
-many more closure exchanges than the frozen variants. The lagged uniform
-fine reference is not a valid accuracy comparator for it; use
-`--nonlinear-jv` to run a matching nonlinear uniform fine reference.
-That N64 nonlinear reference converged in five Newton steps / 47 FGMRES
-iterations. Against it, the nonlinear shared-face AMR update L1 error was
-`3.075e-4` (interface mean `1.085e-3`). The single-run wall times were
-`37.0 s` for the uniform fine reference and `45.6 s` for the AMR case;
-the corresponding frozen assembled-Jv cases took `2.70 s` and `1.96 s`.
-These timings include process startup and output, and quantify only this
-small local case. The nonlinear AMR result is close to the frozen result
-(`2.949e-4`) but solves a different discrete nonlinear equation.
-
-Reproduce the matching nonlinear-reference comparison with:
-
-```sh
-python3 tst/nrfld_validation/wor102_profile_comparison.py \
-  --binary bin/athena --output /tmp/wor102_nonlinear_thin \
-  --resolutions 64 --opacity 0.04 --contrast 0.1 \
-  --transverse-amplitude 0.8 --nonlinear-jv
-```
+The experimental branch that refreshed the limiter during Newton iterations
+was removed because its cost was unacceptable and the selected policy is to
+keep the limiter fixed. It is not an adoption requirement. The local
+conservation objective has been met under that policy, including variable
+limiter values evaluated at the start of a solve, MPI, coupled probes, and
+one adaptive refine/derefine transition. WOR-102 is not yet complete against
+its full acceptance criteria: physical boundaries and production Mach 5 have
+not been tested, the conservative two-point stencil worsens one-step profile
+error in several optical-depth regimes, and the frozen secant Jv stalls in
+one difficult N64 case unless the assembled frozen operator is selected.
+The remaining work is to settle the acceptable profile/solver tradeoff and
+then run the same-checkpoint Mach 5 A/B validation before adoption.

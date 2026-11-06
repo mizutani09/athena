@@ -86,7 +86,7 @@ def compose(directory, shape, extent, cycle=1, reference=None):
 
 
 def run(binary, source, out, n, mode, dt, contrast, amplitude, opacity,
-        assembled_jv, nonlinear_jv):
+        assembled_jv):
     out.mkdir()
     source = source.replace("file_type = hst", "file_type = hst\ndata_format = %.16e")
     source = source.replace("<time>", "<output2>\nfile_type = vtk\nvariable = uov\nid = fields\ndcycle = 1\n\n<time>")
@@ -111,12 +111,7 @@ def run(binary, source, out, n, mode, dt, contrast, amplitude, opacity,
     env.pop("ATHENA_NRFLD_CONSERVATIVE_PROTOTYPE", None)
     env.pop("ATHENA_NRFLD_CONSERVATIVE_SHARED_COEFF", None)
     env.pop("ATHENA_NRFLD_CONSERVATIVE_DIFFERENCE_JV", None)
-    env.pop("ATHENA_NRFLD_EXPERIMENTAL_NONLINEAR_JV", None)
-    if nonlinear_jv:
-        env["ATHENA_NRFLD_CONSERVATIVE_PROTOTYPE"] = "1"
-        env["ATHENA_NRFLD_CONSERVATIVE_SHARED_COEFF"] = "1"
-        env["ATHENA_NRFLD_EXPERIMENTAL_NONLINEAR_JV"] = "1"
-    elif mode != "reference":
+    if mode != "reference":
         env["ATHENA_NRFLD_CONSERVATIVE_PROTOTYPE"] = "0" if mode == "baseline" else "1"
         env["ATHENA_NRFLD_CONSERVATIVE_SHARED_COEFF"] = "1" if mode == "shared" else "0"
         if assembled_jv:
@@ -197,13 +192,10 @@ def main():
     parser.add_argument("--transverse-amplitude", type=float, default=0.8)
     parser.add_argument("--opacity", type=float, default=0.4)
     parser.add_argument("--assembled-jv", action="store_true")
-    parser.add_argument("--nonlinear-jv", action="store_true")
     parser.add_argument("--skip-two-point", action="store_true")
     parser.add_argument("--plot", action="store_true")
     parser.add_argument("--plot-only", action="store_true")
     args = parser.parse_args()
-    if args.nonlinear_jv and (args.assembled_jv or args.plot or args.plot_only):
-        parser.error("--nonlinear-jv requires finite-difference Jv and has no baseline plot")
     binary = args.binary.resolve()
     root = args.output.resolve()
     if args.plot_only:
@@ -218,14 +210,13 @@ def main():
         shape = (2*n, n//2, n//2)
         extent = (1.0, 0.25, 0.25)
         fields = {}
-        modes = ("reference", "shared") if args.nonlinear_jv else (
-            ("reference", "baseline", "shared") if args.skip_two_point else
-            ("reference", "baseline", "two_point", "shared"))
+        modes = (("reference", "baseline", "shared") if args.skip_two_point else
+                 ("reference", "baseline", "two_point", "shared"))
         for mode in modes:
             case = root / f"n{n}_{mode}"
             record = run(binary, source, case, n, mode, args.dt,
                          args.contrast, args.transverse_amplitude, args.opacity,
-                         args.assembled_jv, args.nonlinear_jv)
+                         args.assembled_jv)
             t, field, projected, blocks = compose(case, shape, extent,
                                                   reference=fields.get("reference"))
             t0, initial, projected_initial, _ = compose(

@@ -54,8 +54,7 @@ int Region(MeshBlock *mb,int k,int j,int i) {
 }
 
 struct Sums {
-  long double error{0}, fd{0}, av{0}, tangent_error{0}, ghost_error{0}, ghost_ref{0},
-              nonlinear_error{0};
+  long double error{0}, fd{0}, av{0}, tangent_error{0}, ghost_error{0}, ghost_ref{0};
   Real max_error{0}, x{0}, y{0}, z{0};
   int gid{-1}, level{-1};
   std::int64_t cells{0};
@@ -72,111 +71,6 @@ void NRFLDDriver::RunDirectionDiagnostic() {
   if (global_jv_ && dt_>0.0 && global_jv_solve_==global_jv_iteration_)
     CheckGlobalJacobian(true);
   ++global_jv_solve_;
-}
-
-void NRFLDDriver::ApplyNonlinearJacobian(int stage) {
-  // Experimental matrix-free derivative of the *refreshed* radiation-only
-  // residual. The MG hierarchy remains the frozen-coefficient preconditioner.
-  struct SavedState {
-    NRFLD *nr;
-    AthenaArray<Real> u, coarse_u, coeff, derivative, def_coeff, src;
-    AthenaArray<Real> moments, coarse_moments;
-    bool initialized;
-  };
-  std::vector<SavedState> saved(vnr_.size());
-  Real max_state=0.0, max_direction=0.0;
-  for (std::size_t b=0; b<saved.size(); ++b) {
-    SavedState &s=saved[b];
-    s.nr=static_cast<NRFLD*>(vnr_[b]);
-    NRFLD *nr=s.nr;
-    Snapshot(s.u,nr->u_);
-    Snapshot(s.coarse_u,nr->NewtonRaphson::coarse_u_);
-    Snapshot(s.coeff,nr->coeff_);
-    Snapshot(s.derivative,nr->derivetive_);
-    Snapshot(s.def_coeff,nr->def_coeff_);
-    Snapshot(s.src,nr->src_);
-    Snapshot(s.moments,nr->interface_moments_);
-    Snapshot(s.coarse_moments,nr->coarse_interface_moments_);
-    s.initialized=nr->fixed_linear_coefficients_initialized_;
-    MeshBlock *mb=nr->pmy_block_;
-    nr->nonlinear_jv_.ZeroClear();
-    for (int k=mb->ks;k<=mb->ke;++k)
-      for (int j=mb->js;j<=mb->je;++j)
-        for (int i=mb->is;i<=mb->ie;++i) {
-          max_state=std::max(max_state,std::abs(nr->u_(k,j,i)));
-          max_direction=std::max(max_direction,std::abs(nr->delta_u_(k,j,i)));
-        }
-  }
-#ifdef MPI_PARALLEL
-  MPI_Allreduce(MPI_IN_PLACE,&max_state,1,MPI_ATHENA_REAL,MPI_MAX,MPI_COMM_WORLD);
-  MPI_Allreduce(MPI_IN_PLACE,&max_direction,1,MPI_ATHENA_REAL,MPI_MAX,MPI_COMM_WORLD);
-#endif
-  if (max_direction == 0.0) return;
-  // A two-scale centered difference cancels the leading secant error while
-  // keeping each perturbation large enough to resolve the stiff residual.
-  const Real h=1.e-3*std::max(max_state,static_cast<Real>(1.0))/max_direction;
-  std::vector<AthenaArray<Real>> coarse_slope(saved.size());
-  NewtonRaphsonTaskList boundary(this,NewtonRaphsonTaskList::Mode::boundary);
-  for (int pass=0;pass<2;++pass) {
-    const Real step=h*(pass==0 ? 1.0 : 0.5);
-    for (int sign : {1,-1}) {
-      for (SavedState &s:saved) {
-        NRFLD *nr=s.nr;
-        MeshBlock *mb=nr->pmy_block_;
-        nr->u_=s.u;
-        for (int k=mb->ks;k<=mb->ke;++k)
-          for (int j=mb->js;j<=mb->je;++j)
-            for (int i=mb->is;i<=mb->ie;++i)
-              nr->u_(k,j,i)+=sign*step*nr->delta_u_(k,j,i);
-      }
-      boundary.DoTaskListOneStage(stage);
-      for (SavedState &s:saved) {
-        NRFLD *nr=s.nr;
-        nr->CalculateCoefficientsOnce(nr->u_,nr->pmy_block_->phydro->w,
-                                      nr->def_coeff_,nr->derivetive_);
-      }
-      SyncInterfaceFaceMoments();
-      for (SavedState &s:saved) {
-        NRFLD *nr=s.nr;
-        nr->fixed_linear_coefficients_initialized_=false;
-        nr->CalculateCoefficientsTask(dt_);
-        MeshBlock *mb=nr->pmy_block_;
-        for (int k=mb->ks;k<=mb->ke;++k)
-          for (int j=mb->js;j<=mb->je;++j)
-            for (int i=mb->is;i<=mb->ie;++i) {
-              const Real f=nr->derivetive_(NewtonRaphsonFLD::Fr,k,j,i);
-              if (sign > 0) nr->nonlinear_jv_(k,j,i)=f;
-              else nr->nonlinear_jv_(k,j,i)=
-                  (nr->nonlinear_jv_(k,j,i)-f)/(2.0*step);
-            }
-      }
-    }
-    if (pass==0) {
-      for (std::size_t b=0;b<saved.size();++b)
-        Snapshot(coarse_slope[b],saved[b].nr->nonlinear_jv_);
-    }
-  }
-  for (std::size_t b=0;b<saved.size();++b) {
-    NRFLD *nr=saved[b].nr;
-    MeshBlock *mb=nr->pmy_block_;
-    for (int k=mb->ks;k<=mb->ke;++k)
-      for (int j=mb->js;j<=mb->je;++j)
-        for (int i=mb->is;i<=mb->ie;++i)
-          nr->nonlinear_jv_(k,j,i)=
-              (4.0*nr->nonlinear_jv_(k,j,i)-coarse_slope[b](k,j,i))/3.0;
-  }
-  for (SavedState &s:saved) {
-    NRFLD *nr=s.nr;
-    nr->u_=s.u;
-    nr->NewtonRaphson::coarse_u_=s.coarse_u;
-    nr->coeff_=s.coeff;
-    nr->derivetive_=s.derivative;
-    nr->def_coeff_=s.def_coeff;
-    nr->src_=s.src;
-    nr->interface_moments_=s.moments;
-    nr->coarse_interface_moments_=s.coarse_moments;
-    nr->fixed_linear_coefficients_initialized_=s.initialized;
-  }
 }
 
 void NRFLDDriver::CheckGlobalJacobian(bool actual_direction) {
@@ -289,15 +183,13 @@ void NRFLDDriver::CheckGlobalJacobian(bool actual_direction) {
   if (Globals::my_rank==0) std::cout << "[NRFLD Jv setup] direction=" << (actual_direction ? "newton" : "smooth")
             << " iteration=" << (actual_direction ? global_jv_solve_ : -1)
             << " baseline_ghost_change=" << baseline_ghost_change
-            << " direction_scale=" << amplitude << " coefficient_policy="
-            << (NRFLDPrototype::NonlinearLimiterJv() ? "refreshed_per_trial" : "lagged_per_step")
+            << " direction_scale=" << amplitude << " coefficient_policy=lagged_per_step"
             << std::endl;
 
-  // Compare both closure policies. In the nonlinear trial, the refreshed
-  // residual and its matrix-free Jv are the active Newton operator.
+  // frozen is the production residual; refreshed is a hypothetical closure
+  // derivative and must never be interpreted as the production Newton Jv.
   for (int mode=0;mode<2;++mode) {
     std::vector<AthenaArray<Real>> base_coeff(saved.size());
-    std::vector<AthenaArray<Real>> nonlinear_jv(saved.size());
     for (std::size_t b=0;b<saved.size();++b) {
       Saved &s=saved[b]; NRFLD *nr=s.nr;
       nr->u_=s.baseline;
@@ -315,11 +207,6 @@ void NRFLDDriver::CheckGlobalJacobian(bool actual_direction) {
         nr->CalculateCoefficientsTask(dt_);
         Snapshot(base_coeff[b],nr->coeff_);
       } else Snapshot(base_coeff[b],s.coeff);
-    }
-    if (mode && NRFLDPrototype::NonlinearLimiterJv()) {
-      ApplyNonlinearJacobian(stage_);
-      for (std::size_t b=0;b<saved.size();++b)
-        Snapshot(nonlinear_jv[b],saved[b].nr->nonlinear_jv_);
     }
     for (int pass=0;pass<4;++pass) {
       const Real h=global_jv_epsilon_*std::pow(0.1,pass);
@@ -373,8 +260,6 @@ void NRFLDDriver::CheckGlobalJacobian(bool actual_direction) {
               for (int region : {Region(mb,k,j,i),3}) {
                 Sums &a=sums[region];
                 a.error+=volume*error*error; a.fd+=volume*fd*fd; a.av+=volume*av*av;
-                if (!nonlinear_jv.empty() && nonlinear_jv[b].data()!=nullptr)
-                  a.nonlinear_error+=volume*SQR(fd-nonlinear_jv[b](k,j,i));
                 a.tangent_error+=volume*(fd-tangent)*(fd-tangent); ++a.cells;
                 for (int f=0;f<6;++f) {
                   const Real v=s.direction(k+dk[f],j+dj[f],i+di[f]);
@@ -392,12 +277,11 @@ void NRFLDDriver::CheckGlobalJacobian(bool actual_direction) {
       for (int region=0;region<4;++region) {
         Sums &a=sums[region];
 #ifdef MPI_PARALLEL
-        long double totals[7]={a.error,a.fd,a.av,a.tangent_error,
-                               a.ghost_error,a.ghost_ref,a.nonlinear_error};
-        MPI_Allreduce(MPI_IN_PLACE,totals,7,MPI_LONG_DOUBLE,MPI_SUM,MPI_COMM_WORLD);
+        long double totals[6]={a.error,a.fd,a.av,a.tangent_error,
+                               a.ghost_error,a.ghost_ref};
+        MPI_Allreduce(MPI_IN_PLACE,totals,6,MPI_LONG_DOUBLE,MPI_SUM,MPI_COMM_WORLD);
         a.error=totals[0]; a.fd=totals[1]; a.av=totals[2];
         a.tangent_error=totals[3]; a.ghost_error=totals[4]; a.ghost_ref=totals[5];
-        a.nonlinear_error=totals[6];
         const std::int64_t local_cells=a.cells;
         MPI_Allreduce(MPI_IN_PLACE,&a.cells,1,MPI_LONG_LONG,MPI_SUM,MPI_COMM_WORLD);
         const Real local_max=a.max_error;
@@ -418,10 +302,8 @@ void NRFLDDriver::CheckGlobalJacobian(bool actual_direction) {
                   << " iteration=" << (actual_direction ? global_jv_solve_ : -1)
                   << " closure=" << (mode ? "refreshed" : "frozen")
                   << " epsilon=" << h << " region=" << regions[region]
-                  << " cells=" << a.cells << " l2_rel=" << std::sqrt(a.error/ref);
-        if (mode && NRFLDPrototype::NonlinearLimiterJv())
-          std::cout << " nonlinear_jv_l2_rel=" << std::sqrt(a.nonlinear_error/ref);
-        std::cout << " tangent_l2_rel=" << std::sqrt(a.tangent_error/ref)
+                  << " cells=" << a.cells << " l2_rel=" << std::sqrt(a.error/ref)
+                  << " tangent_l2_rel=" << std::sqrt(a.tangent_error/ref)
                   << " ghost_l2_rel=" << std::sqrt(a.ghost_error/std::max(a.ghost_ref,1.e-300L))
                   << " max_abs=" << a.max_error << " gid=" << a.gid << " level=" << a.level
                   << " x=" << a.x << " y=" << a.y << " z=" << a.z << std::endl;

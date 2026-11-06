@@ -258,7 +258,6 @@ class NewtonRaphsonDriver {
   virtual void RunDirectionDiagnostic() {}
   virtual void RunCommittedDiagnostic() {}
   virtual void SyncInterfaceFaceMoments() {}
-  virtual void RefreshPrototypeNonlinearClosure() {}
   // void CalculateMatrix();
 
   // // small functions

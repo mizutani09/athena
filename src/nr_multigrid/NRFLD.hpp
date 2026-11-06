@@ -208,7 +208,6 @@ class NRFLD : public NewtonRaphson {
   // Frozen face-centered q*v coefficients (x-, x+, y-, y+, z-, z+).
   AthenaArray<Real> mixed_drift_;
   AthenaArray<Real> last_delta_rad_;
-  AthenaArray<Real> nonlinear_jv_;
   std::vector<std::uint64_t> user_diagnostic_counters_iter_backup_;
   // MGCoordinates *coord_, *ccoord_;
 
@@ -235,8 +234,6 @@ class NRFLDDriver : public NewtonRaphsonDriver {
   void RunDirectionDiagnostic() final;
   void RunCommittedDiagnostic() final;
   void SyncInterfaceFaceMoments() final;
-  void RefreshPrototypeNonlinearClosure() final;
-  void ApplyNonlinearJacobian(int stage);
 
   // void Solve(int step, Real dt = 0.0) final;
 

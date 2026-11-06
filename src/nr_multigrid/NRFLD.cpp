@@ -28,7 +28,6 @@
 #include "../linear_solver/linear_solver.hpp"
 #include "../mesh/mesh.hpp"
 #include "../parameter_input.hpp"
-#include "../task_list/nr_task_list.hpp"
 #include "../utils/nrfld_prototype_flags.hpp"
 #include "NRFLD.hpp"
 
@@ -188,7 +187,6 @@ NRFLDDriver::NRFLDDriver(Mesh *pm, ParameterInput *pin)
               << " variable_limiter_trial="
               << NRFLDPrototype::VariableLimiterTrial()
               << " coupled_trial=" << NRFLDPrototype::CoupledTrial()
-              << " nonlinear_jv_trial=" << NRFLDPrototype::NonlinearLimiterJv()
               << std::endl;
   }
   relaxed_l2_eps_ = pin->GetOrAddReal(
@@ -465,26 +463,6 @@ void NRFLDDriver::SyncInterfaceFaceMoments() {
   }
 }
 
-void NRFLDDriver::RefreshPrototypeNonlinearClosure() {
-  if (!NRFLDPrototype::NonlinearLimiterJv()) return;
-  // Trial and rollback states must evaluate the same refreshed residual that
-  // the experimental Jv differentiates. This is deliberately costly and
-  // remains restricted to periodic, radiation-only Test C.
-  NewtonRaphsonTaskList boundary(this, NewtonRaphsonTaskList::Mode::boundary);
-  boundary.DoTaskListOneStage(stage_);
-  for (NewtonRaphson *base : vnr_) {
-    NRFLD *nr = static_cast<NRFLD*>(base);
-    nr->CalculateCoefficientsOnce(nr->u_,nr->pmy_block_->phydro->w,
-                                  nr->def_coeff_,nr->derivetive_);
-  }
-  SyncInterfaceFaceMoments();
-  for (NewtonRaphson *base : vnr_) {
-    NRFLD *nr = static_cast<NRFLD*>(base);
-    nr->fixed_linear_coefficients_initialized_ = false;
-    nr->CalculateCoefficientsTask(dt_);
-  }
-}
-
 void NRFLDDriver::RunCommittedDiagnostic() {
   if (vnr_.empty() || dt_ <= 0.0) return;
   FLD *first = static_cast<NRFLD*>(vnr_.front())->pmy_block_->prfld;
@@ -655,10 +633,6 @@ NRFLD::NRFLD(MeshBlock *pmb, ParameterInput *pin) :
     {
     last_delta_rad_.NewAthenaArray(2, pmb->ncells3, pmb->ncells2, pmb->ncells1);
     last_delta_rad_.ZeroClear();
-    if (NRFLDPrototype::NonlinearLimiterJv()) {
-      nonlinear_jv_.NewAthenaArray(pmb->ncells3, pmb->ncells2, pmb->ncells1);
-      nonlinear_jv_.ZeroClear();
-    }
     mixed_drift_.ZeroClear();
 
     // check pointer
