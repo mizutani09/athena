@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
 # Same-checkpoint A/B; export WOR102_MODE=baseline|candidate and WOR102_STEPS=1|10.
+# Set WOR102_RANK_RSS=1 and WOR102_RUN_SUFFIX=_rss for per-rank peak RSS.
 #SBATCH --partition=M-test-a
 #SBATCH --nodes=1
 #SBATCH --ntasks=32
@@ -36,7 +37,7 @@ source_input=/work/mizutaniks/wor67/output/wor67_hpc_amr_base1024_late_interface
 test -x "$binary"
 test "$(sha256sum "$restart" | cut -d' ' -f1)" = c7f1848f6613c76f3d6a053fa45244fdd937b9610021fb066c265f7ee9753816
 test "$(sha256sum "$source_input" | cut -d' ' -f1)" = ec6ba18778419808172a2b0ec3581caf3117190623cfe31c50eb99f92b33c16d
-case_dir=$root/output/${WOR102_MODE}_${WOR102_STEPS}/cases/mach5
+case_dir=$root/output/${WOR102_MODE}_${WOR102_STEPS}${WOR102_RUN_SUFFIX:-}/cases/mach5
 test ! -e "$case_dir"
 mkdir -p "$case_dir/output"
 cp "$source_input" "$case_dir/input.used"
@@ -61,10 +62,17 @@ if [[ "$WOR102_MODE" = candidate ]]; then
   export ATHENA_NRFLD_EXPERIMENTAL_MACH5=1
 fi
 cd "$case_dir"
-/usr/bin/time -v mpirun -np "$SLURM_NTASKS" -ppn 32 \
-  -outfile-pattern "$case_dir/rank.%r.log" \
-  "$binary" -r "$restart" -i input.used -d output \
-  'time/tlim=0.041' "time/nlim=$((36517+WOR102_STEPS))" \
-  'output1/dt=-1' 'output2/dt=-1' 'output3/dt=1e-12' \
-  >launcher.log 2>&1
+arguments=("$binary" -r "$restart" -i input.used -d output
+  'time/tlim=0.041' "time/nlim=$((36517+WOR102_STEPS))"
+  'output1/dt=-1' 'output2/dt=-1' 'output3/dt=1e-12')
+if [[ "${WOR102_RANK_RSS:-0}" = 1 ]]; then
+  /usr/bin/time -v mpirun -np "$SLURM_NTASKS" -ppn 32 \
+    -outfile-pattern "$case_dir/rank.%r.log" \
+    bash -c 'exec /usr/bin/time -f "[RANK_RSS] max_rss_kb=%M" "$@"' \
+    bash "${arguments[@]}" >launcher.log 2>&1
+else
+  /usr/bin/time -v mpirun -np "$SLURM_NTASKS" -ppn 32 \
+    -outfile-pattern "$case_dir/rank.%r.log" \
+    "${arguments[@]}" >launcher.log 2>&1
+fi
 test "$(find "$case_dir" -maxdepth 1 -name 'rank.*.log' | wc -l)" -eq 32
