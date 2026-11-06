@@ -1,0 +1,375 @@
+{
+  "aggregates": [
+    {
+      "all_windows_at_least_10s": false,
+      "baseline_ranks": 1,
+      "case": "hd",
+      "efficiency": 1.0,
+      "implicit_fld_fraction_mean": 0.0,
+      "ranks": 1,
+      "repeats": 1,
+      "seconds_per_step_max": 0.0074353452,
+      "seconds_per_step_median": 0.0074353452,
+      "seconds_per_step_min": 0.0074353452
+    },
+    {
+      "all_windows_at_least_10s": false,
+      "baseline_ranks": 1,
+      "case": "hd",
+      "efficiency": 0.9494038123018121,
+      "implicit_fld_fraction_mean": 0.0,
+      "ranks": 2,
+      "repeats": 1,
+      "seconds_per_step_max": 0.003915797000000001,
+      "seconds_per_step_median": 0.003915797000000001,
+      "seconds_per_step_min": 0.003915797000000001
+    },
+    {
+      "all_windows_at_least_10s": false,
+      "baseline_ranks": 1,
+      "case": "hd_fld",
+      "efficiency": 1.0,
+      "implicit_fld_fraction_mean": 0.7814191815959296,
+      "ranks": 1,
+      "repeats": 1,
+      "seconds_per_step_max": 0.0930116684,
+      "seconds_per_step_median": 0.0930116684,
+      "seconds_per_step_min": 0.0930116684
+    },
+    {
+      "all_windows_at_least_10s": false,
+      "baseline_ranks": 1,
+      "case": "hd_fld",
+      "efficiency": 0.6729996907165684,
+      "implicit_fld_fraction_mean": 0.8435495487317515,
+      "ranks": 2,
+      "repeats": 1,
+      "seconds_per_step_max": 0.0691023114,
+      "seconds_per_step_median": 0.0691023114,
+      "seconds_per_step_min": 0.0691023114
+    }
+  ],
+  "runs": [
+    {
+      "case": "hd",
+      "commands": [
+        {
+          "command": "mpirun --bind-to core --report-bindings -np 1 /home/kosuke/simulation/test/rad_nr/wor20_pilot_20261107/performance_run_20261107_014707_807568_JST/builds/hd/build_source/bin/athena -i input.used",
+          "cwd": "/home/kosuke/simulation/test/rad_nr/wor20_pilot_20261107/performance_run_20261107_014707_807568_JST/hd_p1_r0",
+          "elapsed_seconds": 0.3146643950021826,
+          "log": "/home/kosuke/simulation/test/rad_nr/wor20_pilot_20261107/performance_run_20261107_014707_807568_JST/hd_p1_r0/run.log",
+          "returncode": 0,
+          "status": "passed"
+        }
+      ],
+      "elapsed_seconds": 0.3146643950021826,
+      "input_sha256": "2214c2f16a309b7d9d03e5813370c3643d2a4ac992947a6bb080891dcc668981",
+      "measured_steps": 5,
+      "metrics": {
+        "implicit_fld_fraction_rank_mean": 0.0,
+        "mass_relative_drift": 0.0,
+        "minimum_pressure": 0.9999999999999996,
+        "minimum_rho": 0.9014376371089857,
+        "newton_iterations_mean": null,
+        "newton_iterations_total": null,
+        "parts": {
+          "amr": {
+            "max": 9.290000000106158e-07,
+            "mean": 9.290000000106158e-07,
+            "min": 9.290000000106158e-07
+          },
+          "explicit_integrator": {
+            "max": 0.03715975699999999,
+            "mean": 0.03715975699999999,
+            "min": 0.03715975699999999
+          },
+          "fld_finish": {
+            "max": 0,
+            "mean": 0.0,
+            "min": 0
+          },
+          "fld_prepare": {
+            "max": 0,
+            "mean": 0.0,
+            "min": 0
+          },
+          "fld_solve": {
+            "max": 0,
+            "mean": 0.0,
+            "min": 0
+          },
+          "fld_sync": {
+            "max": 0,
+            "mean": 0.0,
+            "min": 0
+          },
+          "gravity_solve": {
+            "max": 0,
+            "mean": 0.0,
+            "min": 0
+          },
+          "other": {
+            "max": 8.527999999993763e-06,
+            "mean": 8.527999999993763e-06,
+            "min": 8.527999999993763e-06
+          },
+          "output": {
+            "max": 1.8240000000044332e-06,
+            "mean": 1.8240000000044332e-06,
+            "min": 1.8240000000044332e-06
+          }
+        },
+        "rank_mean_unassigned_seconds": 5.68800000000369e-06,
+        "seconds_per_step": 0.0074353452,
+        "short_window": true,
+        "wall_seconds": 0.037176726,
+        "zone_cycles_per_second": 4407058.329988498
+      },
+      "path": "/home/kosuke/simulation/test/rad_nr/wor20_pilot_20261107/performance_run_20261107_014707_807568_JST/hd_p1_r0",
+      "ranks": 1,
+      "repeat": 0,
+      "status": "passed"
+    },
+    {
+      "case": "hd",
+      "commands": [
+        {
+          "command": "mpirun --bind-to core --report-bindings -np 2 /home/kosuke/simulation/test/rad_nr/wor20_pilot_20261107/performance_run_20261107_014707_807568_JST/builds/hd/build_source/bin/athena -i input.used",
+          "cwd": "/home/kosuke/simulation/test/rad_nr/wor20_pilot_20261107/performance_run_20261107_014707_807568_JST/hd_p2_r0",
+          "elapsed_seconds": 0.3144514219893608,
+          "log": "/home/kosuke/simulation/test/rad_nr/wor20_pilot_20261107/performance_run_20261107_014707_807568_JST/hd_p2_r0/run.log",
+          "returncode": 0,
+          "status": "passed"
+        }
+      ],
+      "elapsed_seconds": 0.3144514219893608,
+      "input_sha256": "2214c2f16a309b7d9d03e5813370c3643d2a4ac992947a6bb080891dcc668981",
+      "measured_steps": 5,
+      "metrics": {
+        "implicit_fld_fraction_rank_mean": 0.0,
+        "mass_relative_drift": 0.0,
+        "minimum_pressure": 0.9999999999999996,
+        "minimum_rho": 0.9014376371089857,
+        "newton_iterations_mean": null,
+        "newton_iterations_total": null,
+        "parts": {
+          "amr": {
+            "max": 8.700000000139152e-07,
+            "mean": 8.160000000076439e-07,
+            "min": 7.620000000013727e-07
+          },
+          "explicit_integrator": {
+            "max": 0.01943695899999999,
+            "mean": 0.019426283999999995,
+            "min": 0.019415609
+          },
+          "fld_finish": {
+            "max": 0,
+            "mean": 0.0,
+            "min": 0
+          },
+          "fld_prepare": {
+            "max": 0,
+            "mean": 0.0,
+            "min": 0
+          },
+          "fld_solve": {
+            "max": 0,
+            "mean": 0.0,
+            "min": 0
+          },
+          "fld_sync": {
+            "max": 0,
+            "mean": 0.0,
+            "min": 0
+          },
+          "gravity_solve": {
+            "max": 0,
+            "mean": 0.0,
+            "min": 0
+          },
+          "other": {
+            "max": 0.0001541160000000097,
+            "mean": 0.0001431330000000071,
+            "min": 0.00013215000000000449
+          },
+          "output": {
+            "max": 1.2279999999989522e-06,
+            "mean": 1.167999999995839e-06,
+            "min": 1.107999999992726e-06
+          }
+        },
+        "rank_mean_unassigned_seconds": 7.409499999999625e-06,
+        "seconds_per_step": 0.003915797000000001,
+        "short_window": true,
+        "wall_seconds": 0.019578985000000007,
+        "zone_cycles_per_second": 8368155.959055075
+      },
+      "path": "/home/kosuke/simulation/test/rad_nr/wor20_pilot_20261107/performance_run_20261107_014707_807568_JST/hd_p2_r0",
+      "ranks": 2,
+      "repeat": 0,
+      "status": "passed"
+    },
+    {
+      "case": "hd_fld",
+      "commands": [
+        {
+          "command": "mpirun --bind-to core --report-bindings -np 1 /home/kosuke/simulation/test/rad_nr/wor20_pilot_20261107/performance_run_20261107_014707_807568_JST/builds/hd_fld/build_source/bin/athena -i input.used",
+          "cwd": "/home/kosuke/simulation/test/rad_nr/wor20_pilot_20261107/performance_run_20261107_014707_807568_JST/hd_fld_p1_r0",
+          "elapsed_seconds": 0.9669085920031648,
+          "log": "/home/kosuke/simulation/test/rad_nr/wor20_pilot_20261107/performance_run_20261107_014707_807568_JST/hd_fld_p1_r0/run.log",
+          "returncode": 0,
+          "status": "passed"
+        }
+      ],
+      "elapsed_seconds": 0.9669085920031648,
+      "input_sha256": "2214c2f16a309b7d9d03e5813370c3643d2a4ac992947a6bb080891dcc668981",
+      "measured_steps": 5,
+      "metrics": {
+        "implicit_fld_fraction_rank_mean": 0.7814191815959296,
+        "mass_relative_drift": 0.0,
+        "minimum_pressure": 0.9050007586883908,
+        "minimum_rho": 0.9014556161325635,
+        "newton_iterations_mean": 3.6,
+        "newton_iterations_total": 18,
+        "parts": {
+          "amr": {
+            "max": 1.4419999999626398e-06,
+            "mean": 1.4419999999626398e-06,
+            "min": 1.4419999999626398e-06
+          },
+          "explicit_integrator": {
+            "max": 0.10162698099999978,
+            "mean": 0.10162698099999978,
+            "min": 0.10162698099999978
+          },
+          "fld_finish": {
+            "max": 0.000564719999999852,
+            "mean": 0.000564719999999852,
+            "min": 0.000564719999999852
+          },
+          "fld_prepare": {
+            "max": 0.0006206659999998809,
+            "mean": 0.0006206659999998809,
+            "min": 0.0006206659999998809
+          },
+          "fld_solve": {
+            "max": 0.3595621600000002,
+            "mean": 0.3595621600000002,
+            "min": 0.3595621600000002
+          },
+          "fld_sync": {
+            "max": 0.0026579629999999854,
+            "mean": 0.0026579629999999854,
+            "min": 0.0026579629999999854
+          },
+          "gravity_solve": {
+            "max": 0,
+            "mean": 0.0,
+            "min": 0
+          },
+          "other": {
+            "max": 1.2244000000216637e-05,
+            "mean": 1.2244000000216637e-05,
+            "min": 1.2244000000216637e-05
+          },
+          "output": {
+            "max": 3.2040000000899127e-06,
+            "mean": 3.2040000000899127e-06,
+            "min": 3.2040000000899127e-06
+          }
+        },
+        "rank_mean_unassigned_seconds": 8.962000000001247e-06,
+        "seconds_per_step": 0.0930116684,
+        "short_window": true,
+        "wall_seconds": 0.46505834199999996,
+        "zone_cycles_per_second": 352299.8841293766
+      },
+      "path": "/home/kosuke/simulation/test/rad_nr/wor20_pilot_20261107/performance_run_20261107_014707_807568_JST/hd_fld_p1_r0",
+      "ranks": 1,
+      "repeat": 0,
+      "status": "passed"
+    },
+    {
+      "case": "hd_fld",
+      "commands": [
+        {
+          "command": "mpirun --bind-to core --report-bindings -np 2 /home/kosuke/simulation/test/rad_nr/wor20_pilot_20261107/performance_run_20261107_014707_807568_JST/builds/hd_fld/build_source/bin/athena -i input.used",
+          "cwd": "/home/kosuke/simulation/test/rad_nr/wor20_pilot_20261107/performance_run_20261107_014707_807568_JST/hd_fld_p2_r0",
+          "elapsed_seconds": 0.8164086320030037,
+          "log": "/home/kosuke/simulation/test/rad_nr/wor20_pilot_20261107/performance_run_20261107_014707_807568_JST/hd_fld_p2_r0/run.log",
+          "returncode": 0,
+          "status": "passed"
+        }
+      ],
+      "elapsed_seconds": 0.8164086320030037,
+      "input_sha256": "2214c2f16a309b7d9d03e5813370c3643d2a4ac992947a6bb080891dcc668981",
+      "measured_steps": 5,
+      "metrics": {
+        "implicit_fld_fraction_rank_mean": 0.8435495487317515,
+        "mass_relative_drift": 0.0,
+        "minimum_pressure": 0.9050007586883908,
+        "minimum_rho": 0.9014556161325635,
+        "newton_iterations_mean": 3.6,
+        "newton_iterations_total": 18,
+        "parts": {
+          "amr": {
+            "max": 1.4329999998841103e-06,
+            "mean": 1.1634999999010631e-06,
+            "min": 8.939999999180159e-07
+          },
+          "explicit_integrator": {
+            "max": 0.05396715900000004,
+            "mean": 0.05388375550000002,
+            "min": 0.053800351999999996
+          },
+          "fld_finish": {
+            "max": 0.00036338400000002213,
+            "mean": 0.0003547265000000688,
+            "min": 0.0003460690000001154
+          },
+          "fld_prepare": {
+            "max": 0.0002608900000000691,
+            "mean": 0.0002563590000000393,
+            "min": 0.0002518280000000095
+          },
+          "fld_solve": {
+            "max": 0.288970411,
+            "mean": 0.2889168754999999,
+            "min": 0.2888633399999998
+          },
+          "fld_sync": {
+            "max": 0.0019383609999999996,
+            "mean": 0.001927979000000024,
+            "min": 0.0019175970000000486
+          },
+          "gravity_solve": {
+            "max": 0,
+            "mean": 0.0,
+            "min": 0
+          },
+          "other": {
+            "max": 0.0002964470000005326,
+            "mean": 0.00015676950000026446,
+            "min": 1.7091999999996332e-05
+          },
+          "output": {
+            "max": 3.0699999997718663e-06,
+            "mean": 3.0089999998317296e-06,
+            "min": 2.947999999891593e-06
+          }
+        },
+        "rank_mean_unassigned_seconds": 1.0708499999956267e-05,
+        "seconds_per_step": 0.0691023114,
+        "short_window": true,
+        "wall_seconds": 0.345511557,
+        "zone_cycles_per_second": 474195.4261171067
+      },
+      "path": "/home/kosuke/simulation/test/rad_nr/wor20_pilot_20261107/performance_run_20261107_014707_807568_JST/hd_fld_p2_r0",
+      "ranks": 2,
+      "repeat": 0,
+      "status": "passed"
+    }
+  ],
+  "status": "passed"
+}
