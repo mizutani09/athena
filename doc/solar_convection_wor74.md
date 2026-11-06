@@ -213,6 +213,52 @@ For the approximate whole-box heat time t≈20000, extrapolating the measured
 throughput gives **about 35 wall hours from t=0**. This is a resource
 estimate, not a prediction of when the top flux becomes solar.
 
+### Rolling-window feedback continuation from t=5000
+
+The `t=5000` state above is forked into
+`/mnt/d/output/rad/wor74_feedback_20261106/from_t5000_96km_rolling500_t20000/`.
+The new driver uses a 500-code-time time-weighted mean of the upper radiative
+flux across restart boundaries, recomputed every 100 code times. The gain
+relaxation time is 10,000 code times, half the former value. This is an
+experimental controller setting, not a measured steady upper-flux response.
+Each update is limited to 50,000 entropy units, and the total offset from the
+profile-derived starting entropy is limited to ±1,000,000. The state records
+the rolling upper flux, total lower flux, and stored-energy trend. The fork
+keeps the original 50 output directories as symlinks; it does not rewrite or
+duplicate the earlier simulation. It discards the unapplied old 100-code
+update at `t=5000` and recomputes the first new entropy from the 500-code
+window. The upper flux over `t=4500–5000` is `0.62729248 F_sun`, the total
+lower flux is `0.62407391 F_sun`, and the storage trend is
+`−0.00706982 F_sun`.
+
+The current binary adds directional lower-face flux diagnostics. Its hash
+differs from the earlier binary, so the fork records both hashes; a matched
+restart check showed identical time and total face fluxes. Base input,
+external data, and source checkpoint hashes remain checked. The binary's
+diagnostic change means this is a new trajectory and must be interpreted as
+such.
+
+The prepared campaign resumes with:
+
+```bash
+python3 tst/nrfld_validation/run_solar_entropy_feedback_long.py \
+  --base-input inputs/radiation/athinput.simple_convection_lhllc_fld_general_6Mm_box \
+  --data-dir /mnt/d/output/rad/wor74_feedback_20261105/from_t0_96km_t5000/data \
+  --reference-manifest /mnt/d/output/rad/wor70_solar_20261104/rempel_box_pilot/face_gravity_hd2_mass_tau2_rate40_current_64x64x32_np4_t4255_5000_resume/manifest.json \
+  --output-root /mnt/d/output/rad/wor74_feedback_20261106/from_t5000_96km_rolling500_t20000 \
+  --initial-s-in 1.581097454457282e9 --target-time 20000 \
+  --segment-code 100 --flux-average-code 500 --tau-kh-code 10000 \
+  --max-total-entropy-change 1000000 --ranks 16 \
+  --allow-binary-change --resume
+```
+
+Check `index.html` for progress, `state.json` for the last completed segment,
+`driver.log` for start/stop messages, and `memory_monitor.csv` for WSL memory
+and swap. The driver stops at less than 3 GiB available memory, greater than
+4 GiB used swap, or less than 50 GiB free disk. The cumulative entropy cap
+prevents unbounded controller windup; reaching it is diagnostic and does not
+prove upper-flux calibration.
+
 ## Local CPU test
 
 WSL currently exposes 16 logical CPUs arranged as eight pairs of sibling

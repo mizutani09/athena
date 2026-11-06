@@ -29,7 +29,9 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 from run_solar_entropy_feedback import F_SUN, digest, memory_status, top_radiative_flux, weighted_mean
-from solar_convection_report import read_history
+from solar_convection_report import (combine_histories, input_values,
+                                     read_history, sampled_energy_ledger,
+                                     total_bottom_flux)
 
 
 DATA_NAMES = ("AthenaNataEosTable_solar_deep.tab",
@@ -63,6 +65,38 @@ def campaign_input(base: str, cadence: dict[int, float]) -> str:
             raise ValueError(f"Missing dt in <output{number}>")
         result = result[:match.start()] + block + result[match.end():]
     return result
+
+
+def rolling_fluxes(root: Path, completed: list[dict], header: Path,
+                   end_time: float, window: float, units: dict) -> dict:
+    """Integrate the last ``window`` code times across restart boundaries."""
+    cutoff = end_time - window
+    paths = [root / row["case"] / row["history_name"]
+             for row in completed if row["end_time_code"] >= cutoff - 1.0e-8]
+    if not paths:
+        raise ValueError("No histories cover the requested feedback window")
+    history = combine_histories(paths, header)
+    time_values = history["time"]
+    if time_values[0] > cutoff + 1.0e-6 or time_values[-1] < end_time - 1.0e-6:
+        raise ValueError("Histories do not cover the complete feedback window")
+    selected = (time_values > cutoff) & (time_values <= end_time)
+    t = np.r_[cutoff, time_values[selected]]
+    if len(t) < 2:
+        raise ValueError("Too few samples in feedback window")
+
+    def mean(values: np.ndarray) -> float:
+        y = np.r_[np.interp(cutoff, time_values, values), values[selected]]
+        return weighted_mean(t, y) / F_SUN
+
+    ledger_indices = np.flatnonzero((time_values >= cutoff) &
+                                    (time_values <= end_time))
+    ledger = sampled_energy_ledger(history, ledger_indices, units, F_SUN)
+    return {"start_time_code": cutoff, "end_time_code": end_time,
+            "top_over_solar": mean(top_radiative_flux(history)),
+            "bottom_total_over_solar": mean(total_bottom_flux(history)),
+            "bottom_hydro_over_solar": mean(history["FhydBottom"]),
+            "stored_energy_trend_over_solar":
+                ledger["stored_energy_trend_over_solar"] if ledger else None}
 
 
 def render(root: Path, state: dict) -> None:
@@ -102,6 +136,7 @@ def render(root: Path, state: dict) -> None:
             f"<tr><td><a href='{name}/index.html'>{name}</a></td>"
             f"<td>{row['end_time_code']:.0f}</td>"
             f"<td>{row['top_radiative_flux_over_solar']:.5f}</td>"
+            f"<td>{row.get('rolling_top_flux_over_solar', row['top_radiative_flux_over_solar']):.5f}</td>"
             f"<td>{row['bottom_hydro_flux_over_solar']:.5f}</td>"
             f"<td>{row['entropy_cgs']:.7e}</td>"
             f"<td>{row['wall_seconds']/60:.1f}</td></tr>")
@@ -128,6 +163,13 @@ def render(root: Path, state: dict) -> None:
              "<a href='driver.log'>Driver log</a></p>"]
     if completed:
         lines.append("<img src='feedback_progress.png' alt='Flux and entropy history'>")
+    if "control_switch" in state:
+        switch = state["control_switch"]
+        lines.append(f"<p><strong>Controller switched at t={switch['at_time_code']:.0f}:</strong> "
+                     f"{config['flux_average_code']:.0f}-code-time rolling top flux, "
+                     f"{config['segment_code']:.0f}-code-time updates, "
+                     f"cumulative entropy limit ±{config['max_total_entropy_change_cgs']:.0f}. "
+                     f"Source: {html.escape(state['forked_from'])}</p>")
     if (root / "combined" / "index.html").is_file():
         lines.append("<p><strong>Full-campaign analysis:</strong> "
                      "<a href='combined/index.html'>joined flux checks, plots, "
@@ -142,6 +184,7 @@ def render(root: Path, state: dict) -> None:
                      "and 500-code-time means</a></p>")
     lines += ["<h2>Restart segments</h2>",
               "<table><thead><tr><th>Case</th><th>End t</th><th>Top / solar</th>"
+              "<th>Rolling top / solar</th>"
               "<th>Bottom / solar</th><th>Input entropy</th><th>Wall min</th>"
               "</tr></thead><tbody>", *table_rows, "</tbody></table></html>"]
     (root / "index.html").write_text("\n".join(lines) + "\n")
@@ -162,21 +205,32 @@ def main() -> None:
     parser.add_argument("--tau-kh-code", type=float, default=2.0e4)
     parser.add_argument("--response-fsun-per-1e6", type=float, default=0.322326259)
     parser.add_argument("--max-entropy-change", type=float, default=5.0e4)
+    parser.add_argument("--max-total-entropy-change", type=float, default=1.0e6,
+                        help="Absolute entropy offset allowed from the initial profile")
     parser.add_argument("--ranks", type=int, default=16)
     parser.add_argument("--min-available-gib", type=float, default=3.0)
     parser.add_argument("--max-swap-used-gib", type=float, default=4.0)
     parser.add_argument("--min-disk-free-gib", type=float, default=50.0)
     parser.add_argument("--resume", action="store_true")
+    parser.add_argument("--fork-from", type=Path,
+                        help="Fork a completed campaign without copying its output data")
+    parser.add_argument("--prepare-only", action="store_true",
+                        help="Prepare a fork and its report without starting Athena")
+    parser.add_argument("--allow-binary-change", action="store_true",
+                        help="Record an intentional diagnostic-only binary change on fork")
     args = parser.parse_args()
     for name in ("initial_s_in", "target_time", "segment_code", "flux_average_code",
                  "tau_kh_code", "response_fsun_per_1e6", "max_entropy_change",
+                 "max_total_entropy_change",
                  "min_available_gib", "max_swap_used_gib", "min_disk_free_gib"):
         if getattr(args, name) <= 0:
             parser.error(f"--{name.replace('_', '-')} must be positive")
     if args.ranks < 1 or args.ranks > 32:
         parser.error("The 64x64x32 grid has 32 MeshBlocks; ranks must be 1–32")
-    if args.flux_average_code > args.segment_code:
-        parser.error("Flux averaging window cannot exceed a segment")
+    if args.resume and args.fork_from:
+        parser.error("Use either --resume or --fork-from")
+    if args.prepare_only and not args.fork_from:
+        parser.error("--prepare-only requires --fork-from")
     if abs(args.target_time / args.segment_code
            - round(args.target_time / args.segment_code)) > 1.0e-9:
         parser.error("Target time must be a multiple of segment length")
@@ -191,7 +245,7 @@ def main() -> None:
         if not path.is_file():
             parser.error(f"Missing input: {path}")
     reference = json.loads(reference_path.read_text())
-    if digest(binary) != reference["binary_sha256"]:
+    if digest(binary) != reference["binary_sha256"] and not args.allow_binary_change:
         parser.error("Binary SHA256 differs from the validated 96 km baseline")
     if digest(base_input) != reference["base_input_sha256"]:
         parser.error("Base input SHA256 differs from the validated 96 km baseline")
@@ -206,13 +260,78 @@ def main() -> None:
               "tau_kh_code": args.tau_kh_code,
               "response_fsun_per_1e6": args.response_fsun_per_1e6,
               "max_entropy_change_cgs": args.max_entropy_change,
+              "max_total_entropy_change_cgs": args.max_total_entropy_change,
               "ranks": args.ranks, "binary_sha256": digest(binary),
               "base_input_sha256": digest(base_input), "data_sha256": hashes,
               "reference_manifest": str(reference_path),
               "output_cadence_code": {str(k): v for k, v in OUTPUT_CADENCE.items()}}
     state_path = root / "state.json"
     custom_input = root / "athinput.campaign"
-    if args.resume:
+    if args.fork_from:
+        source_root = args.fork_from.resolve()
+        source_state_path = source_root / "state.json"
+        if root.exists() and any(root.iterdir()):
+            parser.error(f"Refusing nonempty output root: {root}")
+        if not source_state_path.is_file():
+            parser.error(f"Missing source state: {source_state_path}")
+        state = json.loads(source_state_path.read_text())
+        if state["status"] != "completed" or not state["completed"]:
+            parser.error("Source campaign must be complete")
+        old = state["config"]
+        for key, value in config.items():
+            if key in {"target_time_code", "flux_average_code", "tau_kh_code",
+                       "max_total_entropy_change_cgs"}:
+                continue
+            if key == "binary_sha256" and args.allow_binary_change:
+                continue
+            if value != old.get(key):
+                parser.error(f"Source configuration differs: {key}")
+        last = state["completed"][-1]
+        if args.target_time <= last["end_time_code"]:
+            parser.error("Fork target must exceed the source end time")
+        if (source_root / "athinput.campaign").read_text() != campaign_input(
+                base_input.read_text(), OUTPUT_CADENCE):
+            parser.error("Source campaign input has changed")
+        last_restart = source_root / last["case"] / last["restart_name"]
+        if digest(last_restart) != last["restart_sha256"]:
+            parser.error("Source final restart has changed")
+        root.mkdir(parents=True, exist_ok=True)
+        shutil.copy2(source_root / "athinput.campaign", custom_input)
+        for row in state["completed"]:
+            source_case = source_root / row["case"]
+            if not source_case.is_dir():
+                parser.error(f"Source segment missing: {source_case}")
+            (root / row["case"]).symlink_to(source_case, target_is_directory=True)
+        state["config"] = config
+        state["status"] = "running"
+        state["created_at"] = now()
+        state["forked_from"] = str(source_root)
+        if old["binary_sha256"] != config["binary_sha256"]:
+            state["binary_change"] = {
+                "source_sha256": old["binary_sha256"],
+                "new_sha256": config["binary_sha256"],
+                "reason": "Directional lower-face flux diagnostics added; matched "
+                          "restart showed identical time and total face fluxes"}
+        state["stop_reason"] = None
+        state["min_available_memory_mib"] = None
+        state["peak_swap_used_mib"] = 0.0
+        state["peak_rank_rss_mib"] = 0.0
+        header = root / state["completed"][0]["case"] / state["completed"][0]["history_name"]
+        filtered = rolling_fluxes(root, state["completed"], header,
+                                  last["end_time_code"], args.flux_average_code,
+                                  input_values(custom_input))
+        proposed = (args.segment_code / args.tau_kh_code) * (1.0 - filtered["top_over_solar"])
+        proposed *= 1.0e6 / args.response_fsun_per_1e6
+        next_entropy = float(np.clip(last["entropy_cgs"] + np.clip(
+            proposed, -args.max_entropy_change, args.max_entropy_change),
+            args.initial_s_in - args.max_total_entropy_change,
+            args.initial_s_in + args.max_total_entropy_change))
+        state["next_entropy_cgs"] = next_entropy
+        state["control_switch"] = {
+            "at_time_code": last["end_time_code"], "rolling_flux": filtered,
+            "previous_next_entropy_cgs": last["next_entropy_cgs"],
+            "next_entropy_cgs": next_entropy}
+    elif args.resume:
         if not state_path.is_file() or not custom_input.is_file():
             parser.error("--resume requires existing state and campaign input")
         state = json.loads(state_path.read_text())
@@ -221,7 +340,7 @@ def main() -> None:
             if key == "target_time_code":
                 if value < old[key]:
                     parser.error("Cannot reduce an existing target time")
-            elif value != old[key]:
+            elif value != old.get(key, 1.0e6 if key == "max_total_entropy_change_cgs" else None):
                 parser.error(f"Resume config differs: {key}")
         if custom_input.read_text() != campaign_input(base_input.read_text(), OUTPUT_CADENCE):
             parser.error("Campaign input has changed")
@@ -239,6 +358,13 @@ def main() -> None:
                  "peak_rank_rss_mib": 0.0, "stop_reason": None}
     save_json(state_path, state)
     render(root, state)
+    if args.prepare_only:
+        state["status"] = "prepared"
+        save_json(state_path, state)
+        render(root, state)
+        print(f"{now()} prepared {root}: next entropy={state['next_entropy_cgs']:.9e}",
+              flush=True)
+        return
     monitor_path = root / "memory_monitor.csv"
     if not monitor_path.exists():
         monitor_path.write_text("utc,case,mem_available_mib,swap_used_mib,"
@@ -352,20 +478,33 @@ def main() -> None:
                     set(counts).difference({"converged", "dt_zero_initialization"})):
                 raise RuntimeError(f"{name} did not pass solver-status checks: {counts}")
             selected = history["time"] >= max(
-                history["time"][0], end_time-args.flux_average_code)
+                history["time"][0], end_time-args.segment_code)
             t = history["time"][selected]
             top = weighted_mean(t, top_radiative_flux(history)[selected]) / F_SUN
             bottom = weighted_mean(t, history["FhydBottom"][selected]) / F_SUN
-            proposed = (args.segment_code/args.tau_kh_code) * (1.0-top)
+            completed_for_window = [*state["completed"], {
+                "case": name, "end_time_code": end_time,
+                "history_name": history_files[0].name}]
+            filtered = rolling_fluxes(root, completed_for_window,
+                                      reference_header, end_time,
+                                      args.flux_average_code,
+                                      input_values(custom_input))
+            proposed = (args.segment_code/args.tau_kh_code) * (1.0-filtered["top_over_solar"])
             proposed *= 1.0e6/args.response_fsun_per_1e6
-            delta = float(np.clip(proposed, -args.max_entropy_change,
-                                  args.max_entropy_change))
+            next_entropy = float(np.clip(entropy + np.clip(
+                proposed, -args.max_entropy_change, args.max_entropy_change),
+                args.initial_s_in - args.max_total_entropy_change,
+                args.initial_s_in + args.max_total_entropy_change))
+            delta = next_entropy - entropy
             manifest = json.loads((case / "manifest.json").read_text())
             state["completed"].append({
                 "case": name, "end_time_code": end_time,
                 "entropy_cgs": entropy, "next_entropy_cgs": entropy+delta,
                 "proposed_delta_s_cgs": proposed, "applied_delta_s_cgs": delta,
                 "top_radiative_flux_over_solar": top,
+                "rolling_top_flux_over_solar": filtered["top_over_solar"],
+                "rolling_bottom_total_flux_over_solar": filtered["bottom_total_over_solar"],
+                "rolling_stored_energy_trend_over_solar": filtered["stored_energy_trend_over_solar"],
                 "bottom_hydro_flux_over_solar": bottom,
                 "wall_seconds": manifest["wall_seconds"],
                 "total_wall_seconds": time.monotonic() - segment_started,
