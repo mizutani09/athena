@@ -200,8 +200,8 @@ FLD::FLD(MeshBlock *pmb, ParameterInput *pin) :
       && pin->GetOrAddString("problem", "problem_type", "") == "mach5";
   // Enable the common-face operator by default only in the two AMR problem
   // families with analytic or same-checkpoint accuracy and conservation
-  // checks. Other problem generators retain their existing route until
-  // separately validated. An explicit legacy flag is the A/B escape hatch.
+  // checks. Other multilevel problem generators stop until separately
+  // validated. The explicit legacy flag is reserved for A/B diagnostics.
   NRFLDPrototype::ConfigureDefault(pmb->pmy_mesh->multilevel
       && (test_c_problem || mach5_problem), test_c_problem, mach5_problem,
       fixed_flux_limiter);
@@ -217,9 +217,11 @@ FLD::FLD(MeshBlock *pmb, ParameterInput *pin) :
       && !NRFLDPrototype::Legacy()) {
     std::stringstream msg;
     msg << "### FATAL ERROR in function [FLD::FLD]" << std::endl
-        << "AMR NR-FLD has no validated conservative default for this "
-        << "problem. Set ATHENA_NRFLD_LEGACY_INTERFACE=1 to explicitly "
-        << "run the older nonconservative interface operator.";
+        << "Multilevel (AMR/SMR) NR-FLD has no validated conservative "
+        << "default for this problem. Validate its conservative path "
+        << "before production use. "
+        << "ATHENA_NRFLD_LEGACY_INTERFACE=1 selects the nonconservative "
+        << "operator for A/B diagnostics only.";
     ATHENA_ERROR(msg);
   }
   if (NRFLDPrototype::Enabled()) {
@@ -278,6 +280,11 @@ FLD::FLD(MeshBlock *pmb, ParameterInput *pin) :
     static bool reported_interface_mode = false;
     if (!reported_interface_mode) {
       reported_interface_mode = true;
+      if (pmb->pmy_mesh->multilevel && NRFLDPrototype::Legacy()) {
+        std::cout << "### WARNING: multilevel NR-FLD uses the nonconservative "
+                  << "legacy coarse/fine operator for A/B diagnostics."
+                  << std::endl;
+      }
       std::cout << "[NRFLD_INTERFACE_MODE] path="
                 << (NRFLDPrototype::Enabled() ? "conservative" : "legacy")
                 << " selection="

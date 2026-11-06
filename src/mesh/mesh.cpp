@@ -2052,13 +2052,15 @@ void Mesh::Initialize(int res_flag, ParameterInput *pin) {
     my_blocks(i)->phydro->NewBlockTimeStep();
   }
 
-  // A restart file stores the timestep already chosen for its next cycle.
-  // Re-evaluate limits in case the input changed, but do not apply the
-  // normal factor-of-two growth to that saved next-step value a second time.
-  const Real restart_dt = dt;
+  // The restart file stores dt as left by NewTimeStep() at the end of the previous
+  // cycle, i.e. the step that is to be taken next. NewTimeStep() doubles dt before it
+  // takes the minimum with the current limits, which treats dt as the step just taken.
+  // After a restart the first step is therefore capped at the stored value; the CFL,
+  // user and end-time limits can still reduce it.
+  const Real dt_restart = dt;
   NewTimeStep();
-  if (res_flag != 0 && fluid_setup != FluidFormulation::fixed)
-    dt = std::min(dt, restart_dt);
+  if (res_flag != 0 && fluid_setup != FluidFormulation::fixed && dt_restart > 0.0)
+    dt = std::min(dt, dt_restart);
   return;
 }
 

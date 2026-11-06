@@ -15,11 +15,15 @@ Jv and FGMRES/MG, not the expensive difference Jv. Tangential reconstruction
 is on for the supported defaults.
 
 `ATHENA_NRFLD_LEGACY_INTERFACE=1` explicitly selects the old interface
-operator for an A/B run. Setting it together with
+operator for an A/B diagnostic run; it is not a production fallback. Setting it
+together with
 `ATHENA_NRFLD_CONSERVATIVE_PROTOTYPE=1` is an error. On other multilevel
-NR-FLD problem generators, the code stops with an error unless the legacy
-path is explicitly selected. Uniform grids do not have coarse/fine faces and
-retain the existing solver path. The log prints `[NRFLD_INTERFACE_MODE]` and
+NR-FLD problem generators, including AMR and SMR, the code stops with an error
+until their conservative path is validated. The legacy flag remains an explicit
+diagnostic exception and prints a nonconservation warning. Setting
+`ATHENA_NRFLD_CONSERVATIVE_PROTOTYPE=0` does not disable a supported default.
+Uniform grids do not have coarse/fine faces and retain the existing solver
+path. The log prints `[NRFLD_INTERFACE_MODE]` and
 the active conservative options. The cost-bearing tangential reconstruction,
 series resistance, and difference Jv remain switchable with their existing
 environment flags set to `0` or `1`; the default difference Jv is off.
@@ -28,8 +32,36 @@ This is a narrow rollout, not a claim that all FLD physics, coordinates, or
 meshes have been validated. Noncubic cells and curvilinear coordinates are
 outside the project scope and remain rejected by the geometry guard. The
 N4096 full-length convergence study remains WOR-100. A different AMR
-problem must explicitly use the legacy route until its conservative path is
-validated.
+or SMR problem requires a separately validated conservative path for
+production use. The full-length physical assessment remains WOR-67/WOR-100.
+
+## Follow-up review on 2026-11-07
+
+The one-cycle static SMR Test C run with no route flags selected
+`path=conservative selection=supported_default`, with shared coefficients,
+assembled Jv, tangential reconstruction, and series resistance active. The
+same run with `ATHENA_NRFLD_CONSERVATIVE_PROTOTYPE=0` still selected that
+default and converged. `ATHENA_NRFLD_LEGACY_INTERFACE=1` selected
+`path=legacy selection=explicit_legacy`; it now prints an explicit warning.
+An `nrfld_diff` multilevel input without a validated conservative route
+stopped at the intended `FLD::FLD` guard with the diagnostic-only legacy
+instruction. These route checks used the serial
+`--prob=nrfld_diff_amr_interface -nrmgfld`
+and `--prob=nrfld_diff -nrmgfld` builds and `time/nlim=1`. The previously
+reported coupled AMR, MPI, and Mach 5 results cover the corresponding
+supported configurations.
+
+The restart time-step cap in `Mesh::Initialize()` is also present in the
+current PrincetonUniversity/athena `main` (introduced by commit
+`54ab5dbc0a3895fbe782eed7062e9d6e1f61f760`). This branch now matches its
+positive-saved-dt guard. To check the broad Mesh change outside FLD, the
+upstream `hydro/restart_dt` regression was temporarily restored and run on
+this PR head with FLD off. A user time-step limit relaxes after cycle 8;
+continuous and restarted 14-cycle runs had identical final time
+`2.11300403513657e-02` and next `dt=4.72745085839641e-03` (relative
+difference zero for both). Upstream removed the test fixture from its suite
+after review to keep the suite compact; the source fix remains. The temporary
+fixture is not part of this PR.
 
 ## Local regressions
 
