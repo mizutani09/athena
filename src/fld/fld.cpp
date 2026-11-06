@@ -282,8 +282,9 @@ FLD::FLD(MeshBlock *pmb, ParameterInput *pin) :
                 << (NRFLDPrototype::Enabled() ? "conservative" : "legacy")
                 << " selection="
                 << (NRFLDPrototype::Legacy() ? "explicit_legacy"
+                    : NRFLDPrototype::Flag("ATHENA_NRFLD_CONSERVATIVE_PROTOTYPE")
+                        ? "explicit_prototype"
                     : NRFLDPrototype::DefaultEnabled() ? "supported_default"
-                    : NRFLDPrototype::Enabled() ? "explicit_prototype"
                     : "unvalidated_problem") << std::endl;
       if (NRFLDPrototype::Enabled()) {
         std::cout << "[NRFLD_CONSERVATIVE_CONFIG] shared_coeff="

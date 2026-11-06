@@ -87,5 +87,14 @@ HDF profiles are copied to `/tmp/wor105_xd_profile_20261106`. Exact job
 scripts are `wor105_xd_predefault_build_20261106.sbatch` and
 `wor105_xd_predefault_ab_20261106.sbatch` in this directory. This XD run
 compared the two explicit modes before changing the default selector; the
-conservative operator itself is the same. A final no-flag Mach 5 smoke test
-is the remaining rollout gate.
+conservative operator itself is the same. Final no-flag job `336891` used
+the default-selector commit `f4f6ec41`, completed 100 cycles on 32 ranks,
+and logged `path=conservative selection=supported_default`. Its final HDF
+leaf locations and all user fields are **exactly equal** to the explicit
+candidate job, and its 100-cycle face/energy audit is numerically identical:
+maximum relative coarse/fine mismatch `5.63e-13`, physical-boundary
+diffusion `8.855674579318485`, and domain diffusion `8.855674579315895`.
+The final no-flag profile is copied beside the others to
+`/tmp/wor105_xd_profile_20261106/default`. The job scripts are
+`wor105_xd_default_build_20261106.sbatch` and
+`wor105_xd_default_run_20261106.sbatch`.
