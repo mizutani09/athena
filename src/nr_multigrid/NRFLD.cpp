@@ -180,18 +180,13 @@ NRFLDDriver::NRFLDDriver(Mesh *pm, ParameterInput *pin)
     msg << "Invalid global_jacobian_iteration/epsilon";
     ATHENA_ERROR(msg);
   }
-  if (global_jv_ && NRFLDPrototype::SharedCoeff()) {
-    std::stringstream msg;
-    msg << "global_jacobian_check does not yet account for exchanged "
-        << "coarse/fine face moments; disable it for this prototype.";
-    ATHENA_ERROR(msg);
-  }
   if (Globals::my_rank == 0 && NRFLDPrototype::Enabled()) {
     std::cout << "[NRFLD_CONSERVATIVE_CONFIG] shared_coeff="
               << NRFLDPrototype::SharedCoeff()
               << " difference_jv=" << NRFLDPrototype::DifferenceJv()
               << " variable_limiter_trial="
               << NRFLDPrototype::VariableLimiterTrial()
+              << " coupled_trial=" << NRFLDPrototype::CoupledTrial()
               << std::endl;
   }
   relaxed_l2_eps_ = pin->GetOrAddReal(

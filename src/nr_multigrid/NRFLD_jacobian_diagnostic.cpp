@@ -15,6 +15,7 @@
 #include "../globals.hpp"
 #include "../linear_solver/linear_solver.hpp"
 #include "../task_list/nr_task_list.hpp"
+#include "../utils/nrfld_prototype_flags.hpp"
 
 namespace {
 constexpr int di[6]={-1,1,0,0,0,0};
@@ -88,7 +89,8 @@ void NRFLDDriver::CheckGlobalJacobian(bool actual_direction) {
 
   struct Saved {
     NRFLD *nr;
-    AthenaArray<Real> u, delta, coarse_u, coarse_delta, coeff, deriv, defcoeff,
+    AthenaArray<Real> u, delta, coarse_u, coarse_delta, moments,
+                      coarse_moments, coeff, deriv, defcoeff,
                       src, mixed, marshak, baseline, direction, tangent;
     bool initialized;
   };
@@ -100,6 +102,10 @@ void NRFLDDriver::CheckGlobalJacobian(bool actual_direction) {
     Snapshot(s.u,nr->u_); Snapshot(s.delta,nr->delta_u_); Snapshot(s.coeff,nr->coeff_);
     Snapshot(s.coarse_u,nr->NewtonRaphson::coarse_u_);
     Snapshot(s.coarse_delta,nr->coarse_delta_u_);
+    if (NRFLDPrototype::SharedCoeff()) {
+      Snapshot(s.moments,nr->interface_moments_);
+      Snapshot(s.coarse_moments,nr->coarse_interface_moments_);
+    }
     Snapshot(s.deriv,nr->derivetive_); Snapshot(s.defcoeff,nr->def_coeff_);
     Snapshot(s.src,nr->src_); Snapshot(s.mixed,nr->mixed_drift_);
     Snapshot(s.marshak,nr->pmy_block_->prfld->marshak_dface);
@@ -111,6 +117,10 @@ void NRFLDDriver::CheckGlobalJacobian(bool actual_direction) {
       nr->u_=s.u; nr->delta_u_=s.delta; nr->coeff_=s.coeff;
       nr->NewtonRaphson::coarse_u_=s.coarse_u;
       nr->coarse_delta_u_=s.coarse_delta;
+      if (NRFLDPrototype::SharedCoeff()) {
+        nr->interface_moments_=s.moments;
+        nr->coarse_interface_moments_=s.coarse_moments;
+      }
       nr->derivetive_=s.deriv; nr->def_coeff_=s.defcoeff; nr->src_=s.src;
       nr->mixed_drift_=s.mixed; nr->pmy_block_->prfld->marshak_dface=s.marshak;
       nr->fixed_linear_coefficients_initialized_=s.initialized;
@@ -118,6 +128,7 @@ void NRFLDDriver::CheckGlobalJacobian(bool actual_direction) {
   };
   NewtonRaphsonTaskList boundary(this,NewtonRaphsonTaskList::Mode::boundary);
   boundary.DoTaskListOneStage(stage_);
+  if (NRFLDPrototype::SharedCoeff()) SyncInterfaceFaceMoments();
   Real baseline_ghost_change=0.0, amplitude=0.0;
   for (Saved &s:saved) {
     NRFLD *nr=s.nr; MeshBlock *mb=nr->pmy_block_;
@@ -182,9 +193,16 @@ void NRFLDDriver::CheckGlobalJacobian(bool actual_direction) {
     for (std::size_t b=0;b<saved.size();++b) {
       Saved &s=saved[b]; NRFLD *nr=s.nr;
       nr->u_=s.baseline;
+      nr->derivetive_=s.deriv;
       if (mode) {
         nr->CalculateCoefficientsOnce(nr->u_,nr->pmy_block_->phydro->w,
                                        nr->def_coeff_,nr->derivetive_);
+      }
+    }
+    if (NRFLDPrototype::SharedCoeff()) SyncInterfaceFaceMoments();
+    for (std::size_t b=0;b<saved.size();++b) {
+      Saved &s=saved[b]; NRFLD *nr=s.nr;
+      if (mode) {
         nr->fixed_linear_coefficients_initialized_=false;
         nr->CalculateCoefficientsTask(dt_);
         Snapshot(base_coeff[b],nr->coeff_);
@@ -201,14 +219,23 @@ void NRFLDDriver::CheckGlobalJacobian(bool actual_direction) {
               nr->u_(k,j,i)+=h*s.direction(k,j,i);
       }
       boundary.DoTaskListOneStage(stage_);
+      for (Saved &s:saved) {
+        NRFLD *nr=s.nr;
+        if (!mode) nr->derivetive_=s.deriv;
+        if (mode)
+          nr->CalculateCoefficientsOnce(nr->u_,nr->pmy_block_->phydro->w,
+                                         nr->def_coeff_,nr->derivetive_);
+      }
+      if (NRFLDPrototype::SharedCoeff()) SyncInterfaceFaceMoments();
+      if (mode)
+        for (Saved &s:saved) {
+          s.nr->fixed_linear_coefficients_initialized_=false;
+          s.nr->CalculateCoefficientsTask(dt_);
+        }
       std::array<Sums,4> sums;
       for (std::size_t b=0;b<saved.size();++b) {
         Saved &s=saved[b]; NRFLD *nr=s.nr; MeshBlock *mb=nr->pmy_block_;
-        if (mode) {
-          nr->CalculateCoefficientsOnce(nr->u_,mb->phydro->w,nr->def_coeff_,nr->derivetive_);
-          nr->fixed_linear_coefficients_initialized_=false;
-          nr->CalculateCoefficientsTask(dt_);
-        } else nr->coeff_=base_coeff[b];
+        if (!mode) nr->coeff_=base_coeff[b];
         for (int k=0;k<nr->u_.GetDim3();++k)
           for (int j=0;j<nr->u_.GetDim2();++j)
             for (int i=0;i<nr->u_.GetDim1();++i)

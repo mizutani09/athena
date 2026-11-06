@@ -11,6 +11,18 @@ fine-face coefficient exchange; leaving it off reproduces the defect.
 frozen-coefficient operator for a cost comparison. The finite-difference
 operator is the default under the prototype flag. For the coefficient and
 variable-limiter flags, `1` enables and `0` or unset disables the feature.
+The coupled and adaptive-regrid diagnostic flags are described below and are
+also off unless set to `1`.
+
+| Switch | Enabled effect | Cost / current gate |
+| --- | --- | --- |
+| `ATHENA_NRFLD_CONSERVATIVE_PROTOTYPE=1` | Conservative two-point interface and FGMRES | Master opt-in; unset uses existing solver |
+| `ATHENA_NRFLD_CONSERVATIVE_SHARED_COEFF=1` | Exchange per-fine-face `D` and `D E_r` | 12 Real components per cell, boundary exchange each Newton coefficient refresh |
+| `ATHENA_NRFLD_CONSERVATIVE_DIFFERENCE_JV=0` | Use assembled frozen Schur operator instead of secant Jv | Required for experimental coupled runs; `1` or unset selects secant in radiation-only trials |
+| `ATHENA_NRFLD_EXPERIMENTAL_VARIABLE_LIMITER=1` | Permit variable-limiter Test C | Trial gate; coefficient exchange remains independently switchable |
+| `ATHENA_NRFLD_EXPERIMENTAL_COUPLED=1` | Permit coupled Test C | Requires `DIFFERENCE_JV=0` |
+| `ATHENA_NRFLD_EXPERIMENTAL_REGRID=1` | Permit adaptive Test C | More blocks and boundary exchanges during refinement |
+| `nrfld/global_jacobian_check=true` | Run global Jv diagnostic | Additional residual/coefficient evaluations; default false |
 
 ## Interface stencil
 
@@ -57,12 +69,12 @@ history values and seven FGMRES iterations. The density-ratio `0.1` and
 
 ## Limits before production adoption
 
-The fixed-limiter prototype remains limited to static periodic Test C. The
-variable-limiter extension below explicitly exchanges shared coefficients,
-but is also limited to this test problem. Gas/radiation coupling, physical
-boundaries, regrid/restart, and production Mach 5 have not been validated.
-A nonlinear residual Jv (or an equivalent validated Jacobian) and performance
-measurements remain before an XD A/B run.
+The prototype remains limited to periodic Cartesian Test C. Coupled and
+adaptive runs below are controlled probes, not production validation.
+Physical boundaries, moving AMR interfaces, and production Mach 5 remain
+untested. A nonlinear residual Jv (or an equivalent validated Jacobian),
+profile accuracy for variable closure, and performance measurements remain
+before an XD A/B run.
 
 ## Follow-up local tests: variable limiter and profile accuracy
 
@@ -136,8 +148,62 @@ Reproduce the passing gate with the three opt-in flags and the preceding
 audit command, adding `ATHENA_NRFLD_CONSERVATIVE_SHARED_COEFF=1`,
 `--contrasts 0.1 1.15`, and `--require-conservation`.
 
-The legacy `global_jacobian_check` does not incorporate the new coefficient
-exchange and is explicitly rejected while shared exchange is on. A new
-Jacobian check against the exchanged residual, nonlinear limiter refresh,
-coupled gas/radiation, adaptive regrid, physical boundaries, and profile
-accuracy for this variable-limiter scheme remain before production adoption.
+The `global_jacobian_check` now incorporates the face-moment exchange. For the
+strong transverse case, the coarse/fine frozen-coefficient Jv mismatch was
+`5.06e-12` at epsilon `1e-4` in both serial and four-rank runs. The
+refreshed-limiter mismatch was `1.67e-6`, confirming that the current Jv
+describes the solver's lagged closure rather than a fully nonlinear limiter.
+Production coupled gas/radiation, physical boundaries, and profile accuracy
+for this variable-limiter scheme remain before adoption.
+
+## Coupled one-step and five-step diagnostics
+
+`ATHENA_NRFLD_EXPERIMENTAL_COUPLED=1` additionally permits Test C gas/radiation
+coupling, only with `ATHENA_NRFLD_CONSERVATIVE_DIFFERENCE_JV=0`. The current
+secant Jv is defined for the radiation-only residual and omits gas elimination.
+An attempted local Schur secant matched the assembled operator to approximately
+`5e-16` initially, but drifted to `1.4e-9` in later Krylov calls, causing
+FGMRES to miss its `1e-10` target after 200 iterations. Increasing the secant
+step to `0.5` did not remove cancellation in the stiff coupled residual.
+The coupled trial therefore uses FGMRES with the assembled Schur operator.
+The selected coupled difference-Jv path remains outstanding.
+
+At density ratio `0.1`, transverse amplitude `0.8`, and variable limiter,
+one step converged both with and without shared coefficient exchange. The
+implicit gas+radiation energy ledger's domain-summed diffusion contribution
+was `+1.62019e-7` without exchange and `-3.21e-18` with exchange; the local
+equation balance was below `5e-17` in both runs. Thus the difference was a
+face conservation defect, not an unconverged local equation.
+
+That deliberately stiff case failed at cycle 2 in the existing solver and
+both prototype variants, so it is unsuitable for a multi-step comparison.
+With density ratio `1.15`, transverse amplitude `0.3`, and opacity `0.004`,
+all variants converged for five steps. The five implicit ledgers summed to
+`+9.64841e-3` without shared exchange and `-3.80e-15` with it. The maximum
+single-step diffusion contribution fell from `4.79494e-3` to `3.60e-15`.
+The corresponding Newton iteration counts were `22,14,6,7,7` and
+`22,12,4,4,4`. Four-rank MPI reproduced the shared variant's iterations,
+and its final radiation integral differed from serial by about `1e-15`.
+The coupled difference-Jv remains to be completed. Rebuilding after the
+coupled guard and shared Jv audit change, the eight variable-limiter
+conservation cases again passed with `|ΔEr/Er| <= 8.19e-14`.
+
+An initial local 20-step timing check on the variable-limiter Test C case
+(density ratio `0.1`, transverse amplitude `0.8`) kept all runs converged.
+With shared exchange off, the measured wall time was `2.00 s` and cumulative
+`ΔEr/Er=1.05e-6`; with exchange on and difference Jv on it was `2.13 s` and
+`2.61e-14`. Disabling difference Jv while retaining exchange measured
+`2.07 s`. Each mode used 156 total FGMRES iterations. These are single-run,
+small-grid measurements and are not a production performance estimate.
+
+## Adaptive regrid and restart probe
+
+`ATHENA_NRFLD_EXPERIMENTAL_REGRID=1` permits the same opt-in scheme on Test C
+adaptive AMR. With density ratio `0.1`, transverse amplitude `0.3`, and
+variable limiter, the local five-step run refined from 4 to 18 blocks at
+startup and returned to 4 blocks after cycle 2. All Newton solves converged.
+The cumulative radiation energy change was `3.61e-14` in serial and
+`3.64e-14` on four ranks. Restarting a serial cycle-2 checkpoint on four
+ranks reproduced the continuous four-rank run's final time and radiation
+integral exactly. This covers one controlled refine/derefine transition;
+more complex moving AMR boundaries remain untested.

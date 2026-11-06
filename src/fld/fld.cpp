@@ -208,17 +208,20 @@ FLD::FLD(MeshBlock *pmb, ParameterInput *pin) :
         && std::abs(dx3/dx1-1.0) < 1.0e-12;
     if (std::string(PROBLEM_GENERATOR) != "nrfld_diff_amr_interface"
           || std::string(COORDINATE_SYSTEM) != "cartesian"
-          || is_couple || !only_rad || cut_diff
+          || ((is_couple || !only_rad) && !NRFLDPrototype::CoupledTrial())
+          || ((is_couple || !only_rad) && NRFLDPrototype::DifferenceJv())
+          || cut_diff
           || (!fixed_flux_limiter && !variable_trial)
           || fixed_u_rad || include_mixed_frame_terms || !periodic || !cubic
-          || pmb->pmy_mesh->adaptive) {
+          || (pmb->pmy_mesh->adaptive && !NRFLDPrototype::RegridTrial())) {
       std::stringstream msg;
       msg << "### FATAL ERROR in function [FLD::FLD]" << std::endl
           << "ATHENA_NRFLD_CONSERVATIVE_PROTOTYPE currently requires the "
           << "static nrfld_diff_amr_interface test on a periodic Cartesian "
-          << "cubic mesh with radiation-only, uncoupled "
-          << "diffusion and no mixed-frame terms. Variable-limiter trials "
-          << "also require ATHENA_NRFLD_EXPERIMENTAL_VARIABLE_LIMITER.";
+          << "cubic mesh with no mixed-frame terms. Coupled trials require "
+          << "ATHENA_NRFLD_EXPERIMENTAL_COUPLED=1 and "
+          << "ATHENA_NRFLD_CONSERVATIVE_DIFFERENCE_JV=0. Variable-limiter "
+          << "trials require ATHENA_NRFLD_EXPERIMENTAL_VARIABLE_LIMITER=1.";
       ATHENA_ERROR(msg);
     }
   }
