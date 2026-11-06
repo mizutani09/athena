@@ -230,6 +230,16 @@ def main() -> None:
                 f"<td>{late_row['eos']['entropy_contrast_cgs']/1e6:.3f}</td></tr>")
 
     rows = "".join(table_row(name) for name in CASES)
+    late_tops = [result["cases"][name]["windows"]["late"]["top_total_over_solar"]
+                 for name in CASES]
+    late_bottoms = [result["cases"][name]["windows"]["late"]["bottom_total_over_solar"]
+                    for name in CASES]
+    verdict = ("<p class='verdict'><strong>結果:</strong> "
+               f"後半の上端流束は {min(late_tops):.3f}～{max(late_tops):.3f} Fsun、"
+               f"下端は {min(late_bottoms):.3f}～{max(late_bottoms):.3f} Fsun。"
+               "流入エントロピーを増やした直後の下端増加は持続せず、"
+               "この300コード時間では上端の太陽流束を得られませんでした。"
+               "全箱熱時間（約2万コード時間）後の定常値は未測定です。</p>")
     def difference_row(name: str) -> str:
         item = result["cases"][name]
         delta = item["late_minus_fixed"]
@@ -246,11 +256,14 @@ def main() -> None:
                  "<style>body{font:22px/1.55 system-ui;max-width:1250px;"
                  "margin:2rem auto;padding:0 1rem;color:#17324a}"
                  "h1{font-size:2rem}strong{color:#184c76}"
+                 ".verdict{background:#edf5fa;border-left:5px solid #27628d;"
+                 "padding:.7rem 1rem}"
                  "table{border-collapse:collapse;width:100%}"
                  "th,td{padding:.55rem .7rem;border-bottom:1px solid #ccc;"
                  "text-align:right}th:first-child,td:first-child{text-align:left}"
                  "img{max-width:100%}</style>"
                  "<h1>固定流入エントロピーの同一checkpoint比較</h1>"
+                 + verdict +
                  f"<p>全ケースはt=9100の同じcheckpointからt={end:.0f}まで計算。"
                  "CFL、格子、バイナリ、EOS、HD2境界制御は共通です。"
                  f"最初の50コード時間（t={early[0]:.1f}～{early[1]:.1f}）と"
