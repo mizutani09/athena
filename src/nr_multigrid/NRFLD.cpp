@@ -407,13 +407,14 @@ void NRFLDDriver::SyncInterfaceFaceMoments() {
     NRFLD *nr = static_cast<NRFLD*>(base);
     MeshBlock *mb = nr->pmy_block_;
     const int level = mb->loc.level;
+    const int neighbor_level[6] = {
+        mb->pbval->nblevel[1][1][0], mb->pbval->nblevel[1][1][2],
+        mb->pbval->nblevel[1][0][1], mb->pbval->nblevel[1][2][1],
+        mb->pbval->nblevel[0][1][1], mb->pbval->nblevel[2][1][1]};
     const bool finer[6] = {
-        mb->pbval->nblevel[1][1][0] > level,
-        mb->pbval->nblevel[1][1][2] > level,
-        mb->pbval->nblevel[1][0][1] > level,
-        mb->pbval->nblevel[1][2][1] > level,
-        mb->pbval->nblevel[0][1][1] > level,
-        mb->pbval->nblevel[2][1][1] > level};
+        neighbor_level[0] > level, neighbor_level[1] > level,
+        neighbor_level[2] > level, neighbor_level[3] > level,
+        neighbor_level[4] > level, neighbor_level[5] > level};
     for (int k=mb->ks; k<=mb->ke; ++k)
       for (int j=mb->js; j<=mb->je; ++j)
         for (int i=mb->is; i<=mb->ie; ++i) {
@@ -423,9 +424,27 @@ void NRFLDDriver::SyncInterfaceFaceMoments() {
           const int ghost_j[6] = {j,j,j-1,j+1,j,j};
           const int ghost_k[6] = {k,k,k,k,k-1,k+1};
           for (int face=0; face<6; ++face) {
-            if (!finer[face] || !at_face[face]) continue;
+            if (!at_face[face]) continue;
             const int gi=ghost_i[face], gj=ghost_j[face], gk=ghost_k[face];
             const int opposite = face^1;
+            // Across a same-level block boundary, two independently formed
+            // variable-limiter closures can differ near a coarse/fine edge.
+            // The positive-side cell owns the common D; the negative-side
+            // block copies it from the exchanged first ghost layer. This
+            // reuses the existing moments communication and also works for
+            // periodic block neighbours.
+            if (face % 2 == 0 && neighbor_level[face] == level) {
+              const Real d = nr->interface_moments_(2*opposite,gk,gj,gi);
+              if (!(d > 0.0) || !std::isfinite(d)) {
+                std::stringstream msg;
+                msg << "Missing same-level FLD face coefficient at gid="
+                    << mb->gid << " face=" << face << " cell=(" << k << ","
+                    << j << "," << i << ") D=" << d;
+                ATHENA_ERROR(msg);
+              }
+              nr->derivetive_(NewtonRaphsonFLD::dFr_dEr_xm+face,k,j,i) = d;
+            }
+            if (!finer[face]) continue;
             const Real dbar = nr->interface_moments_(2*opposite,gk,gj,gi);
             const Real debar = nr->interface_moments_(2*opposite+1,gk,gj,gi);
             if (!(dbar > 0.0) || !std::isfinite(dbar)
@@ -461,7 +480,7 @@ void NRFLDDriver::RunCommittedDiagnostic() {
       FLD *fld = mb->prfld;
       const Real dx = mb->pcoord->dx1f(mb->is);
       const Real idx2 = 1.0/SQR(dx);
-      long double xminus_delta = 0.0L, xplus_delta = 0.0L;
+      long double block_face_delta[6] = {};
       for (int k=mb->ks; k<=mb->ke; ++k)
         for (int j=mb->js; j<=mb->je; ++j)
           for (int i=mb->is; i<=mb->ie; ++i) {
@@ -487,10 +506,15 @@ void NRFLDDriver::RunCommittedDiagnostic() {
                 face_term = face_coeff[face]*(neighbor[face]-center);
               }
               face_sum += face_term;
-              if (interface_ledger && face == XMinus && i == mb->is)
-                xminus_delta += static_cast<long double>(dt_*face_term*idx2)*volume;
-              if (interface_ledger && face == XPlus && i == mb->ie)
-                xplus_delta += static_cast<long double>(dt_*face_term*idx2)*volume;
+              if (interface_ledger &&
+                  ((face == XMinus && i == mb->is)
+                   || (face == XPlus && i == mb->ie)
+                   || (face == YMinus && j == mb->js)
+                   || (face == YPlus && j == mb->je)
+                   || (face == ZMinus && k == mb->ks)
+                   || (face == ZPlus && k == mb->ke)))
+                block_face_delta[face] +=
+                    static_cast<long double>(dt_*face_term*idx2)*volume;
             }
             const Real dg = first->only_rad ? 0.0
                 : nr->u_gas_(k,j,i)-fld->u_gas(k,j,i);
@@ -517,8 +541,12 @@ void NRFLDDriver::RunCommittedDiagnostic() {
              << " x1min=" << b.x1min << " x1max=" << b.x1max
              << " x2min=" << b.x2min << " x2max=" << b.x2max
              << " x3min=" << b.x3min << " x3max=" << b.x3max
-             << " xminus_delta=" << xminus_delta
-             << " xplus_delta=" << xplus_delta;
+             << " xminus_delta=" << block_face_delta[XMinus]
+             << " xplus_delta=" << block_face_delta[XPlus]
+             << " yminus_delta=" << block_face_delta[YMinus]
+             << " yplus_delta=" << block_face_delta[YPlus]
+             << " zminus_delta=" << block_face_delta[ZMinus]
+             << " zplus_delta=" << block_face_delta[ZPlus];
         std::cout << line.str() << std::endl;
       }
     }

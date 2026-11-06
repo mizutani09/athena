@@ -207,3 +207,67 @@ The cumulative radiation energy change was `3.61e-14` in serial and
 ranks reproduced the continuous four-rank run's final time and radiation
 integral exactly. This covers one controlled refine/derefine transition;
 more complex moving AMR boundaries remain untested.
+
+## Follow-up: block-face conservation and profile accuracy
+
+At base x1 resolution `64` (144 AMR leaf blocks), the shared-coefficient
+trial exposed a smaller defect that the earlier 18-block case missed. With
+density ratio `0.1`, transverse amplitude `0.8`, and `dt=5e-5`, the x1
+coarse/fine face sums canceled to about `1e-20`, but the domain diffusion
+ledger was `+2.94820e-11`. An opt-in extension of
+`ATHENA_NRFLD_INTERFACE_LEDGER=1` to all six block faces located the entire
+defect on y block boundaries adjacent to the left x1 coarse/fine interface.
+Independent variable-limiter evaluations there differed across otherwise
+same-level fine blocks. The shared-coefficient path now copies the positive
+side's face `D` to the negative side using the **existing** face-moment
+exchange. This adds no new exchange; the feature remains under the shared
+coefficient switch. Afterward, summed x/y/z block-face contributions were
+`-5.2e-21`, `0`, and approximately `0`, respectively, and the volume
+diffusion ledger was `-4.48e-21`. Four-rank MPI reproduced these face sums
+and its final Er integral differed from serial by `8.3e-17`.
+
+The profile comparison uses the same physical domain and timestep for both
+resolutions: x1 `[0,1]`, x2/x3 `[0,0.25]`, `dt=5e-5`, base x1 `N=32/64`,
+and uniform-fine x1 `2N`. It compares each AMR leaf value to the uniform-fine
+values **averaged over that leaf**. To reduce the effect of differently
+sampled initial data, the primary metric is mean absolute error in the
+one-step **change** of Er. VTK output is float32; measured errors below are
+far above its rounding scale. The reference is a finer numerical solution,
+not an analytic truth, and the initial discretizations still differ.
+
+| Density ratio, transverse amplitude | Base N | Existing update L1 | Shared update L1 | Shared / existing | Existing diffusion ledger | Shared diffusion ledger |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: |
+| 0.1, 0.8 | 32 | `4.612e-4` | `3.845e-4` | `0.834` | `+1.47e-6` | `+1.22e-20` |
+| 0.1, 0.8 | 64 | `3.566e-4` | `1.922e-4` | `0.539` | `+1.09e-6` | `-4.48e-21` |
+| 1.15, 0.3 | 32 | `7.618e-5` | `9.684e-5` | `1.271` | `-1.44e-7` | `+5.49e-21` |
+| 1.15, 0.3 | 64 | `2.094e-5` | `4.214e-5` | `2.013` | `-7.95e-8` | `-7.67e-21` |
+
+Thus the conservation fix improves profile accuracy for the strong case but
+reduces it for the moderate case. The two-point prototype without shared
+face coefficients has almost the same update errors as the shared variant,
+while retaining nonzero diffusion ledgers (`+6.42e-9` at N64 in the strong
+case). Face coefficient exchange is required for conservation; the profile
+tradeoff comes mainly from the chosen symmetric two-point coarse/fine
+discretization. Adoption should await a higher-accuracy conservative face
+reconstruction and tests over more gradients and optical depths. The
+single-run wall times are not a reliable overhead estimate; shared exchange
+remains switchable for later repeated timing.
+
+The new same-level synchronization passed the previous eight-case
+conservation gate, x2/x3 one-step face ledgers (`|sum| < 2e-20`), the adaptive
+five-step refine/derefine probe (`|ΔEr/Er|=3.61e-14`), and the coupled five-step
+trial (Newton iterations `22,12,4,4,4`, cumulative diffusion ledger
+`-5.06e-15`). At N64, the frozen global Jv relative mismatch was
+`1.29e-11` on same-level block faces and `6.63e-12` on coarse/fine faces
+at epsilon `1e-4`. The refreshed-limiter mismatch remains nonzero; the
+nonlinear Jv is still outstanding.
+
+Reproduce both profile conditions with:
+
+```sh
+python3 tst/nrfld_validation/wor102_profile_comparison.py \
+  --binary bin/athena --output /tmp/wor102_strong --resolutions 32 64 --plot
+python3 tst/nrfld_validation/wor102_profile_comparison.py \
+  --binary bin/athena --output /tmp/wor102_moderate --resolutions 32 64 \
+  --contrast 1.15 --transverse-amplitude 0.3 --plot
+```
