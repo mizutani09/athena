@@ -388,3 +388,18 @@ cumulative relative Er integral change of `5.01e-15`.
 The flag is experimental. In particular, normal-direction accuracy is
 unchanged in flat transverse cases, and physical boundaries, coupled runs,
 adaptive regrid, and Mach 5 are not covered by this reconstruction test.
+
+### Normal-direction follow-up
+
+A separate weighted three-point normal reconstruction trial is preserved on
+`codex/wor102-normal-reconstruction-trial-20261106` at `c79d530f`; see
+`wor102_normal_reconstruction_trial_20261106.md`. It reduced the flat N32
+error ratio from `1.134` to `0.384` at full weight, but increased the thin
+flat ratio from `0.769` to `1.185` and the thin strong ratio from `0.323`
+to `0.738` relative to tangential-only. At N64, full normal reconstruction
+also raised the thick strong error ratio from `0.168` to `0.399` and the
+thin strong ratio from `0.198` to `0.274`. Partial weights `0.25` and
+`0.5` still increased thin-case errors versus tangential-only. Conservation
+and positivity held in the one-step local tests, but no single tested weight
+improved all regimes. The normal correction is therefore not adopted into
+the main prototype.
