@@ -262,6 +262,12 @@ prove upper-flux calibration.
 The executable is copied to `athena.frozen` within the campaign root and its
 SHA256 is checked at every driver restart. This prevents a later local build
 from changing the physical run midway through the campaign.
+At the first `t=5100` checkpoint, the simulation finished but postprocessing
+stopped because the new binary adds two directional hydro-flux columns to
+the HST. Rolling flux integration now selects the common physical columns
+across old and new segments. On resume the driver checks the existing
+simulation's manifest, restart, HST, and solver status and recovers it without
+rerunning the 100-code-time interval.
 
 ## Local CPU test
 

@@ -38,6 +38,9 @@ DATA_NAMES = ("AthenaNataEosTable_solar_deep.tab",
               "opacity_table_rhoT_3p0_6p3.h5", "solar_initial_profile.dat")
 OUTPUT_CADENCE = {2: 5.0, 3: 5.0, 4: 10.0, 5: 10.0,
                   6: 100.0, 7: 50.0, 8: 50.0}
+ROLLING_COLUMNS = {"time", "FradTop", "FadvRadTop", "FhydBottom",
+                   "FradBottom", "FadvRadBottom", "FtotTop", "EtotGrav",
+                   "BottomMdotNet", "TopMdotOut"}
 
 
 def now() -> str:
@@ -75,7 +78,7 @@ def rolling_fluxes(root: Path, completed: list[dict], header: Path,
              for row in completed if row["end_time_code"] >= cutoff - 1.0e-8]
     if not paths:
         raise ValueError("No histories cover the requested feedback window")
-    history = combine_histories(paths, header)
+    history = combine_histories(paths, header, columns=ROLLING_COLUMNS)
     time_values = history["time"]
     if time_values[0] > cutoff + 1.0e-6 or time_values[-1] < end_time - 1.0e-6:
         raise ValueError("Histories do not cover the complete feedback window")
@@ -397,17 +400,35 @@ def main() -> None:
                 raise RuntimeError("Stop signal received between segments")
             end_time = (index + 1) * args.segment_code
             stem = f"feedback_{index+1:03d}_t{end_time:g}"
-            name = stem
-            attempt = 1
-            while (root / name).exists():
-                attempt += 1
-                name = f"{stem}_retry{attempt:02d}"
-            case = root / name
             prior = state["completed"][-1] if state["completed"] else None
             restart = (root / prior["case"] / prior["restart_name"]) if prior else None
             if restart and (not restart.is_file() or digest(restart) != prior["restart_sha256"]):
                 raise RuntimeError("Completed-segment restart is missing or changed")
             entropy = state["next_entropy_cgs"]
+            active = state.get("active_case", "")
+            recovered = (active == stem or active.startswith(stem + "_retry")) and all(
+                (root / active / item).is_file() for item in
+                ("manifest.json", "summary.json"))
+            if recovered:
+                name = active
+                case = root / name
+                prior_manifest = json.loads((case / "manifest.json").read_text())
+                if (prior_manifest.get("exit_code") != 0 or
+                        prior_manifest.get("fatal_in_log") or
+                        prior_manifest.get("binary_sha256") != digest(binary) or
+                        prior_manifest.get("base_input_sha256") != digest(custom_input) or
+                        f"s_in={entropy:.15e}" not in prior_manifest.get("problem_overrides", []) or
+                        (restart and Path(prior_manifest.get("restart", "")).resolve()
+                         != restart.resolve())):
+                    raise RuntimeError(f"Cannot recover inconsistent completed case {name}")
+                print(f"{now()} recover completed simulation {name}", flush=True)
+            else:
+                name = stem
+                attempt = 1
+                while (root / name).exists():
+                    attempt += 1
+                    name = f"{stem}_retry{attempt:02d}"
+                case = root / name
             command = ["taskset", "-c", "0-15", sys.executable,
                        str(repo / "tst/nrfld_validation/run_solar_convection.py"),
                        "--repo", str(repo), "--binary", str(binary),
@@ -426,50 +447,51 @@ def main() -> None:
             if restart:
                 command += ["--restart", str(restart),
                             "--history-header-from", str(reference_header)]
-            launcher_log = root / f"{name}_launcher.log"
-            print(f"{now()} start {name} s_in={entropy:.9e}", flush=True)
-            state["active_case"] = name
-            save_json(state_path, state)
             segment_started = time.monotonic()
-            with launcher_log.open("w") as launcher:
-                process = subprocess.Popen(command, cwd=repo, stdout=launcher,
-                                           stderr=subprocess.STDOUT,
-                                           start_new_session=True)
-                while process.poll() is None:
-                    sample = memory_status(case)
-                    disk_free = shutil.disk_usage(root).free / 1024**3
-                    state["peak_rank_rss_mib"] = max(
-                        state["peak_rank_rss_mib"], sample["rank_rss_mib"])
-                    previous_min = state["min_available_memory_mib"]
-                    state["min_available_memory_mib"] = min(
-                        previous_min if previous_min is not None else float("inf"),
-                        sample["mem_available_mib"])
-                    state["peak_swap_used_mib"] = max(
-                        state["peak_swap_used_mib"], sample["swap_used_mib"])
-                    with monitor_path.open("a") as monitor:
-                        monitor.write(f"{now()},{name},{sample['mem_available_mib']:.1f},"
-                                      f"{sample['swap_used_mib']:.1f},"
-                                      f"{sample['rank_rss_mib']:.1f},"
-                                      f"{sample['observed_ranks']},{disk_free:.1f}\n")
-                    reason = ("stop signal" if stop_requested else
-                              "available memory below guard" if
-                              sample["mem_available_mib"] < args.min_available_gib*1024 else
-                              "swap use above guard" if
-                              sample["swap_used_mib"] > args.max_swap_used_gib*1024 else
-                              "disk free below guard" if
-                              disk_free < args.min_disk_free_gib else None)
-                    if reason:
-                        os.killpg(process.pid, signal.SIGTERM)
-                        try:
-                            process.wait(timeout=15)
-                        except subprocess.TimeoutExpired:
-                            os.killpg(process.pid, signal.SIGKILL)
-                            process.wait()
-                        raise RuntimeError(f"Stopped {name}: {reason}")
-                    time.sleep(5.0)
-                if process.returncode != 0:
-                    raise RuntimeError(f"{name} failed with exit {process.returncode}; "
-                                       f"inspect {launcher_log} and {case / 'run.log'}")
+            if not recovered:
+                launcher_log = root / f"{name}_launcher.log"
+                print(f"{now()} start {name} s_in={entropy:.9e}", flush=True)
+                state["active_case"] = name
+                save_json(state_path, state)
+                with launcher_log.open("w") as launcher:
+                    process = subprocess.Popen(command, cwd=repo, stdout=launcher,
+                                               stderr=subprocess.STDOUT,
+                                               start_new_session=True)
+                    while process.poll() is None:
+                        sample = memory_status(case)
+                        disk_free = shutil.disk_usage(root).free / 1024**3
+                        state["peak_rank_rss_mib"] = max(
+                            state["peak_rank_rss_mib"], sample["rank_rss_mib"])
+                        previous_min = state["min_available_memory_mib"]
+                        state["min_available_memory_mib"] = min(
+                            previous_min if previous_min is not None else float("inf"),
+                            sample["mem_available_mib"])
+                        state["peak_swap_used_mib"] = max(
+                            state["peak_swap_used_mib"], sample["swap_used_mib"])
+                        with monitor_path.open("a") as monitor:
+                            monitor.write(f"{now()},{name},{sample['mem_available_mib']:.1f},"
+                                          f"{sample['swap_used_mib']:.1f},"
+                                          f"{sample['rank_rss_mib']:.1f},"
+                                          f"{sample['observed_ranks']},{disk_free:.1f}\n")
+                        reason = ("stop signal" if stop_requested else
+                                  "available memory below guard" if
+                                  sample["mem_available_mib"] < args.min_available_gib*1024 else
+                                  "swap use above guard" if
+                                  sample["swap_used_mib"] > args.max_swap_used_gib*1024 else
+                                  "disk free below guard" if
+                                  disk_free < args.min_disk_free_gib else None)
+                        if reason:
+                            os.killpg(process.pid, signal.SIGTERM)
+                            try:
+                                process.wait(timeout=15)
+                            except subprocess.TimeoutExpired:
+                                os.killpg(process.pid, signal.SIGKILL)
+                                process.wait()
+                            raise RuntimeError(f"Stopped {name}: {reason}")
+                        time.sleep(5.0)
+                    if process.returncode != 0:
+                        raise RuntimeError(f"{name} failed with exit {process.returncode}; "
+                                           f"inspect {launcher_log} and {case / 'run.log'}")
             restart_files = list(case.glob("*.final.rst"))
             history_files = list(case.glob("*.hst"))
             if len(restart_files) != 1 or len(history_files) != 1:
@@ -515,7 +537,9 @@ def main() -> None:
                 "rolling_stored_energy_trend_over_solar": filtered["stored_energy_trend_over_solar"],
                 "bottom_hydro_flux_over_solar": bottom,
                 "wall_seconds": manifest["wall_seconds"],
-                "total_wall_seconds": time.monotonic() - segment_started,
+                "total_wall_seconds": (manifest["wall_seconds"] if recovered else
+                                       time.monotonic() - segment_started),
+                "recovered_simulation": bool(recovered),
                 "newton_status_counts": counts,
                 "slow_mg_warning_count": log["slow_mg_warning_count"],
                 "max_mass_drift": report["late_window"]["max_abs_mass_drift"],

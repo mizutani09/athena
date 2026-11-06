@@ -56,8 +56,8 @@ def read_history(path: Path, header_from: Path | None = None) -> dict[str, np.nd
     return dict(zip(names, values.T))
 
 
-def combine_histories(paths: list[Path], header_from: Path | None = None
-                      ) -> dict[str, np.ndarray]:
+def combine_histories(paths: list[Path], header_from: Path | None = None,
+                      columns: set[str] | None = None) -> dict[str, np.ndarray]:
     """Join restart segments, replacing a parent's post-checkpoint trajectory.
 
     A numbered checkpoint may precede the last history row of an interrupted
@@ -65,6 +65,13 @@ def combine_histories(paths: list[Path], header_from: Path | None = None
     must be discarded even when their timestamps do not exactly coincide.
     """
     segments = [read_history(path, header_from) for path in paths]
+    if columns is not None:
+        for path, segment in zip(paths, segments):
+            missing = columns.difference(segment)
+            if missing:
+                raise ValueError(f"{path}: missing requested history columns {sorted(missing)}")
+        segments = [{name: segment[name] for name in columns}
+                    for segment in segments]
     names = set(segments[0])
     if any(set(segment) != names for segment in segments[1:]):
         raise ValueError("History column sets differ between restart segments")
