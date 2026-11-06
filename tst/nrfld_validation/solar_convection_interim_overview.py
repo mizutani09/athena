@@ -45,16 +45,24 @@ def main() -> None:
                  lw=1, alpha=.55, label="top: segment mean")
     axes[0].plot(t, [row["rolling_top_flux_over_solar"] for row in rows],
                  lw=2.5, label="top: 500-code mean")
-    axes[0].axhline(1, ls="--", color="black", label="solar target")
+    observed_top = ([row["top_radiative_flux_over_solar"] for row in rows]
+                    + [row["rolling_top_flux_over_solar"] for row in rows])
+    axes[0].set_ylim(min(observed_top)-.003, max(observed_top)+.003)
+    axes[0].text(.98, .96, "Solar target = 1.0 (above plot)",
+                 transform=axes[0].transAxes, ha="right", va="top")
     axes[0].set_ylabel("Top flux / solar")
     axes[0].legend(loc="best")
     axes[1].plot(t, [row["rolling_bottom_total_flux_over_solar"] for row in rows],
-                 lw=2, label="bottom total: 500-code mean")
-    axes[1].plot(t, [row["rolling_stored_energy_trend_over_solar"] for row in rows],
-                 lw=2, label="stored energy trend: 500-code window")
-    axes[1].axhline(0, color="black", lw=.8)
-    axes[1].set_ylabel("Flux or storage / solar")
-    axes[1].legend(loc="best")
+                 lw=2, color="#1769a5", label="bottom total: 500-code mean")
+    axes[1].set_ylabel("Bottom flux / solar")
+    storage_axis = axes[1].twinx()
+    storage_axis.plot(t, [row["rolling_stored_energy_trend_over_solar"]
+                          for row in rows], lw=2, color="#d36b18",
+                      label="stored energy trend: 500-code window")
+    storage_axis.set_ylabel("Storage trend / solar")
+    handles1, labels1 = axes[1].get_legend_handles_labels()
+    handles2, labels2 = storage_axis.get_legend_handles_labels()
+    axes[1].legend(handles1+handles2, labels1+labels2, loc="best")
     axes[2].plot(t, [(row["entropy_cgs"]-base)/1e6 for row in rows], lw=2)
     axes[2].axhline(cap/1e6, ls="--", color="#b44523",
                     label="cumulative entropy limit")
