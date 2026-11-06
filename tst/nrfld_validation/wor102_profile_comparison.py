@@ -86,13 +86,16 @@ def compose(directory, shape, extent, cycle=1, reference=None):
 
 
 def run(binary, source, out, n, mode, dt, contrast, amplitude, opacity,
-        assembled_jv, tangential_reconstruction):
+        assembled_jv, tangential_reconstruction, fixed_limiter=False,
+        mpi_ranks=1, interface_width=0.0):
     out.mkdir()
     source = source.replace("file_type = hst", "file_type = hst\ndata_format = %.16e")
     source = source.replace("<time>", "<output2>\nfile_type = vtk\nvariable = uov\nid = fields\ndcycle = 1\n\n<time>")
-    source = source.replace("fixed_flux_limiter        = true", "fixed_flux_limiter        = false")
-    source = source.replace("density_low    = 1.0",
-                            "transverse_amplitude = 0.0\ndensity_low    = 1.0")
+    if not fixed_limiter:
+        source = source.replace("fixed_flux_limiter        = true", "fixed_flux_limiter        = false")
+    if "transverse_amplitude =" not in source:
+        source = source.replace("density_low    = 1.0",
+                                "transverse_amplitude = 0.0\ndensity_low    = 1.0")
     source = source.replace("fas             = false", "fas             = false\nlinear_solver = fgmres\nfgmres_threshold = 1e-10")
     source = source.replace("diagnostic_verbosity = 1", "diagnostic_verbosity = 0")
     input_path = out / "input.used"
@@ -104,21 +107,28 @@ def run(binary, source, out, n, mode, dt, contrast, amplitude, opacity,
                f"time/tlim={dt:.17g}", "time/nlim=1",
                f"fld/const_opacity={opacity:.17g}",
                f"problem/density_high={contrast:.17g}",
+               f"problem/interface_width={interface_width:.17g}",
                f"problem/transverse_amplitude={amplitude:.17g}"]
     if mode == "reference":
         command += ["mesh/refinement=none"]
+    if mpi_ranks > 1:
+        command = ["mpirun", "-np", str(mpi_ranks)] + command
     env = os.environ.copy()
     env.pop("ATHENA_NRFLD_CONSERVATIVE_PROTOTYPE", None)
+    env.pop("ATHENA_NRFLD_LEGACY_INTERFACE", None)
     env.pop("ATHENA_NRFLD_CONSERVATIVE_SHARED_COEFF", None)
     env.pop("ATHENA_NRFLD_CONSERVATIVE_DIFFERENCE_JV", None)
     env.pop("ATHENA_NRFLD_EXPERIMENTAL_TANGENTIAL_RECONSTRUCTION", None)
+    env.pop("ATHENA_NRFLD_EXPERIMENTAL_SERIES_RESISTANCE", None)
     if mode != "reference":
+        env["ATHENA_NRFLD_LEGACY_INTERFACE"] = "1" if mode == "baseline" else "0"
         env["ATHENA_NRFLD_CONSERVATIVE_PROTOTYPE"] = "0" if mode == "baseline" else "1"
-        env["ATHENA_NRFLD_CONSERVATIVE_SHARED_COEFF"] = "1" if mode == "shared" else "0"
-        if assembled_jv:
-            env["ATHENA_NRFLD_CONSERVATIVE_DIFFERENCE_JV"] = "0"
-        if mode == "shared" and tangential_reconstruction:
-            env["ATHENA_NRFLD_EXPERIMENTAL_TANGENTIAL_RECONSTRUCTION"] = "1"
+        env["ATHENA_NRFLD_CONSERVATIVE_SHARED_COEFF"] = "1" if mode in ("shared", "series") else "0"
+        env["ATHENA_NRFLD_CONSERVATIVE_DIFFERENCE_JV"] = "0" if assembled_jv else "1"
+        env["ATHENA_NRFLD_EXPERIMENTAL_TANGENTIAL_RECONSTRUCTION"] = (
+            "1" if mode in ("shared", "series") and tangential_reconstruction else "0")
+        env["ATHENA_NRFLD_EXPERIMENTAL_SERIES_RESISTANCE"] = (
+            "1" if mode == "series" else "0")
     env["ATHENA_NRFLD_EXPERIMENTAL_VARIABLE_LIMITER"] = "1"
     env["ATHENA_NRFLD_ENERGY_LEDGER"] = "1"
     start = time.perf_counter()
@@ -136,9 +146,11 @@ def run(binary, source, out, n, mode, dt, contrast, amplitude, opacity,
     ledger = re.findall(r"\[NR_ENERGY_LEDGER\].*diffusion_delta=([\d.eE+-]+)", result.stdout)
     return {"mode": mode, "base_nx": n, "opacity": opacity,
             "density_ratio": contrast, "transverse_amplitude": amplitude,
+            "interface_width": interface_width,
             "wall_seconds": elapsed,
             "fgmres_iterations": sum(fgmres), "newton_iterations": int(nr[-1][1]),
-            "dt": float(nr[-1][2]), "diffusion_delta": float(ledger[-1])}
+            "dt": float(nr[-1][2]), "diffusion_delta": sum(map(float, ledger)),
+            "mpi_ranks": mpi_ranks}
 
 
 def plot_existing(root, resolutions):
@@ -193,9 +205,13 @@ def main():
     parser.add_argument("--dt", type=float, default=5e-5)
     parser.add_argument("--contrast", type=float, default=0.1)
     parser.add_argument("--transverse-amplitude", type=float, default=0.8)
+    parser.add_argument("--interface-width", type=float, default=0.0)
     parser.add_argument("--opacity", type=float, default=0.4)
     parser.add_argument("--assembled-jv", action="store_true")
     parser.add_argument("--tangential-reconstruction", action="store_true")
+    parser.add_argument("--fixed-limiter", action="store_true")
+    parser.add_argument("--series-resistance", action="store_true")
+    parser.add_argument("--mpi-ranks", type=int, default=1)
     parser.add_argument("--skip-two-point", action="store_true")
     parser.add_argument("--plot", action="store_true")
     parser.add_argument("--plot-only", action="store_true")
@@ -216,11 +232,14 @@ def main():
         fields = {}
         modes = (("reference", "baseline", "shared") if args.skip_two_point else
                  ("reference", "baseline", "two_point", "shared"))
+        if args.series_resistance:
+            modes += ("series",)
         for mode in modes:
             case = root / f"n{n}_{mode}"
             record = run(binary, source, case, n, mode, args.dt,
                          args.contrast, args.transverse_amplitude, args.opacity,
-                         args.assembled_jv, args.tangential_reconstruction)
+                         args.assembled_jv, args.tangential_reconstruction,
+                         args.fixed_limiter, args.mpi_ranks, args.interface_width)
             t, field, projected, blocks = compose(case, shape, extent,
                                                   reference=fields.get("reference"))
             t0, initial, projected_initial, _ = compose(

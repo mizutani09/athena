@@ -181,18 +181,6 @@ NRFLDDriver::NRFLDDriver(Mesh *pm, ParameterInput *pin)
     msg << "Invalid global_jacobian_iteration/epsilon";
     ATHENA_ERROR(msg);
   }
-  if (Globals::my_rank == 0 && NRFLDPrototype::Enabled()) {
-    std::cout << "[NRFLD_CONSERVATIVE_CONFIG] shared_coeff="
-              << NRFLDPrototype::SharedCoeff()
-              << " difference_jv=" << NRFLDPrototype::DifferenceJv()
-              << " variable_limiter_trial="
-              << NRFLDPrototype::VariableLimiterTrial()
-              << " coupled_trial=" << NRFLDPrototype::CoupledTrial()
-              << " tangential_reconstruction="
-              << NRFLDPrototype::TangentialReconstruction()
-              << " mach5_trial=" << NRFLDPrototype::Mach5Trial()
-              << std::endl;
-  }
   relaxed_l2_eps_ = pin->GetOrAddReal(
       "nrfld", "nr_accept_l2_threshold", -1.0);
   relaxed_max_eps_ = pin->GetOrAddReal(
@@ -377,8 +365,13 @@ NRFLDDriver::~NRFLDDriver() {
 
 void NRFLDDriver::SyncInterfaceFaceMoments() {
   if (!NRFLDPrototype::SharedCoeff()) return;
-  // Each fine face sends D and D*Er.  The first-layer restriction in
-  // bvals_cc.cpp averages four fine faces and works across MPI ranks.
+  // CASTRO accumulates fine radiation face fluxes in a flux register and
+  // refluxes their difference from the coarse flux during an implicit
+  // update.  Athena++ advances all AMR levels at one time here, so the
+  // composite residual can use that fine-face flux immediately: each fine
+  // face sends D and D*Er, and restriction averages the four subfaces.
+  // The coarse row then evaluates the same area-integrated flux with the
+  // opposite sign.  This exchange also works across MPI ranks.
   for (NewtonRaphson *base : vnr_) {
     NRFLD *nr = static_cast<NRFLD*>(base);
     MeshBlock *mb = nr->pmy_block_;
@@ -903,6 +896,36 @@ void NRFLD::CalculateCoefficientsOnce(const AthenaArray<Real> &u_pre,
   Real idx = 1.0/dx;
   Real idy = 1.0/dy;
   Real idz = 1.0/dz;
+  const int level = pmy_block_->loc.level;
+  const bool coarser[6] = {
+      pmy_block_->pbval->nblevel[1][1][0] < level,
+      pmy_block_->pbval->nblevel[1][1][2] < level,
+      pmy_block_->pbval->nblevel[1][0][1] < level,
+      pmy_block_->pbval->nblevel[1][2][1] < level,
+      pmy_block_->pbval->nblevel[0][1][1] < level,
+      pmy_block_->pbval->nblevel[2][1][1] < level};
+  auto face_opacity = [&](int face, int k, int j, int i,
+                          Real own, Real other, Real inverse_width) {
+    const bool at_boundary = face < 2 ? (face == 0 ? i == is : i == ie)
+        : face < 4 ? (face == 2 ? j == js : j == je)
+        : (face == 4 ? k == ks : k == ke);
+    if (NRFLDPrototype::SeriesResistance()) {
+      // Experimental diffusion resistance, derived for a fixed limiter.
+      // With a variable limiter this is an exploratory effective opacity.
+      // At equal-width
+      // faces, each center contributes half a cell: sigma_face is their
+      // arithmetic mean.  At a coarse/fine face the coarse center is h
+      // from the face and the fine center is h/2 away.  The two-point fine
+      // ghost uses (Ef+2Ec)/3, so its effective opacity is
+      // (2 sigma_c + sigma_f)/3 and reproduces
+      // F = -c (Ef-Ec) / [3 h (sigma_c + sigma_f/2)].
+      // The shared-face exchange keeps the same flux on both residual sides.
+      return coarser[face] && at_boundary
+          ? (2.0/3.0)*other + (1.0/3.0)*own
+          : 0.5*own + 0.5*other;
+    }
+    return RadFLD::FaceOpacity(own, other, inverse_width);
+  };
   const bool mixed_active = pfld->MixedFrameCoupled()
       && pfld->implicit_mixed_frame_drift;
   const int check_il = std::max(0, is-1);
@@ -955,7 +978,7 @@ void NRFLD::CalculateCoefficientsOnce(const AthenaArray<Real> &u_pre,
         // needs a separate stencil evaluation.
         if (i == is) {
           // for i-1/2 face
-          sigma_rface = RadFLD::FaceOpacity(sigma_r(k,j,i), sigma_r(k,j,i-1), idx);
+          sigma_rface = face_opacity(0,k,j,i,sigma_r(k,j,i),sigma_r(k,j,i-1),idx);
           gx = (u_pre(k,j,i-1) - u_pre(k,j,i))*idx;
           gy = 0.25*idy*((u_pre(k,j+1,i-1) - u_pre(k,j-1,i-1)) + (u_pre(k,j+1,i) - u_pre(k,j-1,i)));
           gz = 0.25*idz*((u_pre(k+1,j,i-1) - u_pre(k-1,j,i-1)) + (u_pre(k+1,j,i) - u_pre(k-1,j,i)));
@@ -976,7 +999,7 @@ void NRFLD::CalculateCoefficientsOnce(const AthenaArray<Real> &u_pre,
         }
 
          // for i+1/2 face
-        sigma_rface = RadFLD::FaceOpacity(sigma_r(k,j,i), sigma_r(k,j,i+1), idx);
+        sigma_rface = face_opacity(1,k,j,i,sigma_r(k,j,i),sigma_r(k,j,i+1),idx);
         gx = (u_pre(k,j,i+1) - u_pre(k,j,i))*idx;
         gy = 0.25*idy*((u_pre(k,j+1,i+1) - u_pre(k,j-1,i+1)) + (u_pre(k,j+1,i) - u_pre(k,j-1,i)));
         gz = 0.25*idz*((u_pre(k+1,j,i+1) - u_pre(k-1,j,i+1)) + (u_pre(k+1,j,i) - u_pre(k-1,j,i)));
@@ -993,7 +1016,7 @@ void NRFLD::CalculateCoefficientsOnce(const AthenaArray<Real> &u_pre,
 
         if (j == js) {
           // for j-1/2 face
-          sigma_rface = RadFLD::FaceOpacity(sigma_r(k,j,i), sigma_r(k,j-1,i), idx);
+          sigma_rface = face_opacity(2,k,j,i,sigma_r(k,j,i),sigma_r(k,j-1,i),idx);
           gx = 0.25*idx*((u_pre(k,j-1,i+1) - u_pre(k,j-1,i-1)) + (u_pre(k,j,i+1) - u_pre(k,j,i-1)));
           gy = (u_pre(k,j-1,i) - u_pre(k,j,i))*idy;
           gz = 0.25*idz*((u_pre(k+1,j-1,i) - u_pre(k-1,j-1,i)) + (u_pre(k+1,j,i) - u_pre(k-1,j,i)));
@@ -1015,7 +1038,7 @@ void NRFLD::CalculateCoefficientsOnce(const AthenaArray<Real> &u_pre,
         }
 
         // for j+1/2 face
-        sigma_rface = RadFLD::FaceOpacity(sigma_r(k,j,i), sigma_r(k,j+1,i), idx);
+        sigma_rface = face_opacity(3,k,j,i,sigma_r(k,j,i),sigma_r(k,j+1,i),idx);
         gx = 0.25*idx*((u_pre(k,j+1,i+1) - u_pre(k,j+1,i-1)) + (u_pre(k,j,i+1) - u_pre(k,j,i-1)));
         gy = (u_pre(k,j+1,i) - u_pre(k,j,i))*idy;
         gz = 0.25*idz*((u_pre(k+1,j+1,i) - u_pre(k-1,j+1,i)) + (u_pre(k+1,j,i) - u_pre(k-1,j,i)));
@@ -1033,7 +1056,7 @@ void NRFLD::CalculateCoefficientsOnce(const AthenaArray<Real> &u_pre,
 
         if (k == ks) {
           // for k-1/2 face
-          sigma_rface = RadFLD::FaceOpacity(sigma_r(k,j,i), sigma_r(k-1,j,i), idx);
+          sigma_rface = face_opacity(4,k,j,i,sigma_r(k,j,i),sigma_r(k-1,j,i),idx);
           gx = 0.25*idx*((u_pre(k-1,j,i+1) - u_pre(k-1,j,i-1)) + (u_pre(k,j,i+1) - u_pre(k,j,i-1)));
           gy = 0.25*idy*((u_pre(k-1,j+1,i) - u_pre(k-1,j-1,i)) + (u_pre(k,j+1,i) - u_pre(k,j-1,i)));
           gz = (u_pre(k-1,j,i) - u_pre(k,j,i))*idz;
@@ -1055,7 +1078,7 @@ void NRFLD::CalculateCoefficientsOnce(const AthenaArray<Real> &u_pre,
         }
 
         // for k+1/2 face
-        sigma_rface = RadFLD::FaceOpacity(sigma_r(k,j,i), sigma_r(k+1,j,i), idx);
+        sigma_rface = face_opacity(5,k,j,i,sigma_r(k,j,i),sigma_r(k+1,j,i),idx);
         gx = 0.25*idx*((u_pre(k+1,j,i+1) - u_pre(k+1,j,i-1)) + (u_pre(k,j,i+1) - u_pre(k,j,i-1)));
         gy = 0.25*idy*((u_pre(k+1,j+1,i) - u_pre(k+1,j-1,i)) + (u_pre(k,j+1,i) - u_pre(k,j-1,i)));
         gz = (u_pre(k+1,j,i) - u_pre(k,j,i))*idz;
@@ -2006,6 +2029,9 @@ void NRFLD::PrintFailurePhysicsDebug(Real gas_max) {
 
 void NRFLD::PrintCellPhysicsDebug(int k, int j, int i) {
   FLD *pfld = pmy_block_->prfld;
+  const int is = pmy_block_->is, ie = pmy_block_->ie;
+  const int js = pmy_block_->js, je = pmy_block_->je;
+  const int ks = pmy_block_->ks, ke = pmy_block_->ke;
   const AthenaArray<Real> &u_pre = u_;
   const AthenaArray<Real> &sigma_r = pfld->sigma_r;
   const AthenaArray<Real> &coeff = coeff_;
@@ -2017,6 +2043,25 @@ void NRFLD::PrintCellPhysicsDebug(int k, int j, int i) {
   const Real idy = 1.0/dy;
   const Real idz = 1.0/dz;
   const Real fac = pmy_driver_->dt_/SQR(dx);
+  const int level = pmy_block_->loc.level;
+  const bool coarser[6] = {
+      pmy_block_->pbval->nblevel[1][1][0] < level,
+      pmy_block_->pbval->nblevel[1][1][2] < level,
+      pmy_block_->pbval->nblevel[1][0][1] < level,
+      pmy_block_->pbval->nblevel[1][2][1] < level,
+      pmy_block_->pbval->nblevel[0][1][1] < level,
+      pmy_block_->pbval->nblevel[2][1][1] < level};
+  auto debug_face_opacity = [&](int face, Real own, Real other, Real inverse_width) {
+    if (!NRFLDPrototype::SeriesResistance()) {
+      return RadFLD::FaceOpacity(own, other, inverse_width);
+    }
+    const bool at_boundary = face < 2 ? (face == 0 ? i == is : i == ie)
+        : face < 4 ? (face == 2 ? j == js : j == je)
+        : (face == 4 ? k == ks : k == ke);
+    return coarser[face] && at_boundary
+        ? (2.0/3.0)*other + (1.0/3.0)*own
+        : 0.5*own + 0.5*other;
+  };
 
   auto print_face = [&](const char *label, Real sigma_face, Real gx, Real gy, Real gz,
                         Real e_face, Real coeff_face) {
@@ -2042,7 +2087,7 @@ void NRFLD::PrintCellPhysicsDebug(int k, int j, int i) {
               << std::endl;
   };
 
-  Real sigma_face = RadFLD::FaceOpacity(sigma_r(k,j,i), sigma_r(k,j,i-1), idx);
+  Real sigma_face = debug_face_opacity(0,sigma_r(k,j,i),sigma_r(k,j,i-1),idx);
   Real gx = (u_pre(k,j,i-1) - u_pre(k,j,i))*idx;
   Real gy = 0.25*idy*((u_pre(k,j+1,i-1) - u_pre(k,j-1,i-1)) + (u_pre(k,j+1,i) - u_pre(k,j-1,i)));
   Real gz = 0.25*idz*((u_pre(k+1,j,i-1) - u_pre(k-1,j,i-1)) + (u_pre(k+1,j,i) - u_pre(k-1,j,i)));
@@ -2050,7 +2095,7 @@ void NRFLD::PrintCellPhysicsDebug(int k, int j, int i) {
   print_face("face_xm", sigma_face, gx, gy, gz, e_face,
              derivetive_(NewtonRaphsonFLD::dFr_dEr_xm, k, j, i));
 
-  sigma_face = RadFLD::FaceOpacity(sigma_r(k,j,i), sigma_r(k,j,i+1), idx);
+  sigma_face = debug_face_opacity(1,sigma_r(k,j,i),sigma_r(k,j,i+1),idx);
   gx = (u_pre(k,j,i+1) - u_pre(k,j,i))*idx;
   gy = 0.25*idy*((u_pre(k,j+1,i+1) - u_pre(k,j-1,i+1)) + (u_pre(k,j+1,i) - u_pre(k,j-1,i)));
   gz = 0.25*idz*((u_pre(k+1,j,i+1) - u_pre(k-1,j,i+1)) + (u_pre(k+1,j,i) - u_pre(k-1,j,i)));
@@ -2058,7 +2103,7 @@ void NRFLD::PrintCellPhysicsDebug(int k, int j, int i) {
   print_face("face_xp", sigma_face, gx, gy, gz, e_face,
              derivetive_(NewtonRaphsonFLD::dFr_dEr_xp, k, j, i));
 
-  sigma_face = RadFLD::FaceOpacity(sigma_r(k,j,i), sigma_r(k,j-1,i), idx);
+  sigma_face = debug_face_opacity(2,sigma_r(k,j,i),sigma_r(k,j-1,i),idx);
   gx = 0.25*idx*((u_pre(k,j-1,i+1) - u_pre(k,j-1,i-1)) + (u_pre(k,j,i+1) - u_pre(k,j,i-1)));
   gy = (u_pre(k,j-1,i) - u_pre(k,j,i))*idy;
   gz = 0.25*idz*((u_pre(k+1,j-1,i) - u_pre(k-1,j-1,i)) + (u_pre(k+1,j,i) - u_pre(k-1,j,i)));
@@ -2066,7 +2111,7 @@ void NRFLD::PrintCellPhysicsDebug(int k, int j, int i) {
   print_face("face_ym", sigma_face, gx, gy, gz, e_face,
              derivetive_(NewtonRaphsonFLD::dFr_dEr_ym, k, j, i));
 
-  sigma_face = RadFLD::FaceOpacity(sigma_r(k,j,i), sigma_r(k,j+1,i), idx);
+  sigma_face = debug_face_opacity(3,sigma_r(k,j,i),sigma_r(k,j+1,i),idx);
   gx = 0.25*idx*((u_pre(k,j+1,i+1) - u_pre(k,j+1,i-1)) + (u_pre(k,j,i+1) - u_pre(k,j,i-1)));
   gy = (u_pre(k,j+1,i) - u_pre(k,j,i))*idy;
   gz = 0.25*idz*((u_pre(k+1,j+1,i) - u_pre(k-1,j+1,i)) + (u_pre(k+1,j,i) - u_pre(k-1,j,i)));
@@ -2074,7 +2119,7 @@ void NRFLD::PrintCellPhysicsDebug(int k, int j, int i) {
   print_face("face_yp", sigma_face, gx, gy, gz, e_face,
              derivetive_(NewtonRaphsonFLD::dFr_dEr_yp, k, j, i));
 
-  sigma_face = RadFLD::FaceOpacity(sigma_r(k,j,i), sigma_r(k-1,j,i), idx);
+  sigma_face = debug_face_opacity(4,sigma_r(k,j,i),sigma_r(k-1,j,i),idx);
   gx = 0.25*idx*((u_pre(k-1,j,i+1) - u_pre(k-1,j,i-1)) + (u_pre(k,j,i+1) - u_pre(k,j,i-1)));
   gy = 0.25*idy*((u_pre(k-1,j+1,i) - u_pre(k-1,j-1,i)) + (u_pre(k,j+1,i) - u_pre(k,j-1,i)));
   gz = (u_pre(k-1,j,i) - u_pre(k,j,i))*idz;
@@ -2082,7 +2127,7 @@ void NRFLD::PrintCellPhysicsDebug(int k, int j, int i) {
   print_face("face_zm", sigma_face, gx, gy, gz, e_face,
              derivetive_(NewtonRaphsonFLD::dFr_dEr_zm, k, j, i));
 
-  sigma_face = RadFLD::FaceOpacity(sigma_r(k,j,i), sigma_r(k+1,j,i), idx);
+  sigma_face = debug_face_opacity(5,sigma_r(k,j,i),sigma_r(k+1,j,i),idx);
   gx = 0.25*idx*((u_pre(k+1,j,i+1) - u_pre(k+1,j,i-1)) + (u_pre(k,j,i+1) - u_pre(k,j,i-1)));
   gy = 0.25*idy*((u_pre(k+1,j+1,i) - u_pre(k+1,j-1,i)) + (u_pre(k,j+1,i) - u_pre(k,j-1,i)));
   gz = (u_pre(k+1,j,i) - u_pre(k,j,i))*idz;

@@ -190,9 +190,10 @@ namespace RadFLD {
       return InvalidClosureValue();
     }
 
-    // Preserve the Howell-Greenough cap, but avoid both 0/0 and overflow in
-    // the arithmetic/harmonic means.  For zero opacity on both sides the
-    // harmonic mean is explicitly zero.
+    // This is CASTRO's kavg(opt=2) face-opacity rule from the gray FLD
+    // implementation: arithmetic in the thin limit, harmonic in the thick
+    // limit, with the Howell-Greenough cap at a thick/thin transition.
+    // Avoid both 0/0 and overflow; a zero/zero harmonic mean is zero.
     const Real arithmetic = 0.5*left + 0.5*right;
     const Real larger = std::max(left, right);
     const Real smaller = std::min(left, right);
