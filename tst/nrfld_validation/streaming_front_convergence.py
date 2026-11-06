@@ -21,6 +21,7 @@ import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 import numpy as np
+plt.rcParams["pdf.fonttype"] = 42
 
 from diffusion_validation import materialize_input
 from nrfld_validation.io import find_repo_root, read_athdf
@@ -213,7 +214,7 @@ def render(root: Path, summary: dict):
     fig_dir = root / "figures"
     fig_dir.mkdir(exist_ok=True)
     if completed:
-        fig, ax = plt.subplots(figsize=(9, 5))
+        fig, ax = plt.subplots(figsize=(7.2, 4.0))
         for name in ("n128_d2", "n128_d20", "n128_d100", "n256_d20", "n512_d20"):
             if name not in completed:
                 continue
@@ -223,8 +224,11 @@ def render(root: Path, summary: dict):
         ax.axvline(10 + C*FINAL_TIME, color="black", ls="--", label="x0+ct")
         ax.set(xlim=(50, 80), ylim=(-.03, 1.05), xlabel="x [cm]", ylabel="Erad [erg cm⁻³]")
         ax.grid(alpha=.25); ax.legend(fontsize=10)
-        fig.tight_layout(); fig.savefig(fig_dir / "profiles.png", dpi=170); plt.close(fig)
-        fig, axes = plt.subplots(2, 2, figsize=(12, 9))
+        fig.tight_layout()
+        fig.savefig(fig_dir / "profiles.png", dpi=170)
+        fig.savefig(fig_dir / "profiles.pdf")
+        plt.close(fig)
+        fig, axes = plt.subplots(2, 2, figsize=(7.2, 5.4))
         for name, row in completed.items():
             if name in ("n128_d2", "n128_d20", "n128_d100"):
                 axes[0, 0].scatter(row["dt_s"], -row["x50_error_cm"], label=name)
@@ -239,14 +243,17 @@ def render(root: Path, summary: dict):
             ax.grid(alpha=.25)
             handles, _ = ax.get_legend_handles_labels()
             if handles:
-                ax.legend(fontsize=9)
+                ax.legend(fontsize=7)
         axes[0, 0].set(xlabel="dt [s] at N=128", ylabel="50% lag [cm]")
         axes[0, 1].set(xlabel="dx [cm] at fixed dt", ylabel="50% lag [cm]")
         axes[1, 0].set(xlabel="dt [s] at N=128", ylabel="10–90% width [cm]")
         axes[1, 1].set(xlabel="dx [cm] at fixed dt", ylabel="10–90% width [cm]")
         for ax in axes.flat:
             ax.set_xscale("log")
-        fig.tight_layout(); fig.savefig(fig_dir / "convergence.png", dpi=170); plt.close(fig)
+        fig.tight_layout()
+        fig.savefig(fig_dir / "convergence.png", dpi=170)
+        fig.savefig(fig_dir / "convergence.pdf")
+        plt.close(fig)
     rows = []
     for name, row in cases.items():
         if row.get("status") == "passed":

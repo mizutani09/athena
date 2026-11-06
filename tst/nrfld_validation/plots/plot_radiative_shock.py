@@ -17,6 +17,7 @@ import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 import numpy as np
+plt.rcParams["pdf.fonttype"] = 42
 from mpl_toolkits.axes_grid1.inset_locator import inset_axes, mark_inset
 
 SCRIPT_DIR = Path(__file__).resolve().parent
@@ -250,6 +251,8 @@ def plot_radiative_shock(
     if use_inset:
         add_temperature_inset(temp_axis, numerical, analytic, case)
     fig.savefig(figure, dpi=200)
+    if figure.suffix.lower() == ".png":
+        fig.savefig(figure.with_suffix(".pdf"))
     plt.close(fig)
 
     return {
