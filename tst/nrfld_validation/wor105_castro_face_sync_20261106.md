@@ -109,15 +109,18 @@ the exact extinction presented to the fine ghost at a material jump should
 be audited before attributing the N64 difference solely to the averaging
 formula.
 
-## Decision
+## Initial decision and follow-up
 
-Keep the CASTRO-like `kavg` shared fine-face method as the main conservative
-candidate. Retain series resistance behind its experimental flag; the current
-results do not justify replacing the selected face opacity. The analytic
-uniform test supports the accuracy and conservation of the current candidate
-in the thick diffusion limit. A longer two-material test with an exact
-piecewise-diffusion reference and double-precision output is the next
-accuracy gate. The Newton flux limiter remains frozen throughout each solve.
+The initial Gaussian and uniform tests left the shared `kavg` method
+as the conservative candidate. The subsequent exact two-material benchmark
+[`wor105_layered_eigenmode_20261106.md`](wor105_layered_eigenmode_20261106.md)
+changed the coefficient ranking: at aligned, optically thick material
+jumps, distance-weighted series resistance is 45--291 times more accurate
+than shared `kavg` and approaches second-order convergence. The earlier
+one-step Gaussian ranking remains above as a transient stress test. Series
+resistance is now the preferred fixed-limiter thick-interface candidate,
+still behind its experimental flag pending broader closure tests. The
+Newton flux limiter remains frozen throughout each solve.
 
 Reproduce the local uniform-opacity checks after building with
 `python3 configure.py --prob=nrfld_diff_amr_interface -nrmgfld -mpi -hdf5`

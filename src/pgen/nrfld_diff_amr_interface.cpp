@@ -46,6 +46,9 @@ Real transverse_amplitude;
 int test_regrid_cycle;
 bool exact_cosine_mode;
 int cosine_wavenumber;
+bool layered_eigen_mode;
+Real eigen_outer_wave;
+Real eigen_inner_amplitude;
 
 int ControlledRefinement(MeshBlock *pmb) {
   // Deterministic topology change for restart/rank-invariance regression.
@@ -117,6 +120,9 @@ void Mesh::InitUserMeshData(ParameterInput *pin) {
   transverse_amplitude = pin->GetOrAddReal("problem", "transverse_amplitude", 0.0);
   exact_cosine_mode = pin->GetOrAddBoolean("problem", "exact_cosine_mode", false);
   cosine_wavenumber = pin->GetOrAddInteger("problem", "cosine_wavenumber", 1);
+  layered_eigen_mode = pin->GetOrAddBoolean("problem", "layered_eigen_mode", false);
+  eigen_outer_wave = pin->GetOrAddReal("problem", "eigen_outer_wave", 1.0);
+  eigen_inner_amplitude = pin->GetOrAddReal("problem", "eigen_inner_amplitude", -1.0);
   test_regrid_cycle = pin->GetOrAddInteger("problem", "test_regrid_cycle", -1);
   if (adaptive && test_regrid_cycle >= 0) {
     EnrollUserRefinementCondition(ControlledRefinement);
@@ -128,15 +134,22 @@ void Mesh::InitUserMeshData(ParameterInput *pin) {
       || !(pulse_width > 0.0) || profile_axis < 1 || profile_axis > 3
       || std::abs(transverse_amplitude) >= erad_background
       || cosine_wavenumber < 1
+      || (exact_cosine_mode && layered_eigen_mode)
       || (exact_cosine_mode && (profile_axis != 1
-          || density_low != density_high || transverse_amplitude != 0.0))) {
+          || density_low != density_high || transverse_amplitude != 0.0))
+      || (layered_eigen_mode && (profile_axis != 1 || interface_width != 0.0
+          || slab_left != 0.25 || slab_right != 0.75
+          || mesh_size.x1min != 0.0 || mesh_size.x1max != 1.0
+          || transverse_amplitude != 0.0 || !(eigen_outer_wave > 0.0)))) {
     std::stringstream msg;
     msg << "### FATAL ERROR in nrfld_diff_amr_interface\n"
         << "Require positive densities/background/pulse_width, non-negative "
         << "interface_width/amplitude, slab_left < slab_right, and "
         << "profile_axis in [1,3], and |transverse_amplitude| < background. "
         << "exact_cosine_mode additionally requires x1, uniform density, "
-        << "zero transverse amplitude, and positive cosine_wavenumber.";
+        << "zero transverse amplitude, and positive cosine_wavenumber. "
+        << "layered_eigen_mode requires x1 in [0,1], sharp slab [0.25,0.75], "
+        << "zero transverse amplitude, and positive eigen_outer_wave.";
     ATHENA_ERROR(msg);
   }
 
@@ -198,7 +211,23 @@ void MeshBlock::ProblemGenerator(ParameterInput *pin) {
             : transverse_axis == 2 ? domain.x2max : domain.x3max;
         const Real transverse_phase = 2.0*PI*(transverse_position-transverse_min)
             /(transverse_max-transverse_min);
-        if (exact_cosine_mode) {
+        if (layered_eigen_mode) {
+          // Exact cell average of a two-material diffusion eigenfunction.
+          // The driver supplies a wave number satisfying continuity of Er
+          // and D*dEr/dx at both material interfaces.
+          const Real x = position-std::floor(position);
+          const Real half_width = 0.5*pcoord->dx1f(i);
+          const Real ratio = density_high/density_low;
+          const Real inner_wave = eigen_outer_wave*std::sqrt(ratio);
+          const bool inner = x >= slab_left && x < slab_right;
+          const Real wave = inner ? inner_wave : eigen_outer_wave;
+          const Real amplitude = inner ? eigen_inner_amplitude : 1.0;
+          const Real distance = inner ? x-0.5 : (x < slab_left ? x : 1.0-x);
+          const Real argument = wave*half_width;
+          prfld->u_rad(k,j,i) = erad_background
+              + erad_amplitude*amplitude*(std::sin(argument)/argument)
+                  *std::cos(wave*distance);
+        } else if (exact_cosine_mode) {
           // Cell average of a periodic diffusion eigenmode.  With uniform
           // opacity and lambda=1/3, the backward-Euler continuum solution
           // is known exactly for the same cell average at every later time.
