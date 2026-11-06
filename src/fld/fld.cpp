@@ -193,11 +193,39 @@ FLD::FLD(MeshBlock *pmb, ParameterInput *pin) :
   fixed_u_rad = pin->GetOrAddBoolean("fld", "fixed_u_rad", false);
   include_mixed_frame_terms =
       pin->GetOrAddBoolean("fld", "include_mixed_frame_terms", true);
+  const bool test_c_problem =
+      std::string(PROBLEM_GENERATOR) == "nrfld_diff_amr_interface";
+  const bool mach5_problem =
+      std::string(PROBLEM_GENERATOR) == "nrfld_radiative_shock"
+      && pin->GetOrAddString("problem", "problem_type", "") == "mach5";
+  // Enable the common-face operator by default only in the two AMR problem
+  // families with analytic or same-checkpoint accuracy and conservation
+  // checks. Other problem generators retain their existing route until
+  // separately validated. An explicit legacy flag is the A/B escape hatch.
+  NRFLDPrototype::ConfigureDefault(pmb->pmy_mesh->multilevel
+      && (test_c_problem || mach5_problem), test_c_problem, mach5_problem,
+      fixed_flux_limiter);
+  if (NRFLDPrototype::Legacy()
+      && NRFLDPrototype::Flag("ATHENA_NRFLD_CONSERVATIVE_PROTOTYPE")) {
+    std::stringstream msg;
+    msg << "### FATAL ERROR in function [FLD::FLD]" << std::endl
+        << "ATHENA_NRFLD_LEGACY_INTERFACE and "
+        << "ATHENA_NRFLD_CONSERVATIVE_PROTOTYPE cannot both be 1.";
+    ATHENA_ERROR(msg);
+  }
+  if (pmb->pmy_mesh->multilevel && !NRFLDPrototype::Enabled()
+      && !NRFLDPrototype::Legacy()) {
+    std::stringstream msg;
+    msg << "### FATAL ERROR in function [FLD::FLD]" << std::endl
+        << "AMR NR-FLD has no validated conservative default for this "
+        << "problem. Set ATHENA_NRFLD_LEGACY_INTERFACE=1 to explicitly "
+        << "run the older nonconservative interface operator.";
+    ATHENA_ERROR(msg);
+  }
   if (NRFLDPrototype::Enabled()) {
     const bool variable_trial = NRFLDPrototype::VariableLimiterTrial();
-    const bool test_c = std::string(PROBLEM_GENERATOR) == "nrfld_diff_amr_interface";
-    const bool mach5 = std::string(PROBLEM_GENERATOR) == "nrfld_radiative_shock"
-        && NRFLDPrototype::Mach5Trial();
+    const bool test_c = test_c_problem;
+    const bool mach5 = mach5_problem && NRFLDPrototype::Mach5Trial();
     bool periodic = true;
     for (int face=0; face<6; ++face)
       periodic &= pmb->pmy_mesh->mesh_bcs[face] == BoundaryFlag::periodic;
@@ -224,7 +252,7 @@ FLD::FLD(MeshBlock *pmb, ParameterInput *pin) :
               && !NRFLDPrototype::SharedCoeff())
           || (NRFLDPrototype::SeriesResistance()
               && (!test_c || !NRFLDPrototype::SharedCoeff()
-                  || is_couple || !only_rad))
+                  || (!fixed_flux_limiter && (is_couple || !only_rad))))
           || cut_diff
           || (!fixed_flux_limiter && !variable_trial)
           || fixed_u_rad || !cubic
@@ -234,18 +262,42 @@ FLD::FLD(MeshBlock *pmb, ParameterInput *pin) :
           || (pmb->pmy_mesh->adaptive && !NRFLDPrototype::RegridTrial())) {
       std::stringstream msg;
       msg << "### FATAL ERROR in function [FLD::FLD]" << std::endl
-          << "ATHENA_NRFLD_CONSERVATIVE_PROTOTYPE requires either periodic "
-          << "Test C or an explicitly enabled Mach 5 trial on a Cartesian "
+          << "Conservative NR-FLD requires either periodic "
+          << "Test C or validated Mach 5 on a Cartesian "
           << "cubic mesh with user x1 and periodic transverse boundaries. "
-          << "Coupled trials require "
-          << "ATHENA_NRFLD_EXPERIMENTAL_COUPLED=1 and "
-          << "ATHENA_NRFLD_CONSERVATIVE_DIFFERENCE_JV=0. Variable-limiter "
-          << "trials require ATHENA_NRFLD_EXPERIMENTAL_VARIABLE_LIMITER=1. "
+          << "Coupling requires assembled Jv, and variable limiters must "
+          << "stay frozen within each solve. "
           << "Tangential reconstruction requires shared coefficients. "
-          << "Series resistance requires radiation-only Test C with "
-          << "shared coefficients. "
+          << "Series resistance requires Test C with shared coefficients, "
+          << "and a fixed limiter when gas is coupled. "
           << "Adaptive regrid requires ATHENA_NRFLD_EXPERIMENTAL_REGRID=1.";
       ATHENA_ERROR(msg);
+    }
+  }
+  if (Globals::my_rank == 0) {
+    static bool reported_interface_mode = false;
+    if (!reported_interface_mode) {
+      reported_interface_mode = true;
+      std::cout << "[NRFLD_INTERFACE_MODE] path="
+                << (NRFLDPrototype::Enabled() ? "conservative" : "legacy")
+                << " selection="
+                << (NRFLDPrototype::Legacy() ? "explicit_legacy"
+                    : NRFLDPrototype::DefaultEnabled() ? "supported_default"
+                    : NRFLDPrototype::Enabled() ? "explicit_prototype"
+                    : "unvalidated_problem") << std::endl;
+      if (NRFLDPrototype::Enabled()) {
+        std::cout << "[NRFLD_CONSERVATIVE_CONFIG] shared_coeff="
+                  << NRFLDPrototype::SharedCoeff()
+                  << " difference_jv=" << NRFLDPrototype::DifferenceJv()
+                  << " variable_limiter_trial="
+                  << NRFLDPrototype::VariableLimiterTrial()
+                  << " coupled_trial=" << NRFLDPrototype::CoupledTrial()
+                  << " tangential_reconstruction="
+                  << NRFLDPrototype::TangentialReconstruction()
+                  << " series_resistance=" << NRFLDPrototype::SeriesResistance()
+                  << " mach5_trial=" << NRFLDPrototype::Mach5Trial()
+                  << std::endl;
+      }
     }
   }
   implicit_mixed_frame_drift =

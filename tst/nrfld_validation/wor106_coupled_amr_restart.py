@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Compare continuous and checkpointed coupled FLD on static and moving AMR.
 
-Build first with: python3 configure.py --prob=nrfld_diff_amr_interface -nrmgfld -mpi -hdf5
+Build first with: python3 configure.py --prob=nrfld_diff_amr_interface -nrmgfld -mpi -hdf5 -h5double
 The test intentionally compares active fields at the same cycle and time.
 """
 
@@ -80,8 +80,10 @@ def main():
     args.output.mkdir(parents=True, exist_ok=True)
     baseline_flags = dict(os.environ)
     baseline_flags["ATHENA_NRFLD_CONSERVATIVE_PROTOTYPE"] = "0"
+    baseline_flags["ATHENA_NRFLD_LEGACY_INTERFACE"] = "1"
     candidate_flags = dict(baseline_flags)
     candidate_flags.update(ATHENA_NRFLD_CONSERVATIVE_PROTOTYPE="1",
+                 ATHENA_NRFLD_LEGACY_INTERFACE="0",
                  ATHENA_NRFLD_CONSERVATIVE_SHARED_COEFF="1",
                  ATHENA_NRFLD_CONSERVATIVE_DIFFERENCE_JV="0",
                  ATHENA_NRFLD_EXPERIMENTAL_TANGENTIAL_RECONSTRUCTION="1",

@@ -32,6 +32,7 @@ def run_case(binary, source, root, n, opacity, end_time, cfl, ranks, mode):
                "time/nlim=1"]
     env = os.environ.copy()
     for name in ("ATHENA_NRFLD_CONSERVATIVE_PROTOTYPE",
+                 "ATHENA_NRFLD_LEGACY_INTERFACE",
                  "ATHENA_NRFLD_CONSERVATIVE_SHARED_COEFF",
                  "ATHENA_NRFLD_CONSERVATIVE_DIFFERENCE_JV",
                  "ATHENA_NRFLD_EXPERIMENTAL_TANGENTIAL_RECONSTRUCTION",
@@ -39,11 +40,14 @@ def run_case(binary, source, root, n, opacity, end_time, cfl, ranks, mode):
         env.pop(name, None)
     if mode in ("conservative", "series"):
         env.update(ATHENA_NRFLD_CONSERVATIVE_PROTOTYPE="1",
+                   ATHENA_NRFLD_LEGACY_INTERFACE="0",
                    ATHENA_NRFLD_CONSERVATIVE_SHARED_COEFF="1",
                    ATHENA_NRFLD_CONSERVATIVE_DIFFERENCE_JV="0",
                    ATHENA_NRFLD_EXPERIMENTAL_TANGENTIAL_RECONSTRUCTION="1")
-    if mode == "series":
-        env["ATHENA_NRFLD_EXPERIMENTAL_SERIES_RESISTANCE"] = "1"
+    else:
+        env["ATHENA_NRFLD_LEGACY_INTERFACE"] = "1"
+    env["ATHENA_NRFLD_EXPERIMENTAL_SERIES_RESISTANCE"] = (
+        "1" if mode == "series" else "0")
     env["ATHENA_NRFLD_ENERGY_LEDGER"] = "1"
     env["ATHENA_NRFLD_INTERFACE_LEDGER"] = "1"
     if ranks > 1:

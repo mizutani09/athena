@@ -137,6 +137,7 @@ def run_case(binary, source, root, resolution, opacity, ratio, tlim, cfl, mode,
         command = ["mpirun", "-np", str(ranks)] + command
     env = os.environ.copy()
     for key in ("ATHENA_NRFLD_CONSERVATIVE_PROTOTYPE",
+                "ATHENA_NRFLD_LEGACY_INTERFACE",
                 "ATHENA_NRFLD_CONSERVATIVE_SHARED_COEFF",
                 "ATHENA_NRFLD_CONSERVATIVE_DIFFERENCE_JV",
                 "ATHENA_NRFLD_EXPERIMENTAL_TANGENTIAL_RECONSTRUCTION",
@@ -144,11 +145,14 @@ def run_case(binary, source, root, resolution, opacity, ratio, tlim, cfl, mode,
         env.pop(key, None)
     if mode != "baseline":
         env.update(ATHENA_NRFLD_CONSERVATIVE_PROTOTYPE="1",
+                   ATHENA_NRFLD_LEGACY_INTERFACE="0",
                    ATHENA_NRFLD_CONSERVATIVE_SHARED_COEFF="1",
                    ATHENA_NRFLD_CONSERVATIVE_DIFFERENCE_JV="0",
                    ATHENA_NRFLD_EXPERIMENTAL_TANGENTIAL_RECONSTRUCTION="1")
-    if mode == "series":
-        env["ATHENA_NRFLD_EXPERIMENTAL_SERIES_RESISTANCE"] = "1"
+    else:
+        env["ATHENA_NRFLD_LEGACY_INTERFACE"] = "1"
+    env["ATHENA_NRFLD_EXPERIMENTAL_SERIES_RESISTANCE"] = (
+        "1" if mode == "series" else "0")
     env["ATHENA_NRFLD_ENERGY_LEDGER"] = "1"
     env["ATHENA_NRFLD_INTERFACE_LEDGER"] = "1"
     started = time.perf_counter()

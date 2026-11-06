@@ -26,7 +26,7 @@ earlier `tlim`.
 ## End-to-end regression
 
 Build with `python3 configure.py --prob=nrfld_diff_amr_interface -nrmgfld
--mpi -hdf5`, then run:
+-mpi -hdf5 -h5double`, then run:
 
 ```sh
 python3 tst/nrfld_validation/wor106_coupled_amr_restart.py \

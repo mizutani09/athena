@@ -181,19 +181,6 @@ NRFLDDriver::NRFLDDriver(Mesh *pm, ParameterInput *pin)
     msg << "Invalid global_jacobian_iteration/epsilon";
     ATHENA_ERROR(msg);
   }
-  if (Globals::my_rank == 0 && NRFLDPrototype::Enabled()) {
-    std::cout << "[NRFLD_CONSERVATIVE_CONFIG] shared_coeff="
-              << NRFLDPrototype::SharedCoeff()
-              << " difference_jv=" << NRFLDPrototype::DifferenceJv()
-              << " variable_limiter_trial="
-              << NRFLDPrototype::VariableLimiterTrial()
-              << " coupled_trial=" << NRFLDPrototype::CoupledTrial()
-              << " tangential_reconstruction="
-              << NRFLDPrototype::TangentialReconstruction()
-              << " series_resistance=" << NRFLDPrototype::SeriesResistance()
-              << " mach5_trial=" << NRFLDPrototype::Mach5Trial()
-              << std::endl;
-  }
   relaxed_l2_eps_ = pin->GetOrAddReal(
       "nrfld", "nr_accept_l2_threshold", -1.0);
   relaxed_max_eps_ = pin->GetOrAddReal(

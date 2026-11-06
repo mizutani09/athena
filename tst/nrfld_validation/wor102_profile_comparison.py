@@ -115,19 +115,20 @@ def run(binary, source, out, n, mode, dt, contrast, amplitude, opacity,
         command = ["mpirun", "-np", str(mpi_ranks)] + command
     env = os.environ.copy()
     env.pop("ATHENA_NRFLD_CONSERVATIVE_PROTOTYPE", None)
+    env.pop("ATHENA_NRFLD_LEGACY_INTERFACE", None)
     env.pop("ATHENA_NRFLD_CONSERVATIVE_SHARED_COEFF", None)
     env.pop("ATHENA_NRFLD_CONSERVATIVE_DIFFERENCE_JV", None)
     env.pop("ATHENA_NRFLD_EXPERIMENTAL_TANGENTIAL_RECONSTRUCTION", None)
     env.pop("ATHENA_NRFLD_EXPERIMENTAL_SERIES_RESISTANCE", None)
     if mode != "reference":
+        env["ATHENA_NRFLD_LEGACY_INTERFACE"] = "1" if mode == "baseline" else "0"
         env["ATHENA_NRFLD_CONSERVATIVE_PROTOTYPE"] = "0" if mode == "baseline" else "1"
         env["ATHENA_NRFLD_CONSERVATIVE_SHARED_COEFF"] = "1" if mode in ("shared", "series") else "0"
-        if assembled_jv:
-            env["ATHENA_NRFLD_CONSERVATIVE_DIFFERENCE_JV"] = "0"
-        if mode in ("shared", "series") and tangential_reconstruction:
-            env["ATHENA_NRFLD_EXPERIMENTAL_TANGENTIAL_RECONSTRUCTION"] = "1"
-        if mode == "series":
-            env["ATHENA_NRFLD_EXPERIMENTAL_SERIES_RESISTANCE"] = "1"
+        env["ATHENA_NRFLD_CONSERVATIVE_DIFFERENCE_JV"] = "0" if assembled_jv else "1"
+        env["ATHENA_NRFLD_EXPERIMENTAL_TANGENTIAL_RECONSTRUCTION"] = (
+            "1" if mode in ("shared", "series") and tangential_reconstruction else "0")
+        env["ATHENA_NRFLD_EXPERIMENTAL_SERIES_RESISTANCE"] = (
+            "1" if mode == "series" else "0")
     env["ATHENA_NRFLD_EXPERIMENTAL_VARIABLE_LIMITER"] = "1"
     env["ATHENA_NRFLD_ENERGY_LEDGER"] = "1"
     start = time.perf_counter()
