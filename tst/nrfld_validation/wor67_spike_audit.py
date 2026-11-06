@@ -202,8 +202,9 @@ def analyse_case(label: str, directory: Path, analytic: dict, reference: dict,
     late_peak_window = (history["time"] >= .03) & (history["time"] <= .04)
     if not np.any(late_peak_window):
         raise ValueError(f"{label}: missing late peak history")
-    late_peak_min = float(np.min(history["Tgas_max"][late_peak_window]))
-    late_peak_max = float(np.max(history["Tgas_max"][late_peak_window]))
+    late_peaks = history["Tgas_max"][late_peak_window]
+    late_peak_min = float(np.min(late_peaks))
+    late_peak_max = float(np.max(late_peaks))
     absorption_time = 1.0/(2.99792458e10*float(input_value(input_file, "kappa_P")))
     previous_history_index = int(np.argmin(abs(history["time"]-previous["time_s"])))
     if abs(history["time"][previous_history_index]-previous["time_s"]) > 1e-5:
@@ -259,6 +260,8 @@ def analyse_case(label: str, directory: Path, analytic: dict, reference: dict,
            "max_aligned_change": max(change.values()),
            "gas_peak_change_since_previous_output_K": float(
                history["Tgas_max"][-1]-history["Tgas_max"][previous_history_index]),
+           "late_history_peak_mean_K": float(np.mean(late_peaks)),
+           "late_history_peak_std_K": float(np.std(late_peaks)),
            "late_history_peak_range_K": [late_peak_min, late_peak_max],
            "late_history_peak_span_K": late_peak_max-late_peak_min,
            "history_last_flux_spread": {k: float(history[k][-1])
@@ -422,6 +425,13 @@ def main() -> None:
                                "spike_recovery": "(numerical peak - analytic downstream T)/(analytic point peak - analytic downstream T)",
                                "aligned_L1": "density-jump registration only, over -3000..1000 cm",
                                "history_flux_spread": "within-block relative spread of physical mass/momentum/energy flux; open-domain diagnostic, not exact discrete conservation"}}
+    if len(cases) > 1 and max(row["shock_dx_cm"] for row in cases) - min(
+            row["shock_dx_cm"] for row in cases) < 1e-8:
+        summary["same_dx_layout_comparison"] = {
+            "final_peak_span_K": (max(row["gas_peak_numerical_K"] for row in cases)
+                                  - min(row["gas_peak_numerical_K"] for row in cases)),
+            "late_mean_peak_span_K": (max(row["late_history_peak_mean_K"] for row in cases)
+                                      - min(row["late_history_peak_mean_K"] for row in cases))}
     (args.output/"summary.json").write_text(json.dumps(summary, indent=2)+"\n")
     finest_uniform = min((row for row in cases if row["layout"] == "none"),
                          key=lambda row: (row["shock_dx_cm"], -row["cfl"]))
@@ -440,19 +450,27 @@ def main() -> None:
             "<p><strong>Reference point peak:</strong> {:.2f} K. The finite-volume projection averages the analytic conserved gas state over each numerical cell before converting to temperature; it is a diagnostic comparison, not a strict accuracy ceiling.</p>".format(cases[0]["gas_peak_point_reference_K"]),
             "<p>The orange vertical bars vary the density-jump registration by ±half a shock cell to show sampling sensitivity. The reported accuracy gate uses the original density-jump registration; it does not select the best shift.</p>",
             "<p><strong>Physical gate:</strong> aligned density, gas and radiation L1 ≤2%; raw shock-position error ≤5% of domain width; aligned change since previous output ≤1%; point-peak error ≤10%; spike-amplitude recovery ≥50%. All cases also require strict Newton/FGMRES convergence.</p>",
+            ("<p><strong>Peak-history context:</strong> at the same finest dx, final peaks span "
+             "{:.2f} K across layouts, while late-window means span {:.2f} K. "
+             "The late-window peak variation within each layout is shown below; "
+             "the final-time difference alone does not establish a layout advantage.</p>"
+             .format(summary["same_dx_layout_comparison"]["final_peak_span_K"],
+                     summary["same_dx_layout_comparison"]["late_mean_peak_span_K"])
+             if "same_dx_layout_comparison" in summary else ""),
             "<p><img src='gas_spike_profiles.png' alt='Gas spike profiles'></p>",
             "<p><img src='convergence.png' alt='Peak convergence'></p>",
             "<p><img src='late_peak_history.png' alt='Late gas-peak history'></p>",
-            "<div class='scroll'><table><tr><th>Case</th><th>dx [cm]</th><th>CFL</th><th>Late dt [µs]</th><th>Numerical peak [K]</th><th>Peak span, t=.03–.04 [K]</th><th>FV reference peak [K]</th><th>Peak x from jump [cm]</th><th>Point peak error</th><th>Recovery</th><th>Aligned Tgas L1</th><th>Stage explicit → implicit [K]</th><th>Gate</th></tr>"]
+            "<div class='scroll'><table><tr><th>Case</th><th>dx [cm]</th><th>CFL</th><th>Late dt [µs]</th><th>Final peak [K]</th><th>Late mean peak [K]</th><th>Peak span, t=.03–.04 [K]</th><th>FV reference peak [K]</th><th>Peak x from jump [cm]</th><th>Point peak error</th><th>Recovery</th><th>Aligned Tgas L1</th><th>Stage explicit → implicit [K]</th><th>Gate</th></tr>"]
     for row in cases:
         stage = row["stage"]
         st = ("{:.2f} → {:.2f}".format(stage["Tgas_peak_after_explicit_K"],
                                         stage["Tgas_peak_after_implicit_K"])
               if stage else "—")
-        html.append("<tr><td><a href='{}_near_shock.csv'>{}</a></td><td>{:.3f}</td><td>{:.3f}</td><td>{:.3f}</td><td>{:.2f}</td><td>{:.2f}</td><td>{:.2f}</td><td>{:+.2f}</td><td>{:.2%}</td><td>{:.2%}</td><td>{:.3f}%</td><td>{}</td><td>{}</td></tr>".format(
+        html.append("<tr><td><a href='{}_near_shock.csv'>{}</a></td><td>{:.3f}</td><td>{:.3f}</td><td>{:.3f}</td><td>{:.2f}</td><td>{:.2f}</td><td>{:.2f}</td><td>{:.2f}</td><td>{:+.2f}</td><td>{:.2%}</td><td>{:.2%}</td><td>{:.3f}%</td><td>{}</td><td>{}</td></tr>".format(
             escape(row["label"]), escape(row["label"]), row["shock_dx_cm"],
             row["cfl"], 1e6*row["median_late_history_dt_s"],
             row["gas_peak_numerical_K"],
+            row["late_history_peak_mean_K"],
             row["late_history_peak_span_K"],
             row["gas_peak_fv_projected_reference_K"],
             row["gas_peak_numerical_x_from_shock_cm"],
@@ -487,7 +505,9 @@ def main() -> None:
             f"{row['wall_seconds']/60:.1f}" if row["wall_seconds"] is not None else "—",
             f"{row['sampled_sum_rank_vmhwm_kib']/1024:.1f}"
             if row["sampled_sum_rank_vmhwm_kib"] is not None else "—"))
-    html.extend(["</table></div>", "<h2>Stage timing</h2>"])
+    html.append("</table></div>")
+    if any(row["stage"] for row in cases):
+        html.append("<h2>Stage timing</h2>")
     for row in cases:
         stage = row["stage"]
         if not stage:
