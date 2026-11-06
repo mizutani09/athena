@@ -28,6 +28,7 @@
 #include "../linear_solver/linear_solver.hpp"
 #include "../mesh/mesh.hpp"
 #include "../parameter_input.hpp"
+#include "../utils/nrfld_face_reconstruction.hpp"
 #include "../utils/nrfld_prototype_flags.hpp"
 #include "NRFLD.hpp"
 
@@ -187,6 +188,8 @@ NRFLDDriver::NRFLDDriver(Mesh *pm, ParameterInput *pin)
               << " variable_limiter_trial="
               << NRFLDPrototype::VariableLimiterTrial()
               << " coupled_trial=" << NRFLDPrototype::CoupledTrial()
+              << " tangential_reconstruction="
+              << NRFLDPrototype::TangentialReconstruction()
               << std::endl;
   }
   relaxed_l2_eps_ = pin->GetOrAddReal(
@@ -379,14 +382,26 @@ void NRFLDDriver::SyncInterfaceFaceMoments() {
     NRFLD *nr = static_cast<NRFLD*>(base);
     MeshBlock *mb = nr->pmy_block_;
     AthenaArray<Real> &moment = nr->interface_moments_;
+    const int level=mb->loc.level;
+    const bool coarser[6]={
+        mb->pbval->nblevel[1][1][0]<level,mb->pbval->nblevel[1][1][2]<level,
+        mb->pbval->nblevel[1][0][1]<level,mb->pbval->nblevel[1][2][1]<level,
+        mb->pbval->nblevel[0][1][1]<level,mb->pbval->nblevel[2][1][1]<level};
     for (int k=mb->ks; k<=mb->ke; ++k)
       for (int j=mb->js; j<=mb->je; ++j)
         for (int i=mb->is; i<=mb->ie; ++i)
           for (int face=0; face<6; ++face) {
             const Real d = nr->derivetive_(
                 NewtonRaphsonFLD::dFr_dEr_xm+face,k,j,i);
+            const bool at_face=(face<2 ? (face==0 ? i==mb->is : i==mb->ie)
+                : face<4 ? (face==2 ? j==mb->js : j==mb->je)
+                : (face==4 ? k==mb->ks : k==mb->ke));
+            const Real correction=(NRFLDPrototype::TangentialReconstruction()
+                                   && coarser[face] && at_face)
+                ? NRFLDFaceReconstruction::TangentialOffset(
+                    nr->u_,0,mb,face,k,j,i) : 0.0;
             moment(2*face,k,j,i) = d;
-            moment(2*face+1,k,j,i) = d*nr->u_(k,j,i);
+            moment(2*face+1,k,j,i) = d*(nr->u_(k,j,i)-correction);
           }
     nr->interface_bvar_->StartReceiving(BoundaryCommSubset::all);
   }

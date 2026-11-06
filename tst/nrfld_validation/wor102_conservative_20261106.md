@@ -22,6 +22,7 @@ also off unless set to `1`.
 | `ATHENA_NRFLD_EXPERIMENTAL_VARIABLE_LIMITER=1` | Permit variable-limiter Test C | Trial gate; coefficient exchange remains independently switchable |
 | `ATHENA_NRFLD_EXPERIMENTAL_COUPLED=1` | Permit coupled Test C | Requires `DIFFERENCE_JV=0` |
 | `ATHENA_NRFLD_EXPERIMENTAL_REGRID=1` | Permit adaptive Test C | More blocks and boundary exchanges during refinement |
+| `ATHENA_NRFLD_EXPERIMENTAL_TANGENTIAL_RECONSTRUCTION=1` | Reconstruct coarse value at each fine subface from paired fine-cell tangential slopes | Requires shared coefficients, radiation-only static AMR; no extra face-message components |
 | `nrfld/global_jacobian_check=true` | Run global Jv diagnostic | Additional residual/coefficient evaluations; default false |
 
 ## Interface stencil
@@ -321,3 +322,69 @@ error in several optical-depth regimes, and the frozen secant Jv stalls in
 one difficult N64 case unless the assembled frozen operator is selected.
 The remaining work is to settle the acceptable profile/solver tradeoff and
 then run the same-checkpoint Mach 5 A/B validation before adoption.
+
+## Ordered local improvement trials
+
+### Frozen assembled Jv
+
+With `ATHENA_NRFLD_CONSERVATIVE_DIFFERENCE_JV=0`, all ten N32 cases above
+converged. For the shared-face scheme, Newton and FGMRES counts were identical
+to the default frozen secant Jv, and the VTK update-error metric was exactly
+equal at float32 output precision in every case. The shared-face diffusion
+ledgers stayed at about `1e-19` or less. N64 thick/strong and moderate cases
+also reproduced the prior frozen-secant profile metrics and conservation.
+The difficult N64 thin/strong case converged with the assembled operator in
+two Newton steps / 18 FGMRES iterations, whereas the frozen secant stalled
+at the 200-iteration limit. On four MPI ranks, this case used the same 9+9
+FGMRES iterations as serial, its final Er integral differed by `-2.78e-17`,
+and the rank-summed diffusion ledger was `+1.49e-19`. This supports using
+the already available assembled operator as a robust option under the
+fixed-limiter policy; changing the default still requires broader production
+validation. Single-run wall times are not a performance guarantee.
+
+### Tangential coarse/fine reconstruction
+
+The new opt-in flag reconstructs the coarse state at each fine subface using
+the two paired fine cells in each tangential direction. The same linear
+offset is applied to Newton iterates and Krylov directions. The coarse side
+receives the D-weighted average of `E_f - offset`, so its area-integrated
+flux remains the negative of the four fine fluxes even when `D_f` differs.
+The existing `D` and `D E` face-moment exchange carries the corrected value;
+no new message components are allocated. The FLD limiter is still fixed
+during each Newton solve. A local linear-field check gave the exact normal
+gradient at all four fine subfaces and opposing integrated fluxes equal to
+roundoff for varying positive face coefficients.
+
+At N32, the one-step shared/existing update-error ratios changed as follows:
+
+| Case (opacity / amplitude / density ratio) | Two-point only | Tangential reconstruction | Reconstruction diffusion ledger |
+| --- | ---: | ---: | ---: |
+| 0.4 / 0 / 1.15 | 1.134 | 1.134 | -2.7e-21 |
+| 0.4 / 0.3 / 10 | 1.230 | 0.591 | -8.2e-22 |
+| 4 / 0.3 / 1.15 | 1.301 | 0.469 | +3.8e-22 |
+| 4 / 0.8 / 0.1 | 1.454 | 0.306 | +5.7e-22 |
+| 4 / 0.8 / 10 | 1.251 | 0.545 | +2.1e-23 |
+| 0.04 / 0 / 0.1 | 0.769 | 0.769 | -1.6e-19 |
+| 0.04 / 0.3 / 0.1 | 0.362 | 0.317 | -2.1e-20 |
+| 0.04 / 0.3 / 1.15 | 1.169 | 0.844 | -1.1e-20 |
+| 0.04 / 0.8 / 0.1 | 0.385 | 0.323 | +4.1e-20 |
+| 0.04 / 0.8 / 10 | 1.151 | 0.780 | -2.9e-20 |
+
+Nine cases improved; the two flat cases were unchanged in the reported
+ratio. At N64, thick/strong changed from `2.102` to `0.168`, moderate from
+`2.013` to `0.707`, and thin/strong from `0.183` to `0.198`. All three
+remained conservative to about `1e-20` and had positive Er minima. The
+eight-case variable-limiter conservation gate passed with maximum
+`|ΔEr/Er|=8.19e-14`. x2 and x3 one-step probes converged with diffusion
+ledgers `-2.09e-20` and `-3.08e-20`. Four-rank N64 thick/strong reproduced
+the serial Er integral within `5.55e-17`; its rank-summed ledger was
+`-1.80e-21`. The frozen global Jv diagnostic at a coarse/fine face had
+relative L2 `6.40e-13` for a smooth direction and `1.23e-12` for the first
+Newton direction at epsilon `1e-4`. FGMRES additivity and homogeneity were
+`1.23e-16` and `2.52e-16`. Five N32 moderate steps converged, with Er
+remaining positive (`min=0.706` initially, `0.842` after cycle 5) and a
+cumulative relative Er integral change of `5.01e-15`.
+
+The flag is experimental. In particular, normal-direction accuracy is
+unchanged in flat transverse cases, and physical boundaries, coupled runs,
+adaptive regrid, and Mach 5 are not covered by this reconstruction test.

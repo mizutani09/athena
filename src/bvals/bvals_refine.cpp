@@ -71,6 +71,7 @@
 #include "../newton_raphson/Newton_Raphson.hpp"
 #include "../nr_radiation/radiation.hpp"
 #include "../scalars/scalars.hpp"
+#include "../utils/nrfld_face_reconstruction.hpp"
 #include "../utils/nrfld_prototype_flags.hpp"
 #include "./bvals.hpp"
 #include "cc/hydro/bvals_hydro.hpp"
@@ -778,7 +779,10 @@ void BoundaryValues::ApplyNRFLDTwoPointGhost(
       for (int j=pmb->js; j<=pmb->je; ++j) {
         const int ck=pmb->cks+(k-pmb->ks)/2;
         const int cj=pmb->cjs+(j-pmb->js)/2;
-        fine(k,j,gi) = (fine(k,j,fi)+2.0*coarse(ck,cj,ci))/3.0;
+        const Real correction=NRFLDPrototype::TangentialReconstruction()
+            ? NRFLDFaceReconstruction::TangentialOffset(fine,0,pmb,
+                nb.ni.ox1<0 ? 0 : 1,k,j,fi) : 0.0;
+        fine(k,j,gi)=(fine(k,j,fi)+2.0*(coarse(ck,cj,ci)+correction))/3.0;
       }
   } else if (nb.ni.ox2 != 0) {
     const int fj = nb.ni.ox2 < 0 ? pmb->js : pmb->je;
@@ -788,7 +792,10 @@ void BoundaryValues::ApplyNRFLDTwoPointGhost(
       for (int i=pmb->is; i<=pmb->ie; ++i) {
         const int ck=pmb->cks+(k-pmb->ks)/2;
         const int ci=pmb->cis+(i-pmb->is)/2;
-        fine(k,gj,i) = (fine(k,fj,i)+2.0*coarse(ck,cj,ci))/3.0;
+        const Real correction=NRFLDPrototype::TangentialReconstruction()
+            ? NRFLDFaceReconstruction::TangentialOffset(fine,0,pmb,
+                nb.ni.ox2<0 ? 2 : 3,k,fj,i) : 0.0;
+        fine(k,gj,i)=(fine(k,fj,i)+2.0*(coarse(ck,cj,ci)+correction))/3.0;
       }
   } else {
     const int fk = nb.ni.ox3 < 0 ? pmb->ks : pmb->ke;
@@ -798,7 +805,10 @@ void BoundaryValues::ApplyNRFLDTwoPointGhost(
       for (int i=pmb->is; i<=pmb->ie; ++i) {
         const int cj=pmb->cjs+(j-pmb->js)/2;
         const int ci=pmb->cis+(i-pmb->is)/2;
-        fine(gk,j,i) = (fine(fk,j,i)+2.0*coarse(ck,cj,ci))/3.0;
+        const Real correction=NRFLDPrototype::TangentialReconstruction()
+            ? NRFLDFaceReconstruction::TangentialOffset(fine,0,pmb,
+                nb.ni.ox3<0 ? 4 : 5,fk,j,i) : 0.0;
+        fine(gk,j,i)=(fine(fk,j,i)+2.0*(coarse(ck,cj,ci)+correction))/3.0;
       }
   }
 }

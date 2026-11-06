@@ -18,6 +18,10 @@ inline bool SharedCoeff() {
   return Enabled() && Flag("ATHENA_NRFLD_CONSERVATIVE_SHARED_COEFF");
 }
 
+inline bool TangentialReconstruction() {
+  return Enabled() && Flag("ATHENA_NRFLD_EXPERIMENTAL_TANGENTIAL_RECONSTRUCTION");
+}
+
 inline bool VariableLimiterTrial() {
   return Flag("ATHENA_NRFLD_EXPERIMENTAL_VARIABLE_LIMITER");
 }

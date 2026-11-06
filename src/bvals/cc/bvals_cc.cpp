@@ -30,6 +30,7 @@
 #include "../../nr_multigrid/NRFLD.hpp"
 #include "../../parameter_input.hpp"
 #include "../../utils/buffer_utils.hpp"
+#include "../../utils/nrfld_face_reconstruction.hpp"
 #include "../../utils/nrfld_prototype_flags.hpp"
 #include "../bvals.hpp"
 #include "bvals_cc.hpp"
@@ -368,6 +369,14 @@ int CellCenteredBoundaryVariable::LoadBoundaryBufferToCoarser(Real *buf,
   const bool weighted_delta = pmb->pnr != nullptr
       && var_cc == &pmb->pnr->delta_u_
       && NRFLDPrototype::SharedCoeff();
+  const bool tangential_delta=weighted_delta
+      && NRFLDPrototype::TangentialReconstruction();
+  auto effective_delta=[&](int n,int face,int k,int j,int i) {
+    const Real correction=tangential_delta
+        ? NRFLDFaceReconstruction::TangentialOffset(var,n,pmb,face,k,j,i)
+        : 0.0;
+    return var(n,k,j,i)-correction;
+  };
   if (NRFLDPrototype::Enabled()
       && pmb->pnr != nullptr
       && (var_cc == &pmb->pnr->u_ || var_cc == &pmb->pnr->delta_u_
@@ -393,10 +402,14 @@ int CellCenteredBoundaryVariable::LoadBoundaryBufferToCoarser(Real *buf,
           const Real sum = w0+w1+w2+w3;
           for (int n=nl_; n<=nu_; ++n)
             coarse_var(n,k,j,ci) = sum > 0.0
-                ? (w0*var(n,fk,fj,fi)+w1*var(n,fk,fj+1,fi)
-                   +w2*var(n,fk+1,fj,fi)+w3*var(n,fk+1,fj+1,fi))/sum
-                : 0.25*(var(n,fk,fj,fi)+var(n,fk,fj+1,fi)
-                        +var(n,fk+1,fj,fi)+var(n,fk+1,fj+1,fi));
+                ? (w0*effective_delta(n,face,fk,fj,fi)
+                   +w1*effective_delta(n,face,fk,fj+1,fi)
+                   +w2*effective_delta(n,face,fk+1,fj,fi)
+                   +w3*effective_delta(n,face,fk+1,fj+1,fi))/sum
+                : 0.25*(effective_delta(n,face,fk,fj,fi)
+                        +effective_delta(n,face,fk,fj+1,fi)
+                        +effective_delta(n,face,fk+1,fj,fi)
+                        +effective_delta(n,face,fk+1,fj+1,fi));
         }
     } else if (nb.ni.ox2 != 0) {
       const int cj = nb.ni.ox2 < 0 ? pmb->cjs : pmb->cje;
@@ -415,10 +428,14 @@ int CellCenteredBoundaryVariable::LoadBoundaryBufferToCoarser(Real *buf,
           const Real sum = w0+w1+w2+w3;
           for (int n=nl_; n<=nu_; ++n)
             coarse_var(n,k,cj,i) = sum > 0.0
-                ? (w0*var(n,fk,fj,fi)+w1*var(n,fk,fj,fi+1)
-                   +w2*var(n,fk+1,fj,fi)+w3*var(n,fk+1,fj,fi+1))/sum
-                : 0.25*(var(n,fk,fj,fi)+var(n,fk,fj,fi+1)
-                        +var(n,fk+1,fj,fi)+var(n,fk+1,fj,fi+1));
+                ? (w0*effective_delta(n,face,fk,fj,fi)
+                   +w1*effective_delta(n,face,fk,fj,fi+1)
+                   +w2*effective_delta(n,face,fk+1,fj,fi)
+                   +w3*effective_delta(n,face,fk+1,fj,fi+1))/sum
+                : 0.25*(effective_delta(n,face,fk,fj,fi)
+                        +effective_delta(n,face,fk,fj,fi+1)
+                        +effective_delta(n,face,fk+1,fj,fi)
+                        +effective_delta(n,face,fk+1,fj,fi+1));
         }
     } else if (nb.ni.ox3 != 0) {
       const int ck = nb.ni.ox3 < 0 ? pmb->cks : pmb->cke;
@@ -437,10 +454,14 @@ int CellCenteredBoundaryVariable::LoadBoundaryBufferToCoarser(Real *buf,
           const Real sum = w0+w1+w2+w3;
           for (int n=nl_; n<=nu_; ++n)
             coarse_var(n,ck,j,i) = sum > 0.0
-                ? (w0*var(n,fk,fj,fi)+w1*var(n,fk,fj,fi+1)
-                   +w2*var(n,fk,fj+1,fi)+w3*var(n,fk,fj+1,fi+1))/sum
-                : 0.25*(var(n,fk,fj,fi)+var(n,fk,fj,fi+1)
-                        +var(n,fk,fj+1,fi)+var(n,fk,fj+1,fi+1));
+                ? (w0*effective_delta(n,face,fk,fj,fi)
+                   +w1*effective_delta(n,face,fk,fj,fi+1)
+                   +w2*effective_delta(n,face,fk,fj+1,fi)
+                   +w3*effective_delta(n,face,fk,fj+1,fi+1))/sum
+                : 0.25*(effective_delta(n,face,fk,fj,fi)
+                        +effective_delta(n,face,fk,fj,fi+1)
+                        +effective_delta(n,face,fk,fj+1,fi)
+                        +effective_delta(n,face,fk,fj+1,fi+1));
         }
     }
   }
