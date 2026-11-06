@@ -89,6 +89,7 @@ def main():
                  ATHENA_NRFLD_EXPERIMENTAL_REGRID="1",
                  ATHENA_NRFLD_EXPERIMENTAL_COUPLED="1")
     cases = (("baseline", False, 4), ("baseline", True, 4),
+             ("baseline", True, 1),
              ("candidate", False, 4), ("candidate", True, 4),
              ("candidate", True, 1))
     for mode, adaptive, direct_ranks in cases:

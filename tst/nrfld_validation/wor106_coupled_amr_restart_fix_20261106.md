@@ -43,13 +43,18 @@ Newton solve. Both the legacy and shared-face paths are covered.
 | --- | --- | ---: | ---: |
 | Legacy | Static | 4→4 | 8.53e-14 |
 | Legacy | Adaptive | 4→4 | 2.84e-14 |
+| Legacy | Adaptive | 1→4 | 2.84e-14 |
 | Shared face | Static | 4→4 | 5.68e-14 |
 | Shared face | Adaptive | 4→4 | 2.84e-14 |
 | Shared face | Adaptive | 1→4 | 2.84e-14 |
 
 Each pair has identical cycle-5 time `0.006229967897188556`. The adaptive
 tests actually derefine after cycle 2. Outputs and logs are in
-`/tmp/wor106_restart_regression_20261106c`. A previous intermediate trial
+`/tmp/wor106_restart_regression_20261106d`. A previous intermediate trial
 that refreshed only hydro conserved ghosts reduced the same-time field
 difference to `4.38e-8`; synchronizing radiation as well reduced it to
 roundoff. A hydro-primitive-only restart sync did not fix the discrepancy.
+An additional four-rank adaptive candidate run with energy and interface
+ledgers enabled gave summed domain diffusion at most `1.10e-15` per direct
+cycle and `1.22e-15` per restarted cycle, consistent with roundoff. Its logs
+are in `/tmp/wor106_adaptive_fixed_20261106`.
