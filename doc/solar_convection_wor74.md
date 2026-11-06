@@ -142,7 +142,7 @@ swap was `203 MiB`; swap did not grow. The 657 monitor records are in
 check the top-flux response, stored-energy trend, and controller gain before
 calling the entropy calibrated.
 
-### Long feedback trajectory started from t=0
+### Long feedback trajectory from t=0 to 5000: completed
 
 The separate `tst/nrfld_validation/run_solar_entropy_feedback_long.py`
 driver starts the 96 km box from the same 1D profile as the fixed baseline,
@@ -171,14 +171,14 @@ available memory falls below `3 GiB`, used swap exceeds `4 GiB`, or disk
 free space falls below `50 GiB`.
 
 The t=100 checkpoint passed its SHA256 and report checks. The same branch
-was resumed in the background toward `t=5000`. The driver writes an atomic
+continued to `t=5000` and completed all 50 segments. The driver writes an atomic
 `state.json`, a large-font `index.html` with a progress plot and case links,
 `memory_monitor.csv` every five seconds, and a `driver.log`. A completed
 segment can be resumed with the same arguments plus `--resume`; the target
 may be increased to `t=20000` later without repeating completed segments.
 If an interrupted case directory already exists, the next attempt uses a
 new retry name and restarts from the last verified completed checkpoint.
-For live checks:
+For checking the finished trajectory:
 
 ```bash
 tail -n 3 /mnt/d/output/rad/wor74_feedback_20261105/from_t0_96km_t5000/driver.log
@@ -186,12 +186,27 @@ tail -n 3 /mnt/d/output/rad/wor74_feedback_20261105/from_t0_96km_t5000/memory_mo
 python3 -m json.tool /mnt/d/output/rad/wor74_feedback_20261105/from_t0_96km_t5000/state.json | head -40
 ```
 
-The first segment's total wall time is `9.52 min / 100 code-time`; the
-`t=5000–5100` pilot needed about `10.8 min / 100 code-time` for simulation
-without slices. With current sparse plots and possible throughput changes,
-allow roughly **8–12 wall hours to t=5000**, and **32–50 wall hours to
-t≈20000** (the approximate whole-box thermal time). These are resource
-estimates, not predictions of when the top flux becomes stationary or solar.
+The 50 simulation segments consumed **8.57 wall hours**, and the driver
+including plots and reports consumed **8.70 hours**. The full joined report
+is `combined/index.html` under the campaign root, with three MP4 movies.
+All 71,186 reported Newton solves converged, with no slow-MG warning or
+fatal error. The smallest observed WSL available memory was 17.58 GiB;
+peak summed Athena-rank RSS was 1.11 GiB, and peak used swap was 0.284 GiB.
+The last two 1250-code-time windows each span more than ten vertical
+crossing times. Their mean top radiative fluxes were 0.6262 and 0.6280
+`F_sun`; the latter window's bottom hydro flux was 0.6299 `F_sun` and
+stored-energy trend was +0.00325 `F_sun`. The mass drift stayed below
+0.030%. Thus the long-window stationarity screen fails specifically on the
+0.9–1.1 `F_sun` top-flux condition. This run establishes stable numerical
+evolution through t=5000; it does not establish a solar-flux-calibrated
+solution. The initial entropy was `1.581097454457282e9`, while the entropy
+used in the final segment was `1.5813836703922749e9 erg g^-1 K^-1`.
+The final controller update in `state.json` is a proposed value for a
+future segment and was not used in the computed t≤5000 trajectory.
+
+For the approximate whole-box heat time t≈20000, extrapolating the measured
+throughput gives **about 35 wall hours from t=0**. This is a resource
+estimate, not a prediction of when the top flux becomes solar.
 
 ## Local CPU test
 

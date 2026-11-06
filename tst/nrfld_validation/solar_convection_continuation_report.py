@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Screen stationarity across consecutive solar runs with identical physics."""
+"""Screen stationarity across consecutive solar runs or entropy feedback segments."""
 
 from __future__ import annotations
 
@@ -37,34 +37,64 @@ def combined_log(logs: list[dict], manifests: list[dict]) -> dict:
 
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--run", type=Path, action="append", required=True,
+    parser.add_argument("--run", type=Path, action="append",
                         help="Consecutive run directory; documented interruptions "
                              "may be followed by their own checkpoint restart")
-    parser.add_argument("--header-from", type=Path, required=True)
+    parser.add_argument("--feedback-state", type=Path,
+                        help="state.json from a segmented t=0 entropy-feedback run; "
+                             "discovers completed cases relative to its own directory")
+    parser.add_argument("--allow-s-in-variation", action="store_true",
+                        help="Allow only the explicit problem/s_in override to vary "
+                             "across manually listed run segments")
+    parser.add_argument("--header-from", type=Path,
+                        help="Header-bearing HST; defaults to the first run's HST")
     parser.add_argument("--output-dir", type=Path, required=True)
     parser.add_argument("--reference-flux", type=float, default=6.3e10)
     args = parser.parse_args()
+    if bool(args.run) == bool(args.feedback_state):
+        parser.error("Choose either repeated --run or --feedback-state")
+    if args.feedback_state:
+        feedback_state = json.loads(args.feedback_state.read_text())
+        args.run = [args.feedback_state.parent / row["case"]
+                    for row in feedback_state["completed"]]
+        args.allow_s_in_variation = True
     if len(args.run) < 2:
         parser.error("Need at least two consecutive run segments")
+    args.run = [run.resolve() for run in args.run]
+    if args.header_from is None:
+        args.header_from = next(args.run[0].glob("*.hst"), None)
+    if args.header_from is None or not args.header_from.is_file():
+        parser.error("No header-bearing first HST; pass --header-from")
+    args.header_from = args.header_from.resolve()
     manifests = [json.loads((run/"manifest.json").read_text())
                  for run in args.run]
     fixed = ("binary_sha256", "base_input_sha256",
-             "generated_input_sha256", "data_sha256", "problem_overrides")
+             "generated_input_sha256", "data_sha256")
     numerical_prefixes = ("mesh/nx1=", "mesh/nx2=", "mesh/nx3=",
                           "time/cfl_number=")
     def numerical_overrides(manifest: dict) -> list[str]:
         return sorted(arg for arg in manifest["command"]
                       if arg.startswith(numerical_prefixes))
+    def controlled_overrides(manifest: dict) -> list[str]:
+        overrides = manifest.get("problem_overrides", [])
+        if args.allow_s_in_variation:
+            if not any(arg.startswith("s_in=") for arg in overrides):
+                raise ValueError("Entropy feedback requires an explicit s_in override")
+            overrides = [arg for arg in overrides if not arg.startswith("s_in=")]
+        return sorted(overrides)
     for run, manifest in zip(args.run[1:], manifests[1:]):
         for key in fixed:
             if manifest.get(key) != manifests[0].get(key):
                 raise ValueError(f"{run}: {key} differs from the first segment")
         if numerical_overrides(manifest) != numerical_overrides(manifests[0]):
             raise ValueError(f"{run}: grid or CFL differs from the first segment")
+        if controlled_overrides(manifest) != controlled_overrides(manifests[0]):
+            raise ValueError(f"{run}: non-entropy problem overrides differ")
     for previous, current, manifest in zip(args.run[:-1], args.run[1:],
                                            manifests[1:]):
-        checkpoint = Path(manifest.get("restart", ""))
-        if (checkpoint.parent.resolve() != previous.resolve()
+        original_checkpoint = Path(manifest.get("restart") or "")
+        checkpoint = previous / original_checkpoint.name
+        if (original_checkpoint.parent.name != previous.name
                 or not checkpoint.name.endswith(".rst")
                 or not checkpoint.is_file()):
             raise ValueError(f"{current}: restart is not a checkpoint in the "
@@ -90,8 +120,8 @@ def main() -> None:
             killed_launcher = (
                 "exit_code" not in manifest
                 and manifest.get("last_checkpoint") == manifests[index+1]["restart"]
-                and Path(manifest.get("resume_case", "")).resolve()
-                == args.run[index+1].resolve())
+                and Path(manifest.get("resume_case", "")).name
+                == args.run[index+1].name)
             if not (interrupted_runner or killed_launcher):
                 raise ValueError(f"{run}: incomplete without a verifiable "
                                  "checkpoint continuation")
@@ -102,7 +132,8 @@ def main() -> None:
         raise ValueError("History column sets differ between segments")
     h = segments[0]
     joins = []
-    for current, manifest in zip(segments[1:], manifests[1:]):
+    for current, manifest, previous_run in zip(segments[1:], manifests[1:],
+                                               args.run[:-1]):
         first = current["time"][0]
         if first <= h["time"][0]:
             raise ValueError("A continuation starts before the prior history")
@@ -111,9 +142,11 @@ def main() -> None:
         cadence = max(np.median(np.diff(h["time"])),
                       np.median(np.diff(current["time"])))
         gap = float(first - h["time"][keep][-1])
-        if gap > 2.1*cadence:
-            raise ValueError("Gap between segment histories exceeds two samples")
-        joins.append({"restart": manifest["restart"],
+        # Restart HST writers may emit their first row after two accepted
+        # steps; allow that sampling delay but still reject a true gap.
+        if gap > 3.1*cadence:
+            raise ValueError("Gap between segment histories exceeds three samples")
+        joins.append({"restart": str(previous_run / Path(manifest["restart"]).name),
                       "overlap_dropped_samples": dropped,
                       "history_gap_code": gap})
         h = {name: np.r_[values[keep], current[name]]
@@ -122,9 +155,16 @@ def main() -> None:
     report = summarize(h, combined_log(logs, manifests), units,
                        args.reference_flux)
     report["stationarity_window_scope"] = (
+        "Combined consecutive entropy-feedback segments with identical binary, "
+        "base input, and tables; only explicit inflow entropy may change; "
+        "overlapping HST rows removed"
+        if args.allow_s_in_variation else
         "Combined consecutive segments with identical binary, base input, "
         "tables, and problem overrides; overlapping superseded HST rows removed")
+    report["entropy_feedback_controlled"] = args.allow_s_in_variation
     report["source_runs"] = [str(run) for run in args.run]
+    report["source_runs_relative"] = [os.path.relpath(run, args.output_dir.resolve())
+                                      for run in args.run]
     report["history_joins"] = joins
     report["interrupted_segments"] = [str(run) for run, manifest in
                                        zip(args.run, manifests)
@@ -216,7 +256,9 @@ def main() -> None:
         ".fail{font-weight:bold;color:#a12929}</style>"
         "<h1>Solar convection: combined continuation</h1>"
         f"<p><strong>Stationarity screen: {verdict}.</strong> "
-        "The joined runs have identical binary and physics inputs. "
+        +("The joined runs have identical binary and physics inputs except "
+          "for the controlled inflow entropy. " if args.allow_s_in_variation else
+          "The joined runs have identical binary and physics inputs. ")+
         "A screen pass would still require optical-profile and resolution "
         "comparison with the Sun.</p>"
         +interruption_note+flux_note+

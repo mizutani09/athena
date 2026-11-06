@@ -204,7 +204,13 @@ def main() -> None:
     if args.end_time is not None and not np.isfinite(args.end_time):
         parser.error("--end-time must be finite")
     summary = json.loads(args.source_summary.read_text())
-    runs = [Path(item).resolve() for item in summary["source_runs"]]
+    # New reports record relative paths so copied campaigns can be replotted
+    # on another machine without retaining their original absolute prefix.
+    if "source_runs_relative" in summary:
+        runs = [(args.source_summary.resolve().parent / item).resolve()
+                for item in summary["source_runs_relative"]]
+    else:
+        runs = [Path(item).resolve() for item in summary["source_runs"]]
     runs += [item.resolve() for item in args.extra_run]
     for run in runs:
         if not (run / "athinput.generated").is_file():

@@ -128,6 +128,10 @@ def render(root: Path, state: dict) -> None:
              "<a href='driver.log'>Driver log</a></p>"]
     if completed:
         lines.append("<img src='feedback_progress.png' alt='Flux and entropy history'>")
+    if (root / "combined" / "index.html").is_file():
+        lines.append("<p><strong>Full-campaign analysis:</strong> "
+                     "<a href='combined/index.html'>joined flux checks, plots, "
+                     "and movies</a></p>")
     lines += ["<h2>Restart segments</h2>",
               "<table><thead><tr><th>Case</th><th>End t</th><th>Top / solar</th>"
               "<th>Bottom / solar</th><th>Input entropy</th><th>Wall min</th>"
