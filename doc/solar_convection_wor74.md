@@ -1,5 +1,10 @@
 # WOR-74: inflow-entropy sensitivity and feedback preparation
 
+The t=0–5000 feedback experiment and matched restart audit are documented
+in [solar_convection_entropy_flux_audit.md](solar_convection_entropy_flux_audit.md).
+The short bottom-flux gain below must not be used as a calibrated top-flux
+response: the feedback experiment remained near 0.63 solar at the top.
+
 The non-magnetic 6.144 × 6.144 × 3.072 Mm, 96 km solar-box run reached
 `t=5000`. In its last `t=4150–5000` window, the mean top flux was
 `0.6257 F_sun`, the mean bottom hydro flux was `0.6236 F_sun`, and the

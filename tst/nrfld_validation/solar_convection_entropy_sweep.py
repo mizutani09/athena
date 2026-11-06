@@ -6,6 +6,7 @@ from __future__ import annotations
 import argparse
 import html
 import json
+import os
 from pathlib import Path
 
 import matplotlib
@@ -38,6 +39,13 @@ def rolling_mean(y: np.ndarray, samples: int) -> np.ndarray:
         np.ones(len(y)), kernel, mode="same")
 
 
+def case_link(run_dir: Path, output_dir: Path) -> str:
+    """Link a case report when present, otherwise its immutable manifest."""
+    target = run_dir / ("index.html" if (run_dir / "index.html").is_file()
+                        else "manifest.json")
+    return html.escape(os.path.relpath(target, output_dir))
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--baseline", type=Path, required=True)
@@ -45,7 +53,7 @@ def main() -> None:
                         default=[], help="Consecutive checkpoint restart of the "
                         "baseline; repeat for interrupted segments")
     parser.add_argument("--baseline-s-in", type=float, required=True,
-                        help="Effective profile-derived entropy from the original-run log")
+                        help="Effective baseline entropy, from the profile or explicit s_in")
     parser.add_argument("--variant", nargs=2, action="append", required=True,
                         metavar=("LABEL", "RUN_DIR"))
     parser.add_argument("--variant-continuation", nargs=2, action="append",
@@ -76,10 +84,15 @@ def main() -> None:
             if manifest.get(key) != baseline_manifest.get(key):
                 raise ValueError(f"{path}: baseline continuation {key} differs")
         previous = path
-    if not effective_problem_bool(args.baseline / "athinput.generated",
-                                  baseline_manifest.get("problem_overrides", []),
-                                  "s_in_from_profile"):
-        raise ValueError("Baseline must derive its inflow entropy from the profile")
+    baseline_from_profile = effective_problem_bool(
+        args.baseline / "athinput.generated",
+        baseline_manifest.get("problem_overrides", []), "s_in_from_profile")
+    if baseline_from_profile is False:
+        actual = explicit_entropy(args.baseline)
+        if not np.isclose(actual, args.baseline_s_in, rtol=0, atol=1e-3):
+            raise ValueError("--baseline-s-in differs from explicit baseline s_in")
+    elif baseline_from_profile is not True:
+        raise ValueError("Baseline must specify profile or explicit inflow entropy")
     numerical_prefixes = ("mesh/nx1=", "mesh/nx2=", "mesh/nx3=",
                           "time/cfl_number=")
     def numerical_overrides(manifest: dict) -> list[str]:
@@ -339,11 +352,12 @@ def main() -> None:
     plt.close(fig)
     cells = []
     for row in rows:
-        name = Path(row["run_dir"]).name
-        links = f"<a href='../{html.escape(name)}/index.html'>{html.escape(row['label'])}</a>"
+        path = case_link(Path(row["run_dir"]), args.output_dir)
+        links = (f"<a href='{path}'>"
+                 f"{html.escape(row['label'])}</a>")
         if row["final_run_dir"] != row["run_dir"]:
-            continuation_name = Path(row["final_run_dir"]).name
-            links += (f" <a href='../{html.escape(continuation_name)}/index.html'>"
+            path = case_link(Path(row["final_run_dir"]), args.output_dir)
+            links += (f" <a href='{path}'>"
                       "(continuation)</a>")
         cells.append("<tr>" + "".join(f"<td>{value}</td>" for value in (
             links,
@@ -361,7 +375,8 @@ def main() -> None:
                "Late 25-code ΔFtop / solar", "Late half ΔFtop / solar",
                "Δ stored energy rate / solar", "Late Ftop / solar")
     table_head = "".join(f"<th>{name}</th>" for name in headers)
-    baseline_link = (f"<a href='../{html.escape(args.baseline.name)}/index.html'>"
+    baseline_path = case_link(args.baseline, args.output_dir)
+    baseline_link = (f"<a href='{baseline_path}'>"
                      "Baseline case report</a>")
     (args.output_dir / "index.html").write_text(
         "<!doctype html><html lang='en'><meta charset='utf-8'>"

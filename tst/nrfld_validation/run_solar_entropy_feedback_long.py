@@ -132,6 +132,10 @@ def render(root: Path, state: dict) -> None:
         lines.append("<p><strong>Full-campaign analysis:</strong> "
                      "<a href='combined/index.html'>joined flux checks, plots, "
                      "and movies</a></p>")
+    if (root / "entropy_transport" / "index.html").is_file():
+        lines.append("<p><strong>Bottom entropy transport:</strong> "
+                     "<a href='entropy_transport/index.html'>prescribed, upflow, "
+                     "and downflow entropy</a></p>")
     lines += ["<h2>Restart segments</h2>",
               "<table><thead><tr><th>Case</th><th>End t</th><th>Top / solar</th>"
               "<th>Bottom / solar</th><th>Input entropy</th><th>Wall min</th>"
