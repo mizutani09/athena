@@ -25,8 +25,9 @@ series resistance, and difference Jv remain switchable with their existing
 environment flags set to `0` or `1`; the default difference Jv is off.
 
 This is a narrow rollout, not a claim that all FLD physics, coordinates, or
-meshes have been validated. Noncubic and curvilinear support remains WOR-69;
-the N4096 full-length convergence study remains WOR-100. A different AMR
+meshes have been validated. Noncubic cells and curvilinear coordinates are
+outside the project scope and remain rejected by the geometry guard. The
+N4096 full-length convergence study remains WOR-100. A different AMR
 problem must explicitly use the legacy route until its conservative path is
 validated.
 
