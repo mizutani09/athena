@@ -250,6 +250,8 @@ def render(root: Path, summary: dict):
         axes[1, 1].set(xlabel="dx [cm] at fixed dt", ylabel="10–90% width [cm]")
         for ax in axes.flat:
             ax.set_xscale("log")
+        for ax in (axes[0, 1], axes[1, 1]):
+            ax.set_xticks((0.2, 0.4, 0.8), labels=("0.2", "0.4", "0.8"))
         fig.tight_layout()
         fig.savefig(fig_dir / "convergence.png", dpi=170)
         fig.savefig(fig_dir / "convergence.pdf")
