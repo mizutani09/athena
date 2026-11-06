@@ -366,6 +366,8 @@ void NRFLDDriver::RunCommittedDiagnostic() {
   FLD *first = static_cast<NRFLD*>(vnr_.front())->pmy_block_->prfld;
   if (std::getenv("ATHENA_NRFLD_ENERGY_LEDGER") != nullptr
       && first->is_couple && !first->only_rad && !first->fixed_u_rad) {
+    const bool interface_ledger =
+        (std::getenv("ATHENA_NRFLD_INTERFACE_LEDGER") != nullptr);
     long double gas_delta = 0.0L, radiation_delta = 0.0L;
     long double diffusion_delta = 0.0L, boundary_delta = 0.0L;
     long double absolute_scale = 0.0L, absolute_balance = 0.0L;
@@ -375,6 +377,7 @@ void NRFLDDriver::RunCommittedDiagnostic() {
       FLD *fld = mb->prfld;
       const Real dx = mb->pcoord->dx1f(mb->is);
       const Real idx2 = 1.0/SQR(dx);
+      long double xminus_delta = 0.0L, xplus_delta = 0.0L;
       for (int k=mb->ks; k<=mb->ke; ++k)
         for (int j=mb->js; j<=mb->je; ++j)
           for (int i=mb->is; i<=mb->ie; ++i) {
@@ -388,18 +391,23 @@ void NRFLDDriver::RunCommittedDiagnostic() {
               -nr->coeff_(linearSolver::DZPF,k,j,i)};
             const Real neighbor[6] = {nr->u_(k,j,i-1),nr->u_(k,j,i+1),
               nr->u_(k,j-1,i),nr->u_(k,j+1,i),nr->u_(k-1,j,i),nr->u_(k+1,j,i)};
+            const Real volume = mb->pcoord->GetCellVolume(k,j,i);
             Real face_sum = 0.0, boundary_sum = 0.0;
             for (int face=0; face<6; ++face) {
+              Real face_term;
               if (MarshakFaceActive(mb,fld,face,k,j,i)) {
-                const Real contribution = -MarshakFlux(
+                face_term = -MarshakFlux(
                     fld,face,k,j,i,center,dx,nullptr)*dx;
-                face_sum += contribution;
-                boundary_sum += contribution;
+                boundary_sum += face_term;
               } else {
-                face_sum += face_coeff[face]*(neighbor[face]-center);
+                face_term = face_coeff[face]*(neighbor[face]-center);
               }
+              face_sum += face_term;
+              if (interface_ledger && face == XMinus && i == mb->is)
+                xminus_delta += static_cast<long double>(dt_*face_term*idx2)*volume;
+              if (interface_ledger && face == XPlus && i == mb->ie)
+                xplus_delta += static_cast<long double>(dt_*face_term*idx2)*volume;
             }
-            const Real volume = mb->pcoord->GetCellVolume(k,j,i);
             const Real dg = nr->u_gas_(k,j,i)-fld->u_gas(k,j,i);
             const Real dr = center-nr->uold_(k,j,i);
             const Real dd = dt_*face_sum*idx2;
@@ -413,6 +421,21 @@ void NRFLDDriver::RunCommittedDiagnostic() {
                 + std::abs(dr) + std::abs(dd)
                 + std::abs(nr->u_gas_(k,j,i)) + std::abs(center))*volume;
           }
+      if (interface_ledger) {
+        const RegionSize &b = mb->block_size;
+        std::ostringstream line;
+        line << std::scientific << std::setprecision(17)
+             << "[NR_INTERFACE_LEDGER] rank=" << Globals::my_rank
+             << " cycle=" << pmy_mesh_->ncycle << " stage=" << stage_
+             << " dt=" << dt_ << " gid=" << mb->gid
+             << " level=" << mb->loc.level
+             << " x1min=" << b.x1min << " x1max=" << b.x1max
+             << " x2min=" << b.x2min << " x2max=" << b.x2max
+             << " x3min=" << b.x3min << " x3max=" << b.x3max
+             << " xminus_delta=" << xminus_delta
+             << " xplus_delta=" << xplus_delta;
+        std::cout << line.str() << std::endl;
+      }
     }
     const long double balance = gas_delta+radiation_delta-diffusion_delta;
     const long double scale = std::max(absolute_scale, 1.0e-30L);
