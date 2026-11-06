@@ -352,6 +352,7 @@ def main() -> None:
             parser.error("Campaign input has changed")
         state["config"]["target_time_code"] = args.target_time
         state["status"] = "running"
+        state["stop_reason"] = None
         state["resumed_at"] = now()
     else:
         if root.exists() and any(root.iterdir()):
