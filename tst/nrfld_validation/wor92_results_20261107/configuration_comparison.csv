@@ -1,0 +1,12 @@
+setting,WOR-93 actual job,WOR-92 saved pilot,interpretation
+EOS,ideal gamma=5/3,Tomida H/He table,different physical closure
+opacity,kappa_P=kappa_R=1 cm2/g,Semenov Planck/Rosseland extinction,definition of Planck absorption unresolved
+CFL,0.3,0.02/0.05 passed old pilot; 0.3 failed,current local trial sweeps 0.02/0.05/0.3
+FGMRES target,2e-8,1e-8 in saved pilot input,local controls set 2e-8
+flux-form matvec,enabled in job 335063,disabled in saved pilot input,absent in current HEAD 209e22398; opt-in trial
+precision floor factor,16 in job 335063,4 in saved pilot input,absent in current HEAD; opt-in backward-error trial
+exact local gas solve,"enabled, ideal-gas branch",not set in saved pilot input,current HEAD defaults false; table branch skipped if mixed active; local trial enabled
+mixed-frame transport,enabled,enabled,table exact local branch blocked in current HEAD
+Newton target,1e-5,1e-5,local controls require strict NR and abort
+componentwise update cap,disabled,disabled,max_update_fraction=-1
+mesh,"production AMR, actual max level 10","old pilot 32³ root, 8³ blocks, two levels","current local controls 32³ root, 16³ blocks, two levels"
