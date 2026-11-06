@@ -140,7 +140,8 @@ def main() -> None:
             "newton_converged": log["nr_status_counts"]["converged"],
             "slow_mg_warning_count": log["slow_mg_warning_count"],
             "fatal_count": log["fatal_count"],
-            "mass_drift_late": report["late_window"]["max_abs_mass_drift"],
+            "mass_drift_late": float(np.max(np.abs(
+                h["MassDrift"][(h["time"] >= late[0]) & (h["time"] <= late[1])]))),
             "snapshots": records}
     baseline = result["cases"]["fixed"]
     for name in CASES[1:]:
@@ -184,6 +185,38 @@ def main() -> None:
     fig.savefig(output / "comparison.png", dpi=150)
     plt.close(fig)
 
+    # Show how the much larger opposing face fluxes combine into the net
+    # heating. Interpolate each variant onto the baseline history times.
+    baseline_history = histories["fixed"]
+    common_time = baseline_history["time"]
+    fig, axes = plt.subplots(3, 1, figsize=(13, 11), sharex=True,
+                             constrained_layout=True)
+    for name in CASES[1:]:
+        h = histories[name]
+        for axis, key in zip(axes, ("FhydUpBottom", "FhydDownBottom", None)):
+            own = total_bottom_flux(h) if key is None else h[key]
+            base = (total_bottom_flux(baseline_history) if key is None
+                    else baseline_history[key])
+            difference = (np.interp(common_time, h["time"], own)-base)/F_SUN
+            count = max(3, round(10/np.median(np.diff(common_time))))
+            weights = np.ones(count)
+            smoothed = (np.convolve(difference, weights, mode="same") /
+                        np.convolve(np.ones(len(difference)), weights,
+                                    mode="same"))
+            axis.plot(common_time-9100, smoothed, color=colors[name],
+                      label=name, lw=1.6)
+    axes[0].set_ylabel("Δ upward hydro / solar")
+    axes[1].set_ylabel("Δ downward hydro / solar")
+    axes[2].set_ylabel("Δ bottom total / solar")
+    axes[2].set_xlabel("Code time since t=9100")
+    for axis in axes:
+        axis.axhline(0, color="black", lw=1)
+        axis.axvspan(late[0]-9100, late[1]-9100, color="gray", alpha=.08)
+        axis.grid(alpha=.25)
+        axis.legend()
+    fig.savefig(output / "transport.png", dpi=150)
+    plt.close(fig)
+
     def table_row(name: str) -> str:
         item = result["cases"][name]
         early_row, late_row = item["windows"]["early"], item["windows"]["late"]
@@ -197,6 +230,17 @@ def main() -> None:
                 f"<td>{late_row['eos']['entropy_contrast_cgs']/1e6:.3f}</td></tr>")
 
     rows = "".join(table_row(name) for name in CASES)
+    def difference_row(name: str) -> str:
+        item = result["cases"][name]
+        delta = item["late_minus_fixed"]
+        return (f"<tr><td>{name}</td>"
+                f"<td>{delta['bottom_up_hydro_over_solar']:+.3f}</td>"
+                f"<td>{delta['bottom_down_hydro_over_solar']:+.3f}</td>"
+                f"<td>{delta['bottom_total_over_solar']:+.3f}</td>"
+                f"<td>{delta['top_total_over_solar']:+.3f}</td>"
+                f"<td>{delta['stored_energy_trend_over_solar']:+.3f}</td></tr>")
+
+    differences = "".join(difference_row(name) for name in CASES[1:])
     html_page = ("<!doctype html><html lang='ja'><meta charset='utf-8'>"
                  "<title>固定流入エントロピーの同一checkpoint比較</title>"
                  "<style>body{font:22px/1.55 system-ui;max-width:1250px;"
@@ -220,6 +264,12 @@ def main() -> None:
                  "上下流エントロピーは下端第1セルのEOS値を質量流束で重み付けした診断です。"
                  "方向別hydro流束は実際のGodunov面流束です。</p>"
                  "<img src='comparison.png' alt='Flux and entropy comparison'>"
+                 "<h2>基準ケースとの差（最後の100コード時間）</h2>"
+                 "<table><tr><th>ケース</th><th>上昇流hydro / Fsun</th>"
+                 "<th>下降流hydro / Fsun</th><th>下端正味 / Fsun</th>"
+                 "<th>上端 / Fsun</th><th>蓄熱傾き / Fsun</th></tr>"
+                 + differences + "</table>"
+                 "<img src='transport.png' alt='Directional flux differences'>"
                  "<p><a href='summary.json'>全数値と方法</a> · "
                  "<a href='../state.json'>実行記録</a></p></html>")
     (output / "index.html").write_text(html_page + "\n")
