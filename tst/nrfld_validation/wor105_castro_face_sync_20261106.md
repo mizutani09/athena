@@ -50,12 +50,18 @@ half-paths. This is **not** CASTRO's documented averaging rule. For fixed
 
 With WOR-102's two-point fine ghost `(E_f+2E_c)/3`, this is implemented by
 `sigma_face=(2 sigma_c+sigma_f)/3` on fine cells bordering a coarser block.
+For same-width cells, the same resistance rule uses
+`sigma_face=(sigma_L+sigma_R)/2`. The follow-up
+[`wor105_distance_weighted_followup_20261106.md`](wor105_distance_weighted_followup_20261106.md)
+applies the experimental rule on both kinds of face and tests shifted
+material interfaces.
 The coarse side still receives the fine-face moments, so conservation is
-unchanged. This trial is restricted to radiation-only, fixed-limiter,
-Cartesian Test C with shared coefficients and requires
+unchanged. This trial is restricted to radiation-only Cartesian Test C
+with shared coefficients and requires
 `ATHENA_NRFLD_EXPERIMENTAL_SERIES_RESISTANCE=1`. The standard CASTRO-like
-face opacity remains selected without that flag. Thin-limit flux capping is
-not established for the resistance branch, so it is not a production option.
+face opacity remains selected without that flag. With a variable limiter,
+the effective opacity is passed to the existing lagged FLD closure; this is
+an exploratory extension, not an exact nonlinear half-cell construction.
 
 ## 1D-like analytical mode
 

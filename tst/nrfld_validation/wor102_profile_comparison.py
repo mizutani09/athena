@@ -87,7 +87,7 @@ def compose(directory, shape, extent, cycle=1, reference=None):
 
 def run(binary, source, out, n, mode, dt, contrast, amplitude, opacity,
         assembled_jv, tangential_reconstruction, fixed_limiter=False,
-        mpi_ranks=1):
+        mpi_ranks=1, interface_width=0.0):
     out.mkdir()
     source = source.replace("file_type = hst", "file_type = hst\ndata_format = %.16e")
     source = source.replace("<time>", "<output2>\nfile_type = vtk\nvariable = uov\nid = fields\ndcycle = 1\n\n<time>")
@@ -107,6 +107,7 @@ def run(binary, source, out, n, mode, dt, contrast, amplitude, opacity,
                f"time/tlim={dt:.17g}", "time/nlim=1",
                f"fld/const_opacity={opacity:.17g}",
                f"problem/density_high={contrast:.17g}",
+               f"problem/interface_width={interface_width:.17g}",
                f"problem/transverse_amplitude={amplitude:.17g}"]
     if mode == "reference":
         command += ["mesh/refinement=none"]
@@ -144,6 +145,7 @@ def run(binary, source, out, n, mode, dt, contrast, amplitude, opacity,
     ledger = re.findall(r"\[NR_ENERGY_LEDGER\].*diffusion_delta=([\d.eE+-]+)", result.stdout)
     return {"mode": mode, "base_nx": n, "opacity": opacity,
             "density_ratio": contrast, "transverse_amplitude": amplitude,
+            "interface_width": interface_width,
             "wall_seconds": elapsed,
             "fgmres_iterations": sum(fgmres), "newton_iterations": int(nr[-1][1]),
             "dt": float(nr[-1][2]), "diffusion_delta": sum(map(float, ledger)),
@@ -202,6 +204,7 @@ def main():
     parser.add_argument("--dt", type=float, default=5e-5)
     parser.add_argument("--contrast", type=float, default=0.1)
     parser.add_argument("--transverse-amplitude", type=float, default=0.8)
+    parser.add_argument("--interface-width", type=float, default=0.0)
     parser.add_argument("--opacity", type=float, default=0.4)
     parser.add_argument("--assembled-jv", action="store_true")
     parser.add_argument("--tangential-reconstruction", action="store_true")
@@ -212,8 +215,6 @@ def main():
     parser.add_argument("--plot", action="store_true")
     parser.add_argument("--plot-only", action="store_true")
     args = parser.parse_args()
-    if args.series_resistance and not args.fixed_limiter:
-        parser.error("--series-resistance requires --fixed-limiter")
     binary = args.binary.resolve()
     root = args.output.resolve()
     if args.plot_only:
@@ -237,7 +238,7 @@ def main():
             record = run(binary, source, case, n, mode, args.dt,
                          args.contrast, args.transverse_amplitude, args.opacity,
                          args.assembled_jv, args.tangential_reconstruction,
-                         args.fixed_limiter, args.mpi_ranks)
+                         args.fixed_limiter, args.mpi_ranks, args.interface_width)
             t, field, projected, blocks = compose(case, shape, extent,
                                                   reference=fields.get("reference"))
             t0, initial, projected_initial, _ = compose(

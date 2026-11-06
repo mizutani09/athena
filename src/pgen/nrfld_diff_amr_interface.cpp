@@ -138,7 +138,10 @@ void Mesh::InitUserMeshData(ParameterInput *pin) {
       || (exact_cosine_mode && (profile_axis != 1
           || density_low != density_high || transverse_amplitude != 0.0))
       || (layered_eigen_mode && (profile_axis != 1 || interface_width != 0.0
-          || slab_left != 0.25 || slab_right != 0.75
+          || !(slab_left > 0.0 && slab_left < 0.5)
+          || std::abs(slab_left+slab_right-1.0) > 1.0e-12
+          || std::abs(slab_left*mesh_size.nx1
+                      -std::round(slab_left*mesh_size.nx1)) > 1.0e-12
           || mesh_size.x1min != 0.0 || mesh_size.x1max != 1.0
           || transverse_amplitude != 0.0 || !(eigen_outer_wave > 0.0)))) {
     std::stringstream msg;
@@ -148,7 +151,8 @@ void Mesh::InitUserMeshData(ParameterInput *pin) {
         << "profile_axis in [1,3], and |transverse_amplitude| < background. "
         << "exact_cosine_mode additionally requires x1, uniform density, "
         << "zero transverse amplitude, and positive cosine_wavenumber. "
-        << "layered_eigen_mode requires x1 in [0,1], sharp slab [0.25,0.75], "
+        << "layered_eigen_mode requires x1 in [0,1], a sharp slab "
+        << "symmetric about x1=0.5 and aligned with root cell faces, "
         << "zero transverse amplitude, and positive eigen_outer_wave.";
     ATHENA_ERROR(msg);
   }

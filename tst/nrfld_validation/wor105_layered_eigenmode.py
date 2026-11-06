@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """Validate AMR diffusion across a sharp material interface against an eigenmode.
 
-The periodic slab is symmetric about x=0.5.  On 0<=x<=0.25 the eigenfunction
-is cos(k*x); on 0.25<=x<=0.5 it is B*cos(k*sqrt(r)*(0.5-x)), where r is the
+The periodic slab is symmetric about x=0.5. On 0<=x<=a the eigenfunction
+is cos(k*x); on a<=x<=0.5 it is B*cos(k*sqrt(r)*(0.5-x)), where r is the
 inner/outer extinction ratio.  Reflecting about 0.5 gives the other half.
 The root condition enforces continuous Er and D*dEr/dx at both interfaces.
 """
@@ -21,12 +21,13 @@ import numpy as np
 from scipy.optimize import brentq
 
 
-def eigenpair(ratio):
+def eigenpair(ratio, slab_left=0.25):
     root_r = math.sqrt(ratio)
+    inner_half_width = 0.5-slab_left
 
     def determinant(wave):
-        outer = wave/4.0
-        inner = wave*root_r/4.0
+        outer = wave*slab_left
+        inner = wave*root_r*inner_half_width
         return (math.sin(outer)*math.cos(inner)
                 + math.cos(outer)*math.sin(inner)/root_r)
 
@@ -40,8 +41,8 @@ def eigenpair(ratio):
         left = right
     else:
         raise RuntimeError(f"Could not bracket a layered eigenvalue for {ratio}")
-    inner = wave*root_r/4.0
-    outer = wave/4.0
+    inner = wave*root_r*inner_half_width
+    outer = wave*slab_left
     if abs(math.cos(inner)) > 1e-8:
         inner_amplitude = math.cos(outer)/math.cos(inner)
     else:
@@ -53,19 +54,19 @@ def eigenpair(ratio):
     return wave, inner_amplitude
 
 
-def cell_average(edges, ratio, wave, inner_amplitude, decay):
+def cell_average(edges, ratio, wave, inner_amplitude, decay, slab_left):
     centers = 0.5*(edges[:-1]+edges[1:])
     widths = np.diff(edges)
-    inner = (centers >= 0.25) & (centers < 0.75)
+    inner = (centers >= slab_left) & (centers < 1.0-slab_left)
     local_wave = np.where(inner, wave*math.sqrt(ratio), wave)
     amplitude = np.where(inner, inner_amplitude, 1.0)
     distance = np.where(inner, centers-0.5,
-                        np.where(centers < 0.25, centers, 1.0-centers))
+                        np.where(centers < slab_left, centers, 1.0-centers))
     arg = 0.5*local_wave*widths
     return 1.0 + 0.05*decay*amplitude*np.sinc(arg/math.pi)*np.cos(local_wave*distance)
 
 
-def inspect_snapshot(path, ratio, wave, inner_amplitude, decay):
+def inspect_snapshot(path, ratio, wave, inner_amplitude, decay, slab_left):
     with h5py.File(path) as hdf:
         field = hdf["user_out_var"]
         if field.dtype != np.dtype("float64"):
@@ -83,7 +84,8 @@ def inspect_snapshot(path, ratio, wave, inner_amplitude, decay):
             xedges = hdf["x1f"][block]
             yedges = hdf["x2f"][block]
             zedges = hdf["x3f"][block]
-            exact = cell_average(xedges, ratio, wave, inner_amplitude, decay)
+            exact = cell_average(xedges, ratio, wave, inner_amplitude, decay,
+                                 slab_left)
             values = field[er_index, block]
             cell_volume = (np.diff(zedges)[:, None, None]
                            * np.diff(yedges)[None, :, None]
@@ -109,8 +111,8 @@ def inspect_snapshot(path, ratio, wave, inner_amplitude, decay):
 
 
 def run_case(binary, source, root, resolution, opacity, ratio, tlim, cfl, mode,
-             ranks, wave, inner_amplitude):
-    name = f"r{ratio:g}_n{resolution}_{mode}_p{ranks}"
+             ranks, wave, inner_amplitude, slab_left):
+    name = f"a{slab_left:g}_r{ratio:g}_n{resolution}_{mode}_p{ranks}"
     directory = root/name
     directory.mkdir()
     (directory/"input.used").write_text(source)
@@ -123,6 +125,8 @@ def run_case(binary, source, root, resolution, opacity, ratio, tlim, cfl, mode,
                f"refinement1/x3max={transverse_size:.17g}",
                f"fld/const_opacity={opacity:.17g}",
                f"problem/density_high={ratio:.17g}",
+               f"problem/slab_left={slab_left:.17g}",
+               f"problem/slab_right={1.0-slab_left:.17g}",
                "problem/layered_eigen_mode=true",
                f"problem/eigen_outer_wave={wave:.17g}",
                f"problem/eigen_inner_amplitude={inner_amplitude:.17g}",
@@ -174,12 +178,14 @@ def run_case(binary, source, root, resolution, opacity, ratio, tlim, cfl, mode,
             current = float(hdf.attrs["Time"])
         if current > previous:
             decay /= 1.0+eigenvalue*(current-previous)
-        records.append(inspect_snapshot(path, ratio, wave, inner_amplitude, decay))
+        records.append(inspect_snapshot(path, ratio, wave, inner_amplitude,
+                                        decay, slab_left))
         previous = current
     final = records[-1]
     ledger = [float(value) for value in re.findall(
         r"\[NR_ENERGY_LEDGER\].*diffusion_delta=([\d.eE+-]+)", result.stdout)]
-    return {"mode": mode, "ratio": ratio, "base_nx": resolution,
+    return {"mode": mode, "ratio": ratio, "slab_left": slab_left,
+            "base_nx": resolution,
             "ranks": ranks, "wave": wave, "inner_amplitude": inner_amplitude,
             "eigenvalue": eigenvalue, "wall_seconds": wall,
             "steps": len(records)-1, "newton_solves": len(active_statuses),
@@ -196,10 +202,14 @@ def main():
     parser.add_argument("--output", type=Path, required=True)
     parser.add_argument("--resolutions", type=int, nargs="+", default=[32, 64, 128])
     parser.add_argument("--ratios", type=float, nargs="+", default=[0.1, 10.0])
+    parser.add_argument("--slab-left", type=float, default=0.25)
     parser.add_argument("--opacity", type=float, default=4.0)
     parser.add_argument("--tlim", type=float, default=0.003)
     parser.add_argument("--cfl", type=float, default=1.0)
     parser.add_argument("--ranks", type=int, default=1)
+    parser.add_argument("--modes", nargs="+",
+                        choices=("baseline", "shared", "series"),
+                        default=("baseline", "shared", "series"))
     args = parser.parse_args()
     root = args.output.resolve()
     root.mkdir(parents=True, exist_ok=False)
@@ -214,17 +224,21 @@ def main():
                             "fgmres_threshold = 1e-10")
     source = source.replace("diagnostic_verbosity = 1", "diagnostic_verbosity = 0")
     records = []
+    if not (0.0 < args.slab_left < 0.5):
+        parser.error("--slab-left must be between 0 and 0.5")
     for ratio in args.ratios:
         if ratio <= 0.0:
             parser.error("All ratios must be positive")
-        wave, inner_amplitude = eigenpair(ratio)
+        wave, inner_amplitude = eigenpair(ratio, args.slab_left)
         for resolution in args.resolutions:
             if resolution % 8:
                 parser.error("Base x1 resolutions must be divisible by 8")
-            for mode in ("baseline", "shared", "series"):
+            if abs(args.slab_left*resolution-round(args.slab_left*resolution)) > 1e-12:
+                parser.error("Material interface must align with root cell faces")
+            for mode in args.modes:
                 record = run_case(binary, source, root, resolution, args.opacity,
                                   ratio, args.tlim, args.cfl, mode, args.ranks,
-                                  wave, inner_amplitude)
+                                  wave, inner_amplitude, args.slab_left)
                 if record["final"]["minimum_Er"] <= 0.0:
                     raise RuntimeError(f"Nonpositive Er: {record}")
                 if mode != "baseline" and abs(record["diffusion_ledger_sum"]) > 1e-11:
