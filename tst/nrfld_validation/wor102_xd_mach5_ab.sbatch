@@ -67,9 +67,10 @@ arguments=("$binary" -r "$restart" -i input.used -d output
   'time/tlim=0.041' "time/nlim=$((36517+WOR102_STEPS))"
   'output1/dt=-1' 'output2/dt=-1' 'output3/dt=1e-12')
 if [[ "${WOR102_RANK_RSS:-0}" = 1 ]]; then
+  export WOR102_CASE_DIR="$case_dir"
   /usr/bin/time -v mpirun -np "$SLURM_NTASKS" -ppn 32 \
     -outfile-pattern "$case_dir/rank.%r.log" \
-    bash -c 'exec /usr/bin/time -f "[RANK_RSS] max_rss_kb=%M" "$@"' \
+    bash -c 'rank=${PMI_RANK:-${PMIX_RANK:-unknown}}; exec /usr/bin/time -o "$WOR102_CASE_DIR/rss.$rank.$$.txt" -f "max_rss_kb=%M" "$@"' \
     bash "${arguments[@]}" >launcher.log 2>&1
 else
   /usr/bin/time -v mpirun -np "$SLURM_NTASKS" -ppn 32 \
@@ -77,3 +78,6 @@ else
     "${arguments[@]}" >launcher.log 2>&1
 fi
 test "$(find "$case_dir" -maxdepth 1 -name 'rank.*.log' | wc -l)" -eq 32
+if [[ "${WOR102_RANK_RSS:-0}" = 1 ]]; then
+  test "$(find "$case_dir" -maxdepth 1 -name 'rss.*.txt' | wc -l)" -eq 32
+fi
