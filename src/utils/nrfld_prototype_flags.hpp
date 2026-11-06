@@ -22,6 +22,10 @@ inline bool TangentialReconstruction() {
   return Enabled() && Flag("ATHENA_NRFLD_EXPERIMENTAL_TANGENTIAL_RECONSTRUCTION");
 }
 
+inline bool SeriesResistance() {
+  return Enabled() && Flag("ATHENA_NRFLD_EXPERIMENTAL_SERIES_RESISTANCE");
+}
+
 inline bool VariableLimiterTrial() {
   return Flag("ATHENA_NRFLD_EXPERIMENTAL_VARIABLE_LIMITER");
 }

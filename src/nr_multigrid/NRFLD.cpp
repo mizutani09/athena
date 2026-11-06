@@ -190,6 +190,7 @@ NRFLDDriver::NRFLDDriver(Mesh *pm, ParameterInput *pin)
               << " coupled_trial=" << NRFLDPrototype::CoupledTrial()
               << " tangential_reconstruction="
               << NRFLDPrototype::TangentialReconstruction()
+              << " series_resistance=" << NRFLDPrototype::SeriesResistance()
               << " mach5_trial=" << NRFLDPrototype::Mach5Trial()
               << std::endl;
   }
@@ -377,8 +378,13 @@ NRFLDDriver::~NRFLDDriver() {
 
 void NRFLDDriver::SyncInterfaceFaceMoments() {
   if (!NRFLDPrototype::SharedCoeff()) return;
-  // Each fine face sends D and D*Er.  The first-layer restriction in
-  // bvals_cc.cpp averages four fine faces and works across MPI ranks.
+  // CASTRO accumulates fine radiation face fluxes in a flux register and
+  // refluxes their difference from the coarse flux during an implicit
+  // update.  Athena++ advances all AMR levels at one time here, so the
+  // composite residual can use that fine-face flux immediately: each fine
+  // face sends D and D*Er, and restriction averages the four subfaces.
+  // The coarse row then evaluates the same area-integrated flux with the
+  // opposite sign.  This exchange also works across MPI ranks.
   for (NewtonRaphson *base : vnr_) {
     NRFLD *nr = static_cast<NRFLD*>(base);
     MeshBlock *mb = nr->pmy_block_;
@@ -903,6 +909,30 @@ void NRFLD::CalculateCoefficientsOnce(const AthenaArray<Real> &u_pre,
   Real idx = 1.0/dx;
   Real idy = 1.0/dy;
   Real idz = 1.0/dz;
+  const int level = pmy_block_->loc.level;
+  const bool coarser[6] = {
+      pmy_block_->pbval->nblevel[1][1][0] < level,
+      pmy_block_->pbval->nblevel[1][1][2] < level,
+      pmy_block_->pbval->nblevel[1][0][1] < level,
+      pmy_block_->pbval->nblevel[1][2][1] < level,
+      pmy_block_->pbval->nblevel[0][1][1] < level,
+      pmy_block_->pbval->nblevel[2][1][1] < level};
+  auto face_opacity = [&](int face, int k, int j, int i,
+                          Real own, Real other, Real inverse_width) {
+    const bool at_boundary = face < 2 ? (face == 0 ? i == is : i == ie)
+        : face < 4 ? (face == 2 ? j == js : j == je)
+        : (face == 4 ? k == ks : k == ke);
+    if (NRFLDPrototype::SeriesResistance() && coarser[face] && at_boundary) {
+      // Experimental diffusion-limit alternative to CASTRO's kavg.  The
+      // coarse center is h from the face and the fine center is h/2 away.
+      // For lambda=1/3, the series optical resistance gives
+      // F = -c (Ef-Ec) / [3 h (sigma_c + sigma_f/2)].  The two-point fine
+      // ghost uses (Ef+2Ec)/3, so its effective opacity is
+      // (2 sigma_c + sigma_f)/3.  Both residual sides retain one flux.
+      return (2.0*other + own)/3.0;
+    }
+    return RadFLD::FaceOpacity(own, other, inverse_width);
+  };
   const bool mixed_active = pfld->MixedFrameCoupled()
       && pfld->implicit_mixed_frame_drift;
   const int check_il = std::max(0, is-1);
@@ -955,7 +985,7 @@ void NRFLD::CalculateCoefficientsOnce(const AthenaArray<Real> &u_pre,
         // needs a separate stencil evaluation.
         if (i == is) {
           // for i-1/2 face
-          sigma_rface = RadFLD::FaceOpacity(sigma_r(k,j,i), sigma_r(k,j,i-1), idx);
+          sigma_rface = face_opacity(0,k,j,i,sigma_r(k,j,i),sigma_r(k,j,i-1),idx);
           gx = (u_pre(k,j,i-1) - u_pre(k,j,i))*idx;
           gy = 0.25*idy*((u_pre(k,j+1,i-1) - u_pre(k,j-1,i-1)) + (u_pre(k,j+1,i) - u_pre(k,j-1,i)));
           gz = 0.25*idz*((u_pre(k+1,j,i-1) - u_pre(k-1,j,i-1)) + (u_pre(k+1,j,i) - u_pre(k-1,j,i)));
@@ -976,7 +1006,7 @@ void NRFLD::CalculateCoefficientsOnce(const AthenaArray<Real> &u_pre,
         }
 
          // for i+1/2 face
-        sigma_rface = RadFLD::FaceOpacity(sigma_r(k,j,i), sigma_r(k,j,i+1), idx);
+        sigma_rface = face_opacity(1,k,j,i,sigma_r(k,j,i),sigma_r(k,j,i+1),idx);
         gx = (u_pre(k,j,i+1) - u_pre(k,j,i))*idx;
         gy = 0.25*idy*((u_pre(k,j+1,i+1) - u_pre(k,j-1,i+1)) + (u_pre(k,j+1,i) - u_pre(k,j-1,i)));
         gz = 0.25*idz*((u_pre(k+1,j,i+1) - u_pre(k-1,j,i+1)) + (u_pre(k+1,j,i) - u_pre(k-1,j,i)));
@@ -993,7 +1023,7 @@ void NRFLD::CalculateCoefficientsOnce(const AthenaArray<Real> &u_pre,
 
         if (j == js) {
           // for j-1/2 face
-          sigma_rface = RadFLD::FaceOpacity(sigma_r(k,j,i), sigma_r(k,j-1,i), idx);
+          sigma_rface = face_opacity(2,k,j,i,sigma_r(k,j,i),sigma_r(k,j-1,i),idx);
           gx = 0.25*idx*((u_pre(k,j-1,i+1) - u_pre(k,j-1,i-1)) + (u_pre(k,j,i+1) - u_pre(k,j,i-1)));
           gy = (u_pre(k,j-1,i) - u_pre(k,j,i))*idy;
           gz = 0.25*idz*((u_pre(k+1,j-1,i) - u_pre(k-1,j-1,i)) + (u_pre(k+1,j,i) - u_pre(k-1,j,i)));
@@ -1015,7 +1045,7 @@ void NRFLD::CalculateCoefficientsOnce(const AthenaArray<Real> &u_pre,
         }
 
         // for j+1/2 face
-        sigma_rface = RadFLD::FaceOpacity(sigma_r(k,j,i), sigma_r(k,j+1,i), idx);
+        sigma_rface = face_opacity(3,k,j,i,sigma_r(k,j,i),sigma_r(k,j+1,i),idx);
         gx = 0.25*idx*((u_pre(k,j+1,i+1) - u_pre(k,j+1,i-1)) + (u_pre(k,j,i+1) - u_pre(k,j,i-1)));
         gy = (u_pre(k,j+1,i) - u_pre(k,j,i))*idy;
         gz = 0.25*idz*((u_pre(k+1,j+1,i) - u_pre(k-1,j+1,i)) + (u_pre(k+1,j,i) - u_pre(k-1,j,i)));
@@ -1033,7 +1063,7 @@ void NRFLD::CalculateCoefficientsOnce(const AthenaArray<Real> &u_pre,
 
         if (k == ks) {
           // for k-1/2 face
-          sigma_rface = RadFLD::FaceOpacity(sigma_r(k,j,i), sigma_r(k-1,j,i), idx);
+          sigma_rface = face_opacity(4,k,j,i,sigma_r(k,j,i),sigma_r(k-1,j,i),idx);
           gx = 0.25*idx*((u_pre(k-1,j,i+1) - u_pre(k-1,j,i-1)) + (u_pre(k,j,i+1) - u_pre(k,j,i-1)));
           gy = 0.25*idy*((u_pre(k-1,j+1,i) - u_pre(k-1,j-1,i)) + (u_pre(k,j+1,i) - u_pre(k,j-1,i)));
           gz = (u_pre(k-1,j,i) - u_pre(k,j,i))*idz;
@@ -1055,7 +1085,7 @@ void NRFLD::CalculateCoefficientsOnce(const AthenaArray<Real> &u_pre,
         }
 
         // for k+1/2 face
-        sigma_rface = RadFLD::FaceOpacity(sigma_r(k,j,i), sigma_r(k+1,j,i), idx);
+        sigma_rface = face_opacity(5,k,j,i,sigma_r(k,j,i),sigma_r(k+1,j,i),idx);
         gx = 0.25*idx*((u_pre(k+1,j,i+1) - u_pre(k+1,j,i-1)) + (u_pre(k,j,i+1) - u_pre(k,j,i-1)));
         gy = 0.25*idy*((u_pre(k+1,j+1,i) - u_pre(k+1,j-1,i)) + (u_pre(k,j+1,i) - u_pre(k,j-1,i)));
         gz = (u_pre(k+1,j,i) - u_pre(k,j,i))*idz;

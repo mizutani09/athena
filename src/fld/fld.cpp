@@ -222,6 +222,9 @@ FLD::FLD(MeshBlock *pmb, ParameterInput *pin) :
           || ((is_couple || !only_rad) && NRFLDPrototype::DifferenceJv())
           || (NRFLDPrototype::TangentialReconstruction()
               && !NRFLDPrototype::SharedCoeff())
+          || (NRFLDPrototype::SeriesResistance()
+              && (!test_c || !NRFLDPrototype::SharedCoeff()
+                  || !fixed_flux_limiter || is_couple || !only_rad))
           || cut_diff
           || (!fixed_flux_limiter && !variable_trial)
           || fixed_u_rad || !cubic
@@ -239,6 +242,8 @@ FLD::FLD(MeshBlock *pmb, ParameterInput *pin) :
           << "ATHENA_NRFLD_CONSERVATIVE_DIFFERENCE_JV=0. Variable-limiter "
           << "trials require ATHENA_NRFLD_EXPERIMENTAL_VARIABLE_LIMITER=1. "
           << "Tangential reconstruction requires shared coefficients. "
+          << "Series resistance requires radiation-only fixed-limiter "
+          << "Test C with shared coefficients. "
           << "Adaptive regrid requires ATHENA_NRFLD_EXPERIMENTAL_REGRID=1.";
       ATHENA_ERROR(msg);
     }
