@@ -101,3 +101,73 @@ next useful check is a matched restart from a relaxed 3D state with the
 same `s_in` and Marshak boundary, following total energy storage and
 surface flux for several full-box thermal times. Do not tune the top
 Marshak coefficient to hide the initial cooling.
+
+## Developed 3D convection seed pilot (2026-11-06)
+
+This experiment tested whether importing a developed convective flow can
+remove the zero-velocity startup deficit. The source is the saved `t=9400`
+full-3D volume from the fixed-entropy WOR-74 branch, whose preceding
+`t=9300–9400` top and bottom means were `0.633` and `0.673 F_sun`.
+The target horizontal means are the original `t=0` 1D profile. The seed
+builder maps the source density, pressure, and radiation-energy fluctuations
+onto those means, removes each layer's mass-weighted mean velocity, and
+fades velocity near the upper boundary. A second variant also fades velocity
+near the lower boundary. UOV radiation energy is converted from cgs to code
+units using `egas_unit` read from the target Athena input. The optional
+`initial_seed_file` path reads this exact-grid primitive
+state, converts gas pressure through the tabulated EOS, and includes kinetic
+energy in the hydro conservative state. With `initial_seed_file=none`, the
+same binary reproduces the quiet startup.
+
+The matched 96 km, 64×64×32, 16-rank, CFL 0.3, HD2 relax-time 2/gain 40,
+fixed `s_in=1.581097454457282e9` t=0–40 results are:
+
+| Initial state | Convective enthalpy at z≈0, t=0 | Top, t=30–40 | Bottom, t=30–40 | Stored-energy trend, t=30–40 |
+| --- | ---: | ---: | ---: | ---: |
+| Quiet 1D | `0` | `0.444 F_sun` | `0.118 F_sun` | `−0.337 F_sun` |
+| Imported 3D | `0.620 F_sun` | `0.538 F_sun` | `6.549 F_sun` | `+5.787 F_sun` |
+| Imported 3D, lower velocity taper | `0.620 F_sun` | `0.539 F_sun` | `6.670 F_sun` | `+5.892 F_sun` |
+
+Top cooling is smaller, but the transplanted states inject far too much
+energy at the HD2 lower boundary. The lower taper does not resolve that
+mismatch. This is a **failed initial-balance test**, not a solar-luminosity
+calibration. All three t=0–40 runs completed with every Newton solve
+converged and no slow warning or fatal error. The failure is physical
+energy balance rather than solver stability.
+
+The lower-tapered branch was continued to `t=100`. Its `t=80–100` mean
+upper and lower fluxes were `0.610` and `2.802 F_sun`; at `t=100` the
+lower flux was still `1.923 F_sun`. The imbalance decays but remains
+large. A 1.5× velocity candidate was considered but **not run** because
+the unscaled boundary injection already failed the balance criterion.
+The same branch was continued to `t=200`; over `t=180–200` its upper
+and lower mean fluxes were `0.6338` and `0.6857 F_sun`. All 1,435
+Newton solves in `t=100–200` converged without slow warnings or fatal
+errors. The t=180–200 stored-energy trend was `+0.160 F_sun` and the
+endpoint rate `+0.075 F_sun`, so this short window does not prove full
+stationarity. It does show the flow returning toward the subsolar
+luminosity of its source state after the artificial boundary injection
+fades. The volume at `t=200` is not a new solar-flux initial condition.
+
+As a control, the complete relaxed `t=9400` checkpoint was restarted
+without transplanting its fields onto the 1D mean. It ran through
+`t=9440` with 562/562 Newton solves converged, no warnings, and mean
+upper flux `0.632 F_sun` over `t=9430–9440`. This avoids the sharp
+startup drop and retains a developed 3D flow, but remains at the
+subsolar luminosity of its parent state. Its lower flux over only ten
+code-time units is phase-sensitive and not a stationary calibration.
+
+The local report is
+`/mnt/d/output/rad/wor75_seed_20261106/comparison/index.html`.
+The seed binary, JSON provenance, frozen executable, per-run manifests,
+HTML plots, and HST records are in that output root. The generic seed
+builder and report are
+`tst/nrfld_validation/build_solar_3d_seed.py` and
+`tst/nrfld_validation/solar_convection_seed_compare.py`.
+
+The physical next step is to retain the **entire** relaxed 3D state and
+calibrate the lower inflow entropy over an adequately long thermal
+relaxation. Grafting its velocity and fluctuations onto a hotter 1D mean
+does not create a balanced solar-flux state. This belongs with WOR-74's
+long-window entropy response and the whole-box heat budget. A shorter
+startup cannot substitute for measuring the equilibrium luminosity.

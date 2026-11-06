@@ -60,6 +60,12 @@ namespace {
   std::vector<Real> initial_profile_rho;
   std::vector<Real> initial_profile_pres;
   std::vector<Real> initial_profile_erad;
+  // Optional t=0 seed with developed 3D convective fluctuations. The binary
+  // contains code-unit primitive variables on the exact root grid.
+  std::string initial_seed_file;
+  std::vector<double> initial_seed_data;
+  int initial_seed_nx[3] = {0, 0, 0};
+  double initial_seed_bounds[6] = {};
   Real noise_lx, noise_ly;
   Real bottom_inflow_speed;
   std::string profile_output;
@@ -266,6 +272,89 @@ static void SimplePolytrope(const Real z, Real &rho, Real &pres, Real &erad) {
   rho = rho_ref*std::pow(std::max(theta, 1.0e-6), poly_n);
   pres = rho*temp;
   erad = a_r_sim*std::pow(std::max(temp, 1.0e-6), 4);
+}
+
+static void LoadInitialSeed3D(const std::string &path, const RegionSize &mesh) {
+  std::ifstream input(path, std::ios::binary);
+  char magic[8];
+  std::uint32_t dims[3];
+  double bounds[6];
+  if (!input || !input.read(magic, sizeof(magic)) ||
+      !input.read(reinterpret_cast<char*>(dims), sizeof(dims)) ||
+      !input.read(reinterpret_cast<char*>(bounds), sizeof(bounds)) ||
+      std::string(magic, sizeof(magic)) != "FLD3D001") {
+    std::stringstream msg;
+    msg << "### FATAL ERROR: invalid initial 3D seed header: " << path;
+    ATHENA_ERROR(msg);
+  }
+  const int expected[3] = {mesh.nx1, mesh.nx2, mesh.nx3};
+  const double mesh_bounds[6] = {mesh.x1min, mesh.x1max, mesh.x2min,
+                                 mesh.x2max, mesh.x3min, mesh.x3max};
+  for (int axis = 0; axis < 3; ++axis) {
+    if (dims[axis] != static_cast<std::uint32_t>(expected[axis])) {
+      std::stringstream msg;
+      msg << "### FATAL ERROR: 3D seed grid does not match mesh on axis " << axis;
+      ATHENA_ERROR(msg);
+    }
+  }
+  for (int n = 0; n < 6; ++n) {
+    if (!std::isfinite(bounds[n]) ||
+        std::abs(bounds[n] - mesh_bounds[n]) >
+            1.0e-6*std::max(1.0, std::abs(mesh_bounds[n]))) {
+      std::stringstream msg;
+      msg << "### FATAL ERROR: 3D seed bounds do not match mesh: " << path;
+      ATHENA_ERROR(msg);
+    }
+    initial_seed_bounds[n] = bounds[n];
+  }
+  const std::size_t cells = static_cast<std::size_t>(dims[0])*dims[1]*dims[2];
+  initial_seed_data.resize(6*cells);
+  if (!input.read(reinterpret_cast<char*>(initial_seed_data.data()),
+                  initial_seed_data.size()*sizeof(double))) {
+    std::stringstream msg;
+    msg << "### FATAL ERROR: truncated initial 3D seed: " << path;
+    ATHENA_ERROR(msg);
+  }
+  char extra;
+  if (input.read(&extra, 1)) {
+    std::stringstream msg;
+    msg << "### FATAL ERROR: trailing bytes in initial 3D seed: " << path;
+    ATHENA_ERROR(msg);
+  }
+  for (std::size_t n = 0; n < initial_seed_data.size(); ++n) {
+    const std::size_t field = n/cells;
+    if (!std::isfinite(initial_seed_data[n]) ||
+        ((field == 0 || field == 1 || field == 5) &&
+         initial_seed_data[n] <= 0.0)) {
+      std::stringstream msg;
+      msg << "### FATAL ERROR: nonfinite or nonpositive 3D seed value at " << n;
+      ATHENA_ERROR(msg);
+    }
+  }
+  for (int axis = 0; axis < 3; ++axis) initial_seed_nx[axis] = expected[axis];
+}
+
+static Real InitialSeed3D(const int field, const Real x, const Real y,
+                          const Real z) {
+  const Real coordinates[3] = {x, y, z};
+  int index[3];
+  for (int axis = 0; axis < 3; ++axis) {
+    const Real lower = initial_seed_bounds[2*axis];
+    const Real width = (initial_seed_bounds[2*axis+1]-lower)/initial_seed_nx[axis];
+    index[axis] = static_cast<int>(std::llround((coordinates[axis]-lower)/width-0.5));
+    if (index[axis] < 0 || index[axis] >= initial_seed_nx[axis] ||
+        std::abs(coordinates[axis]-(lower+(index[axis]+0.5)*width)) >
+            1.0e-5*width) {
+      std::stringstream msg;
+      msg << "### FATAL ERROR: 3D seed cell center does not match mesh";
+      ATHENA_ERROR(msg);
+    }
+  }
+  const std::size_t cells = static_cast<std::size_t>(initial_seed_nx[0])
+      * initial_seed_nx[1]*initial_seed_nx[2];
+  return initial_seed_data[static_cast<std::size_t>(field)*cells
+      + (static_cast<std::size_t>(index[2])*initial_seed_nx[1]
+         + index[1])*initial_seed_nx[0] + index[0]];
 }
 
 // Deterministic cell noise keeps the same initial condition independent of
@@ -1464,6 +1553,15 @@ void Mesh::InitUserMeshData(ParameterInput *pin) {
     }
     LoadInitialProfile(initial_profile_file);
   }
+  initial_seed_file = pin->GetOrAddString("problem", "initial_seed_file", "none");
+  if (initial_seed_file != "none") {
+    if (!use_initial_profile) {
+      std::stringstream msg;
+      msg << "### FATAL ERROR: initial_seed_file requires use_initial_profile=true";
+      ATHENA_ERROR(msg);
+    }
+    LoadInitialSeed3D(initial_seed_file, mesh_size);
+  }
   top_outflow_only = pin->GetOrAddBoolean("problem", "top_outflow_only", true);
   top_impenetrable = pin->GetOrAddBoolean("problem", "top_impenetrable", false);
   top_bc_mode = pin->GetOrAddString("problem", "top_bc_mode", "rempel_outflow");
@@ -1640,6 +1738,7 @@ void MeshBlock::ProblemGenerator(ParameterInput *pin) {
               << " opacity=external_table"
               << " initial_profile="
               << (use_initial_profile ? initial_profile_file : "polytrope")
+              << " initial_seed=" << initial_seed_file
               << " temp_noise_amp=" << temp_noise_amp
               << " smooth_temp_noise=" << smooth_temp_noise
               << " top_outflow_only=" << top_outflow_only
@@ -1704,14 +1803,26 @@ void MeshBlock::ProblemGenerator(ParameterInput *pin) {
         SimplePolytrope(pcoord->x3v(k), rho, p, erad);
         const Real x = pcoord->x1v(i);
         const Real y = pcoord->x2v(j);
-        const Real zmin = pmy_mesh->mesh_size.x3min;
-        const Real zmax = pmy_mesh->mesh_size.x3max;
-        const Real envelope = std::sin(M_PI*(pcoord->x3v(k)-zmin)/(zmax-zmin));
-        const Real noise = smooth_temp_noise ? SimpleSmoothNoise(x, y)
-                                             : SimpleCellNoise(x, y, pcoord->x3v(k));
-        const Real delta_T = temp_noise_amp*noise
-            *std::max(0.0, envelope);
-        p *= (1.0 + delta_T);
+        Real vx = 0.0, vy = 0.0, vz = 0.0;
+        if (initial_seed_file != "none" && k >= ks && k <= ke &&
+            j >= js && j <= je && i >= is && i <= ie) {
+          const Real z = pcoord->x3v(k);
+          rho = InitialSeed3D(0, x, y, z);
+          p = InitialSeed3D(1, x, y, z);
+          vx = InitialSeed3D(2, x, y, z);
+          vy = InitialSeed3D(3, x, y, z);
+          vz = InitialSeed3D(4, x, y, z);
+          erad = InitialSeed3D(5, x, y, z);
+        } else {
+          const Real zmin = pmy_mesh->mesh_size.x3min;
+          const Real zmax = pmy_mesh->mesh_size.x3max;
+          const Real envelope = std::sin(M_PI*(pcoord->x3v(k)-zmin)/(zmax-zmin));
+          const Real noise = smooth_temp_noise ? SimpleSmoothNoise(x, y)
+                                               : SimpleCellNoise(x, y, pcoord->x3v(k));
+          const Real delta_T = temp_noise_amp*noise
+              *std::max(0.0, envelope);
+          p *= (1.0 + delta_T);
+        }
         const Real egas = GasEgasFromRhoP(peos, rho, p);
         const Real T = GasTempFromRhoEg(peos, rho, egas);
         if (!std::isfinite(egas) || egas <= TINY_NUMBER ||
@@ -1724,13 +1835,13 @@ void MeshBlock::ProblemGenerator(ParameterInput *pin) {
         }
 
         phydro->u(IDN,k,j,i) = rho;
-        phydro->u(IM1,k,j,i) = 0.0;
-        phydro->u(IM2,k,j,i) = 0.0;
-        phydro->u(IM3,k,j,i) = 0.0;
-        phydro->u(IEN,k,j,i) = egas;
+        phydro->u(IM1,k,j,i) = rho*vx;
+        phydro->u(IM2,k,j,i) = rho*vy;
+        phydro->u(IM3,k,j,i) = rho*vz;
+        phydro->u(IEN,k,j,i) = egas + 0.5*rho*(vx*vx + vy*vy + vz*vz);
         prfld->u_gas(k,j,i) = egas;
-        // Keep the imported 1D radiation profile horizontally smooth while
-        // perturbing only the gas temperature to seed convection.
+        // With the usual 1D start, keep imported radiation horizontally
+        // smooth. A 3D seed supplies its own radiation fluctuations.
         prfld->u_rad(k,j,i) = use_initial_profile
             ? erad : a_r_sim*std::pow(T, 4);
       }

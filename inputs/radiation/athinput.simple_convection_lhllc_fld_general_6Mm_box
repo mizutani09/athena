@@ -164,6 +164,8 @@ grav_acc         = 2.74e4
 z_ref            = 3.072
 use_initial_profile = true
 initial_profile_file = data/solar_initial_profile.dat
+# Optional exact-grid 3D primitive seed generated from a developed convection dump.
+initial_seed_file = none
 temp_noise_amp   = 1e-3
 smooth_temp_noise = false
 profile_output   = simple_convection_general_initial_profiles.txt

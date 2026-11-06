@@ -124,12 +124,17 @@ def main() -> None:
     problem_keys = set(re.findall(r"^\s*([A-Za-z_][A-Za-z_0-9]*)\s*=",
                                   problem_block.group(1), re.M))
     problem_overrides = []
+    initial_seed = None
     for override in args.problem_set:
         if not re.fullmatch(r"[A-Za-z_][A-Za-z_0-9]*=[^\s=]+", override):
             parser.error(f"Invalid --problem-set value: {override!r}")
         key = override.split("=", 1)[0]
         if key not in problem_keys:
             parser.error(f"Unknown <problem> key in --problem-set: {key}")
+        if key == "initial_seed_file" and override.split("=", 1)[1] != "none":
+            initial_seed = Path(override.split("=", 1)[1])
+            if not initial_seed.is_absolute() or not initial_seed.is_file():
+                parser.error("initial_seed_file must be an existing absolute path")
         problem_overrides.append(f"problem/{override}")
     data_names = []
     for key in DATA_KEYS:
@@ -246,6 +251,7 @@ def main() -> None:
                                 if args.history_header_from else None),
         "history_prepend": [str(path.resolve()) for path in args.history_prepend],
         "problem_overrides": args.problem_set,
+        "initial_seed_sha256": digest(initial_seed) if initial_seed else None,
     }
     manifest_path = case / "manifest.json"
     manifest_path.write_text(json.dumps(manifest, indent=2) + "\n")
