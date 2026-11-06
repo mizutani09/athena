@@ -371,11 +371,15 @@ int CellCenteredBoundaryVariable::LoadBoundaryBufferToCoarser(Real *buf,
       && NRFLDPrototype::SharedCoeff();
   const bool tangential_delta=weighted_delta
       && NRFLDPrototype::TangentialReconstruction();
+  const bool normal_delta=weighted_delta
+      && NRFLDPrototype::NormalReconstruction();
   auto effective_delta=[&](int n,int face,int k,int j,int i) {
     const Real correction=tangential_delta
         ? NRFLDFaceReconstruction::TangentialOffset(var,n,pmb,face,k,j,i)
         : 0.0;
-    return var(n,k,j,i)-correction;
+    return normal_delta
+        ? NRFLDFaceReconstruction::EffectiveFine(var,n,face,k,j,i,correction)
+        : var(n,k,j,i)-correction;
   };
   if (NRFLDPrototype::Enabled()
       && pmb->pnr != nullptr

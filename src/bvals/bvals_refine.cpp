@@ -782,7 +782,14 @@ void BoundaryValues::ApplyNRFLDTwoPointGhost(
         const Real correction=NRFLDPrototype::TangentialReconstruction()
             ? NRFLDFaceReconstruction::TangentialOffset(fine,0,pmb,
                 nb.ni.ox1<0 ? 0 : 1,k,j,fi) : 0.0;
-        fine(k,j,gi)=(fine(k,j,fi)+2.0*(coarse(ck,cj,ci)+correction))/3.0;
+        if (NRFLDPrototype::NormalReconstruction()) {
+          const Real next=NRFLDFaceReconstruction::NextFine(
+              fine,0,nb.ni.ox1<0 ? 0 : 1,k,j,fi);
+          fine(k,j,gi)=NRFLDFaceReconstruction::FineGhost(
+              coarse(ck,cj,ci)+correction,fine(k,j,fi),next);
+        } else {
+          fine(k,j,gi)=(fine(k,j,fi)+2.0*(coarse(ck,cj,ci)+correction))/3.0;
+        }
       }
   } else if (nb.ni.ox2 != 0) {
     const int fj = nb.ni.ox2 < 0 ? pmb->js : pmb->je;
@@ -795,7 +802,14 @@ void BoundaryValues::ApplyNRFLDTwoPointGhost(
         const Real correction=NRFLDPrototype::TangentialReconstruction()
             ? NRFLDFaceReconstruction::TangentialOffset(fine,0,pmb,
                 nb.ni.ox2<0 ? 2 : 3,k,fj,i) : 0.0;
-        fine(k,gj,i)=(fine(k,fj,i)+2.0*(coarse(ck,cj,ci)+correction))/3.0;
+        if (NRFLDPrototype::NormalReconstruction()) {
+          const Real next=NRFLDFaceReconstruction::NextFine(
+              fine,0,nb.ni.ox2<0 ? 2 : 3,k,fj,i);
+          fine(k,gj,i)=NRFLDFaceReconstruction::FineGhost(
+              coarse(ck,cj,ci)+correction,fine(k,fj,i),next);
+        } else {
+          fine(k,gj,i)=(fine(k,fj,i)+2.0*(coarse(ck,cj,ci)+correction))/3.0;
+        }
       }
   } else {
     const int fk = nb.ni.ox3 < 0 ? pmb->ks : pmb->ke;
@@ -808,7 +822,14 @@ void BoundaryValues::ApplyNRFLDTwoPointGhost(
         const Real correction=NRFLDPrototype::TangentialReconstruction()
             ? NRFLDFaceReconstruction::TangentialOffset(fine,0,pmb,
                 nb.ni.ox3<0 ? 4 : 5,fk,j,i) : 0.0;
-        fine(gk,j,i)=(fine(fk,j,i)+2.0*(coarse(ck,cj,ci)+correction))/3.0;
+        if (NRFLDPrototype::NormalReconstruction()) {
+          const Real next=NRFLDFaceReconstruction::NextFine(
+              fine,0,nb.ni.ox3<0 ? 4 : 5,fk,j,i);
+          fine(gk,j,i)=NRFLDFaceReconstruction::FineGhost(
+              coarse(ck,cj,ci)+correction,fine(fk,j,i),next);
+        } else {
+          fine(gk,j,i)=(fine(fk,j,i)+2.0*(coarse(ck,cj,ci)+correction))/3.0;
+        }
       }
   }
 }

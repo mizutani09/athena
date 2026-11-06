@@ -86,7 +86,8 @@ def compose(directory, shape, extent, cycle=1, reference=None):
 
 
 def run(binary, source, out, n, mode, dt, contrast, amplitude, opacity,
-        assembled_jv, tangential_reconstruction):
+        assembled_jv, tangential_reconstruction, normal_reconstruction,
+        normal_weight):
     out.mkdir()
     source = source.replace("file_type = hst", "file_type = hst\ndata_format = %.16e")
     source = source.replace("<time>", "<output2>\nfile_type = vtk\nvariable = uov\nid = fields\ndcycle = 1\n\n<time>")
@@ -112,6 +113,8 @@ def run(binary, source, out, n, mode, dt, contrast, amplitude, opacity,
     env.pop("ATHENA_NRFLD_CONSERVATIVE_SHARED_COEFF", None)
     env.pop("ATHENA_NRFLD_CONSERVATIVE_DIFFERENCE_JV", None)
     env.pop("ATHENA_NRFLD_EXPERIMENTAL_TANGENTIAL_RECONSTRUCTION", None)
+    env.pop("ATHENA_NRFLD_EXPERIMENTAL_NORMAL_RECONSTRUCTION", None)
+    env.pop("ATHENA_NRFLD_EXPERIMENTAL_NORMAL_WEIGHT", None)
     if mode != "reference":
         env["ATHENA_NRFLD_CONSERVATIVE_PROTOTYPE"] = "0" if mode == "baseline" else "1"
         env["ATHENA_NRFLD_CONSERVATIVE_SHARED_COEFF"] = "1" if mode == "shared" else "0"
@@ -119,6 +122,9 @@ def run(binary, source, out, n, mode, dt, contrast, amplitude, opacity,
             env["ATHENA_NRFLD_CONSERVATIVE_DIFFERENCE_JV"] = "0"
         if mode == "shared" and tangential_reconstruction:
             env["ATHENA_NRFLD_EXPERIMENTAL_TANGENTIAL_RECONSTRUCTION"] = "1"
+        if mode == "shared" and normal_reconstruction:
+            env["ATHENA_NRFLD_EXPERIMENTAL_NORMAL_RECONSTRUCTION"] = "1"
+            env["ATHENA_NRFLD_EXPERIMENTAL_NORMAL_WEIGHT"] = str(normal_weight)
     env["ATHENA_NRFLD_EXPERIMENTAL_VARIABLE_LIMITER"] = "1"
     env["ATHENA_NRFLD_ENERGY_LEDGER"] = "1"
     start = time.perf_counter()
@@ -196,6 +202,8 @@ def main():
     parser.add_argument("--opacity", type=float, default=0.4)
     parser.add_argument("--assembled-jv", action="store_true")
     parser.add_argument("--tangential-reconstruction", action="store_true")
+    parser.add_argument("--normal-reconstruction", action="store_true")
+    parser.add_argument("--normal-weight", type=float, default=1.0)
     parser.add_argument("--skip-two-point", action="store_true")
     parser.add_argument("--plot", action="store_true")
     parser.add_argument("--plot-only", action="store_true")
@@ -220,7 +228,8 @@ def main():
             case = root / f"n{n}_{mode}"
             record = run(binary, source, case, n, mode, args.dt,
                          args.contrast, args.transverse_amplitude, args.opacity,
-                         args.assembled_jv, args.tangential_reconstruction)
+                         args.assembled_jv, args.tangential_reconstruction,
+                         args.normal_reconstruction, args.normal_weight)
             t, field, projected, blocks = compose(case, shape, extent,
                                                   reference=fields.get("reference"))
             t0, initial, projected_initial, _ = compose(

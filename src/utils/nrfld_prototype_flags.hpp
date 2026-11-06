@@ -22,6 +22,18 @@ inline bool TangentialReconstruction() {
   return Enabled() && Flag("ATHENA_NRFLD_EXPERIMENTAL_TANGENTIAL_RECONSTRUCTION");
 }
 
+inline bool NormalReconstruction() {
+  return Enabled() && Flag("ATHENA_NRFLD_EXPERIMENTAL_NORMAL_RECONSTRUCTION");
+}
+
+inline double NormalWeight() {
+  static const double weight=[]() {
+    const char *value=std::getenv("ATHENA_NRFLD_EXPERIMENTAL_NORMAL_WEIGHT");
+    return value == nullptr ? 1.0 : std::strtod(value,nullptr);
+  }();
+  return NormalReconstruction() ? weight : 0.0;
+}
+
 inline bool VariableLimiterTrial() {
   return Flag("ATHENA_NRFLD_EXPERIMENTAL_VARIABLE_LIMITER");
 }

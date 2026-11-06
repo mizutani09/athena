@@ -190,6 +190,9 @@ NRFLDDriver::NRFLDDriver(Mesh *pm, ParameterInput *pin)
               << " coupled_trial=" << NRFLDPrototype::CoupledTrial()
               << " tangential_reconstruction="
               << NRFLDPrototype::TangentialReconstruction()
+              << " normal_reconstruction="
+              << NRFLDPrototype::NormalReconstruction()
+              << " normal_weight=" << NRFLDPrototype::NormalWeight()
               << std::endl;
   }
   relaxed_l2_eps_ = pin->GetOrAddReal(
@@ -401,7 +404,12 @@ void NRFLDDriver::SyncInterfaceFaceMoments() {
                 ? NRFLDFaceReconstruction::TangentialOffset(
                     nr->u_,0,mb,face,k,j,i) : 0.0;
             moment(2*face,k,j,i) = d;
-            moment(2*face+1,k,j,i) = d*(nr->u_(k,j,i)-correction);
+            const Real effective=NRFLDPrototype::NormalReconstruction()
+                && coarser[face] && at_face
+                ? NRFLDFaceReconstruction::EffectiveFine(nr->u_,0,face,k,j,i,
+                                                           correction)
+                : nr->u_(k,j,i)-correction;
+            moment(2*face+1,k,j,i) = d*effective;
           }
     nr->interface_bvar_->StartReceiving(BoundaryCommSubset::all);
   }
@@ -472,7 +480,7 @@ void NRFLDDriver::SyncInterfaceFaceMoments() {
             }
             nr->u_(gk,gj,gi) = debar/dbar;
             nr->derivetive_(NewtonRaphsonFLD::dFr_dEr_xm+face,k,j,i)
-                = (4.0/3.0)*dbar;
+                = NRFLDFaceReconstruction::CoarseScale()*dbar;
           }
         }
   }
@@ -1124,7 +1132,8 @@ void NRFLD::CalculateCoefficientsOnce(const AthenaArray<Real> &u_pre,
           const bool at_face[6] = {i==is,i==ie,j==js,j==je,k==ks,k==ke};
           for (int face=0; face<6; ++face)
             if (finer[face] && at_face[face])
-              derivetive(NewtonRaphsonFLD::dFr_dEr_xm+face,k,j,i) *= 4.0/3.0;
+              derivetive(NewtonRaphsonFLD::dFr_dEr_xm+face,k,j,i) *=
+                  NRFLDFaceReconstruction::CoarseScale();
         }
   }
 }

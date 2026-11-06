@@ -210,9 +210,14 @@ FLD::FLD(MeshBlock *pmb, ParameterInput *pin) :
           || std::string(COORDINATE_SYSTEM) != "cartesian"
           || ((is_couple || !only_rad) && !NRFLDPrototype::CoupledTrial())
           || ((is_couple || !only_rad) && NRFLDPrototype::DifferenceJv())
-          || (NRFLDPrototype::TangentialReconstruction()
+          || ((NRFLDPrototype::TangentialReconstruction()
+               || NRFLDPrototype::NormalReconstruction())
               && (!NRFLDPrototype::SharedCoeff() || is_couple || !only_rad
                   || pmb->pmy_mesh->adaptive))
+          || (NRFLDPrototype::NormalReconstruction()
+              && (!(NRFLDPrototype::NormalWeight()>0.0)
+                  || NRFLDPrototype::NormalWeight()>1.0
+                  || !std::isfinite(NRFLDPrototype::NormalWeight())))
           || cut_diff
           || (!fixed_flux_limiter && !variable_trial)
           || fixed_u_rad || include_mixed_frame_terms || !periodic || !cubic
@@ -225,8 +230,9 @@ FLD::FLD(MeshBlock *pmb, ParameterInput *pin) :
           << "ATHENA_NRFLD_EXPERIMENTAL_COUPLED=1 and "
           << "ATHENA_NRFLD_CONSERVATIVE_DIFFERENCE_JV=0. Variable-limiter "
           << "trials require ATHENA_NRFLD_EXPERIMENTAL_VARIABLE_LIMITER=1. "
-          << "Tangential reconstruction additionally requires shared "
-          << "coefficients, radiation-only, and static AMR.";
+          << "Reconstruction additionally requires shared "
+          << "coefficients, radiation-only, and static AMR. Normal weight "
+          << "must lie in (0,1].";
       ATHENA_ERROR(msg);
     }
   }
