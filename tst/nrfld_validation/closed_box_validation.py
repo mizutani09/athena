@@ -17,6 +17,7 @@ import h5py
 os.environ.setdefault("MPLCONFIGDIR", "/tmp/matplotlib-nrfld-validation")
 import matplotlib.pyplot as plt
 import numpy as np
+plt.rcParams["pdf.fonttype"] = 42
 
 from nrfld_validation.io import find_repo_root, read_history
 from nrfld_validation.manifest import base_manifest, sha256_file, utc_now, write_manifest
@@ -204,6 +205,7 @@ def main():
             ax.grid(True, alpha=.3)
             ax.legend()
         fig.savefig(root / "figures/conservation.png", dpi=160)
+        fig.savefig(root / "figures/conservation.pdf")
         plt.close(fig)
         fig, ax = plt.subplots(figsize=(9, 6), constrained_layout=True)
         tolerance_cases = [summary["cases"][f"tol_{value:.0e}"] for value in TOLERANCES]
@@ -216,6 +218,7 @@ def main():
         ax.grid(True, which="both", alpha=.3)
         ax.legend()
         fig.savefig(root / "figures/tolerance_dependence.png", dpi=160)
+        fig.savefig(root / "figures/tolerance_dependence.pdf")
         plt.close(fig)
         fig, ax = plt.subplots(figsize=(9, 6), constrained_layout=True)
         cfl_cases = [summary["cases"]["cfl_0.1"], summary["cases"]["tol_1e-08"],
@@ -228,6 +231,7 @@ def main():
         ax.grid(True, which="both", alpha=.3)
         ax.legend()
         fig.savefig(root / "figures/cfl_dependence.png", dpi=160)
+        fig.savefig(root / "figures/cfl_dependence.pdf")
         plt.close(fig)
         summary["status"] = "passed" if all(x["passed"] for x in summary["cases"].values()) else "failed"
     except Exception as error:
