@@ -25,7 +25,7 @@ done
 
 repo=/work/mizutaniks/wor102/athena-mach5
 cd "$repo"
-[[ $(git rev-parse HEAD) == 2a199344* ]]
+git merge-base --is-ancestor 2a199344 HEAD
 python3 configure.py --prob=nrfld_radiative_shock --eos=adiabatic \
   -nrmgfld -hdf5 -mpi --nghost=2 --cxx=g++
 make -j8
