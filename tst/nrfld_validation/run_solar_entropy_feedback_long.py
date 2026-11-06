@@ -194,6 +194,8 @@ def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--repo", type=Path,
                         default=Path(__file__).resolve().parents[2])
+    parser.add_argument("--binary", type=Path,
+                        help="Frozen Athena executable for every restart segment")
     parser.add_argument("--base-input", type=Path, required=True)
     parser.add_argument("--data-dir", type=Path, required=True)
     parser.add_argument("--reference-manifest", type=Path, required=True)
@@ -239,7 +241,7 @@ def main() -> None:
     base_input = args.base_input.resolve()
     data_dir = args.data_dir.resolve()
     reference_path = args.reference_manifest.resolve()
-    binary = repo / "bin/athena"
+    binary = args.binary.resolve() if args.binary else repo / "bin/athena"
     root = args.output_root.resolve()
     for path in (base_input, reference_path, binary, *(data_dir / n for n in DATA_NAMES)):
         if not path.is_file():
@@ -306,6 +308,7 @@ def main() -> None:
         state["status"] = "running"
         state["created_at"] = now()
         state["forked_from"] = str(source_root)
+        state["binary_path"] = str(binary)
         if old["binary_sha256"] != config["binary_sha256"]:
             state["binary_change"] = {
                 "source_sha256": old["binary_sha256"],
@@ -335,6 +338,9 @@ def main() -> None:
         if not state_path.is_file() or not custom_input.is_file():
             parser.error("--resume requires existing state and campaign input")
         state = json.loads(state_path.read_text())
+        if state.get("binary_path") not in (None, str(binary)):
+            parser.error("Resume binary path differs from the recorded executable")
+        state["binary_path"] = str(binary)
         old = state["config"]
         for key, value in config.items():
             if key == "target_time_code":
@@ -353,6 +359,7 @@ def main() -> None:
         root.mkdir(parents=True, exist_ok=True)
         custom_input.write_text(campaign_input(base_input.read_text(), OUTPUT_CADENCE))
         state = {"status": "running", "created_at": now(), "config": config,
+                 "binary_path": str(binary),
                  "completed": [], "next_entropy_cgs": args.initial_s_in,
                  "min_available_memory_mib": None, "peak_swap_used_mib": 0.0,
                  "peak_rank_rss_mib": 0.0, "stop_reason": None}

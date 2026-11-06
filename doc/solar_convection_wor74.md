@@ -242,6 +242,7 @@ The prepared campaign resumes with:
 
 ```bash
 python3 tst/nrfld_validation/run_solar_entropy_feedback_long.py \
+  --binary /mnt/d/output/rad/wor74_feedback_20261106/from_t5000_96km_rolling500_t20000/athena.frozen \
   --base-input inputs/radiation/athinput.simple_convection_lhllc_fld_general_6Mm_box \
   --data-dir /mnt/d/output/rad/wor74_feedback_20261105/from_t0_96km_t5000/data \
   --reference-manifest /mnt/d/output/rad/wor70_solar_20261104/rempel_box_pilot/face_gravity_hd2_mass_tau2_rate40_current_64x64x32_np4_t4255_5000_resume/manifest.json \
@@ -258,6 +259,9 @@ and swap. The driver stops at less than 3 GiB available memory, greater than
 4 GiB used swap, or less than 50 GiB free disk. The cumulative entropy cap
 prevents unbounded controller windup; reaching it is diagnostic and does not
 prove upper-flux calibration.
+The executable is copied to `athena.frozen` within the campaign root and its
+SHA256 is checked at every driver restart. This prevents a later local build
+from changing the physical run midway through the campaign.
 
 ## Local CPU test
 
