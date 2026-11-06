@@ -61,6 +61,9 @@ PY
     "$(sha256sum "$case_dir/input.used" | cut -d' ' -f1)"
   printf 'source_tree=%s\n' "$(git rev-parse HEAD:src)"
 } > "$case_dir/provenance.txt"
+mpirun -np "$SLURM_NTASKS" -ppn "$WOR67_PPN" hostname \
+  | sort | uniq -c > "$case_dir/hostmap.txt"
+test "$(wc -l < "$case_dir/hostmap.txt")" -eq "$SLURM_JOB_NUM_NODES"
 
 cd "$case_dir"
 /usr/bin/time -v -o resources.txt \
