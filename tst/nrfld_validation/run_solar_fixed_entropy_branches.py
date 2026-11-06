@@ -46,6 +46,8 @@ def main() -> None:
     parser.add_argument("--output-root", type=Path, required=True)
     parser.add_argument("--base-s-in", type=float, required=True)
     parser.add_argument("--end-time", type=float, default=9400.0)
+    parser.add_argument("--serial-16", action="store_true",
+                        help="Run one case at a time with the validated 16-rank mapping")
     parser.add_argument("--prepare-only", action="store_true")
     parser.add_argument("--resume", action="store_true")
     args = parser.parse_args()
@@ -83,8 +85,10 @@ def main() -> None:
               "base_input": str(base_input), "base_input_sha256": digest(base_input),
               "data_sha256": expected_data, "header_from": str(header),
               "base_s_in_cgs": args.base_s_in, "start_time_code": 9100.0,
-              "end_time_code": args.end_time, "ranks_per_case": 4,
-              "cases": [{"name": name, "offset_cgs": offset, "cpus": cpus}
+              "end_time_code": args.end_time,
+              "ranks_per_case": 16 if args.serial_16 else 4,
+              "cases": [{"name": name, "offset_cgs": offset,
+                         "cpus": "0-15" if args.serial_16 else cpus}
                         for name, offset, cpus in CASES]}
     state_path = root / "state.json"
     if args.resume:
@@ -129,14 +133,16 @@ def main() -> None:
     commands = []
     for name, offset, cpus in CASES:
         entropy = args.base_s_in + offset
-        command = ["taskset", "-c", cpus, sys.executable,
+        command = ["taskset", "-c", "0-15" if args.serial_16 else cpus,
+                   sys.executable,
                    str(repo / "tst/nrfld_validation/run_solar_convection.py"),
                    "--repo", str(repo), "--binary", str(binary),
                    "--base-input", str(base_input), "--data-dir", str(data_dir),
                    "--output-root", str(root), "--case", name,
                    "--solver", "fgmres", "--cfl", "0.3",
                    "--nx1", "64", "--nx2", "64", "--nx3", "32",
-                   "--ranks", "4", "--mpi-bind-to", "hwthread",
+                   "--ranks", "16" if args.serial_16 else "4",
+                   "--mpi-bind-to", "hwthread",
                    "--mpi-map-by", "hwthread", "--tlim", f"{args.end_time:.9f}",
                    "--nlim", "10000000", "--checkpoint-dt", "100",
                    "--history-dt", "0.1", "--history-precision", "16",
@@ -156,6 +162,64 @@ def main() -> None:
                            "observed_ranks,disk_free_gib\n")
     processes = {}
     logs = {}
+    bound_cases: set[str] = set()
+
+    def bind_case_ranks() -> None:
+        # OpenMPI may ignore the outer taskset mask when it binds hwthreads.
+        # Pin the four actual rank PIDs after launch so parallel branches use
+        # disjoint physical cores; this does not change any numerical control.
+        bindings = {}
+        for name, _, cpus in CASES:
+            if name in bound_cases or name not in processes:
+                continue
+            pids = []
+            marker = str(root / name).encode()
+            for proc in Path("/proc").iterdir():
+                if not proc.name.isdigit():
+                    continue
+                try:
+                    if (proc / "comm").read_text().strip() != "athena.frozen":
+                        continue
+                    if marker in (proc / "cmdline").read_bytes():
+                        pids.append(int(proc.name))
+                except (FileNotFoundError, ProcessLookupError, PermissionError):
+                    continue
+            if len(pids) != 4:
+                continue
+            assigned = []
+            first_cpu, last_cpu = (int(value) for value in cpus.split("-"))
+            for pid, cpu in zip(sorted(pids), range(first_cpu, last_cpu+1)):
+                os.sched_setaffinity(pid, {cpu})
+                assigned.append({"pid": pid, "cpu": cpu})
+            bindings[name] = assigned
+            bound_cases.add(name)
+        if bindings:
+            path = root / "rank_affinity.json"
+            recorded = json.loads(path.read_text()) if path.is_file() else {}
+            recorded.update(bindings)
+            path.write_text(json.dumps(recorded, indent=2) + "\n")
+
+    def monitor_running() -> None:
+        if not args.serial_16:
+            bind_case_ranks()
+        samples = [memory_status(root / name) for name in processes]
+        available = min(item["mem_available_mib"] for item in samples)
+        swap = max(item["swap_used_mib"] for item in samples)
+        rss = sum(item["rank_rss_mib"] for item in samples)
+        ranks = sum(item["observed_ranks"] for item in samples)
+        disk = shutil.disk_usage(root).free / 1024**3
+        with monitor.open("a") as stream:
+            stream.write(f"{now()},{available:.1f},{swap:.1f},"
+                         f"{rss:.1f},{ranks},{disk:.1f}\n")
+        reason = ("stop signal" if stop else
+                  "available memory below 3 GiB" if available < 3072 else
+                  "swap use above 4 GiB" if swap > 4096 else
+                  "disk free below 50 GiB" if disk < 50 else None)
+        if reason:
+            raise RuntimeError(reason)
+        for name, process in processes.items():
+            if process.poll() not in (None, 0):
+                raise RuntimeError(f"{name} failed with exit {process.returncode}")
     try:
         for name, command in commands:
             case = root / name
@@ -178,26 +242,16 @@ def main() -> None:
                                     "entropy_cgs": args.base_s_in +
                                     next(offset for n, offset, _ in CASES if n == name)}
             print(f"{now()} start {name} pid={processes[name].pid}", flush=True)
+            save(state_path, state)
+            if args.serial_16:
+                while processes[name].poll() is None:
+                    monitor_running()
+                    time.sleep(5)
+                monitor_running()
+                print(f"{now()} simulation finished {name}", flush=True)
         save(state_path, state)
         while any(process.poll() is None for process in processes.values()):
-            samples = [memory_status(root / name) for name in processes]
-            available = min(item["mem_available_mib"] for item in samples)
-            swap = max(item["swap_used_mib"] for item in samples)
-            rss = sum(item["rank_rss_mib"] for item in samples)
-            ranks = sum(item["observed_ranks"] for item in samples)
-            disk = shutil.disk_usage(root).free / 1024**3
-            with monitor.open("a") as stream:
-                stream.write(f"{now()},{available:.1f},{swap:.1f},"
-                             f"{rss:.1f},{ranks},{disk:.1f}\n")
-            reason = ("stop signal" if stop else
-                      "available memory below 3 GiB" if available < 3072 else
-                      "swap use above 4 GiB" if swap > 4096 else
-                      "disk free below 50 GiB" if disk < 50 else None)
-            if reason:
-                raise RuntimeError(reason)
-            for name, process in processes.items():
-                if process.poll() not in (None, 0):
-                    raise RuntimeError(f"{name} failed with exit {process.returncode}")
+            monitor_running()
             time.sleep(5)
         for name, process in processes.items():
             if process.returncode != 0:
