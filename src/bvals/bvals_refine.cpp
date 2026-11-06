@@ -55,6 +55,7 @@
 // C++ headers
 #include <algorithm>  // min
 #include <cmath>
+#include <cstdlib>
 #include <iterator>
 #include <vector>
 
@@ -761,9 +762,47 @@ void BoundaryValues::ApplyFLDPhysicalBoundariesOnCoarseLevel(
 }
 
 //----------------------------------------------------------------------------------------
-//! \fn void BoundaryValues::ProlongateGhostCells(const NeighborBlock& nb,
-//!                                               int si, int ei, int sj, int ej,
-//!                                               int sk, int ek)
+//! \brief Set the nearest fine ghost from the coarse and fine cell centers.
+
+void BoundaryValues::ApplyNRFLDTwoPointGhost(
+    const NeighborBlock& nb, AthenaArray<Real>& fine,
+    const AthenaArray<Real>& coarse) {
+  MeshBlock *pmb = pmy_block_;
+  if (nb.ni.type != NeighborConnect::face) return;
+  if (nb.ni.ox1 != 0) {
+    const int fi = nb.ni.ox1 < 0 ? pmb->is : pmb->ie;
+    const int gi = fi + nb.ni.ox1;
+    const int ci = nb.ni.ox1 < 0 ? pmb->cis-1 : pmb->cie+1;
+    for (int k=pmb->ks; k<=pmb->ke; ++k)
+      for (int j=pmb->js; j<=pmb->je; ++j) {
+        const int ck=pmb->cks+(k-pmb->ks)/2;
+        const int cj=pmb->cjs+(j-pmb->js)/2;
+        fine(k,j,gi) = (fine(k,j,fi)+2.0*coarse(ck,cj,ci))/3.0;
+      }
+  } else if (nb.ni.ox2 != 0) {
+    const int fj = nb.ni.ox2 < 0 ? pmb->js : pmb->je;
+    const int gj = fj + nb.ni.ox2;
+    const int cj = nb.ni.ox2 < 0 ? pmb->cjs-1 : pmb->cje+1;
+    for (int k=pmb->ks; k<=pmb->ke; ++k)
+      for (int i=pmb->is; i<=pmb->ie; ++i) {
+        const int ck=pmb->cks+(k-pmb->ks)/2;
+        const int ci=pmb->cis+(i-pmb->is)/2;
+        fine(k,gj,i) = (fine(k,fj,i)+2.0*coarse(ck,cj,ci))/3.0;
+      }
+  } else {
+    const int fk = nb.ni.ox3 < 0 ? pmb->ks : pmb->ke;
+    const int gk = fk + nb.ni.ox3;
+    const int ck = nb.ni.ox3 < 0 ? pmb->cks-1 : pmb->cke+1;
+    for (int j=pmb->js; j<=pmb->je; ++j)
+      for (int i=pmb->is; i<=pmb->ie; ++i) {
+        const int cj=pmb->cjs+(j-pmb->js)/2;
+        const int ci=pmb->cis+(i-pmb->is)/2;
+        fine(gk,j,i) = (fine(fk,j,i)+2.0*coarse(ck,cj,ci))/3.0;
+      }
+  }
+}
+
+//----------------------------------------------------------------------------------------
 //! \brief Prolongate ghost cells
 
 void BoundaryValues::ProlongateGhostCells(const NeighborBlock& nb,
@@ -787,6 +826,10 @@ void BoundaryValues::ProlongateGhostCells(const NeighborBlock& nb,
     int nu = var_cc->GetDim4() - 1;
     pmr->ProlongateCellCenteredValues(*coarse_cc, *var_cc, 0, nu,
                                       si, ei, sj, ej, sk, ek);
+    if (std::getenv("ATHENA_NRFLD_CONSERVATIVE_PROTOTYPE") != nullptr
+        && pmb->pnr != nullptr
+        && (var_cc == &pmb->pnr->u_ || var_cc == &pmb->pnr->delta_u_))
+      ApplyNRFLDTwoPointGhost(nb, *var_cc, *coarse_cc);
   }
 
   // do radiation quantities separately

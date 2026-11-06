@@ -41,6 +41,7 @@ Real erad_background;
 Real erad_amplitude;
 Real pulse_center;
 Real pulse_width;
+int profile_axis;
 int test_regrid_cycle;
 
 int ControlledRefinement(MeshBlock *pmb) {
@@ -48,8 +49,11 @@ int ControlledRefinement(MeshBlock *pmb) {
   // The pulse region is refined initially, then every fine block is removed.
   if (test_regrid_cycle < 0) return 0;
   if (pmb->pmy_mesh->ncycle >= test_regrid_cycle) return -1;
-  return (pmb->block_size.x1max > slab_left
-          && pmb->block_size.x1min < slab_right) ? 1 : -1;
+  const Real lower = profile_axis == 1 ? pmb->block_size.x1min
+      : profile_axis == 2 ? pmb->block_size.x2min : pmb->block_size.x3min;
+  const Real upper = profile_axis == 1 ? pmb->block_size.x1max
+      : profile_axis == 2 ? pmb->block_size.x2max : pmb->block_size.x3max;
+  return (upper > slab_left && lower < slab_right) ? 1 : -1;
 }
 
 // A periodic dense slab gives two interfaces without introducing a second
@@ -106,6 +110,7 @@ void Mesh::InitUserMeshData(ParameterInput *pin) {
   erad_amplitude = pin->GetOrAddReal("problem", "erad_amplitude", 0.1);
   pulse_center = pin->GetOrAddReal("problem", "pulse_center", slab_left);
   pulse_width = pin->GetOrAddReal("problem", "pulse_width", 0.08);
+  profile_axis = pin->GetOrAddInteger("problem", "profile_axis", 1);
   test_regrid_cycle = pin->GetOrAddInteger("problem", "test_regrid_cycle", -1);
   if (adaptive && test_regrid_cycle >= 0) {
     EnrollUserRefinementCondition(ControlledRefinement);
@@ -114,11 +119,12 @@ void Mesh::InitUserMeshData(ParameterInput *pin) {
   if (!(density_low > 0.0) || !(density_high > 0.0)
       || !(slab_left < slab_right) || interface_width < 0.0
       || !(erad_background > 0.0) || erad_amplitude < 0.0
-      || !(pulse_width > 0.0)) {
+      || !(pulse_width > 0.0) || profile_axis < 1 || profile_axis > 3) {
     std::stringstream msg;
     msg << "### FATAL ERROR in nrfld_diff_amr_interface\n"
         << "Require positive densities/background/pulse_width, non-negative "
-        << "interface_width/amplitude, and slab_left < slab_right.";
+        << "interface_width/amplitude, slab_left < slab_right, and "
+        << "profile_axis in [1,3].";
     ATHENA_ERROR(msg);
   }
 
@@ -132,6 +138,7 @@ void Mesh::InitUserMeshData(ParameterInput *pin) {
               << " slab_left=" << slab_left
               << " slab_right=" << slab_right
               << " interface_width=" << interface_width
+              << " profile_axis=" << profile_axis
               << " pulse_center=" << pulse_center
               << " pulse_width=" << pulse_width << std::endl;
   }
@@ -159,14 +166,16 @@ void MeshBlock::ProblemGenerator(ParameterInput *pin) {
   for (int k = kl; k <= ku; ++k) {
     for (int j = jl; j <= ju; ++j) {
       for (int i = il; i <= iu; ++i) {
-        const Real rho = DensityProfile(pcoord->x1v(i));
+        const Real position = profile_axis == 1 ? pcoord->x1v(i)
+            : profile_axis == 2 ? pcoord->x2v(j) : pcoord->x3v(k);
+        const Real rho = DensityProfile(position);
         phydro->u(IDN,k,j,i) = rho;
         phydro->u(IM1,k,j,i) = 0.0;
         phydro->u(IM2,k,j,i) = 0.0;
         phydro->u(IM3,k,j,i) = 0.0;
         if (NON_BAROTROPIC_EOS) phydro->u(IEN,k,j,i) = gas_energy;
         prfld->u_gas(k,j,i) = gas_energy;
-        prfld->u_rad(k,j,i) = RadiationProfile(pcoord->x1v(i));
+        prfld->u_rad(k,j,i) = RadiationProfile(position);
       }
     }
   }

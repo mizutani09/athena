@@ -22,12 +22,17 @@ def fields(line: str) -> dict[str, str]:
 
 
 def run_case(repo: Path, binary: Path, root: Path, layout: str,
-             contrast: float, dt: float) -> dict:
+             contrast: float, dt: float, linear_solver: str = "mg") -> dict:
     case = root / f"{layout}_contrast{contrast:g}"
     case.mkdir()
     source = (repo / "inputs/radiation/athinput.nrfld_diff_amr_interface").read_text()
     source = source.replace("file_type = hst", "file_type = hst\ndata_format = %.16e")
     source = source.replace("diagnostic_verbosity = 1", "diagnostic_verbosity = 0")
+    if linear_solver == "fgmres":
+        source = source.replace("fas             = false",
+                                "fas             = false\nlinear_solver = fgmres\n"
+                                "fgmres_threshold = 1e-10\n"
+                                "fgmres_linearity_check = true")
     input_path = case / "input.used"
     input_path.write_text(source)
     command = [str(binary), "-i", str(input_path), "-d", str(case),
@@ -86,12 +91,14 @@ def main() -> int:
     parser.add_argument("--dt", type=float, default=2e-4)
     parser.add_argument("--require-conservation", action="store_true")
     parser.add_argument("--tolerance", type=float, default=1e-10)
+    parser.add_argument("--linear-solver", choices=("mg", "fgmres"), default="mg")
     args = parser.parse_args()
     repo = Path(__file__).resolve().parents[2]
     binary = args.binary.resolve()
     root = args.output.resolve()
     root.mkdir(parents=True, exist_ok=False)
-    summary = [run_case(repo, binary, root, layout, contrast, args.dt)
+    summary = [run_case(repo, binary, root, layout, contrast, args.dt,
+                        args.linear_solver)
                for contrast in (1.0, 1.15)
                for layout in ("uniform_coarse", "uniform_fine",
                               "amr_aligned", "amr_shifted")]

@@ -445,6 +445,14 @@ NewtonSolveResult NewtonRaphsonDriver::Solve_general(int stage, Real dt) {
     MeshBlock *pmb = pnr->pmy_block_;
     pnr->LoadVariables();
   }
+  if (dt_ > 0.0
+      && std::getenv("ATHENA_NRFLD_CONSERVATIVE_PROTOTYPE") != nullptr) {
+    // LoadVariables copies the radiation state before Newton's own coarse/fine
+    // exchange.  The prototype's interface stencil must be present even for
+    // the initial residual and Jacobian, not just after the first correction.
+    NewtonRaphsonTaskList initial_boundary(this, NewtonRaphsonTaskList::Mode::boundary);
+    initial_boundary.DoTaskListOneStage(stage_);
+  }
 
   // calc coefficients for initial setup
   // std::cout << "Number of NewtonRaphson objects: " << vnr_.size() << std::endl;

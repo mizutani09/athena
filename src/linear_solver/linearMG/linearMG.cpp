@@ -12,6 +12,7 @@
 #include <algorithm>
 #include <cmath>
 #include <cstdint>
+#include <cstdlib>
 #include <cstring>
 #include <iostream>
 #include <limits>
@@ -1393,6 +1394,47 @@ void linearMGDriver::SolveFGMRES(int stage) {
   };
   auto apply_operator = [&](const BlockVector &x, BlockVector &y) {
     load_delta(x);
+    if (std::getenv("ATHENA_NRFLD_CONSERVATIVE_PROTOTYPE") != nullptr) {
+      // A secant of the frozen-coefficient radiation residual.  The Newton
+      // state and Krylov direction already have identical coarse/fine ghost
+      // operators, so this includes the shared interface flux in Jv.  Keep
+      // the subtraction in long double to resolve small Krylov directions.
+      constexpr long double h = 1.0e-4L;
+      for (std::size_t b = 0; b < y.size(); ++b) {
+        linearMG *pmg = static_cast<linearMG*>(vmg_[b]);
+        MeshBlock *pmb = pmg->pmy_block_;
+        const AthenaArray<Real> &u = pmg->pnr_->u_;
+        const AthenaArray<Real> &uold = pmg->pnr_->uold_;
+        const AthenaArray<Real> &delta = pmg->pnr_->delta_u_;
+        const AthenaArray<Real> &coeff = pmg->pnr_->coeff_;
+        const long double fac = static_cast<long double>(dt_)
+            /SQR(static_cast<long double>(pmb->pcoord->dx1f(pmb->is)));
+        y[b].ZeroClear();
+        for (int k = pmb->ks; k <= pmb->ke; ++k)
+          for (int j = pmb->js; j <= pmb->je; ++j)
+            for (int i = pmb->is; i <= pmb->ie; ++i) {
+              const long double center = u(k,j,i);
+              const long double direction = delta(k,j,i);
+              const long double old = uold(k,j,i);
+              const long double neighbor[6] = {
+                  u(k,j,i-1),u(k,j,i+1),u(k,j-1,i),u(k,j+1,i),
+                  u(k-1,j,i),u(k+1,j,i)};
+              const long double neighbor_direction[6] = {
+                  delta(k,j,i-1),delta(k,j,i+1),delta(k,j-1,i),
+                  delta(k,j+1,i),delta(k-1,j,i),delta(k+1,j,i)};
+              long double base = center-old;
+              long double trial = center+h*direction-old;
+              for (int face = 0; face < 6; ++face) {
+                const long double d = -coeff(linearSolver::DXMF+face,k,j,i);
+                base -= fac*d*(neighbor[face]-center);
+                trial -= fac*d*((neighbor[face]+h*neighbor_direction[face])
+                                -(center+h*direction));
+              }
+              at(y,b,k,j,i) = static_cast<Real>((trial-base)/h);
+            }
+      }
+      return;
+    }
     for (std::size_t b = 0; b < y.size(); ++b) {
       linearMG *pmg = static_cast<linearMG*>(vmg_[b]);
       MeshBlock *pmb = pmg->pmy_block_;

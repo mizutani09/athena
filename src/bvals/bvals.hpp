@@ -226,6 +226,9 @@ class BoundaryValues : public BoundaryBase, //public BoundaryPhysics,
       int si, int ei, int sj, int ej, int sk, int ek);
   void ProlongateGhostCells(const NeighborBlock& nb,
                             int si, int ei, int sj, int ej, int sk, int ek);
+  void ApplyNRFLDTwoPointGhost(const NeighborBlock& nb,
+                              AthenaArray<Real>& fine,
+                              const AthenaArray<Real>& coarse);
   void ProlongateFLDGhostCells(const NeighborBlock& nb,
                             int si, int ei, int sj, int ej, int sk, int ek);
 

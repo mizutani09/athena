@@ -978,6 +978,30 @@ void NRFLD::CalculateCoefficientsOnce(const AthenaArray<Real> &u_pre,
       }
     }
   }
+  // Experimental constant-D coarse/fine two-point transmissibility.  For
+  // d_c=2*d_f the center distance is 3*d_c/4, so a coarse face represented
+  // by a ghost value at d_c needs a 4/3 coefficient.  The fine ghost is set
+  // to the corresponding center-to-center linear value in bvals_refine.cpp.
+  if (std::getenv("ATHENA_NRFLD_CONSERVATIVE_PROTOTYPE") != nullptr
+      && !pfld->cut_diff) {
+    MeshBlock *mb = pmy_block_;
+    const int level = mb->loc.level;
+    const bool finer[6] = {
+      mb->pbval->nblevel[1][1][0] > level,
+      mb->pbval->nblevel[1][1][2] > level,
+      mb->pbval->nblevel[1][0][1] > level,
+      mb->pbval->nblevel[1][2][1] > level,
+      mb->pbval->nblevel[0][1][1] > level,
+      mb->pbval->nblevel[2][1][1] > level};
+    for (int k=ks; k<=ke; ++k)
+      for (int j=js; j<=je; ++j)
+        for (int i=is; i<=ie; ++i) {
+          const bool at_face[6] = {i==is,i==ie,j==js,j==je,k==ks,k==ke};
+          for (int face=0; face<6; ++face)
+            if (finer[face] && at_face[face])
+              derivetive(NewtonRaphsonFLD::dFr_dEr_xm+face,k,j,i) *= 4.0/3.0;
+        }
+  }
 }
 
 void NRFLD::CalculateCoefficients(const AthenaArray<Real> &u_rad_old,

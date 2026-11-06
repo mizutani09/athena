@@ -192,6 +192,32 @@ FLD::FLD(MeshBlock *pmb, ParameterInput *pin) :
   fixed_u_rad = pin->GetOrAddBoolean("fld", "fixed_u_rad", false);
   include_mixed_frame_terms =
       pin->GetOrAddBoolean("fld", "include_mixed_frame_terms", true);
+  if (std::getenv("ATHENA_NRFLD_CONSERVATIVE_PROTOTYPE") != nullptr) {
+    bool periodic = true;
+    for (int face=0; face<6; ++face)
+      periodic &= pmb->pmy_mesh->mesh_bcs[face] == BoundaryFlag::periodic;
+    const Real dx1 = (pmb->block_size.x1max-pmb->block_size.x1min)
+        /pmb->block_size.nx1;
+    const Real dx2 = (pmb->block_size.x2max-pmb->block_size.x2min)
+        /pmb->block_size.nx2;
+    const Real dx3 = (pmb->block_size.x3max-pmb->block_size.x3min)
+        /pmb->block_size.nx3;
+    const bool cubic = std::abs(dx2/dx1-1.0) < 1.0e-12
+        && std::abs(dx3/dx1-1.0) < 1.0e-12;
+    if (std::string(PROBLEM_GENERATOR) != "nrfld_diff_amr_interface"
+          || std::string(COORDINATE_SYSTEM) != "cartesian"
+          || is_couple || !only_rad || cut_diff || !fixed_flux_limiter
+          || fixed_u_rad || include_mixed_frame_terms || !periodic || !cubic
+          || pmb->pmy_mesh->adaptive) {
+      std::stringstream msg;
+      msg << "### FATAL ERROR in function [FLD::FLD]" << std::endl
+          << "ATHENA_NRFLD_CONSERVATIVE_PROTOTYPE currently requires the "
+          << "static nrfld_diff_amr_interface test on a periodic Cartesian "
+          << "cubic mesh with radiation-only, uncoupled, fixed-limiter "
+          << "diffusion and no mixed-frame terms.";
+      ATHENA_ERROR(msg);
+    }
+  }
   implicit_mixed_frame_drift =
       pin->GetOrAddBoolean("fld", "implicit_mixed_frame_drift", true);
   mixed_frame_ledger_limit = pin->GetOrAddInteger("fld", "mixed_frame_ledger_limit", 0);
