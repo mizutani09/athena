@@ -156,8 +156,9 @@ def run(args):
     records = []
     manifest["commands"]["build"] = records
     manifest["restart"] = "none: deterministic pgen, one fixed-dt solve"
-    manifest["scope"] = ("only_rad, frozen hydro, lagged-per-step diffusion coefficients; "
-                         "not full collapse; variable limiter is opt-in")
+    manifest["scope"] = ("coupled FLD with frozen explicit hydro" if args.coupled else
+                         "only_rad, frozen hydro") + (
+                         ", lagged-per-step diffusion coefficients; not full collapse")
     manifest["harness_sha256"] = sha256_file(Path(__file__))
     manifest_path = root / "manifest.json"
     write_manifest(manifest_path, manifest)
@@ -257,6 +258,8 @@ def run(args):
                     "output2/file_type=hdf5", "output2/variable=uov", "output2/id=fields",
                     "output2/dcycle=1", "output2/dt=-1",
                 ]
+                if args.coupled:
+                    overrides.extend(["fld/is_couple=true", "fld/only_rad=false"])
                 if args.symmetric_rb_sweeps is not None:
                     overrides.append(
                         f"nrfld/symmetric_rb_sweeps={args.symmetric_rb_sweeps}")
@@ -359,9 +362,11 @@ if __name__ == "__main__":
     parser.add_argument("--transverse-blocks", type=int, default=1)
     parser.add_argument("--shifted-left", type=float, default=0.)
     parser.add_argument("--shifted-right", type=float, default=.5)
-    parser.add_argument("--verbosity", type=int, choices=[1, 2], default=1)
+    parser.add_argument("--verbosity", type=int, choices=[0, 1, 2], default=1)
     parser.add_argument("--variable-limiter", action="store_true",
                         help="Use the production flux limiter instead of fixed lambda=1/3")
+    parser.add_argument("--coupled", action="store_true",
+                        help="Couple radiation and gas while explicit hydro remains fixed")
     parser.add_argument("--global-jv", action="store_true",
                         help="Test C boundary-inclusive operator diagnostic")
     parser.add_argument("--jv-iteration", type=int, default=0)

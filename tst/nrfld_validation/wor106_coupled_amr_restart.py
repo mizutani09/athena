@@ -17,7 +17,9 @@ import numpy as np
 
 def run(command, env, log):
     with log.open("w") as out:
-        proc = subprocess.run(command, env=env, stdout=out,
+        timed = ["/usr/bin/time", "-f", "max_rss_kib=%M elapsed_s=%e",
+                 "-o", str(log.with_suffix(".resources"))] + command
+        proc = subprocess.run(timed, env=env, stdout=out,
                               stderr=subprocess.STDOUT, check=False)
     result = log.read_text()
     if proc.returncode != 0 or "FATAL" in result or "Terminating on cycle limit" not in result:
@@ -75,7 +77,11 @@ def main():
                         default=Path("inputs/radiation/athinput.nrfld_diff_amr_interface"))
     parser.add_argument("--output", type=Path, default=Path("/tmp/wor106_restart_regression"))
     parser.add_argument("--tolerance", type=float, default=1e-10)
+    parser.add_argument("--restart-ranks", type=int, default=4,
+                        help="Ranks for restart and matched direct runs (default: 4)")
     args = parser.parse_args()
+    if args.restart_ranks < 1:
+        parser.error("--restart-ranks must be positive")
     binary, source = args.binary.resolve(), args.input.resolve()
     args.output.mkdir(parents=True, exist_ok=True)
     baseline_flags = dict(os.environ)
@@ -90,13 +96,16 @@ def main():
                  ATHENA_NRFLD_EXPERIMENTAL_VARIABLE_LIMITER="1",
                  ATHENA_NRFLD_EXPERIMENTAL_REGRID="1",
                  ATHENA_NRFLD_EXPERIMENTAL_COUPLED="1")
-    cases = (("baseline", False, 4), ("baseline", True, 4),
+    cases = (("baseline", False, args.restart_ranks),
+             ("baseline", True, args.restart_ranks),
              ("baseline", True, 1),
-             ("candidate", False, 4), ("candidate", True, 4),
+             ("candidate", False, args.restart_ranks),
+             ("candidate", True, args.restart_ranks),
              ("candidate", True, 1))
     for mode, adaptive, direct_ranks in cases:
         flags = candidate_flags if mode == "candidate" else baseline_flags
-        name = f"{mode}_{'adaptive' if adaptive else 'static'}_{direct_ranks}to4"
+        name = (f"{mode}_{'adaptive' if adaptive else 'static'}_"
+                f"{direct_ranks}to{args.restart_ranks}")
         folder = args.output / name
         folder.mkdir(exist_ok=True)
         input_file = folder / "input.used"
@@ -114,8 +123,10 @@ def main():
         checkpoint = direct / "nrfld_diff_amr_interface.00001.rst"
         if not checkpoint.exists():
             raise RuntimeError(f"cycle-2 checkpoint missing: {checkpoint}")
-        command = ["mpirun", "-n", "4", str(binary), "-r", str(checkpoint),
-                   "-d", str(restarted), "time/nlim=5"]
+        command = (["mpirun", "-n", str(args.restart_ranks)]
+                   if args.restart_ranks > 1 else [])
+        command += [str(binary), "-r", str(checkpoint),
+                    "-d", str(restarted), "time/nlim=5"]
         run(command, flags, folder / "restart.log")
         time, difference = compare(direct, restarted, args.tolerance)
         print(f"{name}: time={time:.16g} max_field_diff={difference:.3e}")
