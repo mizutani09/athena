@@ -48,8 +48,11 @@ lines = []
 for line in Path(sys.argv[1]).read_text().splitlines():
     if line.startswith("<") and line.endswith(">"):
         section = line[1:-1]
-    if section in ("output2", "output3") and line.lstrip().startswith("dt ="):
+    if section == "output2" and line.lstrip().startswith("dt ="):
         line = "dt = 0.002"
+    if section == "output3" and line.lstrip().startswith("dt ="):
+        # One evolved HDF profile makes the strict solver/output check possible.
+        line = "dt = 0.00005"
     lines.append(line)
 Path(sys.argv[2]).write_text("\n".join(lines) + "\n")
 PY
