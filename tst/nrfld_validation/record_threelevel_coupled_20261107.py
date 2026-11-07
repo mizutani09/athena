@@ -28,7 +28,8 @@ def get(pattern, text, default=None):
     return found.group(1) if found else default
 
 
-def run(name, level, mode, ranks, opacity='q1e7', trial='base'):
+def run(name, level, mode, ranks, opacity='q1e7', trial='base', threads=1,
+        source_commit='9a8567ed'):
     directory = TRIALS / name
     log = (directory / 'run.log').read_text(errors='replace')
     timing = (directory / 'time.log').read_text(errors='replace')
@@ -72,12 +73,12 @@ def run(name, level, mode, ranks, opacity='q1e7', trial='base'):
     worst = max(pairs, key=lambda row: row['relative_mismatch']) if pairs else None
     return {
         'name': name, 'level_count': level, 'limiter': mode, 'ranks': ranks,
-        'threads_per_rank': 1, 'opacity_case': opacity, 'trial': trial,
-        'source_commit_before_run': '9a8567ed', 'binary_sha256': sha(BINARY),
+        'threads_per_rank': threads, 'opacity_case': opacity, 'trial': trial,
+        'source_commit_before_run': source_commit, 'binary_sha256': sha(BINARY),
         'input_path': str(input_path), 'input_sha256': sha(input_path),
         'command': command,
         'overrides': command.split(' -d ', 1)[-1].split(' ', 1)[-1] if command else None,
-        'environment': {'OMP_NUM_THREADS': 1, 'ATHENA_NRFLD_INTERFACE_LEDGER': 1,
+        'environment': {'OMP_NUM_THREADS': threads, 'ATHENA_NRFLD_INTERFACE_LEDGER': 1,
                         'ATHENA_NRFLD_ENERGY_LEDGER': 1},
         'run_log': str(directory / 'run.log'), 'face_logs': files,
         'exit_status': exit_status,
@@ -124,6 +125,9 @@ for trial, ranks in [('max160', 2), ('v2', 1), ('v2', 2),
                      ('tol12', 1), ('tol12', 2)]:
     trials.append(run(f'threelevel_coupled_fixed_{trial}_r{ranks}', 3,
                       'fixed', ranks, trial=trial))
+thread_trials = [run(f'threelevel_coupled_variable_omp2_r{rank}', 3,
+                     'variable', rank, trial='omp2', threads=2,
+                     source_commit='5e133f4d') for rank in (1, 2)]
 rank_pairs = {}
 for level in (2, 3):
     for mode in ('fixed', 'variable'):
@@ -141,12 +145,30 @@ report = json.loads(REPORT.read_text())
 report['threelevel_coupled_screen'] = {
     'scope': 'Coupled Newton/FGMRES, coarse/fine Jv and face ledger, 2/3 levels, fixed/variable limiter, 1/2 MPI ranks; q1e7 and q1e6 3-level opacity; FGMRES options in fixed q1e7 case.',
     'base_cases': base, 'fgmres_option_trials': trials,
+    'thread_trials': thread_trials,
+    'thread_comparisons': {str(rank): {
+        'omp1': f'threelevel_coupled_variable_r{rank}',
+        'omp2': f'threelevel_coupled_variable_omp2_r{rank}',
+        'final_hdf_numeric_arrays_exact': hdf_equal(
+            f'threelevel_coupled_variable_r{rank}',
+            f'threelevel_coupled_variable_omp2_r{rank}'),
+        'fgmres_history_exact': next(x for x in base if x['name'] ==
+                                     f'threelevel_coupled_variable_r{rank}')['fgmres_history']
+                                == next(x for x in thread_trials if x['ranks'] == rank)[
+                                    'fgmres_history'],
+        'worst_face_pair_exact': next(x for x in base if x['name'] ==
+                                      f'threelevel_coupled_variable_r{rank}')['worst_face_pair']
+                                 == next(x for x in thread_trials if x['ranks'] == rank)[
+                                     'worst_face_pair']}
+        for rank in (1, 2)},
     'rank_comparisons': rank_pairs,
-    'decision': 'Two-level coupled controls pass face tolerance on both ranks. Three-level coupled cases converge except q1e7 fixed 2-rank strict FGMRES target, but all completed three-level cases fail the 1e-6 relative face criterion on very small face flux. Smooth coarse/fine Schur Jv and global energy balance remain small. Max iterations, 2 MG cycles, restart width and unbatched reductions do not give a robust strict-target fix. Relaxed 1.2e-8 target is a diagnostic only; it does not address face mismatch. Retain opt-in roundoff-scale diagnostic and leave conservation discrepancy unresolved.'
+    'decision': 'Two-level coupled controls pass face tolerance on both ranks. Three-level coupled cases converge except q1e7 fixed 2-rank strict FGMRES target, but all completed three-level cases fail the 1e-6 relative face criterion on very small face flux. Smooth coarse/fine Schur Jv and global energy balance remain small. Max iterations, 2 MG cycles, restart width and unbatched reductions do not give a robust strict-target fix. Relaxed 1.2e-8 target is a diagnostic only; it does not address face mismatch. OMP2 variable-limiter controls test thread sensitivity without changing the operator. Retain opt-in roundoff-scale diagnostic and leave conservation discrepancy unresolved.'
 }
 REPORT.write_text(json.dumps(report, indent=2, ensure_ascii=False) + '\n')
 print(json.dumps({'base': [(r['name'], r['evaluation'], r['max_face_relative_mismatch'])
                           for r in base],
                   'trials': [(r['name'], r['evaluation'],
                               r['maximum_true_relative_residual']) for r in trials],
+                  'thread_trials': [(r['name'], r['evaluation'],
+                                      r['max_face_relative_mismatch']) for r in thread_trials],
                   'rank_comparisons': rank_pairs}, indent=2))
