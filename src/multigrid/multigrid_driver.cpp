@@ -2864,6 +2864,13 @@ void MultigridDriver::SetOctetBoundariesBeforeTransfer(bool folddata) {
       }
     }
 
+    // Physical boundary conditions read the center coarse cell.  Initialize it
+    // from this octet before filling coarse ghost cells.
+    for (int v = 0; v < nvar_; ++v) {
+      cbuf(v,ngh,ngh,ngh) = RestrictOne(oct.u, v, ngh, ngh, ngh);
+      if (folddata)
+        cbufold(v,ngh,ngh,ngh) = RestrictOne(oct.uold, v, ngh, ngh, ngh);
+    }
     ApplyPhysicalBoundariesOctet(cbuf, loc, oct.ccoord, true, false);
     if (folddata)
       ApplyPhysicalBoundariesOctet(cbufold, loc, oct.ccoord, true, false);
