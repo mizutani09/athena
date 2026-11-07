@@ -1,0 +1,199 @@
+--- base/NRFLD.hpp
++++ diagnostic/NRFLD.hpp
+@@ -248,6 +248,7 @@
+ 
+   // Single-rank, periodic, uncoupled Test C diagnostics; disabled by default.
+   void CheckGlobalJacobian(bool actual_direction);
++  void CheckCoupledSchurJacobian();  // Trial-only WOR-92 global Jv diagnostic.
+   bool global_jv_{false};
+   int global_jv_iteration_{0}, global_jv_solve_{0};
+   Real global_jv_epsilon_{1.e-4};
+--- base/NRFLD_jacobian_diagnostic.cpp
++++ diagnostic/NRFLD_jacobian_diagnostic.cpp
+@@ -2,6 +2,7 @@
+ #include <algorithm>
+ #include <array>
+ #include <cmath>
++#include <cstdlib>
+ #include <iomanip>
+ #include <sstream>
+ #include <vector>
+@@ -63,8 +64,178 @@
+ 
+ void NRFLDDriver::RunJacobianDiagnostics() {
+   NewtonRaphsonDriver::RunJacobianDiagnostics(); // preserve legacy local check
++  if (std::getenv("ATHENA_WOR92_COUPLED_GLOBAL_JV") != nullptr && dt_ > 0.0)
++    CheckCoupledSchurJacobian();
+   global_jv_solve_=0;
+   if (global_jv_ && dt_>0.0) CheckGlobalJacobian(false);
++}
++
++void NRFLDDriver::CheckCoupledSchurJacobian() {
++  // Diagnostic only: differentiate the frozen-coefficient reduced
++  // gas/radiation residual with respect to a global radiation direction.
++  // The gas state and local elimination ratio are held at the base state.
++  struct Saved {
++    NRFLD *nr;
++    AthenaArray<Real> u, delta, coarse_u, coarse_delta, coeff, deriv, src,
++                      moments, coarse_moments, mixed, marshak, baseline, direction,
++                      base_coeff, base_deriv;
++    bool initialized;
++  };
++  std::vector<Saved> saved(vnr_.size());
++  for (std::size_t b = 0; b < vnr_.size(); ++b) {
++    Saved &s = saved[b];
++    s.nr = static_cast<NRFLD*>(vnr_[b]);
++    NRFLD *nr = s.nr;
++    Snapshot(s.u,nr->u_); Snapshot(s.delta,nr->delta_u_);
++    Snapshot(s.coarse_u,nr->NewtonRaphson::coarse_u_);
++    Snapshot(s.coarse_delta,nr->coarse_delta_u_);
++    Snapshot(s.coeff,nr->coeff_); Snapshot(s.deriv,nr->derivetive_);
++    Snapshot(s.src,nr->src_); Snapshot(s.mixed,nr->mixed_drift_);
++    Snapshot(s.marshak,nr->pmy_block_->prfld->marshak_dface);
++    if (NRFLDPrototype::SharedCoeff()) {
++      Snapshot(s.moments,nr->interface_moments_);
++      Snapshot(s.coarse_moments,nr->coarse_interface_moments_);
++    }
++    s.initialized = nr->fixed_linear_coefficients_initialized_;
++  }
++  auto restore = [&]() {
++    for (Saved &s : saved) {
++      NRFLD *nr = s.nr;
++      nr->u_=s.u; nr->delta_u_=s.delta;
++      nr->NewtonRaphson::coarse_u_=s.coarse_u;
++      nr->coarse_delta_u_=s.coarse_delta;
++      nr->coeff_=s.coeff; nr->derivetive_=s.deriv; nr->src_=s.src;
++      nr->mixed_drift_=s.mixed;
++      nr->pmy_block_->prfld->marshak_dface=s.marshak;
++      if (NRFLDPrototype::SharedCoeff()) {
++        nr->interface_moments_=s.moments;
++        nr->coarse_interface_moments_=s.coarse_moments;
++      }
++      nr->fixed_linear_coefficients_initialized_=s.initialized;
++    }
++  };
++
++  NewtonRaphsonTaskList boundary(this,NewtonRaphsonTaskList::Mode::boundary);
++  boundary.DoTaskListOneStage(stage_);
++  for (Saved &s : saved) {
++    NRFLD *nr=s.nr; MeshBlock *mb=nr->pmy_block_;
++    Snapshot(s.baseline,nr->u_);
++    nr->fixed_linear_coefficients_initialized_=true;
++    nr->CalculateCoefficientsTask(dt_);
++    Snapshot(s.base_coeff,nr->coeff_);
++    Snapshot(s.base_deriv,nr->derivetive_);
++    Snapshot(s.direction,nr->u_);
++    s.direction.ZeroClear();
++    nr->delta_u_.ZeroClear();
++    const Real length=mb->pmy_mesh->mesh_size.x1max-mb->pmy_mesh->mesh_size.x1min;
++    for (int k=mb->ks;k<=mb->ke;++k)
++      for (int j=mb->js;j<=mb->je;++j)
++        for (int i=mb->is;i<=mb->ie;++i) {
++          const Real x=(mb->pcoord->x1v(i)-mb->pmy_mesh->mesh_size.x1min)/length;
++          const Real y=(mb->pcoord->x2v(j)-mb->pmy_mesh->mesh_size.x2min)/length;
++          const Real v=nr->u_(k,j,i)*(0.55*std::sin(2.0*3.141592653589793*x)
++                         +0.25*std::cos(4.0*3.141592653589793*y));
++          nr->delta_u_(k,j,i)=v;
++        }
++  }
++  plmgd_->SynchronizeCorrectionBoundaries(stage_);
++  for (Saved &s : saved) s.direction=s.nr->delta_u_;
++
++  constexpr int fcoeff[6]={linearSolver::DXMF,linearSolver::DXPF,
++      linearSolver::DYMF,linearSolver::DYPF,linearSolver::DZMF,linearSolver::DZPF};
++  constexpr int scoeff[6]={linearSolver::DXMS,linearSolver::DXPS,
++      linearSolver::DYMS,linearSolver::DYPS,linearSolver::DZMS,linearSolver::DZPS};
++  for (int pass=0;pass<3;++pass) {
++    const Real h=1.e-4*std::pow(0.1,pass);
++    for (Saved &s : saved) {
++      NRFLD *nr=s.nr; MeshBlock *mb=nr->pmy_block_;
++      nr->u_=s.baseline; nr->coeff_=s.base_coeff; nr->derivetive_=s.base_deriv;
++      nr->fixed_linear_coefficients_initialized_=true;
++      for (int k=mb->ks;k<=mb->ke;++k)
++        for (int j=mb->js;j<=mb->je;++j)
++          for (int i=mb->is;i<=mb->ie;++i)
++            nr->u_(k,j,i)+=h*s.direction(k,j,i);
++    }
++    boundary.DoTaskListOneStage(stage_);
++    for (Saved &s : saved) s.nr->CalculateCoefficientsTask(dt_);
++    std::array<long double,4> err={}, ref={}, tan_err={}, ghost_err={}, ghost_ref={};
++    std::array<long long,4> cells={};
++    std::array<Real,4> max_abs={};
++    for (Saved &s : saved) {
++      NRFLD *nr=s.nr; MeshBlock *mb=nr->pmy_block_;
++      const AthenaArray<Real> &c=s.base_coeff, &v=s.direction;
++      const Real fac=dt_/SQR(mb->pcoord->dx1f(mb->is));
++      const Real volume=mb->pcoord->GetCellVolume(mb->ks,mb->js,mb->is);
++      for (int k=mb->ks;k<=mb->ke;++k)
++        for (int j=mb->js;j<=mb->je;++j)
++          for (int i=mb->is;i<=mb->ie;++i) {
++            const long double ratio=static_cast<long double>(s.base_deriv(
++                NewtonRaphsonFLD::dFr_deg,k,j,i))
++                /s.base_deriv(NewtonRaphsonFLD::dFg_deg,k,j,i);
++            const long double dfr=(static_cast<long double>(nr->derivetive_(
++                NewtonRaphsonFLD::Fr,k,j,i))-s.base_deriv(NewtonRaphsonFLD::Fr,k,j,i))/h;
++            const long double dfg=(static_cast<long double>(nr->derivetive_(
++                NewtonRaphsonFLD::Fg,k,j,i))-s.base_deriv(NewtonRaphsonFLD::Fg,k,j,i))/h;
++            const long double fd=dfr-ratio*dfg;
++            const long double center=v(k,j,i);
++            const long double neighbors[6]={v(k,j,i-1),v(k,j,i+1),
++                v(k,j-1,i),v(k,j+1,i),v(k-1,j,i),v(k+1,j,i)};
++            const long double tangent_center=(static_cast<long double>(nr->u_(k,j,i))
++                -s.baseline(k,j,i))/h;
++            long double local=c(linearSolver::DCCS,k,j,i)
++                +static_cast<long double>(fac)*c(linearSolver::DCCF,k,j,i);
++            long double flux=0, tangent_flux=0;
++            long double tangent_neighbors[6];
++            for (int f=0;f<6;++f) {
++              const long double off=static_cast<long double>(fac)
++                  *c(fcoeff[f],k,j,i)+c(scoeff[f],k,j,i);
++              local+=off; flux+=off*(neighbors[f]-center);
++              tangent_neighbors[f]=(static_cast<long double>(nr->u_(
++                  k+dk[f],j+dj[f],i+di[f]))
++                  -s.baseline(k+dk[f],j+dj[f],i+di[f]))/h;
++              tangent_flux+=off*(tangent_neighbors[f]-tangent_center);
++            }
++            const long double av=local*center+flux;
++            const long double tangent_av=local*tangent_center+tangent_flux;
++            const long double difference=fd-av;
++            const int region=Region(mb,k,j,i);
++            for (int r : {region,3}) {
++              err[r]+=volume*difference*difference;
++              tan_err[r]+=volume*(fd-tangent_av)*(fd-tangent_av);
++              ref[r]+=volume*std::max(fd*fd,av*av);
++              cells[r]++;
++              max_abs[r]=std::max(max_abs[r],static_cast<Real>(std::abs(difference)));
++              if (region>0)
++                for (int f=0;f<6;++f) {
++                  ghost_err[r]+=volume*(tangent_neighbors[f]-neighbors[f])
++                      *(tangent_neighbors[f]-neighbors[f]);
++                  ghost_ref[r]+=volume*neighbors[f]*neighbors[f];
++                }
++            }
++          }
++    }
++    const char *names[4]={"interior","same_level_face","coarse_fine_face","all"};
++    for (int r=0;r<4;++r) {
++#ifdef MPI_PARALLEL
++      long double sums[5]={err[r],ref[r],tan_err[r],ghost_err[r],ghost_ref[r]};
++      MPI_Allreduce(MPI_IN_PLACE,sums,5,MPI_LONG_DOUBLE,MPI_SUM,MPI_COMM_WORLD);
++      err[r]=sums[0]; ref[r]=sums[1]; tan_err[r]=sums[2];
++      ghost_err[r]=sums[3]; ghost_ref[r]=sums[4];
++      MPI_Allreduce(MPI_IN_PLACE,&cells[r],1,MPI_LONG_LONG,MPI_SUM,MPI_COMM_WORLD);
++      MPI_Allreduce(MPI_IN_PLACE,&max_abs[r],1,MPI_ATHENA_REAL,MPI_MAX,MPI_COMM_WORLD);
++#endif
++      if (Globals::my_rank==0 && cells[r]>0)
++        std::cout << std::scientific << std::setprecision(16)
++                  << "[WOR92 coupled global Jv] cycle=" << pmy_mesh_->ncycle
++                  << " epsilon=" << h << " region=" << names[r]
++                  << " cells=" << cells[r]
++                  << " l2_rel=" << std::sqrt(err[r]/std::max(ref[r],1.e-300L))
++                  << " tangent_l2_rel=" << std::sqrt(tan_err[r]/std::max(ref[r],1.e-300L))
++                  << " ghost_l2_rel=" << std::sqrt(ghost_err[r]/std::max(ghost_ref[r],1.e-300L))
++                  << " max_abs=" << max_abs[r] << std::endl;
++    }
++  }
++  restore();
+ }
+ 
+ void NRFLDDriver::RunDirectionDiagnostic() {
