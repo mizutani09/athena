@@ -1,5 +1,9 @@
 #!/usr/bin/env python3
-"""Compare opposing coarse/fine integrated FLD face terms in an Athena log."""
+"""Compare opposing coarse/fine integrated FLD face terms in an Athena log.
+
+When present, report the opt-in cancellation scale alongside each face pair.
+This scale is a diagnostic heuristic, not a conservation tolerance.
+"""
 
 import argparse
 import json
@@ -49,15 +53,25 @@ def compare(rows):
                 fine_flux = sum(row[fine_key] for row in fine)
                 mismatch = coarse_flux + fine_flux
                 scale = abs(coarse_flux) + abs(fine_flux)
-                pairs.append({"cycle": int(coarse["cycle"]),
-                              "stage": int(coarse["stage"]),
-                              "coarse_gid": int(coarse["gid"]),
-                              "axis": axis, "side": side,
-                              "fine_count": len(fine),
-                              "coarse_flux": coarse_flux,
-                              "fine_flux": fine_flux,
-                              "mismatch": mismatch,
-                              "relative_mismatch": abs(mismatch) / scale if scale else 0.0})
+                pair = {"cycle": int(coarse["cycle"]),
+                        "stage": int(coarse["stage"]),
+                        "coarse_gid": int(coarse["gid"]),
+                        "axis": axis, "side": side,
+                        "fine_count": len(fine),
+                        "coarse_flux": coarse_flux,
+                        "fine_flux": fine_flux,
+                        "mismatch": mismatch,
+                        "relative_mismatch": abs(mismatch) / scale if scale else 0.0}
+                coarse_scale_key = coarse_key.replace("_delta", "_roundoff_scale")
+                fine_scale_key = fine_key.replace("_delta", "_roundoff_scale")
+                if coarse_scale_key in coarse and all(
+                        fine_scale_key in row for row in fine):
+                    roundoff_scale = coarse[coarse_scale_key] + sum(
+                        row[fine_scale_key] for row in fine)
+                    pair["roundoff_scale"] = roundoff_scale
+                    pair["mismatch_over_roundoff_scale"] = (
+                        abs(mismatch) / roundoff_scale if roundoff_scale else None)
+                pairs.append(pair)
     return pairs
 
 

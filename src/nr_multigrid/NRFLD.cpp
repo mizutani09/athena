@@ -490,6 +490,7 @@ void NRFLDDriver::RunCommittedDiagnostic() {
       const Real dx = mb->pcoord->dx1f(mb->is);
       const Real idx2 = 1.0/SQR(dx);
       long double block_face_delta[6] = {};
+      long double block_face_roundoff_scale[6] = {};
       for (int k=mb->ks; k<=mb->ke; ++k)
         for (int j=mb->js; j<=mb->je; ++j)
           for (int i=mb->is; i<=mb->ie; ++i) {
@@ -522,8 +523,19 @@ void NRFLDDriver::RunCommittedDiagnostic() {
                    || (face == YPlus && j == mb->je)
                    || (face == ZMinus && k == mb->ks)
                    || (face == ZPlus && k == mb->ke)))
-                block_face_delta[face] +=
-                    static_cast<long double>(dt_*face_term*idx2)*volume;
+                {
+                  block_face_delta[face] +=
+                      static_cast<long double>(dt_*face_term*idx2)*volume;
+                  // A diagnostic scale for cancellation in D*(u_neighbor-u_center).
+                  // This is not an error bound and must not change the face PASS test.
+                  const long double weight = static_cast<long double>(dt_)
+                      * static_cast<long double>(idx2) * volume;
+                  block_face_roundoff_scale[face] +=
+                      std::numeric_limits<Real>::epsilon() * weight
+                      * std::abs(face_coeff[face])
+                      * (std::abs(static_cast<long double>(neighbor[face]))
+                         + std::abs(static_cast<long double>(center)));
+                }
             }
             const Real dg = first->only_rad ? 0.0
                 : nr->u_gas_(k,j,i)-fld->u_gas(k,j,i);
@@ -555,7 +567,13 @@ void NRFLDDriver::RunCommittedDiagnostic() {
              << " yminus_delta=" << block_face_delta[YMinus]
              << " yplus_delta=" << block_face_delta[YPlus]
              << " zminus_delta=" << block_face_delta[ZMinus]
-             << " zplus_delta=" << block_face_delta[ZPlus];
+             << " zplus_delta=" << block_face_delta[ZPlus]
+             << " xminus_roundoff_scale=" << block_face_roundoff_scale[XMinus]
+             << " xplus_roundoff_scale=" << block_face_roundoff_scale[XPlus]
+             << " yminus_roundoff_scale=" << block_face_roundoff_scale[YMinus]
+             << " yplus_roundoff_scale=" << block_face_roundoff_scale[YPlus]
+             << " zminus_roundoff_scale=" << block_face_roundoff_scale[ZMinus]
+             << " zplus_roundoff_scale=" << block_face_roundoff_scale[ZPlus];
         std::cout << line.str() << std::endl;
       }
     }
