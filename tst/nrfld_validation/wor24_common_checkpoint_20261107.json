@@ -1,0 +1,296 @@
+{
+  "common_checkpoint_sha256": "ff71680ddde9db77d762983222c86151c16093853bae83ce59b664b6a6842993",
+  "cases": [
+    {
+      "name": "seed",
+      "source_git_hash": "e786abc429684cf413d23f423b6d48df5838437d",
+      "binary_sha256": "1b47730af10734229823cd2347a3c003e8dfd1370ee5c32997092049d8fc9d66",
+      "operator_path": "conservative",
+      "input_sha256": "922215a43180fe5e93a64de2ebfb5b35ba8b2d95bd150c5124c0a545111612a8",
+      "checkpoint": null,
+      "checkpoint_sha256": null,
+      "command": "timeout 360s mpirun --output-filename /tmp/wor24_centered_wor25_roundoff_common_state/seed/mpi -n 1 /tmp/wor24_centered_wor25_roundoff_final_v2_build/bin/athena -i /tmp/wor24_centered_wor25_roundoff_common_state/input.in -d /tmp/wor24_centered_wor25_roundoff_common_state/seed/output nrfld/linear_solver=fgmres nrfld/fgmres_threshold=1e-7 nrfld/fgmres_linearity_check=false nrfld/global_jacobian_check=false nrfld/diagnostic_verbosity=0 fld/is_couple=true fld/only_rad=false fld/fixed_flux_limiter=false time/nlim=1 time/tlim=0.001",
+      "environment": {
+        "OMP_NUM_THREADS": 1,
+        "ATHENA_NRFLD_CENTERED_FACE_TRIAL": true,
+        "ATHENA_NRFLD_INTERFACE_LEDGER": true,
+        "ATHENA_NRFLD_ENERGY_LEDGER": true
+      },
+      "fgmres_target": 1e-07,
+      "fgmres_history": [
+        {
+          "iterations": 15,
+          "true_relative_residual": 9.949734741436892e-08
+        },
+        {
+          "iterations": 16,
+          "true_relative_residual": 3.064201783150086e-08
+        },
+        {
+          "iterations": 16,
+          "true_relative_residual": 3.4187370154566426e-08
+        },
+        {
+          "iterations": 16,
+          "true_relative_residual": 3.125300505925397e-08
+        },
+        {
+          "iterations": 16,
+          "true_relative_residual": 3.231677434408321e-08
+        },
+        {
+          "iterations": 16,
+          "true_relative_residual": 3.793962073306031e-08
+        },
+        {
+          "iterations": 16,
+          "true_relative_residual": 3.115571015121679e-08
+        },
+        {
+          "iterations": 16,
+          "true_relative_residual": 3.5257094552827196e-08
+        },
+        {
+          "iterations": 16,
+          "true_relative_residual": 3.025337766402764e-08
+        },
+        {
+          "iterations": 16,
+          "true_relative_residual": 3.3683386794442004e-08
+        },
+        {
+          "iterations": 16,
+          "true_relative_residual": 3.1820535234771094e-08
+        },
+        {
+          "iterations": 16,
+          "true_relative_residual": 3.499010595273156e-08
+        },
+        {
+          "iterations": 16,
+          "true_relative_residual": 3.697881106512719e-08
+        },
+        {
+          "iterations": 16,
+          "true_relative_residual": 3.040539244494236e-08
+        },
+        {
+          "iterations": 16,
+          "true_relative_residual": 3.6282134435302484e-08
+        },
+        {
+          "iterations": 16,
+          "true_relative_residual": 3.1763241837611736e-08
+        }
+      ],
+      "fgmres_solve_count": 16,
+      "fgmres_total_iterations": 255,
+      "max_true_relative_residual": 9.949734741436892e-08,
+      "linear_target_met": true,
+      "newton_history": [
+        {
+          "status": "dt_zero_initialization",
+          "iterations": 0,
+          "final_l2": 0.0,
+          "final_max": 0.0,
+          "cycle": 0
+        },
+        {
+          "status": "converged",
+          "iterations": 16,
+          "final_l2": 2.102519939877689e-09,
+          "final_max": 7.0314493332231885e-09,
+          "cycle": 0
+        }
+      ],
+      "face_pair_count": 10,
+      "max_face_relative_mismatch": 0.0,
+      "max_implicit_energy_absolute_relative_balance": 8.136695987944854e-10,
+      "exit_status": 0,
+      "solver_pass": true,
+      "failure_reason": null,
+      "elapsed": "1:42.00",
+      "peak_rss_kb": 458820,
+      "final_output": "/tmp/wor24_centered_wor25_roundoff_common_state/seed/output/nrfld_diff_amr_interface.fields.00001.athdf",
+      "final_output_sha256": "93dafff23a5ebc36d0fbaf040df37f07ccd4afa12b53b2deb406c1f33ded64f5",
+      "log_sha256": "9f852e1f7cc25d529de69d358f95f61b85b8976b637d2bd609f1956ff574d6c2"
+    },
+    {
+      "name": "resume_on",
+      "source_git_hash": "e786abc429684cf413d23f423b6d48df5838437d",
+      "binary_sha256": "1b47730af10734229823cd2347a3c003e8dfd1370ee5c32997092049d8fc9d66",
+      "operator_path": "conservative",
+      "input_sha256": "922215a43180fe5e93a64de2ebfb5b35ba8b2d95bd150c5124c0a545111612a8",
+      "checkpoint": "/tmp/wor24_centered_wor25_roundoff_common_state/seed/output/nrfld_diff_amr_interface.final.rst",
+      "checkpoint_sha256": "ff71680ddde9db77d762983222c86151c16093853bae83ce59b664b6a6842993",
+      "command": "timeout 480s mpirun --output-filename /tmp/wor24_centered_wor25_roundoff_common_state/resume_on/mpi -n 1 /tmp/wor24_centered_wor25_roundoff_final_v2_build/bin/athena -r /tmp/wor24_centered_wor25_roundoff_common_state/seed/output/nrfld_diff_amr_interface.final.rst -d /tmp/wor24_centered_wor25_roundoff_common_state/resume_on/output nrfld/fgmres_threshold=1e-7 time/nlim=2 time/tlim=0.002",
+      "environment": {
+        "OMP_NUM_THREADS": 1,
+        "ATHENA_NRFLD_CENTERED_FACE_TRIAL": true,
+        "ATHENA_NRFLD_INTERFACE_LEDGER": true,
+        "ATHENA_NRFLD_ENERGY_LEDGER": true
+      },
+      "fgmres_target": 1e-07,
+      "fgmres_history": [
+        {
+          "iterations": 10,
+          "true_relative_residual": 1.841803617600749e-08
+        },
+        {
+          "iterations": 10,
+          "true_relative_residual": 4.257755335781643e-08
+        },
+        {
+          "iterations": 10,
+          "true_relative_residual": 6.079354286730126e-08
+        },
+        {
+          "iterations": 10,
+          "true_relative_residual": 6.292186498771483e-08
+        },
+        {
+          "iterations": 10,
+          "true_relative_residual": 6.206356028113183e-08
+        },
+        {
+          "iterations": 10,
+          "true_relative_residual": 4.0418086666674e-08
+        },
+        {
+          "iterations": 10,
+          "true_relative_residual": 5.5374159369197784e-08
+        }
+      ],
+      "fgmres_solve_count": 7,
+      "fgmres_total_iterations": 70,
+      "max_true_relative_residual": 6.292186498771483e-08,
+      "linear_target_met": true,
+      "newton_history": [
+        {
+          "status": "converged",
+          "iterations": 0,
+          "final_l2": 0.0,
+          "final_max": 0.0,
+          "cycle": 1
+        },
+        {
+          "status": "converged",
+          "iterations": 7,
+          "final_l2": 1.1234150320654736e-08,
+          "final_max": 5.883647102211123e-08,
+          "cycle": 1
+        }
+      ],
+      "face_pair_count": 10,
+      "max_face_relative_mismatch": 0.0,
+      "max_implicit_energy_absolute_relative_balance": 5.252324146865364e-09,
+      "exit_status": 0,
+      "solver_pass": true,
+      "failure_reason": null,
+      "elapsed": "1:09.39",
+      "peak_rss_kb": 458292,
+      "final_output": "/tmp/wor24_centered_wor25_roundoff_common_state/resume_on/output/nrfld_diff_amr_interface.fields.00002.athdf",
+      "final_output_sha256": "0532cf800f9fa65e28303cd4c5b3ee79d6702888e3b79e11af879ba493852233",
+      "log_sha256": "5a4bfae74d00cac5274d82e9a3f0f7342c9494dfd6b4e27490e864d81e6326d8"
+    },
+    {
+      "name": "resume_off",
+      "source_git_hash": "e786abc429684cf413d23f423b6d48df5838437d",
+      "binary_sha256": "1b47730af10734229823cd2347a3c003e8dfd1370ee5c32997092049d8fc9d66",
+      "operator_path": "conservative",
+      "input_sha256": "922215a43180fe5e93a64de2ebfb5b35ba8b2d95bd150c5124c0a545111612a8",
+      "checkpoint": "/tmp/wor24_centered_wor25_roundoff_common_state/seed/output/nrfld_diff_amr_interface.final.rst",
+      "checkpoint_sha256": "ff71680ddde9db77d762983222c86151c16093853bae83ce59b664b6a6842993",
+      "command": "timeout 480s mpirun --output-filename /tmp/wor24_centered_wor25_roundoff_common_state/resume_off/mpi -n 1 /tmp/wor24_centered_wor25_roundoff_final_v2_build/bin/athena -r /tmp/wor24_centered_wor25_roundoff_common_state/seed/output/nrfld_diff_amr_interface.final.rst -d /tmp/wor24_centered_wor25_roundoff_common_state/resume_off/output nrfld/fgmres_threshold=1e-7 time/nlim=2 time/tlim=0.002",
+      "environment": {
+        "OMP_NUM_THREADS": 1,
+        "ATHENA_NRFLD_CENTERED_FACE_TRIAL": false,
+        "ATHENA_NRFLD_INTERFACE_LEDGER": true,
+        "ATHENA_NRFLD_ENERGY_LEDGER": true
+      },
+      "fgmres_target": 1e-07,
+      "fgmres_history": [
+        {
+          "iterations": 10,
+          "true_relative_residual": 1.8389068475240337e-08
+        },
+        {
+          "iterations": 10,
+          "true_relative_residual": 4.51027174386053e-08
+        },
+        {
+          "iterations": 10,
+          "true_relative_residual": 6.505576010060098e-08
+        },
+        {
+          "iterations": 10,
+          "true_relative_residual": 6.60988269169527e-08
+        },
+        {
+          "iterations": 10,
+          "true_relative_residual": 6.846395922001895e-08
+        },
+        {
+          "iterations": 10,
+          "true_relative_residual": 4.4187709585583306e-08
+        },
+        {
+          "iterations": 10,
+          "true_relative_residual": 5.897643327482683e-08
+        },
+        {
+          "iterations": 9,
+          "true_relative_residual": 1.4739883280817492e-08
+        },
+        {
+          "iterations": 9,
+          "true_relative_residual": 4.4899390653132894e-08
+        },
+        {
+          "iterations": 9,
+          "true_relative_residual": 3.6271452413124616e-08
+        },
+        {
+          "iterations": 9,
+          "true_relative_residual": 3.354197469995883e-08
+        },
+        {
+          "iterations": 9,
+          "true_relative_residual": 2.141724599045285e-08
+        }
+      ],
+      "fgmres_solve_count": 12,
+      "fgmres_total_iterations": 115,
+      "max_true_relative_residual": 6.846395922001895e-08,
+      "linear_target_met": true,
+      "newton_history": [
+        {
+          "status": "converged",
+          "iterations": 0,
+          "final_l2": 0.0,
+          "final_max": 0.0,
+          "cycle": 1
+        },
+        {
+          "status": "backtracking_exhausted",
+          "iterations": 11,
+          "final_l2": 9.030087044205073e-09,
+          "final_max": 1.796814699924282e-07,
+          "cycle": 1
+        }
+      ],
+      "face_pair_count": 0,
+      "max_face_relative_mismatch": null,
+      "max_implicit_energy_absolute_relative_balance": null,
+      "exit_status": 134,
+      "solver_pass": false,
+      "failure_reason": "backtracking_exhausted",
+      "elapsed": "1:25.39",
+      "peak_rss_kb": 454244,
+      "final_output": null,
+      "final_output_sha256": null,
+      "log_sha256": "7aab99612dcd4f2b0e554a20cdfdb01a9c8bd38fa6ec285cb1af9b1f34517edb"
+    }
+  ],
+  "conclusion": "The same accepted checkpoint converged with the centered-face operator and exhausted Newton backtracking with the default face operator; both completed linear solves met their 1e-7 target."
+}

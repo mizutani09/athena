@@ -58,6 +58,8 @@ RUNS = {
     'centered_5step_truecap10_r1': ('on, five-step true residual cap 1e-7 pilot', 1, '1b47730af10734229823cd2347a3c003e8dfd1370ee5c32997092049d8fc9d66'),
     'centered_5step_truecap10_r2': ('on, five-step true residual cap 1e-7 pilot', 2, '1b47730af10734229823cd2347a3c003e8dfd1370ee5c32997092049d8fc9d66'),
     'centered_final_off_r1': ('off, final-source performance control', 1, '1b47730af10734229823cd2347a3c003e8dfd1370ee5c32997092049d8fc9d66'),
+    'baseline_5step_truecap10_r1': ('off, five-step true residual cap 1e-7 control', 1, '1b47730af10734229823cd2347a3c003e8dfd1370ee5c32997092049d8fc9d66'),
+    'baseline_5step_truecap10_r2': ('off, five-step true residual cap 1e-7 control', 2, '1b47730af10734229823cd2347a3c003e8dfd1370ee5c32997092049d8fc9d66'),
 }
 
 
@@ -203,8 +205,15 @@ def main():
             exact = all(np.array_equal(x[key][...], y[key][...])
                         for key in x if isinstance(x[key], h5py.Dataset)
                         and np.issubdtype(x[key].dtype, np.number))
+            field_a = x['user_out_var'][...]
+            field_b = y['user_out_var'][...]
+            max_abs = float(np.max(np.abs(field_a-field_b)))
+            scale = max(float(np.max(np.abs(field_a))),
+                        float(np.max(np.abs(field_b))))
         comparisons.append({'left': left, 'right': right,
-                            'all_final_numeric_hdf_arrays_exact': exact})
+                            'all_final_numeric_hdf_arrays_exact': exact,
+                            'max_abs_user_out_var': max_abs,
+                            'max_rel_user_out_var': max_abs/scale if scale else 0.0})
     OUT.write_text(json.dumps({'runs': runs, 'output_comparisons': comparisons},
                               indent=2) + '\n')
     for run in runs:
