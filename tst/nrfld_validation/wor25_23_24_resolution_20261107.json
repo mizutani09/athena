@@ -20179,5 +20179,398 @@
       }
     ],
     "inference": "At factors 20 and below, MG initial correction makes all 18432 cells nonpositive and Newton backtracking exhausts; factors 30 and above converge despite similar 0.016 coarse-fine ghost handoff residual. FGMRES converges at factors 20 and 30. This is a condition-boundary diagnostic, not a correction to q=1e7."
+  },
+  "wor25_mode_decomposition": {
+    "binary_source": "base production source plus diagnostic-only volume moments",
+    "binary_sha256": "99e0908c1a704f1dc00b64fdd8dff2209ae6ba52fceed0b72751abc624cf408c",
+    "runs": [
+      {
+        "name": "mode_audit_mg_x1",
+        "source_commit_base": "704ccc6e",
+        "diagnostic_source_sha256": "7037f67a78e3bd12910452c3ac45bcf2f1870f5efb24c998ab7fe4842e629710",
+        "binary_sha256": "99e0908c1a704f1dc00b64fdd8dff2209ae6ba52fceed0b72751abc624cf408c",
+        "input_path": "/tmp/wor25_23_24_resolution_trials/mode_audit_mg_x1/input.used",
+        "input_sha256": "ba333aee43531158fe9d34b50a6e9cc97ffbfa70fdb43a1ae5dcbc4045fdf8d2",
+        "overrides": {
+          "nrfld/linear_solver": "mg",
+          "fld/const_opacity": 8.186332719786666e-08,
+          "nrfld/fgmres_linearity_check": false
+        },
+        "ranks": 1,
+        "threads": 1,
+        "run_log": "/tmp/wor25_23_24_resolution_trials/mode_audit_mg_x1/run.log",
+        "exit_status": 134,
+        "wall_time": "0:05.82",
+        "peak_rss_kb": 225524,
+        "newton_statuses": [
+          {
+            "status": "dt_zero_initialization",
+            "iterations": 0
+          },
+          {
+            "status": "backtracking_exhausted",
+            "iterations": 0
+          }
+        ],
+        "fgmres_history": [],
+        "first_handoff_all": {
+          "mg_end": {
+            "common_rel": 5.548754931068434e-11,
+            "delta_mean": -20.55928859189305,
+            "delta_fluct_rms": 0.02506687183813597,
+            "rhs_mean": 1.1425221879690639e-11,
+            "residual_mean": 7.411840022241585e-08,
+            "rhs_rms": 8727.735879621578,
+            "residual_rms": 4.842806749911313e-07,
+            "full_step_min": -19.552031411185393
+          },
+          "retrieved": {
+            "common_rel": 5.548754931068434e-11,
+            "delta_mean": -20.55928859189305,
+            "delta_fluct_rms": 0.02506687183813597,
+            "rhs_mean": 1.1425221879690639e-11,
+            "residual_mean": 7.411840022241585e-08,
+            "rhs_rms": 8727.735879621578,
+            "residual_rms": 4.842806749911313e-07,
+            "full_step_min": -19.552031411185393
+          },
+          "boundary": {
+            "common_rel": 0.01637026415756869,
+            "delta_mean": -20.55928859189305,
+            "delta_fluct_rms": 0.02506687183813597,
+            "rhs_mean": 1.1425221879690639e-11,
+            "residual_mean": 20.559288590615264,
+            "rhs_rms": 8727.735879621578,
+            "residual_rms": 142.87534184689537,
+            "full_step_min": -19.552031411185393
+          },
+          "fine_sweeps": {
+            "common_rel": 0.008668565529572757,
+            "delta_mean": -20.559274992625387,
+            "delta_fluct_rms": 0.025070688297298426,
+            "rhs_mean": 1.1425221879690639e-11,
+            "residual_mean": 20.559274991499397,
+            "rhs_rms": 8727.735879621578,
+            "residual_rms": 75.65695039730298,
+            "full_step_min": -19.55171186428708
+          }
+        },
+        "evaluation": "FAIL_EXPECTED_MG_ONLY",
+        "exit_status_note": "shell returned 134 (SIGABRT); /usr/bin/time log says exit status 0 after signal termination"
+      },
+      {
+        "name": "mode_audit_mg_x1_r2",
+        "source_commit_base": "704ccc6e",
+        "diagnostic_source_sha256": "7037f67a78e3bd12910452c3ac45bcf2f1870f5efb24c998ab7fe4842e629710",
+        "binary_sha256": "99e0908c1a704f1dc00b64fdd8dff2209ae6ba52fceed0b72751abc624cf408c",
+        "input_path": "/tmp/wor25_23_24_resolution_trials/mode_audit_mg_x1_r2/input.used",
+        "input_sha256": "ba333aee43531158fe9d34b50a6e9cc97ffbfa70fdb43a1ae5dcbc4045fdf8d2",
+        "overrides": {
+          "nrfld/linear_solver": "mg",
+          "fld/const_opacity": 8.186332719786666e-08,
+          "nrfld/fgmres_linearity_check": false
+        },
+        "ranks": 2,
+        "threads": 1,
+        "run_log": "/tmp/wor25_23_24_resolution_trials/mode_audit_mg_x1_r2/run.log",
+        "exit_status": 134,
+        "wall_time": "0:04.37",
+        "peak_rss_kb": 130436,
+        "newton_statuses": [
+          {
+            "status": "dt_zero_initialization",
+            "iterations": 0
+          },
+          {
+            "status": "backtracking_exhausted",
+            "iterations": 0
+          }
+        ],
+        "fgmres_history": [],
+        "first_handoff_all": {
+          "mg_end": {
+            "common_rel": 5.548754931068434e-11,
+            "delta_mean": -20.55928859189305,
+            "delta_fluct_rms": 0.025066871837999223,
+            "rhs_mean": 1.1423112455943851e-11,
+            "residual_mean": 7.411840022241585e-08,
+            "rhs_rms": 8727.735879621578,
+            "residual_rms": 4.842806749911313e-07,
+            "full_step_min": -19.552031411185393
+          },
+          "retrieved": {
+            "common_rel": 5.548754931068434e-11,
+            "delta_mean": -20.55928859189305,
+            "delta_fluct_rms": 0.025066871837999223,
+            "rhs_mean": 1.1423112455943851e-11,
+            "residual_mean": 7.411840022241585e-08,
+            "rhs_rms": 8727.735879621578,
+            "residual_rms": 4.842806749911313e-07,
+            "full_step_min": -19.552031411185393
+          },
+          "boundary": {
+            "common_rel": 0.01637026415756869,
+            "delta_mean": -20.55928859189305,
+            "delta_fluct_rms": 0.025066871837999223,
+            "rhs_mean": 1.1423112455943851e-11,
+            "residual_mean": 20.559288590615264,
+            "rhs_rms": 8727.735879621578,
+            "residual_rms": 142.87534184689537,
+            "full_step_min": -19.552031411185393
+          },
+          "fine_sweeps": {
+            "common_rel": 0.008668565529572757,
+            "delta_mean": -20.559274992625387,
+            "delta_fluct_rms": 0.02507068829743017,
+            "rhs_mean": 1.1423112455943851e-11,
+            "residual_mean": 20.559274991499397,
+            "rhs_rms": 8727.735879621578,
+            "residual_rms": 75.65695039730298,
+            "full_step_min": -19.55171186428708
+          }
+        },
+        "evaluation": "FAIL_EXPECTED_MG_ONLY",
+        "exit_status_note": "shell returned 134 (SIGABRT); /usr/bin/time log says exit status 0 after signal termination"
+      },
+      {
+        "name": "mode_audit_mg_x30",
+        "source_commit_base": "704ccc6e",
+        "diagnostic_source_sha256": "7037f67a78e3bd12910452c3ac45bcf2f1870f5efb24c998ab7fe4842e629710",
+        "binary_sha256": "99e0908c1a704f1dc00b64fdd8dff2209ae6ba52fceed0b72751abc624cf408c",
+        "input_path": "/tmp/wor25_23_24_resolution_trials/mode_audit_mg_x30/input.used",
+        "input_sha256": "ba333aee43531158fe9d34b50a6e9cc97ffbfa70fdb43a1ae5dcbc4045fdf8d2",
+        "overrides": {
+          "nrfld/linear_solver": "mg",
+          "fld/const_opacity": 2.4558998159359997e-06,
+          "nrfld/fgmres_linearity_check": false
+        },
+        "ranks": 1,
+        "threads": 1,
+        "run_log": "/tmp/wor25_23_24_resolution_trials/mode_audit_mg_x30/run.log",
+        "exit_status": 0,
+        "wall_time": "0:03.19",
+        "peak_rss_kb": 225484,
+        "newton_statuses": [
+          {
+            "status": "dt_zero_initialization",
+            "iterations": 0
+          },
+          {
+            "status": "converged",
+            "iterations": 7
+          }
+        ],
+        "fgmres_history": [],
+        "first_handoff_all": {
+          "mg_end": {
+            "common_rel": 5.5021350545283914e-11,
+            "delta_mean": -0.6838760338144162,
+            "delta_fluct_rms": 0.0250535051078378,
+            "rhs_mean": 3.842426944110341e-13,
+            "residual_mean": 2.663508996723744e-09,
+            "rhs_rms": 290.9245293207192,
+            "residual_rms": 1.6007060509977023e-08,
+            "full_step_min": 0.32339952392423577
+          },
+          "retrieved": {
+            "common_rel": 5.5021350545283914e-11,
+            "delta_mean": -0.6838760338144162,
+            "delta_fluct_rms": 0.0250535051078378,
+            "rhs_mean": 3.842426944110341e-13,
+            "residual_mean": 2.663508996723744e-09,
+            "rhs_rms": 290.9245293207192,
+            "residual_rms": 1.6007060509977023e-08,
+            "full_step_min": 0.32339952392423577
+          },
+          "boundary": {
+            "common_rel": 0.016342368371583642,
+            "delta_mean": -0.6838760338144162,
+            "delta_fluct_rms": 0.0250535051078378,
+            "rhs_mean": 3.842426944110341e-13,
+            "residual_mean": 0.6838760337325548,
+            "rhs_rms": 290.9245293207192,
+            "residual_rms": 4.754395826488779,
+            "full_step_min": 0.32339952392423577
+          },
+          "fine_sweeps": {
+            "common_rel": 0.008655257449395205,
+            "delta_mean": -0.6838624648659118,
+            "delta_fluct_rms": 0.02505732268322307,
+            "rhs_mean": 3.842426944110341e-13,
+            "residual_mean": 0.6838624647840236,
+            "rhs_rms": 290.9245293207192,
+            "residual_rms": 2.5180266996149485,
+            "full_step_min": 0.32372058676047766
+          }
+        },
+        "evaluation": "PASS",
+        "Er_hdf_diagnostic": {
+          "initial_integral": 0.01578165777027607,
+          "final_integral": 0.01578165777027607,
+          "relative_change": 0.0,
+          "final_minimum": 1.0100059509277344,
+          "precision": "single HDF; rounding floor near 1e-7"
+        }
+      },
+      {
+        "name": "mode_audit_fgmres_x1",
+        "source_commit_base": "704ccc6e",
+        "diagnostic_source_sha256": "7037f67a78e3bd12910452c3ac45bcf2f1870f5efb24c998ab7fe4842e629710",
+        "binary_sha256": "99e0908c1a704f1dc00b64fdd8dff2209ae6ba52fceed0b72751abc624cf408c",
+        "input_path": "/tmp/wor25_23_24_resolution_trials/mode_audit_fgmres_x1/input.used",
+        "input_sha256": "ba333aee43531158fe9d34b50a6e9cc97ffbfa70fdb43a1ae5dcbc4045fdf8d2",
+        "overrides": {
+          "nrfld/linear_solver": "fgmres",
+          "fld/const_opacity": 8.186332719786666e-08,
+          "nrfld/fgmres_linearity_check": false
+        },
+        "ranks": 1,
+        "threads": 1,
+        "run_log": "/tmp/wor25_23_24_resolution_trials/mode_audit_fgmres_x1/run.log",
+        "exit_status": 0,
+        "wall_time": "0:02.34",
+        "peak_rss_kb": 231628,
+        "newton_statuses": [
+          {
+            "status": "dt_zero_initialization",
+            "iterations": 0
+          },
+          {
+            "status": "converged",
+            "iterations": 2
+          }
+        ],
+        "fgmres_history": [
+          {
+            "iterations": 9,
+            "explicit_relative_residual": 6.6413535646373116e-09
+          },
+          {
+            "iterations": 9,
+            "explicit_relative_residual": 9.545204244875529e-09
+          }
+        ],
+        "first_handoff_all": {
+          "retrieved": {
+            "common_rel": 1.0068853336302865e-08,
+            "delta_mean": -7.902906037244608e-06,
+            "delta_fluct_rms": 0.024666539181270906,
+            "rhs_mean": 1.1425221879690639e-11,
+            "residual_mean": 7.902918065114207e-06,
+            "rhs_rms": 8727.735879621578,
+            "residual_rms": 8.787829252989793e-05,
+            "full_step_min": 1.0100175040195327
+          },
+          "boundary": {
+            "common_rel": 1.0068853336302865e-08,
+            "delta_mean": -7.902906037244608e-06,
+            "delta_fluct_rms": 0.024666539181270906,
+            "rhs_mean": 1.1425221879690639e-11,
+            "residual_mean": 7.902918065114207e-06,
+            "rhs_rms": 8727.735879621578,
+            "residual_rms": 8.787829252989793e-05,
+            "full_step_min": 1.0100175040195327
+          },
+          "fine_sweeps": {
+            "common_rel": 5.664925935052739e-09,
+            "delta_mean": -7.90289782302317e-06,
+            "delta_fluct_rms": 0.024666539184854095,
+            "rhs_mean": 1.1425221879690639e-11,
+            "residual_mean": 7.902909827928238e-06,
+            "rhs_rms": 8727.735879621578,
+            "residual_rms": 4.9441977338758605e-05,
+            "full_step_min": 1.0100175040281143
+          }
+        },
+        "evaluation": "PASS",
+        "Er_hdf_diagnostic": {
+          "initial_integral": 0.01578165777027607,
+          "final_integral": 0.01578165590763092,
+          "relative_change": -1.1802594989349928e-07,
+          "final_minimum": 1.0100253820419312,
+          "precision": "single HDF; rounding floor near 1e-7"
+        }
+      },
+      {
+        "name": "mode_audit_fgmres_x1_r2",
+        "source_commit_base": "704ccc6e",
+        "diagnostic_source_sha256": "7037f67a78e3bd12910452c3ac45bcf2f1870f5efb24c998ab7fe4842e629710",
+        "binary_sha256": "99e0908c1a704f1dc00b64fdd8dff2209ae6ba52fceed0b72751abc624cf408c",
+        "input_path": "/tmp/wor25_23_24_resolution_trials/mode_audit_fgmres_x1_r2/input.used",
+        "input_sha256": "ba333aee43531158fe9d34b50a6e9cc97ffbfa70fdb43a1ae5dcbc4045fdf8d2",
+        "overrides": {
+          "nrfld/linear_solver": "fgmres",
+          "fld/const_opacity": 8.186332719786666e-08,
+          "nrfld/fgmres_linearity_check": false
+        },
+        "ranks": 2,
+        "threads": 1,
+        "run_log": "/tmp/wor25_23_24_resolution_trials/mode_audit_fgmres_x1_r2/run.log",
+        "exit_status": 0,
+        "wall_time": "0:01.79",
+        "peak_rss_kb": 133368,
+        "newton_statuses": [
+          {
+            "status": "dt_zero_initialization",
+            "iterations": 0
+          },
+          {
+            "status": "converged",
+            "iterations": 2
+          }
+        ],
+        "fgmres_history": [
+          {
+            "iterations": 9,
+            "explicit_relative_residual": 6.640329899823429e-09
+          },
+          {
+            "iterations": 9,
+            "explicit_relative_residual": 9.579238988340055e-09
+          }
+        ],
+        "first_handoff_all": {
+          "retrieved": {
+            "common_rel": 1.0068019933153612e-08,
+            "delta_mean": -7.9030033038828e-06,
+            "delta_fluct_rms": 0.024666539181271777,
+            "rhs_mean": 1.1423112455943851e-11,
+            "residual_mean": 7.90301529361509e-06,
+            "rhs_rms": 8727.735879621578,
+            "residual_rms": 8.787101880733e-05,
+            "full_step_min": 1.0100175039222856
+          },
+          "boundary": {
+            "common_rel": 1.0068019933153612e-08,
+            "delta_mean": -7.9030033038828e-06,
+            "delta_fluct_rms": 0.024666539181271777,
+            "rhs_mean": 1.1423112455943851e-11,
+            "residual_mean": 7.90301529361509e-06,
+            "rhs_rms": 8727.735879621578,
+            "residual_rms": 8.787101880733e-05,
+            "full_step_min": 1.0100175039222856
+          },
+          "fine_sweeps": {
+            "common_rel": 5.664290232427867e-09,
+            "delta_mean": -7.902995089604095e-06,
+            "delta_fluct_rms": 0.024666539184855008,
+            "rhs_mean": 1.1423112455943851e-11,
+            "residual_mean": 7.903007118161457e-06,
+            "rhs_rms": 8727.735879621578,
+            "residual_rms": 4.943642909415074e-05,
+            "full_step_min": 1.010017503930852
+          }
+        },
+        "evaluation": "PASS",
+        "Er_hdf_diagnostic": {
+          "initial_integral": 0.01578165777027607,
+          "final_integral": 0.01578165590763092,
+          "relative_change": -1.1802594989349928e-07,
+          "final_minimum": 1.0100253820419312,
+          "precision": "single HDF; rounding floor near 1e-7"
+        }
+      }
+    ],
+    "inference": "At q=1e7, MG correction mean -20.5593 dominates its spatial RMS 0.02507, whereas FGMRES mean -7.9e-6 with spatial RMS 0.02467. After conservative ghost update, residual mean is +20.5593 for MG but +7.9e-6 for FGMRES. Opacity x30 MG still has mean -0.6839, spatial RMS 0.02505, and boundary residual mean +0.6839; it converges only with positivity preserved. FGMRES final output is exactly equal across MPI ranks and to prior production output."
   }
 }
