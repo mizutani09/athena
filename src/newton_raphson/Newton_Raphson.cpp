@@ -14,6 +14,7 @@
 #include <cstdlib>
 #include <cstring>    // memset, memcpy
 #include <iostream>
+#include <limits>
 #include <sstream>    // stringstream
 #include <stdexcept>  // runtime_error
 #include <string>     // c_str()
@@ -194,6 +195,57 @@ void NewtonRaphson::ProlongateBoundary(Real dt) {
   std::vector<BoundaryVariable *> bvars_subset = {&nrbvar};
   pmy_block_->pbval->ProlongateBoundaries(pmy_block_->pmy_mesh->time, dt,
                                           bvars_subset);
+  const char *positive_ghost_mode = std::getenv("ATHENA_WOR92_POSITIVE_NR_GHOST");
+  if (positive_ghost_mode != nullptr && std::atoi(positive_ghost_mode) == 2
+      && pmy_block_->block_size.nx2 > 1 && pmy_block_->block_size.nx3 > 1) {
+    MeshBlock *mb = pmy_block_;
+    int clipped = 0;
+      // Scale all eight children about their mean.  This preserves the coarse
+      // ghost-cell mean while making the multidimensional reconstruction
+      // positive; independent minmod slopes do not guarantee that their sum
+      // stays below the parent value.
+      for (int ck=mb->cks-1; ck<=mb->cke+1; ++ck)
+        for (int cj=mb->cjs-1; cj<=mb->cje+1; ++cj)
+          for (int ci=mb->cis-1; ci<=mb->cie+1; ++ci) {
+            const int dk=ck<mb->cks ? -1 : (ck>mb->cke ? 1 : 0);
+            const int dj=cj<mb->cjs ? -1 : (cj>mb->cje ? 1 : 0);
+            const int di=ci<mb->cis ? -1 : (ci>mb->cie ? 1 : 0);
+            if (dk==0 && dj==0 && di==0) continue;
+            if (mb->pbval->nblevel[1+dk][1+dj][1+di] != mb->loc.level-1) continue;
+            const int fk=(ck-mb->cks)*2+mb->ks;
+            const int fj=(cj-mb->cjs)*2+mb->js;
+            const int fi=(ci-mb->cis)*2+mb->is;
+            if (fk<0 || fj<0 || fi<0 || fk+1>=u_.GetDim3()
+                || fj+1>=u_.GetDim2() || fi+1>=u_.GetDim1()) continue;
+            Real mean=0.0, minimum=std::numeric_limits<Real>::max();
+            for (int z=0; z<2; ++z)
+              for (int y=0; y<2; ++y)
+                for (int x=0; x<2; ++x) {
+                  const Real value=u_(fk+z,fj+y,fi+x);
+                  mean+=value/8.0;
+                  minimum=std::min(minimum,value);
+                }
+            if (minimum>=TINY_NUMBER) continue;
+            if (!std::isfinite(mean) || mean<=TINY_NUMBER) {
+              std::stringstream msg;
+              msg << "### FATAL ERROR in positive NR ghost reconstruction: "
+                  << "non-positive coarse-group mean=" << mean;
+              ATHENA_ERROR(msg);
+            }
+            const Real theta=std::max(0.0,std::min(1.0,
+                (mean-TINY_NUMBER)/(mean-minimum)));
+            for (int z=0; z<2; ++z)
+              for (int y=0; y<2; ++y)
+                for (int x=0; x<2; ++x)
+                  u_(fk+z,fj+y,fi+x)=mean+theta*(u_(fk+z,fj+y,fi+x)-mean);
+            clipped+=8;
+          }
+    if (clipped > 0)
+      std::cout << "[WOR92_NR_GHOST_CLIP] gid=" << mb->gid
+                << " cycle=" << mb->pmy_mesh->ncycle
+                << " mode=" << positive_ghost_mode
+                << " count=" << clipped << std::endl;
+  }
 }
 
 void NewtonRaphson::ClearBoundary() {
