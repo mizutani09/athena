@@ -1,5 +1,10 @@
 # WOR-92 continuation: branches, restart, MG, CFL and conservation
 
+**Longer-run follow-up:** Three-cycle CFL 0.05 convergence did not persist;
+the Semenov table run failed at cycle 5. See the
+[EOS/opacity control matrix](wor92_opacity_controls_20261107.md) for the
+ten-cycle and matched-opacity comparisons.
+
 2026-11-07 JST. This report supersedes the initial inference in
 `wor92_wor105_retest_20261107.md` that the tangential reconstruction itself
 was the cause of the coupled AMR failure. It remains an uncommitted
