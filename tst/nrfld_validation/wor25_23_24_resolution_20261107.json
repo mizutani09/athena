@@ -48761,5 +48761,2322 @@
       "evaluation": "PASS"
     },
     "decision": "At the common checkpoint, 1-rank worst-face mismatch 0.352 on flux 1.35e5 is 5.78% of the epsilon-weighted local face scale 6.09; 2-rank worst mismatch 0.199 on flux 5.10e5 is 3.27% of scale 6.09. This heuristic is consistent with cancellation sensitivity but is not a rigorous bound. Long-double-only face recomputation leaves the 1-rank maximum 1.30039e-6 FAIL; direct shared-moment face diagnostic reduces it to 1.03567e-6 but still FAIL, and worsened the three-level Test C condition. Both alternatives are rejected as universal fixes. Diagnostic ON/OFF HDF arrays are exactly equal for matching checkpoint/rank. The separate 2-rank checkpoint trial is not used for rank comparison."
+  },
+  "persistent_amr_long_duration_screen": {
+    "scope": "Natural 43-to-64-leaf extension to cycle 25 and persistent static 15-leaf collapse to cycle 20, fixed source and 1/2 MPI ranks, with cycle-10 restart",
+    "natural_runs": [
+      {
+        "name": "collapse_natural_long25_r1",
+        "kind": "natural",
+        "ranks": 1,
+        "threads_per_rank": 2,
+        "source_commit_before_run": "394d66c5",
+        "binary_sha256": "41a2a02a414eb56e458d53b239fe4188eac6ac2a701f47fd54aab944163b1a39",
+        "input_path": null,
+        "input_sha256": null,
+        "checkpoint_path": "/tmp/wor25_23_24_resolution_trials/collapse_postflddt_opacity_natural_r1/output/protostellar_core_fld_mayer5.00015.rst",
+        "checkpoint_sha256": "f4cc6f049c970b4ed3efc43abdd92da0d3e2b6fe6cf817147a2d08e5598c5507",
+        "overrides": {
+          "time/nlim": 25
+        },
+        "environment": {
+          "OMP_NUM_THREADS": 2,
+          "ATHENA_NRFLD_EXPERIMENTAL_COLLAPSE": 1,
+          "ATHENA_NRFLD_INTERFACE_LEDGER": 1,
+          "ATHENA_NRFLD_ENERGY_LEDGER": 1
+        },
+        "command": "mpirun --output-filename /tmp/wor25_23_24_resolution_trials/collapse_natural_long25_r1/mpi -n 1 /tmp/wor25_23_24_resolution_collapse_postflddt_build/bin/athena -r /tmp/wor25_23_24_resolution_trials/collapse_postflddt_opacity_natural_r1/output/protostellar_core_fld_mayer5.00015.rst -d /tmp/wor25_23_24_resolution_trials/collapse_natural_long25_r1/output mesh/num_threads=2 time/nlim=25 problem/N_J=7.6160 nrfld/global_jacobian_check=false gravity/reset_fmg_color_each_solve=true gravity/repeat_initial_fmg_after_restart=true nrfld/consistent_rb_colors=false nrfld/symmetric_rb_sweeps=false",
+        "run_log": "/tmp/wor25_23_24_resolution_trials/collapse_natural_long25_r1/run.log",
+        "face_logs": [
+          "/tmp/wor25_23_24_resolution_trials/collapse_natural_long25_r1/mpi/1/rank.0/stdout"
+        ],
+        "exit_status": 0,
+        "wall_time": "0:29.38",
+        "peak_rss_kb": 422688,
+        "newton_history": [
+          {
+            "status": "converged",
+            "iterations": 0
+          },
+          {
+            "status": "converged",
+            "iterations": 2
+          },
+          {
+            "status": "converged",
+            "iterations": 0
+          },
+          {
+            "status": "converged",
+            "iterations": 3
+          },
+          {
+            "status": "converged",
+            "iterations": 2
+          },
+          {
+            "status": "converged",
+            "iterations": 2
+          },
+          {
+            "status": "converged",
+            "iterations": 2
+          },
+          {
+            "status": "converged",
+            "iterations": 2
+          },
+          {
+            "status": "converged",
+            "iterations": 2
+          },
+          {
+            "status": "converged",
+            "iterations": 2
+          },
+          {
+            "status": "converged",
+            "iterations": 2
+          },
+          {
+            "status": "converged",
+            "iterations": 2
+          }
+        ],
+        "fgmres_history": [
+          {
+            "iterations": 13,
+            "true_relative_residual": 7.650329686415597e-09
+          },
+          {
+            "iterations": 13,
+            "true_relative_residual": 9.496651753790292e-09
+          },
+          {
+            "iterations": 7,
+            "true_relative_residual": 7.743802425313238e-09
+          },
+          {
+            "iterations": 9,
+            "true_relative_residual": 1.453706181193258e-09
+          },
+          {
+            "iterations": 8,
+            "true_relative_residual": 5.695737382255837e-09
+          },
+          {
+            "iterations": 7,
+            "true_relative_residual": 8.018914898971967e-09
+          },
+          {
+            "iterations": 9,
+            "true_relative_residual": 2.694872259175432e-09
+          },
+          {
+            "iterations": 7,
+            "true_relative_residual": 7.937840837083743e-09
+          },
+          {
+            "iterations": 9,
+            "true_relative_residual": 2.651219335749244e-09
+          },
+          {
+            "iterations": 7,
+            "true_relative_residual": 8.012982670386193e-09
+          },
+          {
+            "iterations": 9,
+            "true_relative_residual": 2.597943409051269e-09
+          },
+          {
+            "iterations": 7,
+            "true_relative_residual": 8.081441768281409e-09
+          },
+          {
+            "iterations": 9,
+            "true_relative_residual": 2.553122900690391e-09
+          },
+          {
+            "iterations": 7,
+            "true_relative_residual": 8.154372536661883e-09
+          },
+          {
+            "iterations": 9,
+            "true_relative_residual": 2.5033318920592986e-09
+          },
+          {
+            "iterations": 7,
+            "true_relative_residual": 8.107155819868631e-09
+          },
+          {
+            "iterations": 9,
+            "true_relative_residual": 2.4717171028551244e-09
+          },
+          {
+            "iterations": 7,
+            "true_relative_residual": 8.209876473190323e-09
+          },
+          {
+            "iterations": 9,
+            "true_relative_residual": 2.4104386929675166e-09
+          },
+          {
+            "iterations": 7,
+            "true_relative_residual": 8.306166231820732e-09
+          },
+          {
+            "iterations": 9,
+            "true_relative_residual": 2.3574388964330422e-09
+          }
+        ],
+        "fgmres_total_iterations": 178,
+        "max_true_relative_residual": 9.496651753790292e-09,
+        "coarse_fine_face_pair_count": 9,
+        "max_face_relative_mismatch": 1.3003897535488776e-06,
+        "worst_face_pair": {
+          "cycle": 15,
+          "stage": 0,
+          "coarse_gid": 24,
+          "axis": 3,
+          "side": "max",
+          "fine_count": 4,
+          "coarse_flux": 135436.6067350228,
+          "fine_flux": -135436.25449472954,
+          "mismatch": 0.35224029325763695,
+          "relative_mismatch": 1.3003897535488776e-06
+        },
+        "face_history": [
+          {
+            "cycle": 15,
+            "leaf_count": 43,
+            "absolute_level_counts": {
+              "1": 3,
+              "2": 40
+            },
+            "coarse_fine_face_pair_count": 9,
+            "max_face_relative_mismatch": 1.3003897535488776e-06,
+            "face_pass": false
+          },
+          {
+            "cycle": 16,
+            "leaf_count": 64,
+            "absolute_level_counts": {
+              "2": 64
+            },
+            "coarse_fine_face_pair_count": 0,
+            "max_face_relative_mismatch": null,
+            "face_pass": true
+          },
+          {
+            "cycle": 17,
+            "leaf_count": 64,
+            "absolute_level_counts": {
+              "2": 64
+            },
+            "coarse_fine_face_pair_count": 0,
+            "max_face_relative_mismatch": null,
+            "face_pass": true
+          },
+          {
+            "cycle": 18,
+            "leaf_count": 64,
+            "absolute_level_counts": {
+              "2": 64
+            },
+            "coarse_fine_face_pair_count": 0,
+            "max_face_relative_mismatch": null,
+            "face_pass": true
+          },
+          {
+            "cycle": 19,
+            "leaf_count": 64,
+            "absolute_level_counts": {
+              "2": 64
+            },
+            "coarse_fine_face_pair_count": 0,
+            "max_face_relative_mismatch": null,
+            "face_pass": true
+          },
+          {
+            "cycle": 20,
+            "leaf_count": 64,
+            "absolute_level_counts": {
+              "2": 64
+            },
+            "coarse_fine_face_pair_count": 0,
+            "max_face_relative_mismatch": null,
+            "face_pass": true
+          },
+          {
+            "cycle": 21,
+            "leaf_count": 64,
+            "absolute_level_counts": {
+              "2": 64
+            },
+            "coarse_fine_face_pair_count": 0,
+            "max_face_relative_mismatch": null,
+            "face_pass": true
+          },
+          {
+            "cycle": 22,
+            "leaf_count": 64,
+            "absolute_level_counts": {
+              "2": 64
+            },
+            "coarse_fine_face_pair_count": 0,
+            "max_face_relative_mismatch": null,
+            "face_pass": true
+          },
+          {
+            "cycle": 23,
+            "leaf_count": 64,
+            "absolute_level_counts": {
+              "2": 64
+            },
+            "coarse_fine_face_pair_count": 0,
+            "max_face_relative_mismatch": null,
+            "face_pass": true
+          },
+          {
+            "cycle": 24,
+            "leaf_count": 64,
+            "absolute_level_counts": {
+              "2": 64
+            },
+            "coarse_fine_face_pair_count": 0,
+            "max_face_relative_mismatch": null,
+            "face_pass": true
+          }
+        ],
+        "max_implicit_energy_absolute_relative_balance": 3.672676098777646e-10,
+        "output": {
+          "initial_mass_volume_integral": 704254625794.6189,
+          "final_mass_volume_integral": 704254838437.0841,
+          "relative_mass_change": 3.019397493769159e-07,
+          "final_level_counts": {
+            "1": 64
+          },
+          "final_minima": {
+            "rho": 0.051742833956299895,
+            "pressure": 0.025294827275918693,
+            "Er": 0.2905841908501263
+          },
+          "final_time": 24.44259451769812,
+          "final_prim_file": "/tmp/wor25_23_24_resolution_trials/collapse_natural_long25_r1/output/protostellar_core_fld_mayer5.prim.00026.athdf"
+        },
+        "solver_pass": true,
+        "face_pass": false,
+        "positive": true,
+        "evaluation": "FAIL_FACE_RELATIVE_ONLY"
+      },
+      {
+        "name": "collapse_natural_long25_r2",
+        "kind": "natural",
+        "ranks": 2,
+        "threads_per_rank": 2,
+        "source_commit_before_run": "394d66c5",
+        "binary_sha256": "41a2a02a414eb56e458d53b239fe4188eac6ac2a701f47fd54aab944163b1a39",
+        "input_path": null,
+        "input_sha256": null,
+        "checkpoint_path": "/tmp/wor25_23_24_resolution_trials/collapse_postflddt_opacity_natural_r1/output/protostellar_core_fld_mayer5.00015.rst",
+        "checkpoint_sha256": "f4cc6f049c970b4ed3efc43abdd92da0d3e2b6fe6cf817147a2d08e5598c5507",
+        "overrides": {
+          "time/nlim": 25
+        },
+        "environment": {
+          "OMP_NUM_THREADS": 2,
+          "ATHENA_NRFLD_EXPERIMENTAL_COLLAPSE": 1,
+          "ATHENA_NRFLD_INTERFACE_LEDGER": 1,
+          "ATHENA_NRFLD_ENERGY_LEDGER": 1
+        },
+        "command": "mpirun --output-filename /tmp/wor25_23_24_resolution_trials/collapse_natural_long25_r2/mpi -n 2 /tmp/wor25_23_24_resolution_collapse_postflddt_build/bin/athena -r /tmp/wor25_23_24_resolution_trials/collapse_postflddt_opacity_natural_r1/output/protostellar_core_fld_mayer5.00015.rst -d /tmp/wor25_23_24_resolution_trials/collapse_natural_long25_r2/output mesh/num_threads=2 time/nlim=25 problem/N_J=7.6160 nrfld/global_jacobian_check=false gravity/reset_fmg_color_each_solve=true gravity/repeat_initial_fmg_after_restart=true nrfld/consistent_rb_colors=false nrfld/symmetric_rb_sweeps=false",
+        "run_log": "/tmp/wor25_23_24_resolution_trials/collapse_natural_long25_r2/run.log",
+        "face_logs": [
+          "/tmp/wor25_23_24_resolution_trials/collapse_natural_long25_r2/mpi/1/rank.0/stdout",
+          "/tmp/wor25_23_24_resolution_trials/collapse_natural_long25_r2/mpi/1/rank.1/stdout"
+        ],
+        "exit_status": 0,
+        "wall_time": "0:25.78",
+        "peak_rss_kb": 258792,
+        "newton_history": [
+          {
+            "status": "converged",
+            "iterations": 0
+          },
+          {
+            "status": "converged",
+            "iterations": 2
+          },
+          {
+            "status": "converged",
+            "iterations": 0
+          },
+          {
+            "status": "converged",
+            "iterations": 3
+          },
+          {
+            "status": "converged",
+            "iterations": 2
+          },
+          {
+            "status": "converged",
+            "iterations": 2
+          },
+          {
+            "status": "converged",
+            "iterations": 2
+          },
+          {
+            "status": "converged",
+            "iterations": 2
+          },
+          {
+            "status": "converged",
+            "iterations": 2
+          },
+          {
+            "status": "converged",
+            "iterations": 2
+          },
+          {
+            "status": "converged",
+            "iterations": 2
+          },
+          {
+            "status": "converged",
+            "iterations": 2
+          }
+        ],
+        "fgmres_history": [
+          {
+            "iterations": 13,
+            "true_relative_residual": 7.650331536525194e-09
+          },
+          {
+            "iterations": 13,
+            "true_relative_residual": 9.498004310670552e-09
+          },
+          {
+            "iterations": 7,
+            "true_relative_residual": 7.743802425463461e-09
+          },
+          {
+            "iterations": 9,
+            "true_relative_residual": 1.454158496062636e-09
+          },
+          {
+            "iterations": 8,
+            "true_relative_residual": 5.689242852269397e-09
+          },
+          {
+            "iterations": 7,
+            "true_relative_residual": 8.018914916291138e-09
+          },
+          {
+            "iterations": 9,
+            "true_relative_residual": 2.698207867769922e-09
+          },
+          {
+            "iterations": 7,
+            "true_relative_residual": 7.937840835907904e-09
+          },
+          {
+            "iterations": 9,
+            "true_relative_residual": 2.65380241719802e-09
+          },
+          {
+            "iterations": 7,
+            "true_relative_residual": 8.012982684560116e-09
+          },
+          {
+            "iterations": 9,
+            "true_relative_residual": 2.603672414091591e-09
+          },
+          {
+            "iterations": 7,
+            "true_relative_residual": 8.081441776654589e-09
+          },
+          {
+            "iterations": 9,
+            "true_relative_residual": 2.5517198554644365e-09
+          },
+          {
+            "iterations": 7,
+            "true_relative_residual": 8.154372546223413e-09
+          },
+          {
+            "iterations": 9,
+            "true_relative_residual": 2.503786924455293e-09
+          },
+          {
+            "iterations": 7,
+            "true_relative_residual": 8.10715582600675e-09
+          },
+          {
+            "iterations": 9,
+            "true_relative_residual": 2.467072738287389e-09
+          },
+          {
+            "iterations": 7,
+            "true_relative_residual": 8.209876470758834e-09
+          },
+          {
+            "iterations": 9,
+            "true_relative_residual": 2.4135766950993706e-09
+          },
+          {
+            "iterations": 7,
+            "true_relative_residual": 8.306166232111509e-09
+          },
+          {
+            "iterations": 9,
+            "true_relative_residual": 2.3597344193647715e-09
+          }
+        ],
+        "fgmres_total_iterations": 178,
+        "max_true_relative_residual": 9.498004310670552e-09,
+        "coarse_fine_face_pair_count": 9,
+        "max_face_relative_mismatch": 1.953075050362131e-07,
+        "worst_face_pair": {
+          "cycle": 15,
+          "stage": 0,
+          "coarse_gid": 34,
+          "axis": 2,
+          "side": "min",
+          "fine_count": 4,
+          "coarse_flux": 510194.29029727745,
+          "fine_flux": -510194.0910077685,
+          "mismatch": 0.19928950892062858,
+          "relative_mismatch": 1.953075050362131e-07
+        },
+        "face_history": [
+          {
+            "cycle": 15,
+            "leaf_count": 43,
+            "absolute_level_counts": {
+              "1": 3,
+              "2": 40
+            },
+            "coarse_fine_face_pair_count": 9,
+            "max_face_relative_mismatch": 1.953075050362131e-07,
+            "face_pass": true
+          },
+          {
+            "cycle": 16,
+            "leaf_count": 64,
+            "absolute_level_counts": {
+              "2": 64
+            },
+            "coarse_fine_face_pair_count": 0,
+            "max_face_relative_mismatch": null,
+            "face_pass": true
+          },
+          {
+            "cycle": 17,
+            "leaf_count": 64,
+            "absolute_level_counts": {
+              "2": 64
+            },
+            "coarse_fine_face_pair_count": 0,
+            "max_face_relative_mismatch": null,
+            "face_pass": true
+          },
+          {
+            "cycle": 18,
+            "leaf_count": 64,
+            "absolute_level_counts": {
+              "2": 64
+            },
+            "coarse_fine_face_pair_count": 0,
+            "max_face_relative_mismatch": null,
+            "face_pass": true
+          },
+          {
+            "cycle": 19,
+            "leaf_count": 64,
+            "absolute_level_counts": {
+              "2": 64
+            },
+            "coarse_fine_face_pair_count": 0,
+            "max_face_relative_mismatch": null,
+            "face_pass": true
+          },
+          {
+            "cycle": 20,
+            "leaf_count": 64,
+            "absolute_level_counts": {
+              "2": 64
+            },
+            "coarse_fine_face_pair_count": 0,
+            "max_face_relative_mismatch": null,
+            "face_pass": true
+          },
+          {
+            "cycle": 21,
+            "leaf_count": 64,
+            "absolute_level_counts": {
+              "2": 64
+            },
+            "coarse_fine_face_pair_count": 0,
+            "max_face_relative_mismatch": null,
+            "face_pass": true
+          },
+          {
+            "cycle": 22,
+            "leaf_count": 64,
+            "absolute_level_counts": {
+              "2": 64
+            },
+            "coarse_fine_face_pair_count": 0,
+            "max_face_relative_mismatch": null,
+            "face_pass": true
+          },
+          {
+            "cycle": 23,
+            "leaf_count": 64,
+            "absolute_level_counts": {
+              "2": 64
+            },
+            "coarse_fine_face_pair_count": 0,
+            "max_face_relative_mismatch": null,
+            "face_pass": true
+          },
+          {
+            "cycle": 24,
+            "leaf_count": 64,
+            "absolute_level_counts": {
+              "2": 64
+            },
+            "coarse_fine_face_pair_count": 0,
+            "max_face_relative_mismatch": null,
+            "face_pass": true
+          }
+        ],
+        "max_implicit_energy_absolute_relative_balance": 4.341425196397349e-10,
+        "output": {
+          "initial_mass_volume_integral": 704254625794.6189,
+          "final_mass_volume_integral": 704254838437.0841,
+          "relative_mass_change": 3.019397493769159e-07,
+          "final_level_counts": {
+            "1": 64
+          },
+          "final_minima": {
+            "rho": 0.05174283395629988,
+            "pressure": 0.02529482727591869,
+            "Er": 0.2905841908501263
+          },
+          "final_time": 24.442594517698147,
+          "final_prim_file": "/tmp/wor25_23_24_resolution_trials/collapse_natural_long25_r2/output/protostellar_core_fld_mayer5.prim.00026.athdf"
+        },
+        "solver_pass": true,
+        "face_pass": true,
+        "positive": true,
+        "evaluation": "PASS"
+      }
+    ],
+    "static_continuous_runs": [
+      {
+        "name": "collapse_static_long20_valid_r1",
+        "kind": "persistent_static",
+        "ranks": 1,
+        "threads_per_rank": 2,
+        "source_commit_before_run": "394d66c5",
+        "binary_sha256": "41a2a02a414eb56e458d53b239fe4188eac6ac2a701f47fd54aab944163b1a39",
+        "input_path": "/home/kosuke/simulation/athena-wor25-23-24-resolution/tst/nrfld_validation/collapse_postflddt_static_partial_20261107.in",
+        "input_sha256": "880bba6f428c1a2adb41c17bf17e567962e8b276c5223068b3e6641cac328584",
+        "checkpoint_path": null,
+        "checkpoint_sha256": null,
+        "overrides": {
+          "time/nlim": 20
+        },
+        "environment": {
+          "OMP_NUM_THREADS": 2,
+          "ATHENA_NRFLD_EXPERIMENTAL_COLLAPSE": 1,
+          "ATHENA_NRFLD_INTERFACE_LEDGER": 1,
+          "ATHENA_NRFLD_ENERGY_LEDGER": 1
+        },
+        "command": "mpirun --output-filename /tmp/wor25_23_24_resolution_trials/collapse_static_long20_valid_r1/mpi -n 1 /tmp/wor25_23_24_resolution_collapse_postflddt_build/bin/athena -i /home/kosuke/simulation/athena-wor25-23-24-resolution/tst/nrfld_validation/collapse_postflddt_static_partial_20261107.in -d /tmp/wor25_23_24_resolution_trials/collapse_static_long20_valid_r1/output time/nlim=20",
+        "run_log": "/tmp/wor25_23_24_resolution_trials/collapse_static_long20_valid_r1/run.log",
+        "face_logs": [
+          "/tmp/wor25_23_24_resolution_trials/collapse_static_long20_valid_r1/mpi/1/rank.0/stdout"
+        ],
+        "exit_status": 0,
+        "wall_time": "0:14.30",
+        "peak_rss_kb": 120984,
+        "newton_history": [
+          {
+            "status": "dt_zero_initialization",
+            "iterations": 0
+          },
+          {
+            "status": "converged",
+            "iterations": 1
+          },
+          {
+            "status": "converged",
+            "iterations": 1
+          },
+          {
+            "status": "converged",
+            "iterations": 1
+          },
+          {
+            "status": "converged",
+            "iterations": 2
+          },
+          {
+            "status": "converged",
+            "iterations": 2
+          },
+          {
+            "status": "converged",
+            "iterations": 2
+          },
+          {
+            "status": "converged",
+            "iterations": 2
+          },
+          {
+            "status": "converged",
+            "iterations": 2
+          },
+          {
+            "status": "converged",
+            "iterations": 2
+          },
+          {
+            "status": "converged",
+            "iterations": 2
+          },
+          {
+            "status": "converged",
+            "iterations": 2
+          },
+          {
+            "status": "converged",
+            "iterations": 2
+          },
+          {
+            "status": "converged",
+            "iterations": 2
+          },
+          {
+            "status": "converged",
+            "iterations": 2
+          },
+          {
+            "status": "converged",
+            "iterations": 2
+          },
+          {
+            "status": "converged",
+            "iterations": 2
+          },
+          {
+            "status": "converged",
+            "iterations": 2
+          },
+          {
+            "status": "converged",
+            "iterations": 2
+          },
+          {
+            "status": "converged",
+            "iterations": 2
+          },
+          {
+            "status": "converged",
+            "iterations": 2
+          }
+        ],
+        "fgmres_history": [
+          {
+            "iterations": 14,
+            "true_relative_residual": 2.966672318389449e-09
+          },
+          {
+            "iterations": 14,
+            "true_relative_residual": 2.9405389467227844e-09
+          },
+          {
+            "iterations": 14,
+            "true_relative_residual": 2.947506067436864e-09
+          },
+          {
+            "iterations": 14,
+            "true_relative_residual": 2.9608087920631494e-09
+          },
+          {
+            "iterations": 14,
+            "true_relative_residual": 1.9390246171636896e-09
+          },
+          {
+            "iterations": 14,
+            "true_relative_residual": 2.9688537755685937e-09
+          },
+          {
+            "iterations": 14,
+            "true_relative_residual": 1.9033837457941494e-09
+          },
+          {
+            "iterations": 13,
+            "true_relative_residual": 7.24248667621117e-09
+          },
+          {
+            "iterations": 12,
+            "true_relative_residual": 9.319181029305248e-09
+          },
+          {
+            "iterations": 13,
+            "true_relative_residual": 4.12825620353479e-09
+          },
+          {
+            "iterations": 12,
+            "true_relative_residual": 4.521624073256822e-09
+          },
+          {
+            "iterations": 13,
+            "true_relative_residual": 5.279175340180897e-09
+          },
+          {
+            "iterations": 14,
+            "true_relative_residual": 3.132481835319748e-09
+          },
+          {
+            "iterations": 13,
+            "true_relative_residual": 3.97791239282516e-09
+          },
+          {
+            "iterations": 14,
+            "true_relative_residual": 2.653821928025962e-09
+          },
+          {
+            "iterations": 13,
+            "true_relative_residual": 5.16471847634136e-09
+          },
+          {
+            "iterations": 14,
+            "true_relative_residual": 2.797023625863288e-09
+          },
+          {
+            "iterations": 13,
+            "true_relative_residual": 2.4420096859182326e-09
+          },
+          {
+            "iterations": 14,
+            "true_relative_residual": 3.1789736780311043e-09
+          },
+          {
+            "iterations": 12,
+            "true_relative_residual": 5.805255113213711e-09
+          },
+          {
+            "iterations": 14,
+            "true_relative_residual": 3.5070619294467433e-09
+          },
+          {
+            "iterations": 12,
+            "true_relative_residual": 5.260713539706568e-09
+          },
+          {
+            "iterations": 14,
+            "true_relative_residual": 3.0613133933511904e-09
+          },
+          {
+            "iterations": 12,
+            "true_relative_residual": 5.1998556602163305e-09
+          },
+          {
+            "iterations": 14,
+            "true_relative_residual": 3.0022488413100364e-09
+          },
+          {
+            "iterations": 12,
+            "true_relative_residual": 5.100578878746001e-09
+          },
+          {
+            "iterations": 14,
+            "true_relative_residual": 2.9783641387306672e-09
+          },
+          {
+            "iterations": 12,
+            "true_relative_residual": 4.998013458973697e-09
+          },
+          {
+            "iterations": 14,
+            "true_relative_residual": 2.9569938254781056e-09
+          },
+          {
+            "iterations": 12,
+            "true_relative_residual": 4.899864750480659e-09
+          },
+          {
+            "iterations": 14,
+            "true_relative_residual": 2.9341487913647984e-09
+          },
+          {
+            "iterations": 12,
+            "true_relative_residual": 4.808657796236976e-09
+          },
+          {
+            "iterations": 14,
+            "true_relative_residual": 2.9075729313413157e-09
+          },
+          {
+            "iterations": 12,
+            "true_relative_residual": 4.722328744293528e-09
+          },
+          {
+            "iterations": 14,
+            "true_relative_residual": 2.875884202859678e-09
+          },
+          {
+            "iterations": 12,
+            "true_relative_residual": 4.635956558694697e-09
+          },
+          {
+            "iterations": 14,
+            "true_relative_residual": 2.8348957264534697e-09
+          }
+        ],
+        "fgmres_total_iterations": 490,
+        "max_true_relative_residual": 9.319181029305248e-09,
+        "coarse_fine_face_pair_count": 60,
+        "max_face_relative_mismatch": 1.3754266621270944e-07,
+        "worst_face_pair": {
+          "cycle": 3,
+          "stage": 0,
+          "coarse_gid": 9,
+          "axis": 2,
+          "side": "min",
+          "fine_count": 4,
+          "coarse_flux": 1232442.316681347,
+          "fine_flux": -1232441.9776545893,
+          "mismatch": 0.33902675774879754,
+          "relative_mismatch": 1.3754266621270944e-07
+        },
+        "face_history": [
+          {
+            "cycle": 0,
+            "leaf_count": 15,
+            "absolute_level_counts": {
+              "1": 7,
+              "2": 8
+            },
+            "coarse_fine_face_pair_count": 3,
+            "max_face_relative_mismatch": 1.3339569634365148e-07,
+            "face_pass": true
+          },
+          {
+            "cycle": 1,
+            "leaf_count": 15,
+            "absolute_level_counts": {
+              "1": 7,
+              "2": 8
+            },
+            "coarse_fine_face_pair_count": 3,
+            "max_face_relative_mismatch": 3.668448304462865e-08,
+            "face_pass": true
+          },
+          {
+            "cycle": 2,
+            "leaf_count": 15,
+            "absolute_level_counts": {
+              "1": 7,
+              "2": 8
+            },
+            "coarse_fine_face_pair_count": 3,
+            "max_face_relative_mismatch": 5.5858047806457496e-08,
+            "face_pass": true
+          },
+          {
+            "cycle": 3,
+            "leaf_count": 15,
+            "absolute_level_counts": {
+              "1": 7,
+              "2": 8
+            },
+            "coarse_fine_face_pair_count": 3,
+            "max_face_relative_mismatch": 1.3754266621270944e-07,
+            "face_pass": true
+          },
+          {
+            "cycle": 4,
+            "leaf_count": 15,
+            "absolute_level_counts": {
+              "1": 7,
+              "2": 8
+            },
+            "coarse_fine_face_pair_count": 3,
+            "max_face_relative_mismatch": 1.031564312565115e-07,
+            "face_pass": true
+          },
+          {
+            "cycle": 5,
+            "leaf_count": 15,
+            "absolute_level_counts": {
+              "1": 7,
+              "2": 8
+            },
+            "coarse_fine_face_pair_count": 3,
+            "max_face_relative_mismatch": 8.964367393862431e-08,
+            "face_pass": true
+          },
+          {
+            "cycle": 6,
+            "leaf_count": 15,
+            "absolute_level_counts": {
+              "1": 7,
+              "2": 8
+            },
+            "coarse_fine_face_pair_count": 3,
+            "max_face_relative_mismatch": 2.007565781958071e-08,
+            "face_pass": true
+          },
+          {
+            "cycle": 7,
+            "leaf_count": 15,
+            "absolute_level_counts": {
+              "1": 7,
+              "2": 8
+            },
+            "coarse_fine_face_pair_count": 3,
+            "max_face_relative_mismatch": 3.4439324069696987e-08,
+            "face_pass": true
+          },
+          {
+            "cycle": 8,
+            "leaf_count": 15,
+            "absolute_level_counts": {
+              "1": 7,
+              "2": 8
+            },
+            "coarse_fine_face_pair_count": 3,
+            "max_face_relative_mismatch": 2.0554054488295384e-08,
+            "face_pass": true
+          },
+          {
+            "cycle": 9,
+            "leaf_count": 15,
+            "absolute_level_counts": {
+              "1": 7,
+              "2": 8
+            },
+            "coarse_fine_face_pair_count": 3,
+            "max_face_relative_mismatch": 5.26088161026215e-08,
+            "face_pass": true
+          },
+          {
+            "cycle": 10,
+            "leaf_count": 15,
+            "absolute_level_counts": {
+              "1": 7,
+              "2": 8
+            },
+            "coarse_fine_face_pair_count": 3,
+            "max_face_relative_mismatch": 7.082037164018168e-08,
+            "face_pass": true
+          },
+          {
+            "cycle": 11,
+            "leaf_count": 15,
+            "absolute_level_counts": {
+              "1": 7,
+              "2": 8
+            },
+            "coarse_fine_face_pair_count": 3,
+            "max_face_relative_mismatch": 3.1490749814706355e-08,
+            "face_pass": true
+          },
+          {
+            "cycle": 12,
+            "leaf_count": 15,
+            "absolute_level_counts": {
+              "1": 7,
+              "2": 8
+            },
+            "coarse_fine_face_pair_count": 3,
+            "max_face_relative_mismatch": 4.7482027631589204e-08,
+            "face_pass": true
+          },
+          {
+            "cycle": 13,
+            "leaf_count": 15,
+            "absolute_level_counts": {
+              "1": 7,
+              "2": 8
+            },
+            "coarse_fine_face_pair_count": 3,
+            "max_face_relative_mismatch": 3.723814113221644e-08,
+            "face_pass": true
+          },
+          {
+            "cycle": 14,
+            "leaf_count": 15,
+            "absolute_level_counts": {
+              "1": 7,
+              "2": 8
+            },
+            "coarse_fine_face_pair_count": 3,
+            "max_face_relative_mismatch": 6.251547060826419e-08,
+            "face_pass": true
+          },
+          {
+            "cycle": 15,
+            "leaf_count": 15,
+            "absolute_level_counts": {
+              "1": 7,
+              "2": 8
+            },
+            "coarse_fine_face_pair_count": 3,
+            "max_face_relative_mismatch": 6.624065873229864e-08,
+            "face_pass": true
+          },
+          {
+            "cycle": 16,
+            "leaf_count": 15,
+            "absolute_level_counts": {
+              "1": 7,
+              "2": 8
+            },
+            "coarse_fine_face_pair_count": 3,
+            "max_face_relative_mismatch": 8.224258781416462e-08,
+            "face_pass": true
+          },
+          {
+            "cycle": 17,
+            "leaf_count": 15,
+            "absolute_level_counts": {
+              "1": 7,
+              "2": 8
+            },
+            "coarse_fine_face_pair_count": 3,
+            "max_face_relative_mismatch": 5.722257315880303e-08,
+            "face_pass": true
+          },
+          {
+            "cycle": 18,
+            "leaf_count": 15,
+            "absolute_level_counts": {
+              "1": 7,
+              "2": 8
+            },
+            "coarse_fine_face_pair_count": 3,
+            "max_face_relative_mismatch": 9.45931399680828e-08,
+            "face_pass": true
+          },
+          {
+            "cycle": 19,
+            "leaf_count": 15,
+            "absolute_level_counts": {
+              "1": 7,
+              "2": 8
+            },
+            "coarse_fine_face_pair_count": 3,
+            "max_face_relative_mismatch": 4.4204476013734774e-08,
+            "face_pass": true
+          }
+        ],
+        "max_implicit_energy_absolute_relative_balance": 1.0042671126117414e-08,
+        "output": {
+          "initial_mass_volume_integral": 704254494296.6775,
+          "final_mass_volume_integral": 704254540151.1486,
+          "relative_mass_change": 6.511065451577945e-08,
+          "final_level_counts": {
+            "0": 7,
+            "1": 8
+          },
+          "final_minima": {
+            "rho": 0.05179206692002773,
+            "pressure": 0.025318579853168394,
+            "Er": 0.2905692837135759
+          },
+          "final_time": 20.532405278888316,
+          "final_prim_file": "/tmp/wor25_23_24_resolution_trials/collapse_static_long20_valid_r1/output/protostellar_core_fld_mayer5.prim.00021.athdf"
+        },
+        "solver_pass": true,
+        "face_pass": true,
+        "positive": true,
+        "evaluation": "PASS"
+      },
+      {
+        "name": "collapse_static_long20_valid_r2",
+        "kind": "persistent_static",
+        "ranks": 2,
+        "threads_per_rank": 2,
+        "source_commit_before_run": "394d66c5",
+        "binary_sha256": "41a2a02a414eb56e458d53b239fe4188eac6ac2a701f47fd54aab944163b1a39",
+        "input_path": "/home/kosuke/simulation/athena-wor25-23-24-resolution/tst/nrfld_validation/collapse_postflddt_static_partial_20261107.in",
+        "input_sha256": "880bba6f428c1a2adb41c17bf17e567962e8b276c5223068b3e6641cac328584",
+        "checkpoint_path": null,
+        "checkpoint_sha256": null,
+        "overrides": {
+          "time/nlim": 20
+        },
+        "environment": {
+          "OMP_NUM_THREADS": 2,
+          "ATHENA_NRFLD_EXPERIMENTAL_COLLAPSE": 1,
+          "ATHENA_NRFLD_INTERFACE_LEDGER": 1,
+          "ATHENA_NRFLD_ENERGY_LEDGER": 1
+        },
+        "command": "mpirun --output-filename /tmp/wor25_23_24_resolution_trials/collapse_static_long20_valid_r2/mpi -n 2 /tmp/wor25_23_24_resolution_collapse_postflddt_build/bin/athena -i /home/kosuke/simulation/athena-wor25-23-24-resolution/tst/nrfld_validation/collapse_postflddt_static_partial_20261107.in -d /tmp/wor25_23_24_resolution_trials/collapse_static_long20_valid_r2/output time/nlim=20",
+        "run_log": "/tmp/wor25_23_24_resolution_trials/collapse_static_long20_valid_r2/run.log",
+        "face_logs": [
+          "/tmp/wor25_23_24_resolution_trials/collapse_static_long20_valid_r2/mpi/1/rank.0/stdout",
+          "/tmp/wor25_23_24_resolution_trials/collapse_static_long20_valid_r2/mpi/1/rank.1/stdout"
+        ],
+        "exit_status": 0,
+        "wall_time": "0:13.20",
+        "peak_rss_kb": 84040,
+        "newton_history": [
+          {
+            "status": "dt_zero_initialization",
+            "iterations": 0
+          },
+          {
+            "status": "converged",
+            "iterations": 1
+          },
+          {
+            "status": "converged",
+            "iterations": 1
+          },
+          {
+            "status": "converged",
+            "iterations": 1
+          },
+          {
+            "status": "converged",
+            "iterations": 2
+          },
+          {
+            "status": "converged",
+            "iterations": 2
+          },
+          {
+            "status": "converged",
+            "iterations": 2
+          },
+          {
+            "status": "converged",
+            "iterations": 2
+          },
+          {
+            "status": "converged",
+            "iterations": 2
+          },
+          {
+            "status": "converged",
+            "iterations": 2
+          },
+          {
+            "status": "converged",
+            "iterations": 2
+          },
+          {
+            "status": "converged",
+            "iterations": 2
+          },
+          {
+            "status": "converged",
+            "iterations": 2
+          },
+          {
+            "status": "converged",
+            "iterations": 2
+          },
+          {
+            "status": "converged",
+            "iterations": 2
+          },
+          {
+            "status": "converged",
+            "iterations": 2
+          },
+          {
+            "status": "converged",
+            "iterations": 2
+          },
+          {
+            "status": "converged",
+            "iterations": 2
+          },
+          {
+            "status": "converged",
+            "iterations": 2
+          },
+          {
+            "status": "converged",
+            "iterations": 2
+          },
+          {
+            "status": "converged",
+            "iterations": 2
+          }
+        ],
+        "fgmres_history": [
+          {
+            "iterations": 14,
+            "true_relative_residual": 2.9666714762093043e-09
+          },
+          {
+            "iterations": 14,
+            "true_relative_residual": 2.9405391842461476e-09
+          },
+          {
+            "iterations": 14,
+            "true_relative_residual": 2.9475055587831375e-09
+          },
+          {
+            "iterations": 14,
+            "true_relative_residual": 2.960808588095184e-09
+          },
+          {
+            "iterations": 14,
+            "true_relative_residual": 1.9506531926129784e-09
+          },
+          {
+            "iterations": 14,
+            "true_relative_residual": 2.9688533096873417e-09
+          },
+          {
+            "iterations": 14,
+            "true_relative_residual": 1.9011170817176082e-09
+          },
+          {
+            "iterations": 13,
+            "true_relative_residual": 7.242486647103259e-09
+          },
+          {
+            "iterations": 12,
+            "true_relative_residual": 9.323077173668495e-09
+          },
+          {
+            "iterations": 13,
+            "true_relative_residual": 4.128255815717437e-09
+          },
+          {
+            "iterations": 12,
+            "true_relative_residual": 4.522785889102193e-09
+          },
+          {
+            "iterations": 13,
+            "true_relative_residual": 5.279176176373529e-09
+          },
+          {
+            "iterations": 14,
+            "true_relative_residual": 3.13165297226647e-09
+          },
+          {
+            "iterations": 13,
+            "true_relative_residual": 3.977911795136281e-09
+          },
+          {
+            "iterations": 14,
+            "true_relative_residual": 2.656786855298819e-09
+          },
+          {
+            "iterations": 13,
+            "true_relative_residual": 5.164718892927254e-09
+          },
+          {
+            "iterations": 14,
+            "true_relative_residual": 2.797678990437286e-09
+          },
+          {
+            "iterations": 13,
+            "true_relative_residual": 2.442009805669174e-09
+          },
+          {
+            "iterations": 14,
+            "true_relative_residual": 3.178260732573188e-09
+          },
+          {
+            "iterations": 12,
+            "true_relative_residual": 5.805256686992367e-09
+          },
+          {
+            "iterations": 14,
+            "true_relative_residual": 3.5091983980315336e-09
+          },
+          {
+            "iterations": 12,
+            "true_relative_residual": 5.26071358753683e-09
+          },
+          {
+            "iterations": 14,
+            "true_relative_residual": 3.063510424301704e-09
+          },
+          {
+            "iterations": 12,
+            "true_relative_residual": 5.199854847552087e-09
+          },
+          {
+            "iterations": 14,
+            "true_relative_residual": 3.00181467287375e-09
+          },
+          {
+            "iterations": 12,
+            "true_relative_residual": 5.1005796008794035e-09
+          },
+          {
+            "iterations": 14,
+            "true_relative_residual": 2.98460935246582e-09
+          },
+          {
+            "iterations": 12,
+            "true_relative_residual": 4.998013110978861e-09
+          },
+          {
+            "iterations": 14,
+            "true_relative_residual": 2.956461356500717e-09
+          },
+          {
+            "iterations": 12,
+            "true_relative_residual": 4.899864426887311e-09
+          },
+          {
+            "iterations": 14,
+            "true_relative_residual": 2.9324203789391654e-09
+          },
+          {
+            "iterations": 12,
+            "true_relative_residual": 4.80865686122107e-09
+          },
+          {
+            "iterations": 14,
+            "true_relative_residual": 2.905574343857774e-09
+          },
+          {
+            "iterations": 12,
+            "true_relative_residual": 4.722328994126388e-09
+          },
+          {
+            "iterations": 14,
+            "true_relative_residual": 2.8734057879495193e-09
+          },
+          {
+            "iterations": 12,
+            "true_relative_residual": 4.635955833389945e-09
+          },
+          {
+            "iterations": 14,
+            "true_relative_residual": 2.833999131282619e-09
+          }
+        ],
+        "fgmres_total_iterations": 490,
+        "max_true_relative_residual": 9.323077173668495e-09,
+        "coarse_fine_face_pair_count": 60,
+        "max_face_relative_mismatch": 1.3730951424931805e-07,
+        "worst_face_pair": {
+          "cycle": 0,
+          "stage": 0,
+          "coarse_gid": 11,
+          "axis": 3,
+          "side": "min",
+          "fine_count": 4,
+          "coarse_flux": 1217327.93522103,
+          "fine_flux": -1217327.6009196609,
+          "mismatch": 0.3343013690318912,
+          "relative_mismatch": 1.3730951424931805e-07
+        },
+        "face_history": [
+          {
+            "cycle": 0,
+            "leaf_count": 15,
+            "absolute_level_counts": {
+              "1": 7,
+              "2": 8
+            },
+            "coarse_fine_face_pair_count": 3,
+            "max_face_relative_mismatch": 1.3730951424931805e-07,
+            "face_pass": true
+          },
+          {
+            "cycle": 1,
+            "leaf_count": 15,
+            "absolute_level_counts": {
+              "1": 7,
+              "2": 8
+            },
+            "coarse_fine_face_pair_count": 3,
+            "max_face_relative_mismatch": 4.392859983758588e-08,
+            "face_pass": true
+          },
+          {
+            "cycle": 2,
+            "leaf_count": 15,
+            "absolute_level_counts": {
+              "1": 7,
+              "2": 8
+            },
+            "coarse_fine_face_pair_count": 3,
+            "max_face_relative_mismatch": 9.545319450008583e-08,
+            "face_pass": true
+          },
+          {
+            "cycle": 3,
+            "leaf_count": 15,
+            "absolute_level_counts": {
+              "1": 7,
+              "2": 8
+            },
+            "coarse_fine_face_pair_count": 3,
+            "max_face_relative_mismatch": 5.726178649212941e-08,
+            "face_pass": true
+          },
+          {
+            "cycle": 4,
+            "leaf_count": 15,
+            "absolute_level_counts": {
+              "1": 7,
+              "2": 8
+            },
+            "coarse_fine_face_pair_count": 3,
+            "max_face_relative_mismatch": 5.818057453900716e-08,
+            "face_pass": true
+          },
+          {
+            "cycle": 5,
+            "leaf_count": 15,
+            "absolute_level_counts": {
+              "1": 7,
+              "2": 8
+            },
+            "coarse_fine_face_pair_count": 3,
+            "max_face_relative_mismatch": 5.764901893093472e-08,
+            "face_pass": true
+          },
+          {
+            "cycle": 6,
+            "leaf_count": 15,
+            "absolute_level_counts": {
+              "1": 7,
+              "2": 8
+            },
+            "coarse_fine_face_pair_count": 3,
+            "max_face_relative_mismatch": 6.198842587460401e-08,
+            "face_pass": true
+          },
+          {
+            "cycle": 7,
+            "leaf_count": 15,
+            "absolute_level_counts": {
+              "1": 7,
+              "2": 8
+            },
+            "coarse_fine_face_pair_count": 3,
+            "max_face_relative_mismatch": 8.153296414901309e-08,
+            "face_pass": true
+          },
+          {
+            "cycle": 8,
+            "leaf_count": 15,
+            "absolute_level_counts": {
+              "1": 7,
+              "2": 8
+            },
+            "coarse_fine_face_pair_count": 3,
+            "max_face_relative_mismatch": 6.495561343039497e-08,
+            "face_pass": true
+          },
+          {
+            "cycle": 9,
+            "leaf_count": 15,
+            "absolute_level_counts": {
+              "1": 7,
+              "2": 8
+            },
+            "coarse_fine_face_pair_count": 3,
+            "max_face_relative_mismatch": 8.65991437818904e-08,
+            "face_pass": true
+          },
+          {
+            "cycle": 10,
+            "leaf_count": 15,
+            "absolute_level_counts": {
+              "1": 7,
+              "2": 8
+            },
+            "coarse_fine_face_pair_count": 3,
+            "max_face_relative_mismatch": 7.17071377028017e-08,
+            "face_pass": true
+          },
+          {
+            "cycle": 11,
+            "leaf_count": 15,
+            "absolute_level_counts": {
+              "1": 7,
+              "2": 8
+            },
+            "coarse_fine_face_pair_count": 3,
+            "max_face_relative_mismatch": 9.31892929228515e-09,
+            "face_pass": true
+          },
+          {
+            "cycle": 12,
+            "leaf_count": 15,
+            "absolute_level_counts": {
+              "1": 7,
+              "2": 8
+            },
+            "coarse_fine_face_pair_count": 3,
+            "max_face_relative_mismatch": 3.973972531064987e-08,
+            "face_pass": true
+          },
+          {
+            "cycle": 13,
+            "leaf_count": 15,
+            "absolute_level_counts": {
+              "1": 7,
+              "2": 8
+            },
+            "coarse_fine_face_pair_count": 3,
+            "max_face_relative_mismatch": 3.3457717990165885e-08,
+            "face_pass": true
+          },
+          {
+            "cycle": 14,
+            "leaf_count": 15,
+            "absolute_level_counts": {
+              "1": 7,
+              "2": 8
+            },
+            "coarse_fine_face_pair_count": 3,
+            "max_face_relative_mismatch": 3.6367425066675446e-08,
+            "face_pass": true
+          },
+          {
+            "cycle": 15,
+            "leaf_count": 15,
+            "absolute_level_counts": {
+              "1": 7,
+              "2": 8
+            },
+            "coarse_fine_face_pair_count": 3,
+            "max_face_relative_mismatch": 6.072626440625308e-08,
+            "face_pass": true
+          },
+          {
+            "cycle": 16,
+            "leaf_count": 15,
+            "absolute_level_counts": {
+              "1": 7,
+              "2": 8
+            },
+            "coarse_fine_face_pair_count": 3,
+            "max_face_relative_mismatch": 3.502651995985662e-08,
+            "face_pass": true
+          },
+          {
+            "cycle": 17,
+            "leaf_count": 15,
+            "absolute_level_counts": {
+              "1": 7,
+              "2": 8
+            },
+            "coarse_fine_face_pair_count": 3,
+            "max_face_relative_mismatch": 3.356316845664735e-08,
+            "face_pass": true
+          },
+          {
+            "cycle": 18,
+            "leaf_count": 15,
+            "absolute_level_counts": {
+              "1": 7,
+              "2": 8
+            },
+            "coarse_fine_face_pair_count": 3,
+            "max_face_relative_mismatch": 5.8625493220908534e-08,
+            "face_pass": true
+          },
+          {
+            "cycle": 19,
+            "leaf_count": 15,
+            "absolute_level_counts": {
+              "1": 7,
+              "2": 8
+            },
+            "coarse_fine_face_pair_count": 3,
+            "max_face_relative_mismatch": 2.8966605273849686e-08,
+            "face_pass": true
+          }
+        ],
+        "max_implicit_energy_absolute_relative_balance": 3.6597237365321286e-08,
+        "output": {
+          "initial_mass_volume_integral": 704254494296.6775,
+          "final_mass_volume_integral": 704254540151.1486,
+          "relative_mass_change": 6.511065451577945e-08,
+          "final_level_counts": {
+            "0": 7,
+            "1": 8
+          },
+          "final_minima": {
+            "rho": 0.051792066920027774,
+            "pressure": 0.025318579853170358,
+            "Er": 0.29056928371366914
+          },
+          "final_time": 20.53240527888853,
+          "final_prim_file": "/tmp/wor25_23_24_resolution_trials/collapse_static_long20_valid_r2/output/protostellar_core_fld_mayer5.prim.00021.athdf"
+        },
+        "solver_pass": true,
+        "face_pass": true,
+        "positive": true,
+        "evaluation": "PASS"
+      }
+    ],
+    "static_restart_runs": [
+      {
+        "name": "collapse_static_long20_restart10_r1",
+        "kind": "persistent_static_restart",
+        "ranks": 1,
+        "threads_per_rank": 2,
+        "source_commit_before_run": "394d66c5",
+        "binary_sha256": "41a2a02a414eb56e458d53b239fe4188eac6ac2a701f47fd54aab944163b1a39",
+        "input_path": null,
+        "input_sha256": null,
+        "checkpoint_path": "/tmp/wor25_23_24_resolution_trials/collapse_static_long20_valid_r1/output/protostellar_core_fld_mayer5.00010.rst",
+        "checkpoint_sha256": "2e9e238946600078a658319ad6e58a73b48646b373bce3c84da9a11127469fbc",
+        "overrides": {
+          "time/nlim": 20
+        },
+        "environment": {
+          "OMP_NUM_THREADS": 2,
+          "ATHENA_NRFLD_EXPERIMENTAL_COLLAPSE": 1,
+          "ATHENA_NRFLD_INTERFACE_LEDGER": 1,
+          "ATHENA_NRFLD_ENERGY_LEDGER": 1
+        },
+        "command": "mpirun --output-filename /tmp/wor25_23_24_resolution_trials/collapse_static_long20_restart10_r1/mpi -n 1 /tmp/wor25_23_24_resolution_collapse_postflddt_build/bin/athena -r /tmp/wor25_23_24_resolution_trials/collapse_static_long20_valid_r1/output/protostellar_core_fld_mayer5.00010.rst -d /tmp/wor25_23_24_resolution_trials/collapse_static_long20_restart10_r1/output time/nlim=20",
+        "run_log": "/tmp/wor25_23_24_resolution_trials/collapse_static_long20_restart10_r1/run.log",
+        "face_logs": [
+          "/tmp/wor25_23_24_resolution_trials/collapse_static_long20_restart10_r1/mpi/1/rank.0/stdout"
+        ],
+        "exit_status": 0,
+        "wall_time": "0:07.76",
+        "peak_rss_kb": 121216,
+        "newton_history": [
+          {
+            "status": "converged",
+            "iterations": 0
+          },
+          {
+            "status": "converged",
+            "iterations": 2
+          },
+          {
+            "status": "converged",
+            "iterations": 2
+          },
+          {
+            "status": "converged",
+            "iterations": 2
+          },
+          {
+            "status": "converged",
+            "iterations": 2
+          },
+          {
+            "status": "converged",
+            "iterations": 2
+          },
+          {
+            "status": "converged",
+            "iterations": 2
+          },
+          {
+            "status": "converged",
+            "iterations": 2
+          },
+          {
+            "status": "converged",
+            "iterations": 2
+          },
+          {
+            "status": "converged",
+            "iterations": 2
+          },
+          {
+            "status": "converged",
+            "iterations": 2
+          }
+        ],
+        "fgmres_history": [
+          {
+            "iterations": 13,
+            "true_relative_residual": 3.330794428147458e-09
+          },
+          {
+            "iterations": 13,
+            "true_relative_residual": 8.206447273272469e-09
+          },
+          {
+            "iterations": 12,
+            "true_relative_residual": 5.8052560548345665e-09
+          },
+          {
+            "iterations": 14,
+            "true_relative_residual": 3.51017968403293e-09
+          },
+          {
+            "iterations": 12,
+            "true_relative_residual": 5.260713388760364e-09
+          },
+          {
+            "iterations": 14,
+            "true_relative_residual": 3.06439216359238e-09
+          },
+          {
+            "iterations": 12,
+            "true_relative_residual": 5.199854101368493e-09
+          },
+          {
+            "iterations": 14,
+            "true_relative_residual": 2.9995140761059667e-09
+          },
+          {
+            "iterations": 12,
+            "true_relative_residual": 5.100579107745261e-09
+          },
+          {
+            "iterations": 14,
+            "true_relative_residual": 2.9832887150279497e-09
+          },
+          {
+            "iterations": 12,
+            "true_relative_residual": 4.9980140123539456e-09
+          },
+          {
+            "iterations": 14,
+            "true_relative_residual": 2.9582929467762594e-09
+          },
+          {
+            "iterations": 12,
+            "true_relative_residual": 4.8998655583568736e-09
+          },
+          {
+            "iterations": 14,
+            "true_relative_residual": 2.932284789342311e-09
+          },
+          {
+            "iterations": 12,
+            "true_relative_residual": 4.808658142549363e-09
+          },
+          {
+            "iterations": 14,
+            "true_relative_residual": 2.9065839671171765e-09
+          },
+          {
+            "iterations": 12,
+            "true_relative_residual": 4.722327919291818e-09
+          },
+          {
+            "iterations": 14,
+            "true_relative_residual": 2.8751922686233145e-09
+          },
+          {
+            "iterations": 12,
+            "true_relative_residual": 4.635955494536495e-09
+          },
+          {
+            "iterations": 14,
+            "true_relative_residual": 2.8370957278586902e-09
+          }
+        ],
+        "fgmres_total_iterations": 260,
+        "max_true_relative_residual": 8.206447273272469e-09,
+        "coarse_fine_face_pair_count": 30,
+        "max_face_relative_mismatch": 8.91687763381521e-08,
+        "worst_face_pair": {
+          "cycle": 10,
+          "stage": 0,
+          "coarse_gid": 9,
+          "axis": 2,
+          "side": "min",
+          "fine_count": 4,
+          "coarse_flux": 1362335.3065072014,
+          "fine_flux": -1362335.5494627676,
+          "mismatch": -0.24295556615106761,
+          "relative_mismatch": 8.91687763381521e-08
+        },
+        "face_history": [
+          {
+            "cycle": 10,
+            "leaf_count": 15,
+            "absolute_level_counts": {
+              "1": 7,
+              "2": 8
+            },
+            "coarse_fine_face_pair_count": 3,
+            "max_face_relative_mismatch": 8.91687763381521e-08,
+            "face_pass": true
+          },
+          {
+            "cycle": 11,
+            "leaf_count": 15,
+            "absolute_level_counts": {
+              "1": 7,
+              "2": 8
+            },
+            "coarse_fine_face_pair_count": 3,
+            "max_face_relative_mismatch": 7.0691718121141e-08,
+            "face_pass": true
+          },
+          {
+            "cycle": 12,
+            "leaf_count": 15,
+            "absolute_level_counts": {
+              "1": 7,
+              "2": 8
+            },
+            "coarse_fine_face_pair_count": 3,
+            "max_face_relative_mismatch": 3.8121567309458e-08,
+            "face_pass": true
+          },
+          {
+            "cycle": 13,
+            "leaf_count": 15,
+            "absolute_level_counts": {
+              "1": 7,
+              "2": 8
+            },
+            "coarse_fine_face_pair_count": 3,
+            "max_face_relative_mismatch": 7.809988304705432e-08,
+            "face_pass": true
+          },
+          {
+            "cycle": 14,
+            "leaf_count": 15,
+            "absolute_level_counts": {
+              "1": 7,
+              "2": 8
+            },
+            "coarse_fine_face_pair_count": 3,
+            "max_face_relative_mismatch": 4.893748790214567e-08,
+            "face_pass": true
+          },
+          {
+            "cycle": 15,
+            "leaf_count": 15,
+            "absolute_level_counts": {
+              "1": 7,
+              "2": 8
+            },
+            "coarse_fine_face_pair_count": 3,
+            "max_face_relative_mismatch": 5.401144938684477e-08,
+            "face_pass": true
+          },
+          {
+            "cycle": 16,
+            "leaf_count": 15,
+            "absolute_level_counts": {
+              "1": 7,
+              "2": 8
+            },
+            "coarse_fine_face_pair_count": 3,
+            "max_face_relative_mismatch": 4.7232852232758926e-08,
+            "face_pass": true
+          },
+          {
+            "cycle": 17,
+            "leaf_count": 15,
+            "absolute_level_counts": {
+              "1": 7,
+              "2": 8
+            },
+            "coarse_fine_face_pair_count": 3,
+            "max_face_relative_mismatch": 5.5628547232078126e-08,
+            "face_pass": true
+          },
+          {
+            "cycle": 18,
+            "leaf_count": 15,
+            "absolute_level_counts": {
+              "1": 7,
+              "2": 8
+            },
+            "coarse_fine_face_pair_count": 3,
+            "max_face_relative_mismatch": 2.3854881614910843e-08,
+            "face_pass": true
+          },
+          {
+            "cycle": 19,
+            "leaf_count": 15,
+            "absolute_level_counts": {
+              "1": 7,
+              "2": 8
+            },
+            "coarse_fine_face_pair_count": 3,
+            "max_face_relative_mismatch": 8.445987028286835e-08,
+            "face_pass": true
+          }
+        ],
+        "max_implicit_energy_absolute_relative_balance": 1.396248811907532e-10,
+        "output": {
+          "initial_mass_volume_integral": 704254526758.1721,
+          "final_mass_volume_integral": 704254540151.1486,
+          "relative_mass_change": 1.9017238699309896e-08,
+          "final_level_counts": {
+            "0": 7,
+            "1": 8
+          },
+          "final_minima": {
+            "rho": 0.051792066920027635,
+            "pressure": 0.02531857985317151,
+            "Er": 0.29056928371372764
+          },
+          "final_time": 20.53240527888679,
+          "final_prim_file": "/tmp/wor25_23_24_resolution_trials/collapse_static_long20_restart10_r1/output/protostellar_core_fld_mayer5.prim.00021.athdf"
+        },
+        "solver_pass": true,
+        "face_pass": true,
+        "positive": true,
+        "evaluation": "PASS"
+      },
+      {
+        "name": "collapse_static_long20_restart10_r2",
+        "kind": "persistent_static_restart",
+        "ranks": 2,
+        "threads_per_rank": 2,
+        "source_commit_before_run": "394d66c5",
+        "binary_sha256": "41a2a02a414eb56e458d53b239fe4188eac6ac2a701f47fd54aab944163b1a39",
+        "input_path": null,
+        "input_sha256": null,
+        "checkpoint_path": "/tmp/wor25_23_24_resolution_trials/collapse_static_long20_valid_r1/output/protostellar_core_fld_mayer5.00010.rst",
+        "checkpoint_sha256": "2e9e238946600078a658319ad6e58a73b48646b373bce3c84da9a11127469fbc",
+        "overrides": {
+          "time/nlim": 20
+        },
+        "environment": {
+          "OMP_NUM_THREADS": 2,
+          "ATHENA_NRFLD_EXPERIMENTAL_COLLAPSE": 1,
+          "ATHENA_NRFLD_INTERFACE_LEDGER": 1,
+          "ATHENA_NRFLD_ENERGY_LEDGER": 1
+        },
+        "command": "mpirun --output-filename /tmp/wor25_23_24_resolution_trials/collapse_static_long20_restart10_r2/mpi -n 2 /tmp/wor25_23_24_resolution_collapse_postflddt_build/bin/athena -r /tmp/wor25_23_24_resolution_trials/collapse_static_long20_valid_r1/output/protostellar_core_fld_mayer5.00010.rst -d /tmp/wor25_23_24_resolution_trials/collapse_static_long20_restart10_r2/output time/nlim=20",
+        "run_log": "/tmp/wor25_23_24_resolution_trials/collapse_static_long20_restart10_r2/run.log",
+        "face_logs": [
+          "/tmp/wor25_23_24_resolution_trials/collapse_static_long20_restart10_r2/mpi/1/rank.0/stdout",
+          "/tmp/wor25_23_24_resolution_trials/collapse_static_long20_restart10_r2/mpi/1/rank.1/stdout"
+        ],
+        "exit_status": 0,
+        "wall_time": "0:07.19",
+        "peak_rss_kb": 83668,
+        "newton_history": [
+          {
+            "status": "converged",
+            "iterations": 0
+          },
+          {
+            "status": "converged",
+            "iterations": 2
+          },
+          {
+            "status": "converged",
+            "iterations": 2
+          },
+          {
+            "status": "converged",
+            "iterations": 2
+          },
+          {
+            "status": "converged",
+            "iterations": 2
+          },
+          {
+            "status": "converged",
+            "iterations": 2
+          },
+          {
+            "status": "converged",
+            "iterations": 2
+          },
+          {
+            "status": "converged",
+            "iterations": 2
+          },
+          {
+            "status": "converged",
+            "iterations": 2
+          },
+          {
+            "status": "converged",
+            "iterations": 2
+          },
+          {
+            "status": "converged",
+            "iterations": 2
+          }
+        ],
+        "fgmres_history": [
+          {
+            "iterations": 13,
+            "true_relative_residual": 3.3307943304351444e-09
+          },
+          {
+            "iterations": 13,
+            "true_relative_residual": 8.207922023516973e-09
+          },
+          {
+            "iterations": 12,
+            "true_relative_residual": 5.805257456476234e-09
+          },
+          {
+            "iterations": 14,
+            "true_relative_residual": 3.508313026842089e-09
+          },
+          {
+            "iterations": 12,
+            "true_relative_residual": 5.260713353969468e-09
+          },
+          {
+            "iterations": 14,
+            "true_relative_residual": 3.0624813030825613e-09
+          },
+          {
+            "iterations": 12,
+            "true_relative_residual": 5.199854064966587e-09
+          },
+          {
+            "iterations": 14,
+            "true_relative_residual": 3.002348683171122e-09
+          },
+          {
+            "iterations": 12,
+            "true_relative_residual": 5.100579436972827e-09
+          },
+          {
+            "iterations": 14,
+            "true_relative_residual": 2.9747591644699738e-09
+          },
+          {
+            "iterations": 12,
+            "true_relative_residual": 4.9980141200451164e-09
+          },
+          {
+            "iterations": 14,
+            "true_relative_residual": 2.963938734761264e-09
+          },
+          {
+            "iterations": 12,
+            "true_relative_residual": 4.89986390815413e-09
+          },
+          {
+            "iterations": 14,
+            "true_relative_residual": 2.935761814839649e-09
+          },
+          {
+            "iterations": 12,
+            "true_relative_residual": 4.808656906791922e-09
+          },
+          {
+            "iterations": 14,
+            "true_relative_residual": 2.9053043930334564e-09
+          },
+          {
+            "iterations": 12,
+            "true_relative_residual": 4.722327346023065e-09
+          },
+          {
+            "iterations": 14,
+            "true_relative_residual": 2.8786222524615526e-09
+          },
+          {
+            "iterations": 12,
+            "true_relative_residual": 4.635954631046742e-09
+          },
+          {
+            "iterations": 14,
+            "true_relative_residual": 2.8362119499430303e-09
+          }
+        ],
+        "fgmres_total_iterations": 260,
+        "max_true_relative_residual": 8.207922023516973e-09,
+        "coarse_fine_face_pair_count": 30,
+        "max_face_relative_mismatch": 1.4146379857488892e-07,
+        "worst_face_pair": {
+          "cycle": 17,
+          "stage": 0,
+          "coarse_gid": 11,
+          "axis": 3,
+          "side": "min",
+          "fine_count": 4,
+          "coarse_flux": 1215559.1892090123,
+          "fine_flux": -1215558.8452938204,
+          "mismatch": 0.34391519194468856,
+          "relative_mismatch": 1.4146379857488892e-07
+        },
+        "face_history": [
+          {
+            "cycle": 10,
+            "leaf_count": 15,
+            "absolute_level_counts": {
+              "1": 7,
+              "2": 8
+            },
+            "coarse_fine_face_pair_count": 3,
+            "max_face_relative_mismatch": 7.431478306547416e-08,
+            "face_pass": true
+          },
+          {
+            "cycle": 11,
+            "leaf_count": 15,
+            "absolute_level_counts": {
+              "1": 7,
+              "2": 8
+            },
+            "coarse_fine_face_pair_count": 3,
+            "max_face_relative_mismatch": 6.242146924156732e-08,
+            "face_pass": true
+          },
+          {
+            "cycle": 12,
+            "leaf_count": 15,
+            "absolute_level_counts": {
+              "1": 7,
+              "2": 8
+            },
+            "coarse_fine_face_pair_count": 3,
+            "max_face_relative_mismatch": 8.706334545093716e-08,
+            "face_pass": true
+          },
+          {
+            "cycle": 13,
+            "leaf_count": 15,
+            "absolute_level_counts": {
+              "1": 7,
+              "2": 8
+            },
+            "coarse_fine_face_pair_count": 3,
+            "max_face_relative_mismatch": 5.7668091891167854e-08,
+            "face_pass": true
+          },
+          {
+            "cycle": 14,
+            "leaf_count": 15,
+            "absolute_level_counts": {
+              "1": 7,
+              "2": 8
+            },
+            "coarse_fine_face_pair_count": 3,
+            "max_face_relative_mismatch": 5.899206059307992e-08,
+            "face_pass": true
+          },
+          {
+            "cycle": 15,
+            "leaf_count": 15,
+            "absolute_level_counts": {
+              "1": 7,
+              "2": 8
+            },
+            "coarse_fine_face_pair_count": 3,
+            "max_face_relative_mismatch": 4.728134505558986e-08,
+            "face_pass": true
+          },
+          {
+            "cycle": 16,
+            "leaf_count": 15,
+            "absolute_level_counts": {
+              "1": 7,
+              "2": 8
+            },
+            "coarse_fine_face_pair_count": 3,
+            "max_face_relative_mismatch": 4.0274860878733986e-08,
+            "face_pass": true
+          },
+          {
+            "cycle": 17,
+            "leaf_count": 15,
+            "absolute_level_counts": {
+              "1": 7,
+              "2": 8
+            },
+            "coarse_fine_face_pair_count": 3,
+            "max_face_relative_mismatch": 1.4146379857488892e-07,
+            "face_pass": true
+          },
+          {
+            "cycle": 18,
+            "leaf_count": 15,
+            "absolute_level_counts": {
+              "1": 7,
+              "2": 8
+            },
+            "coarse_fine_face_pair_count": 3,
+            "max_face_relative_mismatch": 1.3337516576816442e-07,
+            "face_pass": true
+          },
+          {
+            "cycle": 19,
+            "leaf_count": 15,
+            "absolute_level_counts": {
+              "1": 7,
+              "2": 8
+            },
+            "coarse_fine_face_pair_count": 3,
+            "max_face_relative_mismatch": 1.1566402253534108e-07,
+            "face_pass": true
+          }
+        ],
+        "max_implicit_energy_absolute_relative_balance": 7.703020558561402e-10,
+        "output": {
+          "initial_mass_volume_integral": 704254526758.1721,
+          "final_mass_volume_integral": 704254540151.1486,
+          "relative_mass_change": 1.9017238699309896e-08,
+          "final_level_counts": {
+            "0": 7,
+            "1": 8
+          },
+          "final_minima": {
+            "rho": 0.05179206692002772,
+            "pressure": 0.02531857985317421,
+            "Er": 0.2905692837138548
+          },
+          "final_time": 20.53240527888814,
+          "final_prim_file": "/tmp/wor25_23_24_resolution_trials/collapse_static_long20_restart10_r2/output/protostellar_core_fld_mayer5.prim.00021.athdf"
+        },
+        "solver_pass": true,
+        "face_pass": true,
+        "positive": true,
+        "evaluation": "PASS"
+      }
+    ],
+    "comparisons_final_relative_l1": {
+      "static_continuous_rank1_vs_rank2": {
+        "prim": 3.0137775311468975e-14,
+        "fld": 7.581431489983841e-14
+      },
+      "static_restart_rank1_vs_rank2": {
+        "prim": 4.161860993211093e-14,
+        "fld": 1.0359084197871392e-13
+      },
+      "natural_rank1_vs_rank2": {
+        "prim": 1.8817920372248118e-16,
+        "fld": 2.25731885828223e-17
+      },
+      "static_continuous_vs_restart": {
+        "1": {
+          "prim": 5.007976513183784e-14,
+          "fld": 1.2406511386616032e-13
+        },
+        "2": {
+          "prim": 6.099731154913447e-14,
+          "fld": 1.5182348233322014e-13
+        }
+      }
+    },
+    "invalid_preliminary_invocations": [
+      {
+        "name": "collapse_static_long20_r1",
+        "run_log": "/tmp/wor25_23_24_resolution_trials/collapse_static_long20_r1/run.log",
+        "reason": "Command-line override nrfld/global_jacobian_check absent in input; ParameterInput fatal diagnostic despite process exit 0; not counted as a run."
+      },
+      {
+        "name": "collapse_static_long20_r2",
+        "run_log": "/tmp/wor25_23_24_resolution_trials/collapse_static_long20_r2/run.log",
+        "reason": "Command-line override nrfld/global_jacobian_check absent in input; ParameterInput fatal diagnostic despite process exit 0; not counted as a run."
+      }
+    ],
+    "decision": "Natural regrid: after cycle 15, the 43-leaf mixed-level mesh becomes 64 leaves all at the same level; cycles 16-24 therefore contain no coarse/fine pair and cannot establish persistence of the interface failure. All Newton/FGMRES solves converge. Persistent static 15-leaf AMR: all 60 face pairs across cycles 0-19 pass 1e-6 on both ranks; cycle-10 restart has 30 passing pairs across cycles 10-19, and final continuous/restart double-HDF relative L1 is O(1e-13). Positive fields and true residual <1e-8 throughout. This is a local, short 20-cycle validation, not a closed mass/energy budget or full-size collapse validation."
   }
 }
