@@ -15,6 +15,7 @@ import matplotlib.pyplot as plt
 ROOT = Path("/home/kosuke/simulation")
 RUNS = ROOT / "test/rad_nr/wor92_wor105_retest_20261107"
 BUILD = ROOT / "test/rad_nr/wor92_operator_audit_20261107/build_table_precision"
+IDEAL_BUILD = ROOT / "test/rad_nr/wor92_20261107/build_ideal"
 HERE = Path(__file__).resolve().parent
 OUT = HERE / "wor92_local_general_eos_results_20261107"
 
@@ -44,6 +45,12 @@ CASES = {
         RUNS / "input_table_local_general_on_floor32_cfl030_1cycle_ledger.used",
         False,
     ),
+}
+IDEAL = {
+    state: (
+        RUNS / f"ideal_local_flag_{state}_cfl030_1cycle_2rank.log",
+        RUNS / f"input_ideal_local_flag_{state}_cfl030_1cycle.used",
+    ) for state in ("on", "off")
 }
 
 
@@ -149,6 +156,27 @@ def main():
         "binary_sha256": sha(BUILD / "bin/athena"),
         "cases": cases,
     }
+    ideal_rows = []
+    ideal_trace_hashes = {}
+    for state, (log, inp) in IDEAL.items():
+        parsed = parse("ideal_" + state, log, inp, False)
+        lines = [line for line in log.read_text(errors="replace").splitlines()
+                 if line.startswith(("[LINEAR_FGMRES]", "[NR_TRIAL]",
+                                     "[NR] status=converged", "cycle="))]
+        trace = "\n".join(lines).encode()
+        ideal_trace_hashes[state] = hashlib.sha256(trace).hexdigest()
+        ideal_rows.append({"state": state,
+                           "binary_sha256": sha(IDEAL_BUILD / "bin/athena"),
+                           "input_sha256": sha(inp), "log_sha256": sha(log),
+                           "numerical_trace_sha256": ideal_trace_hashes[state],
+                           "completed_cycles": parsed["completed_cycles"],
+                           "linear_solves": parsed["linear_solves"],
+                           "newton_solves": len(parsed["newton"])})
+    summary["ideal_flag_control"] = {
+        "same_numerical_trace": ideal_trace_hashes["on"] == ideal_trace_hashes["off"],
+        "build_defines": {"GENERAL_EOS": 0, "EOS_TABLE_ENABLED": 0},
+        "runs": ideal_rows,
+    }
     (OUT / "summary.json").write_text(json.dumps(summary, indent=2) + "\n")
     csv_write(OUT / "runs.csv", [
         {k: v for k, v in case.items() if k not in
@@ -176,14 +204,26 @@ def main():
         ["case", "rank", "cycle", "stage", "dt", "gas_delta",
          "radiation_delta", "diffusion_delta", "marshak_delta", "balance",
          "relative_balance", "absolute_relative_balance"])
+    csv_write(OUT / "ideal_flag_control.csv", ideal_rows,
+              ["state", "binary_sha256", "input_sha256", "log_sha256",
+               "numerical_trace_sha256", "completed_cycles",
+               "linear_solves", "newton_solves"])
     make_figure(cases)
     with tarfile.open(OUT / "evidence.tar.gz", "w:gz") as archive:
         for name, (log, inp, _) in CASES.items():
             archive.add(log, arcname="logs/" + name + ".log")
             archive.add(inp, arcname="inputs/" + name + ".used")
+        for state, (log, inp) in IDEAL.items():
+            archive.add(log, arcname="logs/ideal_" + state + ".log")
+            archive.add(inp, arcname="inputs/ideal_" + state + ".used")
         archive.add(BUILD / "src", arcname="build/src")
         archive.add(BUILD / "Makefile", arcname="build/Makefile")
         archive.add(BUILD / "configure.log", arcname="build/configure.log")
+        archive.add(IDEAL_BUILD / "src/defs.hpp", arcname="ideal_build/defs.hpp")
+        archive.add(IDEAL_BUILD / "src/nr_multigrid/NRFLD.cpp",
+                    arcname="ideal_build/NRFLD.cpp")
+        archive.add(IDEAL_BUILD / "configure.log",
+                    arcname="ideal_build/configure.log")
     print(json.dumps({name: {
         "cycles": c["completed_cycles"],
         "linear": c["linear_solves"],

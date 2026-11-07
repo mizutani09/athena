@@ -2148,5 +2148,34 @@
       "first_trial_l2": 0.003252919515435617,
       "max_logged_local_residual_over_gas_scale": 3.472195019655528e-13
     }
+  },
+  "ideal_flag_control": {
+    "same_numerical_trace": true,
+    "build_defines": {
+      "GENERAL_EOS": 0,
+      "EOS_TABLE_ENABLED": 0
+    },
+    "runs": [
+      {
+        "state": "on",
+        "binary_sha256": "0415ca77807aa32ca7e338457dbf19caa252ac41b6b584aa894e4dd483dca36e",
+        "input_sha256": "eb3757fa288712622f7f89b83dd8efb1e76b64d1c3a7627cd8ac53c65a9cc5ba",
+        "log_sha256": "71536fcd4257288efd1b20f31fc495f4b1b8275ce6785e1aec1ef995d29b3446",
+        "numerical_trace_sha256": "011f44a75e31f3334df37a423f51e65042c67d6970c44f57a2017a78d2bf895c",
+        "completed_cycles": 1,
+        "linear_solves": 7,
+        "newton_solves": 1
+      },
+      {
+        "state": "off",
+        "binary_sha256": "0415ca77807aa32ca7e338457dbf19caa252ac41b6b584aa894e4dd483dca36e",
+        "input_sha256": "08684635565ffd6dc32e8aba2615b828f037a69c49f0bda2221c470aa4bfeb96",
+        "log_sha256": "8a9cfe0b34eb986441993cce1b7ebc6ca4128769977a0d40be520ef586e042e0",
+        "numerical_trace_sha256": "011f44a75e31f3334df37a423f51e65042c67d6970c44f57a2017a78d2bf895c",
+        "completed_cycles": 1,
+        "linear_solves": 7,
+        "newton_solves": 1
+      }
+    ]
   }
 }

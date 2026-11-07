@@ -2,14 +2,30 @@
 
 ## Question and implementation state
 
-The local gas solve that improved ideal-gas WOR-93 is applicable to the
-Tomida table EOS in the **trial** NR-FLD source. `NRFLD::AddDifference`
+WOR-93 lists an exact local gas solve among several changes to its
+ideal-gas collapse setup, but that issue's combined comparison cannot
+attribute the improvement to this flag alone. In the present source,
+the exact local gas path is compiled only when `GENERAL_EOS &&
+EOS_TABLE_ENABLED`; the flag has no effect in an ideal-gas build. Its
+application to the Tomida table EOS is tested in the **trial** NR-FLD
+source here. `NRFLD::AddDifference`
 bisects the monotone table-EOS matter equation after applying the radiation
 correction. The trial removes the former `!mixed_active` guard and includes
 the frozen-coefficient mixed-frame drift change in that scalar equation.
 The `cut_diff` coupled special case still uses the total-energy constraint;
 the present collapse runs use full diffusion and the bracketed gas root.
 This source remains uncommitted and is not yet a production fix.
+
+An isolated current ideal-gas build has `GENERAL_EOS=0` and
+`EOS_TABLE_ENABLED=0`. With otherwise identical CFL-0.3, one-cycle,
+small-AMR inputs, turning `exact_local_gas_solve` on/off produced
+**byte-identical numerical trace lines**: 7 FGMRES solves, one
+Newton-converged step, numerical trace SHA-256
+`011f44a75e31f3334df37a423f51e65042c67d6970c44f57a2017a78d2bf895c`
+for both. This confirms the flag's no-op behavior in that build; it does
+not reconstruct the historical WOR-93 executable. The ideal-gas result
+must be attributed to the combined solver changes until its original
+binary/source is audited.
 
 All controls below use the same trial binary, SHA-256
 `5b259bf3c0a4b768a6a35aa9f2d9cebfd3b9151f78b80ed5583069a772ffb691`,
@@ -88,7 +104,8 @@ The [summary JSON](wor92_local_general_eos_results_20261107/summary.json),
 [run CSV](wor92_local_general_eos_results_20261107/runs.csv),
 [Newton CSV](wor92_local_general_eos_results_20261107/cycle0_trials.csv),
 [FGMRES CSV](wor92_local_general_eos_results_20261107/linear.csv),
-[ledger CSV](wor92_local_general_eos_results_20261107/ledger.csv), and
+[ledger CSV](wor92_local_general_eos_results_20261107/ledger.csv),
+[ideal-gas flag control CSV](wor92_local_general_eos_results_20261107/ideal_flag_control.csv), and
 [evidence archive](wor92_local_general_eos_results_20261107/evidence.tar.gz)
 contain exact inputs, full logs, and the binary's isolated source snapshot,
 Makefile, and configuration. The archive's source snapshot is evidence of
