@@ -1,0 +1,34 @@
+--- src/pgen/protostellar_core_fld.cpp
++++ src/pgen/protostellar_core_fld.cpp (diagnostic trial)
+@@ -17,6 +17,7 @@
+ #include <iostream>
+ #include <limits>
+ #include <sstream>
++#include <map>
+ #include <set>
+ #include <string>
+ 
+@@ -132,10 +133,10 @@
+   (void)u_fld;
+   const char *diag_prefix = std::getenv("ATHENA_WOR92_OPACITY_DIAG_PREFIX");
+   const int cycle = pmb->pmy_mesh->ncycle;
+-  static std::set<std::pair<int,int>> logged_blocks;
++  static std::map<std::pair<int,int>,int> opacity_calls;
++  const int opacity_call = ++opacity_calls[std::make_pair(cycle,pmb->gid)];
+   const bool capture = diag_prefix != nullptr && use_opacity_table
+-      && (cycle == 4 || cycle == 5)
+-      && logged_blocks.insert(std::make_pair(cycle,pmb->gid)).second;
++      && cycle == 0 && opacity_call <= 8;
+   Real kp_min = std::numeric_limits<Real>::infinity(), kp_max = 0.0;
+   Real kr_min = std::numeric_limits<Real>::infinity(), kr_max = 0.0;
+   Real temp_min = std::numeric_limits<Real>::infinity(), temp_max = 0.0;
+@@ -187,7 +188,8 @@
+     std::ofstream out(path.str(), std::ios::app);
+     out << std::scientific << std::setprecision(17)
+         << "[WOR92_OPACITY_RANGE] rank=" << Globals::my_rank
+-        << " cycle=" << cycle << " gid=" << pmb->gid
++        << " cycle=" << cycle << " call=" << opacity_call
++        << " gid=" << pmb->gid
+         << " level=" << pmb->loc.level
+         << " kp_min=" << kp_min << " kp_max=" << kp_max
+         << " kr_min=" << kr_min << " kr_max=" << kr_max
