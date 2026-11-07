@@ -25,9 +25,10 @@ def mass(h):
          *np.diff(h['x1f'][:],axis=1)[:,None,None,:])
     return float(np.sum(h['prim'][0]*vol))
 
-def run(mode,ranks,strict):
+def run(mode,ranks,strict,nr_strict=False):
     suffix='_strict1e9' if strict else ''
-    name=f'collapse_natural_postflddt_colors_{mode}{suffix}_r{ranks}'
+    name=(f'collapse_natural_postflddt_{mode}_fg1e9_nr1e6_r{ranks}' if nr_strict
+          else f'collapse_natural_postflddt_colors_{mode}{suffix}_r{ranks}')
     d=B/name;log=(d/'run.log').read_text()
     fg=[{'iterations':int(n),'true_relative_residual':float(v)} for n,v in
         re.findall(r'\[LINEAR_FGMRES\] iterations=(\d+) relative_residual=([\deE+.-]+)',log)]
@@ -49,11 +50,12 @@ def run(mode,ranks,strict):
     target=1e-9 if strict else 1e-8
     solver_pass=all(v['true_relative_residual']<target for v in fg) and all(n['status']=='converged' for n in newton)
     return {'name':name,'ranks':ranks,'threads':2,
-            'source_commit_before_run':'4a2d5e03',
+            'source_commit_before_run':'dbbbf510' if nr_strict else '4a2d5e03',
             'binary_sha256':sha(BINARY),'checkpoint_path':str(CHECKPOINT),'checkpoint_sha256':sha(CHECKPOINT),
             'overrides':{'nrfld/consistent_rb_colors':colors[0],
                          'nrfld/symmetric_rb_sweeps':colors[1],
                          'nrfld/fgmres_threshold':target,
+                         'nrfld/nr_threshold':1e-6 if nr_strict else 1e-5,
                          'nrfld/global_jacobian_check':False,
                          'gravity/reset_fmg_color_each_solve':True,
                          'gravity/repeat_initial_fmg_after_restart':True,
@@ -96,7 +98,8 @@ report['wor29_natural_postcfl_color_threshold']={
     'scope':'Natural 43-to-64-leaf regrid from common cycle-15 checkpoint with post-implicit CFL fix; both RBGS flags explicitly overridden.',
     'binary_sha256':sha(BINARY),'checkpoint_sha256':sha(CHECKPOINT),'runs':runs,
     'rank_comparisons_final_relative_l1':comparisons,
-    'decision':'At 1e-8 default uses 50 FGMRES iterations but 1-rank face criterion fails (1.30e-6); consistent uses 52 and both ranks pass; symmetric uses 54 and both pass. At 1e-9 default and consistent use 56 and both ranks pass; symmetric uses 59 but 1-rank face criterion fails (1.09e-6). No robust color-order advantage. Stricter threshold is an input-level mitigation for this collapse case, not a global default because strong Test C reaches a residual floor.'}
+    'newton_threshold_1e6_trials':[run('default',1,True,True),run('symmetric',1,True,True)],
+    'decision':'At 1e-8 default uses 50 FGMRES iterations but 1-rank face criterion fails (1.30e-6); consistent uses 52 and both ranks pass; symmetric uses 54 and both pass. At 1e-9 default and consistent use 56 and both ranks pass; symmetric uses 59 but 1-rank face criterion fails (1.09e-6). No robust color-order advantage. FGMRES 1e-9 is an input-level mitigation for default-color collapse on this checkpoint, not a global default because strong Test C reaches a residual floor. Tightening Newton to 1e-6 did not robustly improve face conservation: symmetric 1-rank still fails at 1.12e-6.'}
 REPORT.write_text(json.dumps(report,indent=2,ensure_ascii=False)+'\n')
 print(json.dumps({'evaluation':[r['evaluation'] for r in runs],
                   'iterations':[r['fgmres_total_iterations'] for r in runs],

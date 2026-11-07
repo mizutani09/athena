@@ -45714,6 +45714,7 @@
           "nrfld/consistent_rb_colors": false,
           "nrfld/symmetric_rb_sweeps": false,
           "nrfld/fgmres_threshold": 1e-08,
+          "nrfld/nr_threshold": 1e-05,
           "nrfld/global_jacobian_check": false,
           "gravity/reset_fmg_color_each_solve": true,
           "gravity/repeat_initial_fmg_after_restart": true,
@@ -45823,6 +45824,7 @@
           "nrfld/consistent_rb_colors": false,
           "nrfld/symmetric_rb_sweeps": false,
           "nrfld/fgmres_threshold": 1e-08,
+          "nrfld/nr_threshold": 1e-05,
           "nrfld/global_jacobian_check": false,
           "gravity/reset_fmg_color_each_solve": true,
           "gravity/repeat_initial_fmg_after_restart": true,
@@ -45933,6 +45935,7 @@
           "nrfld/consistent_rb_colors": true,
           "nrfld/symmetric_rb_sweeps": false,
           "nrfld/fgmres_threshold": 1e-08,
+          "nrfld/nr_threshold": 1e-05,
           "nrfld/global_jacobian_check": false,
           "gravity/reset_fmg_color_each_solve": true,
           "gravity/repeat_initial_fmg_after_restart": true,
@@ -46042,6 +46045,7 @@
           "nrfld/consistent_rb_colors": true,
           "nrfld/symmetric_rb_sweeps": false,
           "nrfld/fgmres_threshold": 1e-08,
+          "nrfld/nr_threshold": 1e-05,
           "nrfld/global_jacobian_check": false,
           "gravity/reset_fmg_color_each_solve": true,
           "gravity/repeat_initial_fmg_after_restart": true,
@@ -46152,6 +46156,7 @@
           "nrfld/consistent_rb_colors": false,
           "nrfld/symmetric_rb_sweeps": true,
           "nrfld/fgmres_threshold": 1e-08,
+          "nrfld/nr_threshold": 1e-05,
           "nrfld/global_jacobian_check": false,
           "gravity/reset_fmg_color_each_solve": true,
           "gravity/repeat_initial_fmg_after_restart": true,
@@ -46261,6 +46266,7 @@
           "nrfld/consistent_rb_colors": false,
           "nrfld/symmetric_rb_sweeps": true,
           "nrfld/fgmres_threshold": 1e-08,
+          "nrfld/nr_threshold": 1e-05,
           "nrfld/global_jacobian_check": false,
           "gravity/reset_fmg_color_each_solve": true,
           "gravity/repeat_initial_fmg_after_restart": true,
@@ -46371,6 +46377,7 @@
           "nrfld/consistent_rb_colors": false,
           "nrfld/symmetric_rb_sweeps": false,
           "nrfld/fgmres_threshold": 1e-09,
+          "nrfld/nr_threshold": 1e-05,
           "nrfld/global_jacobian_check": false,
           "gravity/reset_fmg_color_each_solve": true,
           "gravity/repeat_initial_fmg_after_restart": true,
@@ -46480,6 +46487,7 @@
           "nrfld/consistent_rb_colors": false,
           "nrfld/symmetric_rb_sweeps": false,
           "nrfld/fgmres_threshold": 1e-09,
+          "nrfld/nr_threshold": 1e-05,
           "nrfld/global_jacobian_check": false,
           "gravity/reset_fmg_color_each_solve": true,
           "gravity/repeat_initial_fmg_after_restart": true,
@@ -46590,6 +46598,7 @@
           "nrfld/consistent_rb_colors": true,
           "nrfld/symmetric_rb_sweeps": false,
           "nrfld/fgmres_threshold": 1e-09,
+          "nrfld/nr_threshold": 1e-05,
           "nrfld/global_jacobian_check": false,
           "gravity/reset_fmg_color_each_solve": true,
           "gravity/repeat_initial_fmg_after_restart": true,
@@ -46699,6 +46708,7 @@
           "nrfld/consistent_rb_colors": true,
           "nrfld/symmetric_rb_sweeps": false,
           "nrfld/fgmres_threshold": 1e-09,
+          "nrfld/nr_threshold": 1e-05,
           "nrfld/global_jacobian_check": false,
           "gravity/reset_fmg_color_each_solve": true,
           "gravity/repeat_initial_fmg_after_restart": true,
@@ -46809,6 +46819,7 @@
           "nrfld/consistent_rb_colors": false,
           "nrfld/symmetric_rb_sweeps": true,
           "nrfld/fgmres_threshold": 1e-09,
+          "nrfld/nr_threshold": 1e-05,
           "nrfld/global_jacobian_check": false,
           "gravity/reset_fmg_color_each_solve": true,
           "gravity/repeat_initial_fmg_after_restart": true,
@@ -46918,6 +46929,7 @@
           "nrfld/consistent_rb_colors": false,
           "nrfld/symmetric_rb_sweeps": true,
           "nrfld/fgmres_threshold": 1e-09,
+          "nrfld/nr_threshold": 1e-05,
           "nrfld/global_jacobian_check": false,
           "gravity/reset_fmg_color_each_solve": true,
           "gravity/repeat_initial_fmg_after_restart": true,
@@ -47043,6 +47055,236 @@
         "fld": 3.0845152527361326e-14
       }
     },
-    "decision": "At 1e-8 default uses 50 FGMRES iterations but 1-rank face criterion fails (1.30e-6); consistent uses 52 and both ranks pass; symmetric uses 54 and both pass. At 1e-9 default and consistent use 56 and both ranks pass; symmetric uses 59 but 1-rank face criterion fails (1.09e-6). No robust color-order advantage. Stricter threshold is an input-level mitigation for this collapse case, not a global default because strong Test C reaches a residual floor."
+    "newton_threshold_1e6_trials": [
+      {
+        "name": "collapse_natural_postflddt_default_fg1e9_nr1e6_r1",
+        "ranks": 1,
+        "threads": 2,
+        "source_commit_before_run": "dbbbf510",
+        "binary_sha256": "41a2a02a414eb56e458d53b239fe4188eac6ac2a701f47fd54aab944163b1a39",
+        "checkpoint_path": "/tmp/wor25_23_24_resolution_trials/collapse_postflddt_opacity_natural_r1/output/protostellar_core_fld_mayer5.00015.rst",
+        "checkpoint_sha256": "f4cc6f049c970b4ed3efc43abdd92da0d3e2b6fe6cf817147a2d08e5598c5507",
+        "overrides": {
+          "nrfld/consistent_rb_colors": false,
+          "nrfld/symmetric_rb_sweeps": false,
+          "nrfld/fgmres_threshold": 1e-09,
+          "nrfld/nr_threshold": 1e-06,
+          "nrfld/global_jacobian_check": false,
+          "gravity/reset_fmg_color_each_solve": true,
+          "gravity/repeat_initial_fmg_after_restart": true,
+          "problem/N_J": 7.616,
+          "time/nlim": 17
+        },
+        "environment": {
+          "ATHENA_NRFLD_EXPERIMENTAL_COLLAPSE": 1,
+          "ATHENA_NRFLD_INTERFACE_LEDGER": 1,
+          "ATHENA_NRFLD_ENERGY_LEDGER": 1,
+          "OMP_NUM_THREADS": 2
+        },
+        "command": "mpirun --output-filename /tmp/wor25_23_24_resolution_trials/collapse_natural_postflddt_default_fg1e9_nr1e6_r1/mpi -n 1 /tmp/wor25_23_24_resolution_collapse_postflddt_build/bin/athena -r /tmp/wor25_23_24_resolution_trials/collapse_postflddt_opacity_natural_r1/output/protostellar_core_fld_mayer5.00015.rst -d output mesh/num_threads=2 time/nlim=17 problem/N_J=7.6160 nrfld/global_jacobian_check=false gravity/reset_fmg_color_each_solve=true gravity/repeat_initial_fmg_after_restart=true nrfld/consistent_rb_colors=false nrfld/symmetric_rb_sweeps=false nrfld/fgmres_threshold=1e-9 nrfld/nr_threshold=1e-6",
+        "run_log": "/tmp/wor25_23_24_resolution_trials/collapse_natural_postflddt_default_fg1e9_nr1e6_r1/run.log",
+        "exit_status": 0,
+        "wall_time": "0:09.88",
+        "peak_rss_kb": 421228,
+        "newton_history": [
+          {
+            "status": "converged",
+            "iterations": 0
+          },
+          {
+            "status": "converged",
+            "iterations": 3
+          },
+          {
+            "status": "converged",
+            "iterations": 0
+          },
+          {
+            "status": "converged",
+            "iterations": 3
+          }
+        ],
+        "fgmres_history": [
+          {
+            "iterations": 15,
+            "true_relative_residual": 3.966675182919016e-10
+          },
+          {
+            "iterations": 15,
+            "true_relative_residual": 5.619248132077021e-10
+          },
+          {
+            "iterations": 15,
+            "true_relative_residual": 5.463792729669242e-10
+          },
+          {
+            "iterations": 8,
+            "true_relative_residual": 7.075468324881045e-10
+          },
+          {
+            "iterations": 10,
+            "true_relative_residual": 2.906777200900031e-10
+          },
+          {
+            "iterations": 9,
+            "true_relative_residual": 4.571934250127808e-10
+          }
+        ],
+        "fgmres_total_iterations": 72,
+        "max_true_relative_residual": 7.075468324881045e-10,
+        "face_ledger": {
+          "pair_count": 9,
+          "max_relative_mismatch": 8.552019369078355e-07,
+          "bad_pair": {
+            "cycle": 15,
+            "stage": 0,
+            "coarse_gid": 33,
+            "axis": 2,
+            "side": "max",
+            "fine_count": 4,
+            "coarse_flux": 135440.38302569193,
+            "fine_flux": -135440.15136813425,
+            "mismatch": 0.2316575576842297,
+            "relative_mismatch": 8.552019369078355e-07
+          },
+          "relative_tolerance": 1e-06,
+          "pass": true,
+          "logs": [
+            "/tmp/wor25_23_24_resolution_trials/collapse_natural_postflddt_default_fg1e9_nr1e6_r1/mpi/1/rank.0/stdout"
+          ]
+        },
+        "max_implicit_energy_absolute_relative_balance": 3.6867244583595407e-10,
+        "mass_volume_integral": {
+          "initial": 704254625794.6189,
+          "final": 704254647857.8644,
+          "relative_change": 3.132850630339022e-08
+        },
+        "final_minima": {
+          "rho": 0.05178252732057751,
+          "press": 0.02531438204146404,
+          "Er": 0.29059143264844417
+        },
+        "final_level_counts": {
+          "1": 64
+        },
+        "solver_pass": true,
+        "evaluation": "PASS"
+      },
+      {
+        "name": "collapse_natural_postflddt_symmetric_fg1e9_nr1e6_r1",
+        "ranks": 1,
+        "threads": 2,
+        "source_commit_before_run": "dbbbf510",
+        "binary_sha256": "41a2a02a414eb56e458d53b239fe4188eac6ac2a701f47fd54aab944163b1a39",
+        "checkpoint_path": "/tmp/wor25_23_24_resolution_trials/collapse_postflddt_opacity_natural_r1/output/protostellar_core_fld_mayer5.00015.rst",
+        "checkpoint_sha256": "f4cc6f049c970b4ed3efc43abdd92da0d3e2b6fe6cf817147a2d08e5598c5507",
+        "overrides": {
+          "nrfld/consistent_rb_colors": false,
+          "nrfld/symmetric_rb_sweeps": true,
+          "nrfld/fgmres_threshold": 1e-09,
+          "nrfld/nr_threshold": 1e-06,
+          "nrfld/global_jacobian_check": false,
+          "gravity/reset_fmg_color_each_solve": true,
+          "gravity/repeat_initial_fmg_after_restart": true,
+          "problem/N_J": 7.616,
+          "time/nlim": 17
+        },
+        "environment": {
+          "ATHENA_NRFLD_EXPERIMENTAL_COLLAPSE": 1,
+          "ATHENA_NRFLD_INTERFACE_LEDGER": 1,
+          "ATHENA_NRFLD_ENERGY_LEDGER": 1,
+          "OMP_NUM_THREADS": 2
+        },
+        "command": "mpirun --output-filename /tmp/wor25_23_24_resolution_trials/collapse_natural_postflddt_symmetric_fg1e9_nr1e6_r1/mpi -n 1 /tmp/wor25_23_24_resolution_collapse_postflddt_build/bin/athena -r /tmp/wor25_23_24_resolution_trials/collapse_postflddt_opacity_natural_r1/output/protostellar_core_fld_mayer5.00015.rst -d output mesh/num_threads=2 time/nlim=17 problem/N_J=7.6160 nrfld/global_jacobian_check=false gravity/reset_fmg_color_each_solve=true gravity/repeat_initial_fmg_after_restart=true nrfld/consistent_rb_colors=false nrfld/symmetric_rb_sweeps=true nrfld/fgmres_threshold=1e-9 nrfld/nr_threshold=1e-6",
+        "run_log": "/tmp/wor25_23_24_resolution_trials/collapse_natural_postflddt_symmetric_fg1e9_nr1e6_r1/run.log",
+        "exit_status": 0,
+        "wall_time": "0:09.87",
+        "peak_rss_kb": 421476,
+        "newton_history": [
+          {
+            "status": "converged",
+            "iterations": 0
+          },
+          {
+            "status": "converged",
+            "iterations": 3
+          },
+          {
+            "status": "converged",
+            "iterations": 0
+          },
+          {
+            "status": "converged",
+            "iterations": 3
+          }
+        ],
+        "fgmres_history": [
+          {
+            "iterations": 15,
+            "true_relative_residual": 7.202288822857778e-10
+          },
+          {
+            "iterations": 15,
+            "true_relative_residual": 8.644781518957752e-10
+          },
+          {
+            "iterations": 15,
+            "true_relative_residual": 5.845495292354497e-10
+          },
+          {
+            "iterations": 9,
+            "true_relative_residual": 6.939820012144515e-10
+          },
+          {
+            "iterations": 10,
+            "true_relative_residual": 6.509357287741244e-10
+          },
+          {
+            "iterations": 10,
+            "true_relative_residual": 4.078876354911353e-10
+          }
+        ],
+        "fgmres_total_iterations": 74,
+        "max_true_relative_residual": 8.644781518957752e-10,
+        "face_ledger": {
+          "pair_count": 9,
+          "max_relative_mismatch": 1.1181062644536452e-06,
+          "bad_pair": {
+            "cycle": 15,
+            "stage": 0,
+            "coarse_gid": 34,
+            "axis": 1,
+            "side": "max",
+            "fine_count": 4,
+            "coarse_flux": 135440.43638348058,
+            "fine_flux": -135440.13351021847,
+            "mismatch": 0.30287326211691834,
+            "relative_mismatch": 1.1181062644536452e-06
+          },
+          "relative_tolerance": 1e-06,
+          "pass": false,
+          "logs": [
+            "/tmp/wor25_23_24_resolution_trials/collapse_natural_postflddt_symmetric_fg1e9_nr1e6_r1/mpi/1/rank.0/stdout"
+          ]
+        },
+        "max_implicit_energy_absolute_relative_balance": 3.588342600955254e-10,
+        "mass_volume_integral": {
+          "initial": 704254625794.6189,
+          "final": 704254647857.8644,
+          "relative_change": 3.132850630339022e-08
+        },
+        "final_minima": {
+          "rho": 0.05178252732057748,
+          "press": 0.025314382041465,
+          "Er": 0.29059143264849147
+        },
+        "final_level_counts": {
+          "1": 64
+        },
+        "solver_pass": true,
+        "evaluation": "FAIL_FACE_RELATIVE_ONLY"
+      }
+    ],
+    "decision": "At 1e-8 default uses 50 FGMRES iterations but 1-rank face criterion fails (1.30e-6); consistent uses 52 and both ranks pass; symmetric uses 54 and both pass. At 1e-9 default and consistent use 56 and both ranks pass; symmetric uses 59 but 1-rank face criterion fails (1.09e-6). No robust color-order advantage. FGMRES 1e-9 is an input-level mitigation for default-color collapse on this checkpoint, not a global default because strong Test C reaches a residual floor. Tightening Newton to 1e-6 did not robustly improve face conservation: symmetric 1-rank still fails at 1.12e-6."
   }
 }
