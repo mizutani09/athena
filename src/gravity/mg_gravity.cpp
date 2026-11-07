@@ -52,6 +52,8 @@ MGGravityDriver::MGGravityDriver(Mesh *pm, ParameterInput *pin)
   redblack_ = true;
   reset_fmg_color_each_solve_ = pin->GetOrAddBoolean(
       "gravity", "reset_fmg_color_each_solve", false);
+  repeat_initial_fmg_after_restart_ = pin->GetOrAddBoolean(
+      "gravity", "repeat_initial_fmg_after_restart", false);
   fshowdef_ = pin->GetOrAddBoolean("gravity", "show_defect", fshowdef_);
   std::string m = pin->GetOrAddString("gravity", "mgmode", "none");
   std::transform(m.begin(), m.end(), m.begin(), ::tolower);
@@ -164,6 +166,17 @@ MGGravity::MGGravity(MultigridDriver *pmd, MeshBlock *pmb) : Multigrid(pmd, pmb,
 
 MGGravity::~MGGravity() {
   delete pmgbval;
+}
+
+
+//----------------------------------------------------------------------------------------
+//! \fn void MGGravityDriver::SolveInitial(int restart_flag)
+//! \brief Recompute the initial potential after loading a restart.
+
+void MGGravityDriver::SolveInitial(int restart_flag) {
+  Solve(1);
+  if (restart_flag != 0 && mode_ == 0 && repeat_initial_fmg_after_restart_)
+    Solve(1);
 }
 
 
