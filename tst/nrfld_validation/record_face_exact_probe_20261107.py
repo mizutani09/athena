@@ -114,6 +114,14 @@ def record(name, ranks):
     face_pairs = [pair for pair in compare(rows) if pair['axis'] == 1
                   and pair['coarse_gid'] in by_gid]
     pairs_by_gid = {pair['coarse_gid']: pair for pair in face_pairs}
+    component_only_max_relative = {}
+    for component in ('coarse_ghost_and_coefficient_rounding',
+                      'fine_ghost_rounding', 'moment_restriction_rounding'):
+        component_only_max_relative[component] = max(
+            float(abs(values[component])) /
+            (abs(pairs_by_gid[gid]['coarse_flux']) +
+             abs(pairs_by_gid[gid]['fine_flux']))
+            for gid, values in by_gid.items())
     shifted_relative_by_gid = {}
     for gid, values in by_gid.items():
         pair = pairs_by_gid[gid]
@@ -155,6 +163,8 @@ def record(name, ranks):
             str(gid): {key: float(value) for key, value in values.items()}
             for gid, values in sorted(by_gid.items())},
         'logged_face_pairs': face_pairs,
+        'component_only_max_relative_using_logged_face_scale':
+            component_only_max_relative,
         'shifted_offline_relative_mismatch_by_gid': shifted_relative_by_gid,
         'shifted_offline_max_relative_mismatch': max(shifted_relative_by_gid.values()),
         'evaluation': 'PASS_DIAGNOSTIC_ONLY',
@@ -167,7 +177,7 @@ report = json.loads(REPORT.read_text())
 report['wor24_face_exact_reconstruction_probe'] = {
     'scope': 'Test-only per-cell probe at x1=0.5 of 256 coarse cells and 1024 fine cells, coupled 3-level variable-limiter Test C, 1/2 MPI ranks; binary64 values reconstructed using Decimal.from_float.',
     'cases': cases,
-    'decision': 'The actual fine-side coarse reference is bitwise identical to the coarse active center for all 1024 cells. Exact arithmetic on stored binary64 inputs decomposes the x1=0.5 imbalance into coarse ghost/coefficient, fine ghost and restricted D*Er moment rounding. Subtracting the common coarse reference before moment averaging substantially reduces the offline aggregate mismatch but does not pass the original 1e-6 relative face criterion at every coarse block. This is a diagnostic candidate only: making it a solver fix requires the Newton residual, correction boundary and FGMRES matvec to use the same shifted flux representation; no production operator change is made.'
+    'decision': 'The actual fine-side coarse reference is bitwise identical to the coarse active center for all 1024 cells. Exact arithmetic on stored binary64 inputs decomposes the x1=0.5 imbalance into coarse ghost/coefficient, fine ghost and restricted D*Er moment rounding. Subtracting the common coarse reference before moment averaging substantially reduces the offline aggregate mismatch but does not pass the original 1e-6 relative face criterion at every coarse block. Even isolating fine ghost rounding leaves component/face-scale ratios above 1e-3, so correcting moment restriction alone cannot remove every observed contribution. This is a diagnostic candidate only: making it a solver fix requires the Newton residual, correction boundary and FGMRES matvec to use the same centered face-flux representation; no production operator change is made.'
 }
 REPORT.write_text(json.dumps(report, indent=2, ensure_ascii=False) + '\n')
 for case in cases:

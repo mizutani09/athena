@@ -58705,6 +58705,11 @@
             "mismatch_over_roundoff_scale": 0.04475473335682042
           }
         ],
+        "component_only_max_relative_using_logged_face_scale": {
+          "coarse_ghost_and_coefficient_rounding": 0.0003947126319048298,
+          "fine_ghost_rounding": 0.0012141899004731568,
+          "moment_restriction_rounding": 0.001599407888116311
+        },
         "shifted_offline_relative_mismatch_by_gid": {
           "81": 0.0007320831980017644,
           "83": 0.001388888552100205,
@@ -58896,6 +58901,11 @@
             "mismatch_over_roundoff_scale": 0.07840925175264754
           }
         ],
+        "component_only_max_relative_using_logged_face_scale": {
+          "coarse_ghost_and_coefficient_rounding": 0.0005047271935492807,
+          "fine_ghost_rounding": 0.0015636588339163562,
+          "moment_restriction_rounding": 0.0014237492467943798
+        },
         "shifted_offline_relative_mismatch_by_gid": {
           "81": 0.0001241804489238154,
           "83": 4.8548014943087454e-05,
@@ -58906,7 +58916,7 @@
         "evaluation": "PASS_DIAGNOSTIC_ONLY"
       }
     ],
-    "decision": "The actual fine-side coarse reference is bitwise identical to the coarse active center for all 1024 cells. Exact arithmetic on stored binary64 inputs decomposes the x1=0.5 imbalance into coarse ghost/coefficient, fine ghost and restricted D*Er moment rounding. Subtracting the common coarse reference before moment averaging substantially reduces the offline aggregate mismatch but does not pass the original 1e-6 relative face criterion at every coarse block. This is a diagnostic candidate only: making it a solver fix requires the Newton residual, correction boundary and FGMRES matvec to use the same shifted flux representation; no production operator change is made."
+    "decision": "The actual fine-side coarse reference is bitwise identical to the coarse active center for all 1024 cells. Exact arithmetic on stored binary64 inputs decomposes the x1=0.5 imbalance into coarse ghost/coefficient, fine ghost and restricted D*Er moment rounding. Subtracting the common coarse reference before moment averaging substantially reduces the offline aggregate mismatch but does not pass the original 1e-6 relative face criterion at every coarse block. Even isolating fine ghost rounding leaves component/face-scale ratios above 1e-3, so correcting moment restriction alone cannot remove every observed contribution. This is a diagnostic candidate only: making it a solver fix requires the Newton residual, correction boundary and FGMRES matvec to use the same centered face-flux representation; no production operator change is made."
   },
   "wor25_linearity_each_solve_audit": {
     "scope": "Coupled variable-limiter 3-level shifted Test C, two steps, 1/2 ranks; post-solve opt-in linearity audit ON/OFF on the same binary. One-rank restart-80 control on older isolated binary.",
