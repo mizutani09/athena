@@ -1,0 +1,47 @@
+{
+  "base_git_hash": "ebf7634a8e877edfd58724de1e3810638a76ca7e",
+  "binary_sha256": "5b259bf3c0a4b768a6a35aa9f2d9cebfd3b9151f78b80ed5583069a772ffb691",
+  "same_first_two_fgmres": true,
+  "runs": [
+    {
+      "case": "strict",
+      "exit_code": 134,
+      "linear_solves": 2,
+      "floor_acceptances": 0,
+      "newton_converged_steps": 0,
+      "newton_steps": [],
+      "input_sha256": "2dce5f3ab2bf366aeda140452ea713138497d4372ada853e17b131cf5a01f97a",
+      "log_sha256": "2c37f5a605caf1f1cc97c27f6496d79aee9c9b3ef2ca1489ea05e221bae8bb91"
+    },
+    {
+      "case": "floor_1epsilon",
+      "exit_code": 0,
+      "linear_solves": 6,
+      "floor_acceptances": 3,
+      "newton_converged_steps": 3,
+      "newton_steps": [
+        {
+          "cycle": 0,
+          "time": 0.0,
+          "dt": 31.114819909241852,
+          "newton_iterations": 2
+        },
+        {
+          "cycle": 1,
+          "time": 31.114819909241852,
+          "dt": 28.387721395389406,
+          "newton_iterations": 2
+        },
+        {
+          "cycle": 2,
+          "time": 59.50254130463126,
+          "dt": 28.582645826603432,
+          "newton_iterations": 2
+        }
+      ],
+      "input_sha256": "0a5e766088da0668824c1cdd91645f50639183e628c5ee83f5783326f8b1ed97",
+      "log_sha256": "f5e174a1f0527efaf0bdc39bd0b89547408232059bd18611ab2c49f7c39a86a0"
+    }
+  ],
+  "limitation": "Exploratory acceptance policy; normwise target is not met for three solves and no long collapse is validated"
+}
