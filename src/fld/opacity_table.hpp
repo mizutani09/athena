@@ -36,6 +36,7 @@ class UserOpacityTable : public InterpTable2D {
 
   Real GetOpacity(int var_index, Real density, Real temperature);
   Real GetOpacityFromRhoT(int var_index, Real density, Real temperature);
+  bool IsInDomainRhoT(Real density, Real temperature) const;
   Real GetOpacityFromPT(int var_index, Real pressure, Real temperature);
   // Counters are per opacity-field lookup: evaluating both Planck and Rosseland
   // at one cell records two events when both lookups are outside the domain.

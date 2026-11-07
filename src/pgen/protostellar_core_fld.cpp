@@ -63,6 +63,7 @@ Real mass_core, radius_core, temperature_core, mean_molecular_weight;
 Real density_core, density_ambient, omega_phys, b0_phys;
 Real kappa_planck, kappa_rosseland, transition_width;
 bool use_opacity_table = false;
+bool guard_accepted_opacity_domain = false;
 UserOpacityTable *opacity_table = nullptr;
 Real radius_core_code, transition_width_code;
 Real gravity_code, jeans_number;
@@ -533,6 +534,16 @@ void Mesh::InitUserMeshData(ParameterInput *pin) {
   kappa_rosseland=pin->GetOrAddReal("radiation","kappa_R",1.0);
   use_opacity_table=pin->GetOrAddBoolean("fld","use_opacity_table",false);
   if (use_opacity_table) opacity_table=new UserOpacityTable(pin);
+  guard_accepted_opacity_domain=pin->GetOrAddBoolean(
+      "fld","opacity_accepted_state_guard",false);
+  if (guard_accepted_opacity_domain && (!use_opacity_table ||
+      opacity_table->domain_policy != UserOpacityTable::DomainPolicy::clamp)) {
+    std::stringstream msg;
+    msg << "### FATAL ERROR in protostellar_core_fld: "
+        << "fld/opacity_accepted_state_guard requires an opacity table with "
+        << "fld/opacity_table_domain_policy=clamp.";
+    ATHENA_ERROR(msg);
+  }
   density_core=3.0*mass_core/(4.0*kPi*std::pow(radius_core,3));
   density_ambient=ambient_factor*density_core;
   radius_core_code=radius_core/length_unit;
@@ -827,7 +838,38 @@ void MeshBlock::UserWorkBeforeOutput(ParameterInput *pin) {
   }
 }
 void Mesh::UserWorkInLoop() {
-  if (!background_sink_after_implicit) return;
-  for (int b=0; b<nblocal; ++b) ApplyBackgroundHeatSink(my_blocks(b));
+  if (background_sink_after_implicit)
+    for (int b=0; b<nblocal; ++b) ApplyBackgroundHeatSink(my_blocks(b));
+  if (!guard_accepted_opacity_domain) return;
+  Real minimum_temperature = std::numeric_limits<Real>::max();
+  for (int b=0; b<nblocal; ++b) {
+    MeshBlock *pmb = my_blocks(b);
+    for (int k=pmb->ks; k<=pmb->ke; ++k)
+      for (int j=pmb->js; j<=pmb->je; ++j)
+        for (int i=pmb->is; i<=pmb->ie; ++i) {
+          const Real density = pmb->phydro->w(IDN,k,j,i)*rho_unit;
+          const Real temperature = GasTemperature(pmb,k,j,i);
+          minimum_temperature = std::min(minimum_temperature,temperature);
+          if (!opacity_table->IsInDomainRhoT(density,temperature)) {
+            std::stringstream msg;
+            msg << "### FATAL ERROR in protostellar_core_fld: accepted active cell "
+                << "is outside the opacity table domain; cycle=" << ncycle
+                << " gid=" << pmb->gid << " (k,j,i)=(" << k << "," << j
+                << "," << i << ") rho_cgs=" << density
+                << " T_K=" << temperature << ".";
+            ATHENA_ERROR(msg);
+          }
+        }
+  }
+#ifdef MPI_PARALLEL
+  MPI_Allreduce(MPI_IN_PLACE, &minimum_temperature, 1, MPI_ATHENA_REAL,
+                MPI_MIN, MPI_COMM_WORLD);
+#endif
+  if (Globals::my_rank == 0)
+    std::cout << "[WOR92_OPACITY_ACCEPTED] cycle=" << ncycle
+              << " Tmin_K=" << minimum_temperature << std::endl;
 }
-void Mesh::UserWorkAfterLoop(ParameterInput *pin) { (void)pin; }
+void Mesh::UserWorkAfterLoop(ParameterInput *pin) {
+  (void)pin;
+  if (guard_accepted_opacity_domain) opacity_table->ReportDiagnostics(std::cout);
+}

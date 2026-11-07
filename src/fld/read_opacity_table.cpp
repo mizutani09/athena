@@ -798,6 +798,24 @@ Real UserOpacityTable::GetOpacityFromPT(int var_index, Real pressure, Real tempe
   return GetOpacityFromRhoT(var_index, density, temperature);
 }
 
+bool UserOpacityTable::IsInDomainRhoT(Real density, Real temperature) const {
+  if (!std::isfinite(density) || !std::isfinite(temperature) ||
+      density <= 0.0 || temperature <= 0.0) return false;
+  constexpr Real r_gas_cgs = 8.314462618e7;
+  const Real log_temperature = std::log10(temperature);
+  Real log_x2 = 0.0;
+  if (x2_axis_kind == X2AxisKind::density) {
+    log_x2 = std::log10(density);
+  } else if (x2_axis_kind == X2AxisKind::pressure) {
+    log_x2 = std::log10(density*r_gas_cgs*temperature/mean_molecular_weight);
+  } else {
+    log_x2 = std::log10(density) - 3.0*log_temperature + 18.0;
+  }
+  return std::isfinite(log_temperature) && std::isfinite(log_x2) &&
+      log_temperature >= tempMin && log_temperature <= tempMax &&
+      log_x2 >= pressureMin && log_x2 <= pressureMax;
+}
+
 Real UserOpacityTable::GetOpacityFromRhoT(int var_index, Real density, Real temperature) {
   if (!use_tables) {
     std::stringstream msg;
