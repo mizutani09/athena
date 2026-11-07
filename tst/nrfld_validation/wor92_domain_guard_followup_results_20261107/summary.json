@@ -1,9 +1,11 @@
 {
   "source_commits": [
     "6da81d20",
-    "ff632195"
+    "ff632195",
+    "14633c31"
   ],
-  "trial_binary_sha256": "e7854e44e35a3ed85f9ab1963a801c1b09a6736db7356c6ff53dd2c0519217da",
+  "original_trial_binary_sha256": "e7854e44e35a3ed85f9ab1963a801c1b09a6736db7356c6ff53dd2c0519217da",
+  "clean_trial_binary_sha256": "0e6af159f3c545d765667ab45a3b7feaad7a3ddbb0c05e8897633822c86f5c1b",
   "checkpoint_sha256": "3336de5537d7d0f5b8a1f9b7941727d202a980dac81bfdd088611edaee215240",
   "input_sha256": "7cd5ee8a6a3fe749624985b75dbafd000f34e713b9b2f723a191689bbef09cd0",
   "guard_on_off_trace_equal": {
@@ -13,6 +15,7 @@
   },
   "guard_on_off_history_byte_equal": true,
   "through_cycle86_history_byte_equal": true,
+  "clean_ghost_replay_trace_and_history_equal": true,
   "cases": {
     "clamp_guard_to82": {
       "case": "clamp_guard_to82",
@@ -152,6 +155,29 @@
       "last_rho_max_cgs": 3.80798e-14,
       "last_Tgas_max_K": 20.5938
     },
+    "mean_preserving_clean_to90": {
+      "case": "mean_preserving_clean_to90",
+      "run_dir": "table_domain_mean_limiter_clean_restart74_to90_2rank",
+      "log_sha256": "4aa4c007c7436241bf0bb30ddcbc4ce6c5c61b995b94c90d675a2fafd849b7a7",
+      "first_cycle": 74,
+      "last_cycle_line": 90,
+      "last_time": 2180.305699134218,
+      "last_dt": 8.014368650408167,
+      "newton_converged": 17,
+      "fgmres_solves": 56,
+      "accepted_checks": 16,
+      "accepted_tmin_min_K": 11.493790073693713,
+      "ghost_limiter_calls": 24,
+      "ghost_values_modified": 576,
+      "opacity_out_of_domain": 576,
+      "opacity_clamped": 576,
+      "radiation_ghost_error": "",
+      "stopped_on_cycle_limit": true,
+      "history_sha256": "18f1bcce0bdd084ea2b77d72a76d3860a73de0f6d9ecf3253676febbb6d84b15",
+      "history_rows": 17,
+      "last_rho_max_cgs": 3.06956e-14,
+      "last_Tgas_max_K": 23.3284
+    },
     "cfl015_guard_to110": {
       "case": "cfl015_guard_to110",
       "run_dir": "table_domain_guard_cfl015_restart74_to110_2rank",
@@ -177,7 +203,7 @@
     }
   },
   "limitations": [
-    "The positive NR ghost approaches are uncommitted trials; full flux/energy ledger and first-core collapse are outstanding.",
+    "The mean-preserving positive NR ghost method is committed as opt-in after a separate clean replay; the simple floor and failure-location instrumentation remain archived trials. Full first-core collapse is outstanding.",
     "The accepted-state opacity check runs after implicit solve but before AMR regrid.",
     "CFL=0.15 from cycle 74 follows a different trajectory; it does not establish CFL convergence."
   ]

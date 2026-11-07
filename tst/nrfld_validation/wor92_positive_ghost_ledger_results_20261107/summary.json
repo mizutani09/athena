@@ -1,0 +1,20 @@
+{
+  "cycles": 26,
+  "cycle_range": [
+    74,
+    99
+  ],
+  "blocks_per_stage": 120,
+  "coarse_fine_groups_per_stage": 24,
+  "weighted_cf_mismatch_max": 3.9017849364292744e-10,
+  "weighted_cf_mismatch_cycle": 75,
+  "max_rank_relative_energy_balance": 2.6956451783943907e-06,
+  "max_rank_absolute_relative_energy_balance": 2.701417007842895e-06,
+  "numerical_trace_identical_to_no_ledger": true,
+  "history_byte_identical_to_no_ledger": true,
+  "rank_log_sha256": {
+    "rank.0.log": "3e7def1c73c18af353f3f0d2204e2216595fd56fe6438cc8eb4ca09eb1b18b6d",
+    "rank.1.log": "fdcb3237915f1f37260757a6ae28d4825e784779fa09e509e806fcb93eb7a0bc"
+  },
+  "launcher_log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+}

@@ -25,6 +25,7 @@ CASES = {
     "ghost_location_failure": "table_domain_ghost_diag_restart74_to88_2rank",
     "ghost_floor_to100": "table_domain_ghost_clip_restart74_to100_2rank",
     "mean_preserving_to100": "table_domain_mean_limiter_restart74_to100_2rank",
+    "mean_preserving_clean_to90": "table_domain_mean_limiter_clean_restart74_to90_2rank",
     "cfl015_guard_to110": "table_domain_guard_cfl015_restart74_to110_2rank",
 }
 
@@ -106,18 +107,27 @@ def main():
     assert all(control_equal.values())
     assert (ROOT / CASES["clamp_guard_to82"] / "cfl030_flux_precision16_local.hst").read_bytes() == (ROOT / CASES["clamp_no_guard_to82"] / "cfl030_flux_precision16_local.hst").read_bytes()
     assert prefix == floor[:len(prefix)] == mean[:len(prefix)]
+    clean_path = ROOT / CASES["mean_preserving_clean_to90"]
+    prior_path = ROOT / "table_domain_mean_limiter_restart74_to90_2rank"
+    def numerical_lines(path):
+        return [line for line in path.read_text(errors="replace").splitlines()
+                if re.search(r"^cycle=|^\[NR\] status=|\[LINEAR_FGMRES\] iterations=", line)]
+    assert numerical_lines(clean_path / "run.log") == numerical_lines(prior_path / "run.log")
+    assert (clean_path / "cfl030_flux_precision16_local.hst").read_bytes() == (prior_path / "cfl030_flux_precision16_local.hst").read_bytes()
 
     trial_binary = Path("/home/kosuke/simulation/test/rad_nr/wor92_operator_audit_20261107/build_table_domain_guard_trial/bin/athena")
     checkpoint = ROOT / "table_floor32_restart30_to80_2rank/cfl030_flux_precision16_local.00002.rst"
     input_file = ROOT / "input_table_domain_guard_cfl030_restart.used"
-    summary = {"source_commits": ["6da81d20", "ff632195"],
-               "trial_binary_sha256": sha(trial_binary),
+    summary = {"source_commits": ["6da81d20", "ff632195", "14633c31"],
+               "original_trial_binary_sha256": "e7854e44e35a3ed85f9ab1963a801c1b09a6736db7356c6ff53dd2c0519217da",
+               "clean_trial_binary_sha256": sha(trial_binary),
                "checkpoint_sha256": sha(checkpoint), "input_sha256": sha(input_file),
                "guard_on_off_trace_equal": control_equal,
                "guard_on_off_history_byte_equal": True,
                "through_cycle86_history_byte_equal": True,
+               "clean_ghost_replay_trace_and_history_equal": True,
                "cases": by,
-               "limitations": ["The positive NR ghost approaches are uncommitted trials; full flux/energy ledger and first-core collapse are outstanding.",
+               "limitations": ["The mean-preserving positive NR ghost method is committed as opt-in after a separate clean replay; the simple floor and failure-location instrumentation remain archived trials. Full first-core collapse is outstanding.",
                                "The accepted-state opacity check runs after implicit solve but before AMR regrid.",
                                "CFL=0.15 from cycle 74 follows a different trajectory; it does not establish CFL convergence."]}
     (OUT / "summary.json").write_text(json.dumps(summary, indent=2, ensure_ascii=False) + "\n")
