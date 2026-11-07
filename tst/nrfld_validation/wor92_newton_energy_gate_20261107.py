@@ -22,6 +22,8 @@ CASES = {
     "from92_max3e6": "table_mean_limiter_from92_nrmax3e6_2rank",
     "from74_max3e6": "table_domain_mean_limiter_nrmax3e6_restart74_to95_2rank",
     "from0_max3e6": "table_clean_nrmax3e6_from0_3cycles_2rank",
+    "from0_verbose2": "table_clean_nrmax3e6_cycle0_verbose2_2rank",
+    "from0_max_merit_tradeoff": "table_max_merit_nrmax3e6_cycle0_2rank",
 }
 
 
@@ -73,6 +75,8 @@ def main():
     assert at92["from92_max1e5"]["max_rank_signed_energy_balance"] > 2e-6
     assert at92["from92_max3e6"]["max_rank_signed_energy_balance"] < 1e-10
     assert overview["from0_max3e6"]["backtracking_exhausted"] == 1
+    assert overview["from0_verbose2"]["backtracking_exhausted"] == 1
+    assert any(r["nr_status"] == "stagnation" for r in rows if r["case"] == "from0_max_merit_tradeoff")
 
     with (OUT / "cycles.csv").open("w", newline="") as f:
         writer = csv.DictWriter(f, fieldnames=list(rows[0]), lineterminator="\n")
@@ -85,6 +89,7 @@ def main():
                    name: {k: at92[name][k] for k in ("nr_iterations", "nr_final_l2", "nr_final_max", "max_rank_signed_energy_balance", "max_rank_absolute_energy_balance")}
                    for name in ("from92_max1e5", "from92_max3e6")},
                "cases": overview,
+               "max_merit_trial_binary_sha256": "04ed8c9ff4ec35df5cc5fab841154aa6bbea9638673fdc330e641148ad8fbdc9",
                "interpretation": "One additional Newton iteration from the same restart state reduces the implicit energy-balance fraction at cycle 92 by five orders of magnitude. A globally tighter maximum criterion fails at the initial cycle, so adaptive control or an accuracy budget is needed."}
     (OUT / "summary.json").write_text(json.dumps(summary, indent=2) + "\n")
     fig, axes = plt.subplots(1, 2, figsize=(9.5, 3.8))
@@ -107,6 +112,7 @@ def main():
             archive.add(ROOT / dirname / "run.log", arcname=f"logs/{label}.log")
         archive.add(ROOT / "table_mean_limiter_checkpoint92_baseline_2rank/run.log",
                     arcname="logs/checkpoint92_production.log")
+        archive.add(OUT / "max_merit_trial.patch.gz", arcname="patches/max_merit_trial.patch.gz")
     print(json.dumps(summary["same_checkpoint_cycle92"], indent=2))
 
 
