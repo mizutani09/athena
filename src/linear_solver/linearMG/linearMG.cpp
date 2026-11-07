@@ -1754,12 +1754,78 @@ void linearMGDriver::SolveFGMRES(int stage) {
     axpy(r, -1.0, ax);
     beta = norm(r);
     relative_residual = static_cast<Real>(beta/bnorm);
+    if (Globals::my_rank == 0
+        && std::getenv("ATHENA_NRFLD_FGMRES_RESTART_AUDIT") != nullptr) {
+      const auto flags = std::cout.flags();
+      const auto precision = std::cout.precision();
+      std::cout << std::scientific << std::setprecision(18)
+                << "[LINEAR_FGMRES_RESTART_AUDIT] total_iterations="
+                << total_iterations << " used=" << used
+                << " projected_relative_residual="
+                << static_cast<long double>(std::abs(g[used]))/bnorm
+                << " true_relative_residual=" << beta/bnorm
+                << " rhs_norm=" << bnorm << std::endl;
+      std::cout.flags(flags);
+      std::cout.precision(precision);
+    }
     if (breakdown) break;
   }
   if (fgmres_linearity_check_ && (fgmres_linearity_check_count_ == 0
       || std::getenv("ATHENA_NRFLD_FGMRES_LINEARITY_EACH_SOLVE") != nullptr))
     audit_linearity();
   load_delta(x);
+  if (std::getenv("ATHENA_NRFLD_FGMRES_MATVEC_CAST_AUDIT") != nullptr
+      && !NRFLDPrototype::DifferenceJv()) {
+    long double sums[3] = {0.0L, 0.0L, 0.0L};
+    for (std::size_t bidx = 0; bidx < b.size(); ++bidx) {
+      linearMG *pmg = static_cast<linearMG*>(vmg_[bidx]);
+      MeshBlock *pmb = pmg->pmy_block_;
+      const AthenaArray<Real> &delta = pmg->pnr_->delta_u_;
+      const AthenaArray<Real> &coeff = pmg->pnr_->coeff_;
+      const long double fac = static_cast<long double>(dt_)
+          /SQR(static_cast<long double>(pmb->pcoord->dx1f(pmb->is)));
+      for (int k = pmb->ks; k <= pmb->ke; ++k)
+        for (int j = pmb->js; j <= pmb->je; ++j)
+          for (int i = pmb->is; i <= pmb->ie; ++i) {
+            const long double center = delta(k,j,i);
+            long double face_sum = coeff(linearSolver::DCCF,k,j,i);
+            long double value = static_cast<long double>(
+                coeff(linearSolver::DCCS,k,j,i))*center;
+            const long double neighbor[6] = {
+                delta(k,j,i-1),delta(k,j,i+1),delta(k,j-1,i),delta(k,j+1,i),
+                delta(k-1,j,i),delta(k+1,j,i)};
+            for (int face = 0; face < 6; ++face) {
+              const long double flux = coeff(linearSolver::DXMF+face,k,j,i);
+              face_sum += flux;
+              value += fac*flux*(neighbor[face]-center)
+                  + static_cast<long double>(
+                      coeff(linearSolver::DXMS+face,k,j,i))*neighbor[face];
+            }
+            value += fac*face_sum*center;
+            const long double residual = cat(b,bidx,k,j,i)-value;
+            const long double cast_gap = value-cat(ax,bidx,k,j,i);
+            sums[0] += residual*residual;
+            sums[1] += cast_gap*cast_gap;
+            sums[2] += center*center;
+          }
+    }
+#ifdef MPI_PARALLEL
+    MPI_Allreduce(MPI_IN_PLACE, sums, 3, MPI_LONG_DOUBLE, MPI_SUM,
+                  MPI_COMM_WORLD);
+#endif
+    if (Globals::my_rank == 0) {
+      const auto flags = std::cout.flags();
+      const auto precision = std::cout.precision();
+      std::cout << std::scientific << std::setprecision(18)
+                << "[LINEAR_FGMRES_MATVEC_CAST_AUDIT] iterations="
+                << total_iterations
+                << " extended_residual_rel=" << std::sqrt(sums[0])/bnorm
+                << " cast_gap_rel=" << std::sqrt(sums[1])/bnorm
+                << " solution_norm=" << std::sqrt(sums[2]) << std::endl;
+      std::cout.flags(flags);
+      std::cout.precision(precision);
+    }
+  }
   if (Globals::my_rank == 0) {
     std::cout << "[LINEAR_FGMRES] iterations=" << total_iterations
               << " relative_residual=" << relative_residual

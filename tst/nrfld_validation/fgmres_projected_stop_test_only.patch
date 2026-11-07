@@ -1,0 +1,37 @@
+--- a/src/linear_solver/linearMG/linearMG.cpp
++++ b/src/linear_solver/linearMG/linearMG.cpp
+@@ -1654,6 +1654,17 @@
+   Real relative_residual = static_cast<Real>(beta/bnorm);
+   int total_iterations = 0;
+   bool breakdown = false;
++  Real projected_stop_factor = 1.0;
++  if (const char *setting = std::getenv(
++          "ATHENA_NRFLD_FGMRES_PROJECTED_STOP_FACTOR")) {
++    projected_stop_factor = std::strtod(setting, nullptr);
++    if (!(projected_stop_factor > 0.0 && projected_stop_factor <= 1.0)
++        || !std::isfinite(projected_stop_factor)) {
++      std::stringstream msg;
++      msg << "ATHENA_NRFLD_FGMRES_PROJECTED_STOP_FACTOR must be in (0,1].";
++      ATHENA_ERROR(msg);
++    }
++  }
+ 
+   while (relative_residual > fgmres_threshold_
+          && total_iterations < fgmres_max_iterations_) {
+@@ -1729,7 +1740,7 @@
+       used = j + 1;
+       ++total_iterations;
+       relative_residual = std::abs(g[j+1])/static_cast<Real>(bnorm);
+-      if (relative_residual <= fgmres_threshold_
++      if (relative_residual <= fgmres_threshold_*projected_stop_factor
+           || hnext <= std::numeric_limits<Real>::epsilon()*bnorm) break;
+     }
+     if (used == 0) {
+@@ -1778,6 +1789,7 @@
+     std::cout << "[LINEAR_FGMRES] iterations=" << total_iterations
+               << " relative_residual=" << relative_residual
+               << " target=" << fgmres_threshold_
++              << " projected_stop_factor=" << projected_stop_factor
+               << " restart=" << fgmres_restart_
+               << " mg_vcycles=" << fgmres_mg_vcycles_
+               << " compact=" << fgmres_compact_basis_
