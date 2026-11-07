@@ -1,21 +1,23 @@
 # WOR-92: local gas/radiation Jacobian probe
 
-The existing `NRFLD::RunJacobianDiagnostic` finite-difference routine
-was present in source but had no caller. In a **copied, isolated build
-tree only**, a one-line diagnostic hook called it after coefficient
-construction. The source change is archived as a patch and is not a
-production change. The trial binary is SHA-256
-`deda2405d897faf69cfe65d34ac46a5907487083aa03da42829e4e047ca9a82d`;
-the patch is SHA-256
-`975391cd4148f859a048bcf7780c231026dba544309ea1362ea82a188d3f0317`.
+**Correction:** the existing `NRFLD::RunJacobianDiagnostic` routine is
+already called through `NewtonRaphsonDriver::RunJacobianDiagnostics` in
+`src/nr_multigrid/NRFLD_jacobian_diagnostic.cpp`. A one-line hook added
+in an isolated exploratory build was redundant. The final results below
+were rerun with the original trial binary, SHA-256
+`5b259bf3c0a4b768a6a35aa9f2d9cebfd3b9151f78b80ed5583069a772ffb691`.
+The redundant hook's patch (SHA-256
+`975391cd4148f859a048bcf7780c231026dba544309ea1362ea82a188d3f0317`)
+and logs remain archived for provenance, but are not needed to reproduce
+the diagnostic.
 Both runs use the WOR-105-based branch at base Git commit
 `ebf7634a8e877edfd58724de1e3810638a76ca7e` with Tomida EOS,
 Semenov opacity, CFL 0.3, 32³ root, small AMR, two ranks, restart 40
 and two MG V-cycles.
 
-The first run kept the strict `2e-8` FGMRES target and failed in cycle 0
+The first original-binary run kept the strict `2e-8` FGMRES target and failed in cycle 0
 at the **same** second-solve residual `3.8796577724e-8` as the run
-without diagnostics. The second run used the previously documented
+without diagnostics. The second original-binary run used the previously documented
 factor-32 precision-floor acceptance for ten cycles. It completed ten
 Newton solves and 22 FGMRES solves. Its 22 FGMRES output lines are
 byte-identical to the corresponding no-diagnostic run, SHA-256
@@ -68,7 +70,7 @@ env ATHENA_NRFLD_CONSERVATIVE_PROTOTYPE=1 \
   ATHENA_NRFLD_EXPERIMENTAL_COUPLED=1 \
   ATHENA_NRFLD_EXPERIMENTAL_REGRID=1 \
   ATHENA_NRFLD_CONSERVATIVE_DIFFERENCE_JV=0 \
-  timeout 120s mpirun -np 2 /path/to/isolated/diagnostic/bin/athena \
+  timeout 120s mpirun -np 2 /path/to/isolated/table/bin/athena \
   -i /path/to/input_table_local_jacobian_cfl030_strict_3cycles.used \
   -d /path/to/fresh/output
 ```

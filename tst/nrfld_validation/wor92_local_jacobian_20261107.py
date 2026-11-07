@@ -25,9 +25,9 @@ def sha(path: Path) -> str:
 
 
 CASES = [
-    ("strict_failure", "table_local_jacobian_cfl030_strict_2rank",
+    ("strict_failure", "table_local_jacobian_original_binary_strict_2rank",
      "input_table_local_jacobian_cfl030_strict_3cycles.used"),
-    ("floor32_10cycles", "table_local_jacobian_floor32_cfl030_10cycles_2rank",
+    ("floor32_10cycles", "table_local_jacobian_original_binary_floor32_10cycles_2rank",
      "input_table_local_jacobian_floor32_cfl030_10cycles.used"),
 ]
 rows, runs, files = [], [], []
@@ -68,8 +68,9 @@ baseline = ROOT / "table_mixed_amr_cfl030_floor32_10cycles/run.log"
 baseline_lines = re.findall(r"^\[LINEAR_FGMRES\].*", baseline.read_text(errors="replace"), re.M)
 baseline_hash = hashlib.sha256("\n".join(baseline_lines).encode()).hexdigest()
 payload = dict(base_commit="ebf7634a8e877edfd58724de1e3810638a76ca7e",
-               diagnostic_binary_sha256=sha(AUDIT / "build_table_jacobian_diag/bin/athena"),
-               diagnostic_patch_sha256=sha(OUT / "local_jacobian_diagnostic.patch"),
+               validated_binary_sha256=sha(AUDIT / "build_table_precision/bin/athena"),
+               superseded_exploratory_hook_binary_sha256=sha(AUDIT / "build_table_jacobian_diag/bin/athena"),
+               superseded_exploratory_hook_patch_sha256=sha(OUT / "local_jacobian_diagnostic.patch"),
                baseline_floor32_linear_lines_sha256=baseline_hash,
                runs=runs,
                max_gas_l2_rel_by_epsilon={str(h): max(x["gas_l2_rel"] for x in rows if x["epsilon"] == h)
@@ -89,7 +90,9 @@ ax.legend(fontsize=6)
 fig.tight_layout()
 fig.savefig(OUT / "local_jacobian.png", dpi=160)
 with tarfile.open(OUT / "evidence.tar.gz", "w:gz") as archive:
-    for path in files + [OUT / "local_jacobian_diagnostic.patch", baseline]:
+    trial_logs = [ROOT / "table_local_jacobian_cfl030_strict_2rank/run.log",
+                  ROOT / "table_local_jacobian_floor32_cfl030_10cycles_2rank/run.log"]
+    for path in files + [OUT / "local_jacobian_diagnostic.patch", baseline] + trial_logs:
         archive.add(path, arcname=path.relative_to(ROOT) if path.is_relative_to(ROOT)
                     else Path("diagnostic") / path.name)
 print(json.dumps(payload, indent=2))
