@@ -2,6 +2,7 @@
   "base_git_hash": "ebf7634a8e877edfd58724de1e3810638a76ca7e",
   "binary_sha256": "5b259bf3c0a4b768a6a35aa9f2d9cebfd3b9151f78b80ed5583069a772ffb691",
   "same_first_two_fgmres": true,
+  "ten_cycle_first_six_equal": true,
   "runs": [
     {
       "case": "strict",
@@ -41,7 +42,78 @@
       ],
       "input_sha256": "0a5e766088da0668824c1cdd91645f50639183e628c5ee83f5783326f8b1ed97",
       "log_sha256": "f5e174a1f0527efaf0bdc39bd0b89547408232059bd18611ab2c49f7c39a86a0"
+    },
+    {
+      "case": "floor_1epsilon_10cycles",
+      "exit_code": 0,
+      "linear_solves": 20,
+      "floor_acceptances": 10,
+      "newton_converged_steps": 10,
+      "newton_steps": [
+        {
+          "cycle": 0,
+          "time": 0.0,
+          "dt": 31.114819909241852,
+          "newton_iterations": 2
+        },
+        {
+          "cycle": 1,
+          "time": 31.114819909241852,
+          "dt": 28.387721395389406,
+          "newton_iterations": 2
+        },
+        {
+          "cycle": 2,
+          "time": 59.50254130463126,
+          "dt": 28.582645826603432,
+          "newton_iterations": 2
+        },
+        {
+          "cycle": 3,
+          "time": 88.08518713123469,
+          "dt": 28.8944577701339,
+          "newton_iterations": 2
+        },
+        {
+          "cycle": 4,
+          "time": 116.97964490136859,
+          "dt": 28.910896944933256,
+          "newton_iterations": 2
+        },
+        {
+          "cycle": 5,
+          "time": 145.89054184630186,
+          "dt": 29.00041389768095,
+          "newton_iterations": 2
+        },
+        {
+          "cycle": 6,
+          "time": 174.8909557439828,
+          "dt": 28.00263471920317,
+          "newton_iterations": 2
+        },
+        {
+          "cycle": 7,
+          "time": 202.89359046318597,
+          "dt": 28.39219414749002,
+          "newton_iterations": 2
+        },
+        {
+          "cycle": 8,
+          "time": 231.285784610676,
+          "dt": 28.10458409351379,
+          "newton_iterations": 2
+        },
+        {
+          "cycle": 9,
+          "time": 259.39036870418977,
+          "dt": 27.602608463187195,
+          "newton_iterations": 2
+        }
+      ],
+      "input_sha256": "105f12c8d67f35c32ab83b9c79dc08e82413bb7141cf58e7dc75bb79d9e96c4e",
+      "log_sha256": "a6a311b25a3d104fba85e3aac8ec35c01003660e683a1bdb173326c4ef447cee"
     }
   ],
-  "limitation": "Exploratory acceptance policy; normwise target is not met for three solves and no long collapse is validated"
+  "limitation": "Exploratory acceptance policy; normwise target is not met for ten solves and no full protostellar collapse is validated"
 }

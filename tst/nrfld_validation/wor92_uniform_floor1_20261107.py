@@ -21,6 +21,7 @@ OUT.mkdir(exist_ok=True)
 CASES = {
     "strict": ("table_uniform_l1_restart40_mg2_strict", "input_uniform_l1_restart40_mg2_strict.used"),
     "floor_1epsilon": ("uniform_l1_floor1_3cycles_2rank", "input_uniform_l1_floor1_3cycles.used"),
+    "floor_1epsilon_10cycles": ("uniform_l1_floor1_10cycles_2rank", "input_uniform_l1_floor1_10cycles.used"),
 }
 FG = re.compile(r"\[LINEAR_FGMRES\] iterations=(\d+) relative_residual=([^ ]+)[^\n]*precision_floor_accept=(\d+)")
 ETA = re.compile(r"\[LINEAR_FGMRES_BACKWARD\] local_stencil_eta_max=([^ ]+)")
@@ -66,11 +67,12 @@ with (OUT / "solves.csv").open("w", newline="") as handle:
     "base_git_hash": "ebf7634a8e877edfd58724de1e3810638a76ca7e",
     "binary_sha256": sha(Path("/home/kosuke/simulation/test/rad_nr/wor92_operator_audit_20261107/build_table_precision/bin/athena")),
     "same_first_two_fgmres": [(x["iterations"], x["true_relative_residual"]) for x in solves if x["case"] == "strict"] == [(x["iterations"], x["true_relative_residual"]) for x in solves if x["case"] == "floor_1epsilon"][:2],
+    "ten_cycle_first_six_equal": [(x["iterations"], x["true_relative_residual"], x["local_componentwise_eta"]) for x in solves if x["case"] == "floor_1epsilon"] == [(x["iterations"], x["true_relative_residual"], x["local_componentwise_eta"]) for x in solves if x["case"] == "floor_1epsilon_10cycles"][:6],
     "runs": runs,
-    "limitation": "Exploratory acceptance policy; normwise target is not met for three solves and no long collapse is validated"
+    "limitation": "Exploratory acceptance policy; normwise target is not met for ten solves and no full protostellar collapse is validated"
 }, indent=2) + "\n")
 
-rows = [x for x in solves if x["case"] == "floor_1epsilon"]
+rows = [x for x in solves if x["case"] == "floor_1epsilon_10cycles"]
 fig, (ax, bx) = plt.subplots(1, 2, figsize=(8.5, 3.8))
 color = ["#d95f02" if x["precision_floor_accept"] else "#1b9e77" for x in rows]
 ax.scatter([x["solve_index"] + 1 for x in rows], [x["true_relative_residual"] for x in rows], c=color)
