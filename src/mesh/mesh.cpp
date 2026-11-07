@@ -1707,7 +1707,7 @@ void Mesh::Initialize(int res_flag, ParameterInput *pin) {
     if (SELF_GRAVITY_ENABLED == 1)
       pfgrd->Solve(1, 0);
     else if (SELF_GRAVITY_ENABLED == 2)
-      pmgrd->Solve(1);
+      pmgrd->SolveInitial(res_flag);
 
 #pragma omp parallel num_threads(nthreads)
     {

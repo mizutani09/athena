@@ -50,6 +50,10 @@ MGGravityDriver::MGGravityDriver(Mesh *pm, ParameterInput *pin)
   npresmooth_ = pin->GetOrAddReal("gravity", "npresmooth", npresmooth_);
   npostsmooth_ = pin->GetOrAddReal("gravity", "npostsmooth", npostsmooth_);
   redblack_ = true;
+  reset_fmg_color_each_solve_ = pin->GetOrAddBoolean(
+      "gravity", "reset_fmg_color_each_solve", false);
+  repeat_initial_fmg_after_restart_ = pin->GetOrAddBoolean(
+      "gravity", "repeat_initial_fmg_after_restart", false);
   fshowdef_ = pin->GetOrAddBoolean("gravity", "show_defect", fshowdef_);
   std::string m = pin->GetOrAddString("gravity", "mgmode", "none");
   std::transform(m.begin(), m.end(), m.begin(), ::tolower);
@@ -166,10 +170,24 @@ MGGravity::~MGGravity() {
 
 
 //----------------------------------------------------------------------------------------
+//! \fn void MGGravityDriver::SolveInitial(int restart_flag)
+//! \brief Recompute the initial potential after loading a restart.
+
+void MGGravityDriver::SolveInitial(int restart_flag) {
+  Solve(1);
+  if (restart_flag != 0 && mode_ == 0 && repeat_initial_fmg_after_restart_)
+    Solve(1);
+}
+
+
+//----------------------------------------------------------------------------------------
 //! \fn void MGGravityDriver::Solve(int stage, Real dt)
 //! \brief load the data and solve
 
 void MGGravityDriver::Solve(int stage, Real dt) {
+  // An FMG restart begins with a fresh color phase.  This opt-in setting uses
+  // the same phase for each solve, including the first solve after restart.
+  if (mode_ == 0 && reset_fmg_color_each_solve_) coffset_ = 0;
   // Construct the Multigrid array
   vmg_.clear();
   for (int i = 0; i < pmy_mesh_->nblocal; ++i)
