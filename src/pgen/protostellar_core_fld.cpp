@@ -11,6 +11,7 @@
 
 #include <algorithm>
 #include <cmath>
+#include <cstdlib>
 #include <iomanip>
 #include <iostream>
 #include <limits>
@@ -759,6 +760,10 @@ void MeshBlock::ProblemGenerator(ParameterInput *pin) {
 
 static void ApplyBackgroundHeatSink(MeshBlock *pmb) {
   if (!fix_background_temperature) return;
+  const bool ledger = std::getenv("ATHENA_WOR92_BACKGROUND_SINK_LEDGER") != nullptr
+      && pmb->pmy_mesh->ncycle == 100;
+  Real gas_delta_code = 0.0, radiation_delta_code = 0.0;
+  int reset_cells = 0;
   if (Globals::my_rank == 0) {
     static bool announced = false;
     if (!announced) {
@@ -796,6 +801,16 @@ static void ApplyBackgroundHeatSink(MeshBlock *pmb) {
         const Real magnetic=0.5*(SQR(pmb->pfield->bcc(IB1,k,j,i))
                                 +SQR(pmb->pfield->bcc(IB2,k,j,i))
                                 +SQR(pmb->pfield->bcc(IB3,k,j,i)));
+        if (ledger) {
+          const Real volume = pmb->pcoord->GetCellVolume(k,j,i);
+          gas_delta_code += (eint -
+              (pmb->phydro->u(IEN,k,j,i)-kinetic-magnetic))*volume;
+          if (background_fix_radiation) {
+            radiation_delta_code +=
+                (erad_target-pmb->prfld->u_rad(k,j,i))*volume;
+          }
+          ++reset_cells;
+        }
         pmb->phydro->u(IEN,k,j,i)=eint+kinetic+magnetic;
         pmb->phydro->w(IPR,k,j,i)=pressure;
         pmb->prfld->u_gas(k,j,i)=eint;
@@ -806,6 +821,18 @@ static void ApplyBackgroundHeatSink(MeshBlock *pmb) {
         }
       }
     }
+  }
+  if (ledger) {
+    const Real scale=egas_unit*std::pow(length_unit,3);
+    std::cout << std::setprecision(17)
+              << "[WOR92_BACKGROUND_SINK_LEDGER] rank=" << Globals::my_rank
+              << " gid=" << pmb->gid
+              << " cycle=" << pmb->pmy_mesh->ncycle
+              << " dt=" << pmb->pmy_mesh->dt
+              << " cells=" << reset_cells
+              << " gas_delta_erg=" << gas_delta_code*scale
+              << " radiation_delta_erg=" << radiation_delta_code*scale
+              << std::endl;
   }
 #endif
 }

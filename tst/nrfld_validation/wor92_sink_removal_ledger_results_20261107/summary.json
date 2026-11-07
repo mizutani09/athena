@@ -1,0 +1,48 @@
+{
+  "branch": "codex/wor92-sink-ledger-trial-20261107",
+  "base_commit": "873a1b4c3bda584b52e1cae2b41e333ddb2f793a",
+  "binary_sha256": "e23da02cd35ba8cb93d0d5e4061f732b1b27fa550f6746e74ae7d2b0ce8140d0",
+  "input_sha256": "7cd5ee8a6a3fe749624985b75dbafd000f34e713b9b2f723a191689bbef09cd0",
+  "checkpoint_sha256": "5efcd02455c7d9cf9f96dfd52d02ec681f37c6c09a16d3dd24073a28ef75edb2",
+  "cases": [
+    {
+      "cfl": 0.3,
+      "first_dt": 8.805967784068649,
+      "reset_blocks": 120,
+      "reset_cells": 23136,
+      "gas_delta_erg": -3.0800719672841406e+40,
+      "radiation_delta_erg": -7.810038638417038e+41,
+      "radiation_removal_per_dt_erg": -8.869029310493958e+40,
+      "numerical_history_matches_baseline": true,
+      "log_sha256": "6980016a627ccb866ec9f60d612f857c18705acd909d8fd06329b393c0420596",
+      "history_sha256": "4cac945537ae6ccb91c75b93f1c99d89f8cd19eeb28762603be56e59a8f773b5",
+      "restart_sha256": "0de5ad21db6857e63e6890334b499df9f5776c2c7b93ae43ab2387e1a5e010fd"
+    },
+    {
+      "cfl": 0.15,
+      "first_dt": 5.029566818224784,
+      "reset_blocks": 120,
+      "reset_cells": 23184,
+      "gas_delta_erg": -3.081235403339458e+40,
+      "radiation_delta_erg": -7.814482903762826e+41,
+      "radiation_removal_per_dt_erg": -1.553708934822541e+41,
+      "numerical_history_matches_baseline": true,
+      "log_sha256": "29e5771ff620e530325e1495c981e2aa824cceaea110783f0c3b670e136fc879",
+      "history_sha256": "6da725b7b8a3a9ae764ce475cf3cc3410181bcd0cb0e16fff1d48e1509b13927",
+      "restart_sha256": "5b22a27b0603952264cf76d388d58a485357e21a4ba1f4bc38b8df132f3febff"
+    },
+    {
+      "cfl": 0.075,
+      "first_dt": 2.514783409112392,
+      "reset_blocks": 120,
+      "reset_cells": 23184,
+      "gas_delta_erg": -3.071943231161619e+40,
+      "radiation_delta_erg": -7.806619180232578e+41,
+      "radiation_removal_per_dt_erg": -3.104290871311248e+41,
+      "numerical_history_matches_baseline": true,
+      "log_sha256": "c8aa6252f26905e0007212f13a04fafa37b34f1f59a9b59de7342a4859856279",
+      "history_sha256": "4c325d224bbae1f1fad60ca51a7805048a9b257153dd32915afca83efecd166d",
+      "restart_sha256": "d539582c98d3274ac2699cad5fa6b6c308e13545c69eafa6a67c786dd269a3e8"
+    }
+  ]
+}
