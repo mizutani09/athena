@@ -19523,7 +19523,661 @@
         }
       ],
       "candidate_vs_verified_final_hdf_exact_r1": true,
-      "candidate_vs_verified_final_hdf_exact_r2": true
+      "candidate_vs_verified_final_hdf_exact_r2": true,
+      "narrow_threshold_screen": {
+        "runs": [
+          {
+            "name": "gravity_centerfill_43_narrow_nj7p6161_r1",
+            "source_commit_base": "f4964863",
+            "binary_sha256": "469a8d660ab100e39de7dbaa90509df941d382a00a626f003c3a87af193e8a0e",
+            "ranks": 1,
+            "threads": 2,
+            "checkpoint_path": "/tmp/wor25_23_24_resolution_trials/collapse_adaptive_partial_direct_final_r1/protostellar_core_fld_mayer5.00006.rst",
+            "checkpoint_sha256": "42416ee70c7cc08b4065e33903fb64239d8389ac7dd356fa7ce631641bfcadb1",
+            "overrides": {
+              "mesh/num_threads": 2,
+              "time/nlim": 8,
+              "problem/N_J": 7.6161,
+              "nrfld/global_jacobian_check": false
+            },
+            "run_log": "/tmp/wor25_23_24_resolution_trials/gravity_centerfill_43_narrow_nj7p6161_r1/run.log",
+            "exit_status": 0,
+            "wall_time": "0:09.51",
+            "peak_rss_kb": 287232,
+            "newton_statuses": [
+              {
+                "status": "converged",
+                "iterations": 0
+              },
+              {
+                "status": "converged",
+                "iterations": 2
+              },
+              {
+                "status": "converged",
+                "iterations": 2
+              }
+            ],
+            "fgmres_history": [
+              {
+                "iterations": 14,
+                "explicit_relative_residual": 3.326563524751395e-09
+              },
+              {
+                "iterations": 14,
+                "explicit_relative_residual": 7.858220861587502e-09
+              },
+              {
+                "iterations": 12,
+                "explicit_relative_residual": 7.299143577857387e-09
+              },
+              {
+                "iterations": 14,
+                "explicit_relative_residual": 4.325365434217815e-09
+              }
+            ],
+            "leaf_blocks_at_end": 43,
+            "evaluation": "PASS_TOPOLOGY_SCREEN",
+            "conservation_diagnostic": "not measured in topology-only screen; 7.6160 six-step continuation has full face/mass/energy diagnostics"
+          },
+          {
+            "name": "gravity_centerfill_43_narrow_nj7p6162_r1",
+            "source_commit_base": "f4964863",
+            "binary_sha256": "469a8d660ab100e39de7dbaa90509df941d382a00a626f003c3a87af193e8a0e",
+            "ranks": 1,
+            "threads": 2,
+            "checkpoint_path": "/tmp/wor25_23_24_resolution_trials/collapse_adaptive_partial_direct_final_r1/protostellar_core_fld_mayer5.00006.rst",
+            "checkpoint_sha256": "42416ee70c7cc08b4065e33903fb64239d8389ac7dd356fa7ce631641bfcadb1",
+            "overrides": {
+              "mesh/num_threads": 2,
+              "time/nlim": 8,
+              "problem/N_J": 7.6162,
+              "nrfld/global_jacobian_check": false
+            },
+            "run_log": "/tmp/wor25_23_24_resolution_trials/gravity_centerfill_43_narrow_nj7p6162_r1/run.log",
+            "exit_status": 0,
+            "wall_time": "0:09.69",
+            "peak_rss_kb": 287156,
+            "newton_statuses": [
+              {
+                "status": "converged",
+                "iterations": 0
+              },
+              {
+                "status": "converged",
+                "iterations": 2
+              },
+              {
+                "status": "converged",
+                "iterations": 2
+              }
+            ],
+            "fgmres_history": [
+              {
+                "iterations": 14,
+                "explicit_relative_residual": 3.326563524751395e-09
+              },
+              {
+                "iterations": 14,
+                "explicit_relative_residual": 7.858220861587502e-09
+              },
+              {
+                "iterations": 12,
+                "explicit_relative_residual": 7.299143577857387e-09
+              },
+              {
+                "iterations": 14,
+                "explicit_relative_residual": 4.325365434217815e-09
+              }
+            ],
+            "leaf_blocks_at_end": 43,
+            "evaluation": "PASS_TOPOLOGY_SCREEN",
+            "conservation_diagnostic": "not measured in topology-only screen; 7.6160 six-step continuation has full face/mass/energy diagnostics"
+          },
+          {
+            "name": "gravity_centerfill_43_narrow_nj7p6163_r1",
+            "source_commit_base": "f4964863",
+            "binary_sha256": "469a8d660ab100e39de7dbaa90509df941d382a00a626f003c3a87af193e8a0e",
+            "ranks": 1,
+            "threads": 2,
+            "checkpoint_path": "/tmp/wor25_23_24_resolution_trials/collapse_adaptive_partial_direct_final_r1/protostellar_core_fld_mayer5.00006.rst",
+            "checkpoint_sha256": "42416ee70c7cc08b4065e33903fb64239d8389ac7dd356fa7ce631641bfcadb1",
+            "overrides": {
+              "mesh/num_threads": 2,
+              "time/nlim": 8,
+              "problem/N_J": 7.6163,
+              "nrfld/global_jacobian_check": false
+            },
+            "run_log": "/tmp/wor25_23_24_resolution_trials/gravity_centerfill_43_narrow_nj7p6163_r1/run.log",
+            "exit_status": 0,
+            "wall_time": "0:09.72",
+            "peak_rss_kb": 287772,
+            "newton_statuses": [
+              {
+                "status": "converged",
+                "iterations": 0
+              },
+              {
+                "status": "converged",
+                "iterations": 2
+              },
+              {
+                "status": "converged",
+                "iterations": 2
+              }
+            ],
+            "fgmres_history": [
+              {
+                "iterations": 14,
+                "explicit_relative_residual": 3.326563524751395e-09
+              },
+              {
+                "iterations": 14,
+                "explicit_relative_residual": 7.858220861587502e-09
+              },
+              {
+                "iterations": 12,
+                "explicit_relative_residual": 7.299143577857387e-09
+              },
+              {
+                "iterations": 14,
+                "explicit_relative_residual": 4.325365434217815e-09
+              }
+            ],
+            "leaf_blocks_at_end": 43,
+            "evaluation": "PASS_TOPOLOGY_SCREEN",
+            "conservation_diagnostic": "not measured in topology-only screen; 7.6160 six-step continuation has full face/mass/energy diagnostics"
+          },
+          {
+            "name": "gravity_centerfill_43_narrow_nj7p6164_r1",
+            "source_commit_base": "f4964863",
+            "binary_sha256": "469a8d660ab100e39de7dbaa90509df941d382a00a626f003c3a87af193e8a0e",
+            "ranks": 1,
+            "threads": 2,
+            "checkpoint_path": "/tmp/wor25_23_24_resolution_trials/collapse_adaptive_partial_direct_final_r1/protostellar_core_fld_mayer5.00006.rst",
+            "checkpoint_sha256": "42416ee70c7cc08b4065e33903fb64239d8389ac7dd356fa7ce631641bfcadb1",
+            "overrides": {
+              "mesh/num_threads": 2,
+              "time/nlim": 8,
+              "problem/N_J": 7.6164,
+              "nrfld/global_jacobian_check": false
+            },
+            "run_log": "/tmp/wor25_23_24_resolution_trials/gravity_centerfill_43_narrow_nj7p6164_r1/run.log",
+            "exit_status": 0,
+            "wall_time": "0:10.71",
+            "peak_rss_kb": 421156,
+            "newton_statuses": [
+              {
+                "status": "converged",
+                "iterations": 0
+              },
+              {
+                "status": "converged",
+                "iterations": 2
+              },
+              {
+                "status": "converged",
+                "iterations": 0
+              },
+              {
+                "status": "converged",
+                "iterations": 2
+              }
+            ],
+            "fgmres_history": [
+              {
+                "iterations": 14,
+                "explicit_relative_residual": 3.326563524751395e-09
+              },
+              {
+                "iterations": 14,
+                "explicit_relative_residual": 7.858220861587502e-09
+              },
+              {
+                "iterations": 8,
+                "explicit_relative_residual": 9.476726382128174e-09
+              },
+              {
+                "iterations": 9,
+                "explicit_relative_residual": 2.955220581312766e-09
+              }
+            ],
+            "leaf_blocks_at_end": 64,
+            "evaluation": "PASS_TOPOLOGY_SCREEN",
+            "conservation_diagnostic": "not measured in topology-only screen; 7.6160 six-step continuation has full face/mass/energy diagnostics"
+          }
+        ],
+        "inference": "N_J=7.6161, 7.6162, 7.6163 retain 43 leaves through cycle 8; 7.6164 refines to 64 leaves at cycle 7. The symmetric setup does not produce a distinct partial topology in this narrow interval."
+      }
     }
+  },
+  "wor25_opacity_condition_sweep": {
+    "source_commit": "f4964863",
+    "binary_sha256": "14c4909ce10dc20a75d3115101b14b04050815fe63b8a56c0f6592f2a27f9e85",
+    "base_input_sha256": "ba333aee43531158fe9d34b50a6e9cc97ffbfa70fdb43a1ae5dcbc4045fdf8d2",
+    "base_opacity": 8.186332719786666e-08,
+    "runs": [
+      {
+        "name": "wor25_mg_opacity_x10",
+        "source_commit_base": "f4964863",
+        "binary_sha256": "14c4909ce10dc20a75d3115101b14b04050815fe63b8a56c0f6592f2a27f9e85",
+        "ranks": 1,
+        "threads": 1,
+        "input_path": "/tmp/wor25_23_24_resolution_trials/wor25_mg_opacity_x10/input.used",
+        "input_sha256": "ba333aee43531158fe9d34b50a6e9cc97ffbfa70fdb43a1ae5dcbc4045fdf8d2",
+        "overrides": {
+          "nrfld/linear_solver": "mg",
+          "fld/const_opacity": 8.186332719786666e-07,
+          "nrfld/fgmres_linearity_check": false
+        },
+        "run_log": "/tmp/wor25_23_24_resolution_trials/wor25_mg_opacity_x10/run.log",
+        "exit_status": 134,
+        "wall_time": "0:11.40",
+        "peak_rss_kb": 226004,
+        "newton_statuses": [
+          {
+            "status": "dt_zero_initialization",
+            "iterations": 0
+          },
+          {
+            "status": "backtracking_exhausted",
+            "iterations": 0
+          }
+        ],
+        "fgmres_history": [],
+        "evaluation": "FAIL",
+        "first_handoff": {
+          "mg_end": {
+            "relative_residual": 5.511989350938613e-11,
+            "delta_mean": -2.0545932004077474,
+            "full_step_min": -1.0473303110954244,
+            "nonpositive_cells": 18432
+          },
+          "boundary": {
+            "relative_residual": 0.016361601272358577,
+            "delta_mean": -2.0545932004077474,
+            "full_step_min": -1.0473303110954244,
+            "nonpositive_cells": 18432
+          },
+          "fine_sweeps": {
+            "relative_residual": 0.008664432993403968,
+            "delta_mean": -2.054579610556188,
+            "full_step_min": -1.0470102934616181,
+            "nonpositive_cells": 18432
+          }
+        }
+      },
+      {
+        "name": "wor25_mg_opacity_x20",
+        "source_commit_base": "f4964863",
+        "binary_sha256": "14c4909ce10dc20a75d3115101b14b04050815fe63b8a56c0f6592f2a27f9e85",
+        "ranks": 1,
+        "threads": 1,
+        "input_path": "/tmp/wor25_23_24_resolution_trials/wor25_mg_opacity_x20/input.used",
+        "input_sha256": "ba333aee43531158fe9d34b50a6e9cc97ffbfa70fdb43a1ae5dcbc4045fdf8d2",
+        "overrides": {
+          "nrfld/linear_solver": "mg",
+          "fld/const_opacity": 1.6372665439573332e-06,
+          "nrfld/fgmres_linearity_check": false
+        },
+        "run_log": "/tmp/wor25_23_24_resolution_trials/wor25_mg_opacity_x20/run.log",
+        "exit_status": 134,
+        "wall_time": "0:10.53",
+        "peak_rss_kb": 226048,
+        "newton_statuses": [
+          {
+            "status": "dt_zero_initialization",
+            "iterations": 0
+          },
+          {
+            "status": "backtracking_exhausted",
+            "iterations": 0
+          }
+        ],
+        "fgmres_history": [],
+        "evaluation": "FAIL",
+        "first_handoff": {
+          "mg_end": {
+            "relative_residual": 5.5049325153850235e-11,
+            "delta_mean": -1.0265550641812207,
+            "full_step_min": -0.019285837664829053,
+            "nonpositive_cells": 18432
+          },
+          "boundary": {
+            "relative_residual": 0.01635198172834441,
+            "delta_mean": -1.0265550641812207,
+            "full_step_min": -0.019285837664829053,
+            "nonpositive_cells": 18432
+          },
+          "fine_sweeps": {
+            "relative_residual": 0.008659843865838419,
+            "delta_mean": -1.0265414847849137,
+            "full_step_min": -0.018965297278801252,
+            "nonpositive_cells": 18432
+          }
+        }
+      },
+      {
+        "name": "wor25_mg_opacity_x30",
+        "source_commit_base": "f4964863",
+        "binary_sha256": "14c4909ce10dc20a75d3115101b14b04050815fe63b8a56c0f6592f2a27f9e85",
+        "ranks": 1,
+        "threads": 1,
+        "input_path": "/tmp/wor25_23_24_resolution_trials/wor25_mg_opacity_x30/input.used",
+        "input_sha256": "ba333aee43531158fe9d34b50a6e9cc97ffbfa70fdb43a1ae5dcbc4045fdf8d2",
+        "overrides": {
+          "nrfld/linear_solver": "mg",
+          "fld/const_opacity": 2.4558998159359997e-06,
+          "nrfld/fgmres_linearity_check": false
+        },
+        "run_log": "/tmp/wor25_23_24_resolution_trials/wor25_mg_opacity_x30/run.log",
+        "exit_status": 0,
+        "wall_time": "0:08.71",
+        "peak_rss_kb": 225940,
+        "newton_statuses": [
+          {
+            "status": "dt_zero_initialization",
+            "iterations": 0
+          },
+          {
+            "status": "converged",
+            "iterations": 7
+          }
+        ],
+        "fgmres_history": [],
+        "evaluation": "PASS",
+        "first_handoff": {
+          "mg_end": {
+            "relative_residual": 5.5021350545283914e-11,
+            "delta_mean": -0.6838760338144162,
+            "full_step_min": 0.32339952392423577,
+            "nonpositive_cells": 0
+          },
+          "boundary": {
+            "relative_residual": 0.016342368371583642,
+            "delta_mean": -0.6838760338144162,
+            "full_step_min": 0.32339952392423577,
+            "nonpositive_cells": 0
+          },
+          "fine_sweeps": {
+            "relative_residual": 0.008655257449395205,
+            "delta_mean": -0.6838624648659118,
+            "full_step_min": 0.32372058676047766,
+            "nonpositive_cells": 0
+          }
+        },
+        "Er_hdf_diagnostic": {
+          "initial_integral": 0.01578165777027607,
+          "final_integral": 0.01578165777027607,
+          "relative_change": 0.0,
+          "final_minimum": 1.0100059509277344,
+          "precision": "single HDF; rounding floor near 1e-7"
+        }
+      },
+      {
+        "name": "wor25_mg_opacity_x50",
+        "source_commit_base": "f4964863",
+        "binary_sha256": "14c4909ce10dc20a75d3115101b14b04050815fe63b8a56c0f6592f2a27f9e85",
+        "ranks": 1,
+        "threads": 1,
+        "input_path": "/tmp/wor25_23_24_resolution_trials/wor25_mg_opacity_x50/input.used",
+        "input_sha256": "ba333aee43531158fe9d34b50a6e9cc97ffbfa70fdb43a1ae5dcbc4045fdf8d2",
+        "overrides": {
+          "nrfld/linear_solver": "mg",
+          "fld/const_opacity": 4.093166359893333e-06,
+          "nrfld/fgmres_linearity_check": false
+        },
+        "run_log": "/tmp/wor25_23_24_resolution_trials/wor25_mg_opacity_x50/run.log",
+        "exit_status": 0,
+        "wall_time": "0:08.70",
+        "peak_rss_kb": 226084,
+        "newton_statuses": [
+          {
+            "status": "dt_zero_initialization",
+            "iterations": 0
+          },
+          {
+            "status": "converged",
+            "iterations": 7
+          }
+        ],
+        "fgmres_history": [],
+        "evaluation": "PASS",
+        "first_handoff": {
+          "mg_end": {
+            "relative_residual": 5.4921762156243863e-11,
+            "delta_mean": -0.4097334354763082,
+            "full_step_min": 0.5975547667911805,
+            "nonpositive_cells": 0
+          },
+          "boundary": {
+            "relative_residual": 0.01632316019237079,
+            "delta_mean": -0.4097334354763082,
+            "full_step_min": 0.5975547667911805,
+            "nonpositive_cells": 0
+          },
+          "fine_sweeps": {
+            "relative_residual": 0.008646092737432389,
+            "delta_mean": -0.4097198874010944,
+            "full_step_min": 0.5978768736231448,
+            "nonpositive_cells": 0
+          }
+        },
+        "Er_hdf_diagnostic": {
+          "initial_integral": 0.01578165777027607,
+          "final_integral": 0.01578165777027607,
+          "relative_change": 0.0,
+          "final_minimum": 1.0099925994873047,
+          "precision": "single HDF; rounding floor near 1e-7"
+        }
+      },
+      {
+        "name": "wor25_mg_opacity_x100",
+        "source_commit_base": "f4964863",
+        "binary_sha256": "14c4909ce10dc20a75d3115101b14b04050815fe63b8a56c0f6592f2a27f9e85",
+        "ranks": 1,
+        "threads": 1,
+        "input_path": "/tmp/wor25_23_24_resolution_trials/wor25_mg_opacity_x100/input.used",
+        "input_sha256": "ba333aee43531158fe9d34b50a6e9cc97ffbfa70fdb43a1ae5dcbc4045fdf8d2",
+        "overrides": {
+          "nrfld/linear_solver": "mg",
+          "fld/const_opacity": 8.186332719786666e-06,
+          "nrfld/fgmres_linearity_check": false
+        },
+        "run_log": "/tmp/wor25_23_24_resolution_trials/wor25_mg_opacity_x100/run.log",
+        "exit_status": 0,
+        "wall_time": "0:09.02",
+        "peak_rss_kb": 226084,
+        "newton_statuses": [
+          {
+            "status": "dt_zero_initialization",
+            "iterations": 0
+          },
+          {
+            "status": "converged",
+            "iterations": 7
+          }
+        ],
+        "fgmres_history": [],
+        "evaluation": "PASS",
+        "first_handoff": {
+          "mg_end": {
+            "relative_residual": 5.468401478963378e-11,
+            "delta_mean": -0.2041283068500172,
+            "full_step_min": 0.8031914025780452,
+            "nonpositive_cells": 0
+          },
+          "boundary": {
+            "relative_residual": 0.016275247542827415,
+            "delta_mean": -0.2041283068500172,
+            "full_step_min": 0.8031914025780452,
+            "nonpositive_cells": 0
+          },
+          "fine_sweeps": {
+            "relative_residual": 0.008623228180291322,
+            "delta_mean": -0.2041148108282776,
+            "full_step_min": 0.8035161141371444,
+            "nonpositive_cells": 0
+          }
+        },
+        "Er_hdf_diagnostic": {
+          "initial_integral": 0.01578165777027607,
+          "final_integral": 0.01578165590763092,
+          "relative_change": -1.1802594989349928e-07,
+          "final_minimum": 1.00995934009552,
+          "precision": "single HDF; rounding floor near 1e-7"
+        }
+      },
+      {
+        "name": "wor25_mg_opacity_x1000",
+        "source_commit_base": "f4964863",
+        "binary_sha256": "14c4909ce10dc20a75d3115101b14b04050815fe63b8a56c0f6592f2a27f9e85",
+        "ranks": 1,
+        "threads": 1,
+        "input_path": "/tmp/wor25_23_24_resolution_trials/wor25_mg_opacity_x1000/input.used",
+        "input_sha256": "ba333aee43531158fe9d34b50a6e9cc97ffbfa70fdb43a1ae5dcbc4045fdf8d2",
+        "overrides": {
+          "nrfld/linear_solver": "mg",
+          "fld/const_opacity": 8.186332719786666e-05,
+          "nrfld/fgmres_linearity_check": false
+        },
+        "run_log": "/tmp/wor25_23_24_resolution_trials/wor25_mg_opacity_x1000/run.log",
+        "exit_status": 0,
+        "wall_time": "0:08.74",
+        "peak_rss_kb": 225844,
+        "newton_statuses": [
+          {
+            "status": "dt_zero_initialization",
+            "iterations": 0
+          },
+          {
+            "status": "converged",
+            "iterations": 6
+          }
+        ],
+        "fgmres_history": [],
+        "evaluation": "PASS",
+        "first_handoff": {
+          "mg_end": {
+            "relative_residual": 5.05790117948383e-11,
+            "delta_mean": -0.019126490006819093,
+            "full_step_min": 0.9887358896907745,
+            "nonpositive_cells": 0
+          },
+          "boundary": {
+            "relative_residual": 0.015438250342540288,
+            "delta_mean": -0.019126490006819093,
+            "full_step_min": 0.9887358896907745,
+            "nonpositive_cells": 0
+          },
+          "fine_sweeps": {
+            "relative_residual": 0.008222780551082649,
+            "delta_mean": -0.019113900435608375,
+            "full_step_min": 0.9890671303276973,
+            "nonpositive_cells": 0
+          }
+        },
+        "Er_hdf_diagnostic": {
+          "initial_integral": 0.01578165777027607,
+          "final_integral": 0.01578165963292122,
+          "relative_change": 1.1802594989349928e-07,
+          "final_minimum": 1.009385585784912,
+          "precision": "single HDF; rounding floor near 1e-7"
+        }
+      },
+      {
+        "name": "wor25_fgmres_opacity_x20",
+        "source_commit_base": "f4964863",
+        "binary_sha256": "14c4909ce10dc20a75d3115101b14b04050815fe63b8a56c0f6592f2a27f9e85",
+        "ranks": 1,
+        "threads": 1,
+        "input_path": "/tmp/wor25_23_24_resolution_trials/wor25_fgmres_opacity_x20/input.used",
+        "input_sha256": "ba333aee43531158fe9d34b50a6e9cc97ffbfa70fdb43a1ae5dcbc4045fdf8d2",
+        "overrides": {
+          "nrfld/linear_solver": "fgmres",
+          "fld/const_opacity": 1.6372665439573332e-06,
+          "nrfld/fgmres_linearity_check": true
+        },
+        "run_log": "/tmp/wor25_23_24_resolution_trials/wor25_fgmres_opacity_x20/run.log",
+        "exit_status": 0,
+        "wall_time": "0:04.20",
+        "peak_rss_kb": 231968,
+        "newton_statuses": [
+          {
+            "status": "dt_zero_initialization",
+            "iterations": 0
+          },
+          {
+            "status": "converged",
+            "iterations": 2
+          }
+        ],
+        "fgmres_history": [
+          {
+            "iterations": 9,
+            "explicit_relative_residual": 6.615061825495997e-09
+          },
+          {
+            "iterations": 9,
+            "explicit_relative_residual": 9.28928569968346e-09
+          }
+        ],
+        "evaluation": "PASS",
+        "Er_hdf_diagnostic": {
+          "initial_integral": 0.01578165777027607,
+          "final_integral": 0.01578165590763092,
+          "relative_change": -1.1802594989349928e-07,
+          "final_minimum": 1.0100126266479492,
+          "precision": "single HDF; rounding floor near 1e-7"
+        }
+      },
+      {
+        "name": "wor25_fgmres_opacity_x30",
+        "source_commit_base": "f4964863",
+        "binary_sha256": "14c4909ce10dc20a75d3115101b14b04050815fe63b8a56c0f6592f2a27f9e85",
+        "ranks": 1,
+        "threads": 1,
+        "input_path": "/tmp/wor25_23_24_resolution_trials/wor25_fgmres_opacity_x30/input.used",
+        "input_sha256": "ba333aee43531158fe9d34b50a6e9cc97ffbfa70fdb43a1ae5dcbc4045fdf8d2",
+        "overrides": {
+          "nrfld/linear_solver": "fgmres",
+          "fld/const_opacity": 2.4558998159359997e-06,
+          "nrfld/fgmres_linearity_check": true
+        },
+        "run_log": "/tmp/wor25_23_24_resolution_trials/wor25_fgmres_opacity_x30/run.log",
+        "exit_status": 0,
+        "wall_time": "0:04.29",
+        "peak_rss_kb": 231872,
+        "newton_statuses": [
+          {
+            "status": "dt_zero_initialization",
+            "iterations": 0
+          },
+          {
+            "status": "converged",
+            "iterations": 2
+          }
+        ],
+        "fgmres_history": [
+          {
+            "iterations": 9,
+            "explicit_relative_residual": 6.601678753082661e-09
+          },
+          {
+            "iterations": 9,
+            "explicit_relative_residual": 9.258093502704526e-09
+          }
+        ],
+        "evaluation": "PASS",
+        "Er_hdf_diagnostic": {
+          "initial_integral": 0.01578165777027607,
+          "final_integral": 0.01578165777027607,
+          "relative_change": 0.0,
+          "final_minimum": 1.0100059509277344,
+          "precision": "single HDF; rounding floor near 1e-7"
+        }
+      }
+    ],
+    "inference": "At factors 20 and below, MG initial correction makes all 18432 cells nonpositive and Newton backtracking exhausts; factors 30 and above converge despite similar 0.016 coarse-fine ghost handoff residual. FGMRES converges at factors 20 and 30. This is a condition-boundary diagnostic, not a correction to q=1e7."
   }
 }
