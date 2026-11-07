@@ -1,0 +1,84 @@
+{
+  "checkpoint_cycle": 92,
+  "checkpoint_sha256": "f0ab85cdc483b1d0c26b13cae5d99c9e3eae8c4c835289deb66e4b1de4d29212",
+  "binary_sha256": "0e6af159f3c545d765667ab45a3b7feaad7a3ddbb0c05e8897633822c86f5c1b",
+  "same_checkpoint_cycle92": {
+    "from92_max1e5": {
+      "nr_iterations": 3,
+      "nr_final_l2": 4.820821917145841e-07,
+      "nr_final_max": 9.675053948402538e-06,
+      "max_rank_signed_energy_balance": 2.6955955022402605e-06,
+      "max_rank_absolute_energy_balance": 2.7016810742410745e-06
+    },
+    "from92_max3e6": {
+      "nr_iterations": 4,
+      "nr_final_l2": 1.2001233416490527e-07,
+      "nr_final_max": 4.890652227529123e-07,
+      "max_rank_signed_energy_balance": 3.684752725159748e-11,
+      "max_rank_absolute_energy_balance": 3.742254788273639e-08
+    }
+  },
+  "cases": {
+    "from92_max1e5": {
+      "dirname": "table_mean_limiter_from92_nrmax1e5_2rank",
+      "log_sha256": "c5f3635d7b8054ad9c97e1469487144c19bcef578fabe90e97a111d64f26ad1f",
+      "cycles": [
+        92,
+        93,
+        94
+      ],
+      "converged": 3,
+      "backtracking_exhausted": 0
+    },
+    "from92_max3e6": {
+      "dirname": "table_mean_limiter_from92_nrmax3e6_2rank",
+      "log_sha256": "4e6102af3b0d7309bcea032969964503737c01f0169631d8acbb58afd0632661",
+      "cycles": [
+        92,
+        93,
+        94
+      ],
+      "converged": 3,
+      "backtracking_exhausted": 0
+    },
+    "from74_max3e6": {
+      "dirname": "table_domain_mean_limiter_nrmax3e6_restart74_to95_2rank",
+      "log_sha256": "59cc57ef3747ef3bb269dc7a9e2d94781a9733cbcab1649f9e81003978311687",
+      "cycles": [
+        74,
+        75,
+        76,
+        77,
+        78,
+        79,
+        80,
+        81,
+        82,
+        83,
+        84,
+        85,
+        86,
+        87,
+        88,
+        89,
+        90,
+        91,
+        92,
+        93,
+        94
+      ],
+      "converged": 21,
+      "backtracking_exhausted": 0
+    },
+    "from0_max3e6": {
+      "dirname": "table_clean_nrmax3e6_from0_3cycles_2rank",
+      "log_sha256": "567bf004a51cd49da5e5d500bd540dc2fa9d2efbe54141287c18573ffaba0648",
+      "cycles": [
+        0
+      ],
+      "converged": 0,
+      "backtracking_exhausted": 1
+    }
+  },
+  "interpretation": "One additional Newton iteration from the same restart state reduces the implicit energy-balance fraction at cycle 92 by five orders of magnitude. A globally tighter maximum criterion fails at the initial cycle, so adaptive control or an accuracy budget is needed."
+}
