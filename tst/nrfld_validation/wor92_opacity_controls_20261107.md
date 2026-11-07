@@ -63,6 +63,31 @@ early failure, but this experiment does not distinguish those mechanisms.
 The small differences near the `2e-8` target may also be sensitive to
 state changes; a full Jacobian/condition analysis remains necessary.
 
+### Direct coefficient ranges at the later failure
+
+A further isolated diagnostic patch recorded the first active-cell opacity
+evaluation for every block in cycles 4 and 5, writing directly to one file
+per rank. The source-patch SHA-256 is
+`20082492ddd246ceaf60d7739d4cdad22d81eeaad9f745b15eec15af455bfb23`;
+the table diagnostic binary SHA-256 is
+`5b726ae497c67d97f4615cb459b1877b629a4d0ed125df43bb829eefe63a352f`.
+The diagnostic repeat had the *same* cycle-5 failure residual
+`1.8003263813e-5` as the original, so logging did not change this result.
+
+| Cycle | Active-cell temperature (K) | κP range (cm²/g) | κR range (cm²/g) |
+| ---: | ---: | ---: | ---: |
+| 4 | 13.9524–13.9981 | 0.213882–0.215192 | 0.0643564–0.0647672 |
+| 5 | 13.9584–13.9979 | 0.214054–0.215188 | 0.0644103–0.0647659 |
+
+All 120 leaf blocks were represented in both cycles. These values show
+that the failing state remains near 14 K, with κR variation under 0.6%
+across active cells. The small variation does not prove it is harmless:
+the `.3` three-cycle result remains sensitive to table versus fixed
+opacity, while the `.05` longer failure also occurs with fixed low κR.
+The [diagnostic JSON](wor92_opacity_controls_results_20261107/opacity_range_diagnostics.json)
+and [rank logs/patch](wor92_opacity_controls_results_20261107/opacity_range_evidence.tar.gz)
+contain the complete measurements and hashes.
+
 These tests do not compare Semenov extinction to Optab absorption, and
 do not make a physical-model selection from numerical convergence.
 

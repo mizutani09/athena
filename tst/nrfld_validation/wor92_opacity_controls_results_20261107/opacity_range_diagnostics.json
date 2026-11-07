@@ -1,0 +1,36 @@
+{
+  "base_commit": "143b3403324db869b9690a2b33569252fdb5cb80",
+  "source_patch_sha256": "20082492ddd246ceaf60d7739d4cdad22d81eeaad9f745b15eec15af455bfb23",
+  "binary_sha256": "5b726ae497c67d97f4615cb459b1877b629a4d0ed125df43bb829eefe63a352f",
+  "run_log_sha256": "906dfba11297566d2a8e894d693fdc8154928f299f5bba50ffcaec9d4578f4f4",
+  "rank_log_sha256": {
+    "range.rank0.log": "e7acf5d1a612553f6461786855bbde4b1d81cd5971a2c9922fa0039adb30e36c",
+    "range.rank1.log": "b57e4d0bd14d14f86659ba8edf8f6c245f2ac01faedd86a96aad317f80dc3a9e"
+  },
+  "ranges": [
+    {
+      "cycle": 4,
+      "block_count": 120,
+      "kp_min": 0.21388238847566907,
+      "kp_max": 0.21519232415352896,
+      "kr_min": 0.0643563933495077,
+      "kr_max": 0.06476723409900322,
+      "T_min": 13.952416519799648,
+      "T_max": 13.998054832081674,
+      "rho_min": 5.098527065247274e-20,
+      "rho_max": 5.2561710785240836e-18
+    },
+    {
+      "cycle": 5,
+      "block_count": 120,
+      "kp_min": 0.21405438155226034,
+      "kp_max": 0.21518808651091778,
+      "kr_min": 0.0644103302349274,
+      "kr_max": 0.06476590485845288,
+      "T_min": 13.958416179205416,
+      "T_max": 13.997907400794933,
+      "rho_min": 5.08159175275538e-20,
+      "rho_max": 5.256917523175051e-18
+    }
+  ]
+}

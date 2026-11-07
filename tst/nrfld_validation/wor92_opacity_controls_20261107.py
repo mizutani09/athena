@@ -18,6 +18,7 @@ import numpy as np
 ROOT = Path("/home/kosuke/simulation/test/rad_nr/wor92_wor105_retest_20261107")
 BUNDLE = Path("/home/kosuke/simulation/test/rad_nr/wor92_20261107/bundle")
 OUT = Path(__file__).with_name("wor92_opacity_controls_results_20261107")
+AUDIT = Path("/home/kosuke/simulation/test/rad_nr/wor92_operator_audit_20261107")
 
 # label, directory, input, EOS, opacity selection, CFL, requested cycles
 CASES = [
@@ -123,5 +124,44 @@ with tarfile.open(OUT / "logs_inputs_tables.tar.gz", "w:gz") as archive:
     for path in (ROOT / "source_integration.patch", eos_file, opacity_file):
         archive.add(path, arcname="tables/" + path.name if path != ROOT / "source_integration.patch"
                     else path.name)
+
+diag_dir = AUDIT / "opacity_range_cycle45"
+by_cycle = {4: [], 5: []}
+rank_logs = sorted(diag_dir.glob("range.rank*.log"))
+if len(rank_logs) != 2:
+    raise ValueError("expected two direct rank opacity logs")
+for path in rank_logs:
+    for line in path.read_text().splitlines():
+        if not line.startswith("[WOR92_OPACITY_RANGE]"):
+            raise ValueError(f"unexpected opacity line in {path}")
+        tokens = dict(t.split("=", 1) for t in line.split() if "=" in t)
+        cycle = int(tokens["cycle"])
+        if cycle not in by_cycle:
+            raise ValueError(f"unexpected cycle {cycle}")
+        by_cycle[cycle].append(tokens)
+ranges = []
+for cycle, blocks in sorted(by_cycle.items()):
+    if len(blocks) != 120 or len({int(x["gid"]) for x in blocks}) != 120:
+        raise ValueError(f"incomplete opacity records for cycle {cycle}")
+    ranges.append(dict(cycle=cycle, block_count=len(blocks),
+        kp_min=min(float(x["kp_min"]) for x in blocks),
+        kp_max=max(float(x["kp_max"]) for x in blocks),
+        kr_min=min(float(x["kr_min"]) for x in blocks),
+        kr_max=max(float(x["kr_max"]) for x in blocks),
+        T_min=min(float(x["T_min"]) for x in blocks),
+        T_max=max(float(x["T_max"]) for x in blocks),
+        rho_min=min(float(x["rho_min"]) for x in blocks),
+        rho_max=max(float(x["rho_max"]) for x in blocks)))
+diag_payload = dict(base_commit="143b3403324db869b9690a2b33569252fdb5cb80",
+    source_patch_sha256=sha(AUDIT / "source_opacity_range_trial.patch"),
+    binary_sha256="5b726ae497c67d97f4615cb459b1877b629a4d0ed125df43bb829eefe63a352f",
+    run_log_sha256=sha(diag_dir / "run.log"),
+    rank_log_sha256={p.name:sha(p) for p in rank_logs}, ranges=ranges)
+(OUT / "opacity_range_diagnostics.json").write_text(json.dumps(diag_payload, indent=2)+"\n")
+with tarfile.open(OUT / "opacity_range_evidence.tar.gz", "w:gz") as archive:
+    for path in rank_logs + [diag_dir / "run.log", diag_dir / "status.txt",
+                            AUDIT / "source_opacity_range_trial.patch",
+                            ROOT / "input_mixed_amr_cfl005_restart40_mg2_strict_10cycles.used"]:
+        archive.add(path, arcname=path.name)
 for r in rows:
     print(r["label"], r["exit_code"], r["cycle_reached"], r["max_true_residual"])
