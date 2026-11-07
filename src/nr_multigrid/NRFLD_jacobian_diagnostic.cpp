@@ -2,6 +2,7 @@
 #include <algorithm>
 #include <array>
 #include <cmath>
+#include <cstdlib>
 #include <iomanip>
 #include <sstream>
 #include <vector>
@@ -232,6 +233,52 @@ void NRFLDDriver::CheckCoupledGlobalJacobian(bool actual_direction) {
           }
     }
     boundary.DoTaskListOneStage(stage_);
+    long double ghost_sums[2]={0.0L,0.0L};
+    long long ghost_count=0;
+    for (Saved &s:saved) {
+      NRFLD *nr=s.nr; MeshBlock *mb=nr->pmy_block_;
+      for (int k=mb->ks;k<=mb->ke;++k)
+        for (int j=mb->js;j<=mb->je;++j)
+          for (int i=mb->is;i<=mb->ie;++i)
+            for (int f=0;f<6;++f) {
+              if ((f==0 && i!=mb->is) || (f==1 && i!=mb->ie)
+                  || (f==2 && j!=mb->js) || (f==3 && j!=mb->je)
+                  || (f==4 && k!=mb->ks) || (f==5 && k!=mb->ke)) continue;
+              const int lev=mb->pbval->nblevel[1+dk[f]][1+dj[f]][1+di[f]];
+              if (lev<0 || lev==mb->loc.level) continue;
+              const int ii=i+di[f],jj=j+dj[f],kk=k+dk[f];
+              const long double tangent=(static_cast<long double>(nr->u_(kk,jj,ii))
+                  -s.baseline(kk,jj,ii))/h;
+              const long double ref=s.vr(kk,jj,ii);
+              ghost_sums[0]+=(tangent-ref)*(tangent-ref);
+              ghost_sums[1]+=ref*ref;
+              ++ghost_count;
+            }
+    }
+#ifdef MPI_PARALLEL
+    MPI_Allreduce(MPI_IN_PLACE,ghost_sums,2,MPI_LONG_DOUBLE,MPI_SUM,MPI_COMM_WORLD);
+    MPI_Allreduce(MPI_IN_PLACE,&ghost_count,1,MPI_LONG_LONG,MPI_SUM,MPI_COMM_WORLD);
+#endif
+    if (Globals::my_rank==0)
+      std::cout << "[NRFLD coupled ghost tangent] direction="
+                << (actual_direction ? "newton" : "smooth")
+                << " epsilon=" << h << " cells=" << ghost_count
+                << " rel=" << std::sqrt(ghost_sums[0]
+                       /std::max(ghost_sums[1],1.e-300L)) << std::endl;
+    if (std::getenv("ATHENA_NRFLD_COUPLED_TANGENT_GHOST") != nullptr) {
+      // Diagnostic-only causal test: replace state ghosts by the tangent
+      // of the correction exchange. The solve state is restored below.
+      for (Saved &s:saved) {
+        NRFLD *nr=s.nr; MeshBlock *mb=nr->pmy_block_;
+        for (int k=mb->ks-1;k<=mb->ke+1;++k)
+          for (int j=mb->js-1;j<=mb->je+1;++j)
+            for (int i=mb->is-1;i<=mb->ie+1;++i) {
+              if (i>=mb->is && i<=mb->ie && j>=mb->js && j<=mb->je
+                  && k>=mb->ks && k<=mb->ke) continue;
+              nr->u_(k,j,i)=s.baseline(k,j,i)+h*s.vr(k,j,i);
+            }
+      }
+    }
     // Preserve the diffusion closure and face coefficients of the production
     // Newton solve. CalculateCoefficients still reevaluates its two residuals.
     for (Saved &s:saved) {
