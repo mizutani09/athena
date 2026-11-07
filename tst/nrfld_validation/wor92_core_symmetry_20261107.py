@@ -29,6 +29,9 @@ RUNS = {
     "cfl030_level3_early": "table_symmetry_level3_from36_t2082_2rank",
     "cfl030_level4_from63": "table_symmetry_level4_from63_one_step_2rank",
     "cfl030_level4_to70": "table_symmetry_level4_from64_to70_cycleio_dt0_2rank",
+    "cfl030_level5_to76": "table_symmetry_level5_from71_to76_2rank",
+    "cfl030_level4_control_to76": "table_symmetry_level4_from70_to76_control_2rank",
+    "cfl030_level5_to1700": "table_symmetry_level5_from76_to1700_2rank",
 }
 DUMP_DIRS = {
     "cfl030_level3_early": "table_symmetry_level3_cycle63_state_dump_corrected_2rank",
@@ -80,6 +83,7 @@ def central_eight(path):
 def main():
     OUT.mkdir(exist_ok=True)
     centers, trajectories, cases, dump_diagnostics = [], [], [], []
+    dump_paths = {}
     with tarfile.open(OUT / "evidence.tar.gz", "w:gz") as archive:
         for label, dirname in RUNS.items():
             folder = ROOT / dirname
@@ -115,6 +119,9 @@ def main():
                 for cell in eight:
                     centers.append(dict(case=label, **meta, **cell))
             final_dump = dumps[-1]
+            dump_paths[label] = final_dump
+            final_restart = folder / "cfl030_flux_precision16_local.final.rst"
+            assert final_restart.is_file()
             eight, meta = central_eight(final_dump)
             density = [cell["rho_cgs"] for cell in eight]
             cases.append(dict(case=label, **meta, center_rho_ratio=max(density) / min(density),
@@ -137,7 +144,8 @@ def main():
                               positive_ghost_events=lines.count("[WOR92_NR_GHOST_CLIP]"),
                               opacity_trial_clamps=int(opacity[-1][1]) if opacity else None,
                               log_sha256=sha(log), history_sha256=sha(hst),
-                              final_hdf5_sha256=sha(final_dump)))
+                              final_hdf5_sha256=sha(final_dump),
+                              final_restart_sha256=sha(final_restart)))
             archive.add(log, arcname=f"{label}/run.log")
             archive.add(hst, arcname=f"{label}/history.hst")
         ledger_folder = ROOT / ENERGY_LEDGER_DIR
@@ -167,6 +175,24 @@ def main():
     write_csv(OUT / "central_cells.csv", centers)
     write_csv(OUT / "dump_diagnostics.csv", dump_diagnostics)
     write_csv(OUT / "energy_ledger.csv", ledger_rows)
+    def sorted_fields(path):
+        with h5py.File(path) as stream:
+            locations = np.column_stack((stream["Levels"][:], stream["LogicalLocations"][:]))
+            order = np.lexsort(tuple(locations[:, index] for index in range(3, -1, -1)))
+            return locations[order], stream["prim"][:][:, order].astype(np.float64)
+
+    cap4_locations, cap4_fields = sorted_fields(dump_paths["cfl030_level4_control_to76"])
+    cap5_locations, cap5_fields = sorted_fields(dump_paths["cfl030_level5_to76"])
+    assert np.array_equal(cap4_locations, cap5_locations)
+    cap_comparison = []
+    for field, index in (("rho", 0), ("press", 1), ("Er", 8)):
+        x, y = cap4_fields[index], cap5_fields[index]
+        cap_comparison.append(dict(field=field, cycle=76, time=1546.3346,
+                                   same_mesh_topology=True,
+                                   relative_l2=float(np.linalg.norm((x - y).ravel()) /
+                                                     np.linalg.norm(x.ravel())),
+                                   relative_max=float(np.max(np.abs(x - y)) / np.max(np.abs(x)))))
+    write_csv(OUT / "cap_comparison.csv", cap_comparison)
     grouped = {}
     for row in centers:
         grouped.setdefault((row["case"], row["cycle"]), []).append(row)
@@ -183,11 +209,18 @@ def main():
                        "/home/kosuke/simulation/test/rad_nr/wor92_operator_audit_20261107/"
                        "build_table_domain_guard_trial/bin/athena")),
                    input_sha256=sha(ROOT / "input_table_domain_guard_cfl030_restart.used"),
+                   cycle_output_input_sha256=sha(HERE / "wor92_core_symmetry_cycle_output_20261107.in"),
                    cycle74_checkpoint_sha256=sha(ROOT / "table_floor32_restart30_to80_2rank/"
                                                     "cfl030_flux_precision16_local.00002.rst"),
                    cycle36_checkpoint_sha256=sha(ROOT / "table_early_restart_state_dump_2rank/"
                                                     "cfl030_flux_precision16_local.final.rst"),
-                   cases=cases,
+                   cycle63_checkpoint_sha256=sha(ROOT / RUNS["cfl030_level3_early"] /
+                                                    "cfl030_flux_precision16_local.final.rst"),
+                   cycle70_checkpoint_sha256=sha(ROOT / RUNS["cfl030_level4_to70"] /
+                                                    "cfl030_flux_precision16_local.final.rst"),
+                   cycle76_checkpoint_sha256=sha(ROOT / RUNS["cfl030_level5_to76"] /
+                                                    "cfl030_flux_precision16_local.final.rst"),
+                   cases=cases, cap_comparison=cap_comparison,
                    energy_ledger=dict(rows=ledger_rows, log_sha256=sha(ledger_log),
                                       history_sha256=sha(ledger_hst),
                                       history_identical_to_uninstrumented=True))
@@ -195,12 +228,15 @@ def main():
     fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(8, 7))
     for label in RUNS:
         rows = [x for x in ratio_rows if x["case"] == label]
-        if label not in {"cfl030_level3_early", "cfl030_level4_from63", "cfl030_level4_to70"}:
+        if label not in {"cfl030_level3_early", "cfl030_level4_from63", "cfl030_level4_to70",
+                         "cfl030_level5_to76", "cfl030_level4_control_to76",
+                         "cfl030_level5_to1700"}:
             ax1.plot([x["time"] for x in rows], [x["center_rho_ratio"] for x in rows],
                      marker="o", label=label)
         h = [x for x in trajectories if x["case"] == label]
         if label in {"cfl030_2rank", "cfl015_2rank", "cfl030_level3_late",
-                     "cfl030_level3_early", "cfl030_level4_to70"}:
+                     "cfl030_level3_early", "cfl030_level4_to70", "cfl030_level5_to76",
+                     "cfl030_level5_to1700"}:
             ax2.plot([x["time"] for x in h], [x["jeans_min"] for x in h], label=label)
     ax1.set_yscale("log")
     ax1.set_xlim(1990, 2110)
