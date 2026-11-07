@@ -1,0 +1,13 @@
+--- base/bvals_cc.cpp
++++ weighted_state/bvals_cc.cpp
+@@ -367,7 +367,9 @@
+   const bool interface_data = pmb->pnr != nullptr
+       && var_cc == &pmb->pnr->interface_moments_;
+   const bool weighted_delta = pmb->pnr != nullptr
+-      && var_cc == &pmb->pnr->delta_u_
++      && (var_cc == &pmb->pnr->delta_u_
++          || (std::getenv("ATHENA_WOR92_WEIGHTED_STATE") != nullptr
++              && var_cc == &pmb->pnr->u_))
+       && NRFLDPrototype::SharedCoeff();
+   const bool tangential_delta=weighted_delta
+       && NRFLDPrototype::TangentialReconstruction();

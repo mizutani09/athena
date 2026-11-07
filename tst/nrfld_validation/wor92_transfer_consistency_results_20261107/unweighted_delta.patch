@@ -1,0 +1,12 @@
+--- base/bvals_cc.cpp
++++ unweighted_delta/bvals_cc.cpp
+@@ -368,7 +368,8 @@
+       && var_cc == &pmb->pnr->interface_moments_;
+   const bool weighted_delta = pmb->pnr != nullptr
+       && var_cc == &pmb->pnr->delta_u_
+-      && NRFLDPrototype::SharedCoeff();
++      && NRFLDPrototype::SharedCoeff()
++      && std::getenv("ATHENA_WOR92_UNWEIGHTED_DELTA") == nullptr;
+   const bool tangential_delta=weighted_delta
+       && NRFLDPrototype::TangentialReconstruction();
+   auto effective_delta=[&](int n,int face,int k,int j,int i) {

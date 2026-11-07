@@ -1,0 +1,111 @@
+{
+  "base_git_hash": "ebf7634a8e877edfd58724de1e3810638a76ca7e",
+  "baseline_diagnostic_binary_sha256": "636209373ab24c5a9f5fee803b6ac86031c23b9e1a4a62a12d691fb145de0025",
+  "unweighted_delta_binary_sha256": "a1ef90a476d8d7d0f45fdf3e723b8f35683bc84170bc04b23726f4d70d6aa33f",
+  "weighted_state_binary_sha256": "2f89f9c2a52e8ce2dded3d6cbcc423587e0e7c52819af332486ea7154497b8a6",
+  "unweighted_flag_off_equal": true,
+  "weighted_flag_off_equal": true,
+  "runs": [
+    {
+      "case": "table_baseline",
+      "exit_code": 134,
+      "coarse_fine_cells": 7304,
+      "coarse_fine_jv_l2_rel": 2.9866112474350134e-05,
+      "ghost_tangent_l2_rel": 0.001565109111407679,
+      "fgmres_iterations": "156;300",
+      "fgmres_true_residuals": "1.2189076473846429e-08;3.8796577724025381e-08",
+      "newton_statuses": "",
+      "input_sha256": "515d600e01f8ee9583bc1ce16df70724dd9b82d4bfd77a72527a8b185d6b5ad0",
+      "log_sha256": "0601d101b6c30a41df9cd69203f6d1a58e4e4b0f2672a9818da15c103552deed"
+    },
+    {
+      "case": "fixed_baseline",
+      "exit_code": 0,
+      "coarse_fine_cells": 7304,
+      "coarse_fine_jv_l2_rel": 3.0508529489814766e-05,
+      "ghost_tangent_l2_rel": 0.0015639087928149495,
+      "fgmres_iterations": "61;109;41;44;71;59;68",
+      "fgmres_true_residuals": "1.9016175972167992e-08;1.9855653609034031e-08;1.9417641594719154e-08;1.3418314489397769e-08;1.3313263523412149e-08;1.8680798579990205e-08;9.9721089735458375e-09",
+      "newton_statuses": "converged;converged;converged",
+      "input_sha256": "f56212ecd7e0e0a2e745075e0e74a94e7864e7055d846e1c6b4db6bb7ef87691",
+      "log_sha256": "6d6def9787de42c6518ceb611c8e910065ad8cfaa45fe6dc7e6fc5936ec16f44"
+    },
+    {
+      "case": "table_unweighted_delta",
+      "exit_code": 134,
+      "coarse_fine_cells": 7304,
+      "coarse_fine_jv_l2_rel": 1.0854430833776268e-09,
+      "ghost_tangent_l2_rel": 1.3855925541537096e-11,
+      "fgmres_iterations": "236;300",
+      "fgmres_true_residuals": "1.9743588987360283e-08;1.8999997442795105e-07",
+      "newton_statuses": "",
+      "input_sha256": "515d600e01f8ee9583bc1ce16df70724dd9b82d4bfd77a72527a8b185d6b5ad0",
+      "log_sha256": "e1f941a61aaeb50168c76bb7fd5203d8015897a301246e20dd2f7425c442a3ff"
+    },
+    {
+      "case": "fixed_unweighted_delta",
+      "exit_code": 134,
+      "coarse_fine_cells": 7304,
+      "coarse_fine_jv_l2_rel": 1.1034412878198402e-09,
+      "ghost_tangent_l2_rel": 1.3840397371813883e-11,
+      "fgmres_iterations": "74;77",
+      "fgmres_true_residuals": "1.3356901017086385e-08;1.2833905674343126e-08",
+      "newton_statuses": "backtracking_exhausted",
+      "input_sha256": "f56212ecd7e0e0a2e745075e0e74a94e7864e7055d846e1c6b4db6bb7ef87691",
+      "log_sha256": "44b84a8f3f676dd614cc5c2a5f2549fba41b47f8f383ffd47fe69444221c570e"
+    },
+    {
+      "case": "table_weighted_state",
+      "exit_code": 134,
+      "coarse_fine_cells": 7304,
+      "coarse_fine_jv_l2_rel": 1.1173398266788875e-09,
+      "ghost_tangent_l2_rel": 1.5727420137270727e-11,
+      "fgmres_iterations": "156;300",
+      "fgmres_true_residuals": "1.1900439300764093e-08;5.3645168272149855e-08",
+      "newton_statuses": "",
+      "input_sha256": "515d600e01f8ee9583bc1ce16df70724dd9b82d4bfd77a72527a8b185d6b5ad0",
+      "log_sha256": "48cb463980537f0bab38d378bd59e3e34c3c2bf7f3cf4b31c9f5930d88c4e134"
+    },
+    {
+      "case": "fixed_weighted_state",
+      "exit_code": 0,
+      "coarse_fine_cells": 7304,
+      "coarse_fine_jv_l2_rel": 1.1426410563145715e-09,
+      "ghost_tangent_l2_rel": 1.63292009024437e-11,
+      "fgmres_iterations": "61;107;40;46;71;60;67",
+      "fgmres_true_residuals": "1.9550780112819220e-08;1.4388835683804132e-08;1.8780514107915417e-08;1.6407764939761818e-08;1.5638824846368680e-08;1.8891561209824749e-08;1.5622792945718979e-08",
+      "newton_statuses": "converged;converged;converged",
+      "input_sha256": "f56212ecd7e0e0a2e745075e0e74a94e7864e7055d846e1c6b4db6bb7ef87691",
+      "log_sha256": "4fcb3e6b2cbe92059c7013e28642a221f069abbfdd2f85b6bf1b7ca778e6ab26"
+    },
+    {
+      "case": "unweighted_binary_control",
+      "exit_code": 134,
+      "coarse_fine_cells": 7304,
+      "coarse_fine_jv_l2_rel": 2.9866112474350134e-05,
+      "ghost_tangent_l2_rel": 0.001565109111407679,
+      "fgmres_iterations": "156;300",
+      "fgmres_true_residuals": "1.2189076473846429e-08;3.8796577724025381e-08",
+      "newton_statuses": "",
+      "input_sha256": "515d600e01f8ee9583bc1ce16df70724dd9b82d4bfd77a72527a8b185d6b5ad0",
+      "log_sha256": "243ba0865253a56c2ba6178f26b75ad84dd337e24e25e6207d74ff1a1d92c076"
+    },
+    {
+      "case": "weighted_binary_control",
+      "exit_code": 134,
+      "coarse_fine_cells": 7304,
+      "coarse_fine_jv_l2_rel": 2.9866112474350134e-05,
+      "ghost_tangent_l2_rel": 0.001565109111407679,
+      "fgmres_iterations": "156;300",
+      "fgmres_true_residuals": "1.2189076473846429e-08;3.8796577724025381e-08",
+      "newton_statuses": "",
+      "input_sha256": "515d600e01f8ee9583bc1ce16df70724dd9b82d4bfd77a72527a8b185d6b5ad0",
+      "log_sha256": "ce478f9f0ef438caad746f7cb6731f0faeb321690854b2f95e70821985d3a0b5"
+    }
+  ],
+  "limitations": [
+    "three-cycle fixed-R control only",
+    "no long collapse or conservation regression for the trial transfer",
+    "table-R still fails strict FGMRES"
+  ]
+}
