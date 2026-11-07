@@ -1,0 +1,162 @@
+{
+  "source_git_base": "44611e8ece4c7da695733a39a0892646703d7607",
+  "matched_trace": {
+    "10": {
+      "linear": true,
+      "newton": true,
+      "cycles": true
+    },
+    "30": {
+      "linear": true,
+      "newton": true,
+      "cycles": true
+    }
+  },
+  "matched_30cycle_history_bitwise": true,
+  "matched_final_hdf5_bitwise": {
+    "prim": true,
+    "fld": true
+  },
+  "tight_newton_failure": {
+    "cycle": "0",
+    "iterations": "8",
+    "final_l2": "5.2733602901801719e-07",
+    "final_max": "5.0150227136781608e-06",
+    "final_gas_l2": "3.5997828358790268e-13"
+  },
+  "restart_opacity_T_kelvin": 3.812562746874632,
+  "restart_opacity_table_Tmin_kelvin": 4.999999950079738,
+  "clamp_diagnostics": {
+    "out_of_domain": "368",
+    "clamped": "368",
+    "negative_results": "0",
+    "zero_results": "0",
+    "nonfinite_results": "0"
+  },
+  "accepted_state_temperature_min_kelvin": 11.493789672851562,
+  "accepted_state_cells_below_5K": 0,
+  "restart_energy_max_relative_balance": 4.013051609893118e-06,
+  "restart_cf_max_weighted_mismatch": 4.5874208993499525e-06,
+  "runs": [
+    {
+      "case": "floor03_10",
+      "cycles_logged": 10,
+      "newton_convergences": 10,
+      "fgmres_solves": 22,
+      "strict_failures": 4,
+      "floor_accepts": 4,
+      "newton_final_max": 5.002766969636017e-06,
+      "log_sha256": "39168c4076ada1c9d633c2442361a002ca90cf0b8061df4d222a814a9e5b7300",
+      "input_sha256": "1480d84b6417724332ecbe1b705d89f61ed356dce52f214c86cc4d5b9382859f",
+      "binary_sha256": "5b259bf3c0a4b768a6a35aa9f2d9cebfd3b9151f78b80ed5583069a772ffb691"
+    },
+    {
+      "case": "cap03_10",
+      "cycles_logged": 10,
+      "newton_convergences": 10,
+      "fgmres_solves": 22,
+      "strict_failures": 4,
+      "floor_accepts": 0,
+      "newton_final_max": 5.002766969636017e-06,
+      "log_sha256": "29b2649ffafd32c3714f75b6d2d9da1abd27046272f80e036a74cd1eae22520e",
+      "input_sha256": "d4e7ddc13fb74f493da0d2d265d5fadae69eee17db67f76d07b7ac8d3a75525e",
+      "binary_sha256": "a1600941beb720be472bf8f4d789a9b70ecfdf308d3cd606f1d3278bebc4eded"
+    },
+    {
+      "case": "floor03_30",
+      "cycles_logged": 30,
+      "newton_convergences": 30,
+      "fgmres_solves": 62,
+      "strict_failures": 21,
+      "floor_accepts": 21,
+      "newton_final_max": 5.002766969636017e-06,
+      "log_sha256": "97bec92f1f5a467ad8988d63c12897f1d133f2ba6b20cb039abb6acaf0cd56e6",
+      "input_sha256": "faa9139a2d1f85f8c0e14def7cfb60c5af6e937b67a9b888b00b7b9b0d4dda3d",
+      "binary_sha256": "5b259bf3c0a4b768a6a35aa9f2d9cebfd3b9151f78b80ed5583069a772ffb691"
+    },
+    {
+      "case": "cap03_30",
+      "cycles_logged": 30,
+      "newton_convergences": 30,
+      "fgmres_solves": 62,
+      "strict_failures": 21,
+      "floor_accepts": 0,
+      "newton_final_max": 5.002766969636017e-06,
+      "log_sha256": "7a2ab19959571f2983743d7b621d4bdee58ad8f3ab1aeda39915d55469cbe685",
+      "input_sha256": "fb0528ba69257f3577311eda896405341add4b3a9b883a3a7004c8b2f372d047",
+      "binary_sha256": "a1600941beb720be472bf8f4d789a9b70ecfdf308d3cd606f1d3278bebc4eded"
+    },
+    {
+      "case": "floor015",
+      "cycles_logged": 0,
+      "newton_convergences": 0,
+      "fgmres_solves": 2,
+      "strict_failures": 1,
+      "floor_accepts": 0,
+      "newton_final_max": null,
+      "log_sha256": "5739a8a9602d15e9570b7ea1d62689c498fa58fe3ec2cb03099e84c587bf334a",
+      "input_sha256": "36e801abc54c119c85e8737f8a972b92c2a431fbd8996902efaf0b4f047da96c",
+      "binary_sha256": "5b259bf3c0a4b768a6a35aa9f2d9cebfd3b9151f78b80ed5583069a772ffb691"
+    },
+    {
+      "case": "cap015",
+      "cycles_logged": 1,
+      "newton_convergences": 1,
+      "fgmres_solves": 3,
+      "strict_failures": 2,
+      "floor_accepts": 0,
+      "newton_final_max": 2.3346140743827124e-06,
+      "log_sha256": "7ee72a92c3f57b2fb4f35504faac618875fb2213da943fab9d346ce304514e53",
+      "input_sha256": "af7cd5ce735d03f87b6afe294e71b2a127b8712874c2e67022d67ba5cf7969ee",
+      "binary_sha256": "a1600941beb720be472bf8f4d789a9b70ecfdf308d3cd606f1d3278bebc4eded"
+    },
+    {
+      "case": "nr1e6",
+      "cycles_logged": 0,
+      "newton_convergences": 0,
+      "fgmres_solves": 9,
+      "strict_failures": 1,
+      "floor_accepts": 1,
+      "newton_final_max": null,
+      "log_sha256": "00c07256766aff4ac482c5a9fa54a2ab9a019fb742782e259d1e0d0f347d842d",
+      "input_sha256": "f067f1e8047e8d058b138d8e34d9e15a82bd240dee5cf8e2bbc848b6bbe3f179",
+      "binary_sha256": "5b259bf3c0a4b768a6a35aa9f2d9cebfd3b9151f78b80ed5583069a772ffb691"
+    },
+    {
+      "case": "restart_error",
+      "cycles_logged": 78,
+      "newton_convergences": 48,
+      "fgmres_solves": 107,
+      "strict_failures": 3,
+      "floor_accepts": 3,
+      "newton_final_max": 8.645819140617386e-06,
+      "log_sha256": "698ec487075941e16deb3783e3801a3fe1ece2da3a70847a9bfe4306f8ba5602",
+      "input_sha256": "faa9139a2d1f85f8c0e14def7cfb60c5af6e937b67a9b888b00b7b9b0d4dda3d",
+      "binary_sha256": "5b259bf3c0a4b768a6a35aa9f2d9cebfd3b9151f78b80ed5583069a772ffb691"
+    },
+    {
+      "case": "clamp",
+      "cycles_logged": 80,
+      "newton_convergences": 6,
+      "fgmres_solves": 18,
+      "strict_failures": 0,
+      "floor_accepts": 0,
+      "newton_final_max": 1.4793822255026655e-06,
+      "log_sha256": "b68f6e679449c0eb467aba861e51e4c4c90d53fe663817b8a17416369e81bfa2",
+      "input_sha256": "faa9139a2d1f85f8c0e14def7cfb60c5af6e937b67a9b888b00b7b9b0d4dda3d",
+      "binary_sha256": "902b8e2cbf8f0fbd6ba2e75a945216a02b7838fe8a06b78586fc9e6fbc59f20f"
+    },
+    {
+      "case": "clamp_snapshots",
+      "cycles_logged": 80,
+      "newton_convergences": 6,
+      "fgmres_solves": 18,
+      "strict_failures": 0,
+      "floor_accepts": 0,
+      "newton_final_max": 1.4793822255026655e-06,
+      "log_sha256": "3787f90c5ad845bbd97de0492efe41e03ff058375f2f74ab717c86c8e815e2c9",
+      "input_sha256": "faa9139a2d1f85f8c0e14def7cfb60c5af6e937b67a9b888b00b7b9b0d4dda3d",
+      "binary_sha256": "902b8e2cbf8f0fbd6ba2e75a945216a02b7838fe8a06b78586fc9e6fbc59f20f"
+    }
+  ]
+}

@@ -17,14 +17,17 @@ import matplotlib.pyplot as plt
 
 HERE = Path(__file__).resolve().parent
 ROOT = Path("/home/kosuke/simulation/test/rad_nr/wor92_wor105_retest_20261107")
-CYCLES = int(os.environ.get("WOR92_AUDIT_CYCLES", "10"))
-assert CYCLES in (10, 30)
-RUN = ROOT / f"table_floor32_energy_{CYCLES}cycles_2rank"
+MODE = os.environ.get("WOR92_AUDIT_MODE", "")
+CYCLES = 48 if MODE == "restart30" else int(os.environ.get("WOR92_AUDIT_CYCLES", "10"))
+assert CYCLES in (10, 30, 48)
+RUN = ROOT / ("table_floor32_restart30_to80_2rank" if MODE == "restart30"
+              else f"table_floor32_energy_{CYCLES}cycles_2rank")
 PRIOR = ROOT / "table_local_jacobian_floor32_cfl030_10cycles_2rank/run.log"
-INPUT = ROOT / f"input_table_local_jacobian_floor32_cfl030_{CYCLES}cycles.used"
+INPUT = ROOT / f"input_table_local_jacobian_floor32_cfl030_{30 if MODE else CYCLES}cycles.used"
 BINARY = Path("/home/kosuke/simulation/test/rad_nr/wor92_operator_audit_20261107/build_table_precision/bin/athena")
 HISTORY = RUN / "cfl030_flux_precision16_local.hst"
-OUT = HERE / ("wor92_floor32_energy_audit_results_20261107" if CYCLES == 10
+OUT = HERE / ("wor92_floor32_restart30_results_20261107" if MODE == "restart30"
+              else "wor92_floor32_energy_audit_results_20261107" if CYCLES == 10
               else "wor92_floor32_energy_30cycles_results_20261107")
 FACES = (
     ("x1min", "x1max", "x2min", "x2max", "x3min", "x3max", "xminus_delta", "xplus_delta"),
@@ -81,7 +84,8 @@ def main():
     old_hash, old_trace = trace(PRIOR)
     new_hash, new_trace = trace(RUN / "run.log")
     same_prefix = new_trace[:len(old_trace)] == old_trace
-    assert same_prefix and len(new_trace) >= 43
+    if MODE != "restart30":
+        assert same_prefix and len(new_trace) >= 43
     rank_files = sorted(RUN.glob("ledger.rank*.log"))
     assert len(rank_files) == 2
     blocks, energy = defaultdict(list), defaultdict(dict)
@@ -98,7 +102,7 @@ def main():
                 rank = int(d["rank"])
                 assert rank not in energy[key]
                 energy[key][rank] = d
-    assert set(blocks) == set(energy) and 0 < len(blocks) <= CYCLES
+    assert set(blocks) == set(energy) and len(blocks) == CYCLES
     stage_rows, face_rows = [], []
     for (cycle, stage), members in sorted(blocks.items()):
         assert stage == 0 and len(members) == 120
@@ -158,14 +162,14 @@ def main():
     solve_rows = [fields(line) for line in (RUN / "run.log").read_text(errors="replace").splitlines()
                   if "[LINEAR_FGMRES] iterations=" in line]
     newton_rows = [fields(line) for line in (RUN / "run.log").read_text(errors="replace").splitlines()
-                   if "[NR] status=converged" in line]
+                   if "[NR] status=converged" in line and "stage=0" in line]
     history_rows = [[float(v) for v in line.split()] for line in HISTORY.read_text().splitlines()
                     if line and not line.startswith("#")]
     if len(history_rows) == CYCLES+2:
         assert history_rows[-1] == history_rows[-2]
         history_rows.pop()
     assert len(newton_rows) == len(stage_rows) == CYCLES
-    assert len(history_rows) == CYCLES+1
+    assert len(history_rows) in (CYCLES, CYCLES+1)
     summary = {
         "binary_sha256": sha(BINARY), "input_sha256": sha(INPUT),
         "run_log_sha256": sha(RUN / "run.log"),

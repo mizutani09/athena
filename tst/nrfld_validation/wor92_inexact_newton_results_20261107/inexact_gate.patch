@@ -1,0 +1,32 @@
+--- baseline/linearMG.cpp
++++ trial/linearMG.cpp
+@@ -1831,6 +1831,11 @@
+       && relative_residual > fgmres_threshold_
+       && componentwise_backward_error_max
+           <= fgmres_precision_floor_factor_*std::numeric_limits<Real>::epsilon();
++  const char *inexact_text = std::getenv("ATHENA_WOR92_INEXACT_TRUE_CAP");
++  const Real inexact_cap = inexact_text != nullptr ? std::strtod(inexact_text, nullptr) : 0.0;
++  const bool inexact_accept = !breakdown && std::isfinite(relative_residual)
++      && std::isfinite(inexact_cap) && inexact_cap > fgmres_threshold_
++      && inexact_cap <= 1.0e-6 && relative_residual <= inexact_cap;
+   if (std::getenv("ATHENA_NRFLD_PRECISE_RESIDUAL_DIAG") != nullptr) {
+     // Diagnostic only: keep the same ghost interpolation and flux-form row,
+     // but subtract Ax from b before rounding Ax to Real. Do not change the
+@@ -1953,6 +1958,8 @@
+               << " workspace_rebuilt=" << workspace_rebuilt
+               << " workspace_rebuilds=" << fgmres_workspace_rebuilds_
+               << " precision_floor_accept=" << precision_floor_accept
++              << " inexact_accept=" << inexact_accept
++              << " inexact_cap=" << inexact_cap
+               << " breakdown=" << breakdown << std::endl;
+     if (fgmres_backward_error_diagnostics_)
+       std::cout << "[LINEAR_FGMRES_BACKWARD] local_stencil_eta_max="
+@@ -1960,7 +1967,7 @@
+                 << " note=AMR_ghosts_are_interpolated" << std::endl;
+   }
+   if (breakdown || (!(relative_residual <= fgmres_threshold_)
+-                    && !precision_floor_accept)
++                    && !precision_floor_accept && !inexact_accept)
+       || !std::isfinite(relative_residual)) {
+     std::stringstream msg;
+     msg << "### FATAL ERROR in linearMGDriver::SolveFGMRES" << std::endl
