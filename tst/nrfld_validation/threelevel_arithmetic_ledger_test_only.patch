@@ -1,0 +1,66 @@
+--- a/src/nr_multigrid/NRFLD.cpp
++++ b/src/nr_multigrid/NRFLD.cpp
+@@ -490,6 +490,8 @@
+       const Real dx = mb->pcoord->dx1f(mb->is);
+       const Real idx2 = 1.0/SQR(dx);
+       long double block_face_delta[6] = {};
++      long double block_face_delta_ld[6] = {};
++      long double block_face_delta_moment[6] = {};
+       for (int k=mb->ks; k<=mb->ke; ++k)
+         for (int j=mb->js; j<=mb->je; ++j)
+           for (int i=mb->is; i<=mb->ie; ++i) {
+@@ -522,8 +524,31 @@
+                    || (face == YPlus && j == mb->je)
+                    || (face == ZMinus && k == mb->ks)
+                    || (face == ZPlus && k == mb->ke)))
+-                block_face_delta[face] +=
+-                    static_cast<long double>(dt_*face_term*idx2)*volume;
++                {
++                  block_face_delta[face] +=
++                      static_cast<long double>(dt_*face_term*idx2)*volume;
++                  const long double ld_term = static_cast<long double>(face_coeff[face])
++                      * (static_cast<long double>(neighbor[face])-center);
++                  block_face_delta_ld[face] += static_cast<long double>(dt_*idx2)
++                      * ld_term * volume;
++                  long double moment_term = ld_term;
++                  const int dk[6] = {0,0,0,0,-1,1};
++                  const int dj[6] = {0,0,-1,1,0,0};
++                  const int di[6] = {-1,1,0,0,0,0};
++                  const int neighbor_level = mb->pbval->nblevel[1+dk[face]]
++                      [1+dj[face]][1+di[face]];
++                  if (neighbor_level > mb->loc.level) {
++                    const int gk=k+dk[face], gj=j+dj[face], gi=i+di[face];
++                    const int opposite=face^1;
++                    const long double dbar=nr->interface_moments_(
++                        2*opposite,gk,gj,gi);
++                    const long double debar=nr->interface_moments_(
++                        2*opposite+1,gk,gj,gi);
++                    moment_term=(4.0L/3.0L)*(debar-dbar*center);
++                  }
++                  block_face_delta_moment[face] += static_cast<long double>(dt_*idx2)
++                      * moment_term * volume;
++                }
+             }
+             const Real dg = first->only_rad ? 0.0
+                 : nr->u_gas_(k,j,i)-fld->u_gas(k,j,i);
+@@ -555,7 +580,19 @@
+              << " yminus_delta=" << block_face_delta[YMinus]
+              << " yplus_delta=" << block_face_delta[YPlus]
+              << " zminus_delta=" << block_face_delta[ZMinus]
+-             << " zplus_delta=" << block_face_delta[ZPlus];
++             << " zplus_delta=" << block_face_delta[ZPlus]
++             << " xminus_delta_ld=" << block_face_delta_ld[XMinus]
++             << " xplus_delta_ld=" << block_face_delta_ld[XPlus]
++             << " yminus_delta_ld=" << block_face_delta_ld[YMinus]
++             << " yplus_delta_ld=" << block_face_delta_ld[YPlus]
++             << " zminus_delta_ld=" << block_face_delta_ld[ZMinus]
++             << " zplus_delta_ld=" << block_face_delta_ld[ZPlus]
++             << " xminus_delta_moment=" << block_face_delta_moment[XMinus]
++             << " xplus_delta_moment=" << block_face_delta_moment[XPlus]
++             << " yminus_delta_moment=" << block_face_delta_moment[YMinus]
++             << " yplus_delta_moment=" << block_face_delta_moment[YPlus]
++             << " zminus_delta_moment=" << block_face_delta_moment[ZMinus]
++             << " zplus_delta_moment=" << block_face_delta_moment[ZPlus];
+         std::cout << line.str() << std::endl;
+       }
+     }

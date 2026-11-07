@@ -44681,6 +44681,112 @@
       "fixed_opacity10_rank_hdf_exact": true,
       "variable_opacity10_rank_hdf_exact": true
     },
-    "decision": "Original strong-diffusion cases FAIL the 1e-6 per-face relative ledger criterion on tiny 1e-9 flux; report failure. Absolute mismatch 1e-14 to 1e-13, global implicit energy balance near 1e-11 or better, rank HDF exact. Stricter FGMRES did not resolve; 10x opacity makes criterion pass but changes physics and is not a code fix. No production operator change."
+    "decision": "Original strong-diffusion cases FAIL the 1e-6 per-face relative ledger criterion on tiny 1e-9 flux; report failure. Absolute mismatch 1e-14 to 1e-13, global implicit energy balance near 1e-11 or better, rank HDF exact. Stricter FGMRES did not resolve; 10x opacity makes criterion pass but changes physics and is not a code fix. No production operator change.",
+    "arithmetic_trials": [
+      {
+        "name": "testc_threelevel_ldledger_fixed_r1",
+        "binary_sha256": "901d2fab438276398a7964555dc1a675073bff703991f6530ce6dfba37756553",
+        "test_only_patch_sha256": "c8f36c241b03e78898b9da8dba91918f2d623cfce2d6fa2692bad401e08c52d7",
+        "source_variant": "long-double-only subset",
+        "input_sha256": "c1ffedae69f670d6f17740805077b6741c7cefdaf2baf4639cc7ab5f1fa38a74",
+        "command": "mpirun --output-filename /tmp/wor25_23_24_resolution_trials/testc_threelevel_ldledger_fixed_r1/mpi -n 1 /tmp/wor25_23_24_resolution_threelevel_ldledger_build/bin/athena -i /tmp/wor25_23_24_resolution_trials/testc_threelevel_shifted.in -d output nrfld/linear_solver=fgmres nrfld/fgmres_linearity_check=false",
+        "run_log": "/tmp/wor25_23_24_resolution_trials/testc_threelevel_ldledger_fixed_r1/run.log",
+        "exit_status": 0,
+        "wall_time": "0:06.54",
+        "peak_rss_kb": 545800,
+        "fgmres_history": [
+          {
+            "iterations": 11,
+            "true_relative_residual": 1.6679146734320208e-09
+          },
+          {
+            "iterations": 11,
+            "true_relative_residual": 3.107110220354198e-09
+          }
+        ],
+        "newton_statuses": [
+          [
+            "dt_zero_initialization",
+            "0"
+          ],
+          [
+            "converged",
+            "2"
+          ]
+        ],
+        "original_face": {
+          "max_relative_mismatch": 9.716067918716044e-06,
+          "pass": false
+        },
+        "alternate_faces": {
+          "ld": {
+            "max_relative_mismatch": 9.716067918716044e-06,
+            "max_absolute_mismatch": 1.6023040031831574e-13,
+            "pass": false,
+            "derived_logs": [
+              "/tmp/wor25_23_24_resolution_trials/testc_threelevel_ldledger_fixed_r1/ld_stdout"
+            ]
+          }
+        },
+        "final_hdf_exact_vs_production": true,
+        "decision": "REJECT_DIAGNOSTIC_ARITHMETIC_AS_FIX"
+      },
+      {
+        "name": "testc_threelevel_momentledger_fixed_r1",
+        "binary_sha256": "3a0a1f88f575c1069cac925c16aef0ced1f551d8be1a8dee92d8d7ff7d3b8bad",
+        "test_only_patch_sha256": "c8f36c241b03e78898b9da8dba91918f2d623cfce2d6fa2692bad401e08c52d7",
+        "source_variant": "long-double plus direct shared-moment diagnostic",
+        "input_sha256": "c1ffedae69f670d6f17740805077b6741c7cefdaf2baf4639cc7ab5f1fa38a74",
+        "command": "mpirun --output-filename /tmp/wor25_23_24_resolution_trials/testc_threelevel_momentledger_fixed_r1/mpi -n 1 /tmp/wor25_23_24_resolution_threelevel_ldledger_build/bin/athena -i /tmp/wor25_23_24_resolution_trials/testc_threelevel_shifted.in -d output nrfld/linear_solver=fgmres nrfld/fgmres_linearity_check=false",
+        "run_log": "/tmp/wor25_23_24_resolution_trials/testc_threelevel_momentledger_fixed_r1/run.log",
+        "exit_status": 0,
+        "wall_time": "0:06.41",
+        "peak_rss_kb": 545820,
+        "fgmres_history": [
+          {
+            "iterations": 11,
+            "true_relative_residual": 1.6679146734320208e-09
+          },
+          {
+            "iterations": 11,
+            "true_relative_residual": 3.107110220354198e-09
+          }
+        ],
+        "newton_statuses": [
+          [
+            "dt_zero_initialization",
+            "0"
+          ],
+          [
+            "converged",
+            "2"
+          ]
+        ],
+        "original_face": {
+          "max_relative_mismatch": 9.716067918716044e-06,
+          "pass": false
+        },
+        "alternate_faces": {
+          "ld": {
+            "max_relative_mismatch": 9.716067918716044e-06,
+            "max_absolute_mismatch": 1.6023040031831574e-13,
+            "pass": false,
+            "derived_logs": [
+              "/tmp/wor25_23_24_resolution_trials/testc_threelevel_momentledger_fixed_r1/ld_stdout"
+            ]
+          },
+          "moment": {
+            "max_relative_mismatch": 1.8888191636144412e-05,
+            "max_absolute_mismatch": 1.798554997967626e-13,
+            "pass": false,
+            "derived_logs": [
+              "/tmp/wor25_23_24_resolution_trials/testc_threelevel_momentledger_fixed_r1/moment_stdout"
+            ]
+          }
+        },
+        "final_hdf_exact_vs_production": true,
+        "decision": "REJECT_DIAGNOSTIC_ARITHMETIC_AS_FIX"
+      }
+    ]
   }
 }

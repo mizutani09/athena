@@ -113,5 +113,47 @@ x=json.loads(REPORT.read_text())
 x['threelevel_small_flux_conservation_screen']={'scope':'92-leaf 3-level shifted Test C, periodic radiation-only, fixed/variable limiter, 1/2 MPI ranks',
  'runs':runs,'summary':summary,
  'decision':'Original strong-diffusion cases FAIL the 1e-6 per-face relative ledger criterion on tiny 1e-9 flux; report failure. Absolute mismatch 1e-14 to 1e-13, global implicit energy balance near 1e-11 or better, rank HDF exact. Stricter FGMRES did not resolve; 10x opacity makes criterion pass but changes physics and is not a code fix. No production operator change.'}
+def alternate_ledger(name, suffix):
+    d=B/name;logs=sorted((d/'mpi').glob('**/rank.*/stdout'))
+    transformed=[]
+    for f in logs:
+        content=f.read_text()
+        for axis in ('xminus','xplus','yminus','yplus','zminus','zplus'):
+            content=content.replace(axis+'_delta=',axis+'_delta_old=')
+            content=content.replace(axis+'_delta_'+suffix+'=',axis+'_delta=')
+        out=d/(suffix+'_'+f.name)
+        out.write_text(content)
+        transformed.append(str(out))
+    result=subprocess.run(['python3',str(LEDGER),'--tolerance','1e-6',*transformed],
+                          capture_output=True,text=True,check=True)
+    face=json.loads(result.stdout)
+    return {'max_relative_mismatch':face['max_relative_mismatch'],
+            'max_absolute_mismatch':max(abs(p['mismatch']) for p in face['pairs']),
+            'pass':face['pass'],'derived_logs':transformed}
+
+arithmetic=[]
+for name,binary_hash,variants in [
+    ('testc_threelevel_ldledger_fixed_r1','901d2fab438276398a7964555dc1a675073bff703991f6530ce6dfba37756553',['ld']),
+    ('testc_threelevel_momentledger_fixed_r1','3a0a1f88f575c1069cac925c16aef0ced1f551d8be1a8dee92d8d7ff7d3b8bad',['ld','moment'])]:
+    d=B/name;log=(d/'run.log').read_text()
+    original_logs=sorted((d/'mpi').glob('**/rank.*/stdout'))
+    result=subprocess.run(['python3',str(LEDGER),'--tolerance','1e-6',*map(str,original_logs)],
+                          capture_output=True,text=True,check=True)
+    original=json.loads(result.stdout)
+    arithmetic.append({'name':name,'binary_sha256':binary_hash,
+       'test_only_patch_sha256':sha(W/'tst/nrfld_validation/threelevel_arithmetic_ledger_test_only.patch'),
+       'source_variant':'long-double-only subset' if len(variants)==1 else 'long-double plus direct shared-moment diagnostic',
+       'input_sha256':sha(INPUT3),'command':re.search(r'Command being timed: "([^"]+)"',log).group(1),
+       'run_log':str(d/'run.log'),'exit_status':int(re.search(r'Exit status:\s*(\d+)',log).group(1)),
+       'wall_time':re.search(r'Elapsed \(wall clock\) time \(h:mm:ss or m:ss\):\s*(\S+)',log).group(1),
+       'peak_rss_kb':int(re.search(r'Maximum resident set size \(kbytes\):\s*(\d+)',log).group(1)),
+       'fgmres_history':[{'iterations':int(a),'true_relative_residual':float(b)} for a,b in
+           re.findall(r'\[LINEAR_FGMRES\] iterations=(\d+) relative_residual=([\deE+.-]+)',log)],
+       'newton_statuses':re.findall(r'\[NR\] status=(\w+) iterations=(\d+)',log),
+       'original_face':{'max_relative_mismatch':original['max_relative_mismatch'],'pass':original['pass']},
+       'alternate_faces':{v:alternate_ledger(name,v) for v in variants},
+       'final_hdf_exact_vs_production':rank_equal(name,'testc_threelevel_shifted_r1'),
+       'decision':'REJECT_DIAGNOSTIC_ARITHMETIC_AS_FIX'})
+x['threelevel_small_flux_conservation_screen']['arithmetic_trials']=arithmetic
 REPORT.write_text(json.dumps(x,indent=2,ensure_ascii=False)+'\n')
 print(json.dumps(summary,indent=2))
