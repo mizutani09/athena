@@ -193,7 +193,18 @@ linearMGDriver::linearMGDriver(Mesh *pm, ParameterInput *pin, NewtonRaphsonDrive
     ATHENA_ERROR(msg);
   }
   fgmres_threshold_ = pin->GetOrAddReal("nrfld", "fgmres_threshold", 1.0e-8);
-  fgmres_roundoff_cap_ = pin->GetOrAddReal("nrfld", "fgmres_roundoff_cap", 0.0);
+  // The FLD objects configure NRFLDPrototype::Mode after this driver is
+  // constructed. Use the already-known mesh/problem configuration so the
+  // default also survives parameter serialization into a restart file.
+  const bool default_centered_testc = pm->multilevel
+      && std::string(PROBLEM_GENERATOR) == "nrfld_diff_amr_interface"
+      && !NRFLDPrototype::Legacy()
+      && NRFLDPrototype::FlagOrDefault(
+          "ATHENA_NRFLD_CONSERVATIVE_SHARED_COEFF", true)
+      && NRFLDPrototype::FlagOrDefault(
+          "ATHENA_NRFLD_CENTERED_FACE_TRIAL", true);
+  fgmres_roundoff_cap_ = pin->GetOrAddReal("nrfld", "fgmres_roundoff_cap",
+      default_centered_testc ? 10.0*fgmres_threshold_ : 0.0);
   fgmres_restart_ = pin->GetOrAddInteger("nrfld", "fgmres_restart", 20);
   fgmres_max_iterations_ = pin->GetOrAddInteger(
       "nrfld", "fgmres_max_iterations", 200);

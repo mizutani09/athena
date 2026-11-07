@@ -803,7 +803,13 @@ unless `--reanalyze` is used. Existing production binaries are not overwritten.
 The [2026-11-07 centered conservative face trial](wor24_centered_wor25_roundoff_20261107.md)
 records coupled coarse/fine Jv, 1/2-rank strict FGMRES and face ledgers,
 AMR redistribution/restart, and the separate WOR-25 double-update residual
-floor. The face change is Test C opt-in pending broader validation.
+floor. The [default Test C follow-up](wor24_wor25_default_testc_20261107.md)
+enables the centered face operator for validated multilevel Test C and uses a
+bounded FGMRES roundoff gate when the stored binary64 correction explains the
+true-residual floor. The default cap is ten times `nrfld/fgmres_threshold`;
+`nrfld/fgmres_roundoff_cap=0` restores strict stopping. Set
+`ATHENA_NRFLD_CENTERED_FACE_TRIAL=0` only for an old-operator A/B control.
+Mach 5 retains its existing conservative operator and strict FGMRES stop.
 
 The optional `test_c_controlled.py --global-jv --handoff --mpi-ranks 2` now
 aggregates boundary-inclusive Jv and four-stage MG handoff diagnostics across

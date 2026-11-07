@@ -55,8 +55,9 @@ inline bool SharedCoeff() {
 }
 
 inline bool CenteredFaceTrial() {
+  // Retain the trial flag as an explicit A/B override of the Test C default.
   return SharedCoeff() && Mode().test_c
-      && Flag("ATHENA_NRFLD_CENTERED_FACE_TRIAL");
+      && FlagOrDefault("ATHENA_NRFLD_CENTERED_FACE_TRIAL", DefaultEnabled());
 }
 
 inline bool TangentialReconstruction() {
