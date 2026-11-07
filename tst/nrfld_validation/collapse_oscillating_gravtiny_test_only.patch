@@ -1,0 +1,11 @@
+--- a/src/pgen/protostellar_core_fld.cpp
++++ b/src/pgen/protostellar_core_fld.cpp
+@@ -554,7 +554,7 @@
+     // negligible over this test but keeps the isolated-gravity machinery well-defined.
+     SetGravitationalConstant(gravity_code*1.0e-30);
+   } else {
+-    SetGravitationalConstant(gravity_code);
++    SetGravitationalConstant(gravity_code*1.0e-30);
+   }
+   EnrollUserMGGravitySourceMaskFunction(CoreGravityMask);
+   if (adaptive) EnrollUserRefinementCondition(JeansRefinementCondition);

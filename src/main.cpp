@@ -653,6 +653,10 @@ int main(int argc, char *argv[]) {
 
     performance.Mark(PerformanceTimer::amr);
     pmesh->LoadBalancingAndAdaptiveMeshRefinement(pinput);
+    // Newly refined blocks need the same gas/radiation boundary state as a restart
+    // before the next explicit flux calculation or checkpoint.
+    if (NRMGFLD_ENABLED && pmesh->amr_updated)
+      SynchronizeFLDBoundariesAfterNR(pmesh);
     performance.Mark(PerformanceTimer::other);
 
     pmesh->NewTimeStep();
