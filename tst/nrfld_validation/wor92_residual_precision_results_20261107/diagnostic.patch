@@ -1,0 +1,76 @@
+--- base/linearMG.cpp
++++ diagnostic/linearMG.cpp
+@@ -13,6 +13,7 @@
+ #include <cmath>
+ #include <cstdint>
+ #include <cstdlib>
++#include <iomanip>
+ #include <cstring>
+ #include <iostream>
+ #include <limits>
+@@ -1825,6 +1826,65 @@
+                   MPI_ATHENA_REAL, MPI_MAX, MPI_COMM_WORLD);
+ #endif
+   }
++  if (std::getenv("ATHENA_WOR92_LONG_DOUBLE_RESIDUAL") != nullptr) {
++    // Diagnostic only: evaluate the same flux-form row without the cast to
++    // Real in apply_operator, using its synchronized correction ghosts.
++    apply_operator(x, ax);
++    long double residual2 = 0.0L, cast_difference2 = 0.0L;
++    long double eta_max = 0.0L;
++    constexpr int faces[6] = {linearSolver::DXMF, linearSolver::DXPF,
++        linearSolver::DYMF, linearSolver::DYPF,
++        linearSolver::DZMF, linearSolver::DZPF};
++    constexpr int sources[6] = {linearSolver::DXMS, linearSolver::DXPS,
++        linearSolver::DYMS, linearSolver::DYPS,
++        linearSolver::DZMS, linearSolver::DZPS};
++    for (std::size_t block = 0; block < x.size(); ++block) {
++      linearMG *pmg = static_cast<linearMG*>(vmg_[block]);
++      MeshBlock *pmb = pmg->pmy_block_;
++      const AthenaArray<Real> &delta = pmg->pnr_->delta_u_;
++      const AthenaArray<Real> &coeff = pmg->pnr_->coeff_;
++      const Real fac = dt_/SQR(pmb->pcoord->dx1f(pmb->is));
++      for (int k = pmb->ks; k <= pmb->ke; ++k)
++        for (int j = pmb->js; j <= pmb->je; ++j)
++          for (int i = pmb->is; i <= pmb->ie; ++i) {
++            const long double center = delta(k,j,i);
++            const long double neighbor[6] = {delta(k,j,i-1),delta(k,j,i+1),
++                delta(k,j-1,i),delta(k,j+1,i),delta(k-1,j,i),delta(k+1,j,i)};
++            const long double diagonal = coeff(linearSolver::DCCS,k,j,i)
++                + static_cast<long double>(fac)*coeff(linearSolver::DCCF,k,j,i);
++            long double local = diagonal, flux = 0.0L;
++            long double denominator = std::abs(static_cast<long double>(cat(b,block,k,j,i)))
++                + std::abs(diagonal*center);
++            for (int face = 0; face < 6; ++face) {
++              const long double off = static_cast<long double>(fac)
++                  *coeff(faces[face],k,j,i) + coeff(sources[face],k,j,i);
++              local += off;
++              flux += off*(neighbor[face]-center);
++              denominator += std::abs(off*neighbor[face]);
++            }
++            const long double row = local*center + flux;
++            const long double residual = static_cast<long double>(cat(b,block,k,j,i)) - row;
++            const long double cast_difference = row - static_cast<long double>(cat(ax,block,k,j,i));
++            residual2 += residual*residual;
++            cast_difference2 += cast_difference*cast_difference;
++            if (denominator > 0.0L)
++              eta_max = std::max(eta_max,std::abs(residual)/denominator);
++          }
++    }
++#ifdef MPI_PARALLEL
++    MPI_Allreduce(MPI_IN_PLACE,&residual2,1,MPI_LONG_DOUBLE,MPI_SUM,MPI_COMM_WORLD);
++    MPI_Allreduce(MPI_IN_PLACE,&cast_difference2,1,MPI_LONG_DOUBLE,MPI_SUM,MPI_COMM_WORLD);
++    MPI_Allreduce(MPI_IN_PLACE,&eta_max,1,MPI_LONG_DOUBLE,MPI_MAX,MPI_COMM_WORLD);
++#endif
++    if (Globals::my_rank == 0)
++      std::cout << std::scientific << std::setprecision(16)
++                << "[WOR92 long-double residual] cycle=" << pmy_mesh_->ncycle
++                << " iterations=" << total_iterations
++                << " reported_relative=" << relative_residual
++                << " long_double_relative=" << std::sqrt(residual2)/bnorm
++                << " cast_difference_relative=" << std::sqrt(cast_difference2)/bnorm
++                << " local_eta_max=" << eta_max << std::endl;
++  }
+   const bool precision_floor_accept = !breakdown
+       && fgmres_precision_floor_factor_ > 0.0
+       && std::isfinite(relative_residual)
