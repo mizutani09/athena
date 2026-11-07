@@ -1,0 +1,189 @@
+{
+  "start_cycle": 100,
+  "matched_end_time": 2436.7392236433016,
+  "source_branch": "codex/wor92-domain-guard-trial-20261107",
+  "binary_sha256": "0e6af159f3c545d765667ab45a3b7feaad7a3ddbb0c05e8897633822c86f5c1b",
+  "input_sha256": "7cd5ee8a6a3fe749624985b75dbafd000f34e713b9b2f723a191689bbef09cd0",
+  "start_restart_sha256": "5efcd02455c7d9cf9f96dfd52d02ec681f37c6c09a16d3dd24073a28ef75edb2",
+  "cfl_0p3_final_state_dump_sha256": "9984be06c31788d33657d56c7579084b4356c41e741030729d27b0389c2baa8f",
+  "cases": [
+    {
+      "cfl": 0.3,
+      "end_cycle": 120,
+      "end_time": 2436.7392236433016,
+      "newton_converged": 20,
+      "max_newton_iterations": 3,
+      "max_final_newton_residual": 7.66067735059768e-06,
+      "dt_min": 8.324019103776537,
+      "dt_max": 8.805967784068649,
+      "fgmres_solves": 60,
+      "fgmres_true_residual_max": 1.96988564511864e-08,
+      "accepted_Tmin_min_K": 15.465033913168856,
+      "rho_max_cgs": 4.73882e-14,
+      "Tgas_max_K": 20.0534,
+      "Trad_max_K": 20.0352,
+      "gas_mass_g": 2.27531e+33,
+      "Lz_cgs": 2.25747e+48,
+      "Eint_gas_cgs": 2.08131e+42,
+      "Erad_tot_cgs": 2.52441e+42,
+      "log_sha256": "714d807fd409f950f1d6ed952f285b295a0529860748e54bef662721e926d17f",
+      "history_sha256": "f7e8a7843c5f81fbb2d7ff8c72ab6b8c278548e7bfeb3bdc82e75ff4bff6e7d9",
+      "restart_sha256": "366c4f04b0538a2f11a3095bb6d1b96258856ecd5a447bce99ba60d355d5f914"
+    },
+    {
+      "cfl": 0.15,
+      "end_cycle": 140,
+      "end_time": 2436.7392236433016,
+      "newton_converged": 40,
+      "max_newton_iterations": 3,
+      "max_final_newton_residual": 2.184641002554754e-06,
+      "dt_min": 0.4403724178032462,
+      "dt_max": 5.029566818224784,
+      "fgmres_solves": 119,
+      "fgmres_true_residual_max": 1.9962181499312947e-08,
+      "accepted_Tmin_min_K": 14.252116445807271,
+      "rho_max_cgs": 4.75471e-14,
+      "Tgas_max_K": 17.8022,
+      "Trad_max_K": 17.7272,
+      "gas_mass_g": 2.27532e+33,
+      "Lz_cgs": 2.28031e+48,
+      "Eint_gas_cgs": 1.89224e+42,
+      "Erad_tot_cgs": 1.86239e+42,
+      "log_sha256": "caa68f2f1b319bd1e69a7ff9cab7cc575e84650c267330b3051b7da61d413b6f",
+      "history_sha256": "f72c784dceaf3e0d1b7cb0a5179d43bdcf6bfe978b355e6c4e3d354f9d44f6ac",
+      "restart_sha256": "cb6a9635d7ac929266a6f4716d2c569ef00aedc47ec0711400dfc4c11a4d9c3d"
+    },
+    {
+      "cfl": 0.075,
+      "end_cycle": 176,
+      "end_time": 2436.7392236433016,
+      "newton_converged": 76,
+      "max_newton_iterations": 3,
+      "max_final_newton_residual": 4.2915371298109245e-07,
+      "dt_min": 1.987346661538595,
+      "dt_max": 2.514783409112392,
+      "fgmres_solves": 228,
+      "fgmres_true_residual_max": 1.9908700304512226e-08,
+      "accepted_Tmin_min_K": 14.354970458758405,
+      "rho_max_cgs": 4.76434e-14,
+      "Tgas_max_K": 17.0738,
+      "Trad_max_K": 17.0163,
+      "gas_mass_g": 2.27534e+33,
+      "Lz_cgs": -1.70737e+47,
+      "Eint_gas_cgs": 1.85049e+42,
+      "Erad_tot_cgs": 1.8867e+42,
+      "log_sha256": "7a98461e46e152055578a05b053b3f2a9aa4186107ec7da3089afdf3430a9d57",
+      "history_sha256": "4ea3109d293a71f74f21b9feecaaa2c65e6682d8d36ed673cbb9a5b8f646b1bc",
+      "restart_sha256": "54f0ba173f3a03d543e2ae3a619373df0e5acea89422d5e9ca82aa0bc62d0f3d"
+    }
+  ],
+  "comparison": {
+    "0.15": {
+      "rho_max_cgs_relative_to_cfl_0p3": 0.0033531554268783933,
+      "Tgas_max_K_relative_to_cfl_0p3": -0.11226026509220385,
+      "Trad_max_K_relative_to_cfl_0p3": -0.11519725283501038,
+      "gas_mass_g_relative_to_cfl_0p3": 4.395005515664005e-06,
+      "Lz_cgs_relative_to_cfl_0p3": 0.010117520941585028,
+      "Eint_gas_cgs_relative_to_cfl_0p3": -0.09084182558100427,
+      "Erad_tot_cgs_relative_to_cfl_0p3": -0.26224741622795034
+    },
+    "0.075": {
+      "rho_max_cgs_relative_to_cfl_0p3": 0.005385306890744884,
+      "Tgas_max_K_relative_to_cfl_0p3": -0.14858328263536366,
+      "Trad_max_K_relative_to_cfl_0p3": -0.15067980354575938,
+      "gas_mass_g_relative_to_cfl_0p3": 1.318501654724537e-05,
+      "Lz_cgs_relative_to_cfl_0p3": -1.0756320128285204,
+      "Eint_gas_cgs_relative_to_cfl_0p3": -0.11090130734969807,
+      "Erad_tot_cgs_relative_to_cfl_0p3": -0.2526174432837772
+    }
+  },
+  "field_comparison": [
+    {
+      "field": "rho",
+      "reference_cfl": "0.3",
+      "candidate_cfl": "0.15",
+      "relative_l1": 0.004573308567955032,
+      "relative_l2": 0.003525287098947592,
+      "relative_max": 0.0033521305763091103
+    },
+    {
+      "field": "rho",
+      "reference_cfl": "0.3",
+      "candidate_cfl": "0.075",
+      "relative_l1": 0.007605689207677066,
+      "relative_l2": 0.005715216260985117,
+      "relative_max": 0.005384873900259896
+    },
+    {
+      "field": "rho",
+      "reference_cfl": "0.15",
+      "candidate_cfl": "0.075",
+      "relative_l1": 0.003192228900493059,
+      "relative_l2": 0.0022016914887410498,
+      "relative_max": 0.0020259520680772475
+    },
+    {
+      "field": "press",
+      "reference_cfl": "0.3",
+      "candidate_cfl": "0.15",
+      "relative_l1": 0.09458951358234367,
+      "relative_l2": 0.10928115839663873,
+      "relative_max": 0.10928328838680808
+    },
+    {
+      "field": "press",
+      "reference_cfl": "0.3",
+      "candidate_cfl": "0.075",
+      "relative_l1": 0.11956706383434446,
+      "relative_l2": 0.1440035191223009,
+      "relative_max": 0.14399955583373947
+    },
+    {
+      "field": "press",
+      "reference_cfl": "0.15",
+      "candidate_cfl": "0.075",
+      "relative_l1": 0.028168456548515162,
+      "relative_l2": 0.038986022461250006,
+      "relative_max": 0.038975655215962184
+    },
+    {
+      "field": "Er",
+      "reference_cfl": "0.3",
+      "candidate_cfl": "0.15",
+      "relative_l1": 0.2622237489402229,
+      "relative_l2": 0.2622401789072904,
+      "relative_max": 0.3871126615947273
+    },
+    {
+      "field": "Er",
+      "reference_cfl": "0.3",
+      "candidate_cfl": "0.075",
+      "relative_l1": 0.25264024647461136,
+      "relative_l2": 0.2526736870980817,
+      "relative_max": 0.4796614089300033
+    },
+    {
+      "field": "Er",
+      "reference_cfl": "0.15",
+      "candidate_cfl": "0.075",
+      "relative_l1": 0.013001121249715744,
+      "relative_l2": 0.013074016645658791,
+      "relative_max": 0.1510045020281983
+    }
+  ],
+  "strict_no_ghost_control": {
+    "trace_equal": {
+      "cycle": true,
+      "newton": true,
+      "fgmres": true,
+      "local_gas": true
+    },
+    "history_byte_equal": true,
+    "log_sha256": "d6add503f58774acf8380132b63530d1c604a5bd35bc6731a1ba9fa5c5c8e47c"
+  },
+  "limitations": [
+    "One matched-time interval from a shared checkpoint does not establish asymptotic temporal order.",
+    "Maximum temperature is a nonsmooth statistic and can move between cells.",
+    "All comparisons use the same 120-block mesh without regrid in this interval."
+  ]
+}
