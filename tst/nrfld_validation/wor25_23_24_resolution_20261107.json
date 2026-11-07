@@ -51689,5 +51689,2698 @@
       }
     ],
     "decision": "Retain as an opt-in diagnostic: all seven runs have exactly equal HDF numeric arrays and FGMRES histories versus base. Fixed/variable three-level face FAILs and natural-collapse rank-dependent PASS/FAIL are unchanged. Scale is a heuristic cancellation indicator, not a rigorous error bound; the face tolerance remains 1e-6. Off mode emits no face-ledger rows and converges identically."
+  },
+  "threelevel_coupled_screen": {
+    "scope": "Coupled Newton/FGMRES, coarse/fine Jv and face ledger, 2/3 levels, fixed/variable limiter, 1/2 MPI ranks; q1e7 and q1e6 3-level opacity; FGMRES options in fixed q1e7 case.",
+    "base_cases": [
+      {
+        "name": "twolevel_coupled_fixed_r1",
+        "level_count": 2,
+        "limiter": "fixed",
+        "ranks": 1,
+        "threads_per_rank": 1,
+        "opacity_case": "q1e7",
+        "trial": "base",
+        "source_commit_before_run": "9a8567ed",
+        "binary_sha256": "8d4fe3dee26242afa4864f3282ce14b2d53c3e4ae4f8c2375c4e5880e4db9fd6",
+        "input_path": "/home/kosuke/simulation/athena-wor25-23-24-resolution/tst/nrfld_validation/testc_twolevel_shifted_20261107.in",
+        "input_sha256": "ba333aee43531158fe9d34b50a6e9cc97ffbfa70fdb43a1ae5dcbc4045fdf8d2",
+        "command": "mpirun --output-filename /tmp/wor25_23_24_resolution_trials/twolevel_coupled_fixed_r1/mpi -n 1 /tmp/wor25_23_24_resolution_roundoff_production_testc_build/bin/athena -i /home/kosuke/simulation/athena-wor25-23-24-resolution/tst/nrfld_validation/testc_twolevel_shifted_20261107.in -d /tmp/wor25_23_24_resolution_trials/twolevel_coupled_fixed_r1/output nrfld/linear_solver=fgmres nrfld/fgmres_linearity_check=false fld/is_couple=true fld/only_rad=false",
+        "overrides": "nrfld/linear_solver=fgmres nrfld/fgmres_linearity_check=false fld/is_couple=true fld/only_rad=false",
+        "environment": {
+          "OMP_NUM_THREADS": 1,
+          "ATHENA_NRFLD_INTERFACE_LEDGER": 1,
+          "ATHENA_NRFLD_ENERGY_LEDGER": 1
+        },
+        "run_log": "/tmp/wor25_23_24_resolution_trials/twolevel_coupled_fixed_r1/run.log",
+        "face_logs": [
+          "/tmp/wor25_23_24_resolution_trials/twolevel_coupled_fixed_r1/mpi/1/rank.0/stdout"
+        ],
+        "exit_status": 0,
+        "wall_time": "0:07.20",
+        "peak_rss_kb": 229456,
+        "fgmres_history": [
+          {
+            "iterations": 9,
+            "true_relative_residual": 6.674375463289701e-09
+          },
+          {
+            "iterations": 10,
+            "true_relative_residual": 7.219474590762114e-09
+          },
+          {
+            "iterations": 10,
+            "true_relative_residual": 9.567640609087374e-09
+          },
+          {
+            "iterations": 10,
+            "true_relative_residual": 6.644597937439482e-09
+          },
+          {
+            "iterations": 10,
+            "true_relative_residual": 8.696171903810835e-09
+          },
+          {
+            "iterations": 11,
+            "true_relative_residual": 2.0992264911272456e-09
+          },
+          {
+            "iterations": 10,
+            "true_relative_residual": 7.600189543113043e-09
+          },
+          {
+            "iterations": 11,
+            "true_relative_residual": 1.4252317833111251e-09
+          },
+          {
+            "iterations": 10,
+            "true_relative_residual": 7.159329204780237e-09
+          },
+          {
+            "iterations": 11,
+            "true_relative_residual": 1.3744001260140893e-09
+          },
+          {
+            "iterations": 10,
+            "true_relative_residual": 8.5738920245732e-09
+          },
+          {
+            "iterations": 11,
+            "true_relative_residual": 1.6029812750127718e-09
+          },
+          {
+            "iterations": 11,
+            "true_relative_residual": 1.4449743114489963e-09
+          },
+          {
+            "iterations": 10,
+            "true_relative_residual": 7.205355504924999e-09
+          }
+        ],
+        "fgmres_total_iterations": 144,
+        "maximum_true_relative_residual": 9.567640609087374e-09,
+        "newton_history": [
+          {
+            "status": "dt_zero_initialization",
+            "iterations": 0
+          },
+          {
+            "status": "converged",
+            "iterations": 14
+          }
+        ],
+        "fgmres_fatal": null,
+        "coupled_jv_coarse_fine_h1e4": [
+          {
+            "direction": "smooth",
+            "epsilon": 0.0001,
+            "coarse_fine_cells": 640,
+            "relative_l2": 4.861620403275129e-08
+          },
+          {
+            "direction": "newton",
+            "epsilon": 0.0001,
+            "coarse_fine_cells": 640,
+            "relative_l2": 2.808794079847043e-07
+          }
+        ],
+        "max_implicit_energy_absolute_relative_balance": 2.3250343939307943e-10,
+        "coarse_fine_face_pair_count": 2,
+        "worst_face_pair": {
+          "cycle": 0,
+          "stage": 0,
+          "coarse_gid": 0,
+          "axis": 1,
+          "side": "max",
+          "fine_count": 4,
+          "coarse_flux": 1.9581720504350624e-05,
+          "fine_flux": -1.9581732069173796e-05,
+          "mismatch": -1.1564823172049337e-11,
+          "relative_mismatch": 2.9529631358057223e-07,
+          "roundoff_scale": 1.3016032560887288e-10,
+          "mismatch_over_roundoff_scale": 0.08885060111789529
+        },
+        "max_face_absolute_mismatch": 1.1564823172049337e-11,
+        "max_face_relative_mismatch": 2.9529631358057223e-07,
+        "final_output": {
+          "file": "/tmp/wor25_23_24_resolution_trials/twolevel_coupled_fixed_r1/output/nrfld_diff_amr_interface.fields.00001.athdf",
+          "minimum_radiation_energy": 144.0620574951172,
+          "maximum_radiation_energy": 144.0620574951172
+        },
+        "solver_pass": true,
+        "face_pass": true,
+        "evaluation": "PASS"
+      },
+      {
+        "name": "twolevel_coupled_fixed_r2",
+        "level_count": 2,
+        "limiter": "fixed",
+        "ranks": 2,
+        "threads_per_rank": 1,
+        "opacity_case": "q1e7",
+        "trial": "base",
+        "source_commit_before_run": "9a8567ed",
+        "binary_sha256": "8d4fe3dee26242afa4864f3282ce14b2d53c3e4ae4f8c2375c4e5880e4db9fd6",
+        "input_path": "/home/kosuke/simulation/athena-wor25-23-24-resolution/tst/nrfld_validation/testc_twolevel_shifted_20261107.in",
+        "input_sha256": "ba333aee43531158fe9d34b50a6e9cc97ffbfa70fdb43a1ae5dcbc4045fdf8d2",
+        "command": "mpirun --output-filename /tmp/wor25_23_24_resolution_trials/twolevel_coupled_fixed_r2/mpi -n 2 /tmp/wor25_23_24_resolution_roundoff_production_testc_build/bin/athena -i /home/kosuke/simulation/athena-wor25-23-24-resolution/tst/nrfld_validation/testc_twolevel_shifted_20261107.in -d /tmp/wor25_23_24_resolution_trials/twolevel_coupled_fixed_r2/output nrfld/linear_solver=fgmres nrfld/fgmres_linearity_check=false fld/is_couple=true fld/only_rad=false",
+        "overrides": "nrfld/linear_solver=fgmres nrfld/fgmres_linearity_check=false fld/is_couple=true fld/only_rad=false",
+        "environment": {
+          "OMP_NUM_THREADS": 1,
+          "ATHENA_NRFLD_INTERFACE_LEDGER": 1,
+          "ATHENA_NRFLD_ENERGY_LEDGER": 1
+        },
+        "run_log": "/tmp/wor25_23_24_resolution_trials/twolevel_coupled_fixed_r2/run.log",
+        "face_logs": [
+          "/tmp/wor25_23_24_resolution_trials/twolevel_coupled_fixed_r2/mpi/1/rank.0/stdout",
+          "/tmp/wor25_23_24_resolution_trials/twolevel_coupled_fixed_r2/mpi/1/rank.1/stdout"
+        ],
+        "exit_status": 0,
+        "wall_time": "0:07.50",
+        "peak_rss_kb": 132360,
+        "fgmres_history": [
+          {
+            "iterations": 9,
+            "true_relative_residual": 6.672407560176385e-09
+          },
+          {
+            "iterations": 10,
+            "true_relative_residual": 7.365978120675303e-09
+          },
+          {
+            "iterations": 10,
+            "true_relative_residual": 9.457208502227679e-09
+          },
+          {
+            "iterations": 10,
+            "true_relative_residual": 6.484090766253305e-09
+          },
+          {
+            "iterations": 10,
+            "true_relative_residual": 8.37078079487684e-09
+          },
+          {
+            "iterations": 11,
+            "true_relative_residual": 1.7852391949620274e-09
+          },
+          {
+            "iterations": 10,
+            "true_relative_residual": 7.846968450745028e-09
+          },
+          {
+            "iterations": 11,
+            "true_relative_residual": 1.6815570000540745e-09
+          },
+          {
+            "iterations": 10,
+            "true_relative_residual": 7.347898803648227e-09
+          },
+          {
+            "iterations": 11,
+            "true_relative_residual": 1.8044495400237228e-09
+          },
+          {
+            "iterations": 10,
+            "true_relative_residual": 8.429019710427467e-09
+          },
+          {
+            "iterations": 11,
+            "true_relative_residual": 1.939934394448024e-09
+          },
+          {
+            "iterations": 11,
+            "true_relative_residual": 1.5457211881130137e-09
+          },
+          {
+            "iterations": 10,
+            "true_relative_residual": 6.883433866474944e-09
+          }
+        ],
+        "fgmres_total_iterations": 144,
+        "maximum_true_relative_residual": 9.457208502227679e-09,
+        "newton_history": [
+          {
+            "status": "dt_zero_initialization",
+            "iterations": 0
+          },
+          {
+            "status": "converged",
+            "iterations": 14
+          }
+        ],
+        "fgmres_fatal": null,
+        "coupled_jv_coarse_fine_h1e4": [
+          {
+            "direction": "smooth",
+            "epsilon": 0.0001,
+            "coarse_fine_cells": 640,
+            "relative_l2": 4.861620403275129e-08
+          },
+          {
+            "direction": "newton",
+            "epsilon": 0.0001,
+            "coarse_fine_cells": 640,
+            "relative_l2": 2.8087687824725947e-07
+          }
+        ],
+        "max_implicit_energy_absolute_relative_balance": 2.826788135178182e-10,
+        "coarse_fine_face_pair_count": 2,
+        "worst_face_pair": {
+          "cycle": 0,
+          "stage": 0,
+          "coarse_gid": 0,
+          "axis": 1,
+          "side": "max",
+          "fine_count": 4,
+          "coarse_flux": 1.9581720504350624e-05,
+          "fine_flux": -1.9581732069173796e-05,
+          "mismatch": -1.1564823172049337e-11,
+          "relative_mismatch": 2.9529631358057223e-07,
+          "roundoff_scale": 1.3016032560753525e-10,
+          "mismatch_over_roundoff_scale": 0.0888506011188084
+        },
+        "max_face_absolute_mismatch": 1.1564823175437468e-11,
+        "max_face_relative_mismatch": 2.9529631358057223e-07,
+        "final_output": {
+          "file": "/tmp/wor25_23_24_resolution_trials/twolevel_coupled_fixed_r2/output/nrfld_diff_amr_interface.fields.00001.athdf",
+          "minimum_radiation_energy": 144.0620574951172,
+          "maximum_radiation_energy": 144.0620574951172
+        },
+        "solver_pass": true,
+        "face_pass": true,
+        "evaluation": "PASS"
+      },
+      {
+        "name": "twolevel_coupled_variable_r1",
+        "level_count": 2,
+        "limiter": "variable",
+        "ranks": 1,
+        "threads_per_rank": 1,
+        "opacity_case": "q1e7",
+        "trial": "base",
+        "source_commit_before_run": "9a8567ed",
+        "binary_sha256": "8d4fe3dee26242afa4864f3282ce14b2d53c3e4ae4f8c2375c4e5880e4db9fd6",
+        "input_path": "/home/kosuke/simulation/athena-wor25-23-24-resolution/tst/nrfld_validation/testc_twolevel_shifted_20261107.in",
+        "input_sha256": "ba333aee43531158fe9d34b50a6e9cc97ffbfa70fdb43a1ae5dcbc4045fdf8d2",
+        "command": "mpirun --output-filename /tmp/wor25_23_24_resolution_trials/twolevel_coupled_variable_r1/mpi -n 1 /tmp/wor25_23_24_resolution_roundoff_production_testc_build/bin/athena -i /home/kosuke/simulation/athena-wor25-23-24-resolution/tst/nrfld_validation/testc_twolevel_shifted_20261107.in -d /tmp/wor25_23_24_resolution_trials/twolevel_coupled_variable_r1/output nrfld/linear_solver=fgmres nrfld/fgmres_linearity_check=false fld/is_couple=true fld/only_rad=false fld/fixed_flux_limiter=false",
+        "overrides": "nrfld/linear_solver=fgmres nrfld/fgmres_linearity_check=false fld/is_couple=true fld/only_rad=false fld/fixed_flux_limiter=false",
+        "environment": {
+          "OMP_NUM_THREADS": 1,
+          "ATHENA_NRFLD_INTERFACE_LEDGER": 1,
+          "ATHENA_NRFLD_ENERGY_LEDGER": 1
+        },
+        "run_log": "/tmp/wor25_23_24_resolution_trials/twolevel_coupled_variable_r1/run.log",
+        "face_logs": [
+          "/tmp/wor25_23_24_resolution_trials/twolevel_coupled_variable_r1/mpi/1/rank.0/stdout"
+        ],
+        "exit_status": 0,
+        "wall_time": "0:10.19",
+        "peak_rss_kb": 229464,
+        "fgmres_history": [
+          {
+            "iterations": 37,
+            "true_relative_residual": 7.852592009387084e-09
+          },
+          {
+            "iterations": 34,
+            "true_relative_residual": 9.674470553261892e-09
+          },
+          {
+            "iterations": 35,
+            "true_relative_residual": 8.624124945779418e-09
+          },
+          {
+            "iterations": 33,
+            "true_relative_residual": 9.943046648837453e-09
+          },
+          {
+            "iterations": 34,
+            "true_relative_residual": 9.822442309814054e-09
+          },
+          {
+            "iterations": 35,
+            "true_relative_residual": 8.022298241810246e-09
+          },
+          {
+            "iterations": 34,
+            "true_relative_residual": 9.613900834131845e-09
+          },
+          {
+            "iterations": 35,
+            "true_relative_residual": 8.507253362395575e-09
+          },
+          {
+            "iterations": 34,
+            "true_relative_residual": 9.550419579384943e-09
+          },
+          {
+            "iterations": 35,
+            "true_relative_residual": 8.637224168530117e-09
+          },
+          {
+            "iterations": 34,
+            "true_relative_residual": 9.84453929758544e-09
+          },
+          {
+            "iterations": 35,
+            "true_relative_residual": 8.172632454032387e-09
+          },
+          {
+            "iterations": 35,
+            "true_relative_residual": 7.970822389485317e-09
+          },
+          {
+            "iterations": 33,
+            "true_relative_residual": 9.876652322129076e-09
+          }
+        ],
+        "fgmres_total_iterations": 483,
+        "maximum_true_relative_residual": 9.943046648837453e-09,
+        "newton_history": [
+          {
+            "status": "dt_zero_initialization",
+            "iterations": 0
+          },
+          {
+            "status": "converged",
+            "iterations": 14
+          }
+        ],
+        "fgmres_fatal": null,
+        "coupled_jv_coarse_fine_h1e4": [
+          {
+            "direction": "smooth",
+            "epsilon": 0.0001,
+            "coarse_fine_cells": 640,
+            "relative_l2": 6.241976716625415e-08
+          },
+          {
+            "direction": "newton",
+            "epsilon": 0.0001,
+            "coarse_fine_cells": 640,
+            "relative_l2": 1.4397463215995264e-05
+          }
+        ],
+        "max_implicit_energy_absolute_relative_balance": 1.4181964620570255e-10,
+        "coarse_fine_face_pair_count": 2,
+        "worst_face_pair": {
+          "cycle": 0,
+          "stage": 0,
+          "coarse_gid": 33,
+          "axis": 1,
+          "side": "min",
+          "fine_count": 4,
+          "coarse_flux": 5.8284431129933504e-05,
+          "fine_flux": -5.828443111932343e-05,
+          "mismatch": 1.0610076998842505e-14,
+          "relative_mismatch": 9.101982119509053e-11,
+          "roundoff_scale": 2.402390076246951e-12,
+          "mismatch_over_roundoff_scale": 0.004416467210611244
+        },
+        "max_face_absolute_mismatch": 1.0610076998842505e-14,
+        "max_face_relative_mismatch": 9.101982119509053e-11,
+        "final_output": {
+          "file": "/tmp/wor25_23_24_resolution_trials/twolevel_coupled_variable_r1/output/nrfld_diff_amr_interface.fields.00001.athdf",
+          "minimum_radiation_energy": 144.06199645996094,
+          "maximum_radiation_energy": 144.06248474121094
+        },
+        "solver_pass": true,
+        "face_pass": true,
+        "evaluation": "PASS"
+      },
+      {
+        "name": "twolevel_coupled_variable_r2",
+        "level_count": 2,
+        "limiter": "variable",
+        "ranks": 2,
+        "threads_per_rank": 1,
+        "opacity_case": "q1e7",
+        "trial": "base",
+        "source_commit_before_run": "9a8567ed",
+        "binary_sha256": "8d4fe3dee26242afa4864f3282ce14b2d53c3e4ae4f8c2375c4e5880e4db9fd6",
+        "input_path": "/home/kosuke/simulation/athena-wor25-23-24-resolution/tst/nrfld_validation/testc_twolevel_shifted_20261107.in",
+        "input_sha256": "ba333aee43531158fe9d34b50a6e9cc97ffbfa70fdb43a1ae5dcbc4045fdf8d2",
+        "command": "mpirun --output-filename /tmp/wor25_23_24_resolution_trials/twolevel_coupled_variable_r2/mpi -n 2 /tmp/wor25_23_24_resolution_roundoff_production_testc_build/bin/athena -i /home/kosuke/simulation/athena-wor25-23-24-resolution/tst/nrfld_validation/testc_twolevel_shifted_20261107.in -d /tmp/wor25_23_24_resolution_trials/twolevel_coupled_variable_r2/output nrfld/linear_solver=fgmres nrfld/fgmres_linearity_check=false fld/is_couple=true fld/only_rad=false fld/fixed_flux_limiter=false",
+        "overrides": "nrfld/linear_solver=fgmres nrfld/fgmres_linearity_check=false fld/is_couple=true fld/only_rad=false fld/fixed_flux_limiter=false",
+        "environment": {
+          "OMP_NUM_THREADS": 1,
+          "ATHENA_NRFLD_INTERFACE_LEDGER": 1,
+          "ATHENA_NRFLD_ENERGY_LEDGER": 1
+        },
+        "run_log": "/tmp/wor25_23_24_resolution_trials/twolevel_coupled_variable_r2/run.log",
+        "face_logs": [
+          "/tmp/wor25_23_24_resolution_trials/twolevel_coupled_variable_r2/mpi/1/rank.0/stdout",
+          "/tmp/wor25_23_24_resolution_trials/twolevel_coupled_variable_r2/mpi/1/rank.1/stdout"
+        ],
+        "exit_status": 0,
+        "wall_time": "0:09.79",
+        "peak_rss_kb": 132300,
+        "fgmres_history": [
+          {
+            "iterations": 37,
+            "true_relative_residual": 7.866329465292434e-09
+          },
+          {
+            "iterations": 34,
+            "true_relative_residual": 9.577937744080552e-09
+          },
+          {
+            "iterations": 34,
+            "true_relative_residual": 9.932485540743362e-09
+          },
+          {
+            "iterations": 33,
+            "true_relative_residual": 9.881707325483426e-09
+          },
+          {
+            "iterations": 34,
+            "true_relative_residual": 9.833406811133366e-09
+          },
+          {
+            "iterations": 35,
+            "true_relative_residual": 7.93822809314294e-09
+          },
+          {
+            "iterations": 34,
+            "true_relative_residual": 9.731235284749018e-09
+          },
+          {
+            "iterations": 35,
+            "true_relative_residual": 8.558120462350231e-09
+          },
+          {
+            "iterations": 34,
+            "true_relative_residual": 9.536086742470688e-09
+          },
+          {
+            "iterations": 35,
+            "true_relative_residual": 8.470896386602765e-09
+          },
+          {
+            "iterations": 34,
+            "true_relative_residual": 9.835676136051248e-09
+          },
+          {
+            "iterations": 35,
+            "true_relative_residual": 8.047763109286996e-09
+          },
+          {
+            "iterations": 35,
+            "true_relative_residual": 7.979521067980496e-09
+          },
+          {
+            "iterations": 34,
+            "true_relative_residual": 9.489716143231334e-09
+          }
+        ],
+        "fgmres_total_iterations": 483,
+        "maximum_true_relative_residual": 9.932485540743362e-09,
+        "newton_history": [
+          {
+            "status": "dt_zero_initialization",
+            "iterations": 0
+          },
+          {
+            "status": "converged",
+            "iterations": 14
+          }
+        ],
+        "fgmres_fatal": null,
+        "coupled_jv_coarse_fine_h1e4": [
+          {
+            "direction": "smooth",
+            "epsilon": 0.0001,
+            "coarse_fine_cells": 640,
+            "relative_l2": 6.241976716625415e-08
+          },
+          {
+            "direction": "newton",
+            "epsilon": 0.0001,
+            "coarse_fine_cells": 640,
+            "relative_l2": 1.4401577715332771e-05
+          }
+        ],
+        "max_implicit_energy_absolute_relative_balance": 2.2644810154992897e-10,
+        "coarse_fine_face_pair_count": 2,
+        "worst_face_pair": {
+          "cycle": 0,
+          "stage": 0,
+          "coarse_gid": 33,
+          "axis": 1,
+          "side": "min",
+          "fine_count": 4,
+          "coarse_flux": 5.828443100998031e-05,
+          "fine_flux": -5.828443100930821e-05,
+          "mismatch": 6.720969267237642e-16,
+          "relative_mismatch": 5.765664304182304e-12,
+          "roundoff_scale": 2.4023900762470356e-12,
+          "mismatch_over_roundoff_scale": 0.0002797617811399305
+        },
+        "max_face_absolute_mismatch": 6.720969267237642e-16,
+        "max_face_relative_mismatch": 5.765664304182304e-12,
+        "final_output": {
+          "file": "/tmp/wor25_23_24_resolution_trials/twolevel_coupled_variable_r2/output/nrfld_diff_amr_interface.fields.00001.athdf",
+          "minimum_radiation_energy": 144.06199645996094,
+          "maximum_radiation_energy": 144.06248474121094
+        },
+        "solver_pass": true,
+        "face_pass": true,
+        "evaluation": "PASS"
+      },
+      {
+        "name": "threelevel_coupled_fixed_r1",
+        "level_count": 3,
+        "limiter": "fixed",
+        "ranks": 1,
+        "threads_per_rank": 1,
+        "opacity_case": "q1e7",
+        "trial": "base",
+        "source_commit_before_run": "9a8567ed",
+        "binary_sha256": "8d4fe3dee26242afa4864f3282ce14b2d53c3e4ae4f8c2375c4e5880e4db9fd6",
+        "input_path": "/home/kosuke/simulation/athena-wor25-23-24-resolution/tst/nrfld_validation/testc_threelevel_shifted_20261107.in",
+        "input_sha256": "c1ffedae69f670d6f17740805077b6741c7cefdaf2baf4639cc7ab5f1fa38a74",
+        "command": "mpirun --output-filename /tmp/wor25_23_24_resolution_trials/threelevel_coupled_fixed_r1/mpi -n 1 /tmp/wor25_23_24_resolution_roundoff_production_testc_build/bin/athena -i /home/kosuke/simulation/athena-wor25-23-24-resolution/tst/nrfld_validation/testc_threelevel_shifted_20261107.in -d /tmp/wor25_23_24_resolution_trials/threelevel_coupled_fixed_r1/output nrfld/linear_solver=fgmres nrfld/fgmres_linearity_check=false fld/is_couple=true fld/only_rad=false",
+        "overrides": "nrfld/linear_solver=fgmres nrfld/fgmres_linearity_check=false fld/is_couple=true fld/only_rad=false",
+        "environment": {
+          "OMP_NUM_THREADS": 1,
+          "ATHENA_NRFLD_INTERFACE_LEDGER": 1,
+          "ATHENA_NRFLD_ENERGY_LEDGER": 1
+        },
+        "run_log": "/tmp/wor25_23_24_resolution_trials/threelevel_coupled_fixed_r1/run.log",
+        "face_logs": [
+          "/tmp/wor25_23_24_resolution_trials/threelevel_coupled_fixed_r1/mpi/1/rank.0/stdout"
+        ],
+        "exit_status": 0,
+        "wall_time": "0:20.34",
+        "peak_rss_kb": 539384,
+        "fgmres_history": [
+          {
+            "iterations": 11,
+            "true_relative_residual": 1.668823036278033e-09
+          },
+          {
+            "iterations": 11,
+            "true_relative_residual": 5.778161854646668e-09
+          },
+          {
+            "iterations": 11,
+            "true_relative_residual": 7.121481761025209e-09
+          },
+          {
+            "iterations": 11,
+            "true_relative_residual": 5.234574586779687e-09
+          },
+          {
+            "iterations": 11,
+            "true_relative_residual": 6.982939792432656e-09
+          },
+          {
+            "iterations": 11,
+            "true_relative_residual": 8.715899286349152e-09
+          },
+          {
+            "iterations": 11,
+            "true_relative_residual": 6.5266127953416796e-09
+          },
+          {
+            "iterations": 11,
+            "true_relative_residual": 7.660663034613637e-09
+          },
+          {
+            "iterations": 11,
+            "true_relative_residual": 6.282050795912528e-09
+          },
+          {
+            "iterations": 11,
+            "true_relative_residual": 8.001775130049965e-09
+          },
+          {
+            "iterations": 11,
+            "true_relative_residual": 7.475606507346453e-09
+          },
+          {
+            "iterations": 11,
+            "true_relative_residual": 5.8247098123281015e-09
+          },
+          {
+            "iterations": 11,
+            "true_relative_residual": 7.49001307951143e-09
+          },
+          {
+            "iterations": 11,
+            "true_relative_residual": 5.03199851318532e-09
+          }
+        ],
+        "fgmres_total_iterations": 154,
+        "maximum_true_relative_residual": 8.715899286349152e-09,
+        "newton_history": [
+          {
+            "status": "dt_zero_initialization",
+            "iterations": 0
+          },
+          {
+            "status": "converged",
+            "iterations": 14
+          }
+        ],
+        "fgmres_fatal": null,
+        "coupled_jv_coarse_fine_h1e4": [
+          {
+            "direction": "smooth",
+            "epsilon": 0.0001,
+            "coarse_fine_cells": 3200,
+            "relative_l2": 1.638691384789674e-08
+          },
+          {
+            "direction": "newton",
+            "epsilon": 0.0001,
+            "coarse_fine_cells": 3200,
+            "relative_l2": 8.47802601951733e-08
+          }
+        ],
+        "max_implicit_energy_absolute_relative_balance": 3.2094633370272176e-10,
+        "coarse_fine_face_pair_count": 10,
+        "worst_face_pair": {
+          "cycle": 0,
+          "stage": 0,
+          "coarse_gid": 81,
+          "axis": 1,
+          "side": "min",
+          "fine_count": 4,
+          "coarse_flux": 1.2374360795301225e-09,
+          "fine_flux": -1.231653667943533e-09,
+          "mismatch": 5.782411586589426e-12,
+          "relative_mismatch": 0.0023419203747072877,
+          "roundoff_scale": 6.508016350505502e-11,
+          "mismatch_over_roundoff_scale": 0.08885060017005465
+        },
+        "max_face_absolute_mismatch": 2.3129646344098673e-11,
+        "max_face_relative_mismatch": 0.0023419203747072877,
+        "final_output": {
+          "file": "/tmp/wor25_23_24_resolution_trials/threelevel_coupled_fixed_r1/output/nrfld_diff_amr_interface.fields.00001.athdf",
+          "minimum_radiation_energy": 144.0620574951172,
+          "maximum_radiation_energy": 144.0620574951172
+        },
+        "solver_pass": true,
+        "face_pass": false,
+        "evaluation": "FAIL_FACE_RELATIVE_ONLY"
+      },
+      {
+        "name": "threelevel_coupled_fixed_r2",
+        "level_count": 3,
+        "limiter": "fixed",
+        "ranks": 2,
+        "threads_per_rank": 1,
+        "opacity_case": "q1e7",
+        "trial": "base",
+        "source_commit_before_run": "9a8567ed",
+        "binary_sha256": "8d4fe3dee26242afa4864f3282ce14b2d53c3e4ae4f8c2375c4e5880e4db9fd6",
+        "input_path": "/home/kosuke/simulation/athena-wor25-23-24-resolution/tst/nrfld_validation/testc_threelevel_shifted_20261107.in",
+        "input_sha256": "c1ffedae69f670d6f17740805077b6741c7cefdaf2baf4639cc7ab5f1fa38a74",
+        "command": "mpirun --output-filename /tmp/wor25_23_24_resolution_trials/threelevel_coupled_fixed_r2/mpi -n 2 /tmp/wor25_23_24_resolution_roundoff_production_testc_build/bin/athena -i /home/kosuke/simulation/athena-wor25-23-24-resolution/tst/nrfld_validation/testc_threelevel_shifted_20261107.in -d /tmp/wor25_23_24_resolution_trials/threelevel_coupled_fixed_r2/output nrfld/linear_solver=fgmres nrfld/fgmres_linearity_check=false fld/is_couple=true fld/only_rad=false",
+        "overrides": "nrfld/linear_solver=fgmres nrfld/fgmres_linearity_check=false fld/is_couple=true fld/only_rad=false",
+        "environment": {
+          "OMP_NUM_THREADS": 1,
+          "ATHENA_NRFLD_INTERFACE_LEDGER": 1,
+          "ATHENA_NRFLD_ENERGY_LEDGER": 1
+        },
+        "run_log": "/tmp/wor25_23_24_resolution_trials/threelevel_coupled_fixed_r2/run.log",
+        "face_logs": [
+          "/tmp/wor25_23_24_resolution_trials/threelevel_coupled_fixed_r2/mpi/1/rank.0/stdout",
+          "/tmp/wor25_23_24_resolution_trials/threelevel_coupled_fixed_r2/mpi/1/rank.1/stdout"
+        ],
+        "exit_status": 134,
+        "wall_time": "0:34.15",
+        "peak_rss_kb": 293008,
+        "fgmres_history": [
+          {
+            "iterations": 11,
+            "true_relative_residual": 1.6684382531889384e-09
+          },
+          {
+            "iterations": 11,
+            "true_relative_residual": 4.901011210530502e-09
+          },
+          {
+            "iterations": 11,
+            "true_relative_residual": 6.824629939132253e-09
+          },
+          {
+            "iterations": 11,
+            "true_relative_residual": 5.551767220819797e-09
+          },
+          {
+            "iterations": 11,
+            "true_relative_residual": 6.9789615997743155e-09
+          },
+          {
+            "iterations": 11,
+            "true_relative_residual": 7.777775193440186e-09
+          },
+          {
+            "iterations": 11,
+            "true_relative_residual": 6.848836842099362e-09
+          },
+          {
+            "iterations": 11,
+            "true_relative_residual": 8.797968644791253e-09
+          },
+          {
+            "iterations": 11,
+            "true_relative_residual": 6.0263186850597114e-09
+          },
+          {
+            "iterations": 11,
+            "true_relative_residual": 8.285487943189124e-09
+          },
+          {
+            "iterations": 11,
+            "true_relative_residual": 8.487680127387045e-09
+          },
+          {
+            "iterations": 80,
+            "true_relative_residual": 1.008101285255665e-08
+          }
+        ],
+        "fgmres_total_iterations": 201,
+        "maximum_true_relative_residual": 1.008101285255665e-08,
+        "newton_history": [
+          {
+            "status": "dt_zero_initialization",
+            "iterations": 0
+          }
+        ],
+        "fgmres_fatal": "FGMRES did not reach its requested relative residual: iterations=80, relative_residual=1.0081e-08, target=1e-08, breakdown=0.",
+        "coupled_jv_coarse_fine_h1e4": [
+          {
+            "direction": "smooth",
+            "epsilon": 0.0001,
+            "coarse_fine_cells": 3200,
+            "relative_l2": 1.638691384789674e-08
+          },
+          {
+            "direction": "newton",
+            "epsilon": 0.0001,
+            "coarse_fine_cells": 3200,
+            "relative_l2": 8.477943556840007e-08
+          }
+        ],
+        "max_implicit_energy_absolute_relative_balance": null,
+        "coarse_fine_face_pair_count": 0,
+        "worst_face_pair": null,
+        "max_face_absolute_mismatch": null,
+        "max_face_relative_mismatch": null,
+        "final_output": null,
+        "solver_pass": false,
+        "face_pass": false,
+        "evaluation": "FAIL_SOLVER"
+      },
+      {
+        "name": "threelevel_coupled_variable_r1",
+        "level_count": 3,
+        "limiter": "variable",
+        "ranks": 1,
+        "threads_per_rank": 1,
+        "opacity_case": "q1e7",
+        "trial": "base",
+        "source_commit_before_run": "9a8567ed",
+        "binary_sha256": "8d4fe3dee26242afa4864f3282ce14b2d53c3e4ae4f8c2375c4e5880e4db9fd6",
+        "input_path": "/home/kosuke/simulation/athena-wor25-23-24-resolution/tst/nrfld_validation/testc_threelevel_shifted_20261107.in",
+        "input_sha256": "c1ffedae69f670d6f17740805077b6741c7cefdaf2baf4639cc7ab5f1fa38a74",
+        "command": "mpirun --output-filename /tmp/wor25_23_24_resolution_trials/threelevel_coupled_variable_r1/mpi -n 1 /tmp/wor25_23_24_resolution_roundoff_production_testc_build/bin/athena -i /home/kosuke/simulation/athena-wor25-23-24-resolution/tst/nrfld_validation/testc_threelevel_shifted_20261107.in -d /tmp/wor25_23_24_resolution_trials/threelevel_coupled_variable_r1/output nrfld/linear_solver=fgmres nrfld/fgmres_linearity_check=false fld/is_couple=true fld/only_rad=false fld/fixed_flux_limiter=false",
+        "overrides": "nrfld/linear_solver=fgmres nrfld/fgmres_linearity_check=false fld/is_couple=true fld/only_rad=false fld/fixed_flux_limiter=false",
+        "environment": {
+          "OMP_NUM_THREADS": 1,
+          "ATHENA_NRFLD_INTERFACE_LEDGER": 1,
+          "ATHENA_NRFLD_ENERGY_LEDGER": 1
+        },
+        "run_log": "/tmp/wor25_23_24_resolution_trials/threelevel_coupled_variable_r1/run.log",
+        "face_logs": [
+          "/tmp/wor25_23_24_resolution_trials/threelevel_coupled_variable_r1/mpi/1/rank.0/stdout"
+        ],
+        "exit_status": 0,
+        "wall_time": "0:22.90",
+        "peak_rss_kb": 539468,
+        "fgmres_history": [
+          {
+            "iterations": 18,
+            "true_relative_residual": 4.174342424551554e-09
+          },
+          {
+            "iterations": 17,
+            "true_relative_residual": 7.321668344929564e-09
+          },
+          {
+            "iterations": 17,
+            "true_relative_residual": 7.997646043347438e-09
+          },
+          {
+            "iterations": 17,
+            "true_relative_residual": 7.44447484695445e-09
+          },
+          {
+            "iterations": 17,
+            "true_relative_residual": 7.544082066472222e-09
+          },
+          {
+            "iterations": 17,
+            "true_relative_residual": 8.756412105927004e-09
+          },
+          {
+            "iterations": 17,
+            "true_relative_residual": 7.44796014931074e-09
+          },
+          {
+            "iterations": 17,
+            "true_relative_residual": 8.227557162612893e-09
+          },
+          {
+            "iterations": 17,
+            "true_relative_residual": 7.3144218256755065e-09
+          },
+          {
+            "iterations": 17,
+            "true_relative_residual": 8.219961947328955e-09
+          },
+          {
+            "iterations": 17,
+            "true_relative_residual": 7.657750434623499e-09
+          },
+          {
+            "iterations": 17,
+            "true_relative_residual": 9.018127703656283e-09
+          },
+          {
+            "iterations": 17,
+            "true_relative_residual": 8.66530025457719e-09
+          },
+          {
+            "iterations": 17,
+            "true_relative_residual": 7.563615080125985e-09
+          }
+        ],
+        "fgmres_total_iterations": 239,
+        "maximum_true_relative_residual": 9.018127703656283e-09,
+        "newton_history": [
+          {
+            "status": "dt_zero_initialization",
+            "iterations": 0
+          },
+          {
+            "status": "converged",
+            "iterations": 14
+          }
+        ],
+        "fgmres_fatal": null,
+        "coupled_jv_coarse_fine_h1e4": [
+          {
+            "direction": "smooth",
+            "epsilon": 0.0001,
+            "coarse_fine_cells": 3200,
+            "relative_l2": 7.071683306573283e-08
+          },
+          {
+            "direction": "newton",
+            "epsilon": 0.0001,
+            "coarse_fine_cells": 3200,
+            "relative_l2": 1.4480308202299444e-06
+          }
+        ],
+        "max_implicit_energy_absolute_relative_balance": 1.3804442498435844e-10,
+        "coarse_fine_face_pair_count": 10,
+        "worst_face_pair": {
+          "cycle": 0,
+          "stage": 0,
+          "coarse_gid": 83,
+          "axis": 1,
+          "side": "min",
+          "fine_count": 4,
+          "coarse_flux": -1.5669813099507328e-11,
+          "fine_flux": 1.5764317904310348e-11,
+          "mismatch": 9.450480480302018e-14,
+          "relative_mismatch": 0.0030064392361138464,
+          "roundoff_scale": 1.1440525162422608e-12,
+          "mismatch_over_roundoff_scale": 0.08260530304450478
+        },
+        "max_face_absolute_mismatch": 9.450480480302018e-14,
+        "max_face_relative_mismatch": 0.0030064392361138464,
+        "final_output": {
+          "file": "/tmp/wor25_23_24_resolution_trials/threelevel_coupled_variable_r1/output/nrfld_diff_amr_interface.fields.00001.athdf",
+          "minimum_radiation_energy": 144.06199645996094,
+          "maximum_radiation_energy": 144.06248474121094
+        },
+        "solver_pass": true,
+        "face_pass": false,
+        "evaluation": "FAIL_FACE_RELATIVE_ONLY"
+      },
+      {
+        "name": "threelevel_coupled_variable_r2",
+        "level_count": 3,
+        "limiter": "variable",
+        "ranks": 2,
+        "threads_per_rank": 1,
+        "opacity_case": "q1e7",
+        "trial": "base",
+        "source_commit_before_run": "9a8567ed",
+        "binary_sha256": "8d4fe3dee26242afa4864f3282ce14b2d53c3e4ae4f8c2375c4e5880e4db9fd6",
+        "input_path": "/home/kosuke/simulation/athena-wor25-23-24-resolution/tst/nrfld_validation/testc_threelevel_shifted_20261107.in",
+        "input_sha256": "c1ffedae69f670d6f17740805077b6741c7cefdaf2baf4639cc7ab5f1fa38a74",
+        "command": "mpirun --output-filename /tmp/wor25_23_24_resolution_trials/threelevel_coupled_variable_r2/mpi -n 2 /tmp/wor25_23_24_resolution_roundoff_production_testc_build/bin/athena -i /home/kosuke/simulation/athena-wor25-23-24-resolution/tst/nrfld_validation/testc_threelevel_shifted_20261107.in -d /tmp/wor25_23_24_resolution_trials/threelevel_coupled_variable_r2/output nrfld/linear_solver=fgmres nrfld/fgmres_linearity_check=false fld/is_couple=true fld/only_rad=false fld/fixed_flux_limiter=false",
+        "overrides": "nrfld/linear_solver=fgmres nrfld/fgmres_linearity_check=false fld/is_couple=true fld/only_rad=false fld/fixed_flux_limiter=false",
+        "environment": {
+          "OMP_NUM_THREADS": 1,
+          "ATHENA_NRFLD_INTERFACE_LEDGER": 1,
+          "ATHENA_NRFLD_ENERGY_LEDGER": 1
+        },
+        "run_log": "/tmp/wor25_23_24_resolution_trials/threelevel_coupled_variable_r2/run.log",
+        "face_logs": [
+          "/tmp/wor25_23_24_resolution_trials/threelevel_coupled_variable_r2/mpi/1/rank.0/stdout",
+          "/tmp/wor25_23_24_resolution_trials/threelevel_coupled_variable_r2/mpi/1/rank.1/stdout"
+        ],
+        "exit_status": 0,
+        "wall_time": "0:31.52",
+        "peak_rss_kb": 293028,
+        "fgmres_history": [
+          {
+            "iterations": 18,
+            "true_relative_residual": 4.1172088044592464e-09
+          },
+          {
+            "iterations": 17,
+            "true_relative_residual": 7.3690576271378246e-09
+          },
+          {
+            "iterations": 17,
+            "true_relative_residual": 7.846448061754567e-09
+          },
+          {
+            "iterations": 17,
+            "true_relative_residual": 7.553368210551274e-09
+          },
+          {
+            "iterations": 17,
+            "true_relative_residual": 7.684779918848556e-09
+          },
+          {
+            "iterations": 17,
+            "true_relative_residual": 8.524335820172858e-09
+          },
+          {
+            "iterations": 17,
+            "true_relative_residual": 7.3775890423726566e-09
+          },
+          {
+            "iterations": 17,
+            "true_relative_residual": 8.380377897954668e-09
+          },
+          {
+            "iterations": 17,
+            "true_relative_residual": 7.285676729633415e-09
+          },
+          {
+            "iterations": 17,
+            "true_relative_residual": 8.246974579621848e-09
+          },
+          {
+            "iterations": 17,
+            "true_relative_residual": 7.725107450627106e-09
+          },
+          {
+            "iterations": 17,
+            "true_relative_residual": 8.876168363797298e-09
+          },
+          {
+            "iterations": 17,
+            "true_relative_residual": 8.85713768674191e-09
+          },
+          {
+            "iterations": 17,
+            "true_relative_residual": 7.545005533289628e-09
+          }
+        ],
+        "fgmres_total_iterations": 239,
+        "maximum_true_relative_residual": 8.876168363797298e-09,
+        "newton_history": [
+          {
+            "status": "dt_zero_initialization",
+            "iterations": 0
+          },
+          {
+            "status": "converged",
+            "iterations": 14
+          }
+        ],
+        "fgmres_fatal": null,
+        "coupled_jv_coarse_fine_h1e4": [
+          {
+            "direction": "smooth",
+            "epsilon": 0.0001,
+            "coarse_fine_cells": 3200,
+            "relative_l2": 7.071683306573283e-08
+          },
+          {
+            "direction": "newton",
+            "epsilon": 0.0001,
+            "coarse_fine_cells": 3200,
+            "relative_l2": 1.4486242482577698e-06
+          }
+        ],
+        "max_implicit_energy_absolute_relative_balance": 2.0921490731531703e-10,
+        "coarse_fine_face_pair_count": 10,
+        "worst_face_pair": {
+          "cycle": 0,
+          "stage": 0,
+          "coarse_gid": 87,
+          "axis": 1,
+          "side": "min",
+          "fine_count": 4,
+          "coarse_flux": -1.570796779764195e-11,
+          "fine_flux": 1.579767209940626e-11,
+          "mismatch": 8.970430176430877e-14,
+          "relative_mismatch": 0.0028472458282846444,
+          "roundoff_scale": 1.1440525162425088e-12,
+          "mismatch_over_roundoff_scale": 0.07840925175264754
+        },
+        "max_face_absolute_mismatch": 8.970430176430877e-14,
+        "max_face_relative_mismatch": 0.0028472458282846444,
+        "final_output": {
+          "file": "/tmp/wor25_23_24_resolution_trials/threelevel_coupled_variable_r2/output/nrfld_diff_amr_interface.fields.00001.athdf",
+          "minimum_radiation_energy": 144.06199645996094,
+          "maximum_radiation_energy": 144.06248474121094
+        },
+        "solver_pass": true,
+        "face_pass": false,
+        "evaluation": "FAIL_FACE_RELATIVE_ONLY"
+      },
+      {
+        "name": "threelevel_coupled_q1e6_fixed_r1",
+        "level_count": 3,
+        "limiter": "fixed",
+        "ranks": 1,
+        "threads_per_rank": 1,
+        "opacity_case": "q1e6",
+        "trial": "base",
+        "source_commit_before_run": "9a8567ed",
+        "binary_sha256": "8d4fe3dee26242afa4864f3282ce14b2d53c3e4ae4f8c2375c4e5880e4db9fd6",
+        "input_path": "/home/kosuke/simulation/athena-wor25-23-24-resolution/tst/nrfld_validation/testc_threelevel_shifted_20261107.in",
+        "input_sha256": "c1ffedae69f670d6f17740805077b6741c7cefdaf2baf4639cc7ab5f1fa38a74",
+        "command": "mpirun --output-filename /tmp/wor25_23_24_resolution_trials/threelevel_coupled_q1e6_fixed_r1/mpi -n 1 /tmp/wor25_23_24_resolution_roundoff_production_testc_build/bin/athena -i /home/kosuke/simulation/athena-wor25-23-24-resolution/tst/nrfld_validation/testc_threelevel_shifted_20261107.in -d /tmp/wor25_23_24_resolution_trials/threelevel_coupled_q1e6_fixed_r1/output nrfld/linear_solver=fgmres nrfld/fgmres_linearity_check=false fld/is_couple=true fld/only_rad=false fld/const_opacity=8.186332719786666e-7",
+        "overrides": "nrfld/linear_solver=fgmres nrfld/fgmres_linearity_check=false fld/is_couple=true fld/only_rad=false fld/const_opacity=8.186332719786666e-7",
+        "environment": {
+          "OMP_NUM_THREADS": 1,
+          "ATHENA_NRFLD_INTERFACE_LEDGER": 1,
+          "ATHENA_NRFLD_ENERGY_LEDGER": 1
+        },
+        "run_log": "/tmp/wor25_23_24_resolution_trials/threelevel_coupled_q1e6_fixed_r1/run.log",
+        "face_logs": [
+          "/tmp/wor25_23_24_resolution_trials/threelevel_coupled_q1e6_fixed_r1/mpi/1/rank.0/stdout"
+        ],
+        "exit_status": 0,
+        "wall_time": "0:58.22",
+        "peak_rss_kb": 539424,
+        "fgmres_history": [
+          {
+            "iterations": 11,
+            "true_relative_residual": 1.6281933630076966e-09
+          },
+          {
+            "iterations": 10,
+            "true_relative_residual": 9.336300863150503e-09
+          },
+          {
+            "iterations": 10,
+            "true_relative_residual": 9.542626831447484e-09
+          },
+          {
+            "iterations": 10,
+            "true_relative_residual": 9.25803981277728e-09
+          },
+          {
+            "iterations": 10,
+            "true_relative_residual": 9.426993462798189e-09
+          },
+          {
+            "iterations": 10,
+            "true_relative_residual": 9.815773763373158e-09
+          },
+          {
+            "iterations": 10,
+            "true_relative_residual": 9.353310273789388e-09
+          },
+          {
+            "iterations": 10,
+            "true_relative_residual": 9.692939715904367e-09
+          },
+          {
+            "iterations": 10,
+            "true_relative_residual": 9.275662158656659e-09
+          },
+          {
+            "iterations": 10,
+            "true_relative_residual": 9.488381697181372e-09
+          },
+          {
+            "iterations": 10,
+            "true_relative_residual": 9.90028044362759e-09
+          },
+          {
+            "iterations": 10,
+            "true_relative_residual": 9.567875004689042e-09
+          },
+          {
+            "iterations": 10,
+            "true_relative_residual": 9.386548591310617e-09
+          },
+          {
+            "iterations": 10,
+            "true_relative_residual": 9.669648791402234e-09
+          },
+          {
+            "iterations": 10,
+            "true_relative_residual": 9.810655128304764e-09
+          },
+          {
+            "iterations": 10,
+            "true_relative_residual": 9.919573438177408e-09
+          }
+        ],
+        "fgmres_total_iterations": 161,
+        "maximum_true_relative_residual": 9.919573438177408e-09,
+        "newton_history": [
+          {
+            "status": "dt_zero_initialization",
+            "iterations": 0
+          },
+          {
+            "status": "converged",
+            "iterations": 16
+          }
+        ],
+        "fgmres_fatal": null,
+        "coupled_jv_coarse_fine_h1e4": [
+          {
+            "direction": "smooth",
+            "epsilon": 0.0001,
+            "coarse_fine_cells": 3200,
+            "relative_l2": 1.5203266023926024e-07
+          },
+          {
+            "direction": "newton",
+            "epsilon": 0.0001,
+            "coarse_fine_cells": 3200,
+            "relative_l2": 7.893373024855771e-08
+          }
+        ],
+        "max_implicit_energy_absolute_relative_balance": 3.784637159606032e-11,
+        "coarse_fine_face_pair_count": 10,
+        "worst_face_pair": {
+          "cycle": 0,
+          "stage": 0,
+          "coarse_gid": 81,
+          "axis": 1,
+          "side": "min",
+          "fine_count": 4,
+          "coarse_flux": 1.234002772650585e-09,
+          "fine_flux": -1.2351163386319086e-09,
+          "mismatch": -1.1135659813235156e-12,
+          "relative_mismatch": 0.0004509972711462731,
+          "roundoff_scale": 6.644384336794458e-12,
+          "mismatch_over_roundoff_scale": 0.16759505845514477
+        },
+        "max_face_absolute_mismatch": 1.1564823161884941e-12,
+        "max_face_relative_mismatch": 0.0004509972711462731,
+        "final_output": {
+          "file": "/tmp/wor25_23_24_resolution_trials/threelevel_coupled_q1e6_fixed_r1/output/nrfld_diff_amr_interface.fields.00001.athdf",
+          "minimum_radiation_energy": 147.0806884765625,
+          "maximum_radiation_energy": 147.08070373535156
+        },
+        "solver_pass": true,
+        "face_pass": false,
+        "evaluation": "FAIL_FACE_RELATIVE_ONLY"
+      },
+      {
+        "name": "threelevel_coupled_q1e6_fixed_r2",
+        "level_count": 3,
+        "limiter": "fixed",
+        "ranks": 2,
+        "threads_per_rank": 1,
+        "opacity_case": "q1e6",
+        "trial": "base",
+        "source_commit_before_run": "9a8567ed",
+        "binary_sha256": "8d4fe3dee26242afa4864f3282ce14b2d53c3e4ae4f8c2375c4e5880e4db9fd6",
+        "input_path": "/home/kosuke/simulation/athena-wor25-23-24-resolution/tst/nrfld_validation/testc_threelevel_shifted_20261107.in",
+        "input_sha256": "c1ffedae69f670d6f17740805077b6741c7cefdaf2baf4639cc7ab5f1fa38a74",
+        "command": "mpirun --output-filename /tmp/wor25_23_24_resolution_trials/threelevel_coupled_q1e6_fixed_r2/mpi -n 2 /tmp/wor25_23_24_resolution_roundoff_production_testc_build/bin/athena -i /home/kosuke/simulation/athena-wor25-23-24-resolution/tst/nrfld_validation/testc_threelevel_shifted_20261107.in -d /tmp/wor25_23_24_resolution_trials/threelevel_coupled_q1e6_fixed_r2/output nrfld/linear_solver=fgmres nrfld/fgmres_linearity_check=false fld/is_couple=true fld/only_rad=false fld/const_opacity=8.186332719786666e-7",
+        "overrides": "nrfld/linear_solver=fgmres nrfld/fgmres_linearity_check=false fld/is_couple=true fld/only_rad=false fld/const_opacity=8.186332719786666e-7",
+        "environment": {
+          "OMP_NUM_THREADS": 1,
+          "ATHENA_NRFLD_INTERFACE_LEDGER": 1,
+          "ATHENA_NRFLD_ENERGY_LEDGER": 1
+        },
+        "run_log": "/tmp/wor25_23_24_resolution_trials/threelevel_coupled_q1e6_fixed_r2/run.log",
+        "face_logs": [
+          "/tmp/wor25_23_24_resolution_trials/threelevel_coupled_q1e6_fixed_r2/mpi/1/rank.0/stdout",
+          "/tmp/wor25_23_24_resolution_trials/threelevel_coupled_q1e6_fixed_r2/mpi/1/rank.1/stdout"
+        ],
+        "exit_status": 0,
+        "wall_time": "1:02.68",
+        "peak_rss_kb": 292972,
+        "fgmres_history": [
+          {
+            "iterations": 11,
+            "true_relative_residual": 1.626562839713188e-09
+          },
+          {
+            "iterations": 10,
+            "true_relative_residual": 9.340399358430099e-09
+          },
+          {
+            "iterations": 10,
+            "true_relative_residual": 9.619912015713614e-09
+          },
+          {
+            "iterations": 10,
+            "true_relative_residual": 9.253256359653572e-09
+          },
+          {
+            "iterations": 10,
+            "true_relative_residual": 9.449919195653933e-09
+          },
+          {
+            "iterations": 10,
+            "true_relative_residual": 9.800019321409479e-09
+          },
+          {
+            "iterations": 10,
+            "true_relative_residual": 9.343878143400645e-09
+          },
+          {
+            "iterations": 10,
+            "true_relative_residual": 9.616321978144699e-09
+          },
+          {
+            "iterations": 10,
+            "true_relative_residual": 9.326353291276324e-09
+          },
+          {
+            "iterations": 10,
+            "true_relative_residual": 9.504712525194681e-09
+          },
+          {
+            "iterations": 10,
+            "true_relative_residual": 9.864096281527926e-09
+          },
+          {
+            "iterations": 10,
+            "true_relative_residual": 9.52885176673246e-09
+          },
+          {
+            "iterations": 10,
+            "true_relative_residual": 9.38410687181417e-09
+          },
+          {
+            "iterations": 10,
+            "true_relative_residual": 9.703037373164767e-09
+          },
+          {
+            "iterations": 10,
+            "true_relative_residual": 9.760608784598334e-09
+          },
+          {
+            "iterations": 10,
+            "true_relative_residual": 9.857548475759105e-09
+          }
+        ],
+        "fgmres_total_iterations": 161,
+        "maximum_true_relative_residual": 9.864096281527926e-09,
+        "newton_history": [
+          {
+            "status": "dt_zero_initialization",
+            "iterations": 0
+          },
+          {
+            "status": "converged",
+            "iterations": 16
+          }
+        ],
+        "fgmres_fatal": null,
+        "coupled_jv_coarse_fine_h1e4": [
+          {
+            "direction": "smooth",
+            "epsilon": 0.0001,
+            "coarse_fine_cells": 3200,
+            "relative_l2": 1.5203266023926024e-07
+          },
+          {
+            "direction": "newton",
+            "epsilon": 0.0001,
+            "coarse_fine_cells": 3200,
+            "relative_l2": 7.893295252593172e-08
+          }
+        ],
+        "max_implicit_energy_absolute_relative_balance": 4.737414266519271e-11,
+        "coarse_fine_face_pair_count": 10,
+        "worst_face_pair": {
+          "cycle": 0,
+          "stage": 0,
+          "coarse_gid": 81,
+          "axis": 1,
+          "side": "min",
+          "fine_count": 4,
+          "coarse_flux": 1.2345268037006196e-09,
+          "fine_flux": -1.234791077980163e-09,
+          "mismatch": -2.642742795433417e-13,
+          "relative_mismatch": 0.00010702319110225655,
+          "roundoff_scale": 6.644384336811883e-12,
+          "mismatch_over_roundoff_scale": 0.03977408080974228
+        },
+        "max_face_absolute_mismatch": 1.156482319576626e-12,
+        "max_face_relative_mismatch": 0.00010702319110225655,
+        "final_output": {
+          "file": "/tmp/wor25_23_24_resolution_trials/threelevel_coupled_q1e6_fixed_r2/output/nrfld_diff_amr_interface.fields.00001.athdf",
+          "minimum_radiation_energy": 147.0806884765625,
+          "maximum_radiation_energy": 147.08070373535156
+        },
+        "solver_pass": true,
+        "face_pass": false,
+        "evaluation": "FAIL_FACE_RELATIVE_ONLY"
+      },
+      {
+        "name": "threelevel_coupled_q1e6_variable_r1",
+        "level_count": 3,
+        "limiter": "variable",
+        "ranks": 1,
+        "threads_per_rank": 1,
+        "opacity_case": "q1e6",
+        "trial": "base",
+        "source_commit_before_run": "9a8567ed",
+        "binary_sha256": "8d4fe3dee26242afa4864f3282ce14b2d53c3e4ae4f8c2375c4e5880e4db9fd6",
+        "input_path": "/home/kosuke/simulation/athena-wor25-23-24-resolution/tst/nrfld_validation/testc_threelevel_shifted_20261107.in",
+        "input_sha256": "c1ffedae69f670d6f17740805077b6741c7cefdaf2baf4639cc7ab5f1fa38a74",
+        "command": "mpirun --output-filename /tmp/wor25_23_24_resolution_trials/threelevel_coupled_q1e6_variable_r1/mpi -n 1 /tmp/wor25_23_24_resolution_roundoff_production_testc_build/bin/athena -i /home/kosuke/simulation/athena-wor25-23-24-resolution/tst/nrfld_validation/testc_threelevel_shifted_20261107.in -d /tmp/wor25_23_24_resolution_trials/threelevel_coupled_q1e6_variable_r1/output nrfld/linear_solver=fgmres nrfld/fgmres_linearity_check=false fld/is_couple=true fld/only_rad=false fld/const_opacity=8.186332719786666e-7 fld/fixed_flux_limiter=false",
+        "overrides": "nrfld/linear_solver=fgmres nrfld/fgmres_linearity_check=false fld/is_couple=true fld/only_rad=false fld/const_opacity=8.186332719786666e-7 fld/fixed_flux_limiter=false",
+        "environment": {
+          "OMP_NUM_THREADS": 1,
+          "ATHENA_NRFLD_INTERFACE_LEDGER": 1,
+          "ATHENA_NRFLD_ENERGY_LEDGER": 1
+        },
+        "run_log": "/tmp/wor25_23_24_resolution_trials/threelevel_coupled_q1e6_variable_r1/run.log",
+        "face_logs": [
+          "/tmp/wor25_23_24_resolution_trials/threelevel_coupled_q1e6_variable_r1/mpi/1/rank.0/stdout"
+        ],
+        "exit_status": 0,
+        "wall_time": "1:08.92",
+        "peak_rss_kb": 539524,
+        "fgmres_history": [
+          {
+            "iterations": 17,
+            "true_relative_residual": 2.254771458493846e-09
+          },
+          {
+            "iterations": 17,
+            "true_relative_residual": 2.4422022694456365e-09
+          },
+          {
+            "iterations": 17,
+            "true_relative_residual": 2.4703335329074053e-09
+          },
+          {
+            "iterations": 17,
+            "true_relative_residual": 2.4590237895958894e-09
+          },
+          {
+            "iterations": 17,
+            "true_relative_residual": 2.4508071249598582e-09
+          },
+          {
+            "iterations": 17,
+            "true_relative_residual": 2.503987457014008e-09
+          },
+          {
+            "iterations": 17,
+            "true_relative_residual": 2.441895138971111e-09
+          },
+          {
+            "iterations": 17,
+            "true_relative_residual": 2.4840803855393316e-09
+          },
+          {
+            "iterations": 17,
+            "true_relative_residual": 2.4391016642863585e-09
+          },
+          {
+            "iterations": 17,
+            "true_relative_residual": 2.4690800150435143e-09
+          },
+          {
+            "iterations": 17,
+            "true_relative_residual": 2.5150974849321038e-09
+          },
+          {
+            "iterations": 17,
+            "true_relative_residual": 2.465658956429264e-09
+          },
+          {
+            "iterations": 17,
+            "true_relative_residual": 2.4564617927418067e-09
+          },
+          {
+            "iterations": 17,
+            "true_relative_residual": 2.497744322110034e-09
+          },
+          {
+            "iterations": 17,
+            "true_relative_residual": 2.4972263508025597e-09
+          },
+          {
+            "iterations": 17,
+            "true_relative_residual": 2.5229375855748432e-09
+          }
+        ],
+        "fgmres_total_iterations": 272,
+        "maximum_true_relative_residual": 2.5229375855748432e-09,
+        "newton_history": [
+          {
+            "status": "dt_zero_initialization",
+            "iterations": 0
+          },
+          {
+            "status": "converged",
+            "iterations": 16
+          }
+        ],
+        "fgmres_fatal": null,
+        "coupled_jv_coarse_fine_h1e4": [
+          {
+            "direction": "smooth",
+            "epsilon": 0.0001,
+            "coarse_fine_cells": 3200,
+            "relative_l2": 9.302177858345825e-08
+          },
+          {
+            "direction": "newton",
+            "epsilon": 0.0001,
+            "coarse_fine_cells": 3200,
+            "relative_l2": 2.8545542167444657e-07
+          }
+        ],
+        "max_implicit_energy_absolute_relative_balance": 1.8400938300132008e-11,
+        "coarse_fine_face_pair_count": 10,
+        "worst_face_pair": {
+          "cycle": 0,
+          "stage": 0,
+          "coarse_gid": 87,
+          "axis": 1,
+          "side": "min",
+          "fine_count": 4,
+          "coarse_flux": 2.322735602424361e-10,
+          "fine_flux": -2.3224710041426056e-10,
+          "mismatch": 2.6459828175533215e-14,
+          "relative_mismatch": 5.696157440688804e-05,
+          "roundoff_scale": 1.0967755161067645e-12,
+          "mismatch_over_roundoff_scale": 0.02412510836261001
+        },
+        "max_face_absolute_mismatch": 9.240195007797006e-14,
+        "max_face_relative_mismatch": 5.696157440688804e-05,
+        "final_output": {
+          "file": "/tmp/wor25_23_24_resolution_trials/threelevel_coupled_q1e6_variable_r1/output/nrfld_diff_amr_interface.fields.00001.athdf",
+          "minimum_radiation_energy": 147.0806427001953,
+          "maximum_radiation_energy": 147.0811309814453
+        },
+        "solver_pass": true,
+        "face_pass": false,
+        "evaluation": "FAIL_FACE_RELATIVE_ONLY"
+      },
+      {
+        "name": "threelevel_coupled_q1e6_variable_r2",
+        "level_count": 3,
+        "limiter": "variable",
+        "ranks": 2,
+        "threads_per_rank": 1,
+        "opacity_case": "q1e6",
+        "trial": "base",
+        "source_commit_before_run": "9a8567ed",
+        "binary_sha256": "8d4fe3dee26242afa4864f3282ce14b2d53c3e4ae4f8c2375c4e5880e4db9fd6",
+        "input_path": "/home/kosuke/simulation/athena-wor25-23-24-resolution/tst/nrfld_validation/testc_threelevel_shifted_20261107.in",
+        "input_sha256": "c1ffedae69f670d6f17740805077b6741c7cefdaf2baf4639cc7ab5f1fa38a74",
+        "command": "mpirun --output-filename /tmp/wor25_23_24_resolution_trials/threelevel_coupled_q1e6_variable_r2/mpi -n 2 /tmp/wor25_23_24_resolution_roundoff_production_testc_build/bin/athena -i /home/kosuke/simulation/athena-wor25-23-24-resolution/tst/nrfld_validation/testc_threelevel_shifted_20261107.in -d /tmp/wor25_23_24_resolution_trials/threelevel_coupled_q1e6_variable_r2/output nrfld/linear_solver=fgmres nrfld/fgmres_linearity_check=false fld/is_couple=true fld/only_rad=false fld/const_opacity=8.186332719786666e-7 fld/fixed_flux_limiter=false",
+        "overrides": "nrfld/linear_solver=fgmres nrfld/fgmres_linearity_check=false fld/is_couple=true fld/only_rad=false fld/const_opacity=8.186332719786666e-7 fld/fixed_flux_limiter=false",
+        "environment": {
+          "OMP_NUM_THREADS": 1,
+          "ATHENA_NRFLD_INTERFACE_LEDGER": 1,
+          "ATHENA_NRFLD_ENERGY_LEDGER": 1
+        },
+        "run_log": "/tmp/wor25_23_24_resolution_trials/threelevel_coupled_q1e6_variable_r2/run.log",
+        "face_logs": [
+          "/tmp/wor25_23_24_resolution_trials/threelevel_coupled_q1e6_variable_r2/mpi/1/rank.0/stdout",
+          "/tmp/wor25_23_24_resolution_trials/threelevel_coupled_q1e6_variable_r2/mpi/1/rank.1/stdout"
+        ],
+        "exit_status": 0,
+        "wall_time": "1:09.93",
+        "peak_rss_kb": 293144,
+        "fgmres_history": [
+          {
+            "iterations": 17,
+            "true_relative_residual": 2.2612490493376107e-09
+          },
+          {
+            "iterations": 17,
+            "true_relative_residual": 2.443397345908972e-09
+          },
+          {
+            "iterations": 17,
+            "true_relative_residual": 2.482388348684182e-09
+          },
+          {
+            "iterations": 17,
+            "true_relative_residual": 2.4594339985336277e-09
+          },
+          {
+            "iterations": 17,
+            "true_relative_residual": 2.4571989028547014e-09
+          },
+          {
+            "iterations": 17,
+            "true_relative_residual": 2.4928661141964115e-09
+          },
+          {
+            "iterations": 17,
+            "true_relative_residual": 2.4461981619398206e-09
+          },
+          {
+            "iterations": 17,
+            "true_relative_residual": 2.486258405346859e-09
+          },
+          {
+            "iterations": 17,
+            "true_relative_residual": 2.4451398760093325e-09
+          },
+          {
+            "iterations": 17,
+            "true_relative_residual": 2.467345061310628e-09
+          },
+          {
+            "iterations": 17,
+            "true_relative_residual": 2.5202904771051047e-09
+          },
+          {
+            "iterations": 17,
+            "true_relative_residual": 2.4688360688013094e-09
+          },
+          {
+            "iterations": 17,
+            "true_relative_residual": 2.45482082987885e-09
+          },
+          {
+            "iterations": 17,
+            "true_relative_residual": 2.486773134075112e-09
+          },
+          {
+            "iterations": 17,
+            "true_relative_residual": 2.48789832457766e-09
+          },
+          {
+            "iterations": 17,
+            "true_relative_residual": 2.5127245218092717e-09
+          }
+        ],
+        "fgmres_total_iterations": 272,
+        "maximum_true_relative_residual": 2.5202904771051047e-09,
+        "newton_history": [
+          {
+            "status": "dt_zero_initialization",
+            "iterations": 0
+          },
+          {
+            "status": "converged",
+            "iterations": 16
+          }
+        ],
+        "fgmres_fatal": null,
+        "coupled_jv_coarse_fine_h1e4": [
+          {
+            "direction": "smooth",
+            "epsilon": 0.0001,
+            "coarse_fine_cells": 3200,
+            "relative_l2": 9.302177858345825e-08
+          },
+          {
+            "direction": "newton",
+            "epsilon": 0.0001,
+            "coarse_fine_cells": 3200,
+            "relative_l2": 2.854524433906539e-07
+          }
+        ],
+        "max_implicit_energy_absolute_relative_balance": 2.51513134686132e-11,
+        "coarse_fine_face_pair_count": 10,
+        "worst_face_pair": {
+          "cycle": 0,
+          "stage": 0,
+          "coarse_gid": 85,
+          "axis": 1,
+          "side": "min",
+          "fine_count": 4,
+          "coarse_flux": 2.3225862573344697e-10,
+          "fine_flux": -2.3229077564385655e-10,
+          "mismatch": -3.2149910409579256e-14,
+          "relative_mismatch": 6.920665555538483e-05,
+          "roundoff_scale": 1.0967755161085927e-12,
+          "mismatch_over_roundoff_scale": 0.029313118261108287
+        },
+        "max_face_absolute_mismatch": 1.1564823161884941e-12,
+        "max_face_relative_mismatch": 6.920665555538483e-05,
+        "final_output": {
+          "file": "/tmp/wor25_23_24_resolution_trials/threelevel_coupled_q1e6_variable_r2/output/nrfld_diff_amr_interface.fields.00001.athdf",
+          "minimum_radiation_energy": 147.0806427001953,
+          "maximum_radiation_energy": 147.0811309814453
+        },
+        "solver_pass": true,
+        "face_pass": false,
+        "evaluation": "FAIL_FACE_RELATIVE_ONLY"
+      }
+    ],
+    "fgmres_option_trials": [
+      {
+        "name": "threelevel_coupled_fixed_max160_r2",
+        "level_count": 3,
+        "limiter": "fixed",
+        "ranks": 2,
+        "threads_per_rank": 1,
+        "opacity_case": "q1e7",
+        "trial": "max160",
+        "source_commit_before_run": "9a8567ed",
+        "binary_sha256": "8d4fe3dee26242afa4864f3282ce14b2d53c3e4ae4f8c2375c4e5880e4db9fd6",
+        "input_path": "/home/kosuke/simulation/athena-wor25-23-24-resolution/tst/nrfld_validation/testc_threelevel_shifted_20261107.in",
+        "input_sha256": "c1ffedae69f670d6f17740805077b6741c7cefdaf2baf4639cc7ab5f1fa38a74",
+        "command": "mpirun --output-filename /tmp/wor25_23_24_resolution_trials/threelevel_coupled_fixed_max160_r2/mpi -n 2 /tmp/wor25_23_24_resolution_roundoff_production_testc_build/bin/athena -i /home/kosuke/simulation/athena-wor25-23-24-resolution/tst/nrfld_validation/testc_threelevel_shifted_20261107.in -d /tmp/wor25_23_24_resolution_trials/threelevel_coupled_fixed_max160_r2/output nrfld/linear_solver=fgmres nrfld/fgmres_linearity_check=false fld/is_couple=true fld/only_rad=false nrfld/fgmres_max_iterations=160",
+        "overrides": "nrfld/linear_solver=fgmres nrfld/fgmres_linearity_check=false fld/is_couple=true fld/only_rad=false nrfld/fgmres_max_iterations=160",
+        "environment": {
+          "OMP_NUM_THREADS": 1,
+          "ATHENA_NRFLD_INTERFACE_LEDGER": 1,
+          "ATHENA_NRFLD_ENERGY_LEDGER": 1
+        },
+        "run_log": "/tmp/wor25_23_24_resolution_trials/threelevel_coupled_fixed_max160_r2/run.log",
+        "face_logs": [
+          "/tmp/wor25_23_24_resolution_trials/threelevel_coupled_fixed_max160_r2/mpi/1/rank.0/stdout",
+          "/tmp/wor25_23_24_resolution_trials/threelevel_coupled_fixed_max160_r2/mpi/1/rank.1/stdout"
+        ],
+        "exit_status": 134,
+        "wall_time": "0:19.13",
+        "peak_rss_kb": 292740,
+        "fgmres_history": [
+          {
+            "iterations": 11,
+            "true_relative_residual": 1.6684382531889384e-09
+          },
+          {
+            "iterations": 11,
+            "true_relative_residual": 4.901011210530502e-09
+          },
+          {
+            "iterations": 11,
+            "true_relative_residual": 6.824629939132253e-09
+          },
+          {
+            "iterations": 11,
+            "true_relative_residual": 5.551767220819797e-09
+          },
+          {
+            "iterations": 11,
+            "true_relative_residual": 6.9789615997743155e-09
+          },
+          {
+            "iterations": 11,
+            "true_relative_residual": 7.777775193440186e-09
+          },
+          {
+            "iterations": 11,
+            "true_relative_residual": 6.848836842099362e-09
+          },
+          {
+            "iterations": 11,
+            "true_relative_residual": 8.797968644791253e-09
+          },
+          {
+            "iterations": 11,
+            "true_relative_residual": 6.0263186850597114e-09
+          },
+          {
+            "iterations": 11,
+            "true_relative_residual": 8.285487943189124e-09
+          },
+          {
+            "iterations": 11,
+            "true_relative_residual": 8.487680127387045e-09
+          },
+          {
+            "iterations": 126,
+            "true_relative_residual": 9.95074685043858e-09
+          },
+          {
+            "iterations": 160,
+            "true_relative_residual": 1.1281076218723608e-08
+          }
+        ],
+        "fgmres_total_iterations": 407,
+        "maximum_true_relative_residual": 1.1281076218723608e-08,
+        "newton_history": [
+          {
+            "status": "dt_zero_initialization",
+            "iterations": 0
+          }
+        ],
+        "fgmres_fatal": "FGMRES did not reach its requested relative residual: iterations=160, relative_residual=1.12811e-08, target=1e-08, breakdown=0.",
+        "coupled_jv_coarse_fine_h1e4": [
+          {
+            "direction": "smooth",
+            "epsilon": 0.0001,
+            "coarse_fine_cells": 3200,
+            "relative_l2": 1.638691384789674e-08
+          },
+          {
+            "direction": "newton",
+            "epsilon": 0.0001,
+            "coarse_fine_cells": 3200,
+            "relative_l2": 8.477943556840007e-08
+          }
+        ],
+        "max_implicit_energy_absolute_relative_balance": null,
+        "coarse_fine_face_pair_count": 0,
+        "worst_face_pair": null,
+        "max_face_absolute_mismatch": null,
+        "max_face_relative_mismatch": null,
+        "final_output": null,
+        "solver_pass": false,
+        "face_pass": false,
+        "evaluation": "FAIL_SOLVER"
+      },
+      {
+        "name": "threelevel_coupled_fixed_v2_r1",
+        "level_count": 3,
+        "limiter": "fixed",
+        "ranks": 1,
+        "threads_per_rank": 1,
+        "opacity_case": "q1e7",
+        "trial": "v2",
+        "source_commit_before_run": "9a8567ed",
+        "binary_sha256": "8d4fe3dee26242afa4864f3282ce14b2d53c3e4ae4f8c2375c4e5880e4db9fd6",
+        "input_path": "/home/kosuke/simulation/athena-wor25-23-24-resolution/tst/nrfld_validation/testc_threelevel_shifted_20261107.in",
+        "input_sha256": "c1ffedae69f670d6f17740805077b6741c7cefdaf2baf4639cc7ab5f1fa38a74",
+        "command": "mpirun --output-filename /tmp/wor25_23_24_resolution_trials/threelevel_coupled_fixed_v2_r1/mpi -n 1 /tmp/wor25_23_24_resolution_roundoff_production_testc_build/bin/athena -i /home/kosuke/simulation/athena-wor25-23-24-resolution/tst/nrfld_validation/testc_threelevel_shifted_20261107.in -d /tmp/wor25_23_24_resolution_trials/threelevel_coupled_fixed_v2_r1/output nrfld/linear_solver=fgmres nrfld/fgmres_linearity_check=false fld/is_couple=true fld/only_rad=false nrfld/fgmres_mg_vcycles=2",
+        "overrides": "nrfld/linear_solver=fgmres nrfld/fgmres_linearity_check=false fld/is_couple=true fld/only_rad=false nrfld/fgmres_mg_vcycles=2",
+        "environment": {
+          "OMP_NUM_THREADS": 1,
+          "ATHENA_NRFLD_INTERFACE_LEDGER": 1,
+          "ATHENA_NRFLD_ENERGY_LEDGER": 1
+        },
+        "run_log": "/tmp/wor25_23_24_resolution_trials/threelevel_coupled_fixed_v2_r1/run.log",
+        "face_logs": [
+          "/tmp/wor25_23_24_resolution_trials/threelevel_coupled_fixed_v2_r1/mpi/1/rank.0/stdout"
+        ],
+        "exit_status": 0,
+        "wall_time": "0:25.21",
+        "peak_rss_kb": 539672,
+        "fgmres_history": [
+          {
+            "iterations": 8,
+            "true_relative_residual": 6.829549376695816e-09
+          },
+          {
+            "iterations": 9,
+            "true_relative_residual": 3.729720136107881e-09
+          },
+          {
+            "iterations": 9,
+            "true_relative_residual": 5.642021347855263e-09
+          },
+          {
+            "iterations": 9,
+            "true_relative_residual": 4.48364363250957e-09
+          },
+          {
+            "iterations": 9,
+            "true_relative_residual": 6.412744791761283e-09
+          },
+          {
+            "iterations": 9,
+            "true_relative_residual": 8.400842982915962e-09
+          },
+          {
+            "iterations": 9,
+            "true_relative_residual": 6.438357672291525e-09
+          },
+          {
+            "iterations": 9,
+            "true_relative_residual": 7.70714567517813e-09
+          },
+          {
+            "iterations": 9,
+            "true_relative_residual": 6.265894233467466e-09
+          },
+          {
+            "iterations": 9,
+            "true_relative_residual": 8.059724973000986e-09
+          },
+          {
+            "iterations": 9,
+            "true_relative_residual": 6.284373976406195e-09
+          },
+          {
+            "iterations": 9,
+            "true_relative_residual": 5.919133542313127e-09
+          },
+          {
+            "iterations": 9,
+            "true_relative_residual": 6.321181201159369e-09
+          },
+          {
+            "iterations": 9,
+            "true_relative_residual": 3.886788918504929e-09
+          }
+        ],
+        "fgmres_total_iterations": 125,
+        "maximum_true_relative_residual": 8.400842982915962e-09,
+        "newton_history": [
+          {
+            "status": "dt_zero_initialization",
+            "iterations": 0
+          },
+          {
+            "status": "converged",
+            "iterations": 14
+          }
+        ],
+        "fgmres_fatal": null,
+        "coupled_jv_coarse_fine_h1e4": [
+          {
+            "direction": "smooth",
+            "epsilon": 0.0001,
+            "coarse_fine_cells": 3200,
+            "relative_l2": 1.638691384789674e-08
+          },
+          {
+            "direction": "newton",
+            "epsilon": 0.0001,
+            "coarse_fine_cells": 3200,
+            "relative_l2": 7.700150878695891e-08
+          }
+        ],
+        "max_implicit_energy_absolute_relative_balance": 4.0265684518679335e-10,
+        "coarse_fine_face_pair_count": 10,
+        "worst_face_pair": {
+          "cycle": 0,
+          "stage": 0,
+          "coarse_gid": 81,
+          "axis": 1,
+          "side": "min",
+          "fine_count": 4,
+          "coarse_flux": 1.2374360795301225e-09,
+          "fine_flux": -1.231653667943533e-09,
+          "mismatch": 5.782411586589426e-12,
+          "relative_mismatch": 0.0023419203747072877,
+          "roundoff_scale": 6.508016350438626e-11,
+          "mismatch_over_roundoff_scale": 0.08885060017096767
+        },
+        "max_face_absolute_mismatch": 1.1564823175437468e-11,
+        "max_face_relative_mismatch": 0.0023419203747072877,
+        "final_output": {
+          "file": "/tmp/wor25_23_24_resolution_trials/threelevel_coupled_fixed_v2_r1/output/nrfld_diff_amr_interface.fields.00001.athdf",
+          "minimum_radiation_energy": 144.0620574951172,
+          "maximum_radiation_energy": 144.0620574951172
+        },
+        "solver_pass": true,
+        "face_pass": false,
+        "evaluation": "FAIL_FACE_RELATIVE_ONLY"
+      },
+      {
+        "name": "threelevel_coupled_fixed_v2_r2",
+        "level_count": 3,
+        "limiter": "fixed",
+        "ranks": 2,
+        "threads_per_rank": 1,
+        "opacity_case": "q1e7",
+        "trial": "v2",
+        "source_commit_before_run": "9a8567ed",
+        "binary_sha256": "8d4fe3dee26242afa4864f3282ce14b2d53c3e4ae4f8c2375c4e5880e4db9fd6",
+        "input_path": "/home/kosuke/simulation/athena-wor25-23-24-resolution/tst/nrfld_validation/testc_threelevel_shifted_20261107.in",
+        "input_sha256": "c1ffedae69f670d6f17740805077b6741c7cefdaf2baf4639cc7ab5f1fa38a74",
+        "command": "mpirun --output-filename /tmp/wor25_23_24_resolution_trials/threelevel_coupled_fixed_v2_r2/mpi -n 2 /tmp/wor25_23_24_resolution_roundoff_production_testc_build/bin/athena -i /home/kosuke/simulation/athena-wor25-23-24-resolution/tst/nrfld_validation/testc_threelevel_shifted_20261107.in -d /tmp/wor25_23_24_resolution_trials/threelevel_coupled_fixed_v2_r2/output nrfld/linear_solver=fgmres nrfld/fgmres_linearity_check=false fld/is_couple=true fld/only_rad=false nrfld/fgmres_mg_vcycles=2",
+        "overrides": "nrfld/linear_solver=fgmres nrfld/fgmres_linearity_check=false fld/is_couple=true fld/only_rad=false nrfld/fgmres_mg_vcycles=2",
+        "environment": {
+          "OMP_NUM_THREADS": 1,
+          "ATHENA_NRFLD_INTERFACE_LEDGER": 1,
+          "ATHENA_NRFLD_ENERGY_LEDGER": 1
+        },
+        "run_log": "/tmp/wor25_23_24_resolution_trials/threelevel_coupled_fixed_v2_r2/run.log",
+        "face_logs": [
+          "/tmp/wor25_23_24_resolution_trials/threelevel_coupled_fixed_v2_r2/mpi/1/rank.0/stdout",
+          "/tmp/wor25_23_24_resolution_trials/threelevel_coupled_fixed_v2_r2/mpi/1/rank.1/stdout"
+        ],
+        "exit_status": 134,
+        "wall_time": "0:27.20",
+        "peak_rss_kb": 293176,
+        "fgmres_history": [
+          {
+            "iterations": 8,
+            "true_relative_residual": 6.8285816142978046e-09
+          },
+          {
+            "iterations": 9,
+            "true_relative_residual": 4.200896786641415e-09
+          },
+          {
+            "iterations": 9,
+            "true_relative_residual": 5.749633964506411e-09
+          },
+          {
+            "iterations": 9,
+            "true_relative_residual": 4.287162708980335e-09
+          },
+          {
+            "iterations": 9,
+            "true_relative_residual": 6.235782885604279e-09
+          },
+          {
+            "iterations": 9,
+            "true_relative_residual": 7.094519263532521e-09
+          },
+          {
+            "iterations": 9,
+            "true_relative_residual": 5.8232166327121426e-09
+          },
+          {
+            "iterations": 9,
+            "true_relative_residual": 8.47670912886279e-09
+          },
+          {
+            "iterations": 9,
+            "true_relative_residual": 6.262798499272963e-09
+          },
+          {
+            "iterations": 9,
+            "true_relative_residual": 8.28094436444343e-09
+          },
+          {
+            "iterations": 9,
+            "true_relative_residual": 7.75262244091984e-09
+          },
+          {
+            "iterations": 10,
+            "true_relative_residual": 9.828225724678564e-09
+          },
+          {
+            "iterations": 80,
+            "true_relative_residual": 1.2572266103983118e-08
+          }
+        ],
+        "fgmres_total_iterations": 188,
+        "maximum_true_relative_residual": 1.2572266103983118e-08,
+        "newton_history": [
+          {
+            "status": "dt_zero_initialization",
+            "iterations": 0
+          }
+        ],
+        "fgmres_fatal": "FGMRES did not reach its requested relative residual: iterations=80, relative_residual=1.25723e-08, target=1e-08, breakdown=0.",
+        "coupled_jv_coarse_fine_h1e4": [
+          {
+            "direction": "smooth",
+            "epsilon": 0.0001,
+            "coarse_fine_cells": 3200,
+            "relative_l2": 1.638691384789674e-08
+          },
+          {
+            "direction": "newton",
+            "epsilon": 0.0001,
+            "coarse_fine_cells": 3200,
+            "relative_l2": 7.700185801415107e-08
+          }
+        ],
+        "max_implicit_energy_absolute_relative_balance": null,
+        "coarse_fine_face_pair_count": 0,
+        "worst_face_pair": null,
+        "max_face_absolute_mismatch": null,
+        "max_face_relative_mismatch": null,
+        "final_output": null,
+        "solver_pass": false,
+        "face_pass": false,
+        "evaluation": "FAIL_SOLVER"
+      },
+      {
+        "name": "threelevel_coupled_fixed_restart40_r2",
+        "level_count": 3,
+        "limiter": "fixed",
+        "ranks": 2,
+        "threads_per_rank": 1,
+        "opacity_case": "q1e7",
+        "trial": "restart40",
+        "source_commit_before_run": "9a8567ed",
+        "binary_sha256": "8d4fe3dee26242afa4864f3282ce14b2d53c3e4ae4f8c2375c4e5880e4db9fd6",
+        "input_path": "/home/kosuke/simulation/athena-wor25-23-24-resolution/tst/nrfld_validation/testc_threelevel_shifted_20261107.in",
+        "input_sha256": "c1ffedae69f670d6f17740805077b6741c7cefdaf2baf4639cc7ab5f1fa38a74",
+        "command": "mpirun --output-filename /tmp/wor25_23_24_resolution_trials/threelevel_coupled_fixed_restart40_r2/mpi -n 2 /tmp/wor25_23_24_resolution_roundoff_production_testc_build/bin/athena -i /home/kosuke/simulation/athena-wor25-23-24-resolution/tst/nrfld_validation/testc_threelevel_shifted_20261107.in -d /tmp/wor25_23_24_resolution_trials/threelevel_coupled_fixed_restart40_r2/output nrfld/linear_solver=fgmres nrfld/fgmres_linearity_check=false fld/is_couple=true fld/only_rad=false nrfld/fgmres_restart=40",
+        "overrides": "nrfld/linear_solver=fgmres nrfld/fgmres_linearity_check=false fld/is_couple=true fld/only_rad=false nrfld/fgmres_restart=40",
+        "environment": {
+          "OMP_NUM_THREADS": 1,
+          "ATHENA_NRFLD_INTERFACE_LEDGER": 1,
+          "ATHENA_NRFLD_ENERGY_LEDGER": 1
+        },
+        "run_log": "/tmp/wor25_23_24_resolution_trials/threelevel_coupled_fixed_restart40_r2/run.log",
+        "face_logs": [
+          "/tmp/wor25_23_24_resolution_trials/threelevel_coupled_fixed_restart40_r2/mpi/1/rank.0/stdout",
+          "/tmp/wor25_23_24_resolution_trials/threelevel_coupled_fixed_restart40_r2/mpi/1/rank.1/stdout"
+        ],
+        "exit_status": 134,
+        "wall_time": "0:33.32",
+        "peak_rss_kb": 300892,
+        "fgmres_history": [
+          {
+            "iterations": 11,
+            "true_relative_residual": 1.6684382531889384e-09
+          },
+          {
+            "iterations": 11,
+            "true_relative_residual": 4.901011210530502e-09
+          },
+          {
+            "iterations": 11,
+            "true_relative_residual": 6.824629939132253e-09
+          },
+          {
+            "iterations": 11,
+            "true_relative_residual": 5.551767220819797e-09
+          },
+          {
+            "iterations": 11,
+            "true_relative_residual": 6.9789615997743155e-09
+          },
+          {
+            "iterations": 11,
+            "true_relative_residual": 7.777775193440186e-09
+          },
+          {
+            "iterations": 11,
+            "true_relative_residual": 6.848836842099362e-09
+          },
+          {
+            "iterations": 11,
+            "true_relative_residual": 8.797968644791253e-09
+          },
+          {
+            "iterations": 11,
+            "true_relative_residual": 6.0263186850597114e-09
+          },
+          {
+            "iterations": 11,
+            "true_relative_residual": 8.285487943189124e-09
+          },
+          {
+            "iterations": 11,
+            "true_relative_residual": 8.487680127387045e-09
+          },
+          {
+            "iterations": 80,
+            "true_relative_residual": 1.008101285255665e-08
+          }
+        ],
+        "fgmres_total_iterations": 201,
+        "maximum_true_relative_residual": 1.008101285255665e-08,
+        "newton_history": [
+          {
+            "status": "dt_zero_initialization",
+            "iterations": 0
+          }
+        ],
+        "fgmres_fatal": "FGMRES did not reach its requested relative residual: iterations=80, relative_residual=1.0081e-08, target=1e-08, breakdown=0.",
+        "coupled_jv_coarse_fine_h1e4": [
+          {
+            "direction": "smooth",
+            "epsilon": 0.0001,
+            "coarse_fine_cells": 3200,
+            "relative_l2": 1.638691384789674e-08
+          },
+          {
+            "direction": "newton",
+            "epsilon": 0.0001,
+            "coarse_fine_cells": 3200,
+            "relative_l2": 8.477943556840007e-08
+          }
+        ],
+        "max_implicit_energy_absolute_relative_balance": null,
+        "coarse_fine_face_pair_count": 0,
+        "worst_face_pair": null,
+        "max_face_absolute_mismatch": null,
+        "max_face_relative_mismatch": null,
+        "final_output": null,
+        "solver_pass": false,
+        "face_pass": false,
+        "evaluation": "FAIL_SOLVER"
+      },
+      {
+        "name": "threelevel_coupled_fixed_unbatched_r1",
+        "level_count": 3,
+        "limiter": "fixed",
+        "ranks": 1,
+        "threads_per_rank": 1,
+        "opacity_case": "q1e7",
+        "trial": "unbatched",
+        "source_commit_before_run": "9a8567ed",
+        "binary_sha256": "8d4fe3dee26242afa4864f3282ce14b2d53c3e4ae4f8c2375c4e5880e4db9fd6",
+        "input_path": "/home/kosuke/simulation/athena-wor25-23-24-resolution/tst/nrfld_validation/testc_threelevel_shifted_20261107.in",
+        "input_sha256": "c1ffedae69f670d6f17740805077b6741c7cefdaf2baf4639cc7ab5f1fa38a74",
+        "command": "mpirun --output-filename /tmp/wor25_23_24_resolution_trials/threelevel_coupled_fixed_unbatched_r1/mpi -n 1 /tmp/wor25_23_24_resolution_roundoff_production_testc_build/bin/athena -i /home/kosuke/simulation/athena-wor25-23-24-resolution/tst/nrfld_validation/testc_threelevel_shifted_20261107.in -d /tmp/wor25_23_24_resolution_trials/threelevel_coupled_fixed_unbatched_r1/output nrfld/linear_solver=fgmres nrfld/fgmres_linearity_check=false fld/is_couple=true fld/only_rad=false nrfld/fgmres_batched_reductions=false",
+        "overrides": "nrfld/linear_solver=fgmres nrfld/fgmres_linearity_check=false fld/is_couple=true fld/only_rad=false nrfld/fgmres_batched_reductions=false",
+        "environment": {
+          "OMP_NUM_THREADS": 1,
+          "ATHENA_NRFLD_INTERFACE_LEDGER": 1,
+          "ATHENA_NRFLD_ENERGY_LEDGER": 1
+        },
+        "run_log": "/tmp/wor25_23_24_resolution_trials/threelevel_coupled_fixed_unbatched_r1/run.log",
+        "face_logs": [
+          "/tmp/wor25_23_24_resolution_trials/threelevel_coupled_fixed_unbatched_r1/mpi/1/rank.0/stdout"
+        ],
+        "exit_status": 134,
+        "wall_time": "0:17.14",
+        "peak_rss_kb": 539600,
+        "fgmres_history": [
+          {
+            "iterations": 11,
+            "true_relative_residual": 1.670168729610777e-09
+          },
+          {
+            "iterations": 11,
+            "true_relative_residual": 5.04352672675642e-09
+          },
+          {
+            "iterations": 11,
+            "true_relative_residual": 6.590986267307641e-09
+          },
+          {
+            "iterations": 11,
+            "true_relative_residual": 5.410963519207204e-09
+          },
+          {
+            "iterations": 11,
+            "true_relative_residual": 6.736895888435984e-09
+          },
+          {
+            "iterations": 11,
+            "true_relative_residual": 9.92093794769391e-09
+          },
+          {
+            "iterations": 11,
+            "true_relative_residual": 7.837643923303883e-09
+          },
+          {
+            "iterations": 11,
+            "true_relative_residual": 9.836285281213563e-09
+          },
+          {
+            "iterations": 11,
+            "true_relative_residual": 7.305295974437912e-09
+          },
+          {
+            "iterations": 80,
+            "true_relative_residual": 1.0269830667460555e-08
+          }
+        ],
+        "fgmres_total_iterations": 179,
+        "maximum_true_relative_residual": 1.0269830667460555e-08,
+        "newton_history": [
+          {
+            "status": "dt_zero_initialization",
+            "iterations": 0
+          }
+        ],
+        "fgmres_fatal": "FGMRES did not reach its requested relative residual: iterations=80, relative_residual=1.02698e-08, target=1e-08, breakdown=0.",
+        "coupled_jv_coarse_fine_h1e4": [
+          {
+            "direction": "smooth",
+            "epsilon": 0.0001,
+            "coarse_fine_cells": 3200,
+            "relative_l2": 1.638691384789674e-08
+          },
+          {
+            "direction": "newton",
+            "epsilon": 0.0001,
+            "coarse_fine_cells": 3200,
+            "relative_l2": 8.477738833433977e-08
+          }
+        ],
+        "max_implicit_energy_absolute_relative_balance": null,
+        "coarse_fine_face_pair_count": 0,
+        "worst_face_pair": null,
+        "max_face_absolute_mismatch": null,
+        "max_face_relative_mismatch": null,
+        "final_output": null,
+        "solver_pass": false,
+        "face_pass": false,
+        "evaluation": "FAIL_SOLVER"
+      },
+      {
+        "name": "threelevel_coupled_fixed_unbatched_r2",
+        "level_count": 3,
+        "limiter": "fixed",
+        "ranks": 2,
+        "threads_per_rank": 1,
+        "opacity_case": "q1e7",
+        "trial": "unbatched",
+        "source_commit_before_run": "9a8567ed",
+        "binary_sha256": "8d4fe3dee26242afa4864f3282ce14b2d53c3e4ae4f8c2375c4e5880e4db9fd6",
+        "input_path": "/home/kosuke/simulation/athena-wor25-23-24-resolution/tst/nrfld_validation/testc_threelevel_shifted_20261107.in",
+        "input_sha256": "c1ffedae69f670d6f17740805077b6741c7cefdaf2baf4639cc7ab5f1fa38a74",
+        "command": "mpirun --output-filename /tmp/wor25_23_24_resolution_trials/threelevel_coupled_fixed_unbatched_r2/mpi -n 2 /tmp/wor25_23_24_resolution_roundoff_production_testc_build/bin/athena -i /home/kosuke/simulation/athena-wor25-23-24-resolution/tst/nrfld_validation/testc_threelevel_shifted_20261107.in -d /tmp/wor25_23_24_resolution_trials/threelevel_coupled_fixed_unbatched_r2/output nrfld/linear_solver=fgmres nrfld/fgmres_linearity_check=false fld/is_couple=true fld/only_rad=false nrfld/fgmres_batched_reductions=false",
+        "overrides": "nrfld/linear_solver=fgmres nrfld/fgmres_linearity_check=false fld/is_couple=true fld/only_rad=false nrfld/fgmres_batched_reductions=false",
+        "environment": {
+          "OMP_NUM_THREADS": 1,
+          "ATHENA_NRFLD_INTERFACE_LEDGER": 1,
+          "ATHENA_NRFLD_ENERGY_LEDGER": 1
+        },
+        "run_log": "/tmp/wor25_23_24_resolution_trials/threelevel_coupled_fixed_unbatched_r2/run.log",
+        "face_logs": [
+          "/tmp/wor25_23_24_resolution_trials/threelevel_coupled_fixed_unbatched_r2/mpi/1/rank.0/stdout",
+          "/tmp/wor25_23_24_resolution_trials/threelevel_coupled_fixed_unbatched_r2/mpi/1/rank.1/stdout"
+        ],
+        "exit_status": 0,
+        "wall_time": "0:27.19",
+        "peak_rss_kb": 293108,
+        "fgmres_history": [
+          {
+            "iterations": 11,
+            "true_relative_residual": 1.6678275433557998e-09
+          },
+          {
+            "iterations": 11,
+            "true_relative_residual": 5.489592392072363e-09
+          },
+          {
+            "iterations": 11,
+            "true_relative_residual": 7.49904326659995e-09
+          },
+          {
+            "iterations": 11,
+            "true_relative_residual": 5.221322986060664e-09
+          },
+          {
+            "iterations": 11,
+            "true_relative_residual": 5.740007659880762e-09
+          },
+          {
+            "iterations": 11,
+            "true_relative_residual": 6.844954711668848e-09
+          },
+          {
+            "iterations": 11,
+            "true_relative_residual": 6.0282327281268e-09
+          },
+          {
+            "iterations": 11,
+            "true_relative_residual": 6.6745516677905295e-09
+          },
+          {
+            "iterations": 11,
+            "true_relative_residual": 5.096644746369029e-09
+          },
+          {
+            "iterations": 11,
+            "true_relative_residual": 5.35609219781448e-09
+          },
+          {
+            "iterations": 11,
+            "true_relative_residual": 6.3853043043997795e-09
+          },
+          {
+            "iterations": 11,
+            "true_relative_residual": 8.456515827942855e-09
+          },
+          {
+            "iterations": 11,
+            "true_relative_residual": 7.526220891867944e-09
+          },
+          {
+            "iterations": 11,
+            "true_relative_residual": 5.035249556357032e-09
+          }
+        ],
+        "fgmres_total_iterations": 154,
+        "maximum_true_relative_residual": 8.456515827942855e-09,
+        "newton_history": [
+          {
+            "status": "dt_zero_initialization",
+            "iterations": 0
+          },
+          {
+            "status": "converged",
+            "iterations": 14
+          }
+        ],
+        "fgmres_fatal": null,
+        "coupled_jv_coarse_fine_h1e4": [
+          {
+            "direction": "smooth",
+            "epsilon": 0.0001,
+            "coarse_fine_cells": 3200,
+            "relative_l2": 1.638691384789674e-08
+          },
+          {
+            "direction": "newton",
+            "epsilon": 0.0001,
+            "coarse_fine_cells": 3200,
+            "relative_l2": 8.477887015870353e-08
+          }
+        ],
+        "max_implicit_energy_absolute_relative_balance": 4.5274555476082896e-10,
+        "coarse_fine_face_pair_count": 10,
+        "worst_face_pair": {
+          "cycle": 0,
+          "stage": 0,
+          "coarse_gid": 81,
+          "axis": 1,
+          "side": "min",
+          "fine_count": 4,
+          "coarse_flux": 1.2374360795301225e-09,
+          "fine_flux": -1.231653667943533e-09,
+          "mismatch": 5.782411586589426e-12,
+          "relative_mismatch": 0.0023419203747072877,
+          "roundoff_scale": 6.508016350572373e-11,
+          "mismatch_over_roundoff_scale": 0.08885060016914169
+        },
+        "max_face_absolute_mismatch": 1.1564823172049337e-11,
+        "max_face_relative_mismatch": 0.0023419203747072877,
+        "final_output": {
+          "file": "/tmp/wor25_23_24_resolution_trials/threelevel_coupled_fixed_unbatched_r2/output/nrfld_diff_amr_interface.fields.00001.athdf",
+          "minimum_radiation_energy": 144.0620574951172,
+          "maximum_radiation_energy": 144.0620574951172
+        },
+        "solver_pass": true,
+        "face_pass": false,
+        "evaluation": "FAIL_FACE_RELATIVE_ONLY"
+      },
+      {
+        "name": "threelevel_coupled_fixed_tol12_r1",
+        "level_count": 3,
+        "limiter": "fixed",
+        "ranks": 1,
+        "threads_per_rank": 1,
+        "opacity_case": "q1e7",
+        "trial": "tol12",
+        "source_commit_before_run": "9a8567ed",
+        "binary_sha256": "8d4fe3dee26242afa4864f3282ce14b2d53c3e4ae4f8c2375c4e5880e4db9fd6",
+        "input_path": "/home/kosuke/simulation/athena-wor25-23-24-resolution/tst/nrfld_validation/testc_threelevel_shifted_20261107.in",
+        "input_sha256": "c1ffedae69f670d6f17740805077b6741c7cefdaf2baf4639cc7ab5f1fa38a74",
+        "command": "mpirun --output-filename /tmp/wor25_23_24_resolution_trials/threelevel_coupled_fixed_tol12_r1/mpi -n 1 /tmp/wor25_23_24_resolution_roundoff_production_testc_build/bin/athena -i /home/kosuke/simulation/athena-wor25-23-24-resolution/tst/nrfld_validation/testc_threelevel_shifted_20261107.in -d /tmp/wor25_23_24_resolution_trials/threelevel_coupled_fixed_tol12_r1/output nrfld/linear_solver=fgmres nrfld/fgmres_linearity_check=false fld/is_couple=true fld/only_rad=false nrfld/fgmres_threshold=1.2e-8",
+        "overrides": "nrfld/linear_solver=fgmres nrfld/fgmres_linearity_check=false fld/is_couple=true fld/only_rad=false nrfld/fgmres_threshold=1.2e-8",
+        "environment": {
+          "OMP_NUM_THREADS": 1,
+          "ATHENA_NRFLD_INTERFACE_LEDGER": 1,
+          "ATHENA_NRFLD_ENERGY_LEDGER": 1
+        },
+        "run_log": "/tmp/wor25_23_24_resolution_trials/threelevel_coupled_fixed_tol12_r1/run.log",
+        "face_logs": [
+          "/tmp/wor25_23_24_resolution_trials/threelevel_coupled_fixed_tol12_r1/mpi/1/rank.0/stdout"
+        ],
+        "exit_status": 0,
+        "wall_time": "0:09.36",
+        "peak_rss_kb": 539388,
+        "fgmres_history": [
+          {
+            "iterations": 11,
+            "true_relative_residual": 1.668823036278033e-09
+          },
+          {
+            "iterations": 11,
+            "true_relative_residual": 5.778161854646668e-09
+          },
+          {
+            "iterations": 11,
+            "true_relative_residual": 7.121481761025209e-09
+          },
+          {
+            "iterations": 11,
+            "true_relative_residual": 5.234574586779687e-09
+          },
+          {
+            "iterations": 11,
+            "true_relative_residual": 6.982939792432656e-09
+          },
+          {
+            "iterations": 11,
+            "true_relative_residual": 8.715899286349152e-09
+          },
+          {
+            "iterations": 11,
+            "true_relative_residual": 6.5266127953416796e-09
+          },
+          {
+            "iterations": 11,
+            "true_relative_residual": 7.660663034613637e-09
+          },
+          {
+            "iterations": 11,
+            "true_relative_residual": 6.282050795912528e-09
+          },
+          {
+            "iterations": 11,
+            "true_relative_residual": 8.001775130049965e-09
+          },
+          {
+            "iterations": 11,
+            "true_relative_residual": 7.475606507346453e-09
+          },
+          {
+            "iterations": 11,
+            "true_relative_residual": 5.8247098123281015e-09
+          },
+          {
+            "iterations": 11,
+            "true_relative_residual": 7.49001307951143e-09
+          },
+          {
+            "iterations": 11,
+            "true_relative_residual": 5.03199851318532e-09
+          }
+        ],
+        "fgmres_total_iterations": 154,
+        "maximum_true_relative_residual": 8.715899286349152e-09,
+        "newton_history": [
+          {
+            "status": "dt_zero_initialization",
+            "iterations": 0
+          },
+          {
+            "status": "converged",
+            "iterations": 14
+          }
+        ],
+        "fgmres_fatal": null,
+        "coupled_jv_coarse_fine_h1e4": [
+          {
+            "direction": "smooth",
+            "epsilon": 0.0001,
+            "coarse_fine_cells": 3200,
+            "relative_l2": 1.638691384789674e-08
+          },
+          {
+            "direction": "newton",
+            "epsilon": 0.0001,
+            "coarse_fine_cells": 3200,
+            "relative_l2": 8.47802601951733e-08
+          }
+        ],
+        "max_implicit_energy_absolute_relative_balance": 3.2094633370272176e-10,
+        "coarse_fine_face_pair_count": 10,
+        "worst_face_pair": {
+          "cycle": 0,
+          "stage": 0,
+          "coarse_gid": 81,
+          "axis": 1,
+          "side": "min",
+          "fine_count": 4,
+          "coarse_flux": 1.2374360795301225e-09,
+          "fine_flux": -1.231653667943533e-09,
+          "mismatch": 5.782411586589426e-12,
+          "relative_mismatch": 0.0023419203747072877,
+          "roundoff_scale": 6.508016350505502e-11,
+          "mismatch_over_roundoff_scale": 0.08885060017005465
+        },
+        "max_face_absolute_mismatch": 2.3129646344098673e-11,
+        "max_face_relative_mismatch": 0.0023419203747072877,
+        "final_output": {
+          "file": "/tmp/wor25_23_24_resolution_trials/threelevel_coupled_fixed_tol12_r1/output/nrfld_diff_amr_interface.fields.00001.athdf",
+          "minimum_radiation_energy": 144.0620574951172,
+          "maximum_radiation_energy": 144.0620574951172
+        },
+        "solver_pass": true,
+        "face_pass": false,
+        "evaluation": "FAIL_FACE_RELATIVE_ONLY"
+      },
+      {
+        "name": "threelevel_coupled_fixed_tol12_r2",
+        "level_count": 3,
+        "limiter": "fixed",
+        "ranks": 2,
+        "threads_per_rank": 1,
+        "opacity_case": "q1e7",
+        "trial": "tol12",
+        "source_commit_before_run": "9a8567ed",
+        "binary_sha256": "8d4fe3dee26242afa4864f3282ce14b2d53c3e4ae4f8c2375c4e5880e4db9fd6",
+        "input_path": "/home/kosuke/simulation/athena-wor25-23-24-resolution/tst/nrfld_validation/testc_threelevel_shifted_20261107.in",
+        "input_sha256": "c1ffedae69f670d6f17740805077b6741c7cefdaf2baf4639cc7ab5f1fa38a74",
+        "command": "mpirun --output-filename /tmp/wor25_23_24_resolution_trials/threelevel_coupled_fixed_tol12_r2/mpi -n 2 /tmp/wor25_23_24_resolution_roundoff_production_testc_build/bin/athena -i /home/kosuke/simulation/athena-wor25-23-24-resolution/tst/nrfld_validation/testc_threelevel_shifted_20261107.in -d /tmp/wor25_23_24_resolution_trials/threelevel_coupled_fixed_tol12_r2/output nrfld/linear_solver=fgmres nrfld/fgmres_linearity_check=false fld/is_couple=true fld/only_rad=false nrfld/fgmres_threshold=1.2e-8",
+        "overrides": "nrfld/linear_solver=fgmres nrfld/fgmres_linearity_check=false fld/is_couple=true fld/only_rad=false nrfld/fgmres_threshold=1.2e-8",
+        "environment": {
+          "OMP_NUM_THREADS": 1,
+          "ATHENA_NRFLD_INTERFACE_LEDGER": 1,
+          "ATHENA_NRFLD_ENERGY_LEDGER": 1
+        },
+        "run_log": "/tmp/wor25_23_24_resolution_trials/threelevel_coupled_fixed_tol12_r2/run.log",
+        "face_logs": [
+          "/tmp/wor25_23_24_resolution_trials/threelevel_coupled_fixed_tol12_r2/mpi/1/rank.0/stdout",
+          "/tmp/wor25_23_24_resolution_trials/threelevel_coupled_fixed_tol12_r2/mpi/1/rank.1/stdout"
+        ],
+        "exit_status": 0,
+        "wall_time": "0:07.18",
+        "peak_rss_kb": 292920,
+        "fgmres_history": [
+          {
+            "iterations": 11,
+            "true_relative_residual": 1.6684382531889384e-09
+          },
+          {
+            "iterations": 11,
+            "true_relative_residual": 4.901011210530502e-09
+          },
+          {
+            "iterations": 11,
+            "true_relative_residual": 6.824629939132253e-09
+          },
+          {
+            "iterations": 11,
+            "true_relative_residual": 5.551767220819797e-09
+          },
+          {
+            "iterations": 11,
+            "true_relative_residual": 6.9789615997743155e-09
+          },
+          {
+            "iterations": 11,
+            "true_relative_residual": 7.777775193440186e-09
+          },
+          {
+            "iterations": 11,
+            "true_relative_residual": 6.848836842099362e-09
+          },
+          {
+            "iterations": 11,
+            "true_relative_residual": 8.797968644791253e-09
+          },
+          {
+            "iterations": 11,
+            "true_relative_residual": 6.0263186850597114e-09
+          },
+          {
+            "iterations": 11,
+            "true_relative_residual": 8.285487943189124e-09
+          },
+          {
+            "iterations": 11,
+            "true_relative_residual": 8.487680127387045e-09
+          },
+          {
+            "iterations": 11,
+            "true_relative_residual": 1.1100148214869676e-08
+          },
+          {
+            "iterations": 12,
+            "true_relative_residual": 1.1226370432465042e-08
+          },
+          {
+            "iterations": 11,
+            "true_relative_residual": 7.777291954396742e-09
+          }
+        ],
+        "fgmres_total_iterations": 155,
+        "maximum_true_relative_residual": 1.1226370432465042e-08,
+        "newton_history": [
+          {
+            "status": "dt_zero_initialization",
+            "iterations": 0
+          },
+          {
+            "status": "converged",
+            "iterations": 14
+          }
+        ],
+        "fgmres_fatal": null,
+        "coupled_jv_coarse_fine_h1e4": [
+          {
+            "direction": "smooth",
+            "epsilon": 0.0001,
+            "coarse_fine_cells": 3200,
+            "relative_l2": 1.638691384789674e-08
+          },
+          {
+            "direction": "newton",
+            "epsilon": 0.0001,
+            "coarse_fine_cells": 3200,
+            "relative_l2": 8.477943556840007e-08
+          }
+        ],
+        "max_implicit_energy_absolute_relative_balance": 5.11007541928693e-10,
+        "coarse_fine_face_pair_count": 10,
+        "worst_face_pair": {
+          "cycle": 0,
+          "stage": 0,
+          "coarse_gid": 81,
+          "axis": 1,
+          "side": "min",
+          "fine_count": 4,
+          "coarse_flux": 1.2352676751851515e-09,
+          "fine_flux": -1.2461548720005267e-09,
+          "mismatch": -1.0887196815375205e-11,
+          "relative_mismatch": 0.004387482022246873,
+          "roundoff_scale": 6.508016350432361e-11,
+          "mismatch_over_roundoff_scale": 0.16728902063455806
+        },
+        "max_face_absolute_mismatch": 1.1564823175437468e-11,
+        "max_face_relative_mismatch": 0.004387482022246873,
+        "final_output": {
+          "file": "/tmp/wor25_23_24_resolution_trials/threelevel_coupled_fixed_tol12_r2/output/nrfld_diff_amr_interface.fields.00001.athdf",
+          "minimum_radiation_energy": 144.0620574951172,
+          "maximum_radiation_energy": 144.0620574951172
+        },
+        "solver_pass": true,
+        "face_pass": false,
+        "evaluation": "FAIL_FACE_RELATIVE_ONLY"
+      }
+    ],
+    "rank_comparisons": {
+      "twolevel_q1e7_fixed": {
+        "rank1": "twolevel_coupled_fixed_r1",
+        "rank2": "twolevel_coupled_fixed_r2",
+        "final_hdf_numeric_arrays_exact": true
+      },
+      "twolevel_q1e7_variable": {
+        "rank1": "twolevel_coupled_variable_r1",
+        "rank2": "twolevel_coupled_variable_r2",
+        "final_hdf_numeric_arrays_exact": true
+      },
+      "threelevel_q1e6_fixed": {
+        "rank1": "threelevel_coupled_q1e6_fixed_r1",
+        "rank2": "threelevel_coupled_q1e6_fixed_r2",
+        "final_hdf_numeric_arrays_exact": true
+      },
+      "threelevel_q1e7_variable": {
+        "rank1": "threelevel_coupled_variable_r1",
+        "rank2": "threelevel_coupled_variable_r2",
+        "final_hdf_numeric_arrays_exact": true
+      },
+      "threelevel_q1e6_variable": {
+        "rank1": "threelevel_coupled_q1e6_variable_r1",
+        "rank2": "threelevel_coupled_q1e6_variable_r2",
+        "final_hdf_numeric_arrays_exact": true
+      }
+    },
+    "decision": "Two-level coupled controls pass face tolerance on both ranks. Three-level coupled cases converge except q1e7 fixed 2-rank strict FGMRES target, but all completed three-level cases fail the 1e-6 relative face criterion on very small face flux. Smooth coarse/fine Schur Jv and global energy balance remain small. Max iterations, 2 MG cycles, restart width and unbatched reductions do not give a robust strict-target fix. Relaxed 1.2e-8 target is a diagnostic only; it does not address face mismatch. Retain opt-in roundoff-scale diagnostic and leave conservation discrepancy unresolved."
   }
 }
