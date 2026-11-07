@@ -29939,5 +29939,1338 @@
       },
       "evaluation": "PASS_LOCAL_EXTENDED_REGRID_AND_RESTART; real-scale and many levels untested"
     }
+  },
+  "wor29_postsync_collapse_color_trial": {
+    "scope": "43-leaf collapse after four alternating regrids; restart at cycle14 and continue through fifth swap with conditional post-AMR boundary sync and two gravity restart opt-ins. Explicitly override both color settings because source checkpoint already had symmetric_rb_sweeps=true.",
+    "source_commit_base": "45e990c0",
+    "input_archive_sha256": "36a50c47f1dfdbf33ad1476c594a915329dd51c3395e5e0b460cce0bdc1b773b",
+    "runs": [
+      {
+        "name": "collapse_postsync_gravopts_long_restart14_r1",
+        "source_commit_base": "45e990c0",
+        "binary_sha256": "6559920bf139fb67eea773d7ea232eb027e9ea32f04d097bcc6472071eb6764b",
+        "checkpoint_path": "/tmp/wor25_23_24_resolution_trials/collapse_postsync_gravopts_long_r1/output/protostellar_core_fld_mayer5.00014.rst",
+        "checkpoint_sha256": "a849e0b207642beaeae06058dc92179782a97f5cad104558ca29dad979aa1d47",
+        "ranks": 1,
+        "threads": 2,
+        "effective_color_options": {
+          "consistent_rb_colors": false,
+          "symmetric_rb_sweeps": true
+        },
+        "environment": {
+          "OMP_NUM_THREADS": "2",
+          "ATHENA_NRFLD_EXPERIMENTAL_COLLAPSE": "1",
+          "ATHENA_NRFLD_INTERFACE_LEDGER": "1",
+          "ATHENA_NRFLD_ENERGY_LEDGER": "1"
+        },
+        "command": "mpirun --output-filename /tmp/wor25_23_24_resolution_trials/collapse_postsync_gravopts_long_restart14_r1/mpi -n 1 /tmp/wor25_23_24_resolution_collapse_postamrsync_build/bin/athena -r /tmp/wor25_23_24_resolution_trials/collapse_postsync_gravopts_long_r1/output/protostellar_core_fld_mayer5.00014.rst -d output mesh/num_threads=2 mesh/derefine_count=1 time/nlim=17 problem/N_J=7.6160 nrfld/global_jacobian_check=true gravity/reset_fmg_color_each_solve=true gravity/repeat_initial_fmg_after_restart=true",
+        "run_log": "/tmp/wor25_23_24_resolution_trials/collapse_postsync_gravopts_long_restart14_r1/run.log",
+        "exit_status": 0,
+        "wall_time": "0:08.26",
+        "peak_rss_kb": 337504,
+        "newton_statuses": [
+          {
+            "status": "converged",
+            "iterations": 0
+          },
+          {
+            "status": "converged",
+            "iterations": 3
+          },
+          {
+            "status": "converged",
+            "iterations": 2
+          },
+          {
+            "status": "converged",
+            "iterations": 0
+          },
+          {
+            "status": "converged",
+            "iterations": 3
+          }
+        ],
+        "fgmres_history": [
+          {
+            "iterations": 14,
+            "explicit_relative_residual": 2.832774689247855e-09
+          },
+          {
+            "iterations": 14,
+            "explicit_relative_residual": 2.706190434114653e-09
+          },
+          {
+            "iterations": 13,
+            "explicit_relative_residual": 8.969264598734699e-09
+          },
+          {
+            "iterations": 13,
+            "explicit_relative_residual": 8.312541404272468e-09
+          },
+          {
+            "iterations": 14,
+            "explicit_relative_residual": 3.012468144185792e-09
+          },
+          {
+            "iterations": 12,
+            "explicit_relative_residual": 9.39445272131669e-09
+          },
+          {
+            "iterations": 13,
+            "explicit_relative_residual": 8.643977517809229e-09
+          },
+          {
+            "iterations": 13,
+            "explicit_relative_residual": 4.675255819992109e-09
+          }
+        ],
+        "fgmres_total_iterations": 106,
+        "true_residual_max": 9.39445272131669e-09,
+        "coarse_fine_face_conservation": {
+          "pairs": 23,
+          "max_relative_mismatch": 2.4175142135051353e-07,
+          "pass": true
+        },
+        "max_implicit_energy_absolute_relative_balance": 2.6597223866636897e-10,
+        "mass_initial": 704254664064.2998,
+        "mass_final": 704254682921.1555,
+        "mass_relative_change": 2.6775620631415452e-08,
+        "final_minima": {
+          "rho": 0.05177992336824117,
+          "pressure": 0.025312962211897206,
+          "Er": 0.2905843406367917
+        },
+        "evaluation": "PASS_LOCAL; NO_ITERATION_IMPROVEMENT"
+      },
+      {
+        "name": "collapse_postsync_gravopts_long_restart14_r2",
+        "source_commit_base": "45e990c0",
+        "binary_sha256": "6559920bf139fb67eea773d7ea232eb027e9ea32f04d097bcc6472071eb6764b",
+        "checkpoint_path": "/tmp/wor25_23_24_resolution_trials/collapse_postsync_gravopts_long_r1/output/protostellar_core_fld_mayer5.00014.rst",
+        "checkpoint_sha256": "a849e0b207642beaeae06058dc92179782a97f5cad104558ca29dad979aa1d47",
+        "ranks": 2,
+        "threads": 2,
+        "effective_color_options": {
+          "consistent_rb_colors": false,
+          "symmetric_rb_sweeps": true
+        },
+        "environment": {
+          "OMP_NUM_THREADS": "2",
+          "ATHENA_NRFLD_EXPERIMENTAL_COLLAPSE": "1",
+          "ATHENA_NRFLD_INTERFACE_LEDGER": "1",
+          "ATHENA_NRFLD_ENERGY_LEDGER": "1"
+        },
+        "command": "mpirun --output-filename /tmp/wor25_23_24_resolution_trials/collapse_postsync_gravopts_long_restart14_r2/mpi -n 2 /tmp/wor25_23_24_resolution_collapse_postamrsync_build/bin/athena -r /tmp/wor25_23_24_resolution_trials/collapse_postsync_gravopts_long_r1/output/protostellar_core_fld_mayer5.00014.rst -d output mesh/num_threads=2 mesh/derefine_count=1 time/nlim=17 problem/N_J=7.6160 nrfld/global_jacobian_check=true gravity/reset_fmg_color_each_solve=true gravity/repeat_initial_fmg_after_restart=true",
+        "run_log": "/tmp/wor25_23_24_resolution_trials/collapse_postsync_gravopts_long_restart14_r2/run.log",
+        "exit_status": 0,
+        "wall_time": "0:06.58",
+        "peak_rss_kb": 221952,
+        "newton_statuses": [
+          {
+            "status": "converged",
+            "iterations": 0
+          },
+          {
+            "status": "converged",
+            "iterations": 3
+          },
+          {
+            "status": "converged",
+            "iterations": 2
+          },
+          {
+            "status": "converged",
+            "iterations": 0
+          },
+          {
+            "status": "converged",
+            "iterations": 3
+          }
+        ],
+        "fgmres_history": [
+          {
+            "iterations": 14,
+            "explicit_relative_residual": 2.832774576464876e-09
+          },
+          {
+            "iterations": 14,
+            "explicit_relative_residual": 2.708268516578816e-09
+          },
+          {
+            "iterations": 13,
+            "explicit_relative_residual": 7.807795478624892e-09
+          },
+          {
+            "iterations": 13,
+            "explicit_relative_residual": 8.312540352075417e-09
+          },
+          {
+            "iterations": 14,
+            "explicit_relative_residual": 3.01220073138426e-09
+          },
+          {
+            "iterations": 12,
+            "explicit_relative_residual": 9.394453647379559e-09
+          },
+          {
+            "iterations": 13,
+            "explicit_relative_residual": 8.644452724695128e-09
+          },
+          {
+            "iterations": 13,
+            "explicit_relative_residual": 4.573988122057044e-09
+          }
+        ],
+        "fgmres_total_iterations": 106,
+        "true_residual_max": 9.394453647379559e-09,
+        "coarse_fine_face_conservation": {
+          "pairs": 23,
+          "max_relative_mismatch": 2.2322797676058983e-07,
+          "pass": true
+        },
+        "max_implicit_energy_absolute_relative_balance": 4.2224479408090927e-10,
+        "mass_initial": 704254664064.2998,
+        "mass_final": 704254682921.1555,
+        "mass_relative_change": 2.6775620631415452e-08,
+        "final_minima": {
+          "rho": 0.05177992336824119,
+          "pressure": 0.025312962211894573,
+          "Er": 0.29058434063666455
+        },
+        "evaluation": "PASS_LOCAL; NO_ITERATION_IMPROVEMENT"
+      },
+      {
+        "name": "collapse_long_restart14_consistent_r1",
+        "source_commit_base": "45e990c0",
+        "binary_sha256": "6559920bf139fb67eea773d7ea232eb027e9ea32f04d097bcc6472071eb6764b",
+        "checkpoint_path": "/tmp/wor25_23_24_resolution_trials/collapse_postsync_gravopts_long_r1/output/protostellar_core_fld_mayer5.00014.rst",
+        "checkpoint_sha256": "a849e0b207642beaeae06058dc92179782a97f5cad104558ca29dad979aa1d47",
+        "ranks": 1,
+        "threads": 2,
+        "effective_color_options": {
+          "consistent_rb_colors": true,
+          "symmetric_rb_sweeps": true
+        },
+        "environment": {
+          "OMP_NUM_THREADS": "2",
+          "ATHENA_NRFLD_EXPERIMENTAL_COLLAPSE": "1",
+          "ATHENA_NRFLD_INTERFACE_LEDGER": "1",
+          "ATHENA_NRFLD_ENERGY_LEDGER": "1"
+        },
+        "command": "mpirun --output-filename /tmp/wor25_23_24_resolution_trials/collapse_long_restart14_consistent_r1/mpi -n 1 /tmp/wor25_23_24_resolution_collapse_postamrsync_build/bin/athena -r /tmp/wor25_23_24_resolution_trials/collapse_postsync_gravopts_long_r1/output/protostellar_core_fld_mayer5.00014.rst -d output mesh/num_threads=2 mesh/derefine_count=1 time/nlim=17 problem/N_J=7.6160 nrfld/global_jacobian_check=true gravity/reset_fmg_color_each_solve=true gravity/repeat_initial_fmg_after_restart=true nrfld/consistent_rb_colors=true",
+        "run_log": "/tmp/wor25_23_24_resolution_trials/collapse_long_restart14_consistent_r1/run.log",
+        "exit_status": 0,
+        "wall_time": "0:07.94",
+        "peak_rss_kb": 337668,
+        "newton_statuses": [
+          {
+            "status": "converged",
+            "iterations": 0
+          },
+          {
+            "status": "converged",
+            "iterations": 3
+          },
+          {
+            "status": "converged",
+            "iterations": 2
+          },
+          {
+            "status": "converged",
+            "iterations": 0
+          },
+          {
+            "status": "converged",
+            "iterations": 3
+          }
+        ],
+        "fgmres_history": [
+          {
+            "iterations": 14,
+            "explicit_relative_residual": 2.832774689247855e-09
+          },
+          {
+            "iterations": 14,
+            "explicit_relative_residual": 2.706190434114653e-09
+          },
+          {
+            "iterations": 13,
+            "explicit_relative_residual": 8.969264598734699e-09
+          },
+          {
+            "iterations": 13,
+            "explicit_relative_residual": 8.312541404272468e-09
+          },
+          {
+            "iterations": 14,
+            "explicit_relative_residual": 3.012468144185792e-09
+          },
+          {
+            "iterations": 12,
+            "explicit_relative_residual": 9.39445272131669e-09
+          },
+          {
+            "iterations": 13,
+            "explicit_relative_residual": 8.643977517809229e-09
+          },
+          {
+            "iterations": 13,
+            "explicit_relative_residual": 4.675255819992109e-09
+          }
+        ],
+        "fgmres_total_iterations": 106,
+        "true_residual_max": 9.39445272131669e-09,
+        "coarse_fine_face_conservation": {
+          "pairs": 23,
+          "max_relative_mismatch": 2.4175142135051353e-07,
+          "pass": true
+        },
+        "max_implicit_energy_absolute_relative_balance": 2.6597223866636897e-10,
+        "mass_initial": 704254664064.2998,
+        "mass_final": 704254682921.1555,
+        "mass_relative_change": 2.6775620631415452e-08,
+        "final_minima": {
+          "rho": 0.05177992336824117,
+          "pressure": 0.025312962211897206,
+          "Er": 0.2905843406367917
+        },
+        "evaluation": "PASS_LOCAL; NO_ITERATION_IMPROVEMENT"
+      },
+      {
+        "name": "collapse_long_restart14_consistent_r2",
+        "source_commit_base": "45e990c0",
+        "binary_sha256": "6559920bf139fb67eea773d7ea232eb027e9ea32f04d097bcc6472071eb6764b",
+        "checkpoint_path": "/tmp/wor25_23_24_resolution_trials/collapse_postsync_gravopts_long_r1/output/protostellar_core_fld_mayer5.00014.rst",
+        "checkpoint_sha256": "a849e0b207642beaeae06058dc92179782a97f5cad104558ca29dad979aa1d47",
+        "ranks": 2,
+        "threads": 2,
+        "effective_color_options": {
+          "consistent_rb_colors": true,
+          "symmetric_rb_sweeps": true
+        },
+        "environment": {
+          "OMP_NUM_THREADS": "2",
+          "ATHENA_NRFLD_EXPERIMENTAL_COLLAPSE": "1",
+          "ATHENA_NRFLD_INTERFACE_LEDGER": "1",
+          "ATHENA_NRFLD_ENERGY_LEDGER": "1"
+        },
+        "command": "mpirun --output-filename /tmp/wor25_23_24_resolution_trials/collapse_long_restart14_consistent_r2/mpi -n 2 /tmp/wor25_23_24_resolution_collapse_postamrsync_build/bin/athena -r /tmp/wor25_23_24_resolution_trials/collapse_postsync_gravopts_long_r1/output/protostellar_core_fld_mayer5.00014.rst -d output mesh/num_threads=2 mesh/derefine_count=1 time/nlim=17 problem/N_J=7.6160 nrfld/global_jacobian_check=true gravity/reset_fmg_color_each_solve=true gravity/repeat_initial_fmg_after_restart=true nrfld/consistent_rb_colors=true",
+        "run_log": "/tmp/wor25_23_24_resolution_trials/collapse_long_restart14_consistent_r2/run.log",
+        "exit_status": 0,
+        "wall_time": "0:06.24",
+        "peak_rss_kb": 221648,
+        "newton_statuses": [
+          {
+            "status": "converged",
+            "iterations": 0
+          },
+          {
+            "status": "converged",
+            "iterations": 3
+          },
+          {
+            "status": "converged",
+            "iterations": 2
+          },
+          {
+            "status": "converged",
+            "iterations": 0
+          },
+          {
+            "status": "converged",
+            "iterations": 3
+          }
+        ],
+        "fgmres_history": [
+          {
+            "iterations": 14,
+            "explicit_relative_residual": 2.832774576464876e-09
+          },
+          {
+            "iterations": 14,
+            "explicit_relative_residual": 2.708268516578816e-09
+          },
+          {
+            "iterations": 13,
+            "explicit_relative_residual": 7.807795478624892e-09
+          },
+          {
+            "iterations": 13,
+            "explicit_relative_residual": 8.312540352075417e-09
+          },
+          {
+            "iterations": 14,
+            "explicit_relative_residual": 3.01220073138426e-09
+          },
+          {
+            "iterations": 12,
+            "explicit_relative_residual": 9.394453647379559e-09
+          },
+          {
+            "iterations": 13,
+            "explicit_relative_residual": 8.644452724695128e-09
+          },
+          {
+            "iterations": 13,
+            "explicit_relative_residual": 4.573988122057044e-09
+          }
+        ],
+        "fgmres_total_iterations": 106,
+        "true_residual_max": 9.394453647379559e-09,
+        "coarse_fine_face_conservation": {
+          "pairs": 23,
+          "max_relative_mismatch": 2.2322797676058983e-07,
+          "pass": true
+        },
+        "max_implicit_energy_absolute_relative_balance": 4.2224479408090927e-10,
+        "mass_initial": 704254664064.2998,
+        "mass_final": 704254682921.1555,
+        "mass_relative_change": 2.6775620631415452e-08,
+        "final_minima": {
+          "rho": 0.05177992336824119,
+          "pressure": 0.025312962211894573,
+          "Er": 0.29058434063666455
+        },
+        "evaluation": "PASS_LOCAL; NO_ITERATION_IMPROVEMENT"
+      },
+      {
+        "name": "collapse_long_restart14_symmetric_r1",
+        "source_commit_base": "45e990c0",
+        "binary_sha256": "6559920bf139fb67eea773d7ea232eb027e9ea32f04d097bcc6472071eb6764b",
+        "checkpoint_path": "/tmp/wor25_23_24_resolution_trials/collapse_postsync_gravopts_long_r1/output/protostellar_core_fld_mayer5.00014.rst",
+        "checkpoint_sha256": "a849e0b207642beaeae06058dc92179782a97f5cad104558ca29dad979aa1d47",
+        "ranks": 1,
+        "threads": 2,
+        "effective_color_options": {
+          "consistent_rb_colors": false,
+          "symmetric_rb_sweeps": true
+        },
+        "environment": {
+          "OMP_NUM_THREADS": "2",
+          "ATHENA_NRFLD_EXPERIMENTAL_COLLAPSE": "1",
+          "ATHENA_NRFLD_INTERFACE_LEDGER": "1",
+          "ATHENA_NRFLD_ENERGY_LEDGER": "1"
+        },
+        "command": "mpirun --output-filename /tmp/wor25_23_24_resolution_trials/collapse_long_restart14_symmetric_r1/mpi -n 1 /tmp/wor25_23_24_resolution_collapse_postamrsync_build/bin/athena -r /tmp/wor25_23_24_resolution_trials/collapse_postsync_gravopts_long_r1/output/protostellar_core_fld_mayer5.00014.rst -d output mesh/num_threads=2 mesh/derefine_count=1 time/nlim=17 problem/N_J=7.6160 nrfld/global_jacobian_check=true gravity/reset_fmg_color_each_solve=true gravity/repeat_initial_fmg_after_restart=true nrfld/symmetric_rb_sweeps=true",
+        "run_log": "/tmp/wor25_23_24_resolution_trials/collapse_long_restart14_symmetric_r1/run.log",
+        "exit_status": 0,
+        "wall_time": "0:09.02",
+        "peak_rss_kb": 337512,
+        "newton_statuses": [
+          {
+            "status": "converged",
+            "iterations": 0
+          },
+          {
+            "status": "converged",
+            "iterations": 3
+          },
+          {
+            "status": "converged",
+            "iterations": 2
+          },
+          {
+            "status": "converged",
+            "iterations": 0
+          },
+          {
+            "status": "converged",
+            "iterations": 3
+          }
+        ],
+        "fgmres_history": [
+          {
+            "iterations": 14,
+            "explicit_relative_residual": 2.832774689247855e-09
+          },
+          {
+            "iterations": 14,
+            "explicit_relative_residual": 2.706190434114653e-09
+          },
+          {
+            "iterations": 13,
+            "explicit_relative_residual": 8.969264598734699e-09
+          },
+          {
+            "iterations": 13,
+            "explicit_relative_residual": 8.312541404272468e-09
+          },
+          {
+            "iterations": 14,
+            "explicit_relative_residual": 3.012468144185792e-09
+          },
+          {
+            "iterations": 12,
+            "explicit_relative_residual": 9.39445272131669e-09
+          },
+          {
+            "iterations": 13,
+            "explicit_relative_residual": 8.643977517809229e-09
+          },
+          {
+            "iterations": 13,
+            "explicit_relative_residual": 4.675255819992109e-09
+          }
+        ],
+        "fgmres_total_iterations": 106,
+        "true_residual_max": 9.39445272131669e-09,
+        "coarse_fine_face_conservation": {
+          "pairs": 23,
+          "max_relative_mismatch": 2.4175142135051353e-07,
+          "pass": true
+        },
+        "max_implicit_energy_absolute_relative_balance": 2.6597223866636897e-10,
+        "mass_initial": 704254664064.2998,
+        "mass_final": 704254682921.1555,
+        "mass_relative_change": 2.6775620631415452e-08,
+        "final_minima": {
+          "rho": 0.05177992336824117,
+          "pressure": 0.025312962211897206,
+          "Er": 0.2905843406367917
+        },
+        "evaluation": "PASS_LOCAL; NO_ITERATION_IMPROVEMENT"
+      },
+      {
+        "name": "collapse_long_restart14_symmetric_r2",
+        "source_commit_base": "45e990c0",
+        "binary_sha256": "6559920bf139fb67eea773d7ea232eb027e9ea32f04d097bcc6472071eb6764b",
+        "checkpoint_path": "/tmp/wor25_23_24_resolution_trials/collapse_postsync_gravopts_long_r1/output/protostellar_core_fld_mayer5.00014.rst",
+        "checkpoint_sha256": "a849e0b207642beaeae06058dc92179782a97f5cad104558ca29dad979aa1d47",
+        "ranks": 2,
+        "threads": 2,
+        "effective_color_options": {
+          "consistent_rb_colors": false,
+          "symmetric_rb_sweeps": true
+        },
+        "environment": {
+          "OMP_NUM_THREADS": "2",
+          "ATHENA_NRFLD_EXPERIMENTAL_COLLAPSE": "1",
+          "ATHENA_NRFLD_INTERFACE_LEDGER": "1",
+          "ATHENA_NRFLD_ENERGY_LEDGER": "1"
+        },
+        "command": "mpirun --output-filename /tmp/wor25_23_24_resolution_trials/collapse_long_restart14_symmetric_r2/mpi -n 2 /tmp/wor25_23_24_resolution_collapse_postamrsync_build/bin/athena -r /tmp/wor25_23_24_resolution_trials/collapse_postsync_gravopts_long_r1/output/protostellar_core_fld_mayer5.00014.rst -d output mesh/num_threads=2 mesh/derefine_count=1 time/nlim=17 problem/N_J=7.6160 nrfld/global_jacobian_check=true gravity/reset_fmg_color_each_solve=true gravity/repeat_initial_fmg_after_restart=true nrfld/symmetric_rb_sweeps=true",
+        "run_log": "/tmp/wor25_23_24_resolution_trials/collapse_long_restart14_symmetric_r2/run.log",
+        "exit_status": 0,
+        "wall_time": "0:06.21",
+        "peak_rss_kb": 221436,
+        "newton_statuses": [
+          {
+            "status": "converged",
+            "iterations": 0
+          },
+          {
+            "status": "converged",
+            "iterations": 3
+          },
+          {
+            "status": "converged",
+            "iterations": 2
+          },
+          {
+            "status": "converged",
+            "iterations": 0
+          },
+          {
+            "status": "converged",
+            "iterations": 3
+          }
+        ],
+        "fgmres_history": [
+          {
+            "iterations": 14,
+            "explicit_relative_residual": 2.832774576464876e-09
+          },
+          {
+            "iterations": 14,
+            "explicit_relative_residual": 2.708268516578816e-09
+          },
+          {
+            "iterations": 13,
+            "explicit_relative_residual": 7.807795478624892e-09
+          },
+          {
+            "iterations": 13,
+            "explicit_relative_residual": 8.312540352075417e-09
+          },
+          {
+            "iterations": 14,
+            "explicit_relative_residual": 3.01220073138426e-09
+          },
+          {
+            "iterations": 12,
+            "explicit_relative_residual": 9.394453647379559e-09
+          },
+          {
+            "iterations": 13,
+            "explicit_relative_residual": 8.644452724695128e-09
+          },
+          {
+            "iterations": 13,
+            "explicit_relative_residual": 4.573988122057044e-09
+          }
+        ],
+        "fgmres_total_iterations": 106,
+        "true_residual_max": 9.394453647379559e-09,
+        "coarse_fine_face_conservation": {
+          "pairs": 23,
+          "max_relative_mismatch": 2.2322797676058983e-07,
+          "pass": true
+        },
+        "max_implicit_energy_absolute_relative_balance": 4.2224479408090927e-10,
+        "mass_initial": 704254664064.2998,
+        "mass_final": 704254682921.1555,
+        "mass_relative_change": 2.6775620631415452e-08,
+        "final_minima": {
+          "rho": 0.05177992336824119,
+          "pressure": 0.025312962211894573,
+          "Er": 0.29058434063666455
+        },
+        "evaluation": "PASS_LOCAL; NO_ITERATION_IMPROVEMENT"
+      },
+      {
+        "name": "collapse_long_restart14_defaultcolor_r1",
+        "source_commit_base": "45e990c0",
+        "binary_sha256": "6559920bf139fb67eea773d7ea232eb027e9ea32f04d097bcc6472071eb6764b",
+        "checkpoint_path": "/tmp/wor25_23_24_resolution_trials/collapse_postsync_gravopts_long_r1/output/protostellar_core_fld_mayer5.00014.rst",
+        "checkpoint_sha256": "a849e0b207642beaeae06058dc92179782a97f5cad104558ca29dad979aa1d47",
+        "ranks": 1,
+        "threads": 2,
+        "effective_color_options": {
+          "consistent_rb_colors": false,
+          "symmetric_rb_sweeps": false
+        },
+        "environment": {
+          "OMP_NUM_THREADS": "2",
+          "ATHENA_NRFLD_EXPERIMENTAL_COLLAPSE": "1",
+          "ATHENA_NRFLD_INTERFACE_LEDGER": "1",
+          "ATHENA_NRFLD_ENERGY_LEDGER": "1"
+        },
+        "command": "mpirun --output-filename /tmp/wor25_23_24_resolution_trials/collapse_long_restart14_defaultcolor_r1/mpi -n 1 /tmp/wor25_23_24_resolution_collapse_postamrsync_build/bin/athena -r /tmp/wor25_23_24_resolution_trials/collapse_postsync_gravopts_long_r1/output/protostellar_core_fld_mayer5.00014.rst -d output mesh/num_threads=2 mesh/derefine_count=1 time/nlim=17 problem/N_J=7.6160 nrfld/global_jacobian_check=true gravity/reset_fmg_color_each_solve=true gravity/repeat_initial_fmg_after_restart=true nrfld/symmetric_rb_sweeps=false nrfld/consistent_rb_colors=false",
+        "run_log": "/tmp/wor25_23_24_resolution_trials/collapse_long_restart14_defaultcolor_r1/run.log",
+        "exit_status": 0,
+        "wall_time": "0:07.56",
+        "peak_rss_kb": 337568,
+        "newton_statuses": [
+          {
+            "status": "converged",
+            "iterations": 0
+          },
+          {
+            "status": "converged",
+            "iterations": 3
+          },
+          {
+            "status": "converged",
+            "iterations": 2
+          },
+          {
+            "status": "converged",
+            "iterations": 0
+          },
+          {
+            "status": "converged",
+            "iterations": 3
+          }
+        ],
+        "fgmres_history": [
+          {
+            "iterations": 13,
+            "explicit_relative_residual": 6.8962644090143e-09
+          },
+          {
+            "iterations": 13,
+            "explicit_relative_residual": 7.61520112060692e-09
+          },
+          {
+            "iterations": 13,
+            "explicit_relative_residual": 5.824893238606555e-09
+          },
+          {
+            "iterations": 12,
+            "explicit_relative_residual": 9.170741427823641e-09
+          },
+          {
+            "iterations": 13,
+            "explicit_relative_residual": 5.709590328435098e-09
+          },
+          {
+            "iterations": 12,
+            "explicit_relative_residual": 4.89592143247358e-09
+          },
+          {
+            "iterations": 13,
+            "explicit_relative_residual": 4.051517446745687e-09
+          },
+          {
+            "iterations": 13,
+            "explicit_relative_residual": 4.019296019047311e-09
+          }
+        ],
+        "fgmres_total_iterations": 102,
+        "true_residual_max": 9.170741427823641e-09,
+        "coarse_fine_face_conservation": {
+          "pairs": 23,
+          "max_relative_mismatch": 2.2944716479742905e-07,
+          "pass": true
+        },
+        "max_implicit_energy_absolute_relative_balance": 2.6696448625599254e-10,
+        "mass_initial": 704254664064.2998,
+        "mass_final": 704254682921.1555,
+        "mass_relative_change": 2.6775620631415452e-08,
+        "final_minima": {
+          "rho": 0.05177992336824112,
+          "pressure": 0.025312962211898167,
+          "Er": 0.2905843406368394
+        },
+        "evaluation": "PASS_LOCAL_REFERENCE"
+      },
+      {
+        "name": "collapse_long_restart14_defaultcolor_r2",
+        "source_commit_base": "45e990c0",
+        "binary_sha256": "6559920bf139fb67eea773d7ea232eb027e9ea32f04d097bcc6472071eb6764b",
+        "checkpoint_path": "/tmp/wor25_23_24_resolution_trials/collapse_postsync_gravopts_long_r1/output/protostellar_core_fld_mayer5.00014.rst",
+        "checkpoint_sha256": "a849e0b207642beaeae06058dc92179782a97f5cad104558ca29dad979aa1d47",
+        "ranks": 2,
+        "threads": 2,
+        "effective_color_options": {
+          "consistent_rb_colors": false,
+          "symmetric_rb_sweeps": false
+        },
+        "environment": {
+          "OMP_NUM_THREADS": "2",
+          "ATHENA_NRFLD_EXPERIMENTAL_COLLAPSE": "1",
+          "ATHENA_NRFLD_INTERFACE_LEDGER": "1",
+          "ATHENA_NRFLD_ENERGY_LEDGER": "1"
+        },
+        "command": "mpirun --output-filename /tmp/wor25_23_24_resolution_trials/collapse_long_restart14_defaultcolor_r2/mpi -n 2 /tmp/wor25_23_24_resolution_collapse_postamrsync_build/bin/athena -r /tmp/wor25_23_24_resolution_trials/collapse_postsync_gravopts_long_r1/output/protostellar_core_fld_mayer5.00014.rst -d output mesh/num_threads=2 mesh/derefine_count=1 time/nlim=17 problem/N_J=7.6160 nrfld/global_jacobian_check=true gravity/reset_fmg_color_each_solve=true gravity/repeat_initial_fmg_after_restart=true nrfld/symmetric_rb_sweeps=false nrfld/consistent_rb_colors=false",
+        "run_log": "/tmp/wor25_23_24_resolution_trials/collapse_long_restart14_defaultcolor_r2/run.log",
+        "exit_status": 0,
+        "wall_time": "0:06.30",
+        "peak_rss_kb": 221644,
+        "newton_statuses": [
+          {
+            "status": "converged",
+            "iterations": 0
+          },
+          {
+            "status": "converged",
+            "iterations": 3
+          },
+          {
+            "status": "converged",
+            "iterations": 2
+          },
+          {
+            "status": "converged",
+            "iterations": 0
+          },
+          {
+            "status": "converged",
+            "iterations": 3
+          }
+        ],
+        "fgmres_history": [
+          {
+            "iterations": 13,
+            "explicit_relative_residual": 6.896263859230558e-09
+          },
+          {
+            "iterations": 13,
+            "explicit_relative_residual": 7.615166181800293e-09
+          },
+          {
+            "iterations": 13,
+            "explicit_relative_residual": 5.780173443697001e-09
+          },
+          {
+            "iterations": 12,
+            "explicit_relative_residual": 9.17074088866902e-09
+          },
+          {
+            "iterations": 13,
+            "explicit_relative_residual": 5.708376624887359e-09
+          },
+          {
+            "iterations": 12,
+            "explicit_relative_residual": 4.895921272428489e-09
+          },
+          {
+            "iterations": 13,
+            "explicit_relative_residual": 4.05029408694472e-09
+          },
+          {
+            "iterations": 13,
+            "explicit_relative_residual": 3.957183250379784e-09
+          }
+        ],
+        "fgmres_total_iterations": 102,
+        "true_residual_max": 9.17074088866902e-09,
+        "coarse_fine_face_conservation": {
+          "pairs": 23,
+          "max_relative_mismatch": 2.1478816331148142e-07,
+          "pass": true
+        },
+        "max_implicit_energy_absolute_relative_balance": 4.2483535101591755e-10,
+        "mass_initial": 704254664064.2998,
+        "mass_final": 704254682921.1555,
+        "mass_relative_change": 2.6775620631415452e-08,
+        "final_minima": {
+          "rho": 0.05177992336824118,
+          "pressure": 0.025312962211896096,
+          "Er": 0.29058434063673816
+        },
+        "evaluation": "PASS_LOCAL_REFERENCE"
+      },
+      {
+        "name": "collapse_long_restart14_consistent_only_r1",
+        "source_commit_base": "45e990c0",
+        "binary_sha256": "6559920bf139fb67eea773d7ea232eb027e9ea32f04d097bcc6472071eb6764b",
+        "checkpoint_path": "/tmp/wor25_23_24_resolution_trials/collapse_postsync_gravopts_long_r1/output/protostellar_core_fld_mayer5.00014.rst",
+        "checkpoint_sha256": "a849e0b207642beaeae06058dc92179782a97f5cad104558ca29dad979aa1d47",
+        "ranks": 1,
+        "threads": 2,
+        "effective_color_options": {
+          "consistent_rb_colors": true,
+          "symmetric_rb_sweeps": false
+        },
+        "environment": {
+          "OMP_NUM_THREADS": "2",
+          "ATHENA_NRFLD_EXPERIMENTAL_COLLAPSE": "1",
+          "ATHENA_NRFLD_INTERFACE_LEDGER": "1",
+          "ATHENA_NRFLD_ENERGY_LEDGER": "1"
+        },
+        "command": "mpirun --output-filename /tmp/wor25_23_24_resolution_trials/collapse_long_restart14_consistent_only_r1/mpi -n 1 /tmp/wor25_23_24_resolution_collapse_postamrsync_build/bin/athena -r /tmp/wor25_23_24_resolution_trials/collapse_postsync_gravopts_long_r1/output/protostellar_core_fld_mayer5.00014.rst -d output mesh/num_threads=2 mesh/derefine_count=1 time/nlim=17 problem/N_J=7.6160 nrfld/global_jacobian_check=true gravity/reset_fmg_color_each_solve=true gravity/repeat_initial_fmg_after_restart=true nrfld/symmetric_rb_sweeps=false nrfld/consistent_rb_colors=true",
+        "run_log": "/tmp/wor25_23_24_resolution_trials/collapse_long_restart14_consistent_only_r1/run.log",
+        "exit_status": 0,
+        "wall_time": "0:07.57",
+        "peak_rss_kb": 337748,
+        "newton_statuses": [
+          {
+            "status": "converged",
+            "iterations": 0
+          },
+          {
+            "status": "converged",
+            "iterations": 3
+          },
+          {
+            "status": "converged",
+            "iterations": 2
+          },
+          {
+            "status": "converged",
+            "iterations": 0
+          },
+          {
+            "status": "converged",
+            "iterations": 3
+          }
+        ],
+        "fgmres_history": [
+          {
+            "iterations": 14,
+            "explicit_relative_residual": 2.709039556088056e-09
+          },
+          {
+            "iterations": 14,
+            "explicit_relative_residual": 4.212092061229995e-09
+          },
+          {
+            "iterations": 13,
+            "explicit_relative_residual": 7.42716962622858e-09
+          },
+          {
+            "iterations": 13,
+            "explicit_relative_residual": 6.137074544317039e-09
+          },
+          {
+            "iterations": 14,
+            "explicit_relative_residual": 2.790684149750569e-09
+          },
+          {
+            "iterations": 12,
+            "explicit_relative_residual": 5.687157040723451e-09
+          },
+          {
+            "iterations": 13,
+            "explicit_relative_residual": 4.46725554773192e-09
+          },
+          {
+            "iterations": 13,
+            "explicit_relative_residual": 5.15434184133172e-09
+          }
+        ],
+        "fgmres_total_iterations": 106,
+        "true_residual_max": 7.42716962622858e-09,
+        "coarse_fine_face_conservation": {
+          "pairs": 23,
+          "max_relative_mismatch": 2.4364458064941473e-07,
+          "pass": true
+        },
+        "max_implicit_energy_absolute_relative_balance": 2.6749473695778413e-10,
+        "mass_initial": 704254664064.2998,
+        "mass_final": 704254682921.1555,
+        "mass_relative_change": 2.6775620631415452e-08,
+        "final_minima": {
+          "rho": 0.051779923368240964,
+          "pressure": 0.025312962211897723,
+          "Er": 0.29058434063682176
+        },
+        "evaluation": "PASS_LOCAL; NO_ITERATION_IMPROVEMENT"
+      },
+      {
+        "name": "collapse_long_restart14_consistent_only_r2",
+        "source_commit_base": "45e990c0",
+        "binary_sha256": "6559920bf139fb67eea773d7ea232eb027e9ea32f04d097bcc6472071eb6764b",
+        "checkpoint_path": "/tmp/wor25_23_24_resolution_trials/collapse_postsync_gravopts_long_r1/output/protostellar_core_fld_mayer5.00014.rst",
+        "checkpoint_sha256": "a849e0b207642beaeae06058dc92179782a97f5cad104558ca29dad979aa1d47",
+        "ranks": 2,
+        "threads": 2,
+        "effective_color_options": {
+          "consistent_rb_colors": true,
+          "symmetric_rb_sweeps": false
+        },
+        "environment": {
+          "OMP_NUM_THREADS": "2",
+          "ATHENA_NRFLD_EXPERIMENTAL_COLLAPSE": "1",
+          "ATHENA_NRFLD_INTERFACE_LEDGER": "1",
+          "ATHENA_NRFLD_ENERGY_LEDGER": "1"
+        },
+        "command": "mpirun --output-filename /tmp/wor25_23_24_resolution_trials/collapse_long_restart14_consistent_only_r2/mpi -n 2 /tmp/wor25_23_24_resolution_collapse_postamrsync_build/bin/athena -r /tmp/wor25_23_24_resolution_trials/collapse_postsync_gravopts_long_r1/output/protostellar_core_fld_mayer5.00014.rst -d output mesh/num_threads=2 mesh/derefine_count=1 time/nlim=17 problem/N_J=7.6160 nrfld/global_jacobian_check=true gravity/reset_fmg_color_each_solve=true gravity/repeat_initial_fmg_after_restart=true nrfld/symmetric_rb_sweeps=false nrfld/consistent_rb_colors=true",
+        "run_log": "/tmp/wor25_23_24_resolution_trials/collapse_long_restart14_consistent_only_r2/run.log",
+        "exit_status": 0,
+        "wall_time": "0:06.32",
+        "peak_rss_kb": 221376,
+        "newton_statuses": [
+          {
+            "status": "converged",
+            "iterations": 0
+          },
+          {
+            "status": "converged",
+            "iterations": 3
+          },
+          {
+            "status": "converged",
+            "iterations": 2
+          },
+          {
+            "status": "converged",
+            "iterations": 0
+          },
+          {
+            "status": "converged",
+            "iterations": 3
+          }
+        ],
+        "fgmres_history": [
+          {
+            "iterations": 14,
+            "explicit_relative_residual": 2.709039580207312e-09
+          },
+          {
+            "iterations": 14,
+            "explicit_relative_residual": 4.21149165874032e-09
+          },
+          {
+            "iterations": 13,
+            "explicit_relative_residual": 7.624997303528287e-09
+          },
+          {
+            "iterations": 13,
+            "explicit_relative_residual": 6.137075551267493e-09
+          },
+          {
+            "iterations": 14,
+            "explicit_relative_residual": 2.789405822935834e-09
+          },
+          {
+            "iterations": 12,
+            "explicit_relative_residual": 5.687157603845918e-09
+          },
+          {
+            "iterations": 13,
+            "explicit_relative_residual": 4.468650750337115e-09
+          },
+          {
+            "iterations": 13,
+            "explicit_relative_residual": 5.146826827003789e-09
+          }
+        ],
+        "fgmres_total_iterations": 106,
+        "true_residual_max": 7.624997303528287e-09,
+        "coarse_fine_face_conservation": {
+          "pairs": 23,
+          "max_relative_mismatch": 3.154886918934306e-07,
+          "pass": true
+        },
+        "max_implicit_energy_absolute_relative_balance": 4.2643100768179216e-10,
+        "mass_initial": 704254664064.2998,
+        "mass_final": 704254682921.1555,
+        "mass_relative_change": 2.6775620631415452e-08,
+        "final_minima": {
+          "rho": 0.051779923368240985,
+          "pressure": 0.02531296221189706,
+          "Er": 0.2905843406367894
+        },
+        "evaluation": "PASS_LOCAL; NO_ITERATION_IMPROVEMENT"
+      }
+    ],
+    "comparisons_to_default_color": {
+      "inherited_symmetric": {
+        "15": {
+          "prim": {
+            "relative_l1": 7.120341631543075e-14,
+            "exact": false,
+            "topology_equal": true
+          },
+          "fld": {
+            "relative_l1": 1.768280789154741e-13,
+            "exact": false,
+            "topology_equal": true
+          }
+        },
+        "16": {
+          "prim": {
+            "relative_l1": 1.9417290371214067e-13,
+            "exact": false,
+            "topology_equal": true
+          },
+          "fld": {
+            "relative_l1": 4.88575461723994e-13,
+            "exact": false,
+            "topology_equal": true
+          }
+        },
+        "17": {
+          "prim": {
+            "relative_l1": 1.7112031461570322e-14,
+            "exact": false,
+            "topology_equal": true
+          },
+          "fld": {
+            "relative_l1": 4.002291151129562e-14,
+            "exact": false,
+            "topology_equal": true
+          }
+        },
+        "18": {
+          "prim": {
+            "relative_l1": 1.7112031461570322e-14,
+            "exact": false,
+            "topology_equal": true
+          },
+          "fld": {
+            "relative_l1": 4.002291151129562e-14,
+            "exact": false,
+            "topology_equal": true
+          }
+        }
+      },
+      "consistent_plus_symmetric": {
+        "15": {
+          "prim": {
+            "relative_l1": 7.120341631543075e-14,
+            "exact": false,
+            "topology_equal": true
+          },
+          "fld": {
+            "relative_l1": 1.768280789154741e-13,
+            "exact": false,
+            "topology_equal": true
+          }
+        },
+        "16": {
+          "prim": {
+            "relative_l1": 1.9417290371214067e-13,
+            "exact": false,
+            "topology_equal": true
+          },
+          "fld": {
+            "relative_l1": 4.88575461723994e-13,
+            "exact": false,
+            "topology_equal": true
+          }
+        },
+        "17": {
+          "prim": {
+            "relative_l1": 1.7112031461570322e-14,
+            "exact": false,
+            "topology_equal": true
+          },
+          "fld": {
+            "relative_l1": 4.002291151129562e-14,
+            "exact": false,
+            "topology_equal": true
+          }
+        },
+        "18": {
+          "prim": {
+            "relative_l1": 1.7112031461570322e-14,
+            "exact": false,
+            "topology_equal": true
+          },
+          "fld": {
+            "relative_l1": 4.002291151129562e-14,
+            "exact": false,
+            "topology_equal": true
+          }
+        }
+      },
+      "explicit_symmetric": {
+        "15": {
+          "prim": {
+            "relative_l1": 7.120341631543075e-14,
+            "exact": false,
+            "topology_equal": true
+          },
+          "fld": {
+            "relative_l1": 1.768280789154741e-13,
+            "exact": false,
+            "topology_equal": true
+          }
+        },
+        "16": {
+          "prim": {
+            "relative_l1": 1.9417290371214067e-13,
+            "exact": false,
+            "topology_equal": true
+          },
+          "fld": {
+            "relative_l1": 4.88575461723994e-13,
+            "exact": false,
+            "topology_equal": true
+          }
+        },
+        "17": {
+          "prim": {
+            "relative_l1": 1.7112031461570322e-14,
+            "exact": false,
+            "topology_equal": true
+          },
+          "fld": {
+            "relative_l1": 4.002291151129562e-14,
+            "exact": false,
+            "topology_equal": true
+          }
+        },
+        "18": {
+          "prim": {
+            "relative_l1": 1.7112031461570322e-14,
+            "exact": false,
+            "topology_equal": true
+          },
+          "fld": {
+            "relative_l1": 4.002291151129562e-14,
+            "exact": false,
+            "topology_equal": true
+          }
+        }
+      },
+      "consistent_only": {
+        "15": {
+          "prim": {
+            "relative_l1": 5.515306841597434e-14,
+            "exact": false,
+            "topology_equal": true
+          },
+          "fld": {
+            "relative_l1": 1.3697019351827258e-13,
+            "exact": false,
+            "topology_equal": true
+          }
+        },
+        "16": {
+          "prim": {
+            "relative_l1": 4.554040807503409e-14,
+            "exact": false,
+            "topology_equal": true
+          },
+          "fld": {
+            "relative_l1": 2.748299414551729e-13,
+            "exact": false,
+            "topology_equal": true
+          }
+        },
+        "17": {
+          "prim": {
+            "relative_l1": 7.477433975379193e-15,
+            "exact": false,
+            "topology_equal": true
+          },
+          "fld": {
+            "relative_l1": 2.2050221783279982e-14,
+            "exact": false,
+            "topology_equal": true
+          }
+        },
+        "18": {
+          "prim": {
+            "relative_l1": 7.477433975379193e-15,
+            "exact": false,
+            "topology_equal": true
+          },
+          "fld": {
+            "relative_l1": 2.2050221783279982e-14,
+            "exact": false,
+            "topology_equal": true
+          }
+        }
+      }
+    },
+    "rank_comparisons": {
+      "default_color": {
+        "15": {
+          "prim": {
+            "relative_l1": 5.2571439398682624e-14,
+            "exact": false,
+            "topology_equal": true
+          },
+          "fld": {
+            "relative_l1": 1.3015955891592584e-13,
+            "exact": false,
+            "topology_equal": true
+          }
+        },
+        "16": {
+          "prim": {
+            "relative_l1": 2.302320826365758e-13,
+            "exact": false,
+            "topology_equal": true
+          },
+          "fld": {
+            "relative_l1": 5.716513552393544e-13,
+            "exact": false,
+            "topology_equal": true
+          }
+        },
+        "17": {
+          "prim": {
+            "relative_l1": 3.5056447945652154e-14,
+            "exact": false,
+            "topology_equal": true
+          },
+          "fld": {
+            "relative_l1": 8.342245405109149e-14,
+            "exact": false,
+            "topology_equal": true
+          }
+        },
+        "18": {
+          "prim": {
+            "relative_l1": 3.5056447945652154e-14,
+            "exact": false,
+            "topology_equal": true
+          },
+          "fld": {
+            "relative_l1": 8.342245405109149e-14,
+            "exact": false,
+            "topology_equal": true
+          }
+        }
+      },
+      "consistent_only": {
+        "15": {
+          "prim": {
+            "relative_l1": 4.819113285811765e-14,
+            "exact": false,
+            "topology_equal": true
+          },
+          "fld": {
+            "relative_l1": 1.192795769057117e-13,
+            "exact": false,
+            "topology_equal": true
+          }
+        },
+        "16": {
+          "prim": {
+            "relative_l1": 8.102609128949109e-14,
+            "exact": false,
+            "topology_equal": true
+          },
+          "fld": {
+            "relative_l1": 2.0005793550360255e-13,
+            "exact": false,
+            "topology_equal": true
+          }
+        },
+        "17": {
+          "prim": {
+            "relative_l1": 1.1407571835960062e-14,
+            "exact": false,
+            "topology_equal": true
+          },
+          "fld": {
+            "relative_l1": 2.6729918753827863e-14,
+            "exact": false,
+            "topology_equal": true
+          }
+        },
+        "18": {
+          "prim": {
+            "relative_l1": 1.1407571835960062e-14,
+            "exact": false,
+            "topology_equal": true
+          },
+          "fld": {
+            "relative_l1": 2.6729918753827863e-14,
+            "exact": false,
+            "topology_equal": true
+          }
+        }
+      },
+      "explicit_symmetric": {
+        "15": {
+          "prim": {
+            "relative_l1": 1.619613293496581e-13,
+            "exact": false,
+            "topology_equal": true
+          },
+          "fld": {
+            "relative_l1": 4.0182207815297973e-13,
+            "exact": false,
+            "topology_equal": true
+          }
+        },
+        "16": {
+          "prim": {
+            "relative_l1": 1.4120637182499518e-14,
+            "exact": false,
+            "topology_equal": true
+          },
+          "fld": {
+            "relative_l1": 3.581772413755049e-14,
+            "exact": false,
+            "topology_equal": true
+          }
+        },
+        "17": {
+          "prim": {
+            "relative_l1": 4.2056591553452077e-14,
+            "exact": false,
+            "topology_equal": true
+          },
+          "fld": {
+            "relative_l1": 1.0358836101323387e-13,
+            "exact": false,
+            "topology_equal": true
+          }
+        },
+        "18": {
+          "prim": {
+            "relative_l1": 4.2056591553452077e-14,
+            "exact": false,
+            "topology_equal": true
+          },
+          "fld": {
+            "relative_l1": 1.0358836101323387e-13,
+            "exact": false,
+            "topology_equal": true
+          }
+        }
+      }
+    },
+    "checkpoint_warning": "cycle14 checkpoint inherited symmetric_rb_sweeps=true; first consistent/symmetric runs do not form a default-color control. The explicit false/false and true/false runs are the valid comparison.",
+    "evaluation": "NO_IMPROVEMENT: default false/false 102 FGMRES iterations, consistent only 106, symmetric only 106; all Newton and conservation PASS. Retain default settings."
   }
 }
