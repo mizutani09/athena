@@ -14868,7 +14868,7 @@
   },
   "partial_gravity_handoff_fix": {
     "source_commit_before_fix": "9bd44831cbc1b8dbb4016293645ec6650e6a6895",
-    "source_commit_after_fix": null,
+    "source_commit_after_fix": "71535fb57b7378db78d45bdd5b463e4bdb67f7e7",
     "binary_sha256": "6298a6e45cb1f151deafdea0795ea11a7b3b3f3269e5e9770a6b54d026ff75be",
     "input_archive_existing": {
       "path": "/home/kosuke/simulation/athena-wor25-23-24-resolution/tst/nrfld_validation/wor25_23_24_resolution_inputs_20261107.tar.gz",
@@ -15763,6 +15763,259 @@
       "fgmres_final_hdf_1_rank_vs_pre_fix_exact": true,
       "mg_only_failure_unchanged": true,
       "decision": "WOR-25 remains unresolved; no new solver change"
+    },
+    "direct_mass_volume_integrals": [
+      {
+        "rank": 1,
+        "initial_mass_volume_integral": 704254494296.6776,
+        "cycle6_mass_volume_integral": 704254520522.6531,
+        "relative_change": 3.723934412382906e-08,
+        "interpretation": "diagnostic; physical/background processing active"
+      },
+      {
+        "rank": 2,
+        "initial_mass_volume_integral": 704254494296.6776,
+        "cycle6_mass_volume_integral": 704254520522.6531,
+        "relative_change": 3.723934412382906e-08,
+        "interpretation": "diagnostic; physical/background processing active"
+      }
+    ],
+    "openmp_followup": {
+      "build_config": "--prob=protostellar_core_fld --coord=cartesian --eos=adiabatic -b --grav=mg -nrmgfld --flux=hlld_fld --nscalars=1 -mpi -omp -hdf5 -h5double",
+      "runs": [
+        {
+          "case": "gravity_fixprod_omp1_r1",
+          "ranks": 1,
+          "threads": 1,
+          "octet_boundary_update": "parallel",
+          "binary_sha256": "67000aa9495c9a66896212830f16fe9892c3fc5ffd17ef23ed38c483d8f1b57a",
+          "checkpoint_path": "/tmp/wor25_23_24_resolution_trials/collapse_adaptive_partial_direct_final_r1/protostellar_core_fld_mayer5.00006.rst",
+          "checkpoint_sha256": "42416ee70c7cc08b4065e33903fb64239d8389ac7dd356fa7ce631641bfcadb1",
+          "overrides": {
+            "mesh/num_threads": 1,
+            "time/nlim": 7,
+            "problem/N_J": 1,
+            "nrfld/global_jacobian_check": false
+          },
+          "environment": {
+            "OMP_NUM_THREADS": "1",
+            "ATHENA_NRFLD_EXPERIMENTAL_COLLAPSE": "1"
+          },
+          "run_log": "/tmp/wor25_23_24_resolution_trials/gravity_fixprod_omp1_r1/run.log",
+          "wall_time": "0:01.62",
+          "peak_rss_kb": 285864,
+          "newton_statuses": [
+            "converged",
+            "converged"
+          ],
+          "fgmres_history": [
+            {
+              "iterations": 14,
+              "explicit_relative_residual": 3.326561706892173e-09
+            },
+            {
+              "iterations": 14,
+              "explicit_relative_residual": 7.85794596661889e-09
+            }
+          ],
+          "evaluation": "PASS"
+        },
+        {
+          "case": "gravity_fixprod_omp2_r1",
+          "ranks": 1,
+          "threads": 2,
+          "octet_boundary_update": "parallel",
+          "binary_sha256": "67000aa9495c9a66896212830f16fe9892c3fc5ffd17ef23ed38c483d8f1b57a",
+          "checkpoint_path": "/tmp/wor25_23_24_resolution_trials/collapse_adaptive_partial_direct_final_r1/protostellar_core_fld_mayer5.00006.rst",
+          "checkpoint_sha256": "42416ee70c7cc08b4065e33903fb64239d8389ac7dd356fa7ce631641bfcadb1",
+          "overrides": {
+            "mesh/num_threads": 2,
+            "time/nlim": 7,
+            "problem/N_J": 1,
+            "nrfld/global_jacobian_check": false
+          },
+          "environment": {
+            "OMP_NUM_THREADS": "2",
+            "ATHENA_NRFLD_EXPERIMENTAL_COLLAPSE": "1"
+          },
+          "run_log": "/tmp/wor25_23_24_resolution_trials/gravity_fixprod_omp2_r1/run.log",
+          "wall_time": "0:03.44",
+          "peak_rss_kb": 285984,
+          "newton_statuses": [
+            "converged",
+            "converged"
+          ],
+          "fgmres_history": [
+            {
+              "iterations": 14,
+              "explicit_relative_residual": 3.326558985476307e-09
+            },
+            {
+              "iterations": 14,
+              "explicit_relative_residual": 7.855584552844593e-09
+            }
+          ],
+          "evaluation": "PASS"
+        },
+        {
+          "case": "gravity_fixprod_omp2_r2",
+          "ranks": 2,
+          "threads": 2,
+          "octet_boundary_update": "parallel",
+          "binary_sha256": "67000aa9495c9a66896212830f16fe9892c3fc5ffd17ef23ed38c483d8f1b57a",
+          "checkpoint_path": "/tmp/wor25_23_24_resolution_trials/collapse_adaptive_partial_direct_final_r1/protostellar_core_fld_mayer5.00006.rst",
+          "checkpoint_sha256": "42416ee70c7cc08b4065e33903fb64239d8389ac7dd356fa7ce631641bfcadb1",
+          "overrides": {
+            "mesh/num_threads": 2,
+            "time/nlim": 7,
+            "problem/N_J": 1,
+            "nrfld/global_jacobian_check": false
+          },
+          "environment": {
+            "OMP_NUM_THREADS": "2",
+            "ATHENA_NRFLD_EXPERIMENTAL_COLLAPSE": "1"
+          },
+          "run_log": "/tmp/wor25_23_24_resolution_trials/gravity_fixprod_omp2_r2/run.log",
+          "wall_time": "0:03.04",
+          "peak_rss_kb": 169764,
+          "newton_statuses": [
+            "converged",
+            "converged"
+          ],
+          "fgmres_history": [
+            {
+              "iterations": 14,
+              "explicit_relative_residual": 3.326559201930795e-09
+            },
+            {
+              "iterations": 14,
+              "explicit_relative_residual": 7.855345830003231e-09
+            }
+          ],
+          "evaluation": "PASS"
+        },
+        {
+          "case": "gravity_fixprod_omp2_seqoct_r1",
+          "ranks": 1,
+          "threads": 2,
+          "octet_boundary_update": "sequential",
+          "binary_sha256": "8a00c4757b6542301fc2cc1ad3996bade38e7033eb60430020fb32bc5211a0ce",
+          "checkpoint_path": "/tmp/wor25_23_24_resolution_trials/collapse_adaptive_partial_direct_final_r1/protostellar_core_fld_mayer5.00006.rst",
+          "checkpoint_sha256": "42416ee70c7cc08b4065e33903fb64239d8389ac7dd356fa7ce631641bfcadb1",
+          "overrides": {
+            "mesh/num_threads": 2,
+            "time/nlim": 7,
+            "problem/N_J": 1,
+            "nrfld/global_jacobian_check": false
+          },
+          "environment": {
+            "OMP_NUM_THREADS": "2",
+            "ATHENA_NRFLD_EXPERIMENTAL_COLLAPSE": "1"
+          },
+          "run_log": "/tmp/wor25_23_24_resolution_trials/gravity_fixprod_omp2_seqoct_r1/run.log",
+          "wall_time": "0:01.50",
+          "peak_rss_kb": 285920,
+          "newton_statuses": [
+            "converged",
+            "converged"
+          ],
+          "fgmres_history": [
+            {
+              "iterations": 14,
+              "explicit_relative_residual": 3.32656288450021e-09
+            },
+            {
+              "iterations": 14,
+              "explicit_relative_residual": 7.857980795507263e-09
+            }
+          ],
+          "evaluation": "PASS"
+        },
+        {
+          "case": "gravity_fixprod_omp2_seqoct_r2",
+          "ranks": 2,
+          "threads": 2,
+          "octet_boundary_update": "sequential",
+          "binary_sha256": "8a00c4757b6542301fc2cc1ad3996bade38e7033eb60430020fb32bc5211a0ce",
+          "checkpoint_path": "/tmp/wor25_23_24_resolution_trials/collapse_adaptive_partial_direct_final_r1/protostellar_core_fld_mayer5.00006.rst",
+          "checkpoint_sha256": "42416ee70c7cc08b4065e33903fb64239d8389ac7dd356fa7ce631641bfcadb1",
+          "overrides": {
+            "mesh/num_threads": 2,
+            "time/nlim": 7,
+            "problem/N_J": 1,
+            "nrfld/global_jacobian_check": false
+          },
+          "environment": {
+            "OMP_NUM_THREADS": "2",
+            "ATHENA_NRFLD_EXPERIMENTAL_COLLAPSE": "1"
+          },
+          "run_log": "/tmp/wor25_23_24_resolution_trials/gravity_fixprod_omp2_seqoct_r2/run.log",
+          "wall_time": "0:01.55",
+          "peak_rss_kb": 169692,
+          "newton_statuses": [
+            "converged",
+            "converged"
+          ],
+          "fgmres_history": [
+            {
+              "iterations": 14,
+              "explicit_relative_residual": 3.326561549761134e-09
+            },
+            {
+              "iterations": 14,
+              "explicit_relative_residual": 7.8572814903219e-09
+            }
+          ],
+          "evaluation": "PASS"
+        }
+      ],
+      "comparisons": [
+        {
+          "left": "gravity_partial_fixprod_r1",
+          "right": "gravity_fixprod_omp1_r1",
+          "topology_equal": true,
+          "rho_relative_l1": 0.0,
+          "rho_max_abs": 0.0,
+          "phi_relative_l1": 0.0,
+          "phi_max_abs": 0.0,
+          "Er_relative_l1": 0.0,
+          "Er_max_abs": 0.0
+        },
+        {
+          "left": "gravity_fixprod_omp1_r1",
+          "right": "gravity_fixprod_omp2_r1",
+          "topology_equal": true,
+          "rho_relative_l1": 4.123769171782852e-10,
+          "rho_max_abs": 2.3055641840130647e-08,
+          "phi_relative_l1": 0.0003941194254368857,
+          "phi_max_abs": 0.007975919348284677,
+          "Er_relative_l1": 4.65099978212538e-09,
+          "Er_max_abs": 1.3624455452720952e-09
+        },
+        {
+          "left": "gravity_fixprod_omp1_r1",
+          "right": "gravity_fixprod_omp2_seqoct_r1",
+          "topology_equal": true,
+          "rho_relative_l1": 1.0698317611639475e-15,
+          "rho_max_abs": 5.240252676230739e-14,
+          "phi_relative_l1": 6.786200212510904e-10,
+          "phi_max_abs": 9.361227348847478e-09,
+          "Er_relative_l1": 2.160946124635661e-12,
+          "Er_max_abs": 6.281086761816823e-13
+        },
+        {
+          "left": "gravity_fixprod_omp2_seqoct_r1",
+          "right": "gravity_fixprod_omp2_seqoct_r2",
+          "topology_equal": true,
+          "rho_relative_l1": 9.917730254774619e-20,
+          "rho_max_abs": 8.881784197001252e-16,
+          "phi_relative_l1": 4.415933792478402e-16,
+          "phi_max_abs": 7.105427357601002e-15,
+          "Er_relative_l1": 4.05123697758765e-13,
+          "Er_max_abs": 1.1785017406396037e-13
+        }
+      ],
+      "decision": "reject parallel octet update; keep sequential all-octet update to eliminate major thread sensitivity"
     }
   }
 }

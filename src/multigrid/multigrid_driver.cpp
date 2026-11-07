@@ -2779,8 +2779,8 @@ void MultigridDriver::SetOctetBoundariesBeforeTransfer(bool folddata) {
   // Octets are replicated across ranks.  Update every octet on every rank before
   // handing its ghost cells to local MeshBlocks.  A local-block traversal can
   // leave an octet stale on a rank that does not own one of its children.
+  // Keep the neighbor-dependent boundary updates ordered across octets.
   for (int lev = 0; lev < nreflevel_; ++lev) {
-#pragma omp parallel for num_threads(nthreads_)
     for (int oid = 0; oid < noctets_[lev]; ++oid) {
     MGOctet &oct = octets_[lev][oid];
     LogicalLocation loc = oct.loc;
