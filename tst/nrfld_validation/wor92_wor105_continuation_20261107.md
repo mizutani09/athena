@@ -61,6 +61,8 @@ not first-core formation.
 | Table, CFL 0.05, restart 40, MG2, strict, 2 ranks | 3 | 6 | 1.981e-8 | 0 |
 | Table, same, 4 ranks | 3 | 6 | 1.981e-8 | 0 |
 | Table, all level-1 leaves, restart 40, MG2, strict | fails cycle 0 | 2 | 9.119e-8 | 0 |
+| Table, exact local gas solve off, restart 40, MG2, strict | fails cycle 0 | 2 | 4.272e-8 | 0 |
+| Table, operator linearity checked each solve, strict | fails cycle 0 | 2 | 3.880e-8 | 0 |
 
 All completed cases also met the configured Newton criterion. CFL 0.05
 had first `dt=5.185803318` and reached `t=15.402771269`; 2 and 4 ranks
@@ -75,6 +77,17 @@ does not replace the required true-residual test. MG3 improves that one
 solve to `2.5788308e-8`, still above target. The controls show that the
 precision floor depends on the coupled configuration and CFL; mixed frame
 alone, reductions, or flux-form alone do not explain it.
+Turning off the trial exact local gas solve, with all other settings fixed,
+left the first FGMRES result identical (`1.2189e-8`) and made the second
+stop at `4.2721e-8` versus `3.8797e-8` with it on. The exact solve helps
+slightly in this pilot but does not by itself deliver strict CFL-0.3
+convergence. The on-path logged a local gas residual/scale maximum of
+`3.47e-13`; the off-path reported zero exact-solve cells.
+Checking additivity and homogeneity separately in both linear solves gave
+`(2.966e-16, 5.011e-16)` and `(2.968e-16, 5.014e-16)` respectively; the
+second solve's `3.8797e-8` true residual was unchanged. This rules out a
+gross nonlinearity in the sampled frozen linear operator, but it is not a
+global finite-difference Jacobian check at AMR boundaries.
 
 ## Operator and conservation diagnostics
 

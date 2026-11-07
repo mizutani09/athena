@@ -35,6 +35,8 @@ CASES = [
     ("table_cfl005_strict", "table_mixed_amr_cfl005_restart40_mg2_strict", "table", .05, 40, 2, 0, 1, 2, "input_mixed_amr_cfl005_restart40_mg2_strict.used"),
     ("table_cfl005_4rank_strict", "table_mixed_amr_cfl005_restart40_mg2_strict_4rank", "table", .05, 40, 2, 0, 1, 4, "input_mixed_amr_cfl005_restart40_mg2_strict.used"),
     ("table_uniform_l1_strict", "table_uniform_l1_restart40_mg2_strict", "table", .3, 40, 2, 0, 1, 2, "input_uniform_l1_restart40_mg2_strict.used"),
+    ("table_local_gas_off_strict", "table_mixed_amr_restart40_mg2_strict_local_off", "table", .3, 40, 2, 0, 1, 2, "input_mixed_amr_restart40_mg2_strict_local_off.used"),
+    ("table_linearity_each_solve", "table_mixed_amr_restart40_mg2_strict_linearity", "table", .3, 40, 2, 0, 1, 2, "input_mixed_amr_restart40_mg2_strict_linearity.used"),
 ]
 
 
@@ -58,7 +60,18 @@ for label, dirname, eos, cfl, restart, mg, floor_factor, tangent, ranks, inp in 
     res = [field(line, "relative_residual") for line in fgmres]
     floor = [field(line, "precision_floor_accept", int) for line in fgmres]
     iters = [field(line, "iterations", int) for line in fgmres]
+    fatal_match = re.search(r"FGMRES did not reach its requested relative residual: "
+                            r"iterations=(\d+), relative_residual=([-+\d.eE]+)", s)
+    fatal_residual = float(fatal_match.group(2)) if fatal_match else None
+    # MPI stdout can drop the final rank-0 summary during an abort. Preserve
+    # the fatal value as a lower-precision fallback in that one case.
+    if fatal_match and (not res or abs(res[-1]-fatal_residual)
+                        > 1e-4*max(abs(fatal_residual), 1e-30)):
+        res.append(fatal_residual)
+        iters.append(int(fatal_match.group(1)))
+        floor.append(0)
     newton = re.findall(r"\[NR\] status=converged[^\n]*", s)
+    linearity = re.findall(r"\[LINEAR_FGMRES_LINEARITY\][^\n]*", s)
     cycles = [int(x) for x in re.findall(r"^cycle=(\d+) time=", s, re.M)]
     dt = [float(x) for x in re.findall(r"^cycle=\d+ time=[-+\d.eE]+ dt=([-+\d.eE]+)", s, re.M)]
     status = base / "status.txt"
@@ -69,12 +82,15 @@ for label, dirname, eos, cfl, restart, mg, floor_factor, tangent, ranks, inp in 
                   exit_code=int(status.read_text()) if status.exists() else None,
                   cycle_reached=max(cycles) if cycles else None,
                   first_dt=dt[0] if dt else None, fgmres_solves=len(res),
+                  fatal_relative_residual=fatal_residual,
                   max_true_residual=max(res) if res else None,
                   final_true_residual=res[-1] if res else None,
                   failed_linear_solves=sum(x is not None and x > 2e-8 for x in res),
                   floor_acceptances=sum(x for x in floor if x is not None),
                   max_fgmres_iterations=max(iters) if iters else None,
                   strict_newton_solves=len(newton),
+                  operator_additivity_errors=[field(x, "additivity_rel") for x in linearity],
+                  operator_homogeneity_errors=[field(x, "homogeneity_rel") for x in linearity],
                   max_newton_final_l2=max((field(x, "final_l2") for x in newton), default=None))
     rows.append(record)
 
@@ -100,7 +116,8 @@ csv_fields = ["label", "eos", "cfl", "restart", "mg_vcycles", "floor_factor",
               "tangent", "ranks", "exit_code", "cycle_reached", "first_dt",
               "fgmres_solves", "failed_linear_solves", "floor_acceptances",
               "max_true_residual", "final_true_residual", "strict_newton_solves",
-              "max_newton_final_l2", "input_sha256", "log_sha256"]
+              "max_newton_final_l2", "fatal_relative_residual",
+              "input_sha256", "log_sha256"]
 with (OUT / "runs.csv").open("w", newline="") as f:
     writer = csv.DictWriter(f, fieldnames=csv_fields, lineterminator="\n")
     writer.writeheader()
