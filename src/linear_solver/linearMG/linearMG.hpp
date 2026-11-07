@@ -121,8 +121,12 @@ class linearMGDriver: public MultigridDriver {
   int uniform_pcg_max_iterations_;
   bool fgmres_;
   Real fgmres_threshold_;
+  Real fgmres_precision_floor_factor_{0.0};
+  bool fgmres_flux_form_matvec_{false};
   int fgmres_restart_, fgmres_max_iterations_, fgmres_mg_vcycles_;
   bool fgmres_linearity_check_{false};
+  bool fgmres_linearity_check_each_solve_{false};
+  bool fgmres_backward_error_diagnostics_{false};
   int fgmres_linearity_check_count_{0};
   bool fgmres_compact_basis_{true};
   bool fgmres_reuse_basis_{true};

@@ -637,6 +637,8 @@ NRFLD::NRFLD(MeshBlock *pmb, ParameterInput *pin) :
     fixed_linear_coefficients_initialized_(false),
     jacobian_check_(pin->GetOrAddBoolean("nrfld", "jacobian_check", false)),
     jacobian_check_done_(false),
+    jacobian_check_each_cycle_(pin->GetOrAddBoolean(
+        "nrfld", "jacobian_check_each_cycle", false)),
     jacobian_check_epsilon_(pin->GetOrAddReal(
         "nrfld", "jacobian_check_epsilon", 1.0e-4))
     {
@@ -698,9 +700,14 @@ NRFLD::~NRFLD() {
 
 
 void NRFLD::RunJacobianDiagnostic(Real dt) {
-  if (!jacobian_check_ || jacobian_check_done_ || dt == 0.0 || pmy_block_->gid != 0)
+  if (!jacobian_check_ || dt == 0.0 || pmy_block_->gid != 0)
+    return;
+  const int cycle = pmy_block_->pmy_mesh->ncycle;
+  if (jacobian_check_done_
+      && (!jacobian_check_each_cycle_ || jacobian_check_last_cycle_ == cycle))
     return;
   jacobian_check_done_ = true;
+  jacobian_check_last_cycle_ = cycle;
 
   const int is = pmy_block_->is, ie = pmy_block_->ie;
   const int js = pmy_block_->js, je = pmy_block_->je;
@@ -802,7 +809,8 @@ void NRFLD::RunJacobianDiagnostic(Real dt) {
         }
       }
     }
-    std::cout << "[NRFLD Jacobian] gid=" << pmy_block_->gid
+    std::cout << "[NRFLD Jacobian] cycle=" << cycle
+              << " gid=" << pmy_block_->gid
               << " epsilon=" << h << " cells=" << count
               << " gas_l2_rel="
               << std::sqrt(static_cast<Real>(fg_diff2/std::max(fg_jv2, 1.0e-300L)))
@@ -1717,6 +1725,8 @@ void NRFLD::AddDifference(AthenaArray<Real> &u_rad,
   const Real step_scale = pmy_driver_->step_scale_;
   const bool mixed_active = pfld->MixedFrameCoupled()
       && pfld->implicit_mixed_frame_drift;
+  int exact_local_gas_cells = 0;
+  Real exact_local_gas_residual_max = 0.0;
 
   if (pmy_driver_->diagnostic_verbosity_ >= 2) {
     for (int k = 0; k < delta_u.GetDim3(); ++k)
@@ -1800,24 +1810,39 @@ void NRFLD::AddDifference(AthenaArray<Real> &u_rad,
         // For a table EOS, eliminate the monotone local matter equation exactly
         // at the newly applied Er.  The old gas state and the LTE state bracket
         // the root; a pressure floor turns the solve into a lower-bound problem.
-        if (exact_local_gas_solve_ && pfld->is_couple && !pfld->only_rad
-            && !mixed_active) {
+        if (exact_local_gas_solve_ && pfld->is_couple && !pfld->only_rad) {
           const Real rho = pmy_block_->phydro->w(IDN,k,j,i);
           const Real egas_old = pfld->u_gas(k,j,i);
           const Real c_sigma_p = pfld->c_ph*pfld->sigma_p(k,j,i);
+          const Real current_egas = u_gas_(k,j,i);
+          const Real current_temperature = pmy_block_->peos->TempFromRhoEg(
+              rho, current_egas);
+          const Real current_t2 = current_temperature*current_temperature;
+          const Real current_equilibrium = pfld->a_r*current_t2*current_t2;
+          const Real radiation_change = u_rad(k,j,i)-u_rad_before;
           auto gas_residual = [&](const Real egas) {
             const Real temperature = pmy_block_->peos->TempFromRhoEg(rho, egas);
             const Real t2 = temperature*temperature;
+            const Real equilibrium = pfld->a_r*t2*t2;
+            if (mixed_active) {
+              // Fg at the current Newton state already includes the old
+              // mixed-frame drift. Its change under the applied radiation
+              // correction is linear for frozen face coefficients.
+              return derivetive(NewtonRaphsonFLD::Fg,k,j,i)
+                  + (egas-current_egas)
+                  + pmy_driver_->dt_*c_sigma_p
+                      *(equilibrium-current_equilibrium-radiation_change)
+                  - pmy_driver_->dt_*step_scale*mixed_delta;
+            }
             return (egas-egas_old) + pmy_driver_->dt_*c_sigma_p
-                *ResolvableThermalDifference(
-                    pfld->a_r*t2*t2, u_rad(k,j,i));
+                *ResolvableThermalDifference(equilibrium, u_rad(k,j,i));
           };
           // With diffusion disabled, the second local equation is exactly
           // egas + Er = egas_old + Er_old.  Solve that one-dimensional system
           // directly instead of recovering Er by subtracting two large gas
           // energies.  The latter loses the small radiation state before the
           // stiff exchange coefficient magnifies its rounding error.
-          if (pfld->cut_diff && !pfld->fixed_u_rad) {
+          if (pfld->cut_diff && !pfld->fixed_u_rad && !mixed_active) {
             const Real erad_old = uold_(k,j,i);
             const Real total = egas_old + erad_old;
             const Real upper_bound = std::nextafter(
@@ -1881,6 +1906,19 @@ void NRFLD::AddDifference(AthenaArray<Real> &u_rad,
                 Real lower = egas_floor;
                 Real upper = std::max({egas_floor, egas_old, egas_lte});
                 Real f_upper = gas_residual(upper);
+                // Mixed-frame work may heat the gas past both the old state
+                // and the radiation LTE state. Expand the upper bracket
+                // before falling back to the linearized gas correction.
+                if (mixed_active) {
+                  for (int expansion=0; expansion<32
+                       && std::isfinite(f_upper) && f_upper < 0.0;
+                       ++expansion) {
+                    const Real next = 2.0*upper;
+                    if (!std::isfinite(next) || next <= upper) break;
+                    upper = next;
+                    f_upper = gas_residual(upper);
+                  }
+                }
                 if (std::isfinite(f_upper) && f_upper >= 0.0) {
                   for (int iteration=0; iteration<64; ++iteration) {
                     const Real middle = 0.5*(lower+upper);
@@ -1896,6 +1934,15 @@ void NRFLD::AddDifference(AthenaArray<Real> &u_rad,
                 }
               }
             }
+          }
+          if (local_gas_solved) {
+            ++exact_local_gas_cells;
+            const Real local_scale = std::max(
+                std::abs(u_gas_(k,j,i)) + std::abs(egas_old),
+                static_cast<Real>(1.0e-30));
+            exact_local_gas_residual_max = std::max(
+                exact_local_gas_residual_max,
+                std::abs(gas_residual(u_gas_(k,j,i)))/local_scale);
           }
         }
 #endif
@@ -1923,6 +1970,11 @@ void NRFLD::AddDifference(AthenaArray<Real> &u_rad,
         for (int i = is; i <= ie; ++i)
           last_delta_rad_(1,k,j,i) *= step_scale;
   }
+  if (pmy_driver_->diagnostic_verbosity_ >= 1 && pmy_block_->gid == 0
+      && Globals::my_rank == 0)
+    std::cout << "[NR_LOCAL_GAS] exact_cells=" << exact_local_gas_cells
+              << " residual_over_gas_scale_max=" << exact_local_gas_residual_max
+              << " mixed_active=" << mixed_active << std::endl;
   // if(pmy_driver_->fshowdef_)  {
   //   int k = (ks + ke) / 2;
   //   int j = (js + je) / 2;

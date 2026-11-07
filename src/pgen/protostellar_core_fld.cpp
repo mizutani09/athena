@@ -6,9 +6,8 @@
 //! \file protostellar_core_fld.cpp
 //! \brief Simplified rotating, magnetized protostellar-core collapse with grey FLD.
 //!
-//! This intentionally omits the non-ideal MHD, chemistry, tabulated EOS, sink particles,
-//! and H2 dissociation used by Mayer et al. (2025/2026).  In particular, a fixed-gamma
-//! ideal gas cannot follow second collapse or form a second Larson core.
+//! The ideal-gas setup omits non-ideal MHD, chemistry and sink particles.
+//! A tabulated material EOS/opacity can be selected for short numerical pilots.
 
 #include <algorithm>
 #include <cmath>
@@ -24,6 +23,7 @@
 #include "../eos/eos.hpp"
 #include "../field/field.hpp"
 #include "../fld/fld.hpp"
+#include "../fld/opacity_table.hpp"
 #include "../globals.hpp"
 #include "../hydro/hydro.hpp"
 #include "../mesh/mesh.hpp"
@@ -62,6 +62,8 @@ Real rho_unit, egas_unit, length_unit, velocity_unit, time_unit, magnetic_unit;
 Real mass_core, radius_core, temperature_core, mean_molecular_weight;
 Real density_core, density_ambient, omega_phys, b0_phys;
 Real kappa_planck, kappa_rosseland, transition_width;
+bool use_opacity_table = false;
+UserOpacityTable *opacity_table = nullptr;
 Real radius_core_code, transition_width_code;
 Real gravity_code, jeans_number;
 Real background_temperature, background_tracer_threshold;
@@ -85,9 +87,15 @@ Real CoreWeight(Real radius_code) {
 }
 
 Real GasTemperature(const MeshBlock *pmb, int k, int j, int i) {
+#if EOS_TABLE_ENABLED
+  const Real rho = std::max(pmb->phydro->w(IDN,k,j,i), TINY_NUMBER);
+  const Real pres = std::max(pmb->phydro->w(IPR,k,j,i), TINY_NUMBER);
+  return pmb->peos->TempFromRhoEg(rho,pmb->peos->EgasFromRhoP(rho,pres));
+#else
   const Real rho_phys = std::max(pmb->phydro->w(IDN,k,j,i)*rho_unit, TINY_NUMBER);
   const Real pressure_phys = std::max(pmb->phydro->w(IPR,k,j,i)*egas_unit, 0.0);
   return pressure_phys*mean_molecular_weight/(rho_phys*kGasConstant);
+#endif
 }
 
 Real RadiationTemperature(const MeshBlock *pmb, int k, int j, int i) {
@@ -125,13 +133,21 @@ void DensityOpacity(MeshBlock *pmb, AthenaArray<Real> &u_fld,
   if (pmb->block_size.nx3 > 1) { kl -= NGHOST; ku += NGHOST; }
   for (int k=kl; k<=ku; ++k) {
     for (int j=jl; j<=ju; ++j) {
-#pragma omp simd
       for (int i=il; i<=iu; ++i) {
         const Real rho_phys = std::max(prim(IDN,k,j,i)*rho_unit, TINY_NUMBER);
+        Real kp=kappa_planck, kr=kappa_rosseland;
+        if (use_opacity_table) {
+          const Real rho=std::max(prim(IDN,k,j,i),TINY_NUMBER);
+          const Real pres=std::max(prim(IPR,k,j,i),TINY_NUMBER);
+          const Real temperature=pmb->peos->TempFromRhoEg(
+              rho,pmb->peos->EgasFromRhoP(rho,pres));
+          kp=opacity_table->GetOpacity(RadFLD::SIGMA_P,rho_phys,temperature);
+          kr=opacity_table->GetOpacity(RadFLD::SIGMA_R,rho_phys,temperature);
+        }
         // FLD stores inverse-length coefficients in code units: sigma=kappa*rho*L.
-        pmb->prfld->sigma_p(k,j,i) = kappa_planck*rho_phys*length_unit;
+        pmb->prfld->sigma_p(k,j,i) = kp*rho_phys*length_unit;
         pmb->prfld->sigma_r(k,j,i) = std::max(
-            kappa_rosseland*rho_phys*length_unit, TINY_NUMBER);
+            kr*rho_phys*length_unit, TINY_NUMBER);
       }
     }
   }
@@ -440,12 +456,14 @@ void Mesh::InitUserMeshData(ParameterInput *pin) {
         << "fld/is_couple must be true and fld/only_rad must be false.";
     ATHENA_ERROR(msg);
   }
-  const Real gamma=pin->GetReal("hydro","gamma");
+  const Real gamma=pin->GetOrAddReal("hydro","gamma",5.0/3.0);
+#if !GENERAL_EOS
   if (std::abs(gamma-5.0/3.0) > 1.0e-10) {
     std::stringstream msg;
     msg << "### FATAL ERROR in protostellar_core_fld: hydro/gamma must be 5/3.";
     ATHENA_ERROR(msg);
   }
+#endif
 
   rho_unit=pin->GetReal("hydro","rho_unit");
   egas_unit=pin->GetReal("hydro","egas_unit");
@@ -469,6 +487,13 @@ void Mesh::InitUserMeshData(ParameterInput *pin) {
   transition_width=pin->GetOrAddReal("problem","transition_width",0.0)*kAu;
   enable_rotation=pin->GetOrAddBoolean("problem","enable_rotation",true);
   enable_magnetic_field=pin->GetOrAddBoolean("problem","enable_magnetic_field",true);
+#if EOS_TABLE_ENABLED
+  if (enable_magnetic_field) {
+    std::stringstream msg;
+    msg << "### FATAL ERROR in protostellar_core_fld: table EOS pilot requires B=0.";
+    ATHENA_ERROR(msg);
+  }
+#endif
   const std::string test_mode=pin->GetOrAddString("problem","test_mode","collapse");
   if (test_mode != "collapse" && test_mode != "uniform_equilibrium") {
     std::stringstream msg;
@@ -506,6 +531,8 @@ void Mesh::InitUserMeshData(ParameterInput *pin) {
 
   kappa_planck=pin->GetOrAddReal("radiation","kappa_P",1.0);
   kappa_rosseland=pin->GetOrAddReal("radiation","kappa_R",1.0);
+  use_opacity_table=pin->GetOrAddBoolean("fld","use_opacity_table",false);
+  if (use_opacity_table) opacity_table=new UserOpacityTable(pin);
   density_core=3.0*mass_core/(4.0*kPi*std::pow(radius_core,3));
   density_ambient=ambient_factor*density_core;
   radius_core_code=radius_core/length_unit;
@@ -662,7 +689,9 @@ void MeshBlock::InitUserMeshBlockData(ParameterInput *pin) {
 
 void MeshBlock::ProblemGenerator(ParameterInput *pin) {
   (void)pin;
+#if !EOS_TABLE_ENABLED
   const Real gm1=peos->GetGamma()-1.0;
+#endif
   const Real omega_code=omega_phys*time_unit;
   const Real b_code=enable_magnetic_field ? b0_phys/magnetic_unit : 0.0;
 
@@ -678,15 +707,21 @@ void MeshBlock::ProblemGenerator(ParameterInput *pin) {
         const Real temperature=uniform_equilibrium ? temperature_core
             : background_temperature+(temperature_core-background_temperature)*weight;
         const Real rho=rho_phys/rho_unit;
-        const Real pressure=rho_phys*kGasConstant*temperature
-                            /mean_molecular_weight/egas_unit;
+        Real egas, pressure;
+#if EOS_TABLE_ENABLED
+        egas=peos->EgasFromRhoT(rho,temperature);
+        pressure=peos->PresFromRhoEg(rho,egas);
+#else
+        pressure=rho_phys*kGasConstant*temperature
+                 /mean_molecular_weight/egas_unit;
+        egas=pressure/gm1;
+#endif
         const Real vx=enable_rotation ? -omega_code*y*weight : 0.0;
         const Real vy=enable_rotation ?  omega_code*x*weight : 0.0;
         phydro->u(IDN,k,j,i)=rho;
         phydro->u(IM1,k,j,i)=rho*vx;
         phydro->u(IM2,k,j,i)=rho*vy;
         phydro->u(IM3,k,j,i)=0.0;
-        const Real egas=pressure/gm1;
         phydro->u(IEN,k,j,i)=egas+0.5*rho*(SQR(vx)+SQR(vy))+0.5*SQR(b_code);
         prfld->u_gas(k,j,i)=egas;
         prfld->u_rad(k,j,i)=kRadiationConst*std::pow(temperature,4)/egas_unit;
@@ -723,7 +758,9 @@ static void ApplyBackgroundHeatSink(MeshBlock *pmb) {
     }
   }
 #if NSCALARS > 0
+#if !EOS_TABLE_ENABLED
   const Real gm1=pmb->peos->GetGamma()-1.0;
+#endif
   const Real erad_target=kRadiationConst*std::pow(background_temperature,4)/egas_unit;
   pmb->pfield->CalculateCellCenteredField(pmb->pfield->b,pmb->pfield->bcc,
       pmb->pcoord,pmb->is,pmb->ie,pmb->js,pmb->je,pmb->ks,pmb->ke);
@@ -733,9 +770,15 @@ static void ApplyBackgroundHeatSink(MeshBlock *pmb) {
         const Real rho=std::max(pmb->phydro->u(IDN,k,j,i),TINY_NUMBER);
         const Real background_fraction=pmb->pscalars->s(0,k,j,i)/rho;
         if (background_fraction < background_tracer_threshold) continue;
-        const Real pressure=rho*rho_unit*kGasConstant*background_temperature
-                            /mean_molecular_weight/egas_unit;
-        const Real eint=pressure/gm1;
+        Real pressure,eint;
+#if EOS_TABLE_ENABLED
+        eint=pmb->peos->EgasFromRhoT(rho,background_temperature);
+        pressure=pmb->peos->PresFromRhoEg(rho,eint);
+#else
+        pressure=rho*rho_unit*kGasConstant*background_temperature
+                 /mean_molecular_weight/egas_unit;
+        eint=pressure/gm1;
+#endif
         const Real kinetic=0.5*(SQR(pmb->phydro->u(IM1,k,j,i))
                                +SQR(pmb->phydro->u(IM2,k,j,i))
                                +SQR(pmb->phydro->u(IM3,k,j,i)))/rho;

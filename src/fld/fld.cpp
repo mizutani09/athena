@@ -198,6 +198,11 @@ FLD::FLD(MeshBlock *pmb, ParameterInput *pin) :
   const bool mach5_problem =
       std::string(PROBLEM_GENERATOR) == "nrfld_radiative_shock"
       && pin->GetOrAddString("problem", "problem_type", "") == "mach5";
+  // WOR-92 diagnostic only: permit an explicit conservative A/B trial for
+  // periodic protostellar_core_fld. This does not change the supported default.
+  const bool protostar_trial =
+      std::string(PROBLEM_GENERATOR) == "protostellar_core_fld"
+      && NRFLDPrototype::Flag("ATHENA_NRFLD_CONSERVATIVE_PROTOTYPE");
   // Enable the common-face operator by default only in the two AMR problem
   // families with analytic or same-checkpoint accuracy and conservation
   // checks. Other multilevel problem generators stop until separately
@@ -246,7 +251,7 @@ FLD::FLD(MeshBlock *pmb, ParameterInput *pin) :
         && pmb->pmy_mesh->mesh_bcs[3] == BoundaryFlag::periodic
         && pmb->pmy_mesh->mesh_bcs[4] == BoundaryFlag::periodic
         && pmb->pmy_mesh->mesh_bcs[5] == BoundaryFlag::periodic;
-    if ((!test_c && !mach5)
+    if ((!test_c && !mach5 && !protostar_trial)
           || std::string(COORDINATE_SYSTEM) != "cartesian"
           || ((is_couple || !only_rad) && !NRFLDPrototype::CoupledTrial())
           || ((is_couple || !only_rad) && NRFLDPrototype::DifferenceJv())
@@ -259,6 +264,7 @@ FLD::FLD(MeshBlock *pmb, ParameterInput *pin) :
           || (!fixed_flux_limiter && !variable_trial)
           || fixed_u_rad || !cubic
           || (test_c && (include_mixed_frame_terms || !periodic))
+          || (protostar_trial && !periodic)
           || (mach5 && (!fixed_flux_limiter || !is_couple || only_rad
                         || !mach5_boundaries))
           || (pmb->pmy_mesh->adaptive && !NRFLDPrototype::RegridTrial())) {

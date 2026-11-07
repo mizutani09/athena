@@ -179,12 +179,26 @@ linearMGDriver::linearMGDriver(Mesh *pm, ParameterInput *pin, NewtonRaphsonDrive
     ATHENA_ERROR(msg);
   }
   fgmres_threshold_ = pin->GetOrAddReal("nrfld", "fgmres_threshold", 1.0e-8);
+  fgmres_precision_floor_factor_ = pin->GetOrAddReal(
+      "nrfld", "fgmres_precision_floor_factor", 0.0);
+  fgmres_flux_form_matvec_ = pin->GetOrAddBoolean(
+      "nrfld", "fgmres_flux_form_matvec", false);
+  if (!std::isfinite(fgmres_precision_floor_factor_)
+      || fgmres_precision_floor_factor_ < 0.0) {
+    std::stringstream msg;
+    msg << "nrfld/fgmres_precision_floor_factor must be finite and nonnegative.";
+    ATHENA_ERROR(msg);
+  }
   fgmres_restart_ = pin->GetOrAddInteger("nrfld", "fgmres_restart", 20);
   fgmres_max_iterations_ = pin->GetOrAddInteger(
       "nrfld", "fgmres_max_iterations", 200);
   fgmres_mg_vcycles_ = pin->GetOrAddInteger("nrfld", "fgmres_mg_vcycles", 1);
   fgmres_linearity_check_ = pin->GetOrAddBoolean(
       "nrfld", "fgmres_linearity_check", false);
+  fgmres_linearity_check_each_solve_ = pin->GetOrAddBoolean(
+      "nrfld", "fgmres_linearity_check_each_solve", false);
+  fgmres_backward_error_diagnostics_ = pin->GetOrAddBoolean(
+      "nrfld", "fgmres_backward_error_diagnostics", false);
   fgmres_compact_basis_ = pin->GetOrAddBoolean(
       "nrfld", "fgmres_compact_basis", true);
   fgmres_reuse_basis_ = pin->GetOrAddBoolean(
@@ -1460,13 +1474,41 @@ void linearMGDriver::SolveFGMRES(int stage) {
                      + coeff(linearSolver::DZMS,k,j,i))*delta(k-1,j,i);
             value += (fac*coeff(linearSolver::DZPF,k,j,i)
                      + coeff(linearSolver::DZPS,k,j,i))*delta(k+1,j,i);
+            if (fgmres_flux_form_matvec_) {
+              // Reorder the same seven-point row into center plus neighbor
+              // differences. The large diffusion diagonal then cancels its
+              // off-diagonals before multiplication by a nearly uniform x.
+              constexpr int faces[6] = {
+                  linearSolver::DXMF, linearSolver::DXPF,
+                  linearSolver::DYMF, linearSolver::DYPF,
+                  linearSolver::DZMF, linearSolver::DZPF};
+              constexpr int sources[6] = {
+                  linearSolver::DXMS, linearSolver::DXPS,
+                  linearSolver::DYMS, linearSolver::DYPS,
+                  linearSolver::DZMS, linearSolver::DZPS};
+              const Real neighbors[6] = {
+                  delta(k,j,i-1), delta(k,j,i+1), delta(k,j-1,i),
+                  delta(k,j+1,i), delta(k-1,j,i), delta(k+1,j,i)};
+              const long double center = delta(k,j,i);
+              long double local = coeff(linearSolver::DCCS,k,j,i)
+                  + static_cast<long double>(fac)*coeff(linearSolver::DCCF,k,j,i);
+              long double flux_value = 0.0L;
+              for (int face=0; face<6; ++face) {
+                const long double off = static_cast<long double>(fac)
+                    *coeff(faces[face],k,j,i) + coeff(sources[face],k,j,i);
+                local += off;
+                flux_value += off*(static_cast<long double>(neighbors[face])-center);
+              }
+              value = static_cast<Real>(local*center + flux_value);
+            }
             at(y,b,k,j,i) = value;
           }
         }
       }
     }
   };
-  if (fgmres_linearity_check_ && fgmres_linearity_check_count_ == 0) {
+  if (fgmres_linearity_check_
+      && (fgmres_linearity_check_each_solve_ || fgmres_linearity_check_count_ == 0)) {
     BlockVector lx = make_vector(), ly = make_vector(), lxy = make_vector();
     BlockVector alx = make_vector(), aly = make_vector(), alxy = make_vector();
     BlockVector scaled_x = make_vector(), a_scaled_x = make_vector();
@@ -1512,6 +1554,7 @@ void linearMGDriver::SolveFGMRES(int stage) {
       std::cout << "[LINEAR_FGMRES_LINEARITY] additivity_rel=" << additivity
                 << " homogeneity_rel=" << homogeneity
                 << " alpha=" << alpha
+                << " cycle=" << pmy_mesh_->ncycle
                 << " multilevel=" << pmy_mesh_->multilevel << std::endl;
     }
     ++fgmres_linearity_check_count_;
@@ -1739,6 +1782,60 @@ void linearMGDriver::SolveFGMRES(int stage) {
     relative_residual = static_cast<Real>(beta/bnorm);
     if (breakdown) break;
   }
+  Real componentwise_backward_error_max = 0.0;
+  if (fgmres_backward_error_diagnostics_ || fgmres_precision_floor_factor_ > 0.0) {
+    // At an AMR face the ghost correction is interpolated, so this measures
+    // the local stencil rather than an assembled global-matrix row.
+    apply_operator(x, ax);
+    copy(r, b);
+    axpy(r, -1.0, ax);
+    for (std::size_t block = 0; block < x.size(); ++block) {
+      linearMG *pmg = static_cast<linearMG*>(vmg_[block]);
+      MeshBlock *pmb = pmg->pmy_block_;
+      const AthenaArray<Real> &delta = pmg->pnr_->delta_u_;
+      const AthenaArray<Real> &coeff = pmg->pnr_->coeff_;
+      const Real fac = dt_/SQR(pmb->pcoord->dx1f(pmb->is));
+      for (int k = pmb->ks; k <= pmb->ke; ++k)
+        for (int j = pmb->js; j <= pmb->je; ++j)
+          for (int i = pmb->is; i <= pmb->ie; ++i) {
+            const Real denominator = std::abs(cat(b,block,k,j,i))
+                + std::abs((fac*coeff(linearSolver::DCCF,k,j,i)
+                            + coeff(linearSolver::DCCS,k,j,i))*delta(k,j,i))
+                + std::abs((fac*coeff(linearSolver::DXMF,k,j,i)
+                            + coeff(linearSolver::DXMS,k,j,i))*delta(k,j,i-1))
+                + std::abs((fac*coeff(linearSolver::DXPF,k,j,i)
+                            + coeff(linearSolver::DXPS,k,j,i))*delta(k,j,i+1))
+                + std::abs((fac*coeff(linearSolver::DYMF,k,j,i)
+                            + coeff(linearSolver::DYMS,k,j,i))*delta(k,j-1,i))
+                + std::abs((fac*coeff(linearSolver::DYPF,k,j,i)
+                            + coeff(linearSolver::DYPS,k,j,i))*delta(k,j+1,i))
+                + std::abs((fac*coeff(linearSolver::DZMF,k,j,i)
+                            + coeff(linearSolver::DZMS,k,j,i))*delta(k-1,j,i))
+                + std::abs((fac*coeff(linearSolver::DZPF,k,j,i)
+                            + coeff(linearSolver::DZPS,k,j,i))*delta(k+1,j,i));
+            const Real residual = std::abs(cat(r,block,k,j,i));
+            const Real eta = denominator > 0.0 ? residual/denominator
+                : (residual == 0.0 ? 0.0 : std::numeric_limits<Real>::infinity());
+            componentwise_backward_error_max = std::max(
+                componentwise_backward_error_max, eta);
+          }
+    }
+#ifdef MPI_PARALLEL
+    MPI_Allreduce(MPI_IN_PLACE, &componentwise_backward_error_max, 1,
+                  MPI_ATHENA_REAL, MPI_MAX, MPI_COMM_WORLD);
+#endif
+  }
+  const bool precision_floor_accept = !breakdown
+      && fgmres_precision_floor_factor_ > 0.0
+      && std::isfinite(relative_residual)
+      && relative_residual > fgmres_threshold_
+      && componentwise_backward_error_max
+          <= fgmres_precision_floor_factor_*std::numeric_limits<Real>::epsilon();
+  const char *inexact_text = std::getenv("ATHENA_WOR92_INEXACT_TRUE_CAP");
+  const Real inexact_cap = inexact_text != nullptr ? std::strtod(inexact_text, nullptr) : 0.0;
+  const bool inexact_accept = !breakdown && std::isfinite(relative_residual)
+      && std::isfinite(inexact_cap) && inexact_cap > fgmres_threshold_
+      && inexact_cap <= 1.0e-6 && relative_residual <= inexact_cap;
   load_delta(x);
   if (Globals::my_rank == 0) {
     std::cout << "[LINEAR_FGMRES] iterations=" << total_iterations
@@ -1754,9 +1851,17 @@ void linearMGDriver::SolveFGMRES(int stage) {
               << " workspace_bytes=" << (basis_slots + work_slots)*sizeof(Real)
               << " workspace_rebuilt=" << workspace_rebuilt
               << " workspace_rebuilds=" << fgmres_workspace_rebuilds_
+              << " precision_floor_accept=" << precision_floor_accept
+              << " inexact_accept=" << inexact_accept
+              << " inexact_cap=" << inexact_cap
               << " breakdown=" << breakdown << std::endl;
+    if (fgmres_backward_error_diagnostics_)
+      std::cout << "[LINEAR_FGMRES_BACKWARD] local_stencil_eta_max="
+                << componentwise_backward_error_max
+                << " note=AMR_ghosts_are_interpolated" << std::endl;
   }
-  if (breakdown || !(relative_residual <= fgmres_threshold_)
+  if (breakdown || (!(relative_residual <= fgmres_threshold_)
+                    && !precision_floor_accept && !inexact_accept)
       || !std::isfinite(relative_residual)) {
     std::stringstream msg;
     msg << "### FATAL ERROR in linearMGDriver::SolveFGMRES" << std::endl

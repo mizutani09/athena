@@ -200,6 +200,8 @@ class NRFLD : public NewtonRaphson {
   bool fixed_linear_coefficients_initialized_;
   bool jacobian_check_;
   bool jacobian_check_done_;
+  bool jacobian_check_each_cycle_{false};
+  int jacobian_check_last_cycle_{-1};
   Real jacobian_check_epsilon_;
   // AthenaArray<Real> *u_, *def_, *src_, *uold_, *coeff_, *matrix_;
   // AthenaArray<Real> delta_u_;
