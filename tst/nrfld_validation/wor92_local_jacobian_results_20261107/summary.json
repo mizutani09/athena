@@ -1,0 +1,38 @@
+{
+  "base_commit": "ebf7634a8e877edfd58724de1e3810638a76ca7e",
+  "diagnostic_binary_sha256": "deda2405d897faf69cfe65d34ac46a5907487083aa03da42829e4e047ca9a82d",
+  "diagnostic_patch_sha256": "975391cd4148f859a048bcf7780c231026dba544309ea1362ea82a188d3f0317",
+  "baseline_floor32_linear_lines_sha256": "7831f4a0247e7075a6d3787b8463be2375b11d81c9fb4b0eae2dad8dbf623b3f",
+  "runs": [
+    {
+      "label": "strict_failure",
+      "exit_code": 134,
+      "jacobian_records": 3,
+      "linear_solves": 2,
+      "newton_converged": 0,
+      "linear_lines_sha256": "1d005a8d2296ff5a66fd0ec93c5e20ade349aded9e9eae110ff4f124561f33a4",
+      "input_sha256": "189d3e3a673e18dc3203250294e50798a68bbd49584b5a0abda7d8dd05d0dbb8",
+      "log_sha256": "a8f820b69caa8457db13195d6494263bbd305d4a6eeb684b8163ac1e08763cc8"
+    },
+    {
+      "label": "floor32_10cycles",
+      "exit_code": 0,
+      "jacobian_records": 30,
+      "linear_solves": 22,
+      "newton_converged": 10,
+      "linear_lines_sha256": "7831f4a0247e7075a6d3787b8463be2375b11d81c9fb4b0eae2dad8dbf623b3f",
+      "input_sha256": "cb0bb42667b1228e0155ff4bedf94c205e213bf8692cf3be8bfa52f235a6897b",
+      "log_sha256": "b54b3fd9e539cbda868a209c316efe2027b92635957865c4cc4d4238264432a0"
+    }
+  ],
+  "max_gas_l2_rel_by_epsilon": {
+    "1.0000000000000002e-06": 9.803420152715672e-07,
+    "1e-05": 9.76667619808837e-06,
+    "0.0001": 9.765308827922357e-05
+  },
+  "max_radiation_l2_rel_by_epsilon": {
+    "1.0000000000000002e-06": 6.799849468788704e-10,
+    "1e-05": 7.086526024851111e-11,
+    "0.0001": 7.511898430896311e-12
+  }
+}

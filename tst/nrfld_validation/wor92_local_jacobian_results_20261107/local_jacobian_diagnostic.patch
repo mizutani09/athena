@@ -1,0 +1,10 @@
+--- src/nr_multigrid/NRFLD.cpp
++++ src/nr_multigrid/NRFLD.cpp (diagnostic hook)
+@@ -1468,6 +1468,7 @@
+               << " rhs_legacy=" << worst_rhs_legacy << std::endl;
+   }
+   fixed_linear_coefficients_initialized_ = true;
++  RunJacobianDiagnostic(dt);  // Trial-only hook for an existing local check.
+ }
+ 
+ void NRFLD::CalculateDefect(AthenaArray<Real> &def, const AthenaArray<Real> &u,
