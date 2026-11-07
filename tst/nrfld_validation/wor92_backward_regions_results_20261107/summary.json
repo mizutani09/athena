@@ -1,0 +1,34 @@
+{
+  "base_git_hash": "ebf7634a8e877edfd58724de1e3810638a76ca7e",
+  "diagnostic_binary_sha256": "59a6ca9c2246b9936d8a7c7f34c20c5c6f3b53c349520f9f2411520fae20b66f",
+  "runs": [
+    {
+      "case": "table_amr",
+      "exit_code": 134,
+      "fgmres_iterations": "156;300",
+      "fgmres_true_residuals": "1.2189076473846429e-08;3.8796577724025381e-08",
+      "comparator_fgmres_equal": true,
+      "input_sha256": "515d600e01f8ee9583bc1ce16df70724dd9b82d4bfd77a72527a8b185d6b5ad0",
+      "log_sha256": "14c1376f6de8df4fcc0dc2daa6c0655c5923a6ae0067ae86b0967d77f80cb32c"
+    },
+    {
+      "case": "uniform_level1",
+      "exit_code": 134,
+      "fgmres_iterations": "9;300",
+      "fgmres_true_residuals": "1.1128607709312504e-09;9.1188031311145948e-08",
+      "comparator_fgmres_equal": true,
+      "input_sha256": "2dce5f3ab2bf366aeda140452ea713138497d4372ada853e17b131cf5a01f97a",
+      "log_sha256": "aa764a5a74398fee236704c4bd662e8682300ba9503ed834bd56e9f5840cc0b6"
+    },
+    {
+      "case": "fixed_high_amr",
+      "exit_code": 0,
+      "fgmres_iterations": "61;109;41;44;71;59;68",
+      "fgmres_true_residuals": "1.9016175972167992e-08;1.9855653609034031e-08;1.9417641594719154e-08;1.3418314489397769e-08;1.3313263523412149e-08;1.8680798579990205e-08;9.9721089735458375e-09",
+      "comparator_fgmres_equal": true,
+      "input_sha256": "f56212ecd7e0e0a2e745075e0e74a94e7864e7055d846e1c6b4db6bb7ef87691",
+      "log_sha256": "7e741303ee38442ab0d76e91a0f678beb24cc7b82b2f7ea1468f4804121a890c"
+    }
+  ],
+  "interpretation": "Interior and same-level local rows have direct ghost copies; coarse-fine local eta does not expand interpolation weights and is not assembled-global componentwise backward error"
+}

@@ -1,0 +1,63 @@
+--- base/linearMG.cpp
++++ diagnostic/linearMG.cpp
+@@ -1783,6 +1783,11 @@
+     if (breakdown) break;
+   }
+   Real componentwise_backward_error_max = 0.0;
++  const bool wor92_region_diag = std::getenv("ATHENA_WOR92_BACKWARD_REGIONS") != nullptr;
++  Real wor92_eta[3] = {0.0, 0.0, 0.0};
++  long double wor92_residual2[3] = {0.0L, 0.0L, 0.0L};
++  long double wor92_denominator2[3] = {0.0L, 0.0L, 0.0L};
++  long long wor92_cells[3] = {0, 0, 0};
+   if (fgmres_backward_error_diagnostics_ || fgmres_precision_floor_factor_ > 0.0) {
+     // At an AMR face the ghost correction is interpolated, so this measures
+     // the local stencil rather than an assembled global-matrix row.
+@@ -1818,12 +1823,48 @@
+                 : (residual == 0.0 ? 0.0 : std::numeric_limits<Real>::infinity());
+             componentwise_backward_error_max = std::max(
+                 componentwise_backward_error_max, eta);
++            if (wor92_region_diag) {
++              const bool face[6] = {i == pmb->is, i == pmb->ie,
++                  j == pmb->js, j == pmb->je, k == pmb->ks, k == pmb->ke};
++              const int di[6] = {-1,1,0,0,0,0};
++              const int dj[6] = {0,0,-1,1,0,0};
++              const int dk[6] = {0,0,0,0,-1,1};
++              int region = 0;
++              for (int f=0; f<6; ++f)
++                if (face[f]) {
++                  const int level = pmb->pbval->nblevel[1+dk[f]][1+dj[f]][1+di[f]];
++                  region = std::max(region, level == pmb->loc.level ? 1 : 2);
++                }
++              wor92_eta[region] = std::max(wor92_eta[region], eta);
++              wor92_residual2[region] += static_cast<long double>(residual)*residual;
++              wor92_denominator2[region] += static_cast<long double>(denominator)*denominator;
++              ++wor92_cells[region];
++            }
+           }
+     }
+ #ifdef MPI_PARALLEL
+     MPI_Allreduce(MPI_IN_PLACE, &componentwise_backward_error_max, 1,
+                   MPI_ATHENA_REAL, MPI_MAX, MPI_COMM_WORLD);
++    if (wor92_region_diag) {
++      MPI_Allreduce(MPI_IN_PLACE, wor92_eta, 3, MPI_ATHENA_REAL, MPI_MAX, MPI_COMM_WORLD);
++      MPI_Allreduce(MPI_IN_PLACE, wor92_residual2, 3, MPI_LONG_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
++      MPI_Allreduce(MPI_IN_PLACE, wor92_denominator2, 3, MPI_LONG_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
++      MPI_Allreduce(MPI_IN_PLACE, wor92_cells, 3, MPI_LONG_LONG, MPI_SUM, MPI_COMM_WORLD);
++    }
+ #endif
++  }
++  if (wor92_region_diag && Globals::my_rank == 0) {
++    const char *names[3] = {"interior", "same_level_face", "coarse_fine_face"};
++    for (int region=0; region<3; ++region)
++      if (wor92_cells[region] > 0)
++        std::cout << "[WOR92 backward region] cycle=" << pmy_mesh_->ncycle
++                  << " solve_iterations=" << total_iterations
++                  << " region=" << names[region]
++                  << " cells=" << wor92_cells[region]
++                  << " eta_max=" << wor92_eta[region]
++                  << " residual_l2=" << std::sqrt(wor92_residual2[region])
++                  << " denominator_l2=" << std::sqrt(wor92_denominator2[region])
++                  << std::endl;
+   }
+   const bool precision_floor_accept = !breakdown
+       && fgmres_precision_floor_factor_ > 0.0
