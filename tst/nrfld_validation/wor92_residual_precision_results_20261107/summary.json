@@ -29,6 +29,14 @@
       "log_sha256": "0df79fc8257fac18a92441dbc18f9b8d8ef8e38f9332b86615f26a2b57daf3d8"
     },
     {
+      "case": "uniform_level1",
+      "exit_code": 134,
+      "iterations": "9;300",
+      "true_residuals": "1.1128607709312504e-09;9.1188031311145948e-08",
+      "input_sha256": "2dce5f3ab2bf366aeda140452ea713138497d4372ada853e17b131cf5a01f97a",
+      "log_sha256": "15ca42f1175cf5525c18e49ae7cf805ef81bb0bf693a999495afd288e8d53d73"
+    },
+    {
       "case": "table_diagnostic_off",
       "exit_code": 134,
       "iterations": "156;300",
@@ -40,6 +48,6 @@
   "limitations": [
     "same synchronized correction ghosts as FGMRES",
     "frozen assembled coefficients",
-    "local stencil eta does not expand AMR interpolation weights"
+    "local stencil eta does not expand AMR interpolation weights in the mixed-level cases; the uniform periodic level-1 case has direct same-level ghost copies"
   ]
 }

@@ -9,8 +9,11 @@ Date: 2026-11-07. This follows the [restart-floor study](wor92_restart_floor_202
 | Table Rosseland | `3.8796577724025381e-8` | `3.8796577723996367e-8` | `2.90e-20` | `5.25e-17` | fails 300 iterations |
 | Fixed Rosseland `0.0450` | `3.5887924227470704e-8` | `3.5887924227381195e-8` | `8.95e-20` | `5.51e-17` | fails 300 iterations |
 | Fixed Rosseland `0.0400` | `1.9759005736414776e-8` | `1.9759005738259193e-8` | `1.84e-18` | `5.18e-17` | passes at 151 iterations |
+| Uniform level 1, table Rosseland | `9.1188031311145948e-8` | `9.1188031311145880e-8` | `6.8e-23` | `5.08e-17` | fails 300 iterations |
 
 The independent residual is effectively identical to the reported value on both failed and passing cases. Casting the matvec result back to double and subtracting `b−Ax` in double do **not** explain the strict residual failure. The diagnostic-on/off runs using the same binary reproduce the original table FGMRES iteration counts and residuals exactly. The local-stencil componentwise backward-error proxy remains around `3.09e-15` (table) and `4.11e-15` (fixed `0.0450`) on the failed solve; it still does not account for AMR ghost interpolation as assembled global rows.
+
+The uniform level-1 case has 64³ active cells, periodic physical boundaries and **no coarse-fine faces** (confirmed by the preceding global Jv region count). Its same-level ghost values are direct copies of active unknowns, so the seven-point local denominator is the assembled global row's componentwise denominator for this case. The failed second solve has componentwise backward error `8.88913e-17`, below double machine epsilon `2.22045e-16`, while the independently recomputed normwise true residual remains `9.11880e-8`. This establishes that the strict normwise target can reject a componentwise backward-stable iterate even without AMR interfaces. It does not justify accepting the mixed-level table case without its own assembled-row and Newton/physics checks.
 
 ![Reported versus independently recomputed residual](wor92_residual_precision_results_20261107/residual_precision.png)
 
@@ -36,6 +39,6 @@ env ATHENA_NRFLD_CONSERVATIVE_PROTOTYPE=1 \
   -d /path/to/fresh/output
 ```
 
-For fixed Rosseland controls, set `ATHENA_WOR92_FIXED_ROSSELAND=1` and use the archived `0.0400` or `0.0450` input. Omit `ATHENA_WOR92_LONG_DOUBLE_RESIDUAL` for the same-binary control. Run `python3 tst/nrfld_validation/wor92_residual_precision_20261107.py` in the report worktree to regenerate data and figure.
+For fixed Rosseland controls, set `ATHENA_WOR92_FIXED_ROSSELAND=1` and use the archived `0.0400` or `0.0450` input. The uniform case uses `input_uniform_l1_restart40_mg2_strict.used`. Omit `ATHENA_WOR92_LONG_DOUBLE_RESIDUAL` for the same-binary control. Run `python3 tst/nrfld_validation/wor92_residual_precision_20261107.py` in the report worktree to regenerate data and figure.
 
 The next material check is an assembled AMR componentwise backward error for the **actual** failed FGMRES iterate and row-level separation of diffusion and gas-coupling terms. A high-precision solver or alternative preconditioner would require a separate bounded trial and strict Newton/physics regression. No production source fix is validated; WOR-92 remains **In Progress**.
