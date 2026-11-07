@@ -21261,9 +21261,272 @@
         },
         "max_implicit_energy_absolute_relative_balance": 1.2738118888028573e-10,
         "evaluation": "PASS"
+      },
+      {
+        "name": "shift_regrid_variable_q1e4_r1",
+        "source_commit_base": "d6a9e085",
+        "test_only_patch_sha256": "716184019b8456dd1b2fbcad82770bc92b369f551594f701827ff63010b119ea",
+        "binary_sha256": "d7d90ea206d59507d66fb190fb20d01023825d16fb236a19dfcc06fa5138f8f1",
+        "input_archive_member": "trials/shift_regrid.in",
+        "input_sha256": "669b82728b0de96a7f1651781754fae89d2d39a358133e4eb7c98d2ecfed7db6",
+        "overrides": {
+          "nrfld/linear_solver": "fgmres",
+          "fld/const_opacity": 8.186332719786666e-05,
+          "fld/fixed_flux_limiter": false,
+          "nrfld/fgmres_linearity_check": false
+        },
+        "ranks": 1,
+        "threads": 1,
+        "run_log": "/tmp/wor25_23_24_resolution_trials/shift_regrid_variable_q1e4_r1/run.log",
+        "exit_status": 0,
+        "wall_time": "0:05.68",
+        "peak_rss_kb": 245992,
+        "newton_statuses": [
+          {
+            "status": "dt_zero_initialization",
+            "iterations": 0
+          },
+          {
+            "status": "dt_zero_initialization",
+            "iterations": 0
+          },
+          {
+            "status": "converged",
+            "iterations": 1
+          },
+          {
+            "status": "converged",
+            "iterations": 1
+          },
+          {
+            "status": "converged",
+            "iterations": 0
+          },
+          {
+            "status": "converged",
+            "iterations": 1
+          }
+        ],
+        "fgmres_history": [
+          {
+            "iterations": 9,
+            "explicit_relative_residual": 3.0568549053914567e-09
+          },
+          {
+            "iterations": 9,
+            "explicit_relative_residual": 3.809660509156732e-09
+          },
+          {
+            "iterations": 10,
+            "explicit_relative_residual": 9.819968886688938e-10
+          }
+        ],
+        "outputs": [
+          {
+            "output": 0,
+            "Er_integral": 0.01578165590763092,
+            "Er_min": 1.0,
+            "leaf_blocks": 36
+          },
+          {
+            "output": 1,
+            "Er_integral": 0.01578165777027607,
+            "Er_min": 1.0093578100204468,
+            "leaf_blocks": 36
+          },
+          {
+            "output": 2,
+            "Er_integral": 0.01578165777027607,
+            "Er_min": 1.0099949836730957,
+            "leaf_blocks": 36
+          },
+          {
+            "output": 3,
+            "Er_integral": 0.01578165963292122,
+            "Er_min": 1.0100247859954834,
+            "leaf_blocks": 36
+          }
+        ],
+        "topology_change_by_step": [
+          {
+            "created": 0,
+            "destroyed": 0
+          },
+          {
+            "created": 9,
+            "destroyed": 9
+          },
+          {
+            "created": 0,
+            "destroyed": 0
+          }
+        ],
+        "coarse_fine_face_conservation": {
+          "pairs": 6,
+          "max_relative_mismatch": 1.3373137690910216e-09,
+          "max_absolute_mismatch": 1.5811280138009796e-16,
+          "pass": true
+        },
+        "face_report_path": "/tmp/wor25_23_24_resolution_trials/shift_regrid_variable_q1e4_r1/face_report.json",
+        "jv_coarse_fine_rel_l2_by_step": {
+          "smooth_1e-4": [
+            3.820270561621118e-10,
+            3.9337127445012393e-10,
+            7.279422602094526e-10
+          ],
+          "smooth_1e-5": [
+            1.905257087662753e-09,
+            3.6495528998960298e-09,
+            1.2316364984667267e-08
+          ],
+          "newton_1e-4": [
+            0.0004902317142087673,
+            3.389677831710506e-09,
+            1.8543600746350556e-09
+          ],
+          "newton_1e-5": [
+            0.0020435845938036913,
+            3.3033726953927045e-08,
+            1.3500611239285648e-08
+          ]
+        },
+        "max_implicit_energy_absolute_relative_balance": 3.215451882085922e-11,
+        "evaluation": "PASS_FROZEN_CLOSURE"
+      },
+      {
+        "name": "shift_regrid_variable_q1e4_r2",
+        "source_commit_base": "d6a9e085",
+        "test_only_patch_sha256": "716184019b8456dd1b2fbcad82770bc92b369f551594f701827ff63010b119ea",
+        "binary_sha256": "d7d90ea206d59507d66fb190fb20d01023825d16fb236a19dfcc06fa5138f8f1",
+        "input_archive_member": "trials/shift_regrid.in",
+        "input_sha256": "669b82728b0de96a7f1651781754fae89d2d39a358133e4eb7c98d2ecfed7db6",
+        "overrides": {
+          "nrfld/linear_solver": "fgmres",
+          "fld/const_opacity": 8.186332719786666e-05,
+          "fld/fixed_flux_limiter": false,
+          "nrfld/fgmres_linearity_check": false
+        },
+        "ranks": 2,
+        "threads": 1,
+        "run_log": "/tmp/wor25_23_24_resolution_trials/shift_regrid_variable_q1e4_r2/run.log",
+        "exit_status": 0,
+        "wall_time": "0:03.55",
+        "peak_rss_kb": 157288,
+        "newton_statuses": [
+          {
+            "status": "dt_zero_initialization",
+            "iterations": 0
+          },
+          {
+            "status": "dt_zero_initialization",
+            "iterations": 0
+          },
+          {
+            "status": "converged",
+            "iterations": 1
+          },
+          {
+            "status": "converged",
+            "iterations": 1
+          },
+          {
+            "status": "converged",
+            "iterations": 0
+          },
+          {
+            "status": "converged",
+            "iterations": 1
+          }
+        ],
+        "fgmres_history": [
+          {
+            "iterations": 9,
+            "explicit_relative_residual": 3.0568542153849915e-09
+          },
+          {
+            "iterations": 9,
+            "explicit_relative_residual": 3.809663862877932e-09
+          },
+          {
+            "iterations": 10,
+            "explicit_relative_residual": 9.819972624810655e-10
+          }
+        ],
+        "outputs": [
+          {
+            "output": 0,
+            "Er_integral": 0.01578165590763092,
+            "Er_min": 1.0,
+            "leaf_blocks": 36
+          },
+          {
+            "output": 1,
+            "Er_integral": 0.01578165777027607,
+            "Er_min": 1.0093578100204468,
+            "leaf_blocks": 36
+          },
+          {
+            "output": 2,
+            "Er_integral": 0.01578165777027607,
+            "Er_min": 1.0099949836730957,
+            "leaf_blocks": 36
+          },
+          {
+            "output": 3,
+            "Er_integral": 0.01578165963292122,
+            "Er_min": 1.0100247859954834,
+            "leaf_blocks": 36
+          }
+        ],
+        "topology_change_by_step": [
+          {
+            "created": 0,
+            "destroyed": 0
+          },
+          {
+            "created": 9,
+            "destroyed": 9
+          },
+          {
+            "created": 0,
+            "destroyed": 0
+          }
+        ],
+        "coarse_fine_face_conservation": {
+          "pairs": 6,
+          "max_relative_mismatch": 9.552241211442825e-10,
+          "max_absolute_mismatch": 1.1293771527149854e-16,
+          "pass": true
+        },
+        "face_report_path": "/tmp/wor25_23_24_resolution_trials/shift_regrid_variable_q1e4_r2/face_report.json",
+        "jv_coarse_fine_rel_l2_by_step": {
+          "smooth_1e-4": [
+            3.820270561621118e-10,
+            3.888632468041432e-10,
+            5.995178841558879e-10
+          ],
+          "smooth_1e-5": [
+            1.905257087662753e-09,
+            3.6286453184168323e-09,
+            1.235494075349108e-08
+          ],
+          "newton_1e-4": [
+            0.0004902319829459767,
+            2.9623401845575235e-09,
+            1.7160109746287173e-09
+          ],
+          "newton_1e-5": [
+            0.002043585157248558,
+            3.252753445328589e-08,
+            1.672693618546759e-08
+          ]
+        },
+        "max_implicit_energy_absolute_relative_balance": 3.1393819437854327e-11,
+        "evaluation": "PASS_FROZEN_CLOSURE"
       }
     ],
     "rank_output_comparison": "all numerical HDF datasets exactly equal between 1 and 2 ranks at each of four outputs for q1e4; same for q1e7 initial non-ledger runs",
-    "conclusion": "q1e4 retains measurable face flux after the 9-created/9-destroyed partial regrid; all six coarse/fine face pairs pass 1e-6 relative tolerance in both MPI layouts. The q1e7 face relative metric is dominated by near-zero flux and is not used as conservation evidence."
+    "conclusion": "q1e4 retains measurable face flux after the 9-created/9-destroyed partial regrid; all six coarse/fine face pairs pass 1e-6 relative tolerance in both MPI layouts. The q1e7 face relative metric is dominated by near-zero flux and is not used as conservation evidence.",
+    "variable_limiter_rank_output_comparison": "all numerical HDF datasets exactly equal between 1 and 2 ranks at each of four outputs; closure=frozen in Jv diagnostic"
   }
 }
