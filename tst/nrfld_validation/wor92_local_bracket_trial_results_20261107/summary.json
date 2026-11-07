@@ -1,0 +1,73 @@
+{
+  "base_binary_sha256": "5b259bf3c0a4b768a6a35aa9f2d9cebfd3b9151f78b80ed5583069a772ffb691",
+  "trial_binary_sha256": "3fcc8a83f756328b45a005b82d93afd5f6c0e268c3fe6928e96a33534609a3ee",
+  "patch_sha256": "ebd839dfd27915de298bc91de6e13cd844373f64abf02210bef14fec87417405",
+  "ordinary_11_case_numeric_results_identical": true,
+  "stress": [
+    {
+      "state": "base",
+      "old_gas": 967.2962193627309,
+      "reference_gas": 971.6300005393587,
+      "production_gas": 971.6300005617826,
+      "relative_root_error": 2.3182074408910573e-11,
+      "normalized_residual": 2.3182072572496033e-11,
+      "reported_raw_residual": 2.242393115636787e-08
+    },
+    {
+      "state": "trial",
+      "old_gas": 967.2962193627309,
+      "reference_gas": 971.6300005393587,
+      "production_gas": 971.6300005393591,
+      "relative_root_error": 4.701221216248095e-16,
+      "normalized_residual": 4.682857070872125e-16,
+      "reported_raw_residual": 4.5297099404706387e-13
+    }
+  ],
+  "runs": [
+    {
+      "case": "table_base",
+      "completed_cycles": 0,
+      "linear_solves": 2,
+      "first_iterations": 156,
+      "first_true_residual": 1.2189076473846429e-08,
+      "second_iterations": 300,
+      "second_true_residual": 3.879657772402538e-08,
+      "fatal_fgmres": true,
+      "log_sha256": "a8f820b69caa8457db13195d6494263bbd305d4a6eeb684b8163ac1e08763cc8"
+    },
+    {
+      "case": "table_trial",
+      "completed_cycles": 0,
+      "linear_solves": 2,
+      "first_iterations": 156,
+      "first_true_residual": 1.2189076473846429e-08,
+      "second_iterations": 300,
+      "second_true_residual": 3.879657772402538e-08,
+      "fatal_fgmres": true,
+      "log_sha256": "70a0d79e9e84bd78b6ab38e5c948588e5b75a15b936c35cec6bbefad8fce58ae"
+    },
+    {
+      "case": "fixed_base",
+      "completed_cycles": 3,
+      "linear_solves": 7,
+      "first_iterations": 61,
+      "first_true_residual": 1.9016175972167992e-08,
+      "second_iterations": 109,
+      "second_true_residual": 1.985565360903403e-08,
+      "fatal_fgmres": false,
+      "log_sha256": "6d6def9787de42c6518ceb611c8e910065ad8cfaa45fe6dc7e6fc5936ec16f44"
+    },
+    {
+      "case": "fixed_trial",
+      "completed_cycles": 3,
+      "linear_solves": 7,
+      "first_iterations": 61,
+      "first_true_residual": 1.9016175972167992e-08,
+      "second_iterations": 109,
+      "second_true_residual": 1.985565360903403e-08,
+      "fatal_fgmres": false,
+      "log_sha256": "03ff88fc38c9ad884a148a58b81fa727c654d8b7962d7210d340a3fbefa76691"
+    }
+  ],
+  "clean_branch_integration_observation": "The committed protostellar_core_fld pgen requires hydro/gamma and initializes an ideal gas; table-EOS pgen trial is a separate uncommitted dependency. No source change was committed."
+}

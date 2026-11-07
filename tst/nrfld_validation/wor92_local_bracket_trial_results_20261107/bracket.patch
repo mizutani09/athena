@@ -1,0 +1,22 @@
+--- base/src/nr_multigrid/NRFLD.cpp
++++ trial/src/nr_multigrid/NRFLD.cpp
+@@ -1915,6 +1915,19 @@
+                 Real lower = egas_floor;
+                 Real upper = std::max({egas_floor, egas_old, egas_lte});
+                 Real f_upper = gas_residual(upper);
++                // Mixed-frame work may heat the gas past both the old state
++                // and the radiation LTE state. Expand the upper bracket
++                // before falling back to the linearized gas correction.
++                if (mixed_active) {
++                  for (int expansion=0; expansion<32
++                       && std::isfinite(f_upper) && f_upper < 0.0;
++                       ++expansion) {
++                    const Real next = 2.0*upper;
++                    if (!std::isfinite(next) || next <= upper) break;
++                    upper = next;
++                    f_upper = gas_residual(upper);
++                  }
++                }
+                 if (std::isfinite(f_upper) && f_upper >= 0.0) {
+                   for (int iteration=0; iteration<64; ++iteration) {
+                     const Real middle = 0.5*(lower+upper);
