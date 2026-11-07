@@ -1,0 +1,4 @@
+field,cycle,time,same_mesh_topology,relative_l2,relative_max
+rho,122,1756.4721,True,0.0,0.0
+press,122,1756.4721,True,0.0,0.0
+Er,122,1756.4721,True,0.0,0.0

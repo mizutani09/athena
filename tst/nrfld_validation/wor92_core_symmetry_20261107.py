@@ -32,12 +32,18 @@ RUNS = {
     "cfl030_level5_to76": "table_symmetry_level5_from71_to76_2rank",
     "cfl030_level4_control_to76": "table_symmetry_level4_from70_to76_control_2rank",
     "cfl030_level5_to1700": "table_symmetry_level5_from76_to1700_2rank",
+    "cfl030_level5_to1753": "table_symmetry_level5_from1700_to1800_2rank",
+    "cfl030_level6_from121": "table_symmetry_level6_from121_one_step_2rank",
+    "cfl030_level5_from121_control": "table_symmetry_level5_from121_one_step_control_2rank",
+    "cfl030_level6_to1800": "table_symmetry_level6_checkpoint130_to1800_2rank",
 }
 DUMP_DIRS = {
     "cfl030_level3_early": "table_symmetry_level3_cycle63_state_dump_corrected_2rank",
     "cfl030_level4_from63": "table_symmetry_level4_cycle64_state_dump_2rank",
+    "cfl030_level5_to1753": "table_symmetry_level5_cycle121_state_dump_2rank",
 }
 ENERGY_LEDGER_DIR = "table_symmetry_level4_from63_energy_ledger_2rank"
+INTERRUPTED_RUN = "table_symmetry_level6_from122_to1800_2rank"
 
 
 def sha(path):
@@ -170,6 +176,14 @@ def main():
         assert len(ledger_rows) == 2 and {x["rank"] for x in ledger_rows} == {0, 1}
         archive.add(ledger_log, arcname="cfl030_level4_energy_ledger/run.log")
         archive.add(ledger_hst, arcname="cfl030_level4_energy_ledger/history.hst")
+        interrupted_folder = ROOT / INTERRUPTED_RUN
+        interrupted_log = interrupted_folder / "run.log"
+        interrupted_hst = interrupted_folder / "cfl030_flux_precision16_local.hst"
+        interrupted_checkpoint = interrupted_folder / "cfl030_flux_precision16_local.00010.rst"
+        assert all(path.is_file() for path in (interrupted_log, interrupted_hst,
+                                                interrupted_checkpoint))
+        archive.add(interrupted_log, arcname="cfl030_level6_timeout/run.log")
+        archive.add(interrupted_hst, arcname="cfl030_level6_timeout/history.hst")
     write_csv(OUT / "cases.csv", cases)
     write_csv(OUT / "history.csv", trajectories)
     write_csv(OUT / "central_cells.csv", centers)
@@ -193,6 +207,40 @@ def main():
                                                      np.linalg.norm(x.ravel())),
                                    relative_max=float(np.max(np.abs(x - y)) / np.max(np.abs(x)))))
     write_csv(OUT / "cap_comparison.csv", cap_comparison)
+    late4_locations, late4_fields = sorted_fields(dump_paths["cfl030_level5_from121_control"])
+    late5_locations, late5_fields = sorted_fields(dump_paths["cfl030_level6_from121"])
+    assert np.array_equal(late4_locations, late5_locations)
+    late_cap_comparison = []
+    for field, index in (("rho", 0), ("press", 1), ("Er", 8)):
+        x, y = late4_fields[index], late5_fields[index]
+        late_cap_comparison.append(dict(field=field, cycle=122, time=1756.4721,
+                                        same_mesh_topology=True,
+                                        relative_l2=float(np.linalg.norm((x - y).ravel()) /
+                                                          np.linalg.norm(x.ravel())),
+                                        relative_max=float(np.max(np.abs(x - y)) / np.max(np.abs(x)))))
+    write_csv(OUT / "late_cap_comparison.csv", late_cap_comparison)
+    interrupted_history = np.atleast_2d(np.loadtxt(interrupted_hst))
+    interrupted_lines = interrupted_log.read_text(errors="replace")
+    interrupted_newton = re.findall(r"^\[NR\] status=(\w+) iterations=(\d+)",
+                                    interrupted_lines, re.M)
+    interrupted_fgmres = [float(v) for v in re.findall(
+        r"^\[LINEAR_FGMRES\] iterations=\d+ relative_residual=(\S+)",
+        interrupted_lines, re.M)]
+    interrupted_accepted = re.findall(r"^\[WOR92_OPACITY_ACCEPTED\] cycle=(\d+) Tmin_K=(\S+)",
+                                       interrupted_lines, re.M)
+    restarted_history = np.atleast_2d(np.loadtxt(ROOT / RUNS["cfl030_level6_to1800"] /
+                                                  "cfl030_flux_precision16_local.hst"))
+    common_times = sorted(set(interrupted_history[:, 0]) & set(restarted_history[:, 0]))
+    assert common_times
+    overlap_error = 0.0
+    for time in common_times:
+        old = interrupted_history[interrupted_history[:, 0] == time][0]
+        new = restarted_history[restarted_history[:, 0] == time][0]
+        columns = [15, 19, 20, 34]
+        overlap_error = max(overlap_error,
+                            float(np.max(np.abs(old[columns] - new[columns]) /
+                                         np.maximum(np.abs(old[columns]), 1e-30))))
+    assert overlap_error < 1e-4
     grouped = {}
     for row in centers:
         grouped.setdefault((row["case"], row["cycle"]), []).append(row)
@@ -221,6 +269,23 @@ def main():
                    cycle76_checkpoint_sha256=sha(ROOT / RUNS["cfl030_level5_to76"] /
                                                     "cfl030_flux_precision16_local.final.rst"),
                    cases=cases, cap_comparison=cap_comparison,
+                   late_cap_comparison=late_cap_comparison,
+                   interrupted_segment=dict(last_history_time=float(interrupted_history[-1, 0]),
+                                            last_history_rho_max_cgs=float(interrupted_history[-1, 15]),
+                                            newton_stages=len(interrupted_newton),
+                                            newton_nonconverged=sum(v[0] != "converged"
+                                                                    for v in interrupted_newton),
+                                            fgmres_true_residual_max=max(interrupted_fgmres),
+                                            accepted_opacity_checks=len(interrupted_accepted),
+                                            accepted_Tmin_K=min(float(v[1]) for v in interrupted_accepted),
+                                            positive_ghost_events=interrupted_lines.count(
+                                                "[WOR92_NR_GHOST_CLIP]"),
+                                            checkpoint_sha256=sha(interrupted_checkpoint),
+                                            log_sha256=sha(interrupted_log),
+                                            history_sha256=sha(interrupted_hst),
+                                            restart_overlap_rows=len(common_times),
+                                            restart_overlap_max_relative_critical=overlap_error,
+                                            stopped_mid_step_by_600s_timeout=True),
                    energy_ledger=dict(rows=ledger_rows, log_sha256=sha(ledger_log),
                                       history_sha256=sha(ledger_hst),
                                       history_identical_to_uninstrumented=True))
@@ -228,15 +293,15 @@ def main():
     fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(8, 7))
     for label in RUNS:
         rows = [x for x in ratio_rows if x["case"] == label]
-        if label not in {"cfl030_level3_early", "cfl030_level4_from63", "cfl030_level4_to70",
-                         "cfl030_level5_to76", "cfl030_level4_control_to76",
-                         "cfl030_level5_to1700"}:
+        if label in {"cfl030_2rank", "cfl030_1rank", "cfl015_2rank",
+                     "cfl030_sinkoff", "cfl030_fixed_opacity", "cfl030_level3_late"}:
             ax1.plot([x["time"] for x in rows], [x["center_rho_ratio"] for x in rows],
                      marker="o", label=label)
         h = [x for x in trajectories if x["case"] == label]
         if label in {"cfl030_2rank", "cfl015_2rank", "cfl030_level3_late",
                      "cfl030_level3_early", "cfl030_level4_to70", "cfl030_level5_to76",
-                     "cfl030_level5_to1700"}:
+                     "cfl030_level5_to1700", "cfl030_level5_to1753",
+                     "cfl030_level6_to1800"}:
             ax2.plot([x["time"] for x in h], [x["jeans_min"] for x in h], label=label)
     ax1.set_yscale("log")
     ax1.set_xlim(1990, 2110)
