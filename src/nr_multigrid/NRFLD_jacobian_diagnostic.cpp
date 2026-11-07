@@ -106,7 +106,7 @@ void NRFLDDriver::CheckCoupledGlobalJacobian(bool actual_direction) {
     AthenaArray<Real> u, gas, delta, coeff, deriv, baseline_deriv, src,
                       baseline_src, defcoeff,
                       coarse_u, coarse_delta, moments, coarse_moments, marshak;
-    AthenaArray<Real> baseline, gas_baseline, vr, vg;
+    AthenaArray<Real> baseline, gas_baseline, vr, vg, direction_moments;
     bool initialized;
   };
   std::vector<Saved> saved(vnr_.size());
@@ -204,6 +204,11 @@ void NRFLDDriver::CheckCoupledGlobalJacobian(bool actual_direction) {
   }
   plmgd_->SynchronizeCorrectionBoundaries(stage_);
   for (Saved &s:saved) s.vr=s.nr->delta_u_;
+  if (NRFLDPrototype::CenteredFaceTrial()) {
+    SyncCorrectionFaceMoments();
+    for (Saved &s:saved)
+      Snapshot(s.direction_moments,s.nr->interface_moments_);
+  }
   // The gas row contains -dt times the implicit mixed-frame drift.  The
   // actual Newton direction eliminates that full row, including its spatial
   // radiation coupling, after the radiation ghosts have been synchronized.
@@ -291,6 +296,8 @@ void NRFLDDriver::CheckCoupledGlobalJacobian(bool actual_direction) {
       nr->fixed_linear_coefficients_initialized_=true;
       nr->CalculateCoefficients(nr->uold_,nr->u_,nr->def_coeff_,
                                 nr->coeff_,nr->derivetive_,nr->src_,dt_);
+      if (NRFLDPrototype::CenteredFaceTrial())
+        nr->interface_moments_=s.direction_moments;
     }
     // error^2, reference^2 for gas, radiation, Schur and the analytic
     // full-system-vs-assembled-Schur check, split by interior/same/AMR face.
@@ -315,9 +322,18 @@ void NRFLDDriver::CheckCoupledGlobalJacobian(bool actual_direction) {
                 +s.coeff(linearSolver::DCCS,k,j,i))*vr;
             for (int f=0;f<6;++f) {
               const long double vn=s.vr(k+dk[f],j+dj[f],i+di[f]);
-              jr+=fac*s.coeff(cf[f],k,j,i)*vn;
-              schur+=(fac*s.coeff(cf[f],k,j,i)
-                  +s.coeff(linearSolver::DXMS+f,k,j,i))*vn;
+              if (NRFLDPrototype::CenteredFaceTrial()) {
+                const long double d=-s.coeff(cf[f],k,j,i);
+                const long double flux=nr->CenteredInterfaceFaceTerm(
+                    s.vr,d,vn,vr,f,k,j,i);
+                jr-=fac*(flux+d*vr);
+                schur-=fac*(flux+d*vr);
+                schur+=s.coeff(linearSolver::DXMS+f,k,j,i)*vn;
+              } else {
+                jr+=fac*s.coeff(cf[f],k,j,i)*vn;
+                schur+=(fac*s.coeff(cf[f],k,j,i)
+                    +s.coeff(linearSolver::DXMS+f,k,j,i))*vn;
+              }
             }
             const long double fdg=(nr->derivetive_(NewtonRaphsonFLD::Fg,k,j,i)
                          -d(NewtonRaphsonFLD::Fg,k,j,i))/h;

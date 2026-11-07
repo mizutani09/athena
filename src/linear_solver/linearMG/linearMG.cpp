@@ -31,8 +31,10 @@
 #include "../../hydro/hydro.hpp"
 #include "../../linear_solver/linear_solver.hpp"
 #include "../../mesh/mesh.hpp"
+#include "../../nr_multigrid/NRFLD.hpp"
 #include "../../parameter_input.hpp"
 #include "../../task_list/linmg_task_list.hpp"
+#include "../../utils/nrfld_face_reconstruction.hpp"
 #include "../../utils/nrfld_prototype_flags.hpp"
 #include "linearMG.hpp"
 
@@ -1407,7 +1409,11 @@ void linearMGDriver::SolveFGMRES(int stage) {
   };
   auto apply_operator = [&](const BlockVector &x, BlockVector &y) {
     load_delta(x);
-    if (NRFLDPrototype::Enabled() && NRFLDPrototype::DifferenceJv()) {
+    if (NRFLDPrototype::CenteredFaceTrial())
+      static_cast<NRFLDDriver*>(static_cast<linearMG*>(vmg_.front())
+          ->pnr_->pmy_driver_)->SyncCorrectionFaceMoments();
+    if (NRFLDPrototype::Enabled() && NRFLDPrototype::DifferenceJv()
+        && !NRFLDPrototype::CenteredFaceTrial()) {
       // A secant of the frozen-coefficient radiation residual.  The Newton
       // state and Krylov direction already have identical coarse/fine ghost
       // operators, so this includes the shared interface flux in Jv.  Keep
@@ -1471,9 +1477,15 @@ void linearMGDriver::SolveFGMRES(int stage) {
             for (int face = 0; face < 6; ++face) {
               const long double flux = coeff(linearSolver::DXMF+face,k,j,i);
               face_sum += flux;
-              value += fac*flux*(neighbor[face]-center)
-                  + static_cast<long double>(
-                      coeff(linearSolver::DXMS+face,k,j,i))*neighbor[face];
+              if (NRFLDPrototype::CenteredFaceTrial()) {
+                value -= fac*static_cast<NRFLD*>(pmg->pnr_)
+                    ->CenteredInterfaceFaceTerm(delta,-flux,neighbor[face],center,
+                                                face,k,j,i);
+              } else {
+                value += fac*flux*(neighbor[face]-center);
+              }
+              value += static_cast<long double>(
+                  coeff(linearSolver::DXMS+face,k,j,i))*neighbor[face];
             }
             value += fac*face_sum*center;
             at(y,b,k,j,i) = static_cast<Real>(value);
@@ -1748,12 +1760,71 @@ void linearMGDriver::SolveFGMRES(int stage) {
       }
       y[row] = value/diag;
     }
+    const bool update_audit = std::getenv("ATHENA_NRFLD_FGMRES_UPDATE_AUDIT") != nullptr;
+    BlockVector x_before, requested, r_before, audit_gap_operator;
+    if (update_audit) {
+      x_before=make_vector(); requested=make_vector(); r_before=make_vector();
+      copy(x_before,x); copy(r_before,r);
+      for (int j=0; j<used; ++j) axpy(requested,y[j],z[j]);
+    }
     for (int j = 0; j < used; ++j) axpy(x, y[j], z[j]);
+    long double update_data[3]={};
+    long long stale_cells=0;
+    long double predicted_rel=0.0L, amplified_gap_rel=0.0L;
+    if (update_audit) {
+      BlockVector gap=make_vector();
+      BlockVector arequested=make_vector();
+      audit_gap_operator=make_vector();
+      for (std::size_t block=0; block<x.size(); ++block) {
+        MeshBlock *pmb=static_cast<linearMG*>(vmg_[block])->pmy_block_;
+        for (int k=pmb->ks; k<=pmb->ke; ++k)
+          for (int j=pmb->js; j<=pmb->je; ++j)
+            for (int i=pmb->is; i<=pmb->ie; ++i) {
+              const long double wanted=cat(requested,block,k,j,i);
+              const long double got=static_cast<long double>(cat(x,block,k,j,i))
+                  -cat(x_before,block,k,j,i);
+              at(gap,block,k,j,i)=static_cast<Real>(wanted-got);
+              update_data[0]+=wanted*wanted;
+              update_data[1]+=got*got;
+              update_data[2]+=(wanted-got)*(wanted-got);
+              if (wanted!=0.0L && got==0.0L) ++stale_cells;
+            }
+      }
+      apply_operator(requested,arequested);
+      apply_operator(gap,audit_gap_operator);
+      axpy(r_before,-1.0,arequested);
+      predicted_rel=norm(r_before)/bnorm;
+      amplified_gap_rel=norm(audit_gap_operator)/bnorm;
+#ifdef MPI_PARALLEL
+      MPI_Allreduce(MPI_IN_PLACE,update_data,3,MPI_LONG_DOUBLE,MPI_SUM,MPI_COMM_WORLD);
+      MPI_Allreduce(MPI_IN_PLACE,&stale_cells,1,MPI_LONG_LONG,MPI_SUM,MPI_COMM_WORLD);
+#endif
+    }
     apply_operator(x, ax);
     copy(r,b);
     axpy(r, -1.0, ax);
     beta = norm(r);
     relative_residual = static_cast<Real>(beta/bnorm);
+    long double update_closure_rel=0.0L;
+    if (update_audit) {
+      BlockVector closure=make_vector();
+      copy(closure,r);
+      axpy(closure,-1.0,r_before);
+      axpy(closure,-1.0,audit_gap_operator);
+      update_closure_rel=norm(closure)/bnorm;
+    }
+    if (update_audit && Globals::my_rank==0) {
+      std::cout << "[LINEAR_FGMRES_UPDATE_AUDIT] iterations=" << total_iterations
+                << " projected=" << static_cast<long double>(std::abs(g[used]))/bnorm
+                << " predicted=" << predicted_rel
+                << " true=" << beta/bnorm
+                << " requested_norm=" << std::sqrt(update_data[0])
+                << " realized_norm=" << std::sqrt(update_data[1])
+                << " update_gap_norm=" << std::sqrt(update_data[2])
+                << " amplified_gap_rel=" << amplified_gap_rel
+                << " closure_rel=" << update_closure_rel
+                << " stale_cells=" << stale_cells << std::endl;
+    }
     if (Globals::my_rank == 0
         && std::getenv("ATHENA_NRFLD_FGMRES_RESTART_AUDIT") != nullptr) {
       const auto flags = std::cout.flags();
@@ -1775,7 +1846,8 @@ void linearMGDriver::SolveFGMRES(int stage) {
     audit_linearity();
   load_delta(x);
   if (std::getenv("ATHENA_NRFLD_FGMRES_MATVEC_CAST_AUDIT") != nullptr
-      && !NRFLDPrototype::DifferenceJv()) {
+      && !NRFLDPrototype::DifferenceJv()
+      && !NRFLDPrototype::CenteredFaceTrial()) {
     long double sums[3] = {0.0L, 0.0L, 0.0L};
     for (std::size_t bidx = 0; bidx < b.size(); ++bidx) {
       linearMG *pmg = static_cast<linearMG*>(vmg_[bidx]);

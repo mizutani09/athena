@@ -250,6 +250,9 @@ FLD::FLD(MeshBlock *pmb, ParameterInput *pin) :
           || std::string(COORDINATE_SYSTEM) != "cartesian"
           || ((is_couple || !only_rad) && !NRFLDPrototype::CoupledTrial())
           || ((is_couple || !only_rad) && NRFLDPrototype::DifferenceJv())
+          || (NRFLDPrototype::CenteredFaceTrial()
+              && NRFLDPrototype::DifferenceJv())
+          || (NRFLDPrototype::Flag("ATHENA_NRFLD_CENTERED_FACE_TRIAL") && !test_c)
           || (NRFLDPrototype::TangentialReconstruction()
               && !NRFLDPrototype::SharedCoeff())
           || (NRFLDPrototype::SeriesResistance()
@@ -267,7 +270,9 @@ FLD::FLD(MeshBlock *pmb, ParameterInput *pin) :
           << "Conservative NR-FLD requires either periodic "
           << "Test C or validated Mach 5 on a Cartesian "
           << "cubic mesh with user x1 and periodic transverse boundaries. "
-          << "Coupling requires assembled Jv, and variable limiters must "
+          << "The centered-face trial is limited to Test C and requires "
+          << "assembled Jv. Coupling also requires assembled Jv, "
+          << "and variable limiters must "
           << "stay frozen within each solve. "
           << "Tangential reconstruction requires shared coefficients. "
           << "Series resistance requires Test C with shared coefficients, "

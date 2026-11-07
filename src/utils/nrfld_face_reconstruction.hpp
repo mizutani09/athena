@@ -5,6 +5,19 @@
 #include "../mesh/mesh.hpp"
 
 namespace NRFLDFaceReconstruction {
+inline Real CoarseReference(const AthenaArray<Real> &coarse,
+                           const MeshBlock *mb, int face,
+                           int k, int j, int i) {
+  const int ck=mb->cks+(k-mb->ks)/2;
+  const int cj=mb->cjs+(j-mb->js)/2;
+  const int ci=mb->cis+(i-mb->is)/2;
+  if (face == 0) return coarse(0,ck,cj,mb->cis-1);
+  if (face == 1) return coarse(0,ck,cj,mb->cie+1);
+  if (face == 2) return coarse(0,ck,mb->cjs-1,ci);
+  if (face == 3) return coarse(0,ck,mb->cje+1,ci);
+  if (face == 4) return coarse(0,mb->cks-1,cj,ci);
+  return coarse(0,mb->cke+1,cj,ci);
+}
 // The two fine cells in each tangential direction share one coarse cell.
 // Their difference estimates the coarse-center to fine-subface offset for a
 // linear field. The same linear expression applies to an iterate and a Jv.

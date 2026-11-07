@@ -158,6 +158,9 @@ class NRFLD : public NewtonRaphson {
                        const AthenaArray<Real> &u_old, const AthenaArray<Real> &coeff,
                        const AthenaArray<Real> &def_coeff,
                        bool th) final;
+  long double CenteredInterfaceFaceTerm(const AthenaArray<Real> &state,
+                                 Real coefficient, Real neighbor, Real center,
+                                 int face, int k, int j, int i) const;
   void CalculateAdditionalDefectNorms(Real &l2_sum, Real &max_norm,
                                       bool &active, bool &finite) const final;
   bool PrimaryDefectIsGas() const final;
@@ -234,6 +237,7 @@ class NRFLDDriver : public NewtonRaphsonDriver {
   void RunDirectionDiagnostic() final;
   void RunCommittedDiagnostic() final;
   void SyncInterfaceFaceMoments() final;
+  void SyncCorrectionFaceMoments();
 
   // void Solve(int step, Real dt = 0.0) final;
 
