@@ -20576,7 +20576,7 @@
   "shifted_partial_regrid_trial": {
     "purpose": "test-only 0.125 x-shift of deterministic refinement region after cycle 1; production pgen unchanged",
     "source_patch_archive_member": "trials/shift_regrid_test_only.patch",
-    "input_archive_sha256": "bf23bdfc88cec1275a10df02054a90c603464879e7ff677f7f5a3f55877b5018",
+    "input_archive_sha256": "f7c3dff42bd2ccb7e19085c5ac9455ec98bb9702ed68a09800334acd8faabc55",
     "runs": [
       {
         "name": "shift_regrid_r1",
@@ -21528,5 +21528,311 @@
     "rank_output_comparison": "all numerical HDF datasets exactly equal between 1 and 2 ranks at each of four outputs for q1e4; same for q1e7 initial non-ledger runs",
     "conclusion": "q1e4 retains measurable face flux after the 9-created/9-destroyed partial regrid; all six coarse/fine face pairs pass 1e-6 relative tolerance in both MPI layouts. The q1e7 face relative metric is dominated by near-zero flux and is not used as conservation evidence.",
     "variable_limiter_rank_output_comparison": "all numerical HDF datasets exactly equal between 1 and 2 ranks at each of four outputs; closure=frozen in Jv diagnostic"
+  },
+  "wor29_dynamic_variable_regrid_colors": {
+    "production_operator_source_commit": "d6a9e085",
+    "trial_pgen_patch_archive_member": "trials/shift_regrid_test_only.patch",
+    "input_archive_sha256": "f7c3dff42bd2ccb7e19085c5ac9455ec98bb9702ed68a09800334acd8faabc55",
+    "baseline_fgmres_total_iterations": 28,
+    "baseline_history": [
+      9,
+      9,
+      10
+    ],
+    "baseline_wall_time_r1_r2": [
+      "0:05.68",
+      "0:03.55"
+    ],
+    "runs": [
+      {
+        "name": "shift_regrid_variable_q1e4_consistent_r1",
+        "source_commit_base": "d6a9e085",
+        "test_only_patch_sha256": "716184019b8456dd1b2fbcad82770bc92b369f551594f701827ff63010b119ea",
+        "binary_sha256": "d7d90ea206d59507d66fb190fb20d01023825d16fb236a19dfcc06fa5138f8f1",
+        "input_archive_member": "trials/shift_regrid_consistent_rb.in",
+        "input_sha256": "2e360e5aabaf0d65f3fc0659d57b06a6c306932967c2c28de2af0619444ae78a",
+        "overrides": {
+          "nrfld/linear_solver": "fgmres",
+          "fld/const_opacity": 8.186332719786666e-05,
+          "fld/fixed_flux_limiter": false,
+          "nrfld/fgmres_linearity_check": false
+        },
+        "ranks": 1,
+        "threads": 1,
+        "run_log": "/tmp/wor25_23_24_resolution_trials/shift_regrid_variable_q1e4_consistent_r1/run.log",
+        "exit_status": 0,
+        "wall_time": "0:05.32",
+        "peak_rss_kb": 246084,
+        "newton_statuses": [
+          {
+            "status": "dt_zero_initialization",
+            "iterations": 0
+          },
+          {
+            "status": "dt_zero_initialization",
+            "iterations": 0
+          },
+          {
+            "status": "converged",
+            "iterations": 1
+          },
+          {
+            "status": "converged",
+            "iterations": 1
+          },
+          {
+            "status": "converged",
+            "iterations": 0
+          },
+          {
+            "status": "converged",
+            "iterations": 1
+          }
+        ],
+        "fgmres_history": [
+          {
+            "iterations": 9,
+            "explicit_relative_residual": 3.0582787235188474e-09
+          },
+          {
+            "iterations": 9,
+            "explicit_relative_residual": 3.815310785172616e-09
+          },
+          {
+            "iterations": 10,
+            "explicit_relative_residual": 9.827167312463325e-10
+          }
+        ],
+        "fgmres_total_iterations": 28,
+        "Er_hdf_diagnostic": {
+          "initial_integral": 0.01578165590763092,
+          "final_integral": 0.01578165963292122,
+          "relative_change": 2.3605192764725155e-07,
+          "final_minimum": 1.0100247859954834,
+          "precision": "single HDF; rounding floor near 1e-7"
+        },
+        "final_hdf_exact_vs_default": true,
+        "evaluation": "PASS_NO_IMPROVEMENT"
+      },
+      {
+        "name": "shift_regrid_variable_q1e4_consistent_r2",
+        "source_commit_base": "d6a9e085",
+        "test_only_patch_sha256": "716184019b8456dd1b2fbcad82770bc92b369f551594f701827ff63010b119ea",
+        "binary_sha256": "d7d90ea206d59507d66fb190fb20d01023825d16fb236a19dfcc06fa5138f8f1",
+        "input_archive_member": "trials/shift_regrid_consistent_rb.in",
+        "input_sha256": "2e360e5aabaf0d65f3fc0659d57b06a6c306932967c2c28de2af0619444ae78a",
+        "overrides": {
+          "nrfld/linear_solver": "fgmres",
+          "fld/const_opacity": 8.186332719786666e-05,
+          "fld/fixed_flux_limiter": false,
+          "nrfld/fgmres_linearity_check": false
+        },
+        "ranks": 2,
+        "threads": 1,
+        "run_log": "/tmp/wor25_23_24_resolution_trials/shift_regrid_variable_q1e4_consistent_r2/run.log",
+        "exit_status": 0,
+        "wall_time": "0:03.32",
+        "peak_rss_kb": 157552,
+        "newton_statuses": [
+          {
+            "status": "dt_zero_initialization",
+            "iterations": 0
+          },
+          {
+            "status": "dt_zero_initialization",
+            "iterations": 0
+          },
+          {
+            "status": "converged",
+            "iterations": 1
+          },
+          {
+            "status": "converged",
+            "iterations": 1
+          },
+          {
+            "status": "converged",
+            "iterations": 0
+          },
+          {
+            "status": "converged",
+            "iterations": 1
+          }
+        ],
+        "fgmres_history": [
+          {
+            "iterations": 9,
+            "explicit_relative_residual": 3.058278862704215e-09
+          },
+          {
+            "iterations": 9,
+            "explicit_relative_residual": 3.815309966334374e-09
+          },
+          {
+            "iterations": 10,
+            "explicit_relative_residual": 9.82712606641477e-10
+          }
+        ],
+        "fgmres_total_iterations": 28,
+        "Er_hdf_diagnostic": {
+          "initial_integral": 0.01578165590763092,
+          "final_integral": 0.01578165963292122,
+          "relative_change": 2.3605192764725155e-07,
+          "final_minimum": 1.0100247859954834,
+          "precision": "single HDF; rounding floor near 1e-7"
+        },
+        "final_hdf_exact_vs_default": true,
+        "evaluation": "PASS_NO_IMPROVEMENT"
+      },
+      {
+        "name": "shift_regrid_variable_q1e4_symmetric_r1",
+        "source_commit_base": "d6a9e085",
+        "test_only_patch_sha256": "716184019b8456dd1b2fbcad82770bc92b369f551594f701827ff63010b119ea",
+        "binary_sha256": "d7d90ea206d59507d66fb190fb20d01023825d16fb236a19dfcc06fa5138f8f1",
+        "input_archive_member": "trials/shift_regrid_symmetric_rb.in",
+        "input_sha256": "c692047aaeae379791fff094aa03edc91b555c204ec254e5e517fcd7f56bf50d",
+        "overrides": {
+          "nrfld/linear_solver": "fgmres",
+          "fld/const_opacity": 8.186332719786666e-05,
+          "fld/fixed_flux_limiter": false,
+          "nrfld/fgmres_linearity_check": false
+        },
+        "ranks": 1,
+        "threads": 1,
+        "run_log": "/tmp/wor25_23_24_resolution_trials/shift_regrid_variable_q1e4_symmetric_r1/run.log",
+        "exit_status": 0,
+        "wall_time": "0:05.92",
+        "peak_rss_kb": 246060,
+        "newton_statuses": [
+          {
+            "status": "dt_zero_initialization",
+            "iterations": 0
+          },
+          {
+            "status": "dt_zero_initialization",
+            "iterations": 0
+          },
+          {
+            "status": "converged",
+            "iterations": 2
+          },
+          {
+            "status": "converged",
+            "iterations": 1
+          },
+          {
+            "status": "converged",
+            "iterations": 0
+          },
+          {
+            "status": "converged",
+            "iterations": 1
+          }
+        ],
+        "fgmres_history": [
+          {
+            "iterations": 9,
+            "explicit_relative_residual": 9.54708160201366e-09
+          },
+          {
+            "iterations": 11,
+            "explicit_relative_residual": 2.1671116403431383e-09
+          },
+          {
+            "iterations": 10,
+            "explicit_relative_residual": 1.2207949195602585e-09
+          },
+          {
+            "iterations": 11,
+            "explicit_relative_residual": 3.3195520921665173e-09
+          }
+        ],
+        "fgmres_total_iterations": 41,
+        "Er_hdf_diagnostic": {
+          "initial_integral": 0.01578165590763092,
+          "final_integral": 0.01578165963292122,
+          "relative_change": 2.3605192764725155e-07,
+          "final_minimum": 1.0100247859954834,
+          "precision": "single HDF; rounding floor near 1e-7"
+        },
+        "final_hdf_exact_vs_default": true,
+        "evaluation": "PASS_NO_IMPROVEMENT"
+      },
+      {
+        "name": "shift_regrid_variable_q1e4_symmetric_r2",
+        "source_commit_base": "d6a9e085",
+        "test_only_patch_sha256": "716184019b8456dd1b2fbcad82770bc92b369f551594f701827ff63010b119ea",
+        "binary_sha256": "d7d90ea206d59507d66fb190fb20d01023825d16fb236a19dfcc06fa5138f8f1",
+        "input_archive_member": "trials/shift_regrid_symmetric_rb.in",
+        "input_sha256": "c692047aaeae379791fff094aa03edc91b555c204ec254e5e517fcd7f56bf50d",
+        "overrides": {
+          "nrfld/linear_solver": "fgmres",
+          "fld/const_opacity": 8.186332719786666e-05,
+          "fld/fixed_flux_limiter": false,
+          "nrfld/fgmres_linearity_check": false
+        },
+        "ranks": 2,
+        "threads": 1,
+        "run_log": "/tmp/wor25_23_24_resolution_trials/shift_regrid_variable_q1e4_symmetric_r2/run.log",
+        "exit_status": 0,
+        "wall_time": "0:03.49",
+        "peak_rss_kb": 157372,
+        "newton_statuses": [
+          {
+            "status": "dt_zero_initialization",
+            "iterations": 0
+          },
+          {
+            "status": "dt_zero_initialization",
+            "iterations": 0
+          },
+          {
+            "status": "converged",
+            "iterations": 2
+          },
+          {
+            "status": "converged",
+            "iterations": 1
+          },
+          {
+            "status": "converged",
+            "iterations": 0
+          },
+          {
+            "status": "converged",
+            "iterations": 1
+          }
+        ],
+        "fgmres_history": [
+          {
+            "iterations": 9,
+            "explicit_relative_residual": 9.547081600019727e-09
+          },
+          {
+            "iterations": 11,
+            "explicit_relative_residual": 2.16711219443766e-09
+          },
+          {
+            "iterations": 10,
+            "explicit_relative_residual": 1.2207949195602587e-09
+          },
+          {
+            "iterations": 11,
+            "explicit_relative_residual": 3.31954946573259e-09
+          }
+        ],
+        "fgmres_total_iterations": 41,
+        "Er_hdf_diagnostic": {
+          "initial_integral": 0.01578165590763092,
+          "final_integral": 0.01578165963292122,
+          "relative_change": 2.3605192764725155e-07,
+          "final_minimum": 1.0100247859954834,
+          "precision": "single HDF; rounding floor near 1e-7"
+        },
+        "final_hdf_exact_vs_default": true,
+        "evaluation": "PASS_NO_IMPROVEMENT"
+      }
+    ],
+    "conclusion": "consistent colors retains 28 iterations and bitwise-identical final HDF; symmetric RB sweeps increases to 41 iterations and four linear solves. Timing differences under 0.4 s are not evidence for a setting change; both options rejected."
   }
 }
