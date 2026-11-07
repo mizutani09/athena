@@ -1,0 +1,44 @@
+diff --git a/src/linear_solver/linearMG/linearMG.cpp b/src/linear_solver/linearMG/linearMG.cpp
+index ed4b1e15..dc025095 100644
+--- a/src/linear_solver/linearMG/linearMG.cpp
++++ b/src/linear_solver/linearMG/linearMG.cpp
+@@ -1646,6 +1646,10 @@ void linearMGDriver::SolveFGMRES(int stage) {
+     for (const auto &block : basis) basis_slots += block.GetSize();
+ 
+   BlockVector b = make_vector(), x = make_vector(), r = make_vector(), ax = make_vector();
++  const bool compensated_x_trial =
++      NRFLDPrototype::Flag("ATHENA_NRFLD_FGMRES_COMPENSATED_X_TRIAL");
++  BlockVector x_tail;
++  if (compensated_x_trial) x_tail=make_vector();
+   std::size_t work_slots = 0;
+   for (const auto &block : b) work_slots += block.GetSize();
+   for (const auto &block : x) work_slots += block.GetSize();
+@@ -1767,7 +1771,27 @@ void linearMGDriver::SolveFGMRES(int stage) {
+       copy(x_before,x); copy(r_before,r);
+       for (int j=0; j<used; ++j) axpy(requested,y[j],z[j]);
+     }
+-    for (int j = 0; j < used; ++j) axpy(x, y[j], z[j]);
++    if (compensated_x_trial) {
++      // Keep the low bits lost when each restart updates a double solution.
++      // The operator and returned Newton correction still use the rounded x.
++      for (std::size_t block=0; block<x.size(); ++block) {
++        MeshBlock *pmb=static_cast<linearMG*>(vmg_[block])->pmy_block_;
++        for (int k=pmb->ks; k<=pmb->ke; ++k)
++          for (int j=pmb->js; j<=pmb->je; ++j)
++            for (int i=pmb->is; i<=pmb->ie; ++i) {
++              long double value=static_cast<long double>(cat(x,block,k,j,i))
++                  +cat(x_tail,block,k,j,i);
++              for (int basis=0; basis<used; ++basis)
++                value+=static_cast<long double>(y[basis])
++                    *cat(z[basis],block,k,j,i);
++              const Real rounded=static_cast<Real>(value);
++              at(x,block,k,j,i)=rounded;
++              at(x_tail,block,k,j,i)=static_cast<Real>(value-rounded);
++            }
++      }
++    } else {
++      for (int j = 0; j < used; ++j) axpy(x, y[j], z[j]);
++    }
+     long double update_data[3]={};
+     long long stale_cells=0;
+     long double predicted_rel=0.0L, amplified_gap_rel=0.0L;
