@@ -14865,5 +14865,904 @@
       "jv_on_off_final_hdf_numeric_exact_r2": true
     },
     "verdict": "PASS_WOR23_JV_AND_FACE_LEDGER; FAIL_WOR24_GRAVITY_MPI_REPRODUCIBILITY"
+  },
+  "partial_gravity_handoff_fix": {
+    "source_commit_before_fix": "9bd44831cbc1b8dbb4016293645ec6650e6a6895",
+    "source_commit_after_fix": null,
+    "binary_sha256": "6298a6e45cb1f151deafdea0795ea11a7b3b3f3269e5e9770a6b54d026ff75be",
+    "input_archive_existing": {
+      "path": "/home/kosuke/simulation/athena-wor25-23-24-resolution/tst/nrfld_validation/wor25_23_24_resolution_inputs_20261107.tar.gz",
+      "sha256": "cf6cda93cea8582b9590788187fa53dca16fe887ca9c00373982cfcec2fedd3c",
+      "members": 197
+    },
+    "first_mismatch": {
+      "fmglevel": 3,
+      "meaning": "first MeshBlock level after root/octet",
+      "root_and_octet_sources_identical_1_vs_2_rank": true,
+      "gid21_u_sum_difference": 0.5278945957403494,
+      "gid23_u_sum_difference": 0.1439712533837394,
+      "gid21_gid23_source_sum_difference": 0.0
+    },
+    "rejected_diagnostics": [
+      {
+        "trial": "fixed multipole origin",
+        "binary_sha256": "552f1a9e5c453095e93fa2657a77130a6626988b282cd10cc0d7574ba512a1fa",
+        "phi_relative_l1": 0.00022676573773417152,
+        "disposition": "rejected: no improvement"
+      },
+      {
+        "trial": "forced 1-rank initial multipole coefficients on 2 ranks",
+        "binary_sha256": "d4a1d87d6c697f044eb5c17e6124b96a30d122bb5be0f31092693ab9c7b1e888",
+        "disposition": "rejected: FMG level 3 discrepancy unchanged"
+      },
+      {
+        "trial": "periodic gravity boundary",
+        "binary_sha256": "552f1a9e5c453095e93fa2657a77130a6626988b282cd10cc0d7574ba512a1fa",
+        "phi_relative_l1": 0.0,
+        "disposition": "diagnostic only: changes Poisson mean source and physical boundary"
+      }
+    ],
+    "isolated_all_octets_prototype": {
+      "binary_sha256": "40d3da0a57f88c97cada20e8a9c0aca21fbbde137481cb41e0cd6180d080b123",
+      "phi_relative_l1": 4.446323288428442e-16
+    },
+    "production_runs": [
+      {
+        "case": "gravity_partial_fixprod_direct_r1",
+        "ranks": 1,
+        "source_commit_before_fix": "9bd44831cbc1b8dbb4016293645ec6650e6a6895",
+        "binary_sha256": "6298a6e45cb1f151deafdea0795ea11a7b3b3f3269e5e9770a6b54d026ff75be",
+        "binary_path": "/tmp/wor25_23_24_resolution_collapse_mixedjv_build/bin/athena",
+        "input_path": "/tmp/wor25_23_24_resolution_trials/gravity_partial_fixprod_direct_r1/input.used",
+        "input_sha256": "d26d31f89a9fc343bca5a4ca3c81ff3a77f1de080b549846aa9d42bc762a67ed",
+        "checkpoint_path": null,
+        "checkpoint_sha256": null,
+        "overrides": {},
+        "environment": {
+          "ATHENA_NRFLD_EXPERIMENTAL_COLLAPSE": "1"
+        },
+        "run_log": "/tmp/wor25_23_24_resolution_trials/gravity_partial_fixprod_direct_r1/run.log",
+        "elapsed": "0:05.54",
+        "peak_rss_kb": 301784,
+        "newton_statuses": [
+          "dt_zero_initialization",
+          "converged",
+          "converged",
+          "converged",
+          "converged",
+          "converged",
+          "converged",
+          "converged"
+        ],
+        "fgmres_history": [
+          {
+            "iterations": 14,
+            "explicit_relative_residual": 2.966672945282566e-09
+          },
+          {
+            "iterations": 14,
+            "explicit_relative_residual": 2.9406792108502906e-09
+          },
+          {
+            "iterations": 14,
+            "explicit_relative_residual": 2.947732660669753e-09
+          },
+          {
+            "iterations": 14,
+            "explicit_relative_residual": 2.961068925021387e-09
+          },
+          {
+            "iterations": 14,
+            "explicit_relative_residual": 1.949884185166087e-09
+          },
+          {
+            "iterations": 14,
+            "explicit_relative_residual": 2.9691355131754575e-09
+          },
+          {
+            "iterations": 14,
+            "explicit_relative_residual": 1.9215315682833122e-09
+          },
+          {
+            "iterations": 13,
+            "explicit_relative_residual": 7.242884184502589e-09
+          },
+          {
+            "iterations": 12,
+            "explicit_relative_residual": 9.376515800463211e-09
+          }
+        ],
+        "coarsefine_newton_jv_h1e5": [
+          {
+            "cells": 1736,
+            "rel2": 3.095558618867433e-09
+          },
+          {
+            "cells": 1736,
+            "rel2": 3.4672929627383122e-09
+          },
+          {
+            "cells": 1736,
+            "rel2": 3.3101785675162594e-09
+          },
+          {
+            "cells": 1736,
+            "rel2": 3.2053386870832133e-09
+          },
+          {
+            "cells": 1736,
+            "rel2": 3.3139059198858257e-09
+          },
+          {
+            "cells": 1736,
+            "rel2": 8.51844659254993e-10
+          }
+        ],
+        "evaluation": "PASS"
+      },
+      {
+        "case": "gravity_partial_fixprod_direct_r2",
+        "ranks": 2,
+        "source_commit_before_fix": "9bd44831cbc1b8dbb4016293645ec6650e6a6895",
+        "binary_sha256": "6298a6e45cb1f151deafdea0795ea11a7b3b3f3269e5e9770a6b54d026ff75be",
+        "binary_path": "/tmp/wor25_23_24_resolution_collapse_mixedjv_build/bin/athena",
+        "input_path": "/tmp/wor25_23_24_resolution_trials/gravity_partial_fixprod_direct_r2/input.used",
+        "input_sha256": "d26d31f89a9fc343bca5a4ca3c81ff3a77f1de080b549846aa9d42bc762a67ed",
+        "checkpoint_path": null,
+        "checkpoint_sha256": null,
+        "overrides": {},
+        "environment": {
+          "ATHENA_NRFLD_EXPERIMENTAL_COLLAPSE": "1"
+        },
+        "run_log": "/tmp/wor25_23_24_resolution_trials/gravity_partial_fixprod_direct_r2/run.log",
+        "elapsed": "0:04.19",
+        "peak_rss_kb": 190716,
+        "newton_statuses": [
+          "dt_zero_initialization",
+          "converged",
+          "converged",
+          "converged",
+          "converged",
+          "converged",
+          "converged",
+          "converged"
+        ],
+        "fgmres_history": [
+          {
+            "iterations": 14,
+            "explicit_relative_residual": 2.966672922178125e-09
+          },
+          {
+            "iterations": 14,
+            "explicit_relative_residual": 2.9406799148291193e-09
+          },
+          {
+            "iterations": 14,
+            "explicit_relative_residual": 2.9477323657246514e-09
+          },
+          {
+            "iterations": 14,
+            "explicit_relative_residual": 2.96106980275185e-09
+          },
+          {
+            "iterations": 14,
+            "explicit_relative_residual": 1.9637238510699332e-09
+          },
+          {
+            "iterations": 14,
+            "explicit_relative_residual": 2.969135100242662e-09
+          },
+          {
+            "iterations": 14,
+            "explicit_relative_residual": 1.9092871741424917e-09
+          },
+          {
+            "iterations": 13,
+            "explicit_relative_residual": 7.24288275671125e-09
+          },
+          {
+            "iterations": 12,
+            "explicit_relative_residual": 9.366400857240043e-09
+          }
+        ],
+        "coarsefine_newton_jv_h1e5": [
+          {
+            "cells": 1736,
+            "rel2": 3.095558548865267e-09
+          },
+          {
+            "cells": 1736,
+            "rel2": 3.2474347693252417e-09
+          },
+          {
+            "cells": 1736,
+            "rel2": 3.5765091615869386e-09
+          },
+          {
+            "cells": 1736,
+            "rel2": 3.5007277940112185e-09
+          },
+          {
+            "cells": 1736,
+            "rel2": 3.2667705783952956e-09
+          },
+          {
+            "cells": 1736,
+            "rel2": 8.520540218900938e-10
+          }
+        ],
+        "evaluation": "PASS"
+      },
+      {
+        "case": "gravity_partial_fixprod_r1",
+        "ranks": 1,
+        "source_commit_before_fix": "9bd44831cbc1b8dbb4016293645ec6650e6a6895",
+        "binary_sha256": "6298a6e45cb1f151deafdea0795ea11a7b3b3f3269e5e9770a6b54d026ff75be",
+        "binary_path": "/tmp/wor25_23_24_resolution_collapse_mixedjv_build/bin/athena",
+        "input_path": null,
+        "input_sha256": null,
+        "checkpoint_path": "/tmp/wor25_23_24_resolution_trials/collapse_adaptive_partial_direct_final_r1/protostellar_core_fld_mayer5.00006.rst",
+        "checkpoint_sha256": "42416ee70c7cc08b4065e33903fb64239d8389ac7dd356fa7ce631641bfcadb1",
+        "overrides": {
+          "time/nlim": 7,
+          "problem/N_J": 1,
+          "nrfld/global_jacobian_check": true
+        },
+        "environment": {
+          "ATHENA_NRFLD_EXPERIMENTAL_COLLAPSE": "1"
+        },
+        "run_log": "/tmp/wor25_23_24_resolution_trials/gravity_partial_fixprod_r1/run.log",
+        "elapsed": "0:04.61",
+        "peak_rss_kb": 317000,
+        "newton_statuses": [
+          "converged",
+          "converged"
+        ],
+        "fgmres_history": [
+          {
+            "iterations": 14,
+            "explicit_relative_residual": 3.326561706892173e-09
+          },
+          {
+            "iterations": 14,
+            "explicit_relative_residual": 7.85794596661889e-09
+          }
+        ],
+        "coarsefine_newton_jv_h1e5": [
+          {
+            "cells": 5120,
+            "rel2": 7.641894930356798e-09
+          }
+        ],
+        "evaluation": "PASS"
+      },
+      {
+        "case": "gravity_partial_fixprod_r2",
+        "ranks": 2,
+        "source_commit_before_fix": "9bd44831cbc1b8dbb4016293645ec6650e6a6895",
+        "binary_sha256": "6298a6e45cb1f151deafdea0795ea11a7b3b3f3269e5e9770a6b54d026ff75be",
+        "binary_path": "/tmp/wor25_23_24_resolution_collapse_mixedjv_build/bin/athena",
+        "input_path": null,
+        "input_sha256": null,
+        "checkpoint_path": "/tmp/wor25_23_24_resolution_trials/collapse_adaptive_partial_direct_final_r1/protostellar_core_fld_mayer5.00006.rst",
+        "checkpoint_sha256": "42416ee70c7cc08b4065e33903fb64239d8389ac7dd356fa7ce631641bfcadb1",
+        "overrides": {
+          "time/nlim": 7,
+          "problem/N_J": 1,
+          "nrfld/global_jacobian_check": true
+        },
+        "environment": {
+          "ATHENA_NRFLD_EXPERIMENTAL_COLLAPSE": "1"
+        },
+        "run_log": "/tmp/wor25_23_24_resolution_trials/gravity_partial_fixprod_r2/run.log",
+        "elapsed": "0:03.84",
+        "peak_rss_kb": 183484,
+        "newton_statuses": [
+          "converged",
+          "converged"
+        ],
+        "fgmres_history": [
+          {
+            "iterations": 14,
+            "explicit_relative_residual": 3.326562188087164e-09
+          },
+          {
+            "iterations": 14,
+            "explicit_relative_residual": 7.858223721611862e-09
+          }
+        ],
+        "coarsefine_newton_jv_h1e5": [
+          {
+            "cells": 5120,
+            "rel2": 7.991068730295939e-09
+          }
+        ],
+        "evaluation": "PASS"
+      },
+      {
+        "case": "gravity_fixprod_static_r1",
+        "ranks": 1,
+        "source_commit_before_fix": "9bd44831cbc1b8dbb4016293645ec6650e6a6895",
+        "binary_sha256": "6298a6e45cb1f151deafdea0795ea11a7b3b3f3269e5e9770a6b54d026ff75be",
+        "binary_path": "/tmp/wor25_23_24_resolution_collapse_mixedjv_build/bin/athena",
+        "input_path": null,
+        "input_sha256": null,
+        "checkpoint_path": "/tmp/wor25_23_24_resolution_trials/gravity_both_static_r1_direct/output/protostellar_core_fld_mayer5.00001.rst",
+        "checkpoint_sha256": "706a2ea71cbb835e856a11480063344f575252a846ad0173bff3a9287a537535",
+        "overrides": {
+          "time/nlim": 2,
+          "nrfld/global_jacobian_check": false
+        },
+        "environment": {
+          "ATHENA_NRFLD_EXPERIMENTAL_COLLAPSE": "1"
+        },
+        "run_log": "/tmp/wor25_23_24_resolution_trials/gravity_fixprod_static_r1/run.log",
+        "elapsed": "0:01.00",
+        "peak_rss_kb": 120156,
+        "newton_statuses": [
+          "converged",
+          "converged"
+        ],
+        "fgmres_history": [
+          {
+            "iterations": 14,
+            "explicit_relative_residual": 2.940648857901311e-09
+          }
+        ],
+        "coarsefine_newton_jv_h1e5": [],
+        "evaluation": "PASS"
+      },
+      {
+        "case": "gravity_fixprod_static_r2",
+        "ranks": 2,
+        "source_commit_before_fix": "9bd44831cbc1b8dbb4016293645ec6650e6a6895",
+        "binary_sha256": "6298a6e45cb1f151deafdea0795ea11a7b3b3f3269e5e9770a6b54d026ff75be",
+        "binary_path": "/tmp/wor25_23_24_resolution_collapse_mixedjv_build/bin/athena",
+        "input_path": null,
+        "input_sha256": null,
+        "checkpoint_path": "/tmp/wor25_23_24_resolution_trials/gravity_both_static_r1_direct/output/protostellar_core_fld_mayer5.00001.rst",
+        "checkpoint_sha256": "706a2ea71cbb835e856a11480063344f575252a846ad0173bff3a9287a537535",
+        "overrides": {
+          "time/nlim": 2,
+          "nrfld/global_jacobian_check": false
+        },
+        "environment": {
+          "ATHENA_NRFLD_EXPERIMENTAL_COLLAPSE": "1"
+        },
+        "run_log": "/tmp/wor25_23_24_resolution_trials/gravity_fixprod_static_r2/run.log",
+        "elapsed": "0:00.89",
+        "peak_rss_kb": 82728,
+        "newton_statuses": [
+          "converged",
+          "converged"
+        ],
+        "fgmres_history": [
+          {
+            "iterations": 14,
+            "explicit_relative_residual": 2.940648941810293e-09
+          }
+        ],
+        "coarsefine_newton_jv_h1e5": [],
+        "evaluation": "PASS"
+      },
+      {
+        "case": "gravity_fixprod_full_r1",
+        "ranks": 1,
+        "source_commit_before_fix": "9bd44831cbc1b8dbb4016293645ec6650e6a6895",
+        "binary_sha256": "6298a6e45cb1f151deafdea0795ea11a7b3b3f3269e5e9770a6b54d026ff75be",
+        "binary_path": "/tmp/wor25_23_24_resolution_collapse_mixedjv_build/bin/athena",
+        "input_path": null,
+        "input_sha256": null,
+        "checkpoint_path": "/tmp/wor25_23_24_resolution_trials/gravity_both_adaptive_r1_direct/output/protostellar_core_fld_mayer5.00002.rst",
+        "checkpoint_sha256": "490ceb8577943ae3a8cfdcd5b0f343f716cc18af875aafb9dca6bec6c6a018ae",
+        "overrides": {
+          "time/nlim": 3,
+          "nrfld/global_jacobian_check": false
+        },
+        "environment": {
+          "ATHENA_NRFLD_EXPERIMENTAL_COLLAPSE": "1"
+        },
+        "run_log": "/tmp/wor25_23_24_resolution_trials/gravity_fixprod_full_r1/run.log",
+        "elapsed": "0:03.20",
+        "peak_rss_kb": 410156,
+        "newton_statuses": [
+          "converged",
+          "converged"
+        ],
+        "fgmres_history": [
+          {
+            "iterations": 9,
+            "explicit_relative_residual": 1.557567618115085e-09
+          }
+        ],
+        "coarsefine_newton_jv_h1e5": [],
+        "evaluation": "PASS"
+      },
+      {
+        "case": "gravity_fixprod_full_r2",
+        "ranks": 2,
+        "source_commit_before_fix": "9bd44831cbc1b8dbb4016293645ec6650e6a6895",
+        "binary_sha256": "6298a6e45cb1f151deafdea0795ea11a7b3b3f3269e5e9770a6b54d026ff75be",
+        "binary_path": "/tmp/wor25_23_24_resolution_collapse_mixedjv_build/bin/athena",
+        "input_path": null,
+        "input_sha256": null,
+        "checkpoint_path": "/tmp/wor25_23_24_resolution_trials/gravity_both_adaptive_r1_direct/output/protostellar_core_fld_mayer5.00002.rst",
+        "checkpoint_sha256": "490ceb8577943ae3a8cfdcd5b0f343f716cc18af875aafb9dca6bec6c6a018ae",
+        "overrides": {
+          "time/nlim": 3,
+          "nrfld/global_jacobian_check": false
+        },
+        "environment": {
+          "ATHENA_NRFLD_EXPERIMENTAL_COLLAPSE": "1"
+        },
+        "run_log": "/tmp/wor25_23_24_resolution_trials/gravity_fixprod_full_r2/run.log",
+        "elapsed": "0:02.72",
+        "peak_rss_kb": 229652,
+        "newton_statuses": [
+          "converged",
+          "converged"
+        ],
+        "fgmres_history": [
+          {
+            "iterations": 9,
+            "explicit_relative_residual": 1.557567537629522e-09
+          }
+        ],
+        "coarsefine_newton_jv_h1e5": [],
+        "evaluation": "PASS"
+      },
+      {
+        "case": "gravity_partial_fixprod_ledger_r1",
+        "ranks": 1,
+        "source_commit_before_fix": "9bd44831cbc1b8dbb4016293645ec6650e6a6895",
+        "binary_sha256": "6298a6e45cb1f151deafdea0795ea11a7b3b3f3269e5e9770a6b54d026ff75be",
+        "binary_path": "/tmp/wor25_23_24_resolution_collapse_mixedjv_build/bin/athena",
+        "input_path": null,
+        "input_sha256": null,
+        "checkpoint_path": "/tmp/wor25_23_24_resolution_trials/collapse_adaptive_partial_direct_final_r1/protostellar_core_fld_mayer5.00006.rst",
+        "checkpoint_sha256": "42416ee70c7cc08b4065e33903fb64239d8389ac7dd356fa7ce631641bfcadb1",
+        "overrides": {
+          "time/nlim": 7,
+          "problem/N_J": 1,
+          "nrfld/global_jacobian_check": false
+        },
+        "environment": {
+          "ATHENA_NRFLD_EXPERIMENTAL_COLLAPSE": "1",
+          "ATHENA_NRFLD_INTERFACE_LEDGER": "1",
+          "ATHENA_NRFLD_ENERGY_LEDGER": "1"
+        },
+        "run_log": "/tmp/wor25_23_24_resolution_trials/gravity_partial_fixprod_ledger_r1/run.log",
+        "elapsed": "0:02.11",
+        "peak_rss_kb": 285568,
+        "newton_statuses": [
+          "converged",
+          "converged"
+        ],
+        "fgmres_history": [
+          {
+            "iterations": 14,
+            "explicit_relative_residual": 3.326561706892173e-09
+          },
+          {
+            "iterations": 14,
+            "explicit_relative_residual": 7.85794596661889e-09
+          }
+        ],
+        "coarsefine_newton_jv_h1e5": [],
+        "evaluation": "PASS",
+        "face_ledger": {
+          "logs": [
+            "run.log"
+          ],
+          "pairs": [
+            {
+              "cycle": 6,
+              "stage": 0,
+              "coarse_gid": 24,
+              "axis": 1,
+              "side": "min",
+              "fine_count": 4,
+              "coarse_flux": 798606.7236580258,
+              "fine_flux": -798606.6227543538,
+              "mismatch": 0.10090367204975337,
+              "relative_mismatch": 6.317482399981232e-08
+            },
+            {
+              "cycle": 6,
+              "stage": 0,
+              "coarse_gid": 24,
+              "axis": 2,
+              "side": "min",
+              "fine_count": 4,
+              "coarse_flux": 798606.5005049871,
+              "fine_flux": -798606.4656386503,
+              "mismatch": 0.0348663367331028,
+              "relative_mismatch": 2.18294851545597e-08
+            },
+            {
+              "cycle": 6,
+              "stage": 0,
+              "coarse_gid": 24,
+              "axis": 3,
+              "side": "max",
+              "fine_count": 4,
+              "coarse_flux": 467402.99683178175,
+              "fine_flux": -467402.8049692111,
+              "mismatch": 0.1918625706457533,
+              "relative_mismatch": 2.0524323905148182e-07
+            },
+            {
+              "cycle": 6,
+              "stage": 0,
+              "coarse_gid": 33,
+              "axis": 1,
+              "side": "min",
+              "fine_count": 4,
+              "coarse_flux": 798606.7716489627,
+              "fine_flux": -798606.5817679539,
+              "mismatch": 0.18988100881688297,
+              "relative_mismatch": 1.1888268302457574e-07
+            },
+            {
+              "cycle": 6,
+              "stage": 0,
+              "coarse_gid": 33,
+              "axis": 2,
+              "side": "max",
+              "fine_count": 4,
+              "coarse_flux": 467402.56827204325,
+              "fine_flux": -467402.68271748564,
+              "mismatch": -0.11444544239202514,
+              "relative_mismatch": 1.2242704271384875e-07
+            },
+            {
+              "cycle": 6,
+              "stage": 0,
+              "coarse_gid": 33,
+              "axis": 3,
+              "side": "min",
+              "fine_count": 4,
+              "coarse_flux": 798606.5687179489,
+              "fine_flux": -798606.4676221207,
+              "mismatch": 0.10109582811128348,
+              "relative_mismatch": 6.329514335979833e-08
+            },
+            {
+              "cycle": 6,
+              "stage": 0,
+              "coarse_gid": 34,
+              "axis": 1,
+              "side": "max",
+              "fine_count": 4,
+              "coarse_flux": 467402.8823064693,
+              "fine_flux": -467402.7400287426,
+              "mismatch": 0.1422777267289348,
+              "relative_mismatch": 1.5220033269966304e-07
+            },
+            {
+              "cycle": 6,
+              "stage": 0,
+              "coarse_gid": 34,
+              "axis": 2,
+              "side": "min",
+              "fine_count": 4,
+              "coarse_flux": 798606.5039612992,
+              "fine_flux": -798606.5270250689,
+              "mismatch": -0.023063769680447876,
+              "relative_mismatch": 1.4440008460364683e-08
+            },
+            {
+              "cycle": 6,
+              "stage": 0,
+              "coarse_gid": 34,
+              "axis": 3,
+              "side": "min",
+              "fine_count": 4,
+              "coarse_flux": 798606.5511870332,
+              "fine_flux": -798606.5172615137,
+              "mismatch": 0.03392551944125444,
+              "relative_mismatch": 2.124044694563387e-08
+            }
+          ],
+          "max_relative_mismatch": 2.0524323905148182e-07,
+          "pass": true
+        }
+      },
+      {
+        "case": "gravity_partial_fixprod_ledger_r2",
+        "ranks": 2,
+        "source_commit_before_fix": "9bd44831cbc1b8dbb4016293645ec6650e6a6895",
+        "binary_sha256": "6298a6e45cb1f151deafdea0795ea11a7b3b3f3269e5e9770a6b54d026ff75be",
+        "binary_path": "/tmp/wor25_23_24_resolution_collapse_mixedjv_build/bin/athena",
+        "input_path": null,
+        "input_sha256": null,
+        "checkpoint_path": "/tmp/wor25_23_24_resolution_trials/collapse_adaptive_partial_direct_final_r1/protostellar_core_fld_mayer5.00006.rst",
+        "checkpoint_sha256": "42416ee70c7cc08b4065e33903fb64239d8389ac7dd356fa7ce631641bfcadb1",
+        "overrides": {
+          "time/nlim": 7,
+          "problem/N_J": 1,
+          "nrfld/global_jacobian_check": false
+        },
+        "environment": {
+          "ATHENA_NRFLD_EXPERIMENTAL_COLLAPSE": "1",
+          "ATHENA_NRFLD_INTERFACE_LEDGER": "1",
+          "ATHENA_NRFLD_ENERGY_LEDGER": "1"
+        },
+        "run_log": "/tmp/wor25_23_24_resolution_trials/gravity_partial_fixprod_ledger_r2/run.log",
+        "elapsed": "0:01.87",
+        "peak_rss_kb": 169224,
+        "newton_statuses": [
+          "converged",
+          "converged"
+        ],
+        "fgmres_history": [
+          {
+            "iterations": 14,
+            "explicit_relative_residual": 3.326562188087164e-09
+          },
+          {
+            "iterations": 14,
+            "explicit_relative_residual": 7.858223721611862e-09
+          }
+        ],
+        "coarsefine_newton_jv_h1e5": [],
+        "evaluation": "PASS",
+        "face_ledger": {
+          "logs": [
+            "mpi_logs/1/rank.0/stdout",
+            "mpi_logs/1/rank.1/stdout"
+          ],
+          "pairs": [
+            {
+              "cycle": 6,
+              "stage": 0,
+              "coarse_gid": 24,
+              "axis": 1,
+              "side": "min",
+              "fine_count": 4,
+              "coarse_flux": 798606.6394276968,
+              "fine_flux": -798606.6465424967,
+              "mismatch": -0.007114799926057458,
+              "relative_mismatch": 4.454508354365286e-09
+            },
+            {
+              "cycle": 6,
+              "stage": 0,
+              "coarse_gid": 24,
+              "axis": 2,
+              "side": "min",
+              "fine_count": 4,
+              "coarse_flux": 798606.467557859,
+              "fine_flux": -798606.3979854512,
+              "mismatch": 0.06957240786869079,
+              "relative_mismatch": 4.3558632270987216e-08
+            },
+            {
+              "cycle": 6,
+              "stage": 0,
+              "coarse_gid": 24,
+              "axis": 3,
+              "side": "max",
+              "fine_count": 4,
+              "coarse_flux": 467402.6563205716,
+              "fine_flux": -467402.5829118637,
+              "mismatch": 0.07340870791813359,
+              "relative_mismatch": 7.852834455486061e-08
+            },
+            {
+              "cycle": 6,
+              "stage": 0,
+              "coarse_gid": 33,
+              "axis": 1,
+              "side": "min",
+              "fine_count": 4,
+              "coarse_flux": 798606.8386910567,
+              "fine_flux": -798606.7007306663,
+              "mismatch": 0.13796039042063057,
+              "relative_mismatch": 8.6375670513399e-08
+            },
+            {
+              "cycle": 6,
+              "stage": 0,
+              "coarse_gid": 33,
+              "axis": 2,
+              "side": "max",
+              "fine_count": 4,
+              "coarse_flux": 467402.48957665707,
+              "fine_flux": -467402.71546414867,
+              "mismatch": -0.22588749160058796,
+              "relative_mismatch": 2.4164124288410185e-07
+            },
+            {
+              "cycle": 6,
+              "stage": 0,
+              "coarse_gid": 33,
+              "axis": 3,
+              "side": "min",
+              "fine_count": 4,
+              "coarse_flux": 798606.6126981081,
+              "fine_flux": -798606.5705695744,
+              "mismatch": 0.042128533707000315,
+              "relative_mismatch": 2.63762747192025e-08
+            },
+            {
+              "cycle": 6,
+              "stage": 0,
+              "coarse_gid": 34,
+              "axis": 1,
+              "side": "max",
+              "fine_count": 4,
+              "coarse_flux": 467402.66641818534,
+              "fine_flux": -467402.6212521459,
+              "mismatch": 0.045166039431933314,
+              "relative_mismatch": 4.831598625687447e-08
+            },
+            {
+              "cycle": 6,
+              "stage": 0,
+              "coarse_gid": 34,
+              "axis": 2,
+              "side": "min",
+              "fine_count": 4,
+              "coarse_flux": 798606.6979343734,
+              "fine_flux": -798606.5880460632,
+              "mismatch": 0.10988831019494683,
+              "relative_mismatch": 6.880002261406984e-08
+            },
+            {
+              "cycle": 6,
+              "stage": 0,
+              "coarse_gid": 34,
+              "axis": 3,
+              "side": "min",
+              "fine_count": 4,
+              "coarse_flux": 798606.7366431571,
+              "fine_flux": -798606.7430939133,
+              "mismatch": -0.006450756220147014,
+              "relative_mismatch": 4.038756435494723e-09
+            }
+          ],
+          "max_relative_mismatch": 2.4164124288410185e-07,
+          "pass": true
+        }
+      }
+    ],
+    "hdf_comparisons": [
+      {
+        "case": "gravity_partial_fixprod_direct",
+        "cycle_output": "00006",
+        "topology_equal": true,
+        "nleaf": 43,
+        "rho_relative_l1": 2.243809098929496e-16,
+        "rho_max_abs": 6.217248937900877e-15,
+        "vel1_relative_l1": 7.033987016557057e-14,
+        "vel1_max_abs": 1.529332216421153e-14,
+        "phi_relative_l1": 5.237261706347405e-16,
+        "phi_max_abs": 7.993605777301127e-15,
+        "Er_relative_l1": 7.657040476062921e-13,
+        "Er_max_abs": 2.2259971643734389e-13,
+        "evaluation": "PASS"
+      },
+      {
+        "case": "gravity_partial_fixprod",
+        "cycle_output": "00008",
+        "topology_equal": true,
+        "nleaf": 43,
+        "rho_relative_l1": 0.0,
+        "rho_max_abs": 0.0,
+        "vel1_relative_l1": 1.2958091904760198e-16,
+        "vel1_max_abs": 2.7755575615628914e-17,
+        "phi_relative_l1": 4.837990643964627e-16,
+        "phi_max_abs": 5.329070518200751e-15,
+        "Er_relative_l1": 1.2399282371220448e-12,
+        "Er_max_abs": 3.603783937933258e-13,
+        "evaluation": "PASS"
+      },
+      {
+        "case": "gravity_fixprod_static",
+        "cycle_output": "00002",
+        "topology_equal": true,
+        "nleaf": 15,
+        "rho_relative_l1": 0.0,
+        "rho_max_abs": 0.0,
+        "vel1_relative_l1": 0.0,
+        "vel1_max_abs": 0.0,
+        "phi_relative_l1": 0.0,
+        "phi_max_abs": 0.0,
+        "Er_relative_l1": 1.7862796732451943e-15,
+        "Er_max_abs": 5.551115123125783e-16,
+        "evaluation": "PASS"
+      },
+      {
+        "case": "gravity_fixprod_full",
+        "cycle_output": "00003",
+        "topology_equal": true,
+        "nleaf": 64,
+        "rho_relative_l1": 2.597911661665361e-21,
+        "rho_max_abs": 1.3877787807814457e-17,
+        "vel1_relative_l1": 2.6398525947302143e-16,
+        "vel1_max_abs": 2.7755575615628914e-17,
+        "phi_relative_l1": 3.8622390364331877e-16,
+        "phi_max_abs": 6.217248937900877e-15,
+        "Er_relative_l1": 8.885056154861883e-16,
+        "Er_max_abs": 2.7755575615628914e-16,
+        "evaluation": "PASS"
+      }
+    ],
+    "decision": "keep minimal all-octet boundary update; collapse production guard remains; WOR-24 unresolved outside tested scope",
+    "testc_shifted_regression": {
+      "runs": [
+        {
+          "case": "gravity_fixprod_testc_shift_r1",
+          "input_path": "/tmp/wor25_23_24_resolution_trials/gravity_fixprod_testc_shift_r1/input.used",
+          "input_sha256": "ba333aee43531158fe9d34b50a6e9cc97ffbfa70fdb43a1ae5dcbc4045fdf8d2",
+          "binary_sha256": "b98695922bcbf27a250c48d8e00d12252b821123a47a1b61d76b8da0b6f8c032",
+          "command": "mpirun -np 1 /tmp/wor25_23_24_resolution_mixedjv_testc_build/bin/athena -i input.used -d output",
+          "run_log": "/tmp/wor25_23_24_resolution_trials/gravity_fixprod_testc_shift_r1/run.log",
+          "wall_time": "0:03.77",
+          "peak_rss_kb": 232016,
+          "newton_statuses": [
+            "dt_zero_initialization",
+            "converged"
+          ],
+          "fgmres_history": [
+            {
+              "iterations": 9,
+              "explicit_relative_residual": 6.6413535646373116e-09
+            },
+            {
+              "iterations": 9,
+              "explicit_relative_residual": 9.545204244875529e-09
+            }
+          ],
+          "evaluation": "PASS"
+        },
+        {
+          "case": "gravity_fixprod_testc_shift_r2",
+          "input_path": "/tmp/wor25_23_24_resolution_trials/gravity_fixprod_testc_shift_r2/input.used",
+          "input_sha256": "ba333aee43531158fe9d34b50a6e9cc97ffbfa70fdb43a1ae5dcbc4045fdf8d2",
+          "binary_sha256": "b98695922bcbf27a250c48d8e00d12252b821123a47a1b61d76b8da0b6f8c032",
+          "command": "mpirun -np 2 /tmp/wor25_23_24_resolution_mixedjv_testc_build/bin/athena -i input.used -d output",
+          "run_log": "/tmp/wor25_23_24_resolution_trials/gravity_fixprod_testc_shift_r2/run.log",
+          "wall_time": "0:02.78",
+          "peak_rss_kb": 133436,
+          "newton_statuses": [
+            "dt_zero_initialization",
+            "converged"
+          ],
+          "fgmres_history": [
+            {
+              "iterations": 9,
+              "explicit_relative_residual": 6.640329899823429e-09
+            },
+            {
+              "iterations": 9,
+              "explicit_relative_residual": 9.579238988340055e-09
+            }
+          ],
+          "evaluation": "PASS"
+        },
+        {
+          "case": "gravity_fixprod_testc_mg_r1",
+          "input_path": "/tmp/wor25_23_24_resolution_trials/gravity_fixprod_testc_mg_r1/input.used",
+          "input_sha256": "ba333aee43531158fe9d34b50a6e9cc97ffbfa70fdb43a1ae5dcbc4045fdf8d2",
+          "binary_sha256": "b98695922bcbf27a250c48d8e00d12252b821123a47a1b61d76b8da0b6f8c032",
+          "command": "mpirun -np 1 /tmp/wor25_23_24_resolution_mixedjv_testc_build/bin/athena -i input.used -d output nrfld/linear_solver=mg nrfld/fgmres_linearity_check=false",
+          "run_log": "/tmp/wor25_23_24_resolution_trials/gravity_fixprod_testc_mg_r1/run.log",
+          "wall_time": "0:06.56",
+          "peak_rss_kb": 225840,
+          "newton_statuses": [
+            "dt_zero_initialization",
+            "backtracking_exhausted"
+          ],
+          "fgmres_history": [],
+          "evaluation": "EXPECTED_FAIL"
+        }
+      ],
+      "fgmres_final_hdf_1_vs_2_rank_exact": true,
+      "fgmres_final_hdf_1_rank_vs_pre_fix_exact": true,
+      "mg_only_failure_unchanged": true,
+      "decision": "WOR-25 remains unresolved; no new solver change"
+    }
   }
 }

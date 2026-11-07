@@ -2776,17 +2776,14 @@ void MultigridDriver::SetOctetBoundariesBeforeTransfer(bool folddata) {
   const int ngh = mgroot_->ngh_;
   Real time = pmy_mesh_->time;
 
-  // clear octet boundary flag
-  for (int l = 0; l < nreflevel_; ++l) {
-    for (int o = 0; o < noctets_[l]; ++o)
-      octetbflag_[l][o] = false;
-  }
-
+  // Octets are replicated across ranks.  Update every octet on every rank before
+  // handing its ghost cells to local MeshBlocks.  A local-block traversal can
+  // leave an octet stale on a rank that does not own one of its children.
+  for (int lev = 0; lev < nreflevel_; ++lev) {
 #pragma omp parallel for num_threads(nthreads_)
-  for (auto itr = vmg_.begin(); itr < vmg_.end(); itr++) {
-    Multigrid *pmg = *itr;
-    LogicalLocation loc = pmg->loc_;
-    if (loc.level == locrootlevel_) continue;
+    for (int oid = 0; oid < noctets_[lev]; ++oid) {
+    MGOctet &oct = octets_[lev][oid];
+    LogicalLocation loc = oct.loc;
     int th = 0;
 #ifdef OPENMP_PARALLEL
     th = omp_get_thread_num();
@@ -2795,15 +2792,6 @@ void MultigridDriver::SetOctetBoundariesBeforeTransfer(bool folddata) {
     AthenaArray<Real> &cbufold = cbufold_[th];
     AthenaArray<bool> &ncoarse = ncoarse_[th];
     ncoarse.ZeroClear();
-    loc.lx1 = loc.lx1 >> 1;
-    loc.lx2 = loc.lx2 >> 1;
-    loc.lx3 = loc.lx3 >> 1;
-    loc.level = loc.level - 1;
-    int lev = loc.level - locrootlevel_;
-    int oid = octetmap_[lev][loc];
-    if (octetbflag_[lev][oid] == true) continue;
-    octetbflag_[lev][oid] = true;
-    MGOctet &oct = octets_[lev][oid];
     LogicalLocation nloc = loc;
     for (int ox3 = -1; ox3 <= 1; ++ox3) {
       nloc.lx3 = loc.lx3 + ox3;
@@ -2881,6 +2869,7 @@ void MultigridDriver::SetOctetBoundariesBeforeTransfer(bool folddata) {
       ApplyPhysicalBoundariesOctet(cbufold, loc, oct.ccoord, true, false);
     ProlongateOctetBoundaries(oct.u, oct.uold, cbuf, cbufold, nvar_, ncoarse, folddata);
     ApplyPhysicalBoundariesOctet(oct.u, loc, oct.coord, false, false);
+    }
   }
   return;
 }
