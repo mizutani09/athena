@@ -2277,8 +2277,8 @@
   },
   "input_archive": {
     "path": "/home/kosuke/simulation/athena-wor25-23-24-resolution/tst/nrfld_validation/wor25_23_24_resolution_inputs_20261107.tar.gz",
-    "sha256": "cf6cda93cea8582b9590788187fa53dca16fe887ca9c00373982cfcec2fedd3c",
-    "members": 197
+    "sha256": "53b45d44659e36af2f1bf85921d921fbe6d9e359d8233346be7caaf6b87a8bc6",
+    "members": 198
   },
   "large_collapse_trial": {
     "input_path": "/tmp/wor25_23_24_resolution_trials/collapse_conservative_trial_r1/input.used",
@@ -14868,12 +14868,12 @@
   },
   "partial_gravity_handoff_fix": {
     "source_commit_before_fix": "9bd44831cbc1b8dbb4016293645ec6650e6a6895",
-    "source_commit_after_fix": "71535fb57b7378db78d45bdd5b463e4bdb67f7e7",
+    "source_commit_after_fix": "673e6dfa04404b26795edf4c74c0c76192521e7a",
     "binary_sha256": "6298a6e45cb1f151deafdea0795ea11a7b3b3f3269e5e9770a6b54d026ff75be",
     "input_archive_existing": {
       "path": "/home/kosuke/simulation/athena-wor25-23-24-resolution/tst/nrfld_validation/wor25_23_24_resolution_inputs_20261107.tar.gz",
-      "sha256": "cf6cda93cea8582b9590788187fa53dca16fe887ca9c00373982cfcec2fedd3c",
-      "members": 197
+      "sha256": "53b45d44659e36af2f1bf85921d921fbe6d9e359d8233346be7caaf6b87a8bc6",
+      "members": 198
     },
     "first_mismatch": {
       "fmglevel": 3,
@@ -16016,6 +16016,517 @@
         }
       ],
       "decision": "reject parallel octet update; keep sequential all-octet update to eliminate major thread sensitivity"
+    },
+    "first_production_commit": "71535fb57b7378db78d45bdd5b463e4bdb67f7e7",
+    "two_octet_followup": {
+      "topology": {
+        "level0": 6,
+        "level1": 16
+      },
+      "source_commit": "673e6dfa04404b26795edf4c74c0c76192521e7a",
+      "runs": [
+        {
+          "case": "gravity_fixprod_twooct_r1",
+          "ranks": 1,
+          "threads": 2,
+          "input_path": "/tmp/wor25_23_24_resolution_trials/gravity_fixprod_twooct_r1/input.used",
+          "input_archive_member": "trials/gravity_fixprod_twooct.in",
+          "input_sha256": "bf8de755d89175cd29f8a6a48369182bd9966cdf7df9af707a238ad67950e533",
+          "binary_sha256": "8a00c4757b6542301fc2cc1ad3996bade38e7033eb60430020fb32bc5211a0ce",
+          "environment": {
+            "OMP_NUM_THREADS": "2",
+            "ATHENA_NRFLD_EXPERIMENTAL_COLLAPSE": "1"
+          },
+          "command": "mpirun -np 1 /tmp/wor25_23_24_resolution_collapse_omp_build/bin/athena -i input.used -d output",
+          "run_log": "/tmp/wor25_23_24_resolution_trials/gravity_fixprod_twooct_r1/run.log",
+          "wall_time": "0:02.06",
+          "peak_rss_kb": 162596,
+          "newton_statuses": [
+            "dt_zero_initialization",
+            "converged",
+            "converged"
+          ],
+          "fgmres_history": [
+            {
+              "iterations": 14,
+              "explicit_relative_residual": 3.4581775367888633e-09
+            },
+            {
+              "iterations": 14,
+              "explicit_relative_residual": 3.4005885408649044e-09
+            }
+          ],
+          "evaluation": "PASS"
+        },
+        {
+          "case": "gravity_fixprod_twooct_r2",
+          "ranks": 2,
+          "threads": 2,
+          "input_path": "/tmp/wor25_23_24_resolution_trials/gravity_fixprod_twooct_r2/input.used",
+          "input_archive_member": "trials/gravity_fixprod_twooct.in",
+          "input_sha256": "bf8de755d89175cd29f8a6a48369182bd9966cdf7df9af707a238ad67950e533",
+          "binary_sha256": "8a00c4757b6542301fc2cc1ad3996bade38e7033eb60430020fb32bc5211a0ce",
+          "environment": {
+            "OMP_NUM_THREADS": "2",
+            "ATHENA_NRFLD_EXPERIMENTAL_COLLAPSE": "1"
+          },
+          "command": "mpirun -np 2 /tmp/wor25_23_24_resolution_collapse_omp_build/bin/athena -i input.used -d output",
+          "run_log": "/tmp/wor25_23_24_resolution_trials/gravity_fixprod_twooct_r2/run.log",
+          "wall_time": "0:01.87",
+          "peak_rss_kb": 103672,
+          "newton_statuses": [
+            "dt_zero_initialization",
+            "converged",
+            "converged"
+          ],
+          "fgmres_history": [
+            {
+              "iterations": 14,
+              "explicit_relative_residual": 3.458177923643109e-09
+            },
+            {
+              "iterations": 14,
+              "explicit_relative_residual": 3.400587424811797e-09
+            }
+          ],
+          "evaluation": "PASS"
+        },
+        {
+          "case": "gravity_fixprod_twooct_omp1_r1",
+          "ranks": 1,
+          "threads": 1,
+          "input_path": "/tmp/wor25_23_24_resolution_trials/gravity_fixprod_twooct_omp1_r1/input.used",
+          "input_archive_member": "trials/gravity_fixprod_twooct.in",
+          "input_sha256": "bf8de755d89175cd29f8a6a48369182bd9966cdf7df9af707a238ad67950e533",
+          "binary_sha256": "8a00c4757b6542301fc2cc1ad3996bade38e7033eb60430020fb32bc5211a0ce",
+          "environment": {
+            "OMP_NUM_THREADS": "1",
+            "ATHENA_NRFLD_EXPERIMENTAL_COLLAPSE": "1"
+          },
+          "command": "mpirun -np 1 /tmp/wor25_23_24_resolution_collapse_omp_build/bin/athena -i input.used -d output mesh/num_threads=1",
+          "run_log": "/tmp/wor25_23_24_resolution_trials/gravity_fixprod_twooct_omp1_r1/run.log",
+          "wall_time": "0:01.00",
+          "peak_rss_kb": 162516,
+          "newton_statuses": [
+            "dt_zero_initialization",
+            "converged",
+            "converged"
+          ],
+          "fgmres_history": [
+            {
+              "iterations": 14,
+              "explicit_relative_residual": 3.4581796230563282e-09
+            },
+            {
+              "iterations": 14,
+              "explicit_relative_residual": 3.4005890837278397e-09
+            }
+          ],
+          "evaluation": "PASS"
+        },
+        {
+          "case": "gravity_fixprod_twooct_ledger_r1",
+          "ranks": 1,
+          "threads": 2,
+          "input_path": "/tmp/wor25_23_24_resolution_trials/gravity_fixprod_twooct_ledger_r1/input.used",
+          "input_archive_member": "trials/gravity_fixprod_twooct.in",
+          "input_sha256": "bf8de755d89175cd29f8a6a48369182bd9966cdf7df9af707a238ad67950e533",
+          "binary_sha256": "8a00c4757b6542301fc2cc1ad3996bade38e7033eb60430020fb32bc5211a0ce",
+          "environment": {
+            "OMP_NUM_THREADS": "2",
+            "ATHENA_NRFLD_EXPERIMENTAL_COLLAPSE": "1",
+            "ATHENA_NRFLD_INTERFACE_LEDGER": "1",
+            "ATHENA_NRFLD_ENERGY_LEDGER": "1"
+          },
+          "command": "mpirun -np 1 /tmp/wor25_23_24_resolution_collapse_omp_build/bin/athena -i input.used -d output",
+          "run_log": "/tmp/wor25_23_24_resolution_trials/gravity_fixprod_twooct_ledger_r1/run.log",
+          "wall_time": "0:01.70",
+          "peak_rss_kb": 162476,
+          "newton_statuses": [
+            "dt_zero_initialization",
+            "converged",
+            "converged"
+          ],
+          "fgmres_history": [
+            {
+              "iterations": 14,
+              "explicit_relative_residual": 3.4581775367888633e-09
+            },
+            {
+              "iterations": 14,
+              "explicit_relative_residual": 3.4005885408649044e-09
+            }
+          ],
+          "evaluation": "PASS",
+          "face_ledger": {
+            "logs": [
+              "run.log"
+            ],
+            "pairs": [
+              {
+                "cycle": 0,
+                "stage": 0,
+                "coarse_gid": 16,
+                "axis": 2,
+                "side": "min",
+                "fine_count": 4,
+                "coarse_flux": 1477149.8264816767,
+                "fine_flux": -1477149.8770915193,
+                "mismatch": -0.0506098426412791,
+                "relative_mismatch": 1.7130910103692934e-08
+              },
+              {
+                "cycle": 0,
+                "stage": 0,
+                "coarse_gid": 17,
+                "axis": 2,
+                "side": "min",
+                "fine_count": 4,
+                "coarse_flux": 1477921.1710264122,
+                "fine_flux": -1477921.2074897196,
+                "mismatch": -0.03646330744959414,
+                "relative_mismatch": 1.2336012134686002e-08
+              },
+              {
+                "cycle": 0,
+                "stage": 0,
+                "coarse_gid": 18,
+                "axis": 3,
+                "side": "min",
+                "fine_count": 4,
+                "coarse_flux": 1477149.831333222,
+                "fine_flux": -1477149.7895472618,
+                "mismatch": 0.041785960318520665,
+                "relative_mismatch": 1.4144117280178576e-08
+              },
+              {
+                "cycle": 0,
+                "stage": 0,
+                "coarse_gid": 19,
+                "axis": 3,
+                "side": "min",
+                "fine_count": 4,
+                "coarse_flux": 1477921.2461646793,
+                "fine_flux": -1477921.2135520524,
+                "mismatch": 0.032612626906484365,
+                "relative_mismatch": 1.1033276418124714e-08
+              },
+              {
+                "cycle": 1,
+                "stage": 0,
+                "coarse_gid": 16,
+                "axis": 2,
+                "side": "min",
+                "fine_count": 4,
+                "coarse_flux": 1527582.6397511335,
+                "fine_flux": -1527582.736420063,
+                "mismatch": -0.09666892956010997,
+                "relative_mismatch": 3.1641144637891154e-08
+              },
+              {
+                "cycle": 1,
+                "stage": 0,
+                "coarse_gid": 17,
+                "axis": 2,
+                "side": "min",
+                "fine_count": 4,
+                "coarse_flux": 1528322.6365915423,
+                "fine_flux": -1528322.9043901206,
+                "mismatch": -0.26779857836663723,
+                "relative_mismatch": 8.761191795913368e-08
+              },
+              {
+                "cycle": 1,
+                "stage": 0,
+                "coarse_gid": 18,
+                "axis": 3,
+                "side": "min",
+                "fine_count": 4,
+                "coarse_flux": 1527582.698260825,
+                "fine_flux": -1527582.6892174562,
+                "mismatch": 0.009043368743732572,
+                "relative_mismatch": 2.960025922261749e-09
+              },
+              {
+                "cycle": 1,
+                "stage": 0,
+                "coarse_gid": 19,
+                "axis": 3,
+                "side": "min",
+                "fine_count": 4,
+                "coarse_flux": 1528322.8600027908,
+                "fine_flux": -1528322.7916788978,
+                "mismatch": 0.06832389300689101,
+                "relative_mismatch": 2.2352572326890734e-08
+              }
+            ],
+            "max_relative_mismatch": 8.761191795913368e-08,
+            "pass": true
+          }
+        },
+        {
+          "case": "gravity_fixprod_twooct_ledger_r2",
+          "ranks": 2,
+          "threads": 2,
+          "input_path": "/tmp/wor25_23_24_resolution_trials/gravity_fixprod_twooct_ledger_r2/input.used",
+          "input_archive_member": "trials/gravity_fixprod_twooct.in",
+          "input_sha256": "bf8de755d89175cd29f8a6a48369182bd9966cdf7df9af707a238ad67950e533",
+          "binary_sha256": "8a00c4757b6542301fc2cc1ad3996bade38e7033eb60430020fb32bc5211a0ce",
+          "environment": {
+            "OMP_NUM_THREADS": "2",
+            "ATHENA_NRFLD_EXPERIMENTAL_COLLAPSE": "1",
+            "ATHENA_NRFLD_INTERFACE_LEDGER": "1",
+            "ATHENA_NRFLD_ENERGY_LEDGER": "1"
+          },
+          "command": "mpirun -np 2 /tmp/wor25_23_24_resolution_collapse_omp_build/bin/athena -i input.used -d output",
+          "run_log": "/tmp/wor25_23_24_resolution_trials/gravity_fixprod_twooct_ledger_r2/run.log",
+          "wall_time": "0:01.67",
+          "peak_rss_kb": 103364,
+          "newton_statuses": [
+            "dt_zero_initialization",
+            "converged",
+            "converged"
+          ],
+          "fgmres_history": [
+            {
+              "iterations": 14,
+              "explicit_relative_residual": 3.458177923643109e-09
+            },
+            {
+              "iterations": 14,
+              "explicit_relative_residual": 3.400587424811797e-09
+            }
+          ],
+          "evaluation": "PASS",
+          "face_ledger": {
+            "logs": [
+              "mpi_logs/1/rank.0/stdout",
+              "mpi_logs/1/rank.1/stdout"
+            ],
+            "pairs": [
+              {
+                "cycle": 0,
+                "stage": 0,
+                "coarse_gid": 16,
+                "axis": 2,
+                "side": "min",
+                "fine_count": 4,
+                "coarse_flux": 1477149.846191031,
+                "fine_flux": -1477149.943421184,
+                "mismatch": -0.09723015315830708,
+                "relative_mismatch": 3.2911403744529806e-08
+              },
+              {
+                "cycle": 0,
+                "stage": 0,
+                "coarse_gid": 17,
+                "axis": 2,
+                "side": "min",
+                "fine_count": 4,
+                "coarse_flux": 1477921.182710563,
+                "fine_flux": -1477921.15217123,
+                "mismatch": 0.030539333121851087,
+                "relative_mismatch": 1.0331854565264689e-08
+              },
+              {
+                "cycle": 0,
+                "stage": 0,
+                "coarse_gid": 18,
+                "axis": 3,
+                "side": "min",
+                "fine_count": 4,
+                "coarse_flux": 1477149.9825364032,
+                "fine_flux": -1477149.814990762,
+                "mismatch": 0.16754564130678773,
+                "relative_mismatch": 5.671247090326727e-08
+              },
+              {
+                "cycle": 0,
+                "stage": 0,
+                "coarse_gid": 19,
+                "axis": 3,
+                "side": "min",
+                "fine_count": 4,
+                "coarse_flux": 1477921.069084531,
+                "fine_flux": -1477920.941607564,
+                "mismatch": 0.12747696693986654,
+                "relative_mismatch": 4.312712468350718e-08
+              },
+              {
+                "cycle": 1,
+                "stage": 0,
+                "coarse_gid": 16,
+                "axis": 2,
+                "side": "min",
+                "fine_count": 4,
+                "coarse_flux": 1527582.5907787436,
+                "fine_flux": -1527582.6120912486,
+                "mismatch": -0.02131250500679016,
+                "relative_mismatch": 6.975892821366714e-09
+              },
+              {
+                "cycle": 1,
+                "stage": 0,
+                "coarse_gid": 17,
+                "axis": 2,
+                "side": "min",
+                "fine_count": 4,
+                "coarse_flux": 1528322.6246248374,
+                "fine_flux": -1528322.829147392,
+                "mismatch": -0.2045225545298308,
+                "relative_mismatch": 6.691078753586812e-08
+              },
+              {
+                "cycle": 1,
+                "stage": 0,
+                "coarse_gid": 18,
+                "axis": 3,
+                "side": "min",
+                "fine_count": 4,
+                "coarse_flux": 1527582.6514415354,
+                "fine_flux": -1527582.68181122,
+                "mismatch": -0.03036968456581235,
+                "relative_mismatch": 9.940438978953237e-09
+              },
+              {
+                "cycle": 1,
+                "stage": 0,
+                "coarse_gid": 19,
+                "axis": 3,
+                "side": "min",
+                "fine_count": 4,
+                "coarse_flux": 1528322.8297935408,
+                "fine_flux": -1528322.8008080253,
+                "mismatch": 0.028985515469685197,
+                "relative_mismatch": 9.482785697987723e-09
+              }
+            ],
+            "max_relative_mismatch": 6.691078753586812e-08,
+            "pass": true
+          }
+        },
+        {
+          "case": "gravity_twooct_old_parallel_r1",
+          "ranks": 1,
+          "threads": 2,
+          "input_path": "/tmp/wor25_23_24_resolution_trials/gravity_twooct_old_parallel_r1/input.used",
+          "input_archive_member": "trials/gravity_fixprod_twooct.in",
+          "input_sha256": "bf8de755d89175cd29f8a6a48369182bd9966cdf7df9af707a238ad67950e533",
+          "binary_sha256": "67000aa9495c9a66896212830f16fe9892c3fc5ffd17ef23ed38c483d8f1b57a",
+          "environment": {
+            "OMP_NUM_THREADS": "2",
+            "ATHENA_NRFLD_EXPERIMENTAL_COLLAPSE": "1"
+          },
+          "command": "mpirun -np 1 /tmp/wor25_23_24_resolution_trials/gravity_omp_parallel_control.athena -i input.used -d output",
+          "run_log": "/tmp/wor25_23_24_resolution_trials/gravity_twooct_old_parallel_r1/run.log",
+          "wall_time": "0:01.77",
+          "peak_rss_kb": 162440,
+          "newton_statuses": [
+            "dt_zero_initialization",
+            "converged",
+            "converged"
+          ],
+          "fgmres_history": [
+            {
+              "iterations": 14,
+              "explicit_relative_residual": 3.4581769641552072e-09
+            },
+            {
+              "iterations": 14,
+              "explicit_relative_residual": 3.400569028144025e-09
+            }
+          ],
+          "evaluation": "REJECTED_THREAD_DEPENDENCE"
+        },
+        {
+          "case": "gravity_twooct_old_parallel_r2",
+          "ranks": 2,
+          "threads": 2,
+          "input_path": "/tmp/wor25_23_24_resolution_trials/gravity_twooct_old_parallel_r2/input.used",
+          "input_archive_member": "trials/gravity_fixprod_twooct.in",
+          "input_sha256": "bf8de755d89175cd29f8a6a48369182bd9966cdf7df9af707a238ad67950e533",
+          "binary_sha256": "67000aa9495c9a66896212830f16fe9892c3fc5ffd17ef23ed38c483d8f1b57a",
+          "environment": {
+            "OMP_NUM_THREADS": "2",
+            "ATHENA_NRFLD_EXPERIMENTAL_COLLAPSE": "1"
+          },
+          "command": "mpirun -np 2 /tmp/wor25_23_24_resolution_trials/gravity_omp_parallel_control.athena -i input.used -d output",
+          "run_log": "/tmp/wor25_23_24_resolution_trials/gravity_twooct_old_parallel_r2/run.log",
+          "wall_time": "0:01.78",
+          "peak_rss_kb": 103500,
+          "newton_statuses": [
+            "dt_zero_initialization",
+            "converged",
+            "converged"
+          ],
+          "fgmres_history": [
+            {
+              "iterations": 14,
+              "explicit_relative_residual": 3.4581772377106766e-09
+            },
+            {
+              "iterations": 14,
+              "explicit_relative_residual": 3.400572131873176e-09
+            }
+          ],
+          "evaluation": "REJECTED_THREAD_DEPENDENCE"
+        }
+      ],
+      "comparisons": [
+        {
+          "left": "gravity_fixprod_twooct_r1",
+          "right": "gravity_fixprod_twooct_r2",
+          "topology_equal": true,
+          "nleaf": 22,
+          "rho_relative_l1": 1.6470639768404587e-18,
+          "rho_max_abs": 8.881784197001252e-16,
+          "phi_relative_l1": 4.399189493211127e-16,
+          "phi_max_abs": 5.773159728050814e-15,
+          "Er_relative_l1": 4.920249550466709e-13,
+          "Er_max_abs": 1.4305223672295142e-13
+        },
+        {
+          "left": "gravity_fixprod_twooct_omp1_r1",
+          "right": "gravity_fixprod_twooct_r1",
+          "topology_equal": true,
+          "nleaf": 22,
+          "rho_relative_l1": 2.5670082433619594e-12,
+          "rho_max_abs": 1.3166268075792686e-10,
+          "phi_relative_l1": 5.248504613718137e-07,
+          "phi_max_abs": 7.001535730744024e-06,
+          "Er_relative_l1": 4.3325165876307536e-11,
+          "Er_max_abs": 1.2632561663394881e-11
+        },
+        {
+          "left": "gravity_twooct_old_parallel_r1",
+          "right": "gravity_fixprod_twooct_r1",
+          "topology_equal": true,
+          "nleaf": 22,
+          "rho_relative_l1": 2.4101770529297157e-09,
+          "rho_max_abs": 1.0099738734226094e-07,
+          "phi_relative_l1": 0.0006866099931015804,
+          "phi_max_abs": 0.008304123356003945,
+          "Er_relative_l1": 2.1807484957711642e-08,
+          "Er_max_abs": 6.362058990738717e-09
+        }
+      ],
+      "mass_volume_integrals": [
+        {
+          "rank": 1,
+          "initial": 701479888700.6887,
+          "final": 701479911409.5847,
+          "relative_change": 3.237283970914141e-08,
+          "interpretation": "background processing active"
+        },
+        {
+          "rank": 2,
+          "initial": 701479888700.6887,
+          "final": 701479911409.5847,
+          "relative_change": 3.237283970914141e-08,
+          "interpretation": "background processing active"
+        }
+      ],
+      "decision": "sequential all-octet handoff retained; 2-rank and face conservation PASS; residual thread sensitivity remains"
     }
   }
 }
