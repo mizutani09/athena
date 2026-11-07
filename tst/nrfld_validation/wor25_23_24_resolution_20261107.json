@@ -25423,5 +25423,823 @@
       "cause": "tagger used HDF-relative levels 0/1, while MeshBlock::loc levels are 1/2 in this restart; corrected test-only patch and repeated all key runs",
       "debug_log_path": "/tmp/wor25_23_24_resolution_trials/collapse_shift43_debug_r1/run.log"
     }
+  },
+  "collapse_regrid_restart_after_two_swaps": {
+    "scope": "43-leaf coupled variable-limiter mixed-frame MHD self-gravity; test-only alternating tagger swaps root octets at cycle 7/9/11. Restart same 1-rank cycle-10 checkpoint with 1/2 MPI ranks; compare to continuous and evaluate existing gravity opt-ins.",
+    "input_archive_sha256": "36a50c47f1dfdbf33ad1476c594a915329dd51c3395e5e0b460cce0bdc1b773b",
+    "runs": [
+      {
+        "name": "collapse_oscillating43_gravopts_direct_r1",
+        "source_commit_base": "8e905851",
+        "test_only_patch_archive_member": "trials/collapse_oscillating_shift_test_only.patch",
+        "binary_sha256": "0f649c02137232c0a862514e6532286a1c959193325e89dc84821d6fb7882de2",
+        "checkpoint_path": "/tmp/wor25_23_24_resolution_trials/collapse_adaptive_partial_direct_final_r1/protostellar_core_fld_mayer5.00006.rst",
+        "checkpoint_sha256": "42416ee70c7cc08b4065e33903fb64239d8389ac7dd356fa7ce631641bfcadb1",
+        "ranks": 1,
+        "threads": 2,
+        "environment": {
+          "OMP_NUM_THREADS": "2",
+          "ATHENA_NRFLD_EXPERIMENTAL_COLLAPSE": "1",
+          "ATHENA_NRFLD_INTERFACE_LEDGER": "1",
+          "ATHENA_NRFLD_ENERGY_LEDGER": "1"
+        },
+        "command": "mpirun --output-filename /tmp/wor25_23_24_resolution_trials/collapse_oscillating43_gravopts_direct_r1/mpi -n 1 /tmp/wor25_23_24_resolution_collapse_oscillating_build/bin/athena -r /tmp/wor25_23_24_resolution_trials/collapse_adaptive_partial_direct_final_r1/protostellar_core_fld_mayer5.00006.rst -d output mesh/num_threads=2 mesh/derefine_count=1 time/nlim=13 problem/N_J=7.6160 nrfld/global_jacobian_check=true gravity/reset_fmg_color_each_solve=true gravity/repeat_initial_fmg_after_restart=true",
+        "gravity_opt_ins": true,
+        "run_log": "/tmp/wor25_23_24_resolution_trials/collapse_oscillating43_gravopts_direct_r1/run.log",
+        "exit_status": 0,
+        "wall_time": "0:13.59",
+        "peak_rss_kb": 352056,
+        "newton_statuses": [
+          {
+            "status": "converged",
+            "iterations": 0
+          },
+          {
+            "status": "converged",
+            "iterations": 2
+          },
+          {
+            "status": "converged",
+            "iterations": 2
+          },
+          {
+            "status": "converged",
+            "iterations": 0
+          },
+          {
+            "status": "converged",
+            "iterations": 2
+          },
+          {
+            "status": "converged",
+            "iterations": 2
+          },
+          {
+            "status": "converged",
+            "iterations": 0
+          },
+          {
+            "status": "converged",
+            "iterations": 2
+          },
+          {
+            "status": "converged",
+            "iterations": 2
+          },
+          {
+            "status": "converged",
+            "iterations": 0
+          },
+          {
+            "status": "converged",
+            "iterations": 3
+          }
+        ],
+        "fgmres_history": [
+          {
+            "iterations": 14,
+            "explicit_relative_residual": 3.326561540149647e-09
+          },
+          {
+            "iterations": 14,
+            "explicit_relative_residual": 7.858010466074266e-09
+          },
+          {
+            "iterations": 12,
+            "explicit_relative_residual": 7.299144122047258e-09
+          },
+          {
+            "iterations": 14,
+            "explicit_relative_residual": 4.323996890978059e-09
+          },
+          {
+            "iterations": 12,
+            "explicit_relative_residual": 5.149135331482712e-09
+          },
+          {
+            "iterations": 13,
+            "explicit_relative_residual": 4.518274716945672e-09
+          },
+          {
+            "iterations": 12,
+            "explicit_relative_residual": 4.586133253278179e-09
+          },
+          {
+            "iterations": 13,
+            "explicit_relative_residual": 3.427936199530269e-09
+          },
+          {
+            "iterations": 13,
+            "explicit_relative_residual": 3.744500343434247e-09
+          },
+          {
+            "iterations": 13,
+            "explicit_relative_residual": 8.90187466703776e-09
+          },
+          {
+            "iterations": 13,
+            "explicit_relative_residual": 4.9079530645034175e-09
+          },
+          {
+            "iterations": 14,
+            "explicit_relative_residual": 4.55183786256975e-09
+          },
+          {
+            "iterations": 12,
+            "explicit_relative_residual": 4.51534546109577e-09
+          },
+          {
+            "iterations": 13,
+            "explicit_relative_residual": 7.459540593794214e-09
+          },
+          {
+            "iterations": 13,
+            "explicit_relative_residual": 6.95478213387176e-09
+          }
+        ],
+        "fgmres_total_iterations": 195,
+        "jv_coarse_fine_newton_h1e5_rel2": [
+          7.70810370979161e-09,
+          1.6114562813140053e-09,
+          1.77995195473986e-09,
+          1.7436599938340803e-09,
+          1.7328580063077465e-09,
+          1.1972030286879931e-09,
+          1.2544313168605411e-09
+        ],
+        "coarse_fine_face_conservation": {
+          "pairs": 51,
+          "max_relative_mismatch": 1.6862655653297653e-07,
+          "pass": true
+        },
+        "max_implicit_energy_absolute_relative_balance": 2.745679290434131e-10,
+        "regrid_meshblocks_created_destroyed": [
+          21,
+          21
+        ],
+        "output_11": {
+          "mass_integral": 704254622872.3473,
+          "rho_min": 0.05189587917886114,
+          "pressure_min": 0.02536985846555388,
+          "Er_min": 0.2905945110434431,
+          "leaf_blocks": 43
+        },
+        "output_13": {
+          "mass_integral": 704254643602.8737,
+          "rho_min": 0.051842617165944925,
+          "pressure_min": 0.02534371214735686,
+          "Er_min": 0.29058927035806836,
+          "leaf_blocks": 43
+        },
+        "mass_11_to_13_relative_change": 2.943612394425858e-08,
+        "all_true_residuals_below_1e_minus_8": true
+      },
+      {
+        "name": "collapse_oscillating_restart10_r1",
+        "source_commit_base": "8e905851",
+        "test_only_patch_archive_member": "trials/collapse_oscillating_shift_test_only.patch",
+        "binary_sha256": "0f649c02137232c0a862514e6532286a1c959193325e89dc84821d6fb7882de2",
+        "checkpoint_path": "/tmp/wor25_23_24_resolution_trials/collapse_oscillating43_r1/output/protostellar_core_fld_mayer5.00010.rst",
+        "checkpoint_sha256": "db5093bcbd632744ce8b8433b4fc918f3308d8ad0d1910c80c001ed5adb21552",
+        "ranks": 1,
+        "threads": 2,
+        "environment": {
+          "OMP_NUM_THREADS": "2",
+          "ATHENA_NRFLD_EXPERIMENTAL_COLLAPSE": "1",
+          "ATHENA_NRFLD_INTERFACE_LEDGER": "1",
+          "ATHENA_NRFLD_ENERGY_LEDGER": "1"
+        },
+        "command": "mpirun --output-filename /tmp/wor25_23_24_resolution_trials/collapse_oscillating_restart10_r1/mpi -n 1 /tmp/wor25_23_24_resolution_collapse_oscillating_build/bin/athena -r /tmp/wor25_23_24_resolution_trials/collapse_oscillating43_r1/output/protostellar_core_fld_mayer5.00010.rst -d output mesh/num_threads=2 mesh/derefine_count=1 time/nlim=13 problem/N_J=7.6160 nrfld/global_jacobian_check=true",
+        "gravity_opt_ins": false,
+        "run_log": "/tmp/wor25_23_24_resolution_trials/collapse_oscillating_restart10_r1/run.log",
+        "exit_status": 0,
+        "wall_time": "0:06.32",
+        "peak_rss_kb": 337440,
+        "newton_statuses": [
+          {
+            "status": "converged",
+            "iterations": 0
+          },
+          {
+            "status": "converged",
+            "iterations": 2
+          },
+          {
+            "status": "converged",
+            "iterations": 2
+          },
+          {
+            "status": "converged",
+            "iterations": 0
+          },
+          {
+            "status": "converged",
+            "iterations": 3
+          }
+        ],
+        "fgmres_history": [
+          {
+            "iterations": 13,
+            "explicit_relative_residual": 3.744370463518047e-09
+          },
+          {
+            "iterations": 13,
+            "explicit_relative_residual": 8.90363396036549e-09
+          },
+          {
+            "iterations": 13,
+            "explicit_relative_residual": 4.907952872230368e-09
+          },
+          {
+            "iterations": 14,
+            "explicit_relative_residual": 4.555227229374417e-09
+          },
+          {
+            "iterations": 12,
+            "explicit_relative_residual": 4.515348462402293e-09
+          },
+          {
+            "iterations": 13,
+            "explicit_relative_residual": 7.460279543142786e-09
+          },
+          {
+            "iterations": 13,
+            "explicit_relative_residual": 6.857728188867898e-09
+          }
+        ],
+        "fgmres_total_iterations": 91,
+        "jv_coarse_fine_newton_h1e5_rel2": [
+          1.760278606650732e-09,
+          1.2104875949134556e-09,
+          1.2641908781850815e-09
+        ],
+        "coarse_fine_face_conservation": {
+          "pairs": 23,
+          "max_relative_mismatch": 1.6224156001388186e-07,
+          "pass": true
+        },
+        "max_implicit_energy_absolute_relative_balance": 2.6827083186902863e-10,
+        "regrid_meshblocks_created_destroyed": [
+          7,
+          7
+        ],
+        "output_11": {
+          "mass_integral": 704254622872.6729,
+          "rho_min": 0.051895879178867815,
+          "pressure_min": 0.025369858465506278,
+          "Er_min": 0.290594511041004,
+          "leaf_blocks": 43
+        },
+        "output_13": {
+          "mass_integral": 704254643603.2023,
+          "rho_min": 0.05184261716588088,
+          "pressure_min": 0.025343712147322537,
+          "Er_min": 0.29058927035786103,
+          "leaf_blocks": 43
+        },
+        "mass_11_to_13_relative_change": 2.9436128277560955e-08,
+        "all_true_residuals_below_1e_minus_8": true
+      },
+      {
+        "name": "collapse_oscillating_restart10_r2",
+        "source_commit_base": "8e905851",
+        "test_only_patch_archive_member": "trials/collapse_oscillating_shift_test_only.patch",
+        "binary_sha256": "0f649c02137232c0a862514e6532286a1c959193325e89dc84821d6fb7882de2",
+        "checkpoint_path": "/tmp/wor25_23_24_resolution_trials/collapse_oscillating43_r1/output/protostellar_core_fld_mayer5.00010.rst",
+        "checkpoint_sha256": "db5093bcbd632744ce8b8433b4fc918f3308d8ad0d1910c80c001ed5adb21552",
+        "ranks": 2,
+        "threads": 2,
+        "environment": {
+          "OMP_NUM_THREADS": "2",
+          "ATHENA_NRFLD_EXPERIMENTAL_COLLAPSE": "1",
+          "ATHENA_NRFLD_INTERFACE_LEDGER": "1",
+          "ATHENA_NRFLD_ENERGY_LEDGER": "1"
+        },
+        "command": "mpirun --output-filename /tmp/wor25_23_24_resolution_trials/collapse_oscillating_restart10_r2/mpi -n 2 /tmp/wor25_23_24_resolution_collapse_oscillating_build/bin/athena -r /tmp/wor25_23_24_resolution_trials/collapse_oscillating43_r1/output/protostellar_core_fld_mayer5.00010.rst -d output mesh/num_threads=2 mesh/derefine_count=1 time/nlim=13 problem/N_J=7.6160 nrfld/global_jacobian_check=true",
+        "gravity_opt_ins": false,
+        "run_log": "/tmp/wor25_23_24_resolution_trials/collapse_oscillating_restart10_r2/run.log",
+        "exit_status": 0,
+        "wall_time": "0:04.52",
+        "peak_rss_kb": 221372,
+        "newton_statuses": [
+          {
+            "status": "converged",
+            "iterations": 0
+          },
+          {
+            "status": "converged",
+            "iterations": 2
+          },
+          {
+            "status": "converged",
+            "iterations": 2
+          },
+          {
+            "status": "converged",
+            "iterations": 0
+          },
+          {
+            "status": "converged",
+            "iterations": 3
+          }
+        ],
+        "fgmres_history": [
+          {
+            "iterations": 13,
+            "explicit_relative_residual": 3.74436878257388e-09
+          },
+          {
+            "iterations": 13,
+            "explicit_relative_residual": 8.903100399082634e-09
+          },
+          {
+            "iterations": 13,
+            "explicit_relative_residual": 4.907952225104791e-09
+          },
+          {
+            "iterations": 14,
+            "explicit_relative_residual": 4.556049205616054e-09
+          },
+          {
+            "iterations": 12,
+            "explicit_relative_residual": 4.515345827489605e-09
+          },
+          {
+            "iterations": 13,
+            "explicit_relative_residual": 7.459639251906936e-09
+          },
+          {
+            "iterations": 13,
+            "explicit_relative_residual": 6.89101408112335e-09
+          }
+        ],
+        "fgmres_total_iterations": 91,
+        "jv_coarse_fine_newton_h1e5_rel2": [
+          1.7826604853385132e-09,
+          1.2088852674059012e-09,
+          1.3281511502222444e-09
+        ],
+        "coarse_fine_face_conservation": {
+          "pairs": 23,
+          "max_relative_mismatch": 2.132202320550013e-07,
+          "pass": true
+        },
+        "max_implicit_energy_absolute_relative_balance": 4.301196742648449e-10,
+        "regrid_meshblocks_created_destroyed": [
+          7,
+          7
+        ],
+        "output_11": {
+          "mass_integral": 704254622872.6729,
+          "rho_min": 0.051895879178867815,
+          "pressure_min": 0.02536985846551424,
+          "Er_min": 0.2905945110413854,
+          "leaf_blocks": 43
+        },
+        "output_13": {
+          "mass_integral": 704254643603.2023,
+          "rho_min": 0.051842617165880844,
+          "pressure_min": 0.025343712147327144,
+          "Er_min": 0.29058927035808285,
+          "leaf_blocks": 43
+        },
+        "mass_11_to_13_relative_change": 2.9436128277560955e-08,
+        "all_true_residuals_below_1e_minus_8": true
+      },
+      {
+        "name": "collapse_oscillating43_gravopts_restart10_r1",
+        "source_commit_base": "8e905851",
+        "test_only_patch_archive_member": "trials/collapse_oscillating_shift_test_only.patch",
+        "binary_sha256": "0f649c02137232c0a862514e6532286a1c959193325e89dc84821d6fb7882de2",
+        "checkpoint_path": "/tmp/wor25_23_24_resolution_trials/collapse_oscillating43_gravopts_direct_r1/output/protostellar_core_fld_mayer5.00010.rst",
+        "checkpoint_sha256": "4956ecafe924400f2b87802eaee071873657833536a10c297bf258a149663195",
+        "ranks": 1,
+        "threads": 2,
+        "environment": {
+          "OMP_NUM_THREADS": "2",
+          "ATHENA_NRFLD_EXPERIMENTAL_COLLAPSE": "1",
+          "ATHENA_NRFLD_INTERFACE_LEDGER": "1",
+          "ATHENA_NRFLD_ENERGY_LEDGER": "1"
+        },
+        "command": "mpirun --output-filename /tmp/wor25_23_24_resolution_trials/collapse_oscillating43_gravopts_restart10_r1/mpi -n 1 /tmp/wor25_23_24_resolution_collapse_oscillating_build/bin/athena -r /tmp/wor25_23_24_resolution_trials/collapse_oscillating43_gravopts_direct_r1/output/protostellar_core_fld_mayer5.00010.rst -d output mesh/num_threads=2 mesh/derefine_count=1 time/nlim=13 problem/N_J=7.6160 nrfld/global_jacobian_check=true gravity/reset_fmg_color_each_solve=true gravity/repeat_initial_fmg_after_restart=true",
+        "gravity_opt_ins": true,
+        "run_log": "/tmp/wor25_23_24_resolution_trials/collapse_oscillating43_gravopts_restart10_r1/run.log",
+        "exit_status": 0,
+        "wall_time": "0:06.94",
+        "peak_rss_kb": 337560,
+        "newton_statuses": [
+          {
+            "status": "converged",
+            "iterations": 0
+          },
+          {
+            "status": "converged",
+            "iterations": 2
+          },
+          {
+            "status": "converged",
+            "iterations": 2
+          },
+          {
+            "status": "converged",
+            "iterations": 0
+          },
+          {
+            "status": "converged",
+            "iterations": 3
+          }
+        ],
+        "fgmres_history": [
+          {
+            "iterations": 13,
+            "explicit_relative_residual": 3.744368700398986e-09
+          },
+          {
+            "iterations": 13,
+            "explicit_relative_residual": 8.90277919969693e-09
+          },
+          {
+            "iterations": 13,
+            "explicit_relative_residual": 4.907953621555866e-09
+          },
+          {
+            "iterations": 14,
+            "explicit_relative_residual": 4.555616453637942e-09
+          },
+          {
+            "iterations": 12,
+            "explicit_relative_residual": 4.515347375139562e-09
+          },
+          {
+            "iterations": 13,
+            "explicit_relative_residual": 7.459425627783854e-09
+          },
+          {
+            "iterations": 13,
+            "explicit_relative_residual": 6.9698162517720705e-09
+          }
+        ],
+        "fgmres_total_iterations": 91,
+        "jv_coarse_fine_newton_h1e5_rel2": [
+          1.7538076699822912e-09,
+          1.2065887144627543e-09,
+          1.2740500891914179e-09
+        ],
+        "coarse_fine_face_conservation": {
+          "pairs": 23,
+          "max_relative_mismatch": 1.8494415383701826e-07,
+          "pass": true
+        },
+        "max_implicit_energy_absolute_relative_balance": 2.6870639374073184e-10,
+        "regrid_meshblocks_created_destroyed": [
+          7,
+          7
+        ],
+        "output_11": {
+          "mass_integral": 704254622872.6729,
+          "rho_min": 0.05189587917886114,
+          "pressure_min": 0.025369858465461824,
+          "Er_min": 0.2905945110390272,
+          "leaf_blocks": 43
+        },
+        "output_13": {
+          "mass_integral": 704254643603.2023,
+          "rho_min": 0.05184261716586423,
+          "pressure_min": 0.02534371214732831,
+          "Er_min": 0.29058927035852977,
+          "leaf_blocks": 43
+        },
+        "mass_11_to_13_relative_change": 2.9436128277560955e-08,
+        "all_true_residuals_below_1e_minus_8": true
+      },
+      {
+        "name": "collapse_oscillating43_gravopts_restart10_r2",
+        "source_commit_base": "8e905851",
+        "test_only_patch_archive_member": "trials/collapse_oscillating_shift_test_only.patch",
+        "binary_sha256": "0f649c02137232c0a862514e6532286a1c959193325e89dc84821d6fb7882de2",
+        "checkpoint_path": "/tmp/wor25_23_24_resolution_trials/collapse_oscillating43_gravopts_direct_r1/output/protostellar_core_fld_mayer5.00010.rst",
+        "checkpoint_sha256": "4956ecafe924400f2b87802eaee071873657833536a10c297bf258a149663195",
+        "ranks": 2,
+        "threads": 2,
+        "environment": {
+          "OMP_NUM_THREADS": "2",
+          "ATHENA_NRFLD_EXPERIMENTAL_COLLAPSE": "1",
+          "ATHENA_NRFLD_INTERFACE_LEDGER": "1",
+          "ATHENA_NRFLD_ENERGY_LEDGER": "1"
+        },
+        "command": "mpirun --output-filename /tmp/wor25_23_24_resolution_trials/collapse_oscillating43_gravopts_restart10_r2/mpi -n 2 /tmp/wor25_23_24_resolution_collapse_oscillating_build/bin/athena -r /tmp/wor25_23_24_resolution_trials/collapse_oscillating43_gravopts_direct_r1/output/protostellar_core_fld_mayer5.00010.rst -d output mesh/num_threads=2 mesh/derefine_count=1 time/nlim=13 problem/N_J=7.6160 nrfld/global_jacobian_check=true gravity/reset_fmg_color_each_solve=true gravity/repeat_initial_fmg_after_restart=true",
+        "gravity_opt_ins": true,
+        "run_log": "/tmp/wor25_23_24_resolution_trials/collapse_oscillating43_gravopts_restart10_r2/run.log",
+        "exit_status": 0,
+        "wall_time": "0:05.48",
+        "peak_rss_kb": 221680,
+        "newton_statuses": [
+          {
+            "status": "converged",
+            "iterations": 0
+          },
+          {
+            "status": "converged",
+            "iterations": 2
+          },
+          {
+            "status": "converged",
+            "iterations": 2
+          },
+          {
+            "status": "converged",
+            "iterations": 0
+          },
+          {
+            "status": "converged",
+            "iterations": 3
+          }
+        ],
+        "fgmres_history": [
+          {
+            "iterations": 13,
+            "explicit_relative_residual": 3.744368277561002e-09
+          },
+          {
+            "iterations": 13,
+            "explicit_relative_residual": 8.902712694843147e-09
+          },
+          {
+            "iterations": 13,
+            "explicit_relative_residual": 4.907952303033527e-09
+          },
+          {
+            "iterations": 14,
+            "explicit_relative_residual": 4.5576375626212e-09
+          },
+          {
+            "iterations": 12,
+            "explicit_relative_residual": 4.515349347391781e-09
+          },
+          {
+            "iterations": 13,
+            "explicit_relative_residual": 7.460430083784716e-09
+          },
+          {
+            "iterations": 13,
+            "explicit_relative_residual": 6.865392370054525e-09
+          }
+        ],
+        "fgmres_total_iterations": 91,
+        "jv_coarse_fine_newton_h1e5_rel2": [
+          1.799366638425381e-09,
+          1.1867836181819872e-09,
+          1.240317276088648e-09
+        ],
+        "coarse_fine_face_conservation": {
+          "pairs": 23,
+          "max_relative_mismatch": 1.9290872265724e-07,
+          "pass": true
+        },
+        "max_implicit_energy_absolute_relative_balance": 4.317834173245476e-10,
+        "regrid_meshblocks_created_destroyed": [
+          7,
+          7
+        ],
+        "output_11": {
+          "mass_integral": 704254622872.6729,
+          "rho_min": 0.05189587917886114,
+          "pressure_min": 0.025369858465463628,
+          "Er_min": 0.2905945110391138,
+          "leaf_blocks": 43
+        },
+        "output_13": {
+          "mass_integral": 704254643603.2021,
+          "rho_min": 0.051842617165864205,
+          "pressure_min": 0.025343712147325996,
+          "Er_min": 0.2905892703584196,
+          "leaf_blocks": 43
+        },
+        "mass_11_to_13_relative_change": 2.9436128104228318e-08,
+        "all_true_residuals_below_1e_minus_8": true
+      }
+    ],
+    "comparisons": {
+      "default": {
+        "continuous_vs_restart_by_output": {
+          "11": {
+            "prim": {
+              "relative_l1": 7.660841517599112e-10,
+              "max_absolute": 3.5685614196675e-07,
+              "topology_equal": true
+            },
+            "fld": {
+              "relative_l1": 6.0579111688851286e-12,
+              "max_absolute": 8.672389995023622e-08,
+              "topology_equal": true
+            }
+          },
+          "12": {
+            "prim": {
+              "relative_l1": 2.0488941208878408e-09,
+              "max_absolute": 5.801311424074511e-07,
+              "topology_equal": true
+            },
+            "fld": {
+              "relative_l1": 5.692561043533107e-11,
+              "max_absolute": 6.658763620492891e-07,
+              "topology_equal": true
+            }
+          },
+          "13": {
+            "prim": {
+              "relative_l1": 2.029952251382839e-09,
+              "max_absolute": 5.584417178614021e-07,
+              "topology_equal": true
+            },
+            "fld": {
+              "relative_l1": 2.411161316934074e-11,
+              "max_absolute": 1.884665565832222e-07,
+              "topology_equal": true
+            }
+          },
+          "14": {
+            "prim": {
+              "relative_l1": 2.029952251382839e-09,
+              "max_absolute": 5.584417178614021e-07,
+              "topology_equal": true
+            },
+            "fld": {
+              "relative_l1": 2.411161316934074e-11,
+              "max_absolute": 1.884665565832222e-07,
+              "topology_equal": true
+            }
+          }
+        },
+        "restart_rank_comparison_by_output": {
+          "11": {
+            "prim": {
+              "relative_l1": 1.2529448389161146e-13,
+              "max_absolute": 8.055778266680136e-13,
+              "topology_equal": true
+            },
+            "fld": {
+              "relative_l1": 3.108384418287064e-13,
+              "max_absolute": 4.597211500367848e-12,
+              "topology_equal": true
+            }
+          },
+          "12": {
+            "prim": {
+              "relative_l1": 8.052316656990975e-14,
+              "max_absolute": 5.480060849549773e-13,
+              "topology_equal": true
+            },
+            "fld": {
+              "relative_l1": 1.9807858436707503e-13,
+              "max_absolute": 3.0446756227320293e-12,
+              "topology_equal": true
+            }
+          },
+          "13": {
+            "prim": {
+              "relative_l1": 7.352671005215066e-14,
+              "max_absolute": 4.929390229335695e-13,
+              "topology_equal": true
+            },
+            "fld": {
+              "relative_l1": 1.8100927467702915e-13,
+              "max_absolute": 2.6965096822095802e-12,
+              "topology_equal": true
+            }
+          },
+          "14": {
+            "prim": {
+              "relative_l1": 7.352671005215066e-14,
+              "max_absolute": 4.929390229335695e-13,
+              "topology_equal": true
+            },
+            "fld": {
+              "relative_l1": 1.8100927467702915e-13,
+              "max_absolute": 2.6965096822095802e-12,
+              "topology_equal": true
+            }
+          }
+        },
+        "direct_output_10": {
+          "mass_integral": 704254614972.4098,
+          "rho_min": 0.05192830755469841,
+          "pressure_min": 0.0253856907969433,
+          "Er_min": 0.2905935655651053,
+          "leaf_blocks": 43
+        }
+      },
+      "gravity_opt_ins": {
+        "continuous_vs_restart_by_output": {
+          "11": {
+            "prim": {
+              "relative_l1": 7.602938469852008e-10,
+              "max_absolute": 3.568392484516259e-07,
+              "topology_equal": true
+            },
+            "fld": {
+              "relative_l1": 6.841145694950065e-12,
+              "max_absolute": 8.672374951501638e-08,
+              "topology_equal": true
+            }
+          },
+          "12": {
+            "prim": {
+              "relative_l1": 2.044042713645877e-09,
+              "max_absolute": 5.801103585855762e-07,
+              "topology_equal": true
+            },
+            "fld": {
+              "relative_l1": 5.739881597549762e-11,
+              "max_absolute": 6.659510916051659e-07,
+              "topology_equal": true
+            }
+          },
+          "13": {
+            "prim": {
+              "relative_l1": 2.0253156020282932e-09,
+              "max_absolute": 5.584301085193337e-07,
+              "topology_equal": true
+            },
+            "fld": {
+              "relative_l1": 2.346819636341436e-11,
+              "max_absolute": 1.8846682481310495e-07,
+              "topology_equal": true
+            }
+          },
+          "14": {
+            "prim": {
+              "relative_l1": 2.0253156020282932e-09,
+              "max_absolute": 5.584301085193337e-07,
+              "topology_equal": true
+            },
+            "fld": {
+              "relative_l1": 2.346819636341436e-11,
+              "max_absolute": 1.8846682481310495e-07,
+              "topology_equal": true
+            }
+          }
+        },
+        "restart_rank_comparison_by_output": {
+          "11": {
+            "prim": {
+              "relative_l1": 2.871049207339077e-14,
+              "max_absolute": 1.8340884366807586e-13,
+              "topology_equal": true
+            },
+            "fld": {
+              "relative_l1": 7.057683602426424e-14,
+              "max_absolute": 1.0462741784067475e-12,
+              "topology_equal": true
+            }
+          },
+          "12": {
+            "prim": {
+              "relative_l1": 7.633753217976982e-14,
+              "max_absolute": 4.978240042419202e-13,
+              "topology_equal": true
+            },
+            "fld": {
+              "relative_l1": 1.888208484719353e-13,
+              "max_absolute": 2.7906565946977935e-12,
+              "topology_equal": true
+            }
+          },
+          "13": {
+            "prim": {
+              "relative_l1": 3.5965190423173696e-14,
+              "max_absolute": 2.1094237467877974e-13,
+              "topology_equal": true
+            },
+            "fld": {
+              "relative_l1": 8.946365332612167e-14,
+              "max_absolute": 1.3304912727107876e-12,
+              "topology_equal": true
+            }
+          },
+          "14": {
+            "prim": {
+              "relative_l1": 3.5965190423173696e-14,
+              "max_absolute": 2.1094237467877974e-13,
+              "topology_equal": true
+            },
+            "fld": {
+              "relative_l1": 8.946365332612167e-14,
+              "max_absolute": 1.3304912727107876e-12,
+              "topology_equal": true
+            }
+          }
+        },
+        "direct_output_10": {
+          "mass_integral": 704254614972.4098,
+          "rho_min": 0.05192830755469378,
+          "pressure_min": 0.025385690796945796,
+          "Er_min": 0.29059356556533306,
+          "leaf_blocks": 43
+        }
+      }
+    },
+    "evaluation": "PASS_LOCAL_RESTART_MPI_AND_FACE; CONTINUOUS_RESTART_DISCREPANCY_UNRESOLVED; GRAVITY_OPT_INS_REJECTED_FOR_THIS_CASE",
+    "limitations": "Forced local regrid, 43 leaves and 3 continuation steps. Mass change includes hydro, gravity and background terms; implicit energy ledger is not closed global energy budget. Gravity options already in code, default false; no setting changed."
   }
 }
