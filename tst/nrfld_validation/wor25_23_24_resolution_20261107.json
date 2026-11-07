@@ -2277,8 +2277,8 @@
   },
   "input_archive": {
     "path": "/home/kosuke/simulation/athena-wor25-23-24-resolution/tst/nrfld_validation/wor25_23_24_resolution_inputs_20261107.tar.gz",
-    "sha256": "3a91e7e1aeef7a31d6c9680ca441670411b93a233b661558675a2c1551a1c03b",
-    "members": 124
+    "sha256": "eb0cfafb912ee4570b62e2ba0053978fea3fe3ded7311354dd05b3010938e54f",
+    "members": 128
   },
   "large_collapse_trial": {
     "input_path": "/tmp/wor25_23_24_resolution_trials/collapse_conservative_trial_r1/input.used",
@@ -9206,5 +9206,130 @@
       }
     },
     "decision": "Combined opt-ins restore approximately 1e-14 restart reproducibility in local static and adaptive AMR; keep both default false and collapse production guard."
+  },
+  "wor25_strict_preconditioner_trials": {
+    "runs": [
+      {
+        "name": "wor25_strict_precond_vcycles_2",
+        "source_commit": "baabd2a1614997a3df2a1c945c748693b56d4b3f",
+        "input_path": "/tmp/wor25_23_24_resolution_trials/wor25_strict_precond_vcycles_2/input.used",
+        "input_sha256": "cb8f01851fabfacf7aae5bd3a8a2ca53900cb12b1db3e9a5151b3d01d343ed74",
+        "binary_sha256": "c20ee0a2f453e50cb817a3c84d6ed8773d3f5a47bb8ddc900eededac72b7b33d",
+        "run_log": "/tmp/wor25_23_24_resolution_trials/wor25_strict_precond_vcycles_2/run.log",
+        "exit_code": 134,
+        "evaluation": "FAIL_TARGET_NOT_REACHED",
+        "newton_statuses": [
+          "dt_zero_initialization"
+        ],
+        "fgmres_history": [
+          {
+            "iterations": 9,
+            "true_relative_residual": 3.021758959589814e-11
+          },
+          {
+            "iterations": 200,
+            "true_relative_residual": 2.7496528464060716e-10
+          }
+        ],
+        "resources_per_rank": [
+          {
+            "rss_kb": 231692,
+            "elapsed_s": 7.54
+          }
+        ],
+        "final_conservation": null
+      },
+      {
+        "name": "wor25_strict_precond_vcycles_3",
+        "source_commit": "baabd2a1614997a3df2a1c945c748693b56d4b3f",
+        "input_path": "/tmp/wor25_23_24_resolution_trials/wor25_strict_precond_vcycles_3/input.used",
+        "input_sha256": "33f3600dd3e65d3dfe0c8e5e49a1f58a78ead1e9d32fedd0e6afc053e1275451",
+        "binary_sha256": "c20ee0a2f453e50cb817a3c84d6ed8773d3f5a47bb8ddc900eededac72b7b33d",
+        "run_log": "/tmp/wor25_23_24_resolution_trials/wor25_strict_precond_vcycles_3/run.log",
+        "exit_code": 134,
+        "evaluation": "FAIL_TARGET_NOT_REACHED",
+        "newton_statuses": [
+          "dt_zero_initialization"
+        ],
+        "fgmres_history": [
+          {
+            "iterations": 8,
+            "true_relative_residual": 3.461196233158206e-11
+          },
+          {
+            "iterations": 200,
+            "true_relative_residual": 1.235603344457515e-09
+          }
+        ],
+        "resources_per_rank": [
+          {
+            "rss_kb": 231756,
+            "elapsed_s": 8.6
+          }
+        ],
+        "final_conservation": null
+      },
+      {
+        "name": "wor25_strict_precond_vcycles_2_max400",
+        "source_commit": "baabd2a1614997a3df2a1c945c748693b56d4b3f",
+        "input_path": "/tmp/wor25_23_24_resolution_trials/wor25_strict_precond_vcycles_2_max400/input.used",
+        "input_sha256": "2f152f9e10f85eed7106dd8caba518bf899d1a60f0726b696a9ec58c256255b9",
+        "binary_sha256": "c20ee0a2f453e50cb817a3c84d6ed8773d3f5a47bb8ddc900eededac72b7b33d",
+        "run_log": "/tmp/wor25_23_24_resolution_trials/wor25_strict_precond_vcycles_2_max400/run.log",
+        "exit_code": 134,
+        "evaluation": "FAIL_TARGET_NOT_REACHED",
+        "newton_statuses": [
+          "dt_zero_initialization"
+        ],
+        "fgmres_history": [
+          {
+            "iterations": 9,
+            "true_relative_residual": 3.021758959589814e-11
+          },
+          {
+            "iterations": 400,
+            "true_relative_residual": 2.7242075142785137e-10
+          }
+        ],
+        "resources_per_rank": [
+          {
+            "rss_kb": 231800,
+            "elapsed_s": 9.13
+          }
+        ],
+        "final_conservation": null
+      },
+      {
+        "name": "wor25_strict_precond_vcycles_2_restart40",
+        "source_commit": "baabd2a1614997a3df2a1c945c748693b56d4b3f",
+        "input_path": "/tmp/wor25_23_24_resolution_trials/wor25_strict_precond_vcycles_2_restart40/input.used",
+        "input_sha256": "0b8c1e1324094da4f94eddacdcae1a3e05976a615deb224400c4c2f7e969d948",
+        "binary_sha256": "c20ee0a2f453e50cb817a3c84d6ed8773d3f5a47bb8ddc900eededac72b7b33d",
+        "run_log": "/tmp/wor25_23_24_resolution_trials/wor25_strict_precond_vcycles_2_restart40/run.log",
+        "exit_code": 134,
+        "evaluation": "FAIL_TARGET_NOT_REACHED",
+        "newton_statuses": [
+          "dt_zero_initialization"
+        ],
+        "fgmres_history": [
+          {
+            "iterations": 9,
+            "true_relative_residual": 3.021758959589814e-11
+          },
+          {
+            "iterations": 400,
+            "true_relative_residual": 2.7242075142785137e-10
+          }
+        ],
+        "resources_per_rank": [
+          {
+            "rss_kb": 237328,
+            "elapsed_s": 9.96
+          }
+        ],
+        "final_conservation": null
+      }
+    ],
+    "decision": "Two MG V-cycles reduce the strict second-solve residual floor but do not reach 1e-10 at 400 iterations; three V-cycles are worse. Restart 40 does not change the result. No default change."
   }
 }
