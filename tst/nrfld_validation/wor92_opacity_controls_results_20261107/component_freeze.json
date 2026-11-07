@@ -1,0 +1,66 @@
+{
+  "base_commit": "143b3403324db869b9690a2b33569252fdb5cb80",
+  "source_patch_sha256": "ce9d7dbe7b7b6f54a17ea62a980930a0a9c3f8fe2f75e20f343827ee556155d3",
+  "binary_sha256": "5b259bf3c0a4b768a6a35aa9f2d9cebfd3b9151f78b80ed5583069a772ffb691",
+  "input_sha256": "515d600e01f8ee9583bc1ce16df70724dd9b82d4bfd77a72527a8b185d6b5ad0",
+  "fixed_kappa_P": 0.2152482380812872,
+  "fixed_kappa_R": 0.06478477297739439,
+  "cases": [
+    {
+      "label": "table_both_variable",
+      "fixed_planck": false,
+      "fixed_rosseland": false,
+      "ranks": 2,
+      "exit_code": 134,
+      "cycle_reached": 0,
+      "linear_solves": 2,
+      "newton_converged": 0,
+      "max_true_residual": 3.879657772402538e-08,
+      "last_true_residual": 3.879657772402538e-08,
+      "floor_acceptances": 0,
+      "log_sha256": "dafa2eaf0f577bee5c24f81251908c3a31daf10227336dc420659ec2ffdc221a"
+    },
+    {
+      "label": "table_fixed_P_variable_R",
+      "fixed_planck": true,
+      "fixed_rosseland": false,
+      "ranks": 2,
+      "exit_code": 134,
+      "cycle_reached": 0,
+      "linear_solves": 2,
+      "newton_converged": 0,
+      "max_true_residual": 4.788745369050293e-08,
+      "last_true_residual": 4.788745369050293e-08,
+      "floor_acceptances": 0,
+      "log_sha256": "727545c5b339c24d04d0311d79afd9dca5c873d22d83790c645eef5b36ae4077"
+    },
+    {
+      "label": "table_variable_P_fixed_R",
+      "fixed_planck": false,
+      "fixed_rosseland": true,
+      "ranks": 2,
+      "exit_code": 0,
+      "cycle_reached": 3,
+      "linear_solves": 7,
+      "newton_converged": 3,
+      "max_true_residual": 1.9985492920105326e-08,
+      "last_true_residual": 1.53884968072822e-08,
+      "floor_acceptances": 0,
+      "log_sha256": "892bacebf9157f2ae579f6a2398381e791b8920ad39cd8ff5f9f4baaeca2d0c2"
+    },
+    {
+      "label": "table_variable_P_fixed_R_4rank",
+      "fixed_planck": false,
+      "fixed_rosseland": true,
+      "ranks": 4,
+      "exit_code": 0,
+      "cycle_reached": 3,
+      "linear_solves": 7,
+      "newton_converged": 3,
+      "max_true_residual": 1.9598919588250885e-08,
+      "last_true_residual": 1.9572967271964305e-08,
+      "floor_acceptances": 0,
+      "log_sha256": "58eb5f2c48b837d735ab3aa99fbf247af544a0ce1c677eb89991e0de120127d7"
+    }
+  ]
+}

@@ -88,6 +88,42 @@ The [diagnostic JSON](wor92_opacity_controls_results_20261107/opacity_range_diag
 and [rank logs/patch](wor92_opacity_controls_results_20261107/opacity_range_evidence.tar.gz)
 contain the complete measurements and hashes.
 
+### Separate the two table components at CFL 0.3
+
+An additional trial-only switch replaced **one** table-returned opacity
+with its 17-digit initial constant, while still executing both table
+lookups. The identical diagnostic binary and input were used for all four
+controls; only the environment switch and MPI rank count varied. The
+source-patch SHA-256 is
+`ce9d7dbe7b7b6f54a17ea62a980930a0a9c3f8fe2f75e20f343827ee556155d3`,
+and the binary SHA-256 is
+`5b259bf3c0a4b768a6a35aa9f2d9cebfd3b9151f78b80ed5583069a772ffb691`.
+
+| Table-derived component(s) | Fixed component | Ranks | Cycles / 3 | Max true residual |
+| --- | --- | ---: | ---: | ---: |
+| κP and κR | none | 2 | fails cycle 0 | 3.87966e-8 |
+| κR | κP=0.21524823808128721 | 2 | fails cycle 0 | 4.78875e-8 |
+| κP | κR=0.064784772977394392 | 2 | 3 strict | 1.99855e-8 |
+| κP | same fixed κR | 4 | 3 strict | 1.95989e-8 |
+
+The unfrozen diagnostic binary reproduced the earlier failure residual
+exactly. Holding κR fixed was sufficient for this three-cycle strict
+pass in both rank layouts, while holding κP fixed left the failure.
+Thus the Rosseland **values** returned by the table are implicated in the
+early `2e-8` threshold crossing under this controlled state. The two-rank
+pass is very close to threshold and does not establish a robust
+production setting or identify a defective opacity lookup. It remains
+necessary to inspect the Schur matrix, coefficient scaling and
+preconditioner with the actual table-derived κR field.
+
+The [component JSON](wor92_opacity_controls_results_20261107/component_freeze.json),
+[CSV](wor92_opacity_controls_results_20261107/component_freeze.csv),
+[figure](wor92_opacity_controls_results_20261107/component_freeze.png),
+and [logs/input/source patch](wor92_opacity_controls_results_20261107/component_freeze_evidence.tar.gz)
+record this A/B test. The run command below adds either
+`ATHENA_WOR92_FIXED_PLANCK=1` or `ATHENA_WOR92_FIXED_ROSSELAND=1` and uses
+`input_table_component_freeze_cfl030_strict_3cycles.used`.
+
 These tests do not compare Semenov extinction to Optab absorption, and
 do not make a physical-model selection from numerical convergence.
 
@@ -117,11 +153,10 @@ env ATHENA_NRFLD_CONSERVATIVE_PROTOTYPE=1 \
   -d /path/to/fresh/output
 ```
 
-The next targeted experiment should record the actual κP/κR and diffusion
-coefficient ranges at the failing Newton state, then freeze either Planck
-or Rosseland table updates while retaining the other table. Compare the
-resulting true residual, level/edge localization and assembled AMR-aware
-Jacobian/backward error. Only a supported numerical cause should lead to
+The next targeted experiment should compare Schur diagonal/off-diagonal
+scaling, low-frequency error modes and MG correction quality for the
+fixed-R versus table-R states. An assembled AMR-aware Jacobian/backward
+error remains needed. Only a supported numerical cause should lead to
 a minimal source change and regression suite. WOR-92 remains **In
 Progress**; strict Semenov CFL=.3 and long collapse are unverified. No
 XD2000 login or job submission occurred.

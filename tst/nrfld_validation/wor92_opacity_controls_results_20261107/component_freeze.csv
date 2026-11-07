@@ -1,0 +1,5 @@
+label,fixed_planck,fixed_rosseland,ranks,exit_code,cycle_reached,linear_solves,newton_converged,max_true_residual,last_true_residual,floor_acceptances,log_sha256
+table_both_variable,False,False,2,134,0,2,0,3.879657772402538e-08,3.879657772402538e-08,0,dafa2eaf0f577bee5c24f81251908c3a31daf10227336dc420659ec2ffdc221a
+table_fixed_P_variable_R,True,False,2,134,0,2,0,4.788745369050293e-08,4.788745369050293e-08,0,727545c5b339c24d04d0311d79afd9dca5c873d22d83790c645eef5b36ae4077
+table_variable_P_fixed_R,False,True,2,0,3,7,3,1.9985492920105326e-08,1.53884968072822e-08,0,892bacebf9157f2ae579f6a2398381e791b8920ad39cd8ff5f9f4baaeca2d0c2
+table_variable_P_fixed_R_4rank,False,True,4,0,3,7,3,1.9598919588250885e-08,1.9572967271964305e-08,0,58eb5f2c48b837d735ab3aa99fbf247af544a0ce1c677eb89991e0de120127d7

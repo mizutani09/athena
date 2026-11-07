@@ -163,5 +163,57 @@ with tarfile.open(OUT / "opacity_range_evidence.tar.gz", "w:gz") as archive:
                             AUDIT / "source_opacity_range_trial.patch",
                             ROOT / "input_mixed_amr_cfl005_restart40_mg2_strict_10cycles.used"]:
         archive.add(path, arcname=path.name)
+
+component_cases = [
+    ("table_both_variable", "component_unfrozen", False, False, 2),
+    ("table_fixed_P_variable_R", "fixed_planck", True, False, 2),
+    ("table_variable_P_fixed_R", "fixed_rosseland", False, True, 2),
+    ("table_variable_P_fixed_R_4rank", "fixed_rosseland_4rank", False, True, 4),
+]
+component_rows = []
+for label, dirname, fixed_p, fixed_r, ranks in component_cases:
+    case = AUDIT / dirname
+    s = (case / "run.log").read_text(errors="replace")
+    linear = re.findall(r"\[LINEAR_FGMRES\][^\n]*", s)
+    res = [value(x, "relative_residual") for x in linear]
+    cycles = [int(x) for x in re.findall(r"^cycle=(\d+) time=", s, re.M)]
+    component_rows.append(dict(label=label, fixed_planck=fixed_p,
+        fixed_rosseland=fixed_r, ranks=ranks,
+        exit_code=int((case / "status.txt").read_text()),
+        cycle_reached=max(cycles), linear_solves=len(linear),
+        newton_converged=s.count("[NR] status=converged"),
+        max_true_residual=max(res), last_true_residual=res[-1],
+        floor_acceptances=sum(value(x, "precision_floor_accept", int) for x in linear),
+        log_sha256=sha(case / "run.log")))
+component_payload = dict(base_commit="143b3403324db869b9690a2b33569252fdb5cb80",
+    source_patch_sha256=sha(AUDIT / "source_component_freeze_trial.patch"),
+    binary_sha256="5b259bf3c0a4b768a6a35aa9f2d9cebfd3b9151f78b80ed5583069a772ffb691",
+    input_sha256=sha(ROOT / "input_table_component_freeze_cfl030_strict_3cycles.used"),
+    fixed_kappa_P=reference["kappa_P"], fixed_kappa_R=reference["kappa_R"],
+    cases=component_rows)
+(OUT / "component_freeze.json").write_text(json.dumps(component_payload, indent=2)+"\n")
+with (OUT / "component_freeze.csv").open("w", newline="") as f:
+    w = csv.DictWriter(f, fieldnames=list(component_rows[0]), lineterminator="\n")
+    w.writeheader()
+    w.writerows(component_rows)
+fig, ax = plt.subplots(figsize=(7, 3.9))
+ax.barh([r["label"] for r in component_rows],
+        [r["max_true_residual"] for r in component_rows],
+        color=["#2d8c72" if r["exit_code"] == 0 else "#bc4b51"
+               for r in component_rows])
+ax.axvline(2e-8, color="black", linestyle="--")
+ax.set_xscale("log")
+ax.invert_yaxis()
+ax.set_xlabel("Maximum true relative residual at CFL=0.3")
+fig.tight_layout()
+fig.savefig(OUT / "component_freeze.png", dpi=160)
+with tarfile.open(OUT / "component_freeze_evidence.tar.gz", "w:gz") as archive:
+    for _, dirname, *_ in component_cases:
+        for name in ("run.log", "status.txt"):
+            path = AUDIT / dirname / name
+            archive.add(path, arcname=f"{dirname}/{name}")
+    for path in (AUDIT / "source_component_freeze_trial.patch",
+                 ROOT / "input_table_component_freeze_cfl030_strict_3cycles.used"):
+        archive.add(path, arcname=path.name)
 for r in rows:
     print(r["label"], r["exit_code"], r["cycle_reached"], r["max_true_residual"])
