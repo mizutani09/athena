@@ -276,5 +276,38 @@
       "history_sha256": "8d39941791890907fa069ed90af16e244a1d54a1af0d52bf47f3a19be2d6931d",
       "final_hdf5_sha256": "b37486af0df090402dc82562af12ca32b4f3030036902d197de7d419bcd1cc95"
     }
-  ]
+  ],
+  "energy_ledger": {
+    "rows": [
+      {
+        "rank": 1,
+        "cycle": 63,
+        "stage": 0,
+        "dt": 14.154105118656588,
+        "gas_delta": -1529021285.6207273,
+        "radiation_delta": 1529017259.106922,
+        "diffusion_delta": -2895.522347889176,
+        "interior_delta": -2895.522347889176,
+        "balance": -1130.991457336548,
+        "relative_balance": 2.2240228369456126e-09,
+        "absolute_relative_balance": 1.426562553300814e-07
+      },
+      {
+        "rank": 0,
+        "cycle": 63,
+        "stage": 0,
+        "dt": 14.154105118656588,
+        "gas_delta": -1529020853.1521692,
+        "radiation_delta": 1529022569.0843759,
+        "diffusion_delta": 2846.6790934487753,
+        "interior_delta": 2846.6790934487753,
+        "balance": -1130.74688686219,
+        "relative_balance": 2.2235367642195984e-09,
+        "absolute_relative_balance": 1.4260974876511413e-07
+      }
+    ],
+    "log_sha256": "f2ec81bfbe8c019415dfd8da2cdc8107b4b105bbd046862ce765e1d1df1e67bd",
+    "history_sha256": "3078ed0ae3617ee57336b22dc8cc9dd69f06f15021fc5d0b66322e3294096b05",
+    "history_identical_to_uninstrumented": true
+  }
 }

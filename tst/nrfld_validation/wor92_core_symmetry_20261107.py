@@ -34,6 +34,7 @@ DUMP_DIRS = {
     "cfl030_level3_early": "table_symmetry_level3_cycle63_state_dump_corrected_2rank",
     "cfl030_level4_from63": "table_symmetry_level4_cycle64_state_dump_2rank",
 }
+ENERGY_LEDGER_DIR = "table_symmetry_level4_from63_energy_ledger_2rank"
 
 
 def sha(path):
@@ -139,10 +140,33 @@ def main():
                               final_hdf5_sha256=sha(final_dump)))
             archive.add(log, arcname=f"{label}/run.log")
             archive.add(hst, arcname=f"{label}/history.hst")
+        ledger_folder = ROOT / ENERGY_LEDGER_DIR
+        ledger_log = ledger_folder / "run.log"
+        ledger_hst = ledger_folder / "cfl030_flux_precision16_local.hst"
+        assert sha(ledger_hst) == sha(ROOT / RUNS["cfl030_level4_from63"] /
+                                      "cfl030_flux_precision16_local.hst")
+        ledger_rows = []
+        for line in ledger_log.read_text(errors="replace").splitlines():
+            if not line.startswith("[NR_ENERGY_LEDGER] "):
+                continue
+            values = dict(part.split("=", 1) for part in line.split()[1:])
+            ledger_rows.append(dict(rank=int(values["rank"]), cycle=int(values["cycle"]),
+                                    stage=int(values["stage"]), dt=float(values["dt"]),
+                                    gas_delta=float(values["gas_delta"]),
+                                    radiation_delta=float(values["radiation_delta"]),
+                                    diffusion_delta=float(values["diffusion_delta"]),
+                                    interior_delta=float(values["interior_delta"]),
+                                    balance=float(values["balance"]),
+                                    relative_balance=float(values["relative_balance"]),
+                                    absolute_relative_balance=float(values["absolute_relative_balance"])))
+        assert len(ledger_rows) == 2 and {x["rank"] for x in ledger_rows} == {0, 1}
+        archive.add(ledger_log, arcname="cfl030_level4_energy_ledger/run.log")
+        archive.add(ledger_hst, arcname="cfl030_level4_energy_ledger/history.hst")
     write_csv(OUT / "cases.csv", cases)
     write_csv(OUT / "history.csv", trajectories)
     write_csv(OUT / "central_cells.csv", centers)
     write_csv(OUT / "dump_diagnostics.csv", dump_diagnostics)
+    write_csv(OUT / "energy_ledger.csv", ledger_rows)
     grouped = {}
     for row in centers:
         grouped.setdefault((row["case"], row["cycle"]), []).append(row)
@@ -163,7 +187,10 @@ def main():
                                                     "cfl030_flux_precision16_local.00002.rst"),
                    cycle36_checkpoint_sha256=sha(ROOT / "table_early_restart_state_dump_2rank/"
                                                     "cfl030_flux_precision16_local.final.rst"),
-                   cases=cases)
+                   cases=cases,
+                   energy_ledger=dict(rows=ledger_rows, log_sha256=sha(ledger_log),
+                                      history_sha256=sha(ledger_hst),
+                                      history_identical_to_uninstrumented=True))
     (OUT / "summary.json").write_text(json.dumps(summary, indent=2) + "\n")
     fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(8, 7))
     for label in RUNS:
