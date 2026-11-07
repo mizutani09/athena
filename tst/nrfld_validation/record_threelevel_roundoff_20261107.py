@@ -82,7 +82,8 @@ def record(name, amplitude, binary, fixed_limiter=True):
         er = hdf['user_out_var'][0]
         er_min = float(er.min())
     return {
-        'name': name, 'base_binary_source_commit': '9ee735fa',
+        'name': name, 'ranks': 2 if name.endswith('_r2') else 1,
+        'threads_per_rank': 1, 'base_binary_source_commit': '9ee735fa',
         'binary_sha256': sha(binary),
         'input_path': str(INPUT), 'input_sha256': sha(INPUT),
         'overrides': {'problem/erad_amplitude': amplitude,
@@ -120,13 +121,15 @@ cases = [
     record('threelevel_variable_amp001_r1', 0.01, BASE_BINARY, False),
     record('testc_threelevel_shifted_variable_r1', 0.1, BASE_BINARY, False),
     record('threelevel_variable_amp1_r1', 1.0, BASE_BINARY, False),
+    record('threelevel_variable_amp1_r2', 1.0, BASE_BINARY, False),
 ]
 report = json.loads(REPORT.read_text())
 report['threelevel_roundoff_scale_probe'] = {
-    'scope': 'Fixed/variable limiter q=1e7 three-level shifted Test C, 1 MPI rank, one step; amplitude screen and fixed-limiter test-only face diagnostic',
+    'scope': 'Fixed/variable limiter q=1e7 three-level shifted Test C, 1/2 MPI rank, one step; amplitude screen and fixed-limiter test-only face diagnostic',
     'probe_patch_sha256': sha(PATCH), 'cases': cases,
     'probe_hdf_exact_vs_base': hdf_equal('threelevel_roundoff_scale_r1', 'testc_threelevel_shifted_r1'),
-    'decision': 'All amplitude cases converge. Fixed limiter: all three fail the 1e-6 per-face criterion, with worst-face absolute mismatch O(1e-14) and lower relative mismatch at larger amplitude. Variable limiter: amplitude 0.01/0.1 fail, amplitude 1.0 passes at 2.86e-9; limiter nonlinearity means flux does not scale linearly. At fixed amplitude 0.1, mismatch 2.40e-14 is 5.3% of the local epsilon-weighted face scale 4.56e-13. Scale is heuristic, not a rigorous error bound. Test-only diagnostic does not change fields. No production operator or tolerance change; root cause of arithmetic discrepancy not proven.',
+    'variable_amplitude_1_rank_hdf_exact': hdf_equal('threelevel_variable_amp1_r1', 'threelevel_variable_amp1_r2'),
+    'decision': 'All amplitude cases converge. Fixed limiter: all three fail the 1e-6 per-face criterion, with worst-face absolute mismatch O(1e-14) and lower relative mismatch at larger amplitude. Variable limiter: amplitude 0.01/0.1 fail, amplitude 1.0 passes at 2.86e-9/3.59e-9 for 1/2 ranks with exact HDF equality; limiter nonlinearity means flux does not scale linearly. At fixed amplitude 0.1, mismatch 2.40e-14 is 5.3% of the local epsilon-weighted face scale 4.56e-13. Scale is heuristic, not a rigorous error bound. Test-only diagnostic does not change fields. No production operator or tolerance change; root cause of arithmetic discrepancy not proven.',
 }
 REPORT.write_text(json.dumps(report, indent=2, ensure_ascii=False) + '\n')
 print(json.dumps({'cases': [
@@ -134,5 +137,6 @@ print(json.dumps({'cases': [
      'absolute_mismatch': abs(r['worst_pair']['mismatch']),
      'relative_mismatch': r['worst_pair']['relative_mismatch'],
      'roundoff_scale': r['worst_pair_roundoff_scale']} for r in cases],
-    'probe_hdf_exact_vs_base': report['threelevel_roundoff_scale_probe']['probe_hdf_exact_vs_base']},
+    'probe_hdf_exact_vs_base': report['threelevel_roundoff_scale_probe']['probe_hdf_exact_vs_base'],
+    'variable_amplitude_1_rank_hdf_exact': report['threelevel_roundoff_scale_probe']['variable_amplitude_1_rank_hdf_exact']},
     indent=2))
