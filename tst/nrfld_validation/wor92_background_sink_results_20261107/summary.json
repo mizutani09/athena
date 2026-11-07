@@ -1,0 +1,251 @@
+{
+  "source_branch": "codex/wor92-domain-guard-trial-20261107",
+  "source_commits": [
+    "6da81d20",
+    "ff632195",
+    "14633c31"
+  ],
+  "binary_sha256": "0e6af159f3c545d765667ab45a3b7feaad7a3ddbb0c05e8897633822c86f5c1b",
+  "input_sha256": "7cd5ee8a6a3fe749624985b75dbafd000f34e713b9b2f723a191689bbef09cd0",
+  "checkpoint_sha256": "5efcd02455c7d9cf9f96dfd52d02ec681f37c6c09a16d3dd24073a28ef75edb2",
+  "matched_end_time": 2275.4309789960685,
+  "cases": [
+    {
+      "treatment": "gas_and_radiation_before",
+      "cfl": 0.3,
+      "steps": 1,
+      "final_time": 2275.4309789960685,
+      "dt_min": 8.805967784068649,
+      "dt_max": 8.805967784068649,
+      "fgmres_solves": 3,
+      "fgmres_true_residual_max": 1.9384661994398666e-08,
+      "rho_max_cgs": 3.86797e-14,
+      "Tgas_max_K": 20.6337,
+      "gas_internal_erg": 2.08936e+42,
+      "radiation_total_erg": 2.77235e+42,
+      "background_gas_T_relative_error": 0.131063,
+      "background_rad_T_relative_error": 0.133166,
+      "log_sha256": "5cfa11615dedb4b992fc296b2f3a45c1a1299773e8e6b89c3e49cd8c7b590b07",
+      "history_sha256": "df157d21dd407ba1852f0ba32cec3ba28b352acb906e709f9d2a4709d21dc46b",
+      "restart_sha256": "289519c8378ef43de70436411db5fcb99386a7c940297cdd1c31bd9110508a45"
+    },
+    {
+      "treatment": "gas_and_radiation_before",
+      "cfl": 0.15,
+      "steps": 2,
+      "final_time": 2275.4309789960685,
+      "dt_min": 3.7764009658440045,
+      "dt_max": 5.029566818224784,
+      "fgmres_solves": 6,
+      "fgmres_true_residual_max": 1.4453104495233167e-08,
+      "rho_max_cgs": 3.86764e-14,
+      "Tgas_max_K": 18.8833,
+      "gas_internal_erg": 1.95442e+42,
+      "radiation_total_erg": 2.26569e+42,
+      "background_gas_T_relative_error": 0.0741772,
+      "background_rad_T_relative_error": 0.0774117,
+      "log_sha256": "9a22904c1afcd93834267f3a7c0b289533d719f6d35959aea6bef4e36a2c3c43",
+      "history_sha256": "bc77e9649fd3b62bfaae14faee0e757686be2355b50d2882976473301f90d822",
+      "restart_sha256": "b5c3c08d9e9afad1b377b4f66820e8083d9f35622c84ebeda2ee1e9ad483728b"
+    },
+    {
+      "treatment": "gas_and_radiation_before",
+      "cfl": 0.075,
+      "steps": 4,
+      "final_time": 2275.4309789960685,
+      "dt_min": 1.3781626235349904,
+      "dt_max": 2.514783409112392,
+      "fgmres_solves": 12,
+      "fgmres_true_residual_max": 1.96986120732214e-08,
+      "rho_max_cgs": 3.86972e-14,
+      "Tgas_max_K": 17.9008,
+      "gas_internal_erg": 1.86636e+42,
+      "radiation_total_erg": 1.91849e+42,
+      "background_gas_T_relative_error": 0.0295215,
+      "background_rad_T_relative_error": 0.0335229,
+      "log_sha256": "1e31ff29809f9db1784577ee399aef3c2bcbc911de9111eefdf7162d4c0a7775",
+      "history_sha256": "d842065860188de050ed05fff33d7c89e0818ca86d26f0538b1e0e2e25862940",
+      "restart_sha256": "dc687dcc8ada45ea0a870a586413787a450d775a7a4f416ebc738d1dbacb7e63"
+    },
+    {
+      "treatment": "sink_off",
+      "cfl": 0.3,
+      "steps": 1,
+      "final_time": 2275.4309789960685,
+      "dt_min": 8.805967784068649,
+      "dt_max": 8.805967784068649,
+      "fgmres_solves": 3,
+      "fgmres_true_residual_max": 1.901718832096855e-08,
+      "rho_max_cgs": 3.86797e-14,
+      "Tgas_max_K": 20.9965,
+      "gas_internal_erg": 2.17506e+42,
+      "radiation_total_erg": 3.49846e+42,
+      "background_gas_T_relative_error": 0.202902,
+      "background_rad_T_relative_error": 0.201014,
+      "log_sha256": "b193799f714cd1842c9c62b967e300711a7d01bbcf4eb8578a3a781ed377022f",
+      "history_sha256": "a801553747daf082fd160b092dbdc4a9cb643ac289e588345c403a566b80c9a0",
+      "restart_sha256": "a66a95fc2c3cfe9414deae1418e8e76eb4b3a8136d40067afd6e68e43990fc13"
+    },
+    {
+      "treatment": "sink_off",
+      "cfl": 0.15,
+      "steps": 2,
+      "final_time": 2275.4309789960685,
+      "dt_min": 3.7764009658440045,
+      "dt_max": 5.029566818224784,
+      "fgmres_solves": 6,
+      "fgmres_true_residual_max": 1.9131330123971322e-08,
+      "rho_max_cgs": 3.86744e-14,
+      "Tgas_max_K": 19.6763,
+      "gas_internal_erg": 2.11635e+42,
+      "radiation_total_erg": 3.49957e+42,
+      "background_gas_T_relative_error": 0.204689,
+      "background_rad_T_relative_error": 0.20111,
+      "log_sha256": "d1106a382d8cd7ece7a91ab17a7a3db1292977b431286277e1932f5cc9495471",
+      "history_sha256": "dd567bd46c13ee92329e289ae54e30f3049ae7bca51669d71e6d210eff5f8ecb",
+      "restart_sha256": "ca991e2797857b674b9d3b95fc7006d3117a1b0bd7d4f4c4125a605f3be5b08b"
+    },
+    {
+      "treatment": "sink_off",
+      "cfl": 0.075,
+      "steps": 4,
+      "final_time": 2275.4309789960685,
+      "dt_min": 1.3846860101366474,
+      "dt_max": 2.514783409112392,
+      "fgmres_solves": 12,
+      "fgmres_true_residual_max": 1.828301846550084e-08,
+      "rho_max_cgs": 3.86911e-14,
+      "Tgas_max_K": 19.0989,
+      "gas_internal_erg": 2.09239e+42,
+      "radiation_total_erg": 3.51758e+42,
+      "background_gas_T_relative_error": 0.20909,
+      "background_rad_T_relative_error": 0.202653,
+      "log_sha256": "47826277316e7246b5b0c34b567453d25861af92e2d1f8c1f7b139c587fda0f2",
+      "history_sha256": "6b1eeb377afe884879636c62875eb452b7672381acc53577c013330ef56b35df",
+      "restart_sha256": "6fd1eb2be13d4db0066af49a3a17a07af472784fe8181176d2f25a9e7826f473"
+    },
+    {
+      "treatment": "gas_only_before",
+      "cfl": 0.3,
+      "steps": 1,
+      "final_time": 2275.4309789960685,
+      "dt_min": 8.805967784068649,
+      "dt_max": 8.805967784068649,
+      "fgmres_solves": 3,
+      "fgmres_true_residual_max": 1.891670493909702e-08,
+      "rho_max_cgs": 3.86797e-14,
+      "Tgas_max_K": 20.9831,
+      "gas_internal_erg": 2.17161e+42,
+      "radiation_total_erg": 3.47111e+42,
+      "background_gas_T_relative_error": 0.196001,
+      "background_rad_T_relative_error": 0.19866,
+      "log_sha256": "4ba1ad65b8727eaeae4eb0407ec1ae7ff29b9c6c2bcf89605a060174ba834d87",
+      "history_sha256": "ce913a497704c1cf322ce6453b18584f8753cd049737e4774906419c23b32e83",
+      "restart_sha256": "61d578245b35b6f2c4e3491b6ddf0b10d0cf4673c81df2b98b532b15680140a1"
+    },
+    {
+      "treatment": "gas_only_before",
+      "cfl": 0.075,
+      "steps": 4,
+      "final_time": 2275.4309789960685,
+      "dt_min": 1.3844709861391493,
+      "dt_max": 2.514783409112392,
+      "fgmres_solves": 12,
+      "fgmres_true_residual_max": 1.985620022009732e-08,
+      "rho_max_cgs": 3.86913e-14,
+      "Tgas_max_K": 19.0192,
+      "gas_internal_erg": 2.07435e+42,
+      "radiation_total_erg": 3.39279e+42,
+      "background_gas_T_relative_error": 0.176128,
+      "background_rad_T_relative_error": 0.191842,
+      "log_sha256": "7525eb2834d9200bcef163faad9602ef9d53556d684c0b19a143aa41c73f5ea1",
+      "history_sha256": "fab85b16cbfa3282c355415f257689c93049f66da6f90c879836e11f78ab1970",
+      "restart_sha256": "6c257b19bfe3ce67eb1893abe0546dd81360909dabfa36c9fbac90498fd3b7b5"
+    },
+    {
+      "treatment": "gas_and_radiation_after",
+      "cfl": 0.3,
+      "steps": 1,
+      "final_time": 2275.4309789960685,
+      "dt_min": 8.805967784068649,
+      "dt_max": 8.805967784068649,
+      "fgmres_solves": 3,
+      "fgmres_true_residual_max": 1.901718832096855e-08,
+      "rho_max_cgs": 3.86797e-14,
+      "Tgas_max_K": 20.9965,
+      "gas_internal_erg": 2.12878e+42,
+      "radiation_total_erg": 2.21596e+42,
+      "background_gas_T_relative_error": 1.77636e-15,
+      "background_rad_T_relative_error": 0.0,
+      "log_sha256": "01f89eabe8a16178bdc61142fd4e4acfc5e93d3c70a3fe0f0aba071169cca166",
+      "history_sha256": "9130265e1e0216124db598f5e00e93fd5a87822bff5735545f2c58cc141f2c81",
+      "restart_sha256": "ca2a2e461612f755aaff7683328afaed8024f613d874cd2e007ffa6c9b38aa3d"
+    },
+    {
+      "treatment": "gas_and_radiation_after",
+      "cfl": 0.075,
+      "steps": 4,
+      "final_time": 2275.4309789960685,
+      "dt_min": 1.3846860101366474,
+      "dt_max": 2.514783409112392,
+      "fgmres_solves": 12,
+      "fgmres_true_residual_max": 1.890604571165584e-08,
+      "rho_max_cgs": 3.86944e-14,
+      "Tgas_max_K": 18.0017,
+      "gas_internal_erg": 1.86826e+42,
+      "radiation_total_erg": 1.7612e+42,
+      "background_gas_T_relative_error": 1.77636e-15,
+      "background_rad_T_relative_error": 0.0,
+      "log_sha256": "6ca78167d4aebfe063b2af32de621edec2de87b1c6c8afce7ca292ddc70ae992",
+      "history_sha256": "ba3eeb6a0a82641de95ea47a0c1225ff4c8568b8b32d365413f11f7e09023267",
+      "restart_sha256": "17f34c5479346572a8e8e447b09e281755875c163294375dee6bb877282cc4b9"
+    }
+  ],
+  "deltas": [
+    {
+      "treatment": "gas_and_radiation_before",
+      "radiation_relative_difference": -0.30799141522535034,
+      "gas_internal_relative_difference": -0.10673124784623043,
+      "Tgas_max_relative_difference": -0.13244837329223555
+    },
+    {
+      "treatment": "sink_off",
+      "radiation_relative_difference": 0.005465261858074673,
+      "gas_internal_relative_difference": -0.0380081469016947,
+      "Tgas_max_relative_difference": -0.09037696758983643
+    },
+    {
+      "treatment": "gas_only_before",
+      "radiation_relative_difference": -0.022563387504285205,
+      "gas_internal_relative_difference": -0.04478704739801348,
+      "Tgas_max_relative_difference": -0.09359436880155929
+    },
+    {
+      "treatment": "gas_and_radiation_after",
+      "radiation_relative_difference": -0.20522031083593556,
+      "gas_internal_relative_difference": -0.12237995471584663,
+      "Tgas_max_relative_difference": -0.14263329602552813
+    }
+  ],
+  "mixed_explicit_ledger": {
+    "0.3": {
+      "blocks": 120,
+      "total_radiation_floor_volume": 0.0,
+      "total_explicit_pair_balance_volume": 1.067762818718343e-07
+    },
+    "0.075": {
+      "blocks": 120,
+      "total_radiation_floor_volume": 0.0,
+      "total_explicit_pair_balance_volume": -9.706065202258474e-08
+    }
+  },
+  "implicit_ledger": {
+    "0.3": {
+      "max_rank_relative_balance": 2.2947292007821e-06
+    },
+    "0.075": {
+      "max_rank_relative_balance": 1.2220058857285197e-07
+    }
+  },
+  "interpretation": "The per-step background gas/radiation reset is a dominant contributor to the short-interval CFL sensitivity, especially radiation; turning it off is a model change, not an adopted production fix."
+}

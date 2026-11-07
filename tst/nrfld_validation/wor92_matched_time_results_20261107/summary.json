@@ -5,6 +5,7 @@
   "binary_sha256": "0e6af159f3c545d765667ab45a3b7feaad7a3ddbb0c05e8897633822c86f5c1b",
   "input_sha256": "7cd5ee8a6a3fe749624985b75dbafd000f34e713b9b2f723a191689bbef09cd0",
   "start_restart_sha256": "5efcd02455c7d9cf9f96dfd52d02ec681f37c6c09a16d3dd24073a28ef75edb2",
+  "initial_state_dump_sha256": "65a82b9e8ebf7b77922eaff1e02e99c256fb94364badc5cef3454969036c99d0",
   "cfl_0p3_final_state_dump_sha256": "9984be06c31788d33657d56c7579084b4356c41e741030729d27b0389c2baa8f",
   "cases": [
     {

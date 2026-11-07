@@ -25,6 +25,7 @@ RUNS = {
     "0.075": "table_clean_guard_ghost_cfl0075_restart100_to_time2436_2rank",
 }
 FINAL_DUMP_03 = ROOT / "table_clean_guard_ghost_cfl030_final_state_dump_2rank"
+INITIAL_DUMP = ROOT / "table_cycle100_initial_state_dump_2rank"
 STRICT_CONTROL = ROOT / "table_clean_strict_no_ghost_restart100_to120_2rank"
 
 
@@ -98,6 +99,9 @@ def main():
         dump_path = next(FINAL_DUMP_03.glob("*.prim.*.athdf"))
         archive.add(dump_path, arcname=f"cfl0.3/{dump_path.name}")
         archive.add(FINAL_DUMP_03 / "run.log", arcname="cfl0.3/final_state_dump.log")
+        for path in (INITIAL_DUMP / "run.log", INITIAL_DUMP / "cfl030_flux_precision16_local.hst",
+                     next(INITIAL_DUMP.glob("*.prim.*.athdf"))):
+            archive.add(path, arcname=f"initial/{path.name}")
         for path in (STRICT_CONTROL / "run.log", STRICT_CONTROL / "cfl030_flux_precision16_local.hst"):
             archive.add(path, arcname=f"cfl0.3_strict/{path.name}")
     csv_out(OUT / "cases.csv", cases)
@@ -123,6 +127,9 @@ def main():
                                          relative_l2=float(np.linalg.norm(delta.ravel()) / np.linalg.norm(x.ravel())),
                                          relative_max=float(np.max(np.abs(delta)) / np.max(np.abs(x)))))
     csv_out(OUT / "fields.csv", field_comparison)
+    initial_history = np.atleast_2d(np.loadtxt(INITIAL_DUMP / "cfl030_flux_precision16_local.hst"))
+    source_history = np.atleast_2d(np.loadtxt(ROOT / "table_domain_mean_limiter_restart74_to100_2rank/cfl030_flux_precision16_local.hst"))
+    assert np.array_equal(initial_history[-1], source_history[-1])
     normal = ROOT / RUNS["0.3"]
     normal_log = (normal / "run.log").read_text(errors="replace").splitlines()
     strict_log = (STRICT_CONTROL / "run.log").read_text(errors="replace").splitlines()
@@ -150,6 +157,7 @@ def main():
                    binary_sha256=sha(Path("/home/kosuke/simulation/test/rad_nr/wor92_operator_audit_20261107/build_table_domain_guard_trial/bin/athena")),
                    input_sha256=sha(ROOT / "input_table_domain_guard_cfl030_restart.used"),
                    start_restart_sha256=sha(ROOT / "table_domain_mean_limiter_restart74_to100_2rank/cfl030_flux_precision16_local.final.rst"),
+                   initial_state_dump_sha256=sha(next(INITIAL_DUMP.glob("*.prim.*.athdf"))),
                    cfl_0p3_final_state_dump_sha256=sha(next(FINAL_DUMP_03.glob("*.prim.*.athdf"))),
                    cases=cases, comparison=comparison, field_comparison=field_comparison,
                    strict_no_ghost_control=dict(trace_equal=equal_traces, history_byte_equal=True,
