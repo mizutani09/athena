@@ -3,6 +3,7 @@
 import csv
 import hashlib
 import json
+import os
 import re
 import tarfile
 from collections import defaultdict
@@ -16,11 +17,15 @@ import matplotlib.pyplot as plt
 
 HERE = Path(__file__).resolve().parent
 ROOT = Path("/home/kosuke/simulation/test/rad_nr/wor92_wor105_retest_20261107")
-RUN = ROOT / "table_floor32_energy_10cycles_2rank"
+CYCLES = int(os.environ.get("WOR92_AUDIT_CYCLES", "10"))
+assert CYCLES in (10, 30)
+RUN = ROOT / f"table_floor32_energy_{CYCLES}cycles_2rank"
 PRIOR = ROOT / "table_local_jacobian_floor32_cfl030_10cycles_2rank/run.log"
-INPUT = ROOT / "input_table_local_jacobian_floor32_cfl030_10cycles.used"
+INPUT = ROOT / f"input_table_local_jacobian_floor32_cfl030_{CYCLES}cycles.used"
 BINARY = Path("/home/kosuke/simulation/test/rad_nr/wor92_operator_audit_20261107/build_table_precision/bin/athena")
-OUT = HERE / "wor92_floor32_energy_audit_results_20261107"
+HISTORY = RUN / "cfl030_flux_precision16_local.hst"
+OUT = HERE / ("wor92_floor32_energy_audit_results_20261107" if CYCLES == 10
+              else "wor92_floor32_energy_30cycles_results_20261107")
 FACES = (
     ("x1min", "x1max", "x2min", "x2max", "x3min", "x3max", "xminus_delta", "xplus_delta"),
     ("x2min", "x2max", "x1min", "x1max", "x3min", "x3max", "yminus_delta", "yplus_delta"),
@@ -75,7 +80,8 @@ def main():
     OUT.mkdir(exist_ok=True)
     old_hash, old_trace = trace(PRIOR)
     new_hash, new_trace = trace(RUN / "run.log")
-    assert old_hash == new_hash and len(new_trace) == 43
+    same_prefix = new_trace[:len(old_trace)] == old_trace
+    assert same_prefix and len(new_trace) >= 43
     rank_files = sorted(RUN.glob("ledger.rank*.log"))
     assert len(rank_files) == 2
     blocks, energy = defaultdict(list), defaultdict(dict)
@@ -92,7 +98,7 @@ def main():
                 rank = int(d["rank"])
                 assert rank not in energy[key]
                 energy[key][rank] = d
-    assert set(blocks) == set(energy) and len(blocks) == 10
+    assert set(blocks) == set(energy) and 0 < len(blocks) <= CYCLES
     stage_rows, face_rows = [], []
     for (cycle, stage), members in sorted(blocks.items()):
         assert stage == 0 and len(members) == 120
@@ -149,22 +155,46 @@ def main():
         })
     write_csv(OUT / "stages.csv",stage_rows)
     write_csv(OUT / "faces.csv",face_rows)
+    solve_rows = [fields(line) for line in (RUN / "run.log").read_text(errors="replace").splitlines()
+                  if "[LINEAR_FGMRES] iterations=" in line]
+    newton_rows = [fields(line) for line in (RUN / "run.log").read_text(errors="replace").splitlines()
+                   if "[NR] status=converged" in line]
+    history_rows = [[float(v) for v in line.split()] for line in HISTORY.read_text().splitlines()
+                    if line and not line.startswith("#")]
+    if len(history_rows) == CYCLES+2:
+        assert history_rows[-1] == history_rows[-2]
+        history_rows.pop()
+    assert len(newton_rows) == len(stage_rows) == CYCLES
+    assert len(history_rows) == CYCLES+1
     summary = {
         "binary_sha256": sha(BINARY), "input_sha256": sha(INPUT),
         "run_log_sha256": sha(RUN / "run.log"),
         "rank_log_sha256": {p.name:sha(p) for p in rank_files},
         "numerical_trace_sha256": new_hash,
         "same_numerical_trace_as_prior": old_hash == new_hash,
+        "same_first_ten_cycle_trace_as_prior": same_prefix,
         "cycles": len(stage_rows),
+        "fgmres_solves": len(solve_rows),
+        "fgmres_floor_accepts": sum(int(r["precision_floor_accept"]) for r in solve_rows),
+        "fgmres_max_true_relative_residual": max(float(r["relative_residual"]) for r in solve_rows),
+        "newton_iterations_max": max(int(r["iterations"]) for r in newton_rows),
+        "newton_final_l2_max": max(float(r["final_l2"]) for r in newton_rows),
+        "final_time_code": history_rows[-1][0],
+        "final_rho_max_cgs": history_rows[-1][15],
+        "final_Tgas_max_kelvin": history_rows[-1][19],
+        "history_level_max": max(r[35] for r in history_rows),
         "max_weighted_cf_mismatch": max(r["weighted_cf_mismatch"] for r in stage_rows),
         "max_relative_energy_balance": max(r["max_rank_relative_energy_balance"] for r in stage_rows),
         "max_absolute_relative_energy_balance": max(r["max_rank_absolute_relative_energy_balance"] for r in stage_rows),
+        "last_ten_max_weighted_cf_mismatch": max(r["weighted_cf_mismatch"] for r in stage_rows[-10:]),
+        "last_ten_max_relative_energy_balance": max(r["max_rank_relative_energy_balance"] for r in stage_rows[-10:]),
         "stages": stage_rows,
     }
     (OUT / "summary.json").write_text(json.dumps(summary,indent=2)+"\n")
     with tarfile.open(OUT / "evidence.tar.gz","w:gz") as archive:
         archive.add(INPUT,arcname="input.used")
         archive.add(RUN / "run.log",arcname="run.log")
+        archive.add(HISTORY,arcname="history.hst")
         for path in rank_files:
             archive.add(path,arcname=path.name)
     fig,(ax,bx) = plt.subplots(1,2,figsize=(9,3.5))
