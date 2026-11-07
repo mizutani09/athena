@@ -59678,5 +59678,206 @@
       }
     ],
     "decision": "The failing second-step FGMRES solve is linear to ~3e-16 on the probe vectors. Audit ON/OFF histories and HDF arrays match exactly within each rank and binary; the strict 1e-8 solve still fails at 80 iterations. Restart 80 also fails on the older binary. No tolerance or operator change."
+  },
+  "wor25_smoother_count_guard": {
+    "scope": "FGMRES preconditioner smoother-count experiment on coupled variable-limiter 3-level shifted Test C and constructor guard.",
+    "cases": [
+      {
+        "name": "threelevel_coupled_smooth4_r1",
+        "stage": "pre_guard_terminated",
+        "ranks": 1,
+        "threads_per_rank": 1,
+        "sweeps_pre_and_post": 4,
+        "source_commit_before_run": "58786a64",
+        "binary_sha256": null,
+        "input_path": "/home/kosuke/simulation/athena-wor25-23-24-resolution/tst/nrfld_validation/testc_threelevel_shifted_20261107.in",
+        "input_sha256": "c1ffedae69f670d6f17740805077b6741c7cefdaf2baf4639cc7ab5f1fa38a74",
+        "command": "mpirun --output-filename /tmp/wor25_23_24_resolution_trials/threelevel_coupled_smooth4_r1/mpi -n 1 /tmp/wor25_23_24_resolution_fgmres_norm_audit_build/bin/athena -i /home/kosuke/simulation/athena-wor25-23-24-resolution/tst/nrfld_validation/testc_threelevel_shifted_20261107.in -d /tmp/wor25_23_24_resolution_trials/threelevel_coupled_smooth4_r1/output nrfld/linear_solver=fgmres nrfld/fgmres_linearity_check=false nrfld/global_jacobian_check=false fld/is_couple=true fld/only_rad=false fld/fixed_flux_limiter=false nrfld/npresmooth=4 nrfld/npostsmooth=4 time/nlim=2 time/tlim=0.001",
+        "run_log": "/tmp/wor25_23_24_resolution_trials/threelevel_coupled_smooth4_r1/run.log",
+        "stdout_logs": [
+          "/tmp/wor25_23_24_resolution_trials/threelevel_coupled_smooth4_r1/mpi/1/rank.0/stdout"
+        ],
+        "wall_time": "5:46.58",
+        "peak_rss_kb_time_parent": 13892,
+        "exit_status": 1,
+        "fatal_input_guard": false,
+        "fgmres_history": [],
+        "newton_history": [
+          {
+            "status": "dt_zero_initialization",
+            "iterations": 0,
+            "cycle": 0
+          }
+        ],
+        "face_pair_count": 0,
+        "max_face_relative_mismatch": null,
+        "face_pass": true,
+        "binary_sha256_note": "isolated build overwritten by the guard rebuild",
+        "observed_athena_rss_kb_from_ps": 459172,
+        "termination": "SIGTERM sent to mpirun after >5 min with no completed solve",
+        "evaluation": "TERMINATED_UNSUPPORTED_INPUT"
+      },
+      {
+        "name": "smoother_guard_invalid",
+        "stage": "guarded_invalid",
+        "ranks": 1,
+        "threads_per_rank": 1,
+        "sweeps_pre_and_post": 4,
+        "source_commit_before_run": "58786a64",
+        "binary_sha256": "6bfa1b743a42d6983c19f58838e47f3bff65e4d95344802a1c298b44bf7461b8",
+        "input_path": "/home/kosuke/simulation/athena-wor25-23-24-resolution/tst/nrfld_validation/testc_threelevel_shifted_20261107.in",
+        "input_sha256": "c1ffedae69f670d6f17740805077b6741c7cefdaf2baf4639cc7ab5f1fa38a74",
+        "command": "timeout 10s mpirun --output-filename /tmp/wor25_23_24_resolution_trials/smoother_guard_invalid/mpi -n 1 /tmp/wor25_23_24_resolution_fgmres_norm_audit_build/bin/athena -i /home/kosuke/simulation/athena-wor25-23-24-resolution/tst/nrfld_validation/testc_threelevel_shifted_20261107.in -d /tmp/wor25_23_24_resolution_trials/smoother_guard_invalid/output nrfld/linear_solver=fgmres nrfld/npresmooth=4 nrfld/npostsmooth=4 time/nlim=0",
+        "run_log": "/tmp/wor25_23_24_resolution_trials/smoother_guard_invalid/run.log",
+        "stdout_logs": [
+          "/tmp/wor25_23_24_resolution_trials/smoother_guard_invalid/mpi/1/rank.0/stdout"
+        ],
+        "wall_time": "0:00.43",
+        "peak_rss_kb_time_parent": 24808,
+        "exit_status": 0,
+        "fatal_input_guard": true,
+        "fgmres_history": [],
+        "newton_history": [],
+        "face_pair_count": 0,
+        "max_face_relative_mismatch": null,
+        "face_pass": true,
+        "evaluation": "PASS_REJECTED_UNSUPPORTED_INPUT"
+      },
+      {
+        "name": "smoother_guard_valid",
+        "stage": "guarded_valid_constructor",
+        "ranks": 1,
+        "threads_per_rank": 1,
+        "sweeps_pre_and_post": 2,
+        "source_commit_before_run": "58786a64",
+        "binary_sha256": "6bfa1b743a42d6983c19f58838e47f3bff65e4d95344802a1c298b44bf7461b8",
+        "input_path": "/home/kosuke/simulation/athena-wor25-23-24-resolution/tst/nrfld_validation/testc_threelevel_shifted_20261107.in",
+        "input_sha256": "c1ffedae69f670d6f17740805077b6741c7cefdaf2baf4639cc7ab5f1fa38a74",
+        "command": "timeout 10s mpirun --output-filename /tmp/wor25_23_24_resolution_trials/smoother_guard_valid/mpi -n 1 /tmp/wor25_23_24_resolution_fgmres_norm_audit_build/bin/athena -i /home/kosuke/simulation/athena-wor25-23-24-resolution/tst/nrfld_validation/testc_threelevel_shifted_20261107.in -d /tmp/wor25_23_24_resolution_trials/smoother_guard_valid/output nrfld/linear_solver=fgmres nrfld/npresmooth=2 nrfld/npostsmooth=2 time/nlim=0",
+        "run_log": "/tmp/wor25_23_24_resolution_trials/smoother_guard_valid/run.log",
+        "stdout_logs": [
+          "/tmp/wor25_23_24_resolution_trials/smoother_guard_valid/mpi/1/rank.0/stdout"
+        ],
+        "wall_time": "0:01.27",
+        "peak_rss_kb_time_parent": 439144,
+        "exit_status": 0,
+        "fatal_input_guard": false,
+        "fgmres_history": [],
+        "newton_history": [
+          {
+            "status": "dt_zero_initialization",
+            "iterations": 0,
+            "cycle": 0
+          }
+        ],
+        "face_pair_count": 0,
+        "max_face_relative_mismatch": null,
+        "face_pass": true,
+        "evaluation": "PASS_CONSTRUCTOR"
+      },
+      {
+        "name": "smoother_guard_valid_solve",
+        "stage": "guarded_valid_solve",
+        "ranks": 1,
+        "threads_per_rank": 1,
+        "sweeps_pre_and_post": 2,
+        "source_commit_before_run": "58786a64",
+        "binary_sha256": "6bfa1b743a42d6983c19f58838e47f3bff65e4d95344802a1c298b44bf7461b8",
+        "input_path": "/home/kosuke/simulation/athena-wor25-23-24-resolution/tst/nrfld_validation/testc_threelevel_shifted_20261107.in",
+        "input_sha256": "c1ffedae69f670d6f17740805077b6741c7cefdaf2baf4639cc7ab5f1fa38a74",
+        "command": "mpirun --output-filename /tmp/wor25_23_24_resolution_trials/smoother_guard_valid_solve/mpi -n 1 /tmp/wor25_23_24_resolution_fgmres_norm_audit_build/bin/athena -i /home/kosuke/simulation/athena-wor25-23-24-resolution/tst/nrfld_validation/testc_threelevel_shifted_20261107.in -d /tmp/wor25_23_24_resolution_trials/smoother_guard_valid_solve/output nrfld/linear_solver=fgmres nrfld/fgmres_linearity_check=false fld/is_couple=true fld/only_rad=false fld/fixed_flux_limiter=false nrfld/npresmooth=2 nrfld/npostsmooth=2 time/nlim=1 time/tlim=0.001",
+        "run_log": "/tmp/wor25_23_24_resolution_trials/smoother_guard_valid_solve/run.log",
+        "stdout_logs": [
+          "/tmp/wor25_23_24_resolution_trials/smoother_guard_valid_solve/mpi/1/rank.0/stdout"
+        ],
+        "wall_time": "0:25.17",
+        "peak_rss_kb_time_parent": 539440,
+        "exit_status": 0,
+        "fatal_input_guard": false,
+        "fgmres_history": [
+          {
+            "iterations": 17,
+            "true_relative_residual": 8.090749531420312e-09
+          },
+          {
+            "iterations": 18,
+            "true_relative_residual": 4.549724141468168e-09
+          },
+          {
+            "iterations": 18,
+            "true_relative_residual": 5.846355453452369e-09
+          },
+          {
+            "iterations": 18,
+            "true_relative_residual": 4.638265526977738e-09
+          },
+          {
+            "iterations": 18,
+            "true_relative_residual": 4.966880825753556e-09
+          },
+          {
+            "iterations": 18,
+            "true_relative_residual": 6.404241472025839e-09
+          },
+          {
+            "iterations": 18,
+            "true_relative_residual": 5.0976767551124435e-09
+          },
+          {
+            "iterations": 18,
+            "true_relative_residual": 5.126274014425337e-09
+          },
+          {
+            "iterations": 18,
+            "true_relative_residual": 4.7251628696960546e-09
+          },
+          {
+            "iterations": 18,
+            "true_relative_residual": 5.709407333646888e-09
+          },
+          {
+            "iterations": 18,
+            "true_relative_residual": 4.918329640400362e-09
+          },
+          {
+            "iterations": 18,
+            "true_relative_residual": 5.891347833246064e-09
+          },
+          {
+            "iterations": 18,
+            "true_relative_residual": 5.98447863208237e-09
+          },
+          {
+            "iterations": 18,
+            "true_relative_residual": 4.915528848690571e-09
+          },
+          {
+            "iterations": 18,
+            "true_relative_residual": 6.361092064468906e-09
+          },
+          {
+            "iterations": 19,
+            "true_relative_residual": 4.649835450826479e-09
+          }
+        ],
+        "newton_history": [
+          {
+            "status": "dt_zero_initialization",
+            "iterations": 0,
+            "cycle": 0
+          },
+          {
+            "status": "converged",
+            "iterations": 16,
+            "cycle": 0
+          }
+        ],
+        "face_pair_count": 10,
+        "max_face_relative_mismatch": 0.0034478730330128027,
+        "face_pass": false,
+        "evaluation": "PASS_SOLVER_FAIL_FACE_RELATIVE"
+      }
+    ],
+    "decision": "MG transfer task lists support only 0, 1, or 2 pre/post sweeps. An attempted 4/4 FGMRES preconditioner run spent 5:46 without finishing one linear solve and was terminated. The input guard rejects 4/4 at construction while 2/2 still solves one step. This is a hang-prevention fix, not a convergence improvement. The existing program returns exit status zero for this constructor ATHENA_ERROR, so automation must check the FATAL ERROR text as well."
   }
 }

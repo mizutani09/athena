@@ -142,8 +142,19 @@ linearMGDriver::linearMGDriver(Mesh *pm, ParameterInput *pin, NewtonRaphsonDrive
   ffas_ = pin->GetOrAddBoolean("nrfld", "fas", ffas_);
   omega_ = pin->GetOrAddReal("nrfld", "omega", 1.0);
   fsteady_ = pin->GetOrAddBoolean("nrfld", "steady", false);
-  npresmooth_ = pin->GetOrAddReal("nrfld", "npresmooth", 2);
-  npostsmooth_ = pin->GetOrAddReal("nrfld", "npostsmooth", 2);
+  npresmooth_ = pin->GetOrAddInteger("nrfld", "npresmooth", 2);
+  npostsmooth_ = pin->GetOrAddInteger("nrfld", "npostsmooth", 2);
+  // The root/octet transfer task lists implement exactly 0, 1, or 2
+  // smoothing sweeps. Larger values produce an empty task list and can leave
+  // DoTaskListOneStage waiting forever, including inside FGMRES.
+  if (npresmooth_ < 0 || npresmooth_ > 2
+      || npostsmooth_ < 0 || npostsmooth_ > 2) {
+    std::stringstream msg;
+    msg << "### FATAL ERROR in linearMGDriver::linearMGDriver" << std::endl
+        << "nrfld/npresmooth and nrfld/npostsmooth must each be 0, 1, or 2 "
+        << "for the current MG task lists." << std::endl;
+    ATHENA_ERROR(msg);
+  }
   fshowdef_ = pin->GetOrAddBoolean("nrfld", "show_defect", fshowdef_);
   stage_diagnostics_ = pin->GetOrAddInteger(
       "nrfld", "diagnostic_verbosity", 0) >= 1;
