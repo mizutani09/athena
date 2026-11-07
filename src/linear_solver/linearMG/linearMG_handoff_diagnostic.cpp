@@ -1,4 +1,5 @@
-// Single-rank Test C audit of the MG-to-Newton correction handoff.
+// Opt-in audit of the MG-to-Newton correction handoff, including the longest
+// x1 Fourier mode on the full domain.  This projection is not an AMR eigenmode.
 #include <algorithm>
 #include <array>
 #include <cmath>
@@ -26,6 +27,8 @@ void linearMGDriver::PrintHandoffDiagnostic(const char *stage, bool native) {
     long double r2{0}, b2{0}, double_r2{0}, native_r2{0}, roundoff2{0};
     long double delta_integral{0}, delta2_integral{0}, rhs_integral{0};
     long double r_integral{0}, volume{0};
+    long double delta_cos1{0}, delta_sin1{0}, rhs_cos1{0}, rhs_sin1{0};
+    long double r_cos1{0}, r_sin1{0};
     Real delta_min{std::numeric_limits<Real>::max()};
     Real delta_max{-std::numeric_limits<Real>::max()};
     Real updated_min{std::numeric_limits<Real>::max()};
@@ -45,6 +48,9 @@ void linearMGDriver::PrintHandoffDiagnostic(const char *stage, bool native) {
     const auto &c=nr->coeff_;
     const Real fac=dt_/SQR(mb->pcoord->dx1f(mb->is));
     const Real volume=mb->pcoord->GetCellVolume(mb->ks,mb->js,mb->is);
+    const long double xlo=pmy_mesh_->mesh_size.x1min;
+    const long double xlen=pmy_mesh_->mesh_size.x1max-xlo;
+    const long double twopi=2.0L*std::acos(-1.0L);
     for (int k=mb->ks;k<=mb->ke;++k)
       for (int j=mb->js;j<=mb->je;++j)
         for (int i=mb->is;i<=mb->ie;++i) {
@@ -70,6 +76,8 @@ void linearMGDriver::PrintHandoffDiagnostic(const char *stage, bool native) {
           }
           stable+=static_cast<long double>(fac)*row_f*center;
           const long double r=rhs-stable, rd=rhs-direct;
+          const long double phase=twopi*(mb->pcoord->x1v(i)-xlo)/xlen;
+          const long double c1=std::cos(phase),s1=std::sin(phase);
           const long double rn=mg->src_[l](mk,mj,mi)-native_av;
           for (int category:{region,3}) {
             Sum &s=sums[category]; ++s.cells;
@@ -80,6 +88,9 @@ void linearMGDriver::PrintHandoffDiagnostic(const char *stage, bool native) {
             s.delta2_integral+=volume*static_cast<long double>(center)*center;
             s.rhs_integral+=volume*static_cast<long double>(rhs);
             s.r_integral+=volume*r;
+            s.delta_cos1+=volume*center*c1; s.delta_sin1+=volume*center*s1;
+            s.rhs_cos1+=volume*rhs*c1; s.rhs_sin1+=volume*rhs*s1;
+            s.r_cos1+=volume*r*c1; s.r_sin1+=volume*r*s1;
             s.delta_min=std::min(s.delta_min,center); s.delta_max=std::max(s.delta_max,center);
             const Real updated=nr->u_(k,j,i)+center;
             s.updated_min=std::min(s.updated_min,updated);
@@ -97,14 +108,18 @@ void linearMGDriver::PrintHandoffDiagnostic(const char *stage, bool native) {
   for (int region=0;region<4;++region) {
     Sum &s=sums[region];
 #ifdef MPI_PARALLEL
-    long double totals[10]={s.r2,s.b2,s.double_r2,s.native_r2,s.roundoff2,
+    long double totals[16]={s.r2,s.b2,s.double_r2,s.native_r2,s.roundoff2,
                             s.delta_integral,s.delta2_integral,s.rhs_integral,
-                            s.r_integral,s.volume};
-    MPI_Allreduce(MPI_IN_PLACE,totals,10,MPI_LONG_DOUBLE,MPI_SUM,MPI_COMM_WORLD);
+                            s.r_integral,s.volume,s.delta_cos1,s.delta_sin1,
+                            s.rhs_cos1,s.rhs_sin1,s.r_cos1,s.r_sin1};
+    MPI_Allreduce(MPI_IN_PLACE,totals,16,MPI_LONG_DOUBLE,MPI_SUM,MPI_COMM_WORLD);
     s.r2=totals[0]; s.b2=totals[1]; s.double_r2=totals[2]; s.native_r2=totals[3];
     s.roundoff2=totals[4]; s.delta_integral=totals[5];
     s.delta2_integral=totals[6]; s.rhs_integral=totals[7];
     s.r_integral=totals[8]; s.volume=totals[9];
+    s.delta_cos1=totals[10]; s.delta_sin1=totals[11];
+    s.rhs_cos1=totals[12]; s.rhs_sin1=totals[13];
+    s.r_cos1=totals[14]; s.r_sin1=totals[15];
     const std::int64_t local_cells=s.cells;
     std::int64_t counts[2]={s.cells,s.nonpositive};
     MPI_Allreduce(MPI_IN_PLACE,counts,2,MPI_LONG_LONG,MPI_SUM,MPI_COMM_WORLD);
@@ -139,6 +154,9 @@ void linearMGDriver::PrintHandoffDiagnostic(const char *stage, bool native) {
               << " delta_min=" << s.delta_min << " delta_max=" << s.delta_max
               << " delta_mean=" << delta_mean
               << " delta_fluct_rms=" << std::sqrt(fluctuation)
+              << " delta_k1=" << 2.0L*std::hypot(s.delta_cos1,s.delta_sin1)/s.volume
+              << " rhs_k1=" << 2.0L*std::hypot(s.rhs_cos1,s.rhs_sin1)/s.volume
+              << " residual_k1=" << 2.0L*std::hypot(s.r_cos1,s.r_sin1)/s.volume
               << " rhs_mean=" << s.rhs_integral/s.volume
               << " residual_mean=" << s.r_integral/s.volume
               << " rhs_rms=" << std::sqrt(s.b2/s.volume)
