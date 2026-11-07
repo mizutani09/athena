@@ -36,11 +36,15 @@ RUNS = {
     "cfl030_level6_from121": "table_symmetry_level6_from121_one_step_2rank",
     "cfl030_level5_from121_control": "table_symmetry_level5_from121_one_step_control_2rank",
     "cfl030_level6_to1800": "table_symmetry_level6_checkpoint130_to1800_2rank",
+    "cfl030_level6_to1825": "table_symmetry_level6_from1800_to1900_2rank",
+    "cfl030_level5_t181778": "table_symmetry_level5_from140_t181777_2rank",
+    "cfl030_level6_t181778": "table_symmetry_level6_from140_t181777_dump_2rank",
 }
 DUMP_DIRS = {
     "cfl030_level3_early": "table_symmetry_level3_cycle63_state_dump_corrected_2rank",
     "cfl030_level4_from63": "table_symmetry_level4_cycle64_state_dump_2rank",
     "cfl030_level5_to1753": "table_symmetry_level5_cycle121_state_dump_2rank",
+    "cfl030_level6_to1825": "table_symmetry_level6_cycle151_state_dump_2rank",
 }
 ENERGY_LEDGER_DIR = "table_symmetry_level4_from63_energy_ledger_2rank"
 INTERRUPTED_RUN = "table_symmetry_level6_from122_to1800_2rank"
@@ -219,6 +223,38 @@ def main():
                                                           np.linalg.norm(x.ravel())),
                                         relative_max=float(np.max(np.abs(x - y)) / np.max(np.abs(x)))))
     write_csv(OUT / "late_cap_comparison.csv", late_cap_comparison)
+    level5_history = np.atleast_2d(np.loadtxt(ROOT / RUNS["cfl030_level5_t181778"] /
+                                                 "cfl030_flux_precision16_local.hst"))
+    level6_history = np.atleast_2d(np.loadtxt(ROOT / RUNS["cfl030_level6_t181778"] /
+                                                 "cfl030_flux_precision16_local.hst"))
+    cap5_row = level5_history[-1]
+    cap6_row = level6_history[np.argmin(np.abs(level6_history[:, 0] - cap5_row[0]))]
+    assert abs(cap5_row[0] - cap6_row[0]) < 0.01
+    original_level6_history = np.atleast_2d(np.loadtxt(ROOT / RUNS["cfl030_level6_to1825"] /
+                                                          "cfl030_flux_precision16_local.hst"))
+    original_cap6_row = original_level6_history[np.argmin(
+        np.abs(original_level6_history[:, 0] - cap5_row[0]))]
+    replay_error = float(np.max(np.abs(cap6_row[[15, 19, 20, 34]] -
+                                       original_cap6_row[[15, 19, 20, 34]]) /
+                                np.maximum(np.abs(original_cap6_row[[15, 19, 20, 34]]), 1e-30)))
+    assert replay_error < 1e-5
+    third_cap_comparison = []
+    for field, column in (("dt", 1), ("rho_max_cgs", 15), ("Tgas_max_K", 19),
+                          ("Trad_max_K", 20), ("jeans_min", 34),
+                          ("logical_level_max", 35)):
+        third_cap_comparison.append(dict(field=field, time_hst=cap5_row[0],
+                                         cap5=float(cap5_row[column]),
+                                         cap6=float(cap6_row[column]),
+                                         relative_change=float((cap6_row[column] - cap5_row[column]) /
+                                                               cap5_row[column])))
+    by_case = {case["case"]: case for case in cases}
+    for field in ("blocks", "center_rho_ratio", "pressure_floor_cells"):
+        a = by_case["cfl030_level5_t181778"][field]
+        b = by_case["cfl030_level6_t181778"][field]
+        third_cap_comparison.append(dict(field=field, time_hst=cap5_row[0],
+                                         cap5=a, cap6=b,
+                                         relative_change=(b - a) / a if a else 0.0))
+    write_csv(OUT / "third_cap_comparison.csv", third_cap_comparison)
     interrupted_history = np.atleast_2d(np.loadtxt(interrupted_hst))
     interrupted_lines = interrupted_log.read_text(errors="replace")
     interrupted_newton = re.findall(r"^\[NR\] status=(\w+) iterations=(\d+)",
@@ -270,6 +306,8 @@ def main():
                                                     "cfl030_flux_precision16_local.final.rst"),
                    cases=cases, cap_comparison=cap_comparison,
                    late_cap_comparison=late_cap_comparison,
+                   third_cap_comparison=third_cap_comparison,
+                   third_cap_replay_max_relative_critical=replay_error,
                    interrupted_segment=dict(last_history_time=float(interrupted_history[-1, 0]),
                                             last_history_rho_max_cgs=float(interrupted_history[-1, 15]),
                                             newton_stages=len(interrupted_newton),
@@ -301,7 +339,8 @@ def main():
         if label in {"cfl030_2rank", "cfl015_2rank", "cfl030_level3_late",
                      "cfl030_level3_early", "cfl030_level4_to70", "cfl030_level5_to76",
                      "cfl030_level5_to1700", "cfl030_level5_to1753",
-                     "cfl030_level6_to1800"}:
+                     "cfl030_level6_to1800", "cfl030_level6_to1825",
+                     "cfl030_level5_t181778", "cfl030_level6_t181778"}:
             ax2.plot([x["time"] for x in h], [x["jeans_min"] for x in h], label=label)
     ax1.set_yscale("log")
     ax1.set_xlim(1990, 2110)

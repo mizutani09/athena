@@ -505,6 +505,99 @@
       "history_sha256": "4e143ced1cca66d6ab4279ae4f70b19060a97cc649a9bd56979944a19f7c49fd",
       "final_hdf5_sha256": "f0a336abb3c20691b5ef43d838d953b9878d264bf4c40580da7a95e96ca32977",
       "final_restart_sha256": "e42229a202f75b770c623cc14255322ed075d6fc943dc554c8f2dd2b75ea864c"
+    },
+    {
+      "case": "cfl030_level6_to1825",
+      "cycle": 151,
+      "time": 1824.8837890625,
+      "blocks": 1856,
+      "max_level": 5,
+      "rho_max_cgs": 3.8488760375976567e-16,
+      "pressure_min_code": 0.012778032571077347,
+      "pressure_floor_cells": 0,
+      "center_rho_ratio": 1.0000002819913816,
+      "jeans_min_end": 33.9259,
+      "jeans_target": 32,
+      "newton_stages": 16,
+      "newton_nonconverged": 0,
+      "fgmres_max_true_residual": 1.903577282485219e-08,
+      "fgmres_max_iterations": 22,
+      "fgmres_backward_max": 1.114867856631295e-06,
+      "fgmres_backward_last": 3.9114912347186566e-11,
+      "local_gas_residual_max": 3.518234314970137e-14,
+      "jacobian_gas_l2_eps1e4_max": 9.064692601741918e-05,
+      "jacobian_gas_l2_eps1e6_max": 9.096830027559061e-07,
+      "jacobian_rad_l2_max": 6.121967191678733e-10,
+      "accepted_Tmin_K": 14.004960409865491,
+      "precision_floor_accepts": 0,
+      "positive_ghost_events": 0,
+      "opacity_trial_clamps": 0,
+      "log_sha256": "ef031c47488177ef34b8e688153c629e8d7365de7b46bc80a7a760224e727717",
+      "history_sha256": "cf70cafd40078e197ea50f365d670336c6c84fedff1baf040ac60d3b925d3945",
+      "final_hdf5_sha256": "ce3dcf56e0ccef1465ffc7ab41fcb4eebe2f462c36cffd44786d4ad55f84b009",
+      "final_restart_sha256": "dd49c9ff469ac68e4f99ebae1fae18b1c6c487c63169a13a48981f4999086e78"
+    },
+    {
+      "case": "cfl030_level5_t181778",
+      "cycle": 145,
+      "time": 1817.77880859375,
+      "blocks": 1632,
+      "max_level": 4,
+      "rho_max_cgs": 3.403450317382813e-16,
+      "pressure_min_code": 0.012853029184043407,
+      "pressure_floor_cells": 0,
+      "center_rho_ratio": 1.0000013728081139,
+      "jeans_min_end": 30.2103,
+      "jeans_target": 32,
+      "newton_stages": 6,
+      "newton_nonconverged": 0,
+      "fgmres_max_true_residual": 1.8734846717949523e-08,
+      "fgmres_max_iterations": 19,
+      "fgmres_backward_max": 4.819065870488532e-07,
+      "fgmres_backward_last": 5.337254073450751e-12,
+      "local_gas_residual_max": 3.396573902740338e-14,
+      "jacobian_gas_l2_eps1e4_max": 9.0617134139224e-05,
+      "jacobian_gas_l2_eps1e6_max": 9.092835185206386e-07,
+      "jacobian_rad_l2_max": 6.12135123419597e-10,
+      "accepted_Tmin_K": 14.011966601756592,
+      "precision_floor_accepts": 0,
+      "positive_ghost_events": 0,
+      "opacity_trial_clamps": 0,
+      "log_sha256": "9d4be912fba14262f7d5c2a22a9409dcab82ecf9a9fa6a9e9a221a386c60ad32",
+      "history_sha256": "f75dd4df5ee337af1fd5c444a2db5b0906fee43f83fc2642c1f05daaf4773d7a",
+      "final_hdf5_sha256": "abf45b59b243bf9ae649502dc9009e90f7e6bc1e36fc7c9089926cdd4c03ebb6",
+      "final_restart_sha256": "8f24d4dde5d2aa440f82b09c35ec3f93518c7412adadb94e4297e2aa50ccb0bb"
+    },
+    {
+      "case": "cfl030_level6_t181778",
+      "cycle": 146,
+      "time": 1817.77880859375,
+      "blocks": 1856,
+      "max_level": 5,
+      "rho_max_cgs": 3.4102374267578127e-16,
+      "pressure_min_code": 0.012801870703697205,
+      "pressure_floor_cells": 0,
+      "center_rho_ratio": 1.0000003176291146,
+      "jeans_min_end": 34.7115,
+      "jeans_target": 32,
+      "newton_stages": 9,
+      "newton_nonconverged": 0,
+      "fgmres_max_true_residual": 1.8734846717949523e-08,
+      "fgmres_max_iterations": 22,
+      "fgmres_backward_max": 1.1148493728892637e-06,
+      "fgmres_backward_last": 4.4699058440949845e-11,
+      "local_gas_residual_max": 3.396573902740338e-14,
+      "jacobian_gas_l2_eps1e4_max": 9.0617134139224e-05,
+      "jacobian_gas_l2_eps1e6_max": 9.092835185206386e-07,
+      "jacobian_rad_l2_max": 6.121967072923356e-10,
+      "accepted_Tmin_K": 14.006627090578496,
+      "precision_floor_accepts": 0,
+      "positive_ghost_events": 0,
+      "opacity_trial_clamps": 0,
+      "log_sha256": "2b1de5b2be6a95ee2e29508b410845ad8fd9de87c163dd9d2b601523e846deb4",
+      "history_sha256": "1cd39c42a5ae79c9130cf2e481a5ac3def9f24e5ffe61c425a09ff0a86bab36c",
+      "final_hdf5_sha256": "40b5adc2e3c5ac8d4094a12ef9038767b9ee6a5932ac87811d1fd74327edac5a",
+      "final_restart_sha256": "76e31897bbff8ebbe00fddfc977f12d3eb7f79e91e7f2b05929e3aad8cb9ca09"
     }
   ],
   "cap_comparison": [
@@ -559,6 +652,72 @@
       "relative_max": 0.0
     }
   ],
+  "third_cap_comparison": [
+    {
+      "field": "dt",
+      "time_hst": 1817.78,
+      "cap5": 2.71567,
+      "cap6": 1.4304,
+      "relative_change": -0.4732791539472764
+    },
+    {
+      "field": "rho_max_cgs",
+      "time_hst": 1817.78,
+      "cap5": 3.40345e-16,
+      "cap6": 3.41024e-16,
+      "relative_change": 0.0019950344503370876
+    },
+    {
+      "field": "Tgas_max_K",
+      "time_hst": 1817.78,
+      "cap5": 14.0498,
+      "cap6": 14.0562,
+      "relative_change": 0.0004555224985409808
+    },
+    {
+      "field": "Trad_max_K",
+      "time_hst": 1817.78,
+      "cap5": 14.0177,
+      "cap6": 14.0115,
+      "relative_change": -0.0004422979518751123
+    },
+    {
+      "field": "jeans_min",
+      "time_hst": 1817.78,
+      "cap5": 30.2103,
+      "cap6": 34.7115,
+      "relative_change": 0.1489955412557969
+    },
+    {
+      "field": "logical_level_max",
+      "time_hst": 1817.78,
+      "cap5": 6.0,
+      "cap6": 7.0,
+      "relative_change": 0.16666666666666666
+    },
+    {
+      "field": "blocks",
+      "time_hst": 1817.78,
+      "cap5": 1632,
+      "cap6": 1856,
+      "relative_change": 0.13725490196078433
+    },
+    {
+      "field": "center_rho_ratio",
+      "time_hst": 1817.78,
+      "cap5": 1.0000013728081139,
+      "cap6": 1.0000003176291146,
+      "relative_change": -1.0551775507311173e-06
+    },
+    {
+      "field": "pressure_floor_cells",
+      "time_hst": 1817.78,
+      "cap5": 0,
+      "cap6": 0,
+      "relative_change": 0.0
+    }
+  ],
+  "third_cap_replay_max_relative_critical": 0.0,
   "interrupted_segment": {
     "last_history_time": 1799.21,
     "last_history_rho_max_cgs": 2.56394e-16,
