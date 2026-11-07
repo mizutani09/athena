@@ -31272,5 +31272,3517 @@
     },
     "checkpoint_warning": "cycle14 checkpoint inherited symmetric_rb_sweeps=true; first consistent/symmetric runs do not form a default-color control. The explicit false/false and true/false runs are the valid comparison.",
     "evaluation": "NO_IMPROVEMENT: default false/false 102 FGMRES iterations, consistent only 106, symmetric only 106; all Newton and conservation PASS. Retain default settings."
+  },
+  "post_implicit_cfl_restart_fix": {
+    "source_commit_before_fix": "83ed1018",
+    "candidate_initial_binary_note": "SHA-256 is from deterministic rebuild of the same no-opacity-refresh source in the same isolated build after the original exploratory run; the original binary was overwritten before its hash was captured.",
+    "source_main_sha256": "77cb3a72d46541560de7ee79a01c5a27418604a871d871aea721cbda0d7bcacd",
+    "collapse_binary_sha256": "7e07869c74e27866022064736d5e6dddc6255a467dab29ffe34b860b22bd0079",
+    "mach5_binary_sha256": "2a5f498e61f08e763492f554edf80fae8df84a9a118af0719cc03f66fe46066e",
+    "sections": {
+      "baseline_natural": [
+        {
+          "mass_volume_integral": {
+            "initial": 704254556499.783,
+            "final": 704254648460.2178,
+            "relative_change": 1.3057840232018644e-07
+          },
+          "final_minima": {
+            "rho": 0.05178364804747587,
+            "press": 0.025314926342484296,
+            "Er": 0.29059125933520075
+          },
+          "run": "collapse_natural43_long_postsync_r1",
+          "binary_sha256": "98c04abdac490b182aa6bf028c7be45b9c8790e841aee1eacf3d130ff4188c2b",
+          "checkpoint": "/tmp/wor25_23_24_resolution_trials/collapse_adaptive_partial_direct_final_r1/protostellar_core_fld_mayer5.00006.rst",
+          "checkpoint_sha256": "42416ee70c7cc08b4065e33903fb64239d8389ac7dd356fa7ce631641bfcadb1",
+          "input": null,
+          "input_sha256": null,
+          "command": "mpirun --output-filename /tmp/wor25_23_24_resolution_trials/collapse_natural43_long_postsync_r1/mpi -n 1 /tmp/wor25_23_24_resolution_collapse_natural_postsync_build/bin/athena -r /tmp/wor25_23_24_resolution_trials/collapse_adaptive_partial_direct_final_r1/protostellar_core_fld_mayer5.00006.rst -d output mesh/num_threads=2 time/nlim=17 problem/N_J=7.6160 nrfld/global_jacobian_check=true gravity/reset_fmg_color_each_solve=true gravity/repeat_initial_fmg_after_restart=true",
+          "environment": {
+            "OMP_NUM_THREADS": 2,
+            "ATHENA_NRFLD_INTERFACE_LEDGER": 1,
+            "ATHENA_NRFLD_ENERGY_LEDGER": 1,
+            "ATHENA_NRFLD_EXPERIMENTAL_COLLAPSE": 1
+          },
+          "exit_status": 0,
+          "wall_time": "0:26.97",
+          "peak_rss_kb": 465188,
+          "fgmres_history": [
+            {
+              "iterations": 14,
+              "true_relative_residual": 3.326561540149647e-09
+            },
+            {
+              "iterations": 14,
+              "true_relative_residual": 7.858010466074266e-09
+            },
+            {
+              "iterations": 12,
+              "true_relative_residual": 7.299144122047258e-09
+            },
+            {
+              "iterations": 14,
+              "true_relative_residual": 4.323996890978059e-09
+            },
+            {
+              "iterations": 13,
+              "true_relative_residual": 2.758506625674905e-09
+            },
+            {
+              "iterations": 14,
+              "true_relative_residual": 5.513726972363012e-09
+            },
+            {
+              "iterations": 13,
+              "true_relative_residual": 2.890838884953278e-09
+            },
+            {
+              "iterations": 14,
+              "true_relative_residual": 3.732774201161007e-09
+            },
+            {
+              "iterations": 13,
+              "true_relative_residual": 3.640177998345191e-09
+            },
+            {
+              "iterations": 14,
+              "true_relative_residual": 5.155122884835236e-09
+            },
+            {
+              "iterations": 12,
+              "true_relative_residual": 9.71643809637416e-09
+            },
+            {
+              "iterations": 14,
+              "true_relative_residual": 6.34286516965092e-09
+            },
+            {
+              "iterations": 12,
+              "true_relative_residual": 8.532097220604501e-09
+            },
+            {
+              "iterations": 14,
+              "true_relative_residual": 7.704720714057114e-09
+            },
+            {
+              "iterations": 13,
+              "true_relative_residual": 7.222429958790932e-09
+            },
+            {
+              "iterations": 14,
+              "true_relative_residual": 4.06711398655307e-09
+            },
+            {
+              "iterations": 14,
+              "true_relative_residual": 3.2171729295488557e-09
+            },
+            {
+              "iterations": 14,
+              "true_relative_residual": 4.988472133629484e-09
+            },
+            {
+              "iterations": 14,
+              "true_relative_residual": 2.9204518869472897e-09
+            },
+            {
+              "iterations": 14,
+              "true_relative_residual": 4.672755178233419e-09
+            },
+            {
+              "iterations": 8,
+              "true_relative_residual": 6.012245805787081e-09
+            },
+            {
+              "iterations": 9,
+              "true_relative_residual": 5.7117521034679825e-09
+            },
+            {
+              "iterations": 9,
+              "true_relative_residual": 3.703910625820413e-09
+            }
+          ],
+          "fgmres_total_iterations": 296,
+          "max_true_relative_residual": 9.71643809637416e-09,
+          "newton_history": [
+            {
+              "status": "converged",
+              "iterations": 0,
+              "final_l2": 0.0,
+              "final_max": 0.0,
+              "cycle": 6,
+              "dt": 0.0
+            },
+            {
+              "status": "converged",
+              "iterations": 2,
+              "final_l2": 8.171536802676743e-08,
+              "final_max": 5.358703583994944e-06,
+              "cycle": 6,
+              "dt": 0.986417383433362
+            },
+            {
+              "status": "converged",
+              "iterations": 2,
+              "final_l2": 3.563536719644267e-07,
+              "final_max": 8.615553599099083e-06,
+              "cycle": 7,
+              "dt": 0.9874218022380937
+            },
+            {
+              "status": "converged",
+              "iterations": 2,
+              "final_l2": 3.254295938956994e-07,
+              "final_max": 7.990300475943268e-06,
+              "cycle": 8,
+              "dt": 0.9886453992123632
+            },
+            {
+              "status": "converged",
+              "iterations": 2,
+              "final_l2": 2.567640879266688e-07,
+              "final_max": 6.327099824473311e-06,
+              "cycle": 9,
+              "dt": 0.9903164305017272
+            },
+            {
+              "status": "converged",
+              "iterations": 2,
+              "final_l2": 2.0347787392652358e-07,
+              "final_max": 4.993642586969344e-06,
+              "cycle": 10,
+              "dt": 0.9919222516005202
+            },
+            {
+              "status": "converged",
+              "iterations": 2,
+              "final_l2": 3.4397010795365115e-07,
+              "final_max": 6.2090701629205244e-06,
+              "cycle": 11,
+              "dt": 0.9933555809222733
+            },
+            {
+              "status": "converged",
+              "iterations": 2,
+              "final_l2": 3.504224170888761e-07,
+              "final_max": 6.534564731111082e-06,
+              "cycle": 12,
+              "dt": 0.9959896546690062
+            },
+            {
+              "status": "converged",
+              "iterations": 2,
+              "final_l2": 4.453292531611721e-07,
+              "final_max": 6.499813854804516e-06,
+              "cycle": 13,
+              "dt": 0.9971936508607452
+            },
+            {
+              "status": "converged",
+              "iterations": 2,
+              "final_l2": 4.384968789407334e-07,
+              "final_max": 6.82590032131012e-06,
+              "cycle": 14,
+              "dt": 0.998524545439776
+            },
+            {
+              "status": "converged",
+              "iterations": 2,
+              "final_l2": 3.9345919210980407e-07,
+              "final_max": 6.078610386372363e-06,
+              "cycle": 15,
+              "dt": 0.9990279031262667
+            },
+            {
+              "status": "converged",
+              "iterations": 0,
+              "final_l2": 0.0,
+              "final_max": 0.0,
+              "cycle": 16,
+              "dt": 0.0
+            },
+            {
+              "status": "converged",
+              "iterations": 3,
+              "final_l2": 7.927316878254926e-10,
+              "final_max": 2.5219858662625717e-09,
+              "cycle": 16,
+              "dt": 0.9342130298272303
+            }
+          ],
+          "face_ledger": {
+            "pair_count": 90,
+            "max_relative_mismatch": 6.371798903657304e-07,
+            "pass": true,
+            "logs": [
+              "/tmp/wor25_23_24_resolution_trials/collapse_natural43_long_postsync_r1/mpi/1/rank.0/stdout"
+            ]
+          },
+          "max_implicit_energy_absolute_relative_balance": 3.573753004500934e-10,
+          "topology_by_output": [
+            {
+              "file": "protostellar_core_fld_mayer5.prim.00007.athdf",
+              "leaves": 43,
+              "levels": {
+                "0": 3,
+                "1": 40
+              }
+            },
+            {
+              "file": "protostellar_core_fld_mayer5.prim.00008.athdf",
+              "leaves": 43,
+              "levels": {
+                "0": 3,
+                "1": 40
+              }
+            },
+            {
+              "file": "protostellar_core_fld_mayer5.prim.00009.athdf",
+              "leaves": 43,
+              "levels": {
+                "0": 3,
+                "1": 40
+              }
+            },
+            {
+              "file": "protostellar_core_fld_mayer5.prim.00010.athdf",
+              "leaves": 43,
+              "levels": {
+                "0": 3,
+                "1": 40
+              }
+            },
+            {
+              "file": "protostellar_core_fld_mayer5.prim.00011.athdf",
+              "leaves": 43,
+              "levels": {
+                "0": 3,
+                "1": 40
+              }
+            },
+            {
+              "file": "protostellar_core_fld_mayer5.prim.00012.athdf",
+              "leaves": 43,
+              "levels": {
+                "0": 3,
+                "1": 40
+              }
+            },
+            {
+              "file": "protostellar_core_fld_mayer5.prim.00013.athdf",
+              "leaves": 43,
+              "levels": {
+                "0": 3,
+                "1": 40
+              }
+            },
+            {
+              "file": "protostellar_core_fld_mayer5.prim.00014.athdf",
+              "leaves": 43,
+              "levels": {
+                "0": 3,
+                "1": 40
+              }
+            },
+            {
+              "file": "protostellar_core_fld_mayer5.prim.00015.athdf",
+              "leaves": 43,
+              "levels": {
+                "0": 3,
+                "1": 40
+              }
+            },
+            {
+              "file": "protostellar_core_fld_mayer5.prim.00016.athdf",
+              "leaves": 64,
+              "levels": {
+                "1": 64
+              }
+            },
+            {
+              "file": "protostellar_core_fld_mayer5.prim.00017.athdf",
+              "leaves": 64,
+              "levels": {
+                "1": 64
+              }
+            },
+            {
+              "file": "protostellar_core_fld_mayer5.prim.00018.athdf",
+              "leaves": 64,
+              "levels": {
+                "1": 64
+              }
+            }
+          ],
+          "pass": true
+        },
+        {
+          "mass_volume_integral": {
+            "initial": 704254556499.783,
+            "final": 704254648460.2179,
+            "relative_change": 1.3057840249351908e-07
+          },
+          "final_minima": {
+            "rho": 0.05178364804748345,
+            "press": 0.025314926342489587,
+            "Er": 0.29059125933527735
+          },
+          "run": "collapse_natural43_long_postsync_r2",
+          "binary_sha256": "98c04abdac490b182aa6bf028c7be45b9c8790e841aee1eacf3d130ff4188c2b",
+          "checkpoint": "/tmp/wor25_23_24_resolution_trials/collapse_adaptive_partial_direct_final_r1/protostellar_core_fld_mayer5.00006.rst",
+          "checkpoint_sha256": "42416ee70c7cc08b4065e33903fb64239d8389ac7dd356fa7ce631641bfcadb1",
+          "input": null,
+          "input_sha256": null,
+          "command": "mpirun --output-filename /tmp/wor25_23_24_resolution_trials/collapse_natural43_long_postsync_r2/mpi -n 2 /tmp/wor25_23_24_resolution_collapse_natural_postsync_build/bin/athena -r /tmp/wor25_23_24_resolution_trials/collapse_adaptive_partial_direct_final_r1/protostellar_core_fld_mayer5.00006.rst -d output mesh/num_threads=2 time/nlim=17 problem/N_J=7.6160 nrfld/global_jacobian_check=true gravity/reset_fmg_color_each_solve=true gravity/repeat_initial_fmg_after_restart=true",
+          "environment": {
+            "OMP_NUM_THREADS": 2,
+            "ATHENA_NRFLD_INTERFACE_LEDGER": 1,
+            "ATHENA_NRFLD_ENERGY_LEDGER": 1,
+            "ATHENA_NRFLD_EXPERIMENTAL_COLLAPSE": 1
+          },
+          "exit_status": 0,
+          "wall_time": "0:20.97",
+          "peak_rss_kb": 264308,
+          "fgmres_history": [
+            {
+              "iterations": 14,
+              "true_relative_residual": 3.326561770437929e-09
+            },
+            {
+              "iterations": 14,
+              "true_relative_residual": 7.858931738807919e-09
+            },
+            {
+              "iterations": 12,
+              "true_relative_residual": 7.299146711123985e-09
+            },
+            {
+              "iterations": 14,
+              "true_relative_residual": 4.323517790984771e-09
+            },
+            {
+              "iterations": 13,
+              "true_relative_residual": 2.758508149574318e-09
+            },
+            {
+              "iterations": 14,
+              "true_relative_residual": 5.514288690057006e-09
+            },
+            {
+              "iterations": 13,
+              "true_relative_residual": 2.890840466049877e-09
+            },
+            {
+              "iterations": 14,
+              "true_relative_residual": 3.733274786020194e-09
+            },
+            {
+              "iterations": 13,
+              "true_relative_residual": 3.640175113897345e-09
+            },
+            {
+              "iterations": 14,
+              "true_relative_residual": 5.154233348191325e-09
+            },
+            {
+              "iterations": 12,
+              "true_relative_residual": 9.716437775737791e-09
+            },
+            {
+              "iterations": 14,
+              "true_relative_residual": 6.345664378045109e-09
+            },
+            {
+              "iterations": 12,
+              "true_relative_residual": 8.532098536923724e-09
+            },
+            {
+              "iterations": 14,
+              "true_relative_residual": 7.703587761326337e-09
+            },
+            {
+              "iterations": 13,
+              "true_relative_residual": 7.22242978183099e-09
+            },
+            {
+              "iterations": 14,
+              "true_relative_residual": 4.066805660330051e-09
+            },
+            {
+              "iterations": 14,
+              "true_relative_residual": 3.217172696008818e-09
+            },
+            {
+              "iterations": 14,
+              "true_relative_residual": 4.9870036445785885e-09
+            },
+            {
+              "iterations": 14,
+              "true_relative_residual": 2.920452273117906e-09
+            },
+            {
+              "iterations": 14,
+              "true_relative_residual": 4.6738820596907516e-09
+            },
+            {
+              "iterations": 8,
+              "true_relative_residual": 6.012245819318583e-09
+            },
+            {
+              "iterations": 9,
+              "true_relative_residual": 5.7099146759618845e-09
+            },
+            {
+              "iterations": 9,
+              "true_relative_residual": 3.7149491834692736e-09
+            }
+          ],
+          "fgmres_total_iterations": 296,
+          "max_true_relative_residual": 9.716437775737791e-09,
+          "newton_history": [
+            {
+              "status": "converged",
+              "iterations": 0,
+              "final_l2": 0.0,
+              "final_max": 0.0,
+              "cycle": 6,
+              "dt": 0.0
+            },
+            {
+              "status": "converged",
+              "iterations": 2,
+              "final_l2": 8.171535613607347e-08,
+              "final_max": 5.358703579913974e-06,
+              "cycle": 6,
+              "dt": 0.986417383433362
+            },
+            {
+              "status": "converged",
+              "iterations": 2,
+              "final_l2": 3.563536599040296e-07,
+              "final_max": 8.615553616253528e-06,
+              "cycle": 7,
+              "dt": 0.9874218022380937
+            },
+            {
+              "status": "converged",
+              "iterations": 2,
+              "final_l2": 3.254295964803672e-07,
+              "final_max": 7.99030047095605e-06,
+              "cycle": 8,
+              "dt": 0.9886453992201297
+            },
+            {
+              "status": "converged",
+              "iterations": 2,
+              "final_l2": 2.567640794260367e-07,
+              "final_max": 6.327099822983209e-06,
+              "cycle": 9,
+              "dt": 0.9903164304136047
+            },
+            {
+              "status": "converged",
+              "iterations": 2,
+              "final_l2": 2.0347786085548775e-07,
+              "final_max": 4.993642581538625e-06,
+              "cycle": 10,
+              "dt": 0.9919222516298173
+            },
+            {
+              "status": "converged",
+              "iterations": 2,
+              "final_l2": 3.4397008904128087e-07,
+              "final_max": 6.209070159309862e-06,
+              "cycle": 11,
+              "dt": 0.9933555809054252
+            },
+            {
+              "status": "converged",
+              "iterations": 2,
+              "final_l2": 3.50422408409032e-07,
+              "final_max": 6.534564718099812e-06,
+              "cycle": 12,
+              "dt": 0.9959896547144764
+            },
+            {
+              "status": "converged",
+              "iterations": 2,
+              "final_l2": 4.45329270039797e-07,
+              "final_max": 6.499813848941117e-06,
+              "cycle": 13,
+              "dt": 0.9971936508657788
+            },
+            {
+              "status": "converged",
+              "iterations": 2,
+              "final_l2": 4.3849687502618614e-07,
+              "final_max": 6.825900315184537e-06,
+              "cycle": 14,
+              "dt": 0.9985245456228465
+            },
+            {
+              "status": "converged",
+              "iterations": 2,
+              "final_l2": 3.9345920502789195e-07,
+              "final_max": 6.078610382949543e-06,
+              "cycle": 15,
+              "dt": 0.9990279032307313
+            },
+            {
+              "status": "converged",
+              "iterations": 0,
+              "final_l2": 0.0,
+              "final_max": 0.0,
+              "cycle": 16,
+              "dt": 0.0
+            },
+            {
+              "status": "converged",
+              "iterations": 3,
+              "final_l2": 7.804937438975423e-10,
+              "final_max": 2.302455256358691e-09,
+              "cycle": 16,
+              "dt": 0.9342130298258222
+            }
+          ],
+          "face_ledger": {
+            "pair_count": 90,
+            "max_relative_mismatch": 3.9340629365859414e-07,
+            "pass": true,
+            "logs": [
+              "/tmp/wor25_23_24_resolution_trials/collapse_natural43_long_postsync_r2/mpi/1/rank.0/stdout",
+              "/tmp/wor25_23_24_resolution_trials/collapse_natural43_long_postsync_r2/mpi/1/rank.1/stdout"
+            ]
+          },
+          "max_implicit_energy_absolute_relative_balance": 4.3900404770831414e-10,
+          "topology_by_output": [
+            {
+              "file": "protostellar_core_fld_mayer5.prim.00007.athdf",
+              "leaves": 43,
+              "levels": {
+                "0": 3,
+                "1": 40
+              }
+            },
+            {
+              "file": "protostellar_core_fld_mayer5.prim.00008.athdf",
+              "leaves": 43,
+              "levels": {
+                "0": 3,
+                "1": 40
+              }
+            },
+            {
+              "file": "protostellar_core_fld_mayer5.prim.00009.athdf",
+              "leaves": 43,
+              "levels": {
+                "0": 3,
+                "1": 40
+              }
+            },
+            {
+              "file": "protostellar_core_fld_mayer5.prim.00010.athdf",
+              "leaves": 43,
+              "levels": {
+                "0": 3,
+                "1": 40
+              }
+            },
+            {
+              "file": "protostellar_core_fld_mayer5.prim.00011.athdf",
+              "leaves": 43,
+              "levels": {
+                "0": 3,
+                "1": 40
+              }
+            },
+            {
+              "file": "protostellar_core_fld_mayer5.prim.00012.athdf",
+              "leaves": 43,
+              "levels": {
+                "0": 3,
+                "1": 40
+              }
+            },
+            {
+              "file": "protostellar_core_fld_mayer5.prim.00013.athdf",
+              "leaves": 43,
+              "levels": {
+                "0": 3,
+                "1": 40
+              }
+            },
+            {
+              "file": "protostellar_core_fld_mayer5.prim.00014.athdf",
+              "leaves": 43,
+              "levels": {
+                "0": 3,
+                "1": 40
+              }
+            },
+            {
+              "file": "protostellar_core_fld_mayer5.prim.00015.athdf",
+              "leaves": 43,
+              "levels": {
+                "0": 3,
+                "1": 40
+              }
+            },
+            {
+              "file": "protostellar_core_fld_mayer5.prim.00016.athdf",
+              "leaves": 64,
+              "levels": {
+                "1": 64
+              }
+            },
+            {
+              "file": "protostellar_core_fld_mayer5.prim.00017.athdf",
+              "leaves": 64,
+              "levels": {
+                "1": 64
+              }
+            },
+            {
+              "file": "protostellar_core_fld_mayer5.prim.00018.athdf",
+              "leaves": 64,
+              "levels": {
+                "1": 64
+              }
+            }
+          ],
+          "pass": true
+        },
+        {
+          "mass_volume_integral": {
+            "initial": 704254626303.3958,
+            "final": 704254648366.0247,
+            "relative_change": 3.1327630777600785e-08
+          },
+          "final_minima": {
+            "rho": 0.051783356478266075,
+            "press": 0.025314786421022927,
+            "Er": 0.29059138572608384
+          },
+          "run": "collapse_natural43_postsync_restart15_r1",
+          "binary_sha256": "98c04abdac490b182aa6bf028c7be45b9c8790e841aee1eacf3d130ff4188c2b",
+          "checkpoint": "/tmp/wor25_23_24_resolution_trials/collapse_natural43_long_postsync_r1/output/protostellar_core_fld_mayer5.00015.rst",
+          "checkpoint_sha256": "3d4e0615fbb0271cee8faf19f378caff739206f7a39a228a3ec1e4e932c54363",
+          "input": null,
+          "input_sha256": null,
+          "command": "mpirun --output-filename /tmp/wor25_23_24_resolution_trials/collapse_natural43_postsync_restart15_r1/mpi -n 1 /tmp/wor25_23_24_resolution_collapse_natural_postsync_build/bin/athena -r /tmp/wor25_23_24_resolution_trials/collapse_natural43_long_postsync_r1/output/protostellar_core_fld_mayer5.00015.rst -d output mesh/num_threads=2 time/nlim=17 problem/N_J=7.6160 nrfld/global_jacobian_check=true gravity/reset_fmg_color_each_solve=true gravity/repeat_initial_fmg_after_restart=true",
+          "environment": {
+            "OMP_NUM_THREADS": 2,
+            "ATHENA_NRFLD_INTERFACE_LEDGER": 1,
+            "ATHENA_NRFLD_ENERGY_LEDGER": 1,
+            "ATHENA_NRFLD_EXPERIMENTAL_COLLAPSE": 1
+          },
+          "exit_status": 0,
+          "wall_time": "0:07.42",
+          "peak_rss_kb": 464024,
+          "fgmres_history": [
+            {
+              "iterations": 14,
+              "true_relative_residual": 2.90664928907242e-09
+            },
+            {
+              "iterations": 14,
+              "true_relative_residual": 4.623482943955518e-09
+            },
+            {
+              "iterations": 8,
+              "true_relative_residual": 6.004108923082102e-09
+            },
+            {
+              "iterations": 9,
+              "true_relative_residual": 5.707172828934892e-09
+            },
+            {
+              "iterations": 9,
+              "true_relative_residual": 3.722847787950699e-09
+            }
+          ],
+          "fgmres_total_iterations": 54,
+          "max_true_relative_residual": 6.004108923082102e-09,
+          "newton_history": [
+            {
+              "status": "converged",
+              "iterations": 0,
+              "final_l2": 0.0,
+              "final_max": 0.0,
+              "cycle": 15,
+              "dt": 0.0
+            },
+            {
+              "status": "converged",
+              "iterations": 2,
+              "final_l2": 3.7246273589196e-07,
+              "final_max": 5.754655625983077e-06,
+              "cycle": 15,
+              "dt": 0.9881512130186897
+            },
+            {
+              "status": "converged",
+              "iterations": 0,
+              "final_l2": 0.0,
+              "final_max": 0.0,
+              "cycle": 16,
+              "dt": 0.0
+            },
+            {
+              "status": "converged",
+              "iterations": 3,
+              "final_l2": 8.064725593282444e-10,
+              "final_max": 2.329448171281315e-09,
+              "cycle": 16,
+              "dt": 0.9342557062664055
+            }
+          ],
+          "face_ledger": {
+            "pair_count": 9,
+            "max_relative_mismatch": 4.168922559242386e-07,
+            "pass": true,
+            "logs": [
+              "/tmp/wor25_23_24_resolution_trials/collapse_natural43_postsync_restart15_r1/mpi/1/rank.0/stdout"
+            ]
+          },
+          "max_implicit_energy_absolute_relative_balance": 3.654259289007954e-10,
+          "topology_by_output": [
+            {
+              "file": "protostellar_core_fld_mayer5.prim.00016.athdf",
+              "leaves": 64,
+              "levels": {
+                "1": 64
+              }
+            },
+            {
+              "file": "protostellar_core_fld_mayer5.prim.00017.athdf",
+              "leaves": 64,
+              "levels": {
+                "1": 64
+              }
+            },
+            {
+              "file": "protostellar_core_fld_mayer5.prim.00018.athdf",
+              "leaves": 64,
+              "levels": {
+                "1": 64
+              }
+            }
+          ],
+          "pass": true
+        },
+        {
+          "mass_volume_integral": {
+            "initial": 704254626303.3958,
+            "final": 704254648366.0247,
+            "relative_change": 3.1327630777600785e-08
+          },
+          "final_minima": {
+            "rho": 0.05178335647826608,
+            "press": 0.025314786421022206,
+            "Er": 0.2905913857260487
+          },
+          "run": "collapse_natural43_postsync_restart15_r2",
+          "binary_sha256": "98c04abdac490b182aa6bf028c7be45b9c8790e841aee1eacf3d130ff4188c2b",
+          "checkpoint": "/tmp/wor25_23_24_resolution_trials/collapse_natural43_long_postsync_r1/output/protostellar_core_fld_mayer5.00015.rst",
+          "checkpoint_sha256": "3d4e0615fbb0271cee8faf19f378caff739206f7a39a228a3ec1e4e932c54363",
+          "input": null,
+          "input_sha256": null,
+          "command": "mpirun --output-filename /tmp/wor25_23_24_resolution_trials/collapse_natural43_postsync_restart15_r2/mpi -n 2 /tmp/wor25_23_24_resolution_collapse_natural_postsync_build/bin/athena -r /tmp/wor25_23_24_resolution_trials/collapse_natural43_long_postsync_r1/output/protostellar_core_fld_mayer5.00015.rst -d output mesh/num_threads=2 time/nlim=17 problem/N_J=7.6160 nrfld/global_jacobian_check=true gravity/reset_fmg_color_each_solve=true gravity/repeat_initial_fmg_after_restart=true",
+          "environment": {
+            "OMP_NUM_THREADS": 2,
+            "ATHENA_NRFLD_INTERFACE_LEDGER": 1,
+            "ATHENA_NRFLD_ENERGY_LEDGER": 1,
+            "ATHENA_NRFLD_EXPERIMENTAL_COLLAPSE": 1
+          },
+          "exit_status": 0,
+          "wall_time": "0:06.03",
+          "peak_rss_kb": 262580,
+          "fgmres_history": [
+            {
+              "iterations": 14,
+              "true_relative_residual": 2.906649431912925e-09
+            },
+            {
+              "iterations": 14,
+              "true_relative_residual": 4.622830889846433e-09
+            },
+            {
+              "iterations": 8,
+              "true_relative_residual": 6.004108917489312e-09
+            },
+            {
+              "iterations": 9,
+              "true_relative_residual": 5.706236461561853e-09
+            },
+            {
+              "iterations": 9,
+              "true_relative_residual": 3.711240285316386e-09
+            }
+          ],
+          "fgmres_total_iterations": 54,
+          "max_true_relative_residual": 6.004108917489312e-09,
+          "newton_history": [
+            {
+              "status": "converged",
+              "iterations": 0,
+              "final_l2": 0.0,
+              "final_max": 0.0,
+              "cycle": 15,
+              "dt": 0.0
+            },
+            {
+              "status": "converged",
+              "iterations": 2,
+              "final_l2": 3.724627224685382e-07,
+              "final_max": 5.754655628343072e-06,
+              "cycle": 15,
+              "dt": 0.9881512130186897
+            },
+            {
+              "status": "converged",
+              "iterations": 0,
+              "final_l2": 0.0,
+              "final_max": 0.0,
+              "cycle": 16,
+              "dt": 0.0
+            },
+            {
+              "status": "converged",
+              "iterations": 3,
+              "final_l2": 8.021461297087858e-10,
+              "final_max": 2.213127666141163e-09,
+              "cycle": 16,
+              "dt": 0.9342557062665668
+            }
+          ],
+          "face_ledger": {
+            "pair_count": 9,
+            "max_relative_mismatch": 6.248115077446706e-07,
+            "pass": true,
+            "logs": [
+              "/tmp/wor25_23_24_resolution_trials/collapse_natural43_postsync_restart15_r2/mpi/1/rank.0/stdout",
+              "/tmp/wor25_23_24_resolution_trials/collapse_natural43_postsync_restart15_r2/mpi/1/rank.1/stdout"
+            ]
+          },
+          "max_implicit_energy_absolute_relative_balance": 4.257729198941805e-10,
+          "topology_by_output": [
+            {
+              "file": "protostellar_core_fld_mayer5.prim.00016.athdf",
+              "leaves": 64,
+              "levels": {
+                "1": 64
+              }
+            },
+            {
+              "file": "protostellar_core_fld_mayer5.prim.00017.athdf",
+              "leaves": 64,
+              "levels": {
+                "1": 64
+              }
+            },
+            {
+              "file": "protostellar_core_fld_mayer5.prim.00018.athdf",
+              "leaves": 64,
+              "levels": {
+                "1": 64
+              }
+            }
+          ],
+          "pass": true
+        }
+      ],
+      "candidate_initial": [
+        {
+          "mass_volume_integral": {
+            "initial": 704254556499.783,
+            "final": 704254647857.8672,
+            "relative_change": 1.297230999577406e-07
+          },
+          "final_minima": {
+            "rho": 0.051782527321010796,
+            "press": 0.025314382043683407,
+            "Er": 0.2905914327447783
+          },
+          "run": "collapse_postflddt_natural_r1",
+          "binary_sha256": "f6742e3fcd4b1d072dedaf63bce23786a52fe15112ebcfd37009e0d332a29140",
+          "checkpoint": "/tmp/wor25_23_24_resolution_trials/collapse_adaptive_partial_direct_final_r1/protostellar_core_fld_mayer5.00006.rst",
+          "checkpoint_sha256": "42416ee70c7cc08b4065e33903fb64239d8389ac7dd356fa7ce631641bfcadb1",
+          "input": null,
+          "input_sha256": null,
+          "command": "mpirun --output-filename /tmp/wor25_23_24_resolution_trials/collapse_postflddt_natural_r1/mpi -n 1 /tmp/wor25_23_24_resolution_collapse_postflddt_build/bin/athena -r /tmp/wor25_23_24_resolution_trials/collapse_adaptive_partial_direct_final_r1/protostellar_core_fld_mayer5.00006.rst -d output mesh/num_threads=2 time/nlim=17 problem/N_J=7.6160 nrfld/global_jacobian_check=true gravity/reset_fmg_color_each_solve=true gravity/repeat_initial_fmg_after_restart=true",
+          "environment": {
+            "OMP_NUM_THREADS": 2,
+            "ATHENA_NRFLD_INTERFACE_LEDGER": 1,
+            "ATHENA_NRFLD_ENERGY_LEDGER": 1,
+            "ATHENA_NRFLD_EXPERIMENTAL_COLLAPSE": 1
+          },
+          "exit_status": 0,
+          "wall_time": "0:31.60",
+          "peak_rss_kb": 465112,
+          "fgmres_history": [
+            {
+              "iterations": 14,
+              "true_relative_residual": 3.326561540149647e-09
+            },
+            {
+              "iterations": 14,
+              "true_relative_residual": 7.858010466074266e-09
+            },
+            {
+              "iterations": 12,
+              "true_relative_residual": 7.354854498577985e-09
+            },
+            {
+              "iterations": 14,
+              "true_relative_residual": 4.327287151349304e-09
+            },
+            {
+              "iterations": 13,
+              "true_relative_residual": 2.793604406751499e-09
+            },
+            {
+              "iterations": 14,
+              "true_relative_residual": 5.535946399842637e-09
+            },
+            {
+              "iterations": 13,
+              "true_relative_residual": 2.910235759149972e-09
+            },
+            {
+              "iterations": 14,
+              "true_relative_residual": 3.73303114709916e-09
+            },
+            {
+              "iterations": 13,
+              "true_relative_residual": 3.666451929743864e-09
+            },
+            {
+              "iterations": 14,
+              "true_relative_residual": 5.083236754395587e-09
+            },
+            {
+              "iterations": 12,
+              "true_relative_residual": 9.746634257295398e-09
+            },
+            {
+              "iterations": 14,
+              "true_relative_residual": 6.344158506055972e-09
+            },
+            {
+              "iterations": 12,
+              "true_relative_residual": 8.56576719506479e-09
+            },
+            {
+              "iterations": 14,
+              "true_relative_residual": 7.721875210581898e-09
+            },
+            {
+              "iterations": 14,
+              "true_relative_residual": 3.816700828058027e-09
+            },
+            {
+              "iterations": 14,
+              "true_relative_residual": 4.633546110849364e-09
+            },
+            {
+              "iterations": 12,
+              "true_relative_residual": 4.06717920135811e-09
+            },
+            {
+              "iterations": 14,
+              "true_relative_residual": 3.358365685935665e-09
+            },
+            {
+              "iterations": 13,
+              "true_relative_residual": 5.783352985389149e-09
+            },
+            {
+              "iterations": 14,
+              "true_relative_residual": 3.1468516284918886e-09
+            },
+            {
+              "iterations": 8,
+              "true_relative_residual": 5.999409427707812e-09
+            },
+            {
+              "iterations": 9,
+              "true_relative_residual": 5.712506806695321e-09
+            },
+            {
+              "iterations": 9,
+              "true_relative_residual": 3.7220513516752777e-09
+            }
+          ],
+          "fgmres_total_iterations": 294,
+          "max_true_relative_residual": 9.746634257295398e-09,
+          "newton_history": [
+            {
+              "status": "converged",
+              "iterations": 0,
+              "final_l2": 0.0,
+              "final_max": 0.0,
+              "cycle": 6,
+              "dt": 0.0
+            },
+            {
+              "status": "converged",
+              "iterations": 2,
+              "final_l2": 8.171536802676743e-08,
+              "final_max": 5.358703583994944e-06,
+              "cycle": 6,
+              "dt": 0.986417383433362
+            },
+            {
+              "status": "converged",
+              "iterations": 2,
+              "final_l2": 3.534069925837316e-07,
+              "final_max": 8.544121226652573e-06,
+              "cycle": 7,
+              "dt": 0.9858118223568415
+            },
+            {
+              "status": "converged",
+              "iterations": 2,
+              "final_l2": 3.218751539516821e-07,
+              "final_max": 7.902973647552978e-06,
+              "cycle": 8,
+              "dt": 0.9863698063834204
+            },
+            {
+              "status": "converged",
+              "iterations": 2,
+              "final_l2": 2.526405124318339e-07,
+              "final_max": 6.225495075440112e-06,
+              "cycle": 9,
+              "dt": 0.9868803958663775
+            },
+            {
+              "status": "converged",
+              "iterations": 2,
+              "final_l2": 1.992420783086897e-07,
+              "final_max": 4.8899134182254655e-06,
+              "cycle": 10,
+              "dt": 0.9873594406411662
+            },
+            {
+              "status": "converged",
+              "iterations": 2,
+              "final_l2": 3.3494135863780004e-07,
+              "final_max": 6.040797669986427e-06,
+              "cycle": 11,
+              "dt": 0.9878157940002109
+            },
+            {
+              "status": "converged",
+              "iterations": 2,
+              "final_l2": 3.379192776023075e-07,
+              "final_max": 6.297615707008719e-06,
+              "cycle": 12,
+              "dt": 0.9882604799195223
+            },
+            {
+              "status": "converged",
+              "iterations": 2,
+              "final_l2": 4.2014947470718263e-07,
+              "final_max": 6.222560200151458e-06,
+              "cycle": 13,
+              "dt": 0.9882206699995715
+            },
+            {
+              "status": "converged",
+              "iterations": 2,
+              "final_l2": 4.1596489861881877e-07,
+              "final_max": 6.507303818013286e-06,
+              "cycle": 14,
+              "dt": 0.9881837799914428
+            },
+            {
+              "status": "converged",
+              "iterations": 2,
+              "final_l2": 3.7459359161814995e-07,
+              "final_max": 5.78761858332748e-06,
+              "cycle": 15,
+              "dt": 0.9881480892847151
+            },
+            {
+              "status": "converged",
+              "iterations": 0,
+              "final_l2": 0.0,
+              "final_max": 0.0,
+              "cycle": 16,
+              "dt": 0.0
+            },
+            {
+              "status": "converged",
+              "iterations": 3,
+              "final_l2": 7.926092743054058e-10,
+              "final_max": 2.4437441635421466e-09,
+              "cycle": 16,
+              "dt": 0.9344344117544406
+            }
+          ],
+          "face_ledger": {
+            "pair_count": 90,
+            "max_relative_mismatch": 4.6954345369597424e-07,
+            "pass": true,
+            "logs": [
+              "/tmp/wor25_23_24_resolution_trials/collapse_postflddt_natural_r1/mpi/1/rank.0/stdout"
+            ]
+          },
+          "max_implicit_energy_absolute_relative_balance": 3.586211124981537e-10,
+          "topology_by_output": [
+            {
+              "file": "protostellar_core_fld_mayer5.prim.00007.athdf",
+              "leaves": 43,
+              "levels": {
+                "0": 3,
+                "1": 40
+              }
+            },
+            {
+              "file": "protostellar_core_fld_mayer5.prim.00008.athdf",
+              "leaves": 43,
+              "levels": {
+                "0": 3,
+                "1": 40
+              }
+            },
+            {
+              "file": "protostellar_core_fld_mayer5.prim.00009.athdf",
+              "leaves": 43,
+              "levels": {
+                "0": 3,
+                "1": 40
+              }
+            },
+            {
+              "file": "protostellar_core_fld_mayer5.prim.00010.athdf",
+              "leaves": 43,
+              "levels": {
+                "0": 3,
+                "1": 40
+              }
+            },
+            {
+              "file": "protostellar_core_fld_mayer5.prim.00011.athdf",
+              "leaves": 43,
+              "levels": {
+                "0": 3,
+                "1": 40
+              }
+            },
+            {
+              "file": "protostellar_core_fld_mayer5.prim.00012.athdf",
+              "leaves": 43,
+              "levels": {
+                "0": 3,
+                "1": 40
+              }
+            },
+            {
+              "file": "protostellar_core_fld_mayer5.prim.00013.athdf",
+              "leaves": 43,
+              "levels": {
+                "0": 3,
+                "1": 40
+              }
+            },
+            {
+              "file": "protostellar_core_fld_mayer5.prim.00014.athdf",
+              "leaves": 43,
+              "levels": {
+                "0": 3,
+                "1": 40
+              }
+            },
+            {
+              "file": "protostellar_core_fld_mayer5.prim.00015.athdf",
+              "leaves": 43,
+              "levels": {
+                "0": 3,
+                "1": 40
+              }
+            },
+            {
+              "file": "protostellar_core_fld_mayer5.prim.00016.athdf",
+              "leaves": 64,
+              "levels": {
+                "1": 64
+              }
+            },
+            {
+              "file": "protostellar_core_fld_mayer5.prim.00017.athdf",
+              "leaves": 64,
+              "levels": {
+                "1": 64
+              }
+            },
+            {
+              "file": "protostellar_core_fld_mayer5.prim.00018.athdf",
+              "leaves": 64,
+              "levels": {
+                "1": 64
+              }
+            }
+          ],
+          "pass": true
+        },
+        {
+          "mass_volume_integral": {
+            "initial": 704254556499.783,
+            "final": 704254647857.8672,
+            "relative_change": 1.297230999577406e-07
+          },
+          "final_minima": {
+            "rho": 0.0517825273210107,
+            "press": 0.025314382043685392,
+            "Er": 0.29059143274487637
+          },
+          "run": "collapse_postflddt_natural_r2",
+          "binary_sha256": "f6742e3fcd4b1d072dedaf63bce23786a52fe15112ebcfd37009e0d332a29140",
+          "checkpoint": "/tmp/wor25_23_24_resolution_trials/collapse_adaptive_partial_direct_final_r1/protostellar_core_fld_mayer5.00006.rst",
+          "checkpoint_sha256": "42416ee70c7cc08b4065e33903fb64239d8389ac7dd356fa7ce631641bfcadb1",
+          "input": null,
+          "input_sha256": null,
+          "command": "mpirun --output-filename /tmp/wor25_23_24_resolution_trials/collapse_postflddt_natural_r2/mpi -n 2 /tmp/wor25_23_24_resolution_collapse_postflddt_build/bin/athena -r /tmp/wor25_23_24_resolution_trials/collapse_adaptive_partial_direct_final_r1/protostellar_core_fld_mayer5.00006.rst -d output mesh/num_threads=2 time/nlim=17 problem/N_J=7.6160 nrfld/global_jacobian_check=true gravity/reset_fmg_color_each_solve=true gravity/repeat_initial_fmg_after_restart=true",
+          "environment": {
+            "OMP_NUM_THREADS": 2,
+            "ATHENA_NRFLD_INTERFACE_LEDGER": 1,
+            "ATHENA_NRFLD_ENERGY_LEDGER": 1,
+            "ATHENA_NRFLD_EXPERIMENTAL_COLLAPSE": 1
+          },
+          "exit_status": 0,
+          "wall_time": "0:21.12",
+          "peak_rss_kb": 264380,
+          "fgmres_history": [
+            {
+              "iterations": 14,
+              "true_relative_residual": 3.326561770437929e-09
+            },
+            {
+              "iterations": 14,
+              "true_relative_residual": 7.858931738807919e-09
+            },
+            {
+              "iterations": 12,
+              "true_relative_residual": 7.354847643503925e-09
+            },
+            {
+              "iterations": 14,
+              "true_relative_residual": 4.328232208888119e-09
+            },
+            {
+              "iterations": 13,
+              "true_relative_residual": 2.79359868657141e-09
+            },
+            {
+              "iterations": 14,
+              "true_relative_residual": 5.535784223815951e-09
+            },
+            {
+              "iterations": 13,
+              "true_relative_residual": 2.910235979332725e-09
+            },
+            {
+              "iterations": 14,
+              "true_relative_residual": 3.734263259452506e-09
+            },
+            {
+              "iterations": 13,
+              "true_relative_residual": 3.666451967036336e-09
+            },
+            {
+              "iterations": 14,
+              "true_relative_residual": 5.083174184550172e-09
+            },
+            {
+              "iterations": 12,
+              "true_relative_residual": 9.746634138631406e-09
+            },
+            {
+              "iterations": 14,
+              "true_relative_residual": 6.3436433837651876e-09
+            },
+            {
+              "iterations": 12,
+              "true_relative_residual": 8.565766016996335e-09
+            },
+            {
+              "iterations": 14,
+              "true_relative_residual": 7.721923635140037e-09
+            },
+            {
+              "iterations": 14,
+              "true_relative_residual": 3.816700973851267e-09
+            },
+            {
+              "iterations": 14,
+              "true_relative_residual": 4.635165472689387e-09
+            },
+            {
+              "iterations": 12,
+              "true_relative_residual": 4.067178449638956e-09
+            },
+            {
+              "iterations": 14,
+              "true_relative_residual": 3.357443011697651e-09
+            },
+            {
+              "iterations": 13,
+              "true_relative_residual": 5.78335217375898e-09
+            },
+            {
+              "iterations": 14,
+              "true_relative_residual": 3.146318641653973e-09
+            },
+            {
+              "iterations": 8,
+              "true_relative_residual": 5.99940942053093e-09
+            },
+            {
+              "iterations": 9,
+              "true_relative_residual": 5.711816386120603e-09
+            },
+            {
+              "iterations": 9,
+              "true_relative_residual": 3.729411044183941e-09
+            }
+          ],
+          "fgmres_total_iterations": 294,
+          "max_true_relative_residual": 9.746634138631406e-09,
+          "newton_history": [
+            {
+              "status": "converged",
+              "iterations": 0,
+              "final_l2": 0.0,
+              "final_max": 0.0,
+              "cycle": 6,
+              "dt": 0.0
+            },
+            {
+              "status": "converged",
+              "iterations": 2,
+              "final_l2": 8.171535613607347e-08,
+              "final_max": 5.358703579913974e-06,
+              "cycle": 6,
+              "dt": 0.986417383433362
+            },
+            {
+              "status": "converged",
+              "iterations": 2,
+              "final_l2": 3.534069813115028e-07,
+              "final_max": 8.544121251803369e-06,
+              "cycle": 7,
+              "dt": 0.9858118223567647
+            },
+            {
+              "status": "converged",
+              "iterations": 2,
+              "final_l2": 3.218751680797039e-07,
+              "final_max": 7.902973665489738e-06,
+              "cycle": 8,
+              "dt": 0.9863698063844767
+            },
+            {
+              "status": "converged",
+              "iterations": 2,
+              "final_l2": 2.526405427586799e-07,
+              "final_max": 6.225495068670611e-06,
+              "cycle": 9,
+              "dt": 0.9868803958672799
+            },
+            {
+              "status": "converged",
+              "iterations": 2,
+              "final_l2": 1.9924210838676694e-07,
+              "final_max": 4.889913413897068e-06,
+              "cycle": 10,
+              "dt": 0.9873594406409059
+            },
+            {
+              "status": "converged",
+              "iterations": 2,
+              "final_l2": 3.349413526776192e-07,
+              "final_max": 6.040797669753925e-06,
+              "cycle": 11,
+              "dt": 0.9878157940001497
+            },
+            {
+              "status": "converged",
+              "iterations": 2,
+              "final_l2": 3.379192785257451e-07,
+              "final_max": 6.297615691559336e-06,
+              "cycle": 12,
+              "dt": 0.9882604799195351
+            },
+            {
+              "status": "converged",
+              "iterations": 2,
+              "final_l2": 4.2014949504691354e-07,
+              "final_max": 6.222560188134107e-06,
+              "cycle": 13,
+              "dt": 0.988220669998785
+            },
+            {
+              "status": "converged",
+              "iterations": 2,
+              "final_l2": 4.1596488854270436e-07,
+              "final_max": 6.507303798993021e-06,
+              "cycle": 14,
+              "dt": 0.9881837799912382
+            },
+            {
+              "status": "converged",
+              "iterations": 2,
+              "final_l2": 3.745935888051779e-07,
+              "final_max": 5.787618574202172e-06,
+              "cycle": 15,
+              "dt": 0.9881480892840986
+            },
+            {
+              "status": "converged",
+              "iterations": 0,
+              "final_l2": 0.0,
+              "final_max": 0.0,
+              "cycle": 16,
+              "dt": 0.0
+            },
+            {
+              "status": "converged",
+              "iterations": 3,
+              "final_l2": 7.976314193098088e-10,
+              "final_max": 2.269229211579941e-09,
+              "cycle": 16,
+              "dt": 0.9344344117540087
+            }
+          ],
+          "face_ledger": {
+            "pair_count": 90,
+            "max_relative_mismatch": 7.782111096788189e-07,
+            "pass": true,
+            "logs": [
+              "/tmp/wor25_23_24_resolution_trials/collapse_postflddt_natural_r2/mpi/1/rank.0/stdout",
+              "/tmp/wor25_23_24_resolution_trials/collapse_postflddt_natural_r2/mpi/1/rank.1/stdout"
+            ]
+          },
+          "max_implicit_energy_absolute_relative_balance": 4.4347081812511377e-10,
+          "topology_by_output": [
+            {
+              "file": "protostellar_core_fld_mayer5.prim.00007.athdf",
+              "leaves": 43,
+              "levels": {
+                "0": 3,
+                "1": 40
+              }
+            },
+            {
+              "file": "protostellar_core_fld_mayer5.prim.00008.athdf",
+              "leaves": 43,
+              "levels": {
+                "0": 3,
+                "1": 40
+              }
+            },
+            {
+              "file": "protostellar_core_fld_mayer5.prim.00009.athdf",
+              "leaves": 43,
+              "levels": {
+                "0": 3,
+                "1": 40
+              }
+            },
+            {
+              "file": "protostellar_core_fld_mayer5.prim.00010.athdf",
+              "leaves": 43,
+              "levels": {
+                "0": 3,
+                "1": 40
+              }
+            },
+            {
+              "file": "protostellar_core_fld_mayer5.prim.00011.athdf",
+              "leaves": 43,
+              "levels": {
+                "0": 3,
+                "1": 40
+              }
+            },
+            {
+              "file": "protostellar_core_fld_mayer5.prim.00012.athdf",
+              "leaves": 43,
+              "levels": {
+                "0": 3,
+                "1": 40
+              }
+            },
+            {
+              "file": "protostellar_core_fld_mayer5.prim.00013.athdf",
+              "leaves": 43,
+              "levels": {
+                "0": 3,
+                "1": 40
+              }
+            },
+            {
+              "file": "protostellar_core_fld_mayer5.prim.00014.athdf",
+              "leaves": 43,
+              "levels": {
+                "0": 3,
+                "1": 40
+              }
+            },
+            {
+              "file": "protostellar_core_fld_mayer5.prim.00015.athdf",
+              "leaves": 43,
+              "levels": {
+                "0": 3,
+                "1": 40
+              }
+            },
+            {
+              "file": "protostellar_core_fld_mayer5.prim.00016.athdf",
+              "leaves": 64,
+              "levels": {
+                "1": 64
+              }
+            },
+            {
+              "file": "protostellar_core_fld_mayer5.prim.00017.athdf",
+              "leaves": 64,
+              "levels": {
+                "1": 64
+              }
+            },
+            {
+              "file": "protostellar_core_fld_mayer5.prim.00018.athdf",
+              "leaves": 64,
+              "levels": {
+                "1": 64
+              }
+            }
+          ],
+          "pass": true
+        },
+        {
+          "mass_volume_integral": {
+            "initial": 704254625794.6189,
+            "final": 704254647857.8672,
+            "relative_change": 3.132851029004091e-08
+          },
+          "final_minima": {
+            "rho": 0.05178252732101048,
+            "press": 0.025314382043684674,
+            "Er": 0.29059143274484744
+          },
+          "run": "collapse_postflddt_natural_restart15_r1",
+          "binary_sha256": "f6742e3fcd4b1d072dedaf63bce23786a52fe15112ebcfd37009e0d332a29140",
+          "checkpoint": "/tmp/wor25_23_24_resolution_trials/collapse_postflddt_natural_r1/output/protostellar_core_fld_mayer5.00015.rst",
+          "checkpoint_sha256": "609a3c17904dba0bbc9fefb71ab4d70a99b00e014f2600ab0cc715ca5be0c7e9",
+          "input": null,
+          "input_sha256": null,
+          "command": "mpirun --output-filename /tmp/wor25_23_24_resolution_trials/collapse_postflddt_natural_restart15_r1/mpi -n 1 /tmp/wor25_23_24_resolution_collapse_postflddt_build/bin/athena -r /tmp/wor25_23_24_resolution_trials/collapse_postflddt_natural_r1/output/protostellar_core_fld_mayer5.00015.rst -d output mesh/num_threads=2 time/nlim=17 problem/N_J=7.6160 nrfld/global_jacobian_check=true gravity/reset_fmg_color_each_solve=true gravity/repeat_initial_fmg_after_restart=true",
+          "environment": {
+            "OMP_NUM_THREADS": 2,
+            "ATHENA_NRFLD_INTERFACE_LEDGER": 1,
+            "ATHENA_NRFLD_ENERGY_LEDGER": 1,
+            "ATHENA_NRFLD_EXPERIMENTAL_COLLAPSE": 1
+          },
+          "exit_status": 0,
+          "wall_time": "0:08.32",
+          "peak_rss_kb": 463888,
+          "fgmres_history": [
+            {
+              "iterations": 14,
+              "true_relative_residual": 2.910839869761283e-09
+            },
+            {
+              "iterations": 14,
+              "true_relative_residual": 4.690799886211161e-09
+            },
+            {
+              "iterations": 8,
+              "true_relative_residual": 5.99940942376375e-09
+            },
+            {
+              "iterations": 9,
+              "true_relative_residual": 5.70957061066943e-09
+            },
+            {
+              "iterations": 9,
+              "true_relative_residual": 3.734107714277994e-09
+            }
+          ],
+          "fgmres_total_iterations": 54,
+          "max_true_relative_residual": 5.99940942376375e-09,
+          "newton_history": [
+            {
+              "status": "converged",
+              "iterations": 0,
+              "final_l2": 0.0,
+              "final_max": 0.0,
+              "cycle": 15,
+              "dt": 0.0
+            },
+            {
+              "status": "converged",
+              "iterations": 2,
+              "final_l2": 3.744992387985549e-07,
+              "final_max": 5.78651318581076e-06,
+              "cycle": 15,
+              "dt": 0.9881480892847151
+            },
+            {
+              "status": "converged",
+              "iterations": 0,
+              "final_l2": 0.0,
+              "final_max": 0.0,
+              "cycle": 16,
+              "dt": 0.0
+            },
+            {
+              "status": "converged",
+              "iterations": 3,
+              "final_l2": 7.989484598122997e-10,
+              "final_max": 2.279824646109317e-09,
+              "cycle": 16,
+              "dt": 0.9344344117521919
+            }
+          ],
+          "face_ledger": {
+            "pair_count": 9,
+            "max_relative_mismatch": 6.848455224085476e-07,
+            "pass": true,
+            "logs": [
+              "/tmp/wor25_23_24_resolution_trials/collapse_postflddt_natural_restart15_r1/mpi/1/rank.0/stdout"
+            ]
+          },
+          "max_implicit_energy_absolute_relative_balance": 3.609236598773309e-10,
+          "topology_by_output": [
+            {
+              "file": "protostellar_core_fld_mayer5.prim.00016.athdf",
+              "leaves": 64,
+              "levels": {
+                "1": 64
+              }
+            },
+            {
+              "file": "protostellar_core_fld_mayer5.prim.00017.athdf",
+              "leaves": 64,
+              "levels": {
+                "1": 64
+              }
+            },
+            {
+              "file": "protostellar_core_fld_mayer5.prim.00018.athdf",
+              "leaves": 64,
+              "levels": {
+                "1": 64
+              }
+            }
+          ],
+          "pass": true
+        },
+        {
+          "mass_volume_integral": {
+            "initial": 704254625794.6189,
+            "final": 704254647857.8672,
+            "relative_change": 3.132851029004091e-08
+          },
+          "final_minima": {
+            "rho": 0.05178252732101048,
+            "press": 0.02531438204368531,
+            "Er": 0.2905914327448779
+          },
+          "run": "collapse_postflddt_natural_restart15_r2",
+          "binary_sha256": "f6742e3fcd4b1d072dedaf63bce23786a52fe15112ebcfd37009e0d332a29140",
+          "checkpoint": "/tmp/wor25_23_24_resolution_trials/collapse_postflddt_natural_r1/output/protostellar_core_fld_mayer5.00015.rst",
+          "checkpoint_sha256": "609a3c17904dba0bbc9fefb71ab4d70a99b00e014f2600ab0cc715ca5be0c7e9",
+          "input": null,
+          "input_sha256": null,
+          "command": "mpirun --output-filename /tmp/wor25_23_24_resolution_trials/collapse_postflddt_natural_restart15_r2/mpi -n 2 /tmp/wor25_23_24_resolution_collapse_postflddt_build/bin/athena -r /tmp/wor25_23_24_resolution_trials/collapse_postflddt_natural_r1/output/protostellar_core_fld_mayer5.00015.rst -d output mesh/num_threads=2 time/nlim=17 problem/N_J=7.6160 nrfld/global_jacobian_check=true gravity/reset_fmg_color_each_solve=true gravity/repeat_initial_fmg_after_restart=true",
+          "environment": {
+            "OMP_NUM_THREADS": 2,
+            "ATHENA_NRFLD_INTERFACE_LEDGER": 1,
+            "ATHENA_NRFLD_ENERGY_LEDGER": 1,
+            "ATHENA_NRFLD_EXPERIMENTAL_COLLAPSE": 1
+          },
+          "exit_status": 0,
+          "wall_time": "0:06.55",
+          "peak_rss_kb": 262548,
+          "fgmres_history": [
+            {
+              "iterations": 14,
+              "true_relative_residual": 2.910840115495261e-09
+            },
+            {
+              "iterations": 14,
+              "true_relative_residual": 4.688235544324412e-09
+            },
+            {
+              "iterations": 8,
+              "true_relative_residual": 5.999409412950342e-09
+            },
+            {
+              "iterations": 9,
+              "true_relative_residual": 5.709221397883606e-09
+            },
+            {
+              "iterations": 9,
+              "true_relative_residual": 3.723941976030122e-09
+            }
+          ],
+          "fgmres_total_iterations": 54,
+          "max_true_relative_residual": 5.999409412950342e-09,
+          "newton_history": [
+            {
+              "status": "converged",
+              "iterations": 0,
+              "final_l2": 0.0,
+              "final_max": 0.0,
+              "cycle": 15,
+              "dt": 0.0
+            },
+            {
+              "status": "converged",
+              "iterations": 2,
+              "final_l2": 3.744992431469213e-07,
+              "final_max": 5.786513186296337e-06,
+              "cycle": 15,
+              "dt": 0.9881480892847151
+            },
+            {
+              "status": "converged",
+              "iterations": 0,
+              "final_l2": 0.0,
+              "final_max": 0.0,
+              "cycle": 16,
+              "dt": 0.0
+            },
+            {
+              "status": "converged",
+              "iterations": 3,
+              "final_l2": 7.987970495762523e-10,
+              "final_max": 2.443433850906638e-09,
+              "cycle": 16,
+              "dt": 0.9344344117520518
+            }
+          ],
+          "face_ledger": {
+            "pair_count": 9,
+            "max_relative_mismatch": 2.1615453478513945e-07,
+            "pass": true,
+            "logs": [
+              "/tmp/wor25_23_24_resolution_trials/collapse_postflddt_natural_restart15_r2/mpi/1/rank.0/stdout",
+              "/tmp/wor25_23_24_resolution_trials/collapse_postflddt_natural_restart15_r2/mpi/1/rank.1/stdout"
+            ]
+          },
+          "max_implicit_energy_absolute_relative_balance": 4.2526187407015166e-10,
+          "topology_by_output": [
+            {
+              "file": "protostellar_core_fld_mayer5.prim.00016.athdf",
+              "leaves": 64,
+              "levels": {
+                "1": 64
+              }
+            },
+            {
+              "file": "protostellar_core_fld_mayer5.prim.00017.athdf",
+              "leaves": 64,
+              "levels": {
+                "1": 64
+              }
+            },
+            {
+              "file": "protostellar_core_fld_mayer5.prim.00018.athdf",
+              "leaves": 64,
+              "levels": {
+                "1": 64
+              }
+            }
+          ],
+          "pass": true
+        }
+      ],
+      "candidate_with_opacity": [
+        {
+          "mass_volume_integral": {
+            "initial": 704254556499.783,
+            "final": 704254647857.8672,
+            "relative_change": 1.297230999577406e-07
+          },
+          "final_minima": {
+            "rho": 0.051782527321010796,
+            "press": 0.025314382043683407,
+            "Er": 0.2905914327447783
+          },
+          "run": "collapse_postflddt_opacity_natural_r1",
+          "binary_sha256": "7e07869c74e27866022064736d5e6dddc6255a467dab29ffe34b860b22bd0079",
+          "checkpoint": "/tmp/wor25_23_24_resolution_trials/collapse_adaptive_partial_direct_final_r1/protostellar_core_fld_mayer5.00006.rst",
+          "checkpoint_sha256": "42416ee70c7cc08b4065e33903fb64239d8389ac7dd356fa7ce631641bfcadb1",
+          "input": null,
+          "input_sha256": null,
+          "command": "mpirun --output-filename /tmp/wor25_23_24_resolution_trials/collapse_postflddt_opacity_natural_r1/mpi -n 1 /tmp/wor25_23_24_resolution_collapse_postflddt_build/bin/athena -r /tmp/wor25_23_24_resolution_trials/collapse_adaptive_partial_direct_final_r1/protostellar_core_fld_mayer5.00006.rst -d output mesh/num_threads=2 time/nlim=17 problem/N_J=7.6160 nrfld/global_jacobian_check=true gravity/reset_fmg_color_each_solve=true gravity/repeat_initial_fmg_after_restart=true",
+          "environment": {
+            "OMP_NUM_THREADS": 2,
+            "ATHENA_NRFLD_INTERFACE_LEDGER": 1,
+            "ATHENA_NRFLD_ENERGY_LEDGER": 1,
+            "ATHENA_NRFLD_EXPERIMENTAL_COLLAPSE": 1
+          },
+          "exit_status": 0,
+          "wall_time": "0:40.97",
+          "peak_rss_kb": 465100,
+          "fgmres_history": [
+            {
+              "iterations": 14,
+              "true_relative_residual": 3.326561540149647e-09
+            },
+            {
+              "iterations": 14,
+              "true_relative_residual": 7.858010466074266e-09
+            },
+            {
+              "iterations": 12,
+              "true_relative_residual": 7.354854498577985e-09
+            },
+            {
+              "iterations": 14,
+              "true_relative_residual": 4.327287151349304e-09
+            },
+            {
+              "iterations": 13,
+              "true_relative_residual": 2.793604406751499e-09
+            },
+            {
+              "iterations": 14,
+              "true_relative_residual": 5.535946399842637e-09
+            },
+            {
+              "iterations": 13,
+              "true_relative_residual": 2.910235759149972e-09
+            },
+            {
+              "iterations": 14,
+              "true_relative_residual": 3.73303114709916e-09
+            },
+            {
+              "iterations": 13,
+              "true_relative_residual": 3.666451929743864e-09
+            },
+            {
+              "iterations": 14,
+              "true_relative_residual": 5.083236754395587e-09
+            },
+            {
+              "iterations": 12,
+              "true_relative_residual": 9.746634257295398e-09
+            },
+            {
+              "iterations": 14,
+              "true_relative_residual": 6.344158506055972e-09
+            },
+            {
+              "iterations": 12,
+              "true_relative_residual": 8.56576719506479e-09
+            },
+            {
+              "iterations": 14,
+              "true_relative_residual": 7.721875210581898e-09
+            },
+            {
+              "iterations": 14,
+              "true_relative_residual": 3.816700828058027e-09
+            },
+            {
+              "iterations": 14,
+              "true_relative_residual": 4.633546110849364e-09
+            },
+            {
+              "iterations": 12,
+              "true_relative_residual": 4.06717920135811e-09
+            },
+            {
+              "iterations": 14,
+              "true_relative_residual": 3.358365685935665e-09
+            },
+            {
+              "iterations": 13,
+              "true_relative_residual": 5.783352985389149e-09
+            },
+            {
+              "iterations": 14,
+              "true_relative_residual": 3.1468516284918886e-09
+            },
+            {
+              "iterations": 8,
+              "true_relative_residual": 5.999409427707812e-09
+            },
+            {
+              "iterations": 9,
+              "true_relative_residual": 5.712506806695321e-09
+            },
+            {
+              "iterations": 9,
+              "true_relative_residual": 3.7220513516752777e-09
+            }
+          ],
+          "fgmres_total_iterations": 294,
+          "max_true_relative_residual": 9.746634257295398e-09,
+          "newton_history": [
+            {
+              "status": "converged",
+              "iterations": 0,
+              "final_l2": 0.0,
+              "final_max": 0.0,
+              "cycle": 6,
+              "dt": 0.0
+            },
+            {
+              "status": "converged",
+              "iterations": 2,
+              "final_l2": 8.171536802676743e-08,
+              "final_max": 5.358703583994944e-06,
+              "cycle": 6,
+              "dt": 0.986417383433362
+            },
+            {
+              "status": "converged",
+              "iterations": 2,
+              "final_l2": 3.534069925837316e-07,
+              "final_max": 8.544121226652573e-06,
+              "cycle": 7,
+              "dt": 0.9858118223568415
+            },
+            {
+              "status": "converged",
+              "iterations": 2,
+              "final_l2": 3.218751539516821e-07,
+              "final_max": 7.902973647552978e-06,
+              "cycle": 8,
+              "dt": 0.9863698063834204
+            },
+            {
+              "status": "converged",
+              "iterations": 2,
+              "final_l2": 2.526405124318339e-07,
+              "final_max": 6.225495075440112e-06,
+              "cycle": 9,
+              "dt": 0.9868803958663775
+            },
+            {
+              "status": "converged",
+              "iterations": 2,
+              "final_l2": 1.992420783086897e-07,
+              "final_max": 4.8899134182254655e-06,
+              "cycle": 10,
+              "dt": 0.9873594406411662
+            },
+            {
+              "status": "converged",
+              "iterations": 2,
+              "final_l2": 3.3494135863780004e-07,
+              "final_max": 6.040797669986427e-06,
+              "cycle": 11,
+              "dt": 0.9878157940002109
+            },
+            {
+              "status": "converged",
+              "iterations": 2,
+              "final_l2": 3.379192776023075e-07,
+              "final_max": 6.297615707008719e-06,
+              "cycle": 12,
+              "dt": 0.9882604799195223
+            },
+            {
+              "status": "converged",
+              "iterations": 2,
+              "final_l2": 4.2014947470718263e-07,
+              "final_max": 6.222560200151458e-06,
+              "cycle": 13,
+              "dt": 0.9882206699995715
+            },
+            {
+              "status": "converged",
+              "iterations": 2,
+              "final_l2": 4.1596489861881877e-07,
+              "final_max": 6.507303818013286e-06,
+              "cycle": 14,
+              "dt": 0.9881837799914428
+            },
+            {
+              "status": "converged",
+              "iterations": 2,
+              "final_l2": 3.7459359161814995e-07,
+              "final_max": 5.78761858332748e-06,
+              "cycle": 15,
+              "dt": 0.9881480892847151
+            },
+            {
+              "status": "converged",
+              "iterations": 0,
+              "final_l2": 0.0,
+              "final_max": 0.0,
+              "cycle": 16,
+              "dt": 0.0
+            },
+            {
+              "status": "converged",
+              "iterations": 3,
+              "final_l2": 7.926092743054058e-10,
+              "final_max": 2.4437441635421466e-09,
+              "cycle": 16,
+              "dt": 0.9344344117544406
+            }
+          ],
+          "face_ledger": {
+            "pair_count": 90,
+            "max_relative_mismatch": 4.6954345369597424e-07,
+            "pass": true,
+            "logs": [
+              "/tmp/wor25_23_24_resolution_trials/collapse_postflddt_opacity_natural_r1/mpi/1/rank.0/stdout"
+            ]
+          },
+          "max_implicit_energy_absolute_relative_balance": 3.586211124981537e-10,
+          "topology_by_output": [
+            {
+              "file": "protostellar_core_fld_mayer5.prim.00007.athdf",
+              "leaves": 43,
+              "levels": {
+                "0": 3,
+                "1": 40
+              }
+            },
+            {
+              "file": "protostellar_core_fld_mayer5.prim.00008.athdf",
+              "leaves": 43,
+              "levels": {
+                "0": 3,
+                "1": 40
+              }
+            },
+            {
+              "file": "protostellar_core_fld_mayer5.prim.00009.athdf",
+              "leaves": 43,
+              "levels": {
+                "0": 3,
+                "1": 40
+              }
+            },
+            {
+              "file": "protostellar_core_fld_mayer5.prim.00010.athdf",
+              "leaves": 43,
+              "levels": {
+                "0": 3,
+                "1": 40
+              }
+            },
+            {
+              "file": "protostellar_core_fld_mayer5.prim.00011.athdf",
+              "leaves": 43,
+              "levels": {
+                "0": 3,
+                "1": 40
+              }
+            },
+            {
+              "file": "protostellar_core_fld_mayer5.prim.00012.athdf",
+              "leaves": 43,
+              "levels": {
+                "0": 3,
+                "1": 40
+              }
+            },
+            {
+              "file": "protostellar_core_fld_mayer5.prim.00013.athdf",
+              "leaves": 43,
+              "levels": {
+                "0": 3,
+                "1": 40
+              }
+            },
+            {
+              "file": "protostellar_core_fld_mayer5.prim.00014.athdf",
+              "leaves": 43,
+              "levels": {
+                "0": 3,
+                "1": 40
+              }
+            },
+            {
+              "file": "protostellar_core_fld_mayer5.prim.00015.athdf",
+              "leaves": 43,
+              "levels": {
+                "0": 3,
+                "1": 40
+              }
+            },
+            {
+              "file": "protostellar_core_fld_mayer5.prim.00016.athdf",
+              "leaves": 64,
+              "levels": {
+                "1": 64
+              }
+            },
+            {
+              "file": "protostellar_core_fld_mayer5.prim.00017.athdf",
+              "leaves": 64,
+              "levels": {
+                "1": 64
+              }
+            },
+            {
+              "file": "protostellar_core_fld_mayer5.prim.00018.athdf",
+              "leaves": 64,
+              "levels": {
+                "1": 64
+              }
+            }
+          ],
+          "pass": true
+        },
+        {
+          "mass_volume_integral": {
+            "initial": 704254556499.783,
+            "final": 704254647857.8672,
+            "relative_change": 1.297230999577406e-07
+          },
+          "final_minima": {
+            "rho": 0.0517825273210107,
+            "press": 0.025314382043685392,
+            "Er": 0.29059143274487637
+          },
+          "run": "collapse_postflddt_opacity_natural_r2",
+          "binary_sha256": "7e07869c74e27866022064736d5e6dddc6255a467dab29ffe34b860b22bd0079",
+          "checkpoint": "/tmp/wor25_23_24_resolution_trials/collapse_adaptive_partial_direct_final_r1/protostellar_core_fld_mayer5.00006.rst",
+          "checkpoint_sha256": "42416ee70c7cc08b4065e33903fb64239d8389ac7dd356fa7ce631641bfcadb1",
+          "input": null,
+          "input_sha256": null,
+          "command": "mpirun --output-filename /tmp/wor25_23_24_resolution_trials/collapse_postflddt_opacity_natural_r2/mpi -n 2 /tmp/wor25_23_24_resolution_collapse_postflddt_build/bin/athena -r /tmp/wor25_23_24_resolution_trials/collapse_adaptive_partial_direct_final_r1/protostellar_core_fld_mayer5.00006.rst -d output mesh/num_threads=2 time/nlim=17 problem/N_J=7.6160 nrfld/global_jacobian_check=true gravity/reset_fmg_color_each_solve=true gravity/repeat_initial_fmg_after_restart=true",
+          "environment": {
+            "OMP_NUM_THREADS": 2,
+            "ATHENA_NRFLD_INTERFACE_LEDGER": 1,
+            "ATHENA_NRFLD_ENERGY_LEDGER": 1,
+            "ATHENA_NRFLD_EXPERIMENTAL_COLLAPSE": 1
+          },
+          "exit_status": 0,
+          "wall_time": "0:30.77",
+          "peak_rss_kb": 264176,
+          "fgmres_history": [
+            {
+              "iterations": 14,
+              "true_relative_residual": 3.326561770437929e-09
+            },
+            {
+              "iterations": 14,
+              "true_relative_residual": 7.858931738807919e-09
+            },
+            {
+              "iterations": 12,
+              "true_relative_residual": 7.354847643503925e-09
+            },
+            {
+              "iterations": 14,
+              "true_relative_residual": 4.328232208888119e-09
+            },
+            {
+              "iterations": 13,
+              "true_relative_residual": 2.79359868657141e-09
+            },
+            {
+              "iterations": 14,
+              "true_relative_residual": 5.535784223815951e-09
+            },
+            {
+              "iterations": 13,
+              "true_relative_residual": 2.910235979332725e-09
+            },
+            {
+              "iterations": 14,
+              "true_relative_residual": 3.734263259452506e-09
+            },
+            {
+              "iterations": 13,
+              "true_relative_residual": 3.666451967036336e-09
+            },
+            {
+              "iterations": 14,
+              "true_relative_residual": 5.083174184550172e-09
+            },
+            {
+              "iterations": 12,
+              "true_relative_residual": 9.746634138631406e-09
+            },
+            {
+              "iterations": 14,
+              "true_relative_residual": 6.3436433837651876e-09
+            },
+            {
+              "iterations": 12,
+              "true_relative_residual": 8.565766016996335e-09
+            },
+            {
+              "iterations": 14,
+              "true_relative_residual": 7.721923635140037e-09
+            },
+            {
+              "iterations": 14,
+              "true_relative_residual": 3.816700973851267e-09
+            },
+            {
+              "iterations": 14,
+              "true_relative_residual": 4.635165472689387e-09
+            },
+            {
+              "iterations": 12,
+              "true_relative_residual": 4.067178449638956e-09
+            },
+            {
+              "iterations": 14,
+              "true_relative_residual": 3.357443011697651e-09
+            },
+            {
+              "iterations": 13,
+              "true_relative_residual": 5.78335217375898e-09
+            },
+            {
+              "iterations": 14,
+              "true_relative_residual": 3.146318641653973e-09
+            },
+            {
+              "iterations": 8,
+              "true_relative_residual": 5.99940942053093e-09
+            },
+            {
+              "iterations": 9,
+              "true_relative_residual": 5.711816386120603e-09
+            },
+            {
+              "iterations": 9,
+              "true_relative_residual": 3.729411044183941e-09
+            }
+          ],
+          "fgmres_total_iterations": 294,
+          "max_true_relative_residual": 9.746634138631406e-09,
+          "newton_history": [
+            {
+              "status": "converged",
+              "iterations": 0,
+              "final_l2": 0.0,
+              "final_max": 0.0,
+              "cycle": 6,
+              "dt": 0.0
+            },
+            {
+              "status": "converged",
+              "iterations": 2,
+              "final_l2": 8.171535613607347e-08,
+              "final_max": 5.358703579913974e-06,
+              "cycle": 6,
+              "dt": 0.986417383433362
+            },
+            {
+              "status": "converged",
+              "iterations": 2,
+              "final_l2": 3.534069813115028e-07,
+              "final_max": 8.544121251803369e-06,
+              "cycle": 7,
+              "dt": 0.9858118223567647
+            },
+            {
+              "status": "converged",
+              "iterations": 2,
+              "final_l2": 3.218751680797039e-07,
+              "final_max": 7.902973665489738e-06,
+              "cycle": 8,
+              "dt": 0.9863698063844767
+            },
+            {
+              "status": "converged",
+              "iterations": 2,
+              "final_l2": 2.526405427586799e-07,
+              "final_max": 6.225495068670611e-06,
+              "cycle": 9,
+              "dt": 0.9868803958672799
+            },
+            {
+              "status": "converged",
+              "iterations": 2,
+              "final_l2": 1.9924210838676694e-07,
+              "final_max": 4.889913413897068e-06,
+              "cycle": 10,
+              "dt": 0.9873594406409059
+            },
+            {
+              "status": "converged",
+              "iterations": 2,
+              "final_l2": 3.349413526776192e-07,
+              "final_max": 6.040797669753925e-06,
+              "cycle": 11,
+              "dt": 0.9878157940001497
+            },
+            {
+              "status": "converged",
+              "iterations": 2,
+              "final_l2": 3.379192785257451e-07,
+              "final_max": 6.297615691559336e-06,
+              "cycle": 12,
+              "dt": 0.9882604799195351
+            },
+            {
+              "status": "converged",
+              "iterations": 2,
+              "final_l2": 4.1596488854270436e-07,
+              "final_max": 6.507303798993021e-06,
+              "cycle": 14,
+              "dt": 0.9881837799912382
+            },
+            {
+              "status": "converged",
+              "iterations": 2,
+              "final_l2": 3.745935888051779e-07,
+              "final_max": 5.787618574202172e-06,
+              "cycle": 15,
+              "dt": 0.9881480892840986
+            },
+            {
+              "status": "converged",
+              "iterations": 0,
+              "final_l2": 0.0,
+              "final_max": 0.0,
+              "cycle": 16,
+              "dt": 0.0
+            },
+            {
+              "status": "converged",
+              "iterations": 3,
+              "final_l2": 7.976314193098088e-10,
+              "final_max": 2.269229211579941e-09,
+              "cycle": 16,
+              "dt": 0.9344344117540087
+            }
+          ],
+          "face_ledger": {
+            "pair_count": 90,
+            "max_relative_mismatch": 7.782111096788189e-07,
+            "pass": true,
+            "logs": [
+              "/tmp/wor25_23_24_resolution_trials/collapse_postflddt_opacity_natural_r2/mpi/1/rank.0/stdout",
+              "/tmp/wor25_23_24_resolution_trials/collapse_postflddt_opacity_natural_r2/mpi/1/rank.1/stdout"
+            ]
+          },
+          "max_implicit_energy_absolute_relative_balance": 4.4347081812511377e-10,
+          "topology_by_output": [
+            {
+              "file": "protostellar_core_fld_mayer5.prim.00007.athdf",
+              "leaves": 43,
+              "levels": {
+                "0": 3,
+                "1": 40
+              }
+            },
+            {
+              "file": "protostellar_core_fld_mayer5.prim.00008.athdf",
+              "leaves": 43,
+              "levels": {
+                "0": 3,
+                "1": 40
+              }
+            },
+            {
+              "file": "protostellar_core_fld_mayer5.prim.00009.athdf",
+              "leaves": 43,
+              "levels": {
+                "0": 3,
+                "1": 40
+              }
+            },
+            {
+              "file": "protostellar_core_fld_mayer5.prim.00010.athdf",
+              "leaves": 43,
+              "levels": {
+                "0": 3,
+                "1": 40
+              }
+            },
+            {
+              "file": "protostellar_core_fld_mayer5.prim.00011.athdf",
+              "leaves": 43,
+              "levels": {
+                "0": 3,
+                "1": 40
+              }
+            },
+            {
+              "file": "protostellar_core_fld_mayer5.prim.00012.athdf",
+              "leaves": 43,
+              "levels": {
+                "0": 3,
+                "1": 40
+              }
+            },
+            {
+              "file": "protostellar_core_fld_mayer5.prim.00013.athdf",
+              "leaves": 43,
+              "levels": {
+                "0": 3,
+                "1": 40
+              }
+            },
+            {
+              "file": "protostellar_core_fld_mayer5.prim.00014.athdf",
+              "leaves": 43,
+              "levels": {
+                "0": 3,
+                "1": 40
+              }
+            },
+            {
+              "file": "protostellar_core_fld_mayer5.prim.00015.athdf",
+              "leaves": 43,
+              "levels": {
+                "0": 3,
+                "1": 40
+              }
+            },
+            {
+              "file": "protostellar_core_fld_mayer5.prim.00016.athdf",
+              "leaves": 64,
+              "levels": {
+                "1": 64
+              }
+            },
+            {
+              "file": "protostellar_core_fld_mayer5.prim.00017.athdf",
+              "leaves": 64,
+              "levels": {
+                "1": 64
+              }
+            },
+            {
+              "file": "protostellar_core_fld_mayer5.prim.00018.athdf",
+              "leaves": 64,
+              "levels": {
+                "1": 64
+              }
+            }
+          ],
+          "pass": true
+        },
+        {
+          "mass_volume_integral": {
+            "initial": 704254625794.6189,
+            "final": 704254647857.8672,
+            "relative_change": 3.132851029004091e-08
+          },
+          "final_minima": {
+            "rho": 0.05178252732101048,
+            "press": 0.025314382043684674,
+            "Er": 0.29059143274484744
+          },
+          "run": "collapse_postflddt_opacity_natural_restart15_r1",
+          "binary_sha256": "7e07869c74e27866022064736d5e6dddc6255a467dab29ffe34b860b22bd0079",
+          "checkpoint": "/tmp/wor25_23_24_resolution_trials/collapse_postflddt_opacity_natural_r1/output/protostellar_core_fld_mayer5.00015.rst",
+          "checkpoint_sha256": "f4cc6f049c970b4ed3efc43abdd92da0d3e2b6fe6cf817147a2d08e5598c5507",
+          "input": null,
+          "input_sha256": null,
+          "command": "mpirun --output-filename /tmp/wor25_23_24_resolution_trials/collapse_postflddt_opacity_natural_restart15_r1/mpi -n 1 /tmp/wor25_23_24_resolution_collapse_postflddt_build/bin/athena -r /tmp/wor25_23_24_resolution_trials/collapse_postflddt_opacity_natural_r1/output/protostellar_core_fld_mayer5.00015.rst -d output mesh/num_threads=2 time/nlim=17 problem/N_J=7.6160 nrfld/global_jacobian_check=true gravity/reset_fmg_color_each_solve=true gravity/repeat_initial_fmg_after_restart=true",
+          "environment": {
+            "OMP_NUM_THREADS": 2,
+            "ATHENA_NRFLD_INTERFACE_LEDGER": 1,
+            "ATHENA_NRFLD_ENERGY_LEDGER": 1,
+            "ATHENA_NRFLD_EXPERIMENTAL_COLLAPSE": 1
+          },
+          "exit_status": 0,
+          "wall_time": "0:11.23",
+          "peak_rss_kb": 464192,
+          "fgmres_history": [
+            {
+              "iterations": 14,
+              "true_relative_residual": 2.910839869761283e-09
+            },
+            {
+              "iterations": 14,
+              "true_relative_residual": 4.690799886211161e-09
+            },
+            {
+              "iterations": 8,
+              "true_relative_residual": 5.99940942376375e-09
+            },
+            {
+              "iterations": 9,
+              "true_relative_residual": 5.70957061066943e-09
+            },
+            {
+              "iterations": 9,
+              "true_relative_residual": 3.734107714277994e-09
+            }
+          ],
+          "fgmres_total_iterations": 54,
+          "max_true_relative_residual": 5.99940942376375e-09,
+          "newton_history": [
+            {
+              "status": "converged",
+              "iterations": 0,
+              "final_l2": 0.0,
+              "final_max": 0.0,
+              "cycle": 15,
+              "dt": 0.0
+            },
+            {
+              "status": "converged",
+              "iterations": 2,
+              "final_l2": 3.744992387985549e-07,
+              "final_max": 5.78651318581076e-06,
+              "cycle": 15,
+              "dt": 0.9881480892847151
+            },
+            {
+              "status": "converged",
+              "iterations": 0,
+              "final_l2": 0.0,
+              "final_max": 0.0,
+              "cycle": 16,
+              "dt": 0.0
+            },
+            {
+              "status": "converged",
+              "iterations": 3,
+              "final_l2": 7.989484598122997e-10,
+              "final_max": 2.279824646109317e-09,
+              "cycle": 16,
+              "dt": 0.9344344117521919
+            }
+          ],
+          "face_ledger": {
+            "pair_count": 9,
+            "max_relative_mismatch": 6.848455224085476e-07,
+            "pass": true,
+            "logs": [
+              "/tmp/wor25_23_24_resolution_trials/collapse_postflddt_opacity_natural_restart15_r1/mpi/1/rank.0/stdout"
+            ]
+          },
+          "max_implicit_energy_absolute_relative_balance": 3.609236598773309e-10,
+          "topology_by_output": [
+            {
+              "file": "protostellar_core_fld_mayer5.prim.00016.athdf",
+              "leaves": 64,
+              "levels": {
+                "1": 64
+              }
+            },
+            {
+              "file": "protostellar_core_fld_mayer5.prim.00017.athdf",
+              "leaves": 64,
+              "levels": {
+                "1": 64
+              }
+            },
+            {
+              "file": "protostellar_core_fld_mayer5.prim.00018.athdf",
+              "leaves": 64,
+              "levels": {
+                "1": 64
+              }
+            }
+          ],
+          "pass": true
+        },
+        {
+          "mass_volume_integral": {
+            "initial": 704254625794.6189,
+            "final": 704254647857.8672,
+            "relative_change": 3.132851029004091e-08
+          },
+          "final_minima": {
+            "rho": 0.05178252732101048,
+            "press": 0.02531438204368531,
+            "Er": 0.2905914327448779
+          },
+          "run": "collapse_postflddt_opacity_natural_restart15_r2",
+          "binary_sha256": "7e07869c74e27866022064736d5e6dddc6255a467dab29ffe34b860b22bd0079",
+          "checkpoint": "/tmp/wor25_23_24_resolution_trials/collapse_postflddt_opacity_natural_r1/output/protostellar_core_fld_mayer5.00015.rst",
+          "checkpoint_sha256": "f4cc6f049c970b4ed3efc43abdd92da0d3e2b6fe6cf817147a2d08e5598c5507",
+          "input": null,
+          "input_sha256": null,
+          "command": "mpirun --output-filename /tmp/wor25_23_24_resolution_trials/collapse_postflddt_opacity_natural_restart15_r2/mpi -n 2 /tmp/wor25_23_24_resolution_collapse_postflddt_build/bin/athena -r /tmp/wor25_23_24_resolution_trials/collapse_postflddt_opacity_natural_r1/output/protostellar_core_fld_mayer5.00015.rst -d output mesh/num_threads=2 time/nlim=17 problem/N_J=7.6160 nrfld/global_jacobian_check=true gravity/reset_fmg_color_each_solve=true gravity/repeat_initial_fmg_after_restart=true",
+          "environment": {
+            "OMP_NUM_THREADS": 2,
+            "ATHENA_NRFLD_INTERFACE_LEDGER": 1,
+            "ATHENA_NRFLD_ENERGY_LEDGER": 1,
+            "ATHENA_NRFLD_EXPERIMENTAL_COLLAPSE": 1
+          },
+          "exit_status": 0,
+          "wall_time": "0:09.09",
+          "peak_rss_kb": 262640,
+          "fgmres_history": [
+            {
+              "iterations": 14,
+              "true_relative_residual": 2.910840115495261e-09
+            },
+            {
+              "iterations": 14,
+              "true_relative_residual": 4.688235544324412e-09
+            },
+            {
+              "iterations": 8,
+              "true_relative_residual": 5.999409412950342e-09
+            },
+            {
+              "iterations": 9,
+              "true_relative_residual": 5.709221397883606e-09
+            },
+            {
+              "iterations": 9,
+              "true_relative_residual": 3.723941976030122e-09
+            }
+          ],
+          "fgmres_total_iterations": 54,
+          "max_true_relative_residual": 5.999409412950342e-09,
+          "newton_history": [
+            {
+              "status": "converged",
+              "iterations": 0,
+              "final_l2": 0.0,
+              "final_max": 0.0,
+              "cycle": 15,
+              "dt": 0.0
+            },
+            {
+              "status": "converged",
+              "iterations": 2,
+              "final_l2": 3.744992431469213e-07,
+              "final_max": 5.786513186296337e-06,
+              "cycle": 15,
+              "dt": 0.9881480892847151
+            },
+            {
+              "status": "converged",
+              "iterations": 0,
+              "final_l2": 0.0,
+              "final_max": 0.0,
+              "cycle": 16,
+              "dt": 0.0
+            },
+            {
+              "status": "converged",
+              "iterations": 3,
+              "final_l2": 7.987970495762523e-10,
+              "final_max": 2.443433850906638e-09,
+              "cycle": 16,
+              "dt": 0.9344344117520518
+            }
+          ],
+          "face_ledger": {
+            "pair_count": 9,
+            "max_relative_mismatch": 2.1615453478513945e-07,
+            "pass": true,
+            "logs": [
+              "/tmp/wor25_23_24_resolution_trials/collapse_postflddt_opacity_natural_restart15_r2/mpi/1/rank.0/stdout",
+              "/tmp/wor25_23_24_resolution_trials/collapse_postflddt_opacity_natural_restart15_r2/mpi/1/rank.1/stdout"
+            ]
+          },
+          "max_implicit_energy_absolute_relative_balance": 4.2526187407015166e-10,
+          "topology_by_output": [
+            {
+              "file": "protostellar_core_fld_mayer5.prim.00016.athdf",
+              "leaves": 64,
+              "levels": {
+                "1": 64
+              }
+            },
+            {
+              "file": "protostellar_core_fld_mayer5.prim.00017.athdf",
+              "leaves": 64,
+              "levels": {
+                "1": 64
+              }
+            },
+            {
+              "file": "protostellar_core_fld_mayer5.prim.00018.athdf",
+              "leaves": 64,
+              "levels": {
+                "1": 64
+              }
+            }
+          ],
+          "pass": true
+        }
+      ],
+      "baseline_natural_comparisons": {
+        "prim": {
+          "direct_rank": 1.8684244917508632e-13,
+          "restart_rank": 1.2131049258546812e-14,
+          "direct_vs_restart_rank1": 6.622385428952739e-06,
+          "direct_vs_restart_rank2": 6.622385559852627e-06
+        },
+        "fld": {
+          "direct_rank": 6.733828350520016e-14,
+          "restart_rank": 2.8770240954871944e-14,
+          "direct_vs_restart_rank1": 2.9149337336783266e-07,
+          "direct_vs_restart_rank2": 2.9149328833664953e-07
+        }
+      },
+      "candidate_initial_comparisons": {
+        "prim": {
+          "direct_rank": 3.356055348842054e-14,
+          "restart_rank": 1.059244761238826e-14,
+          "direct_vs_restart_rank1": 2.933402567615967e-14,
+          "direct_vs_restart_rank2": 6.473595253496099e-15
+        },
+        "fld": {
+          "direct_rank": 8.029211120285486e-14,
+          "restart_rank": 2.4960532960579943e-14,
+          "direct_vs_restart_rank1": 6.656281451853397e-14,
+          "direct_vs_restart_rank2": 1.2420610811833735e-14
+        }
+      },
+      "candidate_with_opacity_comparisons": {
+        "prim": {
+          "direct_rank": 3.356055348842054e-14,
+          "restart_rank": 1.059244761238826e-14,
+          "direct_vs_restart_rank1": 2.933402567615967e-14,
+          "direct_vs_restart_rank2": 6.473595253496099e-15
+        },
+        "fld": {
+          "direct_rank": 8.029211120285486e-14,
+          "restart_rank": 2.4960532960579943e-14,
+          "direct_vs_restart_rank1": 6.656281451853397e-14,
+          "direct_vs_restart_rank2": 1.2420610811833735e-14
+        }
+      }
+    },
+    "opacity_refresh_vs_no_refresh_final_relative_l1": {
+      "prim": 0.0,
+      "fld": 0.0
+    },
+    "mach5_baseline": [
+      {
+        "mass_volume_integral": {
+          "initial": 0.05580254868749999,
+          "final": 0.05580216880066009,
+          "relative_change": -6.807696939118905e-06
+        },
+        "final_minima": {
+          "rho": 5.458869772829305e-13,
+          "press": 0.004538749899468206,
+          "Er": 7.560419295569277e-07
+        },
+        "run": "mach5_mixed_shift_r1",
+        "binary_sha256": "299f50b0f28559f64b1dea69d030f33323d36413705c1eba363761c5553ddd12",
+        "checkpoint": null,
+        "checkpoint_sha256": null,
+        "input": "/tmp/wor25_23_24_resolution_mach5_adaptive_build/input_adaptive.in",
+        "input_sha256": "8a65d28d603aa60a71dd927636b2db1b47750d04d8595279acef4015b82e2850",
+        "command": "mpirun --output-filename /tmp/wor25_23_24_resolution_trials/mach5_mixed_shift_r1/mpi -n 1 /tmp/wor25_23_24_resolution_mach5_shift_build/bin/athena -i /tmp/wor25_23_24_resolution_mach5_adaptive_build/input_adaptive.in -d output",
+        "environment": {
+          "OMP_NUM_THREADS": 2,
+          "ATHENA_NRFLD_INTERFACE_LEDGER": 1,
+          "ATHENA_NRFLD_ENERGY_LEDGER": 1,
+          "ATHENA_NRFLD_EXPERIMENTAL_COLLAPSE": 0
+        },
+        "exit_status": 0,
+        "wall_time": "0:01.55",
+        "peak_rss_kb": 113372,
+        "fgmres_history": [
+          {
+            "iterations": 7,
+            "true_relative_residual": 4.279098143383659e-10
+          },
+          {
+            "iterations": 7,
+            "true_relative_residual": 8.089245426674363e-10
+          },
+          {
+            "iterations": 6,
+            "true_relative_residual": 9.362297048389432e-09
+          },
+          {
+            "iterations": 6,
+            "true_relative_residual": 8.145734597400967e-09
+          },
+          {
+            "iterations": 6,
+            "true_relative_residual": 8.158503246311001e-09
+          },
+          {
+            "iterations": 6,
+            "true_relative_residual": 9.080737864704999e-09
+          },
+          {
+            "iterations": 7,
+            "true_relative_residual": 1.86825787680957e-09
+          },
+          {
+            "iterations": 7,
+            "true_relative_residual": 1.8624719810040157e-09
+          },
+          {
+            "iterations": 7,
+            "true_relative_residual": 1.6920171950745181e-09
+          },
+          {
+            "iterations": 6,
+            "true_relative_residual": 4.759870871226749e-09
+          },
+          {
+            "iterations": 6,
+            "true_relative_residual": 6.055315167736012e-09
+          },
+          {
+            "iterations": 6,
+            "true_relative_residual": 4.136875594386725e-09
+          },
+          {
+            "iterations": 6,
+            "true_relative_residual": 4.017345526882508e-09
+          }
+        ],
+        "fgmres_total_iterations": 83,
+        "max_true_relative_residual": 9.362297048389432e-09,
+        "newton_history": [
+          {
+            "status": "dt_zero_initialization",
+            "iterations": 0,
+            "final_l2": 0.0,
+            "final_max": 0.0,
+            "cycle": 0,
+            "dt": 0.0
+          },
+          {
+            "status": "converged",
+            "iterations": 5,
+            "final_l2": 1.4672646343970463e-10,
+            "final_max": 8.277644122791712e-10,
+            "cycle": 0,
+            "dt": 7.963941310512613e-05
+          },
+          {
+            "status": "converged",
+            "iterations": 4,
+            "final_l2": 1.1438753013564026e-10,
+            "final_max": 6.446494266442431e-10,
+            "cycle": 1,
+            "dt": 7.963941310500695e-05
+          },
+          {
+            "status": "converged",
+            "iterations": 0,
+            "final_l2": 0.0,
+            "final_max": 0.0,
+            "cycle": 2,
+            "dt": 0.0
+          },
+          {
+            "status": "converged",
+            "iterations": 4,
+            "final_l2": 2.974505145222498e-14,
+            "final_max": 1.1949265567051575e-13,
+            "cycle": 2,
+            "dt": 7.959888888745424e-05
+          }
+        ],
+        "face_ledger": {
+          "pair_count": 3,
+          "max_relative_mismatch": 1.0168793247934572e-16,
+          "pass": true,
+          "logs": [
+            "/tmp/wor25_23_24_resolution_trials/mach5_mixed_shift_r1/mpi/1/rank.0/stdout"
+          ]
+        },
+        "max_implicit_energy_absolute_relative_balance": 2.5415980367372095e-16,
+        "topology_by_output": [
+          {
+            "file": "nrfld_radiative_shock.prim_x.00000.athdf",
+            "leaves": 9,
+            "levels": {
+              "0": 1,
+              "1": 8
+            }
+          },
+          {
+            "file": "nrfld_radiative_shock.prim_x.00001.athdf",
+            "leaves": 9,
+            "levels": {
+              "0": 1,
+              "1": 8
+            }
+          },
+          {
+            "file": "nrfld_radiative_shock.prim_x.00002.athdf",
+            "leaves": 9,
+            "levels": {
+              "0": 1,
+              "1": 8
+            }
+          },
+          {
+            "file": "nrfld_radiative_shock.prim_x.00003.athdf",
+            "leaves": 9,
+            "levels": {
+              "0": 1,
+              "1": 8
+            }
+          },
+          {
+            "file": "nrfld_radiative_shock.prim_x.00004.athdf",
+            "leaves": 9,
+            "levels": {
+              "0": 1,
+              "1": 8
+            }
+          }
+        ],
+        "pass": true
+      },
+      {
+        "mass_volume_integral": {
+          "initial": 0.05580254868749999,
+          "final": 0.05580216880066009,
+          "relative_change": -6.807696939118905e-06
+        },
+        "final_minima": {
+          "rho": 5.458869772829305e-13,
+          "press": 0.004538749899468206,
+          "Er": 7.560419295569277e-07
+        },
+        "run": "mach5_mixed_shift_r2",
+        "binary_sha256": "299f50b0f28559f64b1dea69d030f33323d36413705c1eba363761c5553ddd12",
+        "checkpoint": null,
+        "checkpoint_sha256": null,
+        "input": "/tmp/wor25_23_24_resolution_mach5_adaptive_build/input_adaptive.in",
+        "input_sha256": "8a65d28d603aa60a71dd927636b2db1b47750d04d8595279acef4015b82e2850",
+        "command": "mpirun --output-filename /tmp/wor25_23_24_resolution_trials/mach5_mixed_shift_r2/mpi -n 2 /tmp/wor25_23_24_resolution_mach5_shift_build/bin/athena -i /tmp/wor25_23_24_resolution_mach5_adaptive_build/input_adaptive.in -d output",
+        "environment": {
+          "OMP_NUM_THREADS": 2,
+          "ATHENA_NRFLD_INTERFACE_LEDGER": 1,
+          "ATHENA_NRFLD_ENERGY_LEDGER": 1,
+          "ATHENA_NRFLD_EXPERIMENTAL_COLLAPSE": 0
+        },
+        "exit_status": 0,
+        "wall_time": "0:01.15",
+        "peak_rss_kb": 78708,
+        "fgmres_history": [
+          {
+            "iterations": 7,
+            "true_relative_residual": 4.279098143383659e-10
+          },
+          {
+            "iterations": 7,
+            "true_relative_residual": 8.089245426705902e-10
+          },
+          {
+            "iterations": 6,
+            "true_relative_residual": 9.362297048389432e-09
+          },
+          {
+            "iterations": 6,
+            "true_relative_residual": 8.145734597400967e-09
+          },
+          {
+            "iterations": 6,
+            "true_relative_residual": 8.158503246311001e-09
+          },
+          {
+            "iterations": 6,
+            "true_relative_residual": 9.080737864700004e-09
+          },
+          {
+            "iterations": 7,
+            "true_relative_residual": 1.86825787680957e-09
+          },
+          {
+            "iterations": 7,
+            "true_relative_residual": 1.8624719801682339e-09
+          },
+          {
+            "iterations": 7,
+            "true_relative_residual": 1.6920171950745181e-09
+          },
+          {
+            "iterations": 6,
+            "true_relative_residual": 4.759870871176854e-09
+          },
+          {
+            "iterations": 6,
+            "true_relative_residual": 6.055315167736012e-09
+          },
+          {
+            "iterations": 6,
+            "true_relative_residual": 4.136875594386725e-09
+          },
+          {
+            "iterations": 6,
+            "true_relative_residual": 4.017345526882508e-09
+          }
+        ],
+        "fgmres_total_iterations": 83,
+        "max_true_relative_residual": 9.362297048389432e-09,
+        "newton_history": [
+          {
+            "status": "dt_zero_initialization",
+            "iterations": 0,
+            "final_l2": 0.0,
+            "final_max": 0.0,
+            "cycle": 0,
+            "dt": 0.0
+          },
+          {
+            "status": "converged",
+            "iterations": 5,
+            "final_l2": 1.4672646343970463e-10,
+            "final_max": 8.277644122791712e-10,
+            "cycle": 0,
+            "dt": 7.963941310512613e-05
+          },
+          {
+            "status": "converged",
+            "iterations": 4,
+            "final_l2": 1.1438753013564026e-10,
+            "final_max": 6.446494266442431e-10,
+            "cycle": 1,
+            "dt": 7.963941310500695e-05
+          },
+          {
+            "status": "converged",
+            "iterations": 0,
+            "final_l2": 0.0,
+            "final_max": 0.0,
+            "cycle": 2,
+            "dt": 0.0
+          },
+          {
+            "status": "converged",
+            "iterations": 4,
+            "final_l2": 2.974505145222498e-14,
+            "final_max": 1.1949265567051575e-13,
+            "cycle": 2,
+            "dt": 7.959888888745424e-05
+          }
+        ],
+        "face_ledger": {
+          "pair_count": 3,
+          "max_relative_mismatch": 1.0168793247934572e-16,
+          "pass": true,
+          "logs": [
+            "/tmp/wor25_23_24_resolution_trials/mach5_mixed_shift_r2/mpi/1/rank.0/stdout",
+            "/tmp/wor25_23_24_resolution_trials/mach5_mixed_shift_r2/mpi/1/rank.1/stdout"
+          ]
+        },
+        "max_implicit_energy_absolute_relative_balance": 2.8434608524831413e-16,
+        "topology_by_output": [
+          {
+            "file": "nrfld_radiative_shock.prim_x.00000.athdf",
+            "leaves": 9,
+            "levels": {
+              "0": 1,
+              "1": 8
+            }
+          },
+          {
+            "file": "nrfld_radiative_shock.prim_x.00001.athdf",
+            "leaves": 9,
+            "levels": {
+              "0": 1,
+              "1": 8
+            }
+          },
+          {
+            "file": "nrfld_radiative_shock.prim_x.00002.athdf",
+            "leaves": 9,
+            "levels": {
+              "0": 1,
+              "1": 8
+            }
+          },
+          {
+            "file": "nrfld_radiative_shock.prim_x.00003.athdf",
+            "leaves": 9,
+            "levels": {
+              "0": 1,
+              "1": 8
+            }
+          },
+          {
+            "file": "nrfld_radiative_shock.prim_x.00004.athdf",
+            "leaves": 9,
+            "levels": {
+              "0": 1,
+              "1": 8
+            }
+          }
+        ],
+        "pass": true
+      }
+    ],
+    "mach5_candidate": [
+      {
+        "mass_volume_integral": {
+          "initial": 0.05580254868749999,
+          "final": 0.05580216928467314,
+          "relative_change": -6.799023266387005e-06
+        },
+        "final_minima": {
+          "rho": 5.458869772780199e-13,
+          "press": 0.004538749904620345,
+          "Er": 7.56041946370077e-07
+        },
+        "run": "mach5_mixed_shift_postflddt_r1",
+        "binary_sha256": "2a5f498e61f08e763492f554edf80fae8df84a9a118af0719cc03f66fe46066e",
+        "checkpoint": null,
+        "checkpoint_sha256": null,
+        "input": "/tmp/wor25_23_24_resolution_mach5_adaptive_build/input_adaptive.in",
+        "input_sha256": "8a65d28d603aa60a71dd927636b2db1b47750d04d8595279acef4015b82e2850",
+        "command": "mpirun --output-filename /tmp/wor25_23_24_resolution_trials/mach5_mixed_shift_postflddt_r1/mpi -n 1 /tmp/wor25_23_24_resolution_mach5_postflddt_build/bin/athena -i /tmp/wor25_23_24_resolution_mach5_adaptive_build/input_adaptive.in -d output",
+        "environment": {
+          "OMP_NUM_THREADS": 2,
+          "ATHENA_NRFLD_INTERFACE_LEDGER": 1,
+          "ATHENA_NRFLD_ENERGY_LEDGER": 1,
+          "ATHENA_NRFLD_EXPERIMENTAL_COLLAPSE": 0
+        },
+        "exit_status": 0,
+        "wall_time": "0:02.15",
+        "peak_rss_kb": 113364,
+        "fgmres_history": [
+          {
+            "iterations": 7,
+            "true_relative_residual": 4.279098143383659e-10
+          },
+          {
+            "iterations": 7,
+            "true_relative_residual": 8.089245426674363e-10
+          },
+          {
+            "iterations": 6,
+            "true_relative_residual": 9.362297048389432e-09
+          },
+          {
+            "iterations": 6,
+            "true_relative_residual": 8.145734597400967e-09
+          },
+          {
+            "iterations": 6,
+            "true_relative_residual": 8.158503246311001e-09
+          },
+          {
+            "iterations": 6,
+            "true_relative_residual": 6.97776992279107e-09
+          },
+          {
+            "iterations": 7,
+            "true_relative_residual": 1.3039299233616084e-09
+          },
+          {
+            "iterations": 7,
+            "true_relative_residual": 1.1862069476244622e-09
+          },
+          {
+            "iterations": 7,
+            "true_relative_residual": 1.1622044873807857e-09
+          },
+          {
+            "iterations": 6,
+            "true_relative_residual": 4.707199810977049e-09
+          },
+          {
+            "iterations": 6,
+            "true_relative_residual": 5.323859215793676e-09
+          },
+          {
+            "iterations": 6,
+            "true_relative_residual": 3.6038447219586567e-09
+          },
+          {
+            "iterations": 6,
+            "true_relative_residual": 3.4669429897849482e-09
+          }
+        ],
+        "fgmres_total_iterations": 83,
+        "max_true_relative_residual": 9.362297048389432e-09,
+        "newton_history": [
+          {
+            "status": "dt_zero_initialization",
+            "iterations": 0,
+            "final_l2": 0.0,
+            "final_max": 0.0,
+            "cycle": 0,
+            "dt": 0.0
+          },
+          {
+            "status": "converged",
+            "iterations": 5,
+            "final_l2": 1.4672646343970463e-10,
+            "final_max": 8.277644122791712e-10,
+            "cycle": 0,
+            "dt": 7.963941310512613e-05
+          },
+          {
+            "status": "converged",
+            "iterations": 4,
+            "final_l2": 2.137603534414722e-13,
+            "final_max": 1.184381757100408e-12,
+            "cycle": 1,
+            "dt": 6.589619602858504e-05
+          },
+          {
+            "status": "converged",
+            "iterations": 0,
+            "final_l2": 0.0,
+            "final_max": 0.0,
+            "cycle": 2,
+            "dt": 0.0
+          },
+          {
+            "status": "converged",
+            "iterations": 4,
+            "final_l2": 2.0680659935878253e-14,
+            "final_max": 8.311553354709287e-14,
+            "cycle": 2,
+            "dt": 7.960734701911196e-05
+          }
+        ],
+        "face_ledger": {
+          "pair_count": 3,
+          "max_relative_mismatch": 1.0168793247934572e-16,
+          "pass": true,
+          "logs": [
+            "/tmp/wor25_23_24_resolution_trials/mach5_mixed_shift_postflddt_r1/mpi/1/rank.0/stdout"
+          ]
+        },
+        "max_implicit_energy_absolute_relative_balance": 2.5415980367372095e-16,
+        "topology_by_output": [
+          {
+            "file": "nrfld_radiative_shock.prim_x.00000.athdf",
+            "leaves": 9,
+            "levels": {
+              "0": 1,
+              "1": 8
+            }
+          },
+          {
+            "file": "nrfld_radiative_shock.prim_x.00001.athdf",
+            "leaves": 9,
+            "levels": {
+              "0": 1,
+              "1": 8
+            }
+          },
+          {
+            "file": "nrfld_radiative_shock.prim_x.00002.athdf",
+            "leaves": 9,
+            "levels": {
+              "0": 1,
+              "1": 8
+            }
+          },
+          {
+            "file": "nrfld_radiative_shock.prim_x.00003.athdf",
+            "leaves": 9,
+            "levels": {
+              "0": 1,
+              "1": 8
+            }
+          },
+          {
+            "file": "nrfld_radiative_shock.prim_x.00004.athdf",
+            "leaves": 9,
+            "levels": {
+              "0": 1,
+              "1": 8
+            }
+          }
+        ],
+        "pass": true
+      },
+      {
+        "mass_volume_integral": {
+          "initial": 0.05580254868749999,
+          "final": 0.05580216928467314,
+          "relative_change": -6.799023266387005e-06
+        },
+        "final_minima": {
+          "rho": 5.458869772780199e-13,
+          "press": 0.004538749904620345,
+          "Er": 7.56041946370077e-07
+        },
+        "run": "mach5_mixed_shift_postflddt_r2",
+        "binary_sha256": "2a5f498e61f08e763492f554edf80fae8df84a9a118af0719cc03f66fe46066e",
+        "checkpoint": null,
+        "checkpoint_sha256": null,
+        "input": "/tmp/wor25_23_24_resolution_mach5_adaptive_build/input_adaptive.in",
+        "input_sha256": "8a65d28d603aa60a71dd927636b2db1b47750d04d8595279acef4015b82e2850",
+        "command": "mpirun --output-filename /tmp/wor25_23_24_resolution_trials/mach5_mixed_shift_postflddt_r2/mpi -n 2 /tmp/wor25_23_24_resolution_mach5_postflddt_build/bin/athena -i /tmp/wor25_23_24_resolution_mach5_adaptive_build/input_adaptive.in -d output",
+        "environment": {
+          "OMP_NUM_THREADS": 2,
+          "ATHENA_NRFLD_INTERFACE_LEDGER": 1,
+          "ATHENA_NRFLD_ENERGY_LEDGER": 1,
+          "ATHENA_NRFLD_EXPERIMENTAL_COLLAPSE": 0
+        },
+        "exit_status": 0,
+        "wall_time": "0:01.66",
+        "peak_rss_kb": 78784,
+        "fgmres_history": [
+          {
+            "iterations": 7,
+            "true_relative_residual": 4.279098143383659e-10
+          },
+          {
+            "iterations": 7,
+            "true_relative_residual": 8.089245426705902e-10
+          },
+          {
+            "iterations": 6,
+            "true_relative_residual": 9.362297048389432e-09
+          },
+          {
+            "iterations": 6,
+            "true_relative_residual": 8.145734597400967e-09
+          },
+          {
+            "iterations": 6,
+            "true_relative_residual": 8.158503246311001e-09
+          },
+          {
+            "iterations": 6,
+            "true_relative_residual": 6.97776992279107e-09
+          },
+          {
+            "iterations": 7,
+            "true_relative_residual": 1.3039299233616084e-09
+          },
+          {
+            "iterations": 7,
+            "true_relative_residual": 1.1862069476244622e-09
+          },
+          {
+            "iterations": 7,
+            "true_relative_residual": 1.16220448737821e-09
+          },
+          {
+            "iterations": 6,
+            "true_relative_residual": 4.707199810977049e-09
+          },
+          {
+            "iterations": 6,
+            "true_relative_residual": 5.323859215793676e-09
+          },
+          {
+            "iterations": 6,
+            "true_relative_residual": 3.603844721958645e-09
+          },
+          {
+            "iterations": 6,
+            "true_relative_residual": 3.4669429897848386e-09
+          }
+        ],
+        "fgmres_total_iterations": 83,
+        "max_true_relative_residual": 9.362297048389432e-09,
+        "newton_history": [
+          {
+            "status": "dt_zero_initialization",
+            "iterations": 0,
+            "final_l2": 0.0,
+            "final_max": 0.0,
+            "cycle": 0,
+            "dt": 0.0
+          },
+          {
+            "status": "converged",
+            "iterations": 5,
+            "final_l2": 1.4672646343970463e-10,
+            "final_max": 8.277644122791712e-10,
+            "cycle": 0,
+            "dt": 7.963941310512613e-05
+          },
+          {
+            "status": "converged",
+            "iterations": 4,
+            "final_l2": 2.137603534414722e-13,
+            "final_max": 1.184381757100408e-12,
+            "cycle": 1,
+            "dt": 6.589619602858504e-05
+          },
+          {
+            "status": "converged",
+            "iterations": 0,
+            "final_l2": 0.0,
+            "final_max": 0.0,
+            "cycle": 2,
+            "dt": 0.0
+          },
+          {
+            "status": "converged",
+            "iterations": 4,
+            "final_l2": 2.0680659935878253e-14,
+            "final_max": 8.311553354709287e-14,
+            "cycle": 2,
+            "dt": 7.960734701911196e-05
+          }
+        ],
+        "face_ledger": {
+          "pair_count": 3,
+          "max_relative_mismatch": 1.0168793247934572e-16,
+          "pass": true,
+          "logs": [
+            "/tmp/wor25_23_24_resolution_trials/mach5_mixed_shift_postflddt_r2/mpi/1/rank.0/stdout",
+            "/tmp/wor25_23_24_resolution_trials/mach5_mixed_shift_postflddt_r2/mpi/1/rank.1/stdout"
+          ]
+        },
+        "max_implicit_energy_absolute_relative_balance": 2.8434608524831413e-16,
+        "topology_by_output": [
+          {
+            "file": "nrfld_radiative_shock.prim_x.00000.athdf",
+            "leaves": 9,
+            "levels": {
+              "0": 1,
+              "1": 8
+            }
+          },
+          {
+            "file": "nrfld_radiative_shock.prim_x.00001.athdf",
+            "leaves": 9,
+            "levels": {
+              "0": 1,
+              "1": 8
+            }
+          },
+          {
+            "file": "nrfld_radiative_shock.prim_x.00002.athdf",
+            "leaves": 9,
+            "levels": {
+              "0": 1,
+              "1": 8
+            }
+          },
+          {
+            "file": "nrfld_radiative_shock.prim_x.00003.athdf",
+            "leaves": 9,
+            "levels": {
+              "0": 1,
+              "1": 8
+            }
+          },
+          {
+            "file": "nrfld_radiative_shock.prim_x.00004.athdf",
+            "leaves": 9,
+            "levels": {
+              "0": 1,
+              "1": 8
+            }
+          }
+        ],
+        "pass": true
+      }
+    ],
+    "mach5_final_relative_l1": {
+      "prim_x": {
+        "baseline_vs_candidate_rank1": 3.59573370883798e-05,
+        "candidate_rank1_vs_rank2": 0.0
+      },
+      "uov_x": {
+        "baseline_vs_candidate_rank1": 3.729342236324038e-05,
+        "candidate_rank1_vs_rank2": 0.0
+      }
+    },
+    "interpretation": "Post-implicit, post-AMR block CFL recompute restores restart consistency in natural 43-to-64 leaf transition. Mach5 trajectory changes because the previously stale CFL differs; both ranks agree and all solver/ledger checks pass. Background source and hydro prevent a closed global energy proof."
   }
 }

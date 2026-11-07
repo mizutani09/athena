@@ -659,6 +659,16 @@ int main(int argc, char *argv[]) {
       SynchronizeFLDBoundariesAfterNR(pmesh);
     performance.Mark(PerformanceTimer::other);
 
+    if (NRMGFLD_ENABLED) {
+      // The implicit update and AMR change the state used by the CFL estimate.
+      // Refresh opacity on newly created blocks before computing the next step.
+      for (int b = 0; b < pmesh->nblocal; ++b) {
+        MeshBlock *pmb = pmesh->my_blocks(b);
+        if (pmesh->amr_updated)
+          pmb->prfld->UpdateOpacity(pmb, pmb->prfld->u_rad, pmb->phydro->w);
+        pmb->phydro->NewBlockTimeStep();
+      }
+    }
     pmesh->NewTimeStep();
 
 #ifdef ENABLE_EXCEPTIONS

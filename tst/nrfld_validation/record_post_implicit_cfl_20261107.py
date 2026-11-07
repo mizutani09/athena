@@ -1,0 +1,42 @@
+import glob,hashlib,json,re,subprocess
+from pathlib import Path
+import h5py,numpy as np
+B=Path('/tmp/wor25_23_24_resolution_trials'); W=Path('/home/kosuke/simulation/athena-wor25-23-24-resolution'); report=W/'tst/nrfld_validation/wor25_23_24_resolution_20261107.json'; ledger=W/'tst/nrfld_validation/collapse_interface_ledger.py'
+def sha(f):return hashlib.sha256(Path(f).read_bytes()).hexdigest()
+def rv(s,p):
+ m=re.search(p,s);return m.group(1) if m else None
+def run(name,binary,checkpoint=None,input_file=None):
+ d=B/name;s=(d/'run.log').read_text();cmd=rv(s,r'Command being timed: "([^"]+)"');logs=sorted((d/'mpi').glob('**/rank.*/stdout'));z=subprocess.run(['python3',str(ledger),'--tolerance','1e-6','--require-conservation',*map(str,logs)],capture_output=True,text=True);face=json.loads(z.stdout) if z.returncode==0 else {'pass':False,'error':z.stderr};fg=[{'iterations':int(n),'true_relative_residual':float(v)} for n,v in re.findall(r'\[LINEAR_FGMRES\] iterations=(\d+) relative_residual=([\deE+.-]+)',s)];nr=[{'status':a,'iterations':int(b),'final_l2':float(c),'final_max':float(e),'cycle':int(f),'dt':float(g)} for a,b,c,e,f,g in re.findall(r'\[NR\] status=(\w+) iterations=(\d+).*?final_l2=([\deE+.-]+) final_max=([\deE+.-]+).*?cycle=(\d+) .*?dt=([\deE+.-]+)',s)];top=[]
+ for f in sorted((d/'output').glob('*.prim.*.athdf')):
+  with h5py.File(f) as h:top.append({'file':f.name,'leaves':len(h['Levels']),'levels':{str(int(v)):int(n) for v,n in zip(*np.unique(h['Levels'][:],return_counts=True))}})
+ if not top:
+  for f in sorted((d/'output').glob('*.prim_x.*.athdf')):
+   with h5py.File(f) as h:top.append({'file':f.name,'leaves':len(h['Levels']),'levels':{str(int(v)):int(n) for v,n in zip(*np.unique(h['Levels'][:],return_counts=True))}})
+ energies=[float(x) for x in re.findall(r'absolute_relative_balance=([\deE+.-]+)',s)]
+    # Integrated density and final positivity are screening diagnostics, not a closed energy budget.
+ mass_rows=[];final_minima={}
+ files=sorted((d/'output').glob('*.prim.*.athdf')) or sorted((d/'output').glob('*.prim_x.*.athdf'))
+ for f in (files[:1]+files[-1:]):
+  with h5py.File(f) as h:
+   v=np.diff(h['x3f'][:],axis=1)[:,:,None,None]*np.diff(h['x2f'][:],axis=1)[:,None,:,None]*np.diff(h['x1f'][:],axis=1)[:,None,None,:]
+   mass_rows.append(float(np.sum(h['prim'][0]*v)))
+   if f==files[-1]:final_minima={'rho':float(np.min(h['prim'][0])),'press':float(np.min(h['prim'][1])),'Er':float(np.min(h['prim'][list(h.attrs['VariableNames']).index(b'Er')]))}
+ return {'mass_volume_integral':{'initial':mass_rows[0],'final':mass_rows[-1],'relative_change':(mass_rows[-1]-mass_rows[0])/mass_rows[0]},'final_minima':final_minima,'run':name,'binary_sha256':sha(binary),'checkpoint':str(checkpoint) if checkpoint else None,'checkpoint_sha256':sha(checkpoint) if checkpoint else None,'input':str(input_file) if input_file else None,'input_sha256':sha(input_file) if input_file else None,'command':cmd,'environment':{'OMP_NUM_THREADS':2,'ATHENA_NRFLD_INTERFACE_LEDGER':1,'ATHENA_NRFLD_ENERGY_LEDGER':1,'ATHENA_NRFLD_EXPERIMENTAL_COLLAPSE':int(name.startswith('collapse'))},'exit_status':int(rv(s,r'Exit status: (\d+)')),'wall_time':rv(s,r'Elapsed \(wall clock\) time \(h:mm:ss or m:ss\): (\S+)'),'peak_rss_kb':int(rv(s,r'Maximum resident set size \(kbytes\): (\d+)')),'fgmres_history':fg,'fgmres_total_iterations':sum(v['iterations'] for v in fg),'max_true_relative_residual':max(v['true_relative_residual'] for v in fg),'newton_history':nr,'face_ledger':{'pair_count':len(face.get('pairs',[])),'max_relative_mismatch':face.get('max_relative_mismatch'),'pass':face.get('pass'),'logs':list(map(str,logs))},'max_implicit_energy_absolute_relative_balance':max(energies),'topology_by_output':top,'pass':all(n['status'] in ('converged','dt_zero_initialization') for n in nr) and all(v['true_relative_residual']<1e-8 for v in fg) and face.get('pass') and int(rv(s,r'Exit status: (\d+)'))==0}
+def arr(name,kind,cycle):
+ p=B/name/'output';file=next(p.glob(f'*.{kind}.{cycle:05}.athdf'))
+ with h5py.File(file) as h:return h['prim' if kind.startswith('prim') else 'user_out_var'][:]
+def diff(a,b,k,cycle):
+ x,y=arr(a,k,cycle),arr(b,k,cycle);return float(np.sum(abs(x-y))/np.sum(abs(x)))
+orig=B/'collapse_adaptive_partial_direct_final_r1/protostellar_core_fld_mayer5.00006.rst';basebin=Path('/tmp/wor25_23_24_resolution_collapse_natural_postsync_build/bin/athena');newbin=Path('/tmp/wor25_23_24_resolution_collapse_postflddt_build/bin/athena');oldcandidate=Path('/tmp/wor25_23_24_resolution_trials/collapse_postflddt_initial.athena');machbase=Path('/tmp/wor25_23_24_resolution_mach5_shift_build/bin/athena');machnew=Path('/tmp/wor25_23_24_resolution_mach5_postflddt_build/bin/athena');machinput=Path('/tmp/wor25_23_24_resolution_mach5_adaptive_build/input_adaptive.in')
+sections=[('baseline_natural',[('collapse_natural43_long_postsync_r1',basebin,orig),('collapse_natural43_long_postsync_r2',basebin,orig),('collapse_natural43_postsync_restart15_r1',basebin,B/'collapse_natural43_long_postsync_r1/output/protostellar_core_fld_mayer5.00015.rst'),('collapse_natural43_postsync_restart15_r2',basebin,B/'collapse_natural43_long_postsync_r1/output/protostellar_core_fld_mayer5.00015.rst')]),('candidate_initial',[('collapse_postflddt_natural_r1',oldcandidate,orig),('collapse_postflddt_natural_r2',oldcandidate,orig),('collapse_postflddt_natural_restart15_r1',oldcandidate,B/'collapse_postflddt_natural_r1/output/protostellar_core_fld_mayer5.00015.rst'),('collapse_postflddt_natural_restart15_r2',oldcandidate,B/'collapse_postflddt_natural_r1/output/protostellar_core_fld_mayer5.00015.rst')]),('candidate_with_opacity',[('collapse_postflddt_opacity_natural_r1',newbin,orig),('collapse_postflddt_opacity_natural_r2',newbin,orig),('collapse_postflddt_opacity_natural_restart15_r1',newbin,B/'collapse_postflddt_opacity_natural_r1/output/protostellar_core_fld_mayer5.00015.rst'),('collapse_postflddt_opacity_natural_restart15_r2',newbin,B/'collapse_postflddt_opacity_natural_r1/output/protostellar_core_fld_mayer5.00015.rst')])]
+record={'source_commit_before_fix':'83ed1018','candidate_initial_binary_note':'SHA-256 is from deterministic rebuild of the same no-opacity-refresh source in the same isolated build after the original exploratory run; the original binary was overwritten before its hash was captured.','source_main_sha256':sha(W/'src/main.cpp'),'collapse_binary_sha256':sha(newbin),'mach5_binary_sha256':sha(machnew),'sections':{}}
+for title,rows in sections:
+ record['sections'][title]=[run(*r) for r in rows]
+for title,rows in sections:
+ names=[r[0] for r in rows];record['sections'][title+'_comparisons']={k:{'direct_rank':diff(names[0],names[1],k,17),'restart_rank':diff(names[2],names[3],k,17),'direct_vs_restart_rank1':diff(names[0],names[2],k,17),'direct_vs_restart_rank2':diff(names[1],names[3],k,17)} for k in ('prim','fld')}
+record['opacity_refresh_vs_no_refresh_final_relative_l1']={k:diff('collapse_postflddt_natural_r1','collapse_postflddt_opacity_natural_r1',k,17) for k in ('prim','fld')}
+record['mach5_baseline']=[run(f'mach5_mixed_shift_r{n}',machbase,input_file=machinput) for n in (1,2)]
+record['mach5_candidate']=[run(f'mach5_mixed_shift_postflddt_r{n}',machnew,input_file=machinput) for n in (1,2)]
+record['mach5_final_relative_l1']={k:{'baseline_vs_candidate_rank1':diff('mach5_mixed_shift_r1','mach5_mixed_shift_postflddt_r1',k,3),'candidate_rank1_vs_rank2':diff('mach5_mixed_shift_postflddt_r1','mach5_mixed_shift_postflddt_r2',k,3)} for k in ('prim_x','uov_x')}
+record['interpretation']='Post-implicit, post-AMR block CFL recompute restores restart consistency in natural 43-to-64 leaf transition. Mach5 trajectory changes because the previously stale CFL differs; both ranks agree and all solver/ledger checks pass. Background source and hydro prevent a closed global energy proof.'
+x=json.loads(report.read_text());x['post_implicit_cfl_restart_fix']=record;report.write_text(json.dumps(x,indent=2,ensure_ascii=False)+'\n');print(json.dumps({'collapse_pass':[[r['pass'] for r in record['sections'][x]] for x in ['baseline_natural','candidate_initial','candidate_with_opacity']],'mach_pass':[r['pass'] for r in record['mach5_candidate']],'baseline_restart':record['sections']['baseline_natural_comparisons'],'new_restart':record['sections']['candidate_with_opacity_comparisons'],'mach_diff':record['mach5_final_relative_l1']},indent=2))
