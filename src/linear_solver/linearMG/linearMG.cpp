@@ -193,6 +193,7 @@ linearMGDriver::linearMGDriver(Mesh *pm, ParameterInput *pin, NewtonRaphsonDrive
     ATHENA_ERROR(msg);
   }
   fgmres_threshold_ = pin->GetOrAddReal("nrfld", "fgmres_threshold", 1.0e-8);
+  fgmres_roundoff_cap_ = pin->GetOrAddReal("nrfld", "fgmres_roundoff_cap", 0.0);
   fgmres_restart_ = pin->GetOrAddInteger("nrfld", "fgmres_restart", 20);
   fgmres_max_iterations_ = pin->GetOrAddInteger(
       "nrfld", "fgmres_max_iterations", 200);
@@ -224,12 +225,18 @@ linearMGDriver::linearMGDriver(Mesh *pm, ParameterInput *pin, NewtonRaphsonDrive
       || !std::isfinite(uniform_pcg_threshold_)
       || uniform_pcg_max_iterations_ <= 0
       || !(fgmres_threshold_ > 0.0) || !std::isfinite(fgmres_threshold_)
+      || !std::isfinite(fgmres_roundoff_cap_)
+      || fgmres_roundoff_cap_ < 0.0
+      || (fgmres_roundoff_cap_ > 0.0
+          && (fgmres_roundoff_cap_ < fgmres_threshold_
+              || fgmres_roundoff_cap_ > 10.0*fgmres_threshold_))
       || fgmres_restart_ <= 0 || fgmres_max_iterations_ <= 0
       || fgmres_mg_vcycles_ <= 0) {
     std::stringstream msg;
     msg << "### FATAL ERROR in linearMGDriver::linearMGDriver" << std::endl
         << "Krylov thresholds must be finite and positive, and iteration, "
-        << "restart, and MG V-cycle counts must be positive." << std::endl;
+        << "restart, and MG V-cycle counts must be positive. The optional "
+        << "FGMRES roundoff cap must be within [target, 10*target]." << std::endl;
     ATHENA_ERROR(msg);
   }
   cache_coefficient_hierarchy_ =
@@ -1666,6 +1673,9 @@ void linearMGDriver::SolveFGMRES(int stage) {
   Real relative_residual = static_cast<Real>(beta/bnorm);
   int total_iterations = 0;
   bool breakdown = false;
+  bool roundoff_accepted = false;
+  long double accepted_predicted_rel=0.0L, accepted_gap_rel=0.0L;
+  long double accepted_closure_rel=0.0L;
 
   while (relative_residual > fgmres_threshold_
          && total_iterations < fgmres_max_iterations_) {
@@ -1760,7 +1770,9 @@ void linearMGDriver::SolveFGMRES(int stage) {
       }
       y[row] = value/diag;
     }
-    const bool update_audit = std::getenv("ATHENA_NRFLD_FGMRES_UPDATE_AUDIT") != nullptr;
+    const bool print_update_audit =
+        std::getenv("ATHENA_NRFLD_FGMRES_UPDATE_AUDIT") != nullptr;
+    const bool update_audit = print_update_audit || fgmres_roundoff_cap_ > 0.0;
     BlockVector x_before, requested, r_before, audit_gap_operator;
     if (update_audit) {
       x_before=make_vector(); requested=make_vector(); r_before=make_vector();
@@ -1813,7 +1825,7 @@ void linearMGDriver::SolveFGMRES(int stage) {
       axpy(closure,-1.0,audit_gap_operator);
       update_closure_rel=norm(closure)/bnorm;
     }
-    if (update_audit && Globals::my_rank==0) {
+    if (print_update_audit && Globals::my_rank==0) {
       std::cout << "[LINEAR_FGMRES_UPDATE_AUDIT] iterations=" << total_iterations
                 << " projected=" << static_cast<long double>(std::abs(g[used]))/bnorm
                 << " predicted=" << predicted_rel
@@ -1838,6 +1850,25 @@ void linearMGDriver::SolveFGMRES(int stage) {
                 << " rhs_norm=" << bnorm << std::endl;
       std::cout.flags(flags);
       std::cout.precision(precision);
+    }
+    // Only relax the stop when the requested correction meets the strict
+    // target and rounding it into the stored Real solution explains the
+    // larger true residual. Newton still tests the nonlinear residual.
+    if (!breakdown && fgmres_roundoff_cap_ > 0.0
+        && relative_residual > fgmres_threshold_
+        && relative_residual <= fgmres_roundoff_cap_
+        && std::abs(g[used])/bnorm <= fgmres_threshold_
+        && predicted_rel <= fgmres_threshold_
+        && amplified_gap_rel >= 0.5L*relative_residual
+        && update_closure_rel <= 0.25L*relative_residual
+        && std::isfinite(predicted_rel)
+        && std::isfinite(amplified_gap_rel)
+        && std::isfinite(update_closure_rel)) {
+      roundoff_accepted=true;
+      accepted_predicted_rel=predicted_rel;
+      accepted_gap_rel=amplified_gap_rel;
+      accepted_closure_rel=update_closure_rel;
+      break;
     }
     if (breakdown) break;
   }
@@ -1912,6 +1943,11 @@ void linearMGDriver::SolveFGMRES(int stage) {
               << " workspace_bytes=" << (basis_slots + work_slots)*sizeof(Real)
               << " workspace_rebuilt=" << workspace_rebuilt
               << " workspace_rebuilds=" << fgmres_workspace_rebuilds_
+              << " roundoff_accepted=" << roundoff_accepted
+              << " roundoff_cap=" << fgmres_roundoff_cap_
+              << " roundoff_predicted_rel=" << accepted_predicted_rel
+              << " roundoff_gap_rel=" << accepted_gap_rel
+              << " roundoff_closure_rel=" << accepted_closure_rel
               << " breakdown=" << breakdown << std::endl;
     if (std::getenv("ATHENA_NRFLD_FGMRES_NORM_AUDIT") != nullptr) {
       const auto flags = std::cout.flags();
@@ -1929,7 +1965,8 @@ void linearMGDriver::SolveFGMRES(int stage) {
       std::cout.precision(precision);
     }
   }
-  if (breakdown || !(relative_residual <= fgmres_threshold_)
+  if (breakdown || (!roundoff_accepted
+                   && !(relative_residual <= fgmres_threshold_))
       || !std::isfinite(relative_residual)) {
     std::stringstream msg;
     msg << "### FATAL ERROR in linearMGDriver::SolveFGMRES" << std::endl
