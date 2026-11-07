@@ -26240,6 +26240,140 @@
       }
     },
     "evaluation": "PASS_LOCAL_RESTART_MPI_AND_FACE; CONTINUOUS_RESTART_DISCREPANCY_UNRESOLVED; GRAVITY_OPT_INS_REJECTED_FOR_THIS_CASE",
-    "limitations": "Forced local regrid, 43 leaves and 3 continuation steps. Mass change includes hydro, gravity and background terms; implicit energy ledger is not closed global energy budget. Gravity options already in code, default false; no setting changed."
+    "limitations": "Forced local regrid, 43 leaves and 3 continuation steps. Mass change includes hydro, gravity and background terms; implicit energy ledger is not closed global energy budget. Gravity options already in code, default false; no setting changed.",
+    "initialization_only_controls": [
+      {
+        "name": "collapse_restart10_init_only",
+        "source_commit_base": "050cfffc",
+        "binary_sha256": "0f649c02137232c0a862514e6532286a1c959193325e89dc84821d6fb7882de2",
+        "checkpoint_path": "/tmp/wor25_23_24_resolution_trials/collapse_oscillating43_r1/output/protostellar_core_fld_mayer5.00010.rst",
+        "checkpoint_sha256": "db5093bcbd632744ce8b8433b4fc918f3308d8ad0d1910c80c001ed5adb21552",
+        "command": "mpirun -n 1 /tmp/wor25_23_24_resolution_collapse_oscillating_build/bin/athena -r /tmp/wor25_23_24_resolution_trials/collapse_oscillating43_r1/output/protostellar_core_fld_mayer5.00010.rst -d output mesh/num_threads=2 mesh/derefine_count=1 time/nlim=10 problem/N_J=7.6160 nrfld/global_jacobian_check=false",
+        "ranks": 1,
+        "threads": 2,
+        "gravity_opt_ins": false,
+        "wall_time": "0:01.00",
+        "peak_rss_kb": 280448,
+        "initialization_only": true,
+        "implicit_steps": 0,
+        "conservation": "No time step; rho, press, velocity, tracer, Er exactly match checkpoint output; mass integral unchanged. Face and energy ledgers not applicable.",
+        "same_time_cycle": true,
+        "topology_equal": true,
+        "field_differences_against_continuous_output10": {
+          "rho": {
+            "relative_l1": 0.0,
+            "max_absolute": 0.0,
+            "exact": true
+          },
+          "press": {
+            "relative_l1": 0.0,
+            "max_absolute": 0.0,
+            "exact": true
+          },
+          "vel1": {
+            "relative_l1": 0.0,
+            "max_absolute": 0.0,
+            "exact": true
+          },
+          "vel2": {
+            "relative_l1": 0.0,
+            "max_absolute": 0.0,
+            "exact": true
+          },
+          "vel3": {
+            "relative_l1": 0.0,
+            "max_absolute": 0.0,
+            "exact": true
+          },
+          "phi": {
+            "relative_l1": 2.4413239257402422e-08,
+            "max_absolute": 4.64595026450354e-07,
+            "exact": false
+          },
+          "defect-phi": {
+            "relative_l1": 1.3945062822653602e-05,
+            "max_absolute": 4.827174312222277e-12,
+            "exact": false
+          },
+          "r0": {
+            "relative_l1": 0.0,
+            "max_absolute": 0.0,
+            "exact": true
+          },
+          "Er": {
+            "relative_l1": 0.0,
+            "max_absolute": 0.0,
+            "exact": true
+          }
+        },
+        "evaluation": "PASS_STATE_ISOLATION; PHI_RECONSTRUCTION_DIFFERENCE_REMAINS"
+      },
+      {
+        "name": "collapse_restart10_init_only_gravopts",
+        "source_commit_base": "050cfffc",
+        "binary_sha256": "0f649c02137232c0a862514e6532286a1c959193325e89dc84821d6fb7882de2",
+        "checkpoint_path": "/tmp/wor25_23_24_resolution_trials/collapse_oscillating43_gravopts_direct_r1/output/protostellar_core_fld_mayer5.00010.rst",
+        "checkpoint_sha256": "4956ecafe924400f2b87802eaee071873657833536a10c297bf258a149663195",
+        "command": "mpirun -n 1 /tmp/wor25_23_24_resolution_collapse_oscillating_build/bin/athena -r /tmp/wor25_23_24_resolution_trials/collapse_oscillating43_gravopts_direct_r1/output/protostellar_core_fld_mayer5.00010.rst -d output mesh/num_threads=2 mesh/derefine_count=1 time/nlim=10 problem/N_J=7.6160 nrfld/global_jacobian_check=false gravity/reset_fmg_color_each_solve=true gravity/repeat_initial_fmg_after_restart=true",
+        "ranks": 1,
+        "threads": 2,
+        "gravity_opt_ins": true,
+        "wall_time": "0:00.72",
+        "peak_rss_kb": 280580,
+        "initialization_only": true,
+        "implicit_steps": 0,
+        "conservation": "No time step; rho, press, velocity, tracer, Er exactly match checkpoint output; mass integral unchanged. Face and energy ledgers not applicable.",
+        "same_time_cycle": true,
+        "topology_equal": true,
+        "field_differences_against_continuous_output10": {
+          "rho": {
+            "relative_l1": 0.0,
+            "max_absolute": 0.0,
+            "exact": true
+          },
+          "press": {
+            "relative_l1": 0.0,
+            "max_absolute": 0.0,
+            "exact": true
+          },
+          "vel1": {
+            "relative_l1": 0.0,
+            "max_absolute": 0.0,
+            "exact": true
+          },
+          "vel2": {
+            "relative_l1": 0.0,
+            "max_absolute": 0.0,
+            "exact": true
+          },
+          "vel3": {
+            "relative_l1": 0.0,
+            "max_absolute": 0.0,
+            "exact": true
+          },
+          "phi": {
+            "relative_l1": 5.0550989982847485e-12,
+            "max_absolute": 9.620482188665846e-11,
+            "exact": false
+          },
+          "defect-phi": {
+            "relative_l1": 2.8877581853801106e-09,
+            "max_absolute": 9.996262586113239e-16,
+            "exact": false
+          },
+          "r0": {
+            "relative_l1": 0.0,
+            "max_absolute": 0.0,
+            "exact": true
+          },
+          "Er": {
+            "relative_l1": 0.0,
+            "max_absolute": 0.0,
+            "exact": true
+          }
+        },
+        "evaluation": "PASS_STATE_ISOLATION; PHI_DIFFERENCE_REDUCED_BUT_FINAL_RESTART_DIFFERENCE_UNCHANGED"
+      }
+    ]
   }
 }
