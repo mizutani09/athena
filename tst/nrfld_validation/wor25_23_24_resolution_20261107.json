@@ -29010,6 +29010,934 @@
           "topology_equal": true
         }
       }
+    },
+    "extended_repeated_regrid": {
+      "scope": "same test-only alternating octet tagger, five swaps at cycles 7/9/11/13/15, 43 leaves throughout; nlim17, restart from cycle14 after four swaps; conditional boundary sync plus gravity opt-ins",
+      "input_archive_sha256": "36a50c47f1dfdbf33ad1476c594a915329dd51c3395e5e0b460cce0bdc1b773b",
+      "test_only_regrid_patch_archive_member": "trials/collapse_oscillating_shift_test_only.patch",
+      "runs": [
+        {
+          "name": "collapse_postsync_gravopts_long_r1",
+          "source_commit_base": "8c0a521e",
+          "binary_sha256": "6559920bf139fb67eea773d7ea232eb027e9ea32f04d097bcc6472071eb6764b",
+          "checkpoint_path": "/tmp/wor25_23_24_resolution_trials/collapse_adaptive_partial_direct_final_r1/protostellar_core_fld_mayer5.00006.rst",
+          "checkpoint_sha256": "42416ee70c7cc08b4065e33903fb64239d8389ac7dd356fa7ce631641bfcadb1",
+          "ranks": 1,
+          "threads": 2,
+          "environment": {
+            "OMP_NUM_THREADS": "2",
+            "ATHENA_NRFLD_EXPERIMENTAL_COLLAPSE": "1",
+            "ATHENA_NRFLD_INTERFACE_LEDGER": "1",
+            "ATHENA_NRFLD_ENERGY_LEDGER": "1"
+          },
+          "command": "mpirun --output-filename /tmp/wor25_23_24_resolution_trials/collapse_postsync_gravopts_long_r1/mpi -n 1 /tmp/wor25_23_24_resolution_collapse_postamrsync_build/bin/athena -r /tmp/wor25_23_24_resolution_trials/collapse_adaptive_partial_direct_final_r1/protostellar_core_fld_mayer5.00006.rst -d output mesh/num_threads=2 mesh/derefine_count=1 time/nlim=17 problem/N_J=7.6160 nrfld/global_jacobian_check=true gravity/reset_fmg_color_each_solve=true gravity/repeat_initial_fmg_after_restart=true",
+          "run_log": "/tmp/wor25_23_24_resolution_trials/collapse_postsync_gravopts_long_r1/run.log",
+          "exit_status": 0,
+          "wall_time": "0:24.99",
+          "peak_rss_kb": 353860,
+          "gravity_opt_ins": {
+            "reset_fmg_color_each_solve": true,
+            "repeat_initial_fmg_after_restart": true
+          },
+          "newton_statuses": [
+            {
+              "status": "converged",
+              "iterations": 0
+            },
+            {
+              "status": "converged",
+              "iterations": 2
+            },
+            {
+              "status": "converged",
+              "iterations": 2
+            },
+            {
+              "status": "converged",
+              "iterations": 0
+            },
+            {
+              "status": "converged",
+              "iterations": 2
+            },
+            {
+              "status": "converged",
+              "iterations": 2
+            },
+            {
+              "status": "converged",
+              "iterations": 0
+            },
+            {
+              "status": "converged",
+              "iterations": 2
+            },
+            {
+              "status": "converged",
+              "iterations": 2
+            },
+            {
+              "status": "converged",
+              "iterations": 0
+            },
+            {
+              "status": "converged",
+              "iterations": 3
+            },
+            {
+              "status": "converged",
+              "iterations": 2
+            },
+            {
+              "status": "converged",
+              "iterations": 0
+            },
+            {
+              "status": "converged",
+              "iterations": 3
+            },
+            {
+              "status": "converged",
+              "iterations": 2
+            },
+            {
+              "status": "converged",
+              "iterations": 0
+            },
+            {
+              "status": "converged",
+              "iterations": 3
+            }
+          ],
+          "fgmres_history": [
+            {
+              "iterations": 14,
+              "explicit_relative_residual": 3.326561540149647e-09
+            },
+            {
+              "iterations": 14,
+              "explicit_relative_residual": 7.858010466074266e-09
+            },
+            {
+              "iterations": 12,
+              "explicit_relative_residual": 7.299144122047258e-09
+            },
+            {
+              "iterations": 14,
+              "explicit_relative_residual": 4.323996890978059e-09
+            },
+            {
+              "iterations": 12,
+              "explicit_relative_residual": 5.14911205292217e-09
+            },
+            {
+              "iterations": 13,
+              "explicit_relative_residual": 4.518484115010177e-09
+            },
+            {
+              "iterations": 12,
+              "explicit_relative_residual": 4.586131389613756e-09
+            },
+            {
+              "iterations": 13,
+              "explicit_relative_residual": 3.427476029150647e-09
+            },
+            {
+              "iterations": 13,
+              "explicit_relative_residual": 3.744372788629142e-09
+            },
+            {
+              "iterations": 13,
+              "explicit_relative_residual": 8.902829062546566e-09
+            },
+            {
+              "iterations": 13,
+              "explicit_relative_residual": 4.907953799425904e-09
+            },
+            {
+              "iterations": 14,
+              "explicit_relative_residual": 4.556599772459715e-09
+            },
+            {
+              "iterations": 12,
+              "explicit_relative_residual": 4.515024728839493e-09
+            },
+            {
+              "iterations": 13,
+              "explicit_relative_residual": 7.460380098385407e-09
+            },
+            {
+              "iterations": 13,
+              "explicit_relative_residual": 6.868041496273422e-09
+            },
+            {
+              "iterations": 11,
+              "explicit_relative_residual": 8.500238765549861e-09
+            },
+            {
+              "iterations": 13,
+              "explicit_relative_residual": 9.81015424709611e-09
+            },
+            {
+              "iterations": 13,
+              "explicit_relative_residual": 7.134466210138753e-09
+            },
+            {
+              "iterations": 13,
+              "explicit_relative_residual": 9.814617347924435e-09
+            },
+            {
+              "iterations": 13,
+              "explicit_relative_residual": 6.902151061146714e-09
+            },
+            {
+              "iterations": 14,
+              "explicit_relative_residual": 2.564920272763263e-09
+            },
+            {
+              "iterations": 14,
+              "explicit_relative_residual": 2.919976745961576e-09
+            },
+            {
+              "iterations": 12,
+              "explicit_relative_residual": 9.394452529482411e-09
+            },
+            {
+              "iterations": 13,
+              "explicit_relative_residual": 8.642930181264843e-09
+            },
+            {
+              "iterations": 13,
+              "explicit_relative_residual": 4.673911301432011e-09
+            }
+          ],
+          "fgmres_total_iterations": 324,
+          "true_residual_max": 9.814617347924435e-09,
+          "jv_coarse_fine_newton_h1e5_rel2": [
+            7.70810370979161e-09,
+            1.6114562813140053e-09,
+            1.7136679239192154e-09,
+            1.7858556831117683e-09,
+            1.7136336363625683e-09,
+            1.2128914782240167e-09,
+            1.2612547697778635e-09,
+            1.1001470336542935e-09,
+            1.0405894405235632e-09,
+            1.0879035664259589e-09,
+            1.1139740425244709e-09
+          ],
+          "regrid_meshblocks_created_destroyed": [
+            35,
+            35
+          ],
+          "coarse_fine_face_conservation": {
+            "pairs": 79,
+            "max_relative_mismatch": 4.5176748178853113e-07,
+            "pass": true
+          },
+          "max_implicit_energy_absolute_relative_balance": 2.745679290434131e-10,
+          "mass_initial": 704254556499.783,
+          "mass_final": 704254682921.1555,
+          "mass_relative_change": 1.795109046747541e-07,
+          "final_minima": {
+            "rho": 0.05177992336824082,
+            "pressure": 0.025312962211892356,
+            "Er": 0.290584340636567
+          },
+          "evaluation": "PASS_LOCAL_EXTENDED_REGRID"
+        },
+        {
+          "name": "collapse_postsync_gravopts_long_r2",
+          "source_commit_base": "8c0a521e",
+          "binary_sha256": "6559920bf139fb67eea773d7ea232eb027e9ea32f04d097bcc6472071eb6764b",
+          "checkpoint_path": "/tmp/wor25_23_24_resolution_trials/collapse_adaptive_partial_direct_final_r1/protostellar_core_fld_mayer5.00006.rst",
+          "checkpoint_sha256": "42416ee70c7cc08b4065e33903fb64239d8389ac7dd356fa7ce631641bfcadb1",
+          "ranks": 2,
+          "threads": 2,
+          "environment": {
+            "OMP_NUM_THREADS": "2",
+            "ATHENA_NRFLD_EXPERIMENTAL_COLLAPSE": "1",
+            "ATHENA_NRFLD_INTERFACE_LEDGER": "1",
+            "ATHENA_NRFLD_ENERGY_LEDGER": "1"
+          },
+          "command": "mpirun --output-filename /tmp/wor25_23_24_resolution_trials/collapse_postsync_gravopts_long_r2/mpi -n 2 /tmp/wor25_23_24_resolution_collapse_postamrsync_build/bin/athena -r /tmp/wor25_23_24_resolution_trials/collapse_adaptive_partial_direct_final_r1/protostellar_core_fld_mayer5.00006.rst -d output mesh/num_threads=2 mesh/derefine_count=1 time/nlim=17 problem/N_J=7.6160 nrfld/global_jacobian_check=true gravity/reset_fmg_color_each_solve=true gravity/repeat_initial_fmg_after_restart=true",
+          "run_log": "/tmp/wor25_23_24_resolution_trials/collapse_postsync_gravopts_long_r2/run.log",
+          "exit_status": 0,
+          "wall_time": "0:21.25",
+          "peak_rss_kb": 237960,
+          "gravity_opt_ins": {
+            "reset_fmg_color_each_solve": true,
+            "repeat_initial_fmg_after_restart": true
+          },
+          "newton_statuses": [
+            {
+              "status": "converged",
+              "iterations": 0
+            },
+            {
+              "status": "converged",
+              "iterations": 2
+            },
+            {
+              "status": "converged",
+              "iterations": 2
+            },
+            {
+              "status": "converged",
+              "iterations": 0
+            },
+            {
+              "status": "converged",
+              "iterations": 2
+            },
+            {
+              "status": "converged",
+              "iterations": 2
+            },
+            {
+              "status": "converged",
+              "iterations": 0
+            },
+            {
+              "status": "converged",
+              "iterations": 2
+            },
+            {
+              "status": "converged",
+              "iterations": 2
+            },
+            {
+              "status": "converged",
+              "iterations": 0
+            },
+            {
+              "status": "converged",
+              "iterations": 3
+            },
+            {
+              "status": "converged",
+              "iterations": 2
+            },
+            {
+              "status": "converged",
+              "iterations": 0
+            },
+            {
+              "status": "converged",
+              "iterations": 3
+            },
+            {
+              "status": "converged",
+              "iterations": 2
+            },
+            {
+              "status": "converged",
+              "iterations": 0
+            },
+            {
+              "status": "converged",
+              "iterations": 3
+            }
+          ],
+          "fgmres_history": [
+            {
+              "iterations": 14,
+              "explicit_relative_residual": 3.326561770437929e-09
+            },
+            {
+              "iterations": 14,
+              "explicit_relative_residual": 7.858931738807919e-09
+            },
+            {
+              "iterations": 12,
+              "explicit_relative_residual": 7.299146711123985e-09
+            },
+            {
+              "iterations": 14,
+              "explicit_relative_residual": 4.323517790984771e-09
+            },
+            {
+              "iterations": 12,
+              "explicit_relative_residual": 5.14911474950516e-09
+            },
+            {
+              "iterations": 13,
+              "explicit_relative_residual": 4.518132302665324e-09
+            },
+            {
+              "iterations": 12,
+              "explicit_relative_residual": 4.586131899857849e-09
+            },
+            {
+              "iterations": 13,
+              "explicit_relative_residual": 3.427049239864718e-09
+            },
+            {
+              "iterations": 13,
+              "explicit_relative_residual": 3.744367097940771e-09
+            },
+            {
+              "iterations": 13,
+              "explicit_relative_residual": 8.902539047696567e-09
+            },
+            {
+              "iterations": 13,
+              "explicit_relative_residual": 4.90795311243436e-09
+            },
+            {
+              "iterations": 14,
+              "explicit_relative_residual": 4.556942381709065e-09
+            },
+            {
+              "iterations": 12,
+              "explicit_relative_residual": 4.515024377069391e-09
+            },
+            {
+              "iterations": 13,
+              "explicit_relative_residual": 7.459577220566517e-09
+            },
+            {
+              "iterations": 13,
+              "explicit_relative_residual": 6.810956278436792e-09
+            },
+            {
+              "iterations": 11,
+              "explicit_relative_residual": 8.500240476700751e-09
+            },
+            {
+              "iterations": 13,
+              "explicit_relative_residual": 9.810650121802337e-09
+            },
+            {
+              "iterations": 13,
+              "explicit_relative_residual": 7.134465758261187e-09
+            },
+            {
+              "iterations": 13,
+              "explicit_relative_residual": 9.816923861782524e-09
+            },
+            {
+              "iterations": 13,
+              "explicit_relative_residual": 6.620374794188674e-09
+            },
+            {
+              "iterations": 14,
+              "explicit_relative_residual": 2.5649202008051345e-09
+            },
+            {
+              "iterations": 14,
+              "explicit_relative_residual": 2.9212705292341894e-09
+            },
+            {
+              "iterations": 12,
+              "explicit_relative_residual": 9.394453740941947e-09
+            },
+            {
+              "iterations": 13,
+              "explicit_relative_residual": 8.642824528065176e-09
+            },
+            {
+              "iterations": 13,
+              "explicit_relative_residual": 4.667773019717303e-09
+            }
+          ],
+          "fgmres_total_iterations": 324,
+          "true_residual_max": 9.816923861782524e-09,
+          "jv_coarse_fine_newton_h1e5_rel2": [
+            7.708917163287681e-09,
+            1.6189166792734485e-09,
+            1.7332011248216865e-09,
+            1.8066871913473597e-09,
+            1.7648068373933448e-09,
+            1.1815772572458696e-09,
+            1.2576935369273376e-09,
+            1.0994041076186858e-09,
+            1.011572135288078e-09,
+            1.0726366870196297e-09,
+            1.087259196661057e-09
+          ],
+          "regrid_meshblocks_created_destroyed": [
+            35,
+            35
+          ],
+          "coarse_fine_face_conservation": {
+            "pairs": 79,
+            "max_relative_mismatch": 2.443396100138234e-07,
+            "pass": true
+          },
+          "max_implicit_energy_absolute_relative_balance": 4.3542413871015387e-10,
+          "mass_initial": 704254556499.783,
+          "mass_final": 704254682921.1555,
+          "mass_relative_change": 1.795109046747541e-07,
+          "final_minima": {
+            "rho": 0.05177992336823888,
+            "pressure": 0.02531296221190357,
+            "Er": 0.29058434063715194
+          },
+          "evaluation": "PASS_LOCAL_EXTENDED_REGRID"
+        },
+        {
+          "name": "collapse_postsync_gravopts_long_restart14_r1",
+          "source_commit_base": "8c0a521e",
+          "binary_sha256": "6559920bf139fb67eea773d7ea232eb027e9ea32f04d097bcc6472071eb6764b",
+          "checkpoint_path": "/tmp/wor25_23_24_resolution_trials/collapse_postsync_gravopts_long_r1/output/protostellar_core_fld_mayer5.00014.rst",
+          "checkpoint_sha256": "a849e0b207642beaeae06058dc92179782a97f5cad104558ca29dad979aa1d47",
+          "ranks": 1,
+          "threads": 2,
+          "environment": {
+            "OMP_NUM_THREADS": "2",
+            "ATHENA_NRFLD_EXPERIMENTAL_COLLAPSE": "1",
+            "ATHENA_NRFLD_INTERFACE_LEDGER": "1",
+            "ATHENA_NRFLD_ENERGY_LEDGER": "1"
+          },
+          "command": "mpirun --output-filename /tmp/wor25_23_24_resolution_trials/collapse_postsync_gravopts_long_restart14_r1/mpi -n 1 /tmp/wor25_23_24_resolution_collapse_postamrsync_build/bin/athena -r /tmp/wor25_23_24_resolution_trials/collapse_postsync_gravopts_long_r1/output/protostellar_core_fld_mayer5.00014.rst -d output mesh/num_threads=2 mesh/derefine_count=1 time/nlim=17 problem/N_J=7.6160 nrfld/global_jacobian_check=true gravity/reset_fmg_color_each_solve=true gravity/repeat_initial_fmg_after_restart=true",
+          "run_log": "/tmp/wor25_23_24_resolution_trials/collapse_postsync_gravopts_long_restart14_r1/run.log",
+          "exit_status": 0,
+          "wall_time": "0:08.26",
+          "peak_rss_kb": 337504,
+          "gravity_opt_ins": {
+            "reset_fmg_color_each_solve": true,
+            "repeat_initial_fmg_after_restart": true
+          },
+          "newton_statuses": [
+            {
+              "status": "converged",
+              "iterations": 0
+            },
+            {
+              "status": "converged",
+              "iterations": 3
+            },
+            {
+              "status": "converged",
+              "iterations": 2
+            },
+            {
+              "status": "converged",
+              "iterations": 0
+            },
+            {
+              "status": "converged",
+              "iterations": 3
+            }
+          ],
+          "fgmres_history": [
+            {
+              "iterations": 14,
+              "explicit_relative_residual": 2.832774689247855e-09
+            },
+            {
+              "iterations": 14,
+              "explicit_relative_residual": 2.706190434114653e-09
+            },
+            {
+              "iterations": 13,
+              "explicit_relative_residual": 8.969264598734699e-09
+            },
+            {
+              "iterations": 13,
+              "explicit_relative_residual": 8.312541404272468e-09
+            },
+            {
+              "iterations": 14,
+              "explicit_relative_residual": 3.012468144185792e-09
+            },
+            {
+              "iterations": 12,
+              "explicit_relative_residual": 9.39445272131669e-09
+            },
+            {
+              "iterations": 13,
+              "explicit_relative_residual": 8.643977517809229e-09
+            },
+            {
+              "iterations": 13,
+              "explicit_relative_residual": 4.675255819992109e-09
+            }
+          ],
+          "fgmres_total_iterations": 106,
+          "true_residual_max": 9.39445272131669e-09,
+          "jv_coarse_fine_newton_h1e5_rel2": [
+            1.0498293153344043e-09,
+            1.0810579536864724e-09,
+            1.0909382115726972e-09
+          ],
+          "regrid_meshblocks_created_destroyed": [
+            7,
+            7
+          ],
+          "coarse_fine_face_conservation": {
+            "pairs": 23,
+            "max_relative_mismatch": 2.4175142135051353e-07,
+            "pass": true
+          },
+          "max_implicit_energy_absolute_relative_balance": 2.6597223866636897e-10,
+          "mass_initial": 704254664064.2998,
+          "mass_final": 704254682921.1555,
+          "mass_relative_change": 2.6775620631415452e-08,
+          "final_minima": {
+            "rho": 0.05177992336824117,
+            "pressure": 0.025312962211897206,
+            "Er": 0.2905843406367917
+          },
+          "evaluation": "PASS_LOCAL_EXTENDED_REGRID"
+        },
+        {
+          "name": "collapse_postsync_gravopts_long_restart14_r2",
+          "source_commit_base": "8c0a521e",
+          "binary_sha256": "6559920bf139fb67eea773d7ea232eb027e9ea32f04d097bcc6472071eb6764b",
+          "checkpoint_path": "/tmp/wor25_23_24_resolution_trials/collapse_postsync_gravopts_long_r1/output/protostellar_core_fld_mayer5.00014.rst",
+          "checkpoint_sha256": "a849e0b207642beaeae06058dc92179782a97f5cad104558ca29dad979aa1d47",
+          "ranks": 2,
+          "threads": 2,
+          "environment": {
+            "OMP_NUM_THREADS": "2",
+            "ATHENA_NRFLD_EXPERIMENTAL_COLLAPSE": "1",
+            "ATHENA_NRFLD_INTERFACE_LEDGER": "1",
+            "ATHENA_NRFLD_ENERGY_LEDGER": "1"
+          },
+          "command": "mpirun --output-filename /tmp/wor25_23_24_resolution_trials/collapse_postsync_gravopts_long_restart14_r2/mpi -n 2 /tmp/wor25_23_24_resolution_collapse_postamrsync_build/bin/athena -r /tmp/wor25_23_24_resolution_trials/collapse_postsync_gravopts_long_r1/output/protostellar_core_fld_mayer5.00014.rst -d output mesh/num_threads=2 mesh/derefine_count=1 time/nlim=17 problem/N_J=7.6160 nrfld/global_jacobian_check=true gravity/reset_fmg_color_each_solve=true gravity/repeat_initial_fmg_after_restart=true",
+          "run_log": "/tmp/wor25_23_24_resolution_trials/collapse_postsync_gravopts_long_restart14_r2/run.log",
+          "exit_status": 0,
+          "wall_time": "0:06.58",
+          "peak_rss_kb": 221952,
+          "gravity_opt_ins": {
+            "reset_fmg_color_each_solve": true,
+            "repeat_initial_fmg_after_restart": true
+          },
+          "newton_statuses": [
+            {
+              "status": "converged",
+              "iterations": 0
+            },
+            {
+              "status": "converged",
+              "iterations": 3
+            },
+            {
+              "status": "converged",
+              "iterations": 2
+            },
+            {
+              "status": "converged",
+              "iterations": 0
+            },
+            {
+              "status": "converged",
+              "iterations": 3
+            }
+          ],
+          "fgmres_history": [
+            {
+              "iterations": 14,
+              "explicit_relative_residual": 2.832774576464876e-09
+            },
+            {
+              "iterations": 14,
+              "explicit_relative_residual": 2.708268516578816e-09
+            },
+            {
+              "iterations": 13,
+              "explicit_relative_residual": 7.807795478624892e-09
+            },
+            {
+              "iterations": 13,
+              "explicit_relative_residual": 8.312540352075417e-09
+            },
+            {
+              "iterations": 14,
+              "explicit_relative_residual": 3.01220073138426e-09
+            },
+            {
+              "iterations": 12,
+              "explicit_relative_residual": 9.394453647379559e-09
+            },
+            {
+              "iterations": 13,
+              "explicit_relative_residual": 8.644452724695128e-09
+            },
+            {
+              "iterations": 13,
+              "explicit_relative_residual": 4.573988122057044e-09
+            }
+          ],
+          "fgmres_total_iterations": 106,
+          "true_residual_max": 9.394453647379559e-09,
+          "jv_coarse_fine_newton_h1e5_rel2": [
+            1.0536187362550774e-09,
+            1.0688309601599135e-09,
+            1.1186145161323485e-09
+          ],
+          "regrid_meshblocks_created_destroyed": [
+            7,
+            7
+          ],
+          "coarse_fine_face_conservation": {
+            "pairs": 23,
+            "max_relative_mismatch": 2.2322797676058983e-07,
+            "pass": true
+          },
+          "max_implicit_energy_absolute_relative_balance": 4.2224479408090927e-10,
+          "mass_initial": 704254664064.2998,
+          "mass_final": 704254682921.1555,
+          "mass_relative_change": 2.6775620631415452e-08,
+          "final_minima": {
+            "rho": 0.05177992336824119,
+            "pressure": 0.025312962211894573,
+            "Er": 0.29058434063666455
+          },
+          "evaluation": "PASS_LOCAL_EXTENDED_REGRID"
+        }
+      ],
+      "comparisons": {
+        "continuous_rank": {
+          "7": {
+            "prim": {
+              "relative_l1": 2.010341157052485e-14,
+              "max_absolute": 1.2878587085651816e-13,
+              "topology_equal": true
+            },
+            "fld": {
+              "relative_l1": 4.95223709899767e-14,
+              "max_absolute": 7.336353746723034e-13,
+              "topology_equal": true
+            }
+          },
+          "8": {
+            "prim": {
+              "relative_l1": 1.8931377543814782e-13,
+              "max_absolute": 1.2136958105202211e-12,
+              "topology_equal": true
+            },
+            "fld": {
+              "relative_l1": 4.699463740502039e-13,
+              "max_absolute": 6.94910795573378e-12,
+              "topology_equal": true
+            }
+          },
+          "9": {
+            "prim": {
+              "relative_l1": 1.5506951958607178e-13,
+              "max_absolute": 1.042277375518097e-12,
+              "topology_equal": true
+            },
+            "fld": {
+              "relative_l1": 3.820233057025783e-13,
+              "max_absolute": 5.687894599759602e-12,
+              "topology_equal": true
+            }
+          },
+          "10": {
+            "prim": {
+              "relative_l1": 1.5892081099289344e-13,
+              "max_absolute": 5.019540338935258e-12,
+              "topology_equal": true
+            },
+            "fld": {
+              "relative_l1": 1.6013881380893202e-13,
+              "max_absolute": 1.5477397141694382e-11,
+              "topology_equal": true
+            }
+          },
+          "11": {
+            "prim": {
+              "relative_l1": 1.2223390972324721e-13,
+              "max_absolute": 5.023315097218983e-12,
+              "topology_equal": true
+            },
+            "fld": {
+              "relative_l1": 7.568127854503987e-14,
+              "max_absolute": 5.023315097218983e-12,
+              "topology_equal": true
+            }
+          },
+          "12": {
+            "prim": {
+              "relative_l1": 1.9934423894949e-13,
+              "max_absolute": 6.63180621529591e-12,
+              "topology_equal": true
+            },
+            "fld": {
+              "relative_l1": 1.7853616012324872e-13,
+              "max_absolute": 2.823341560542758e-11,
+              "topology_equal": true
+            }
+          },
+          "13": {
+            "prim": {
+              "relative_l1": 2.2272101598438975e-13,
+              "max_absolute": 6.636691196604261e-12,
+              "topology_equal": true
+            },
+            "fld": {
+              "relative_l1": 2.643951447349552e-13,
+              "max_absolute": 6.636691196604261e-12,
+              "topology_equal": true
+            }
+          },
+          "14": {
+            "prim": {
+              "relative_l1": 1.2860170035545532e-13,
+              "max_absolute": 3.984812479984612e-12,
+              "topology_equal": true
+            },
+            "fld": {
+              "relative_l1": 1.332338233097344e-13,
+              "max_absolute": 1.5589307622576598e-11,
+              "topology_equal": true
+            }
+          },
+          "15": {
+            "prim": {
+              "relative_l1": 9.795236536437833e-14,
+              "max_absolute": 3.986810881428937e-12,
+              "topology_equal": true
+            },
+            "fld": {
+              "relative_l1": 5.3531107904521517e-14,
+              "max_absolute": 3.986810881428937e-12,
+              "topology_equal": true
+            }
+          },
+          "16": {
+            "prim": {
+              "relative_l1": 2.6823166584901207e-13,
+              "max_absolute": 5.134115355076574e-12,
+              "topology_equal": true
+            },
+            "fld": {
+              "relative_l1": 4.105659699510443e-13,
+              "max_absolute": 3.054978492400551e-11,
+              "topology_equal": true
+            }
+          },
+          "17": {
+            "prim": {
+              "relative_l1": 2.9440386188230176e-13,
+              "max_absolute": 5.136779890335674e-12,
+              "topology_equal": true
+            },
+            "fld": {
+              "relative_l1": 4.797687423172701e-13,
+              "max_absolute": 7.105427357601002e-12,
+              "topology_equal": true
+            }
+          },
+          "18": {
+            "prim": {
+              "relative_l1": 2.9440386188230176e-13,
+              "max_absolute": 5.136779890335674e-12,
+              "topology_equal": true
+            },
+            "fld": {
+              "relative_l1": 4.797687423172701e-13,
+              "max_absolute": 7.105427357601002e-12,
+              "topology_equal": true
+            }
+          }
+        },
+        "continuous_vs_restart": {
+          "15": {
+            "prim": {
+              "relative_l1": 4.523234571064047e-15,
+              "max_absolute": 1.9539925233402755e-14,
+              "topology_equal": true
+            },
+            "fld": {
+              "relative_l1": 7.152155725912088e-15,
+              "max_absolute": 1.0835776720341528e-13,
+              "topology_equal": true
+            }
+          },
+          "16": {
+            "prim": {
+              "relative_l1": 2.380447952592902e-14,
+              "max_absolute": 4.095751515720281e-12,
+              "topology_equal": true
+            },
+            "fld": {
+              "relative_l1": 3.8996815446794176e-13,
+              "max_absolute": 8.824176944699502e-10,
+              "topology_equal": true
+            }
+          },
+          "17": {
+            "prim": {
+              "relative_l1": 7.747895366042401e-14,
+              "max_absolute": 4.742872761198669e-13,
+              "topology_equal": true
+            },
+            "fld": {
+              "relative_l1": 1.9818390659919682e-13,
+              "max_absolute": 4.133937636652263e-11,
+              "topology_equal": true
+            }
+          },
+          "18": {
+            "prim": {
+              "relative_l1": 7.747895366042401e-14,
+              "max_absolute": 4.742872761198669e-13,
+              "topology_equal": true
+            },
+            "fld": {
+              "relative_l1": 1.9818390659919682e-13,
+              "max_absolute": 4.133937636652263e-11,
+              "topology_equal": true
+            }
+          }
+        },
+        "restart_rank": {
+          "15": {
+            "prim": {
+              "relative_l1": 1.619613293496581e-13,
+              "max_absolute": 1.0409451078885468e-12,
+              "topology_equal": true
+            },
+            "fld": {
+              "relative_l1": 4.0182207815297973e-13,
+              "max_absolute": 5.945466341472638e-12,
+              "topology_equal": true
+            }
+          },
+          "16": {
+            "prim": {
+              "relative_l1": 1.4120637182499518e-14,
+              "max_absolute": 5.0182080713057076e-14,
+              "topology_equal": true
+            },
+            "fld": {
+              "relative_l1": 3.581772413755049e-14,
+              "max_absolute": 6.661338147750939e-13,
+              "topology_equal": true
+            }
+          },
+          "17": {
+            "prim": {
+              "relative_l1": 4.2056591553452077e-14,
+              "max_absolute": 2.6645352591003757e-13,
+              "topology_equal": true
+            },
+            "fld": {
+              "relative_l1": 1.0358836101323387e-13,
+              "max_absolute": 1.5347723092418164e-12,
+              "topology_equal": true
+            }
+          },
+          "18": {
+            "prim": {
+              "relative_l1": 4.2056591553452077e-14,
+              "max_absolute": 2.6645352591003757e-13,
+              "topology_equal": true
+            },
+            "fld": {
+              "relative_l1": 1.0358836101323387e-13,
+              "max_absolute": 1.5347723092418164e-12,
+              "topology_equal": true
+            }
+          }
+        }
+      },
+      "evaluation": "PASS_LOCAL_EXTENDED_REGRID_AND_RESTART; real-scale and many levels untested"
     }
   }
 }
