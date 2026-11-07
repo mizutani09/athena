@@ -67,10 +67,11 @@ cases = [
     trial('smoother_guard_valid', 2, 'guarded_valid_constructor', GUARDED_BINARY),
     trial('smoother_guard_valid_solve', 2, 'guarded_valid_solve', GUARDED_BINARY),
 ]
-# The old trial used the same isolated build path before its source was rebuilt.
-# Its binary is no longer present; do not attribute the current SHA to that run.
-cases[0]['binary_sha256'] = None
-cases[0]['binary_sha256_note'] = 'isolated build overwritten by the guard rebuild'
+# The old trial used the exact binary already hashed by the preceding
+# same-binary linearity ON/OFF audit, before this isolated build was rebuilt.
+preceding = json.loads(REPORT.read_text())['wor25_linearity_each_solve_audit']
+cases[0]['binary_sha256'] = preceding['cases'][0]['binary_sha256']
+cases[0]['binary_sha256_note'] = 'reused preceding same-binary audit hash before rebuild'
 cases[0]['observed_athena_rss_kb_from_ps'] = 459172
 cases[0]['termination'] = 'SIGTERM sent to mpirun after >5 min with no completed solve'
 for case in cases:

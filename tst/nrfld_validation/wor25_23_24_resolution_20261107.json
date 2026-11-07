@@ -59689,7 +59689,7 @@
         "threads_per_rank": 1,
         "sweeps_pre_and_post": 4,
         "source_commit_before_run": "58786a64",
-        "binary_sha256": null,
+        "binary_sha256": "904c041ca759970952f6a878a37927437e39bf8dcc3b903ea80d3d8c55598d2b",
         "input_path": "/home/kosuke/simulation/athena-wor25-23-24-resolution/tst/nrfld_validation/testc_threelevel_shifted_20261107.in",
         "input_sha256": "c1ffedae69f670d6f17740805077b6741c7cefdaf2baf4639cc7ab5f1fa38a74",
         "command": "mpirun --output-filename /tmp/wor25_23_24_resolution_trials/threelevel_coupled_smooth4_r1/mpi -n 1 /tmp/wor25_23_24_resolution_fgmres_norm_audit_build/bin/athena -i /home/kosuke/simulation/athena-wor25-23-24-resolution/tst/nrfld_validation/testc_threelevel_shifted_20261107.in -d /tmp/wor25_23_24_resolution_trials/threelevel_coupled_smooth4_r1/output nrfld/linear_solver=fgmres nrfld/fgmres_linearity_check=false nrfld/global_jacobian_check=false fld/is_couple=true fld/only_rad=false fld/fixed_flux_limiter=false nrfld/npresmooth=4 nrfld/npostsmooth=4 time/nlim=2 time/tlim=0.001",
@@ -59712,7 +59712,7 @@
         "face_pair_count": 0,
         "max_face_relative_mismatch": null,
         "face_pass": true,
-        "binary_sha256_note": "isolated build overwritten by the guard rebuild",
+        "binary_sha256_note": "reused preceding same-binary audit hash before rebuild",
         "observed_athena_rss_kb_from_ps": 459172,
         "termination": "SIGTERM sent to mpirun after >5 min with no completed solve",
         "evaluation": "TERMINATED_UNSUPPORTED_INPUT"
