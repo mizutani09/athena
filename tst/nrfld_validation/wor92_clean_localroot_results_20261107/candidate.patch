@@ -1,0 +1,543 @@
+diff --git a/src/fld/fld.cpp b/src/fld/fld.cpp
+index 26150537..004749af 100644
+--- a/src/fld/fld.cpp
++++ b/src/fld/fld.cpp
+@@ -198,6 +198,11 @@ FLD::FLD(MeshBlock *pmb, ParameterInput *pin) :
+   const bool mach5_problem =
+       std::string(PROBLEM_GENERATOR) == "nrfld_radiative_shock"
+       && pin->GetOrAddString("problem", "problem_type", "") == "mach5";
++  // WOR-92 diagnostic only: permit an explicit conservative A/B trial for
++  // periodic protostellar_core_fld. This does not change the supported default.
++  const bool protostar_trial =
++      std::string(PROBLEM_GENERATOR) == "protostellar_core_fld"
++      && NRFLDPrototype::Flag("ATHENA_NRFLD_CONSERVATIVE_PROTOTYPE");
+   // Enable the common-face operator by default only in the two AMR problem
+   // families with analytic or same-checkpoint accuracy and conservation
+   // checks. Other multilevel problem generators stop until separately
+@@ -246,7 +251,7 @@ FLD::FLD(MeshBlock *pmb, ParameterInput *pin) :
+         && pmb->pmy_mesh->mesh_bcs[3] == BoundaryFlag::periodic
+         && pmb->pmy_mesh->mesh_bcs[4] == BoundaryFlag::periodic
+         && pmb->pmy_mesh->mesh_bcs[5] == BoundaryFlag::periodic;
+-    if ((!test_c && !mach5)
++    if ((!test_c && !mach5 && !protostar_trial)
+           || std::string(COORDINATE_SYSTEM) != "cartesian"
+           || ((is_couple || !only_rad) && !NRFLDPrototype::CoupledTrial())
+           || ((is_couple || !only_rad) && NRFLDPrototype::DifferenceJv())
+@@ -259,6 +264,7 @@ FLD::FLD(MeshBlock *pmb, ParameterInput *pin) :
+           || (!fixed_flux_limiter && !variable_trial)
+           || fixed_u_rad || !cubic
+           || (test_c && (include_mixed_frame_terms || !periodic))
++          || (protostar_trial && !periodic)
+           || (mach5 && (!fixed_flux_limiter || !is_couple || only_rad
+                         || !mach5_boundaries))
+           || (pmb->pmy_mesh->adaptive && !NRFLDPrototype::RegridTrial())) {
+diff --git a/src/linear_solver/linearMG/linearMG.cpp b/src/linear_solver/linearMG/linearMG.cpp
+index 10081ceb..f2110724 100644
+--- a/src/linear_solver/linearMG/linearMG.cpp
++++ b/src/linear_solver/linearMG/linearMG.cpp
+@@ -179,12 +179,26 @@ linearMGDriver::linearMGDriver(Mesh *pm, ParameterInput *pin, NewtonRaphsonDrive
+     ATHENA_ERROR(msg);
+   }
+   fgmres_threshold_ = pin->GetOrAddReal("nrfld", "fgmres_threshold", 1.0e-8);
++  fgmres_precision_floor_factor_ = pin->GetOrAddReal(
++      "nrfld", "fgmres_precision_floor_factor", 0.0);
++  fgmres_flux_form_matvec_ = pin->GetOrAddBoolean(
++      "nrfld", "fgmres_flux_form_matvec", false);
++  if (!std::isfinite(fgmres_precision_floor_factor_)
++      || fgmres_precision_floor_factor_ < 0.0) {
++    std::stringstream msg;
++    msg << "nrfld/fgmres_precision_floor_factor must be finite and nonnegative.";
++    ATHENA_ERROR(msg);
++  }
+   fgmres_restart_ = pin->GetOrAddInteger("nrfld", "fgmres_restart", 20);
+   fgmres_max_iterations_ = pin->GetOrAddInteger(
+       "nrfld", "fgmres_max_iterations", 200);
+   fgmres_mg_vcycles_ = pin->GetOrAddInteger("nrfld", "fgmres_mg_vcycles", 1);
+   fgmres_linearity_check_ = pin->GetOrAddBoolean(
+       "nrfld", "fgmres_linearity_check", false);
++  fgmres_linearity_check_each_solve_ = pin->GetOrAddBoolean(
++      "nrfld", "fgmres_linearity_check_each_solve", false);
++  fgmres_backward_error_diagnostics_ = pin->GetOrAddBoolean(
++      "nrfld", "fgmres_backward_error_diagnostics", false);
+   fgmres_compact_basis_ = pin->GetOrAddBoolean(
+       "nrfld", "fgmres_compact_basis", true);
+   fgmres_reuse_basis_ = pin->GetOrAddBoolean(
+@@ -1460,13 +1474,41 @@ void linearMGDriver::SolveFGMRES(int stage) {
+                      + coeff(linearSolver::DZMS,k,j,i))*delta(k-1,j,i);
+             value += (fac*coeff(linearSolver::DZPF,k,j,i)
+                      + coeff(linearSolver::DZPS,k,j,i))*delta(k+1,j,i);
++            if (fgmres_flux_form_matvec_) {
++              // Reorder the same seven-point row into center plus neighbor
++              // differences. The large diffusion diagonal then cancels its
++              // off-diagonals before multiplication by a nearly uniform x.
++              constexpr int faces[6] = {
++                  linearSolver::DXMF, linearSolver::DXPF,
++                  linearSolver::DYMF, linearSolver::DYPF,
++                  linearSolver::DZMF, linearSolver::DZPF};
++              constexpr int sources[6] = {
++                  linearSolver::DXMS, linearSolver::DXPS,
++                  linearSolver::DYMS, linearSolver::DYPS,
++                  linearSolver::DZMS, linearSolver::DZPS};
++              const Real neighbors[6] = {
++                  delta(k,j,i-1), delta(k,j,i+1), delta(k,j-1,i),
++                  delta(k,j+1,i), delta(k-1,j,i), delta(k+1,j,i)};
++              const long double center = delta(k,j,i);
++              long double local = coeff(linearSolver::DCCS,k,j,i)
++                  + static_cast<long double>(fac)*coeff(linearSolver::DCCF,k,j,i);
++              long double flux_value = 0.0L;
++              for (int face=0; face<6; ++face) {
++                const long double off = static_cast<long double>(fac)
++                    *coeff(faces[face],k,j,i) + coeff(sources[face],k,j,i);
++                local += off;
++                flux_value += off*(static_cast<long double>(neighbors[face])-center);
++              }
++              value = static_cast<Real>(local*center + flux_value);
++            }
+             at(y,b,k,j,i) = value;
+           }
+         }
+       }
+     }
+   };
+-  if (fgmres_linearity_check_ && fgmres_linearity_check_count_ == 0) {
++  if (fgmres_linearity_check_
++      && (fgmres_linearity_check_each_solve_ || fgmres_linearity_check_count_ == 0)) {
+     BlockVector lx = make_vector(), ly = make_vector(), lxy = make_vector();
+     BlockVector alx = make_vector(), aly = make_vector(), alxy = make_vector();
+     BlockVector scaled_x = make_vector(), a_scaled_x = make_vector();
+@@ -1512,6 +1554,7 @@ void linearMGDriver::SolveFGMRES(int stage) {
+       std::cout << "[LINEAR_FGMRES_LINEARITY] additivity_rel=" << additivity
+                 << " homogeneity_rel=" << homogeneity
+                 << " alpha=" << alpha
++                << " cycle=" << pmy_mesh_->ncycle
+                 << " multilevel=" << pmy_mesh_->multilevel << std::endl;
+     }
+     ++fgmres_linearity_check_count_;
+@@ -1739,6 +1782,60 @@ void linearMGDriver::SolveFGMRES(int stage) {
+     relative_residual = static_cast<Real>(beta/bnorm);
+     if (breakdown) break;
+   }
++  Real componentwise_backward_error_max = 0.0;
++  if (fgmres_backward_error_diagnostics_ || fgmres_precision_floor_factor_ > 0.0) {
++    // At an AMR face the ghost correction is interpolated, so this measures
++    // the local stencil rather than an assembled global-matrix row.
++    apply_operator(x, ax);
++    copy(r, b);
++    axpy(r, -1.0, ax);
++    for (std::size_t block = 0; block < x.size(); ++block) {
++      linearMG *pmg = static_cast<linearMG*>(vmg_[block]);
++      MeshBlock *pmb = pmg->pmy_block_;
++      const AthenaArray<Real> &delta = pmg->pnr_->delta_u_;
++      const AthenaArray<Real> &coeff = pmg->pnr_->coeff_;
++      const Real fac = dt_/SQR(pmb->pcoord->dx1f(pmb->is));
++      for (int k = pmb->ks; k <= pmb->ke; ++k)
++        for (int j = pmb->js; j <= pmb->je; ++j)
++          for (int i = pmb->is; i <= pmb->ie; ++i) {
++            const Real denominator = std::abs(cat(b,block,k,j,i))
++                + std::abs((fac*coeff(linearSolver::DCCF,k,j,i)
++                            + coeff(linearSolver::DCCS,k,j,i))*delta(k,j,i))
++                + std::abs((fac*coeff(linearSolver::DXMF,k,j,i)
++                            + coeff(linearSolver::DXMS,k,j,i))*delta(k,j,i-1))
++                + std::abs((fac*coeff(linearSolver::DXPF,k,j,i)
++                            + coeff(linearSolver::DXPS,k,j,i))*delta(k,j,i+1))
++                + std::abs((fac*coeff(linearSolver::DYMF,k,j,i)
++                            + coeff(linearSolver::DYMS,k,j,i))*delta(k,j-1,i))
++                + std::abs((fac*coeff(linearSolver::DYPF,k,j,i)
++                            + coeff(linearSolver::DYPS,k,j,i))*delta(k,j+1,i))
++                + std::abs((fac*coeff(linearSolver::DZMF,k,j,i)
++                            + coeff(linearSolver::DZMS,k,j,i))*delta(k-1,j,i))
++                + std::abs((fac*coeff(linearSolver::DZPF,k,j,i)
++                            + coeff(linearSolver::DZPS,k,j,i))*delta(k+1,j,i));
++            const Real residual = std::abs(cat(r,block,k,j,i));
++            const Real eta = denominator > 0.0 ? residual/denominator
++                : (residual == 0.0 ? 0.0 : std::numeric_limits<Real>::infinity());
++            componentwise_backward_error_max = std::max(
++                componentwise_backward_error_max, eta);
++          }
++    }
++#ifdef MPI_PARALLEL
++    MPI_Allreduce(MPI_IN_PLACE, &componentwise_backward_error_max, 1,
++                  MPI_ATHENA_REAL, MPI_MAX, MPI_COMM_WORLD);
++#endif
++  }
++  const bool precision_floor_accept = !breakdown
++      && fgmres_precision_floor_factor_ > 0.0
++      && std::isfinite(relative_residual)
++      && relative_residual > fgmres_threshold_
++      && componentwise_backward_error_max
++          <= fgmres_precision_floor_factor_*std::numeric_limits<Real>::epsilon();
++  const char *inexact_text = std::getenv("ATHENA_WOR92_INEXACT_TRUE_CAP");
++  const Real inexact_cap = inexact_text != nullptr ? std::strtod(inexact_text, nullptr) : 0.0;
++  const bool inexact_accept = !breakdown && std::isfinite(relative_residual)
++      && std::isfinite(inexact_cap) && inexact_cap > fgmres_threshold_
++      && inexact_cap <= 1.0e-6 && relative_residual <= inexact_cap;
+   load_delta(x);
+   if (Globals::my_rank == 0) {
+     std::cout << "[LINEAR_FGMRES] iterations=" << total_iterations
+@@ -1754,9 +1851,17 @@ void linearMGDriver::SolveFGMRES(int stage) {
+               << " workspace_bytes=" << (basis_slots + work_slots)*sizeof(Real)
+               << " workspace_rebuilt=" << workspace_rebuilt
+               << " workspace_rebuilds=" << fgmres_workspace_rebuilds_
++              << " precision_floor_accept=" << precision_floor_accept
++              << " inexact_accept=" << inexact_accept
++              << " inexact_cap=" << inexact_cap
+               << " breakdown=" << breakdown << std::endl;
++    if (fgmres_backward_error_diagnostics_)
++      std::cout << "[LINEAR_FGMRES_BACKWARD] local_stencil_eta_max="
++                << componentwise_backward_error_max
++                << " note=AMR_ghosts_are_interpolated" << std::endl;
+   }
+-  if (breakdown || !(relative_residual <= fgmres_threshold_)
++  if (breakdown || (!(relative_residual <= fgmres_threshold_)
++                    && !precision_floor_accept && !inexact_accept)
+       || !std::isfinite(relative_residual)) {
+     std::stringstream msg;
+     msg << "### FATAL ERROR in linearMGDriver::SolveFGMRES" << std::endl
+diff --git a/src/linear_solver/linearMG/linearMG.hpp b/src/linear_solver/linearMG/linearMG.hpp
+index afd2c154..cccb62d4 100644
+--- a/src/linear_solver/linearMG/linearMG.hpp
++++ b/src/linear_solver/linearMG/linearMG.hpp
+@@ -121,8 +121,12 @@ class linearMGDriver: public MultigridDriver {
+   int uniform_pcg_max_iterations_;
+   bool fgmres_;
+   Real fgmres_threshold_;
++  Real fgmres_precision_floor_factor_{0.0};
++  bool fgmres_flux_form_matvec_{false};
+   int fgmres_restart_, fgmres_max_iterations_, fgmres_mg_vcycles_;
+   bool fgmres_linearity_check_{false};
++  bool fgmres_linearity_check_each_solve_{false};
++  bool fgmres_backward_error_diagnostics_{false};
+   int fgmres_linearity_check_count_{0};
+   bool fgmres_compact_basis_{true};
+   bool fgmres_reuse_basis_{true};
+diff --git a/src/nr_multigrid/NRFLD.cpp b/src/nr_multigrid/NRFLD.cpp
+index 0fae5d8c..0ba0956f 100644
+--- a/src/nr_multigrid/NRFLD.cpp
++++ b/src/nr_multigrid/NRFLD.cpp
+@@ -637,6 +637,8 @@ NRFLD::NRFLD(MeshBlock *pmb, ParameterInput *pin) :
+     fixed_linear_coefficients_initialized_(false),
+     jacobian_check_(pin->GetOrAddBoolean("nrfld", "jacobian_check", false)),
+     jacobian_check_done_(false),
++    jacobian_check_each_cycle_(pin->GetOrAddBoolean(
++        "nrfld", "jacobian_check_each_cycle", false)),
+     jacobian_check_epsilon_(pin->GetOrAddReal(
+         "nrfld", "jacobian_check_epsilon", 1.0e-4))
+     {
+@@ -698,9 +700,14 @@ NRFLD::~NRFLD() {
+ 
+ 
+ void NRFLD::RunJacobianDiagnostic(Real dt) {
+-  if (!jacobian_check_ || jacobian_check_done_ || dt == 0.0 || pmy_block_->gid != 0)
++  if (!jacobian_check_ || dt == 0.0 || pmy_block_->gid != 0)
++    return;
++  const int cycle = pmy_block_->pmy_mesh->ncycle;
++  if (jacobian_check_done_
++      && (!jacobian_check_each_cycle_ || jacobian_check_last_cycle_ == cycle))
+     return;
+   jacobian_check_done_ = true;
++  jacobian_check_last_cycle_ = cycle;
+ 
+   const int is = pmy_block_->is, ie = pmy_block_->ie;
+   const int js = pmy_block_->js, je = pmy_block_->je;
+@@ -802,7 +809,8 @@ void NRFLD::RunJacobianDiagnostic(Real dt) {
+         }
+       }
+     }
+-    std::cout << "[NRFLD Jacobian] gid=" << pmy_block_->gid
++    std::cout << "[NRFLD Jacobian] cycle=" << cycle
++              << " gid=" << pmy_block_->gid
+               << " epsilon=" << h << " cells=" << count
+               << " gas_l2_rel="
+               << std::sqrt(static_cast<Real>(fg_diff2/std::max(fg_jv2, 1.0e-300L)))
+@@ -1717,6 +1725,8 @@ void NRFLD::AddDifference(AthenaArray<Real> &u_rad,
+   const Real step_scale = pmy_driver_->step_scale_;
+   const bool mixed_active = pfld->MixedFrameCoupled()
+       && pfld->implicit_mixed_frame_drift;
++  int exact_local_gas_cells = 0;
++  Real exact_local_gas_residual_max = 0.0;
+ 
+   if (pmy_driver_->diagnostic_verbosity_ >= 2) {
+     for (int k = 0; k < delta_u.GetDim3(); ++k)
+@@ -1800,24 +1810,39 @@ void NRFLD::AddDifference(AthenaArray<Real> &u_rad,
+         // For a table EOS, eliminate the monotone local matter equation exactly
+         // at the newly applied Er.  The old gas state and the LTE state bracket
+         // the root; a pressure floor turns the solve into a lower-bound problem.
+-        if (exact_local_gas_solve_ && pfld->is_couple && !pfld->only_rad
+-            && !mixed_active) {
++        if (exact_local_gas_solve_ && pfld->is_couple && !pfld->only_rad) {
+           const Real rho = pmy_block_->phydro->w(IDN,k,j,i);
+           const Real egas_old = pfld->u_gas(k,j,i);
+           const Real c_sigma_p = pfld->c_ph*pfld->sigma_p(k,j,i);
++          const Real current_egas = u_gas_(k,j,i);
++          const Real current_temperature = pmy_block_->peos->TempFromRhoEg(
++              rho, current_egas);
++          const Real current_t2 = current_temperature*current_temperature;
++          const Real current_equilibrium = pfld->a_r*current_t2*current_t2;
++          const Real radiation_change = u_rad(k,j,i)-u_rad_before;
+           auto gas_residual = [&](const Real egas) {
+             const Real temperature = pmy_block_->peos->TempFromRhoEg(rho, egas);
+             const Real t2 = temperature*temperature;
++            const Real equilibrium = pfld->a_r*t2*t2;
++            if (mixed_active) {
++              // Fg at the current Newton state already includes the old
++              // mixed-frame drift. Its change under the applied radiation
++              // correction is linear for frozen face coefficients.
++              return derivetive(NewtonRaphsonFLD::Fg,k,j,i)
++                  + (egas-current_egas)
++                  + pmy_driver_->dt_*c_sigma_p
++                      *(equilibrium-current_equilibrium-radiation_change)
++                  - pmy_driver_->dt_*step_scale*mixed_delta;
++            }
+             return (egas-egas_old) + pmy_driver_->dt_*c_sigma_p
+-                *ResolvableThermalDifference(
+-                    pfld->a_r*t2*t2, u_rad(k,j,i));
++                *ResolvableThermalDifference(equilibrium, u_rad(k,j,i));
+           };
+           // With diffusion disabled, the second local equation is exactly
+           // egas + Er = egas_old + Er_old.  Solve that one-dimensional system
+           // directly instead of recovering Er by subtracting two large gas
+           // energies.  The latter loses the small radiation state before the
+           // stiff exchange coefficient magnifies its rounding error.
+-          if (pfld->cut_diff && !pfld->fixed_u_rad) {
++          if (pfld->cut_diff && !pfld->fixed_u_rad && !mixed_active) {
+             const Real erad_old = uold_(k,j,i);
+             const Real total = egas_old + erad_old;
+             const Real upper_bound = std::nextafter(
+@@ -1881,6 +1906,19 @@ void NRFLD::AddDifference(AthenaArray<Real> &u_rad,
+                 Real lower = egas_floor;
+                 Real upper = std::max({egas_floor, egas_old, egas_lte});
+                 Real f_upper = gas_residual(upper);
++                // Mixed-frame work may heat the gas past both the old state
++                // and the radiation LTE state. Expand the upper bracket
++                // before falling back to the linearized gas correction.
++                if (mixed_active) {
++                  for (int expansion=0; expansion<32
++                       && std::isfinite(f_upper) && f_upper < 0.0;
++                       ++expansion) {
++                    const Real next = 2.0*upper;
++                    if (!std::isfinite(next) || next <= upper) break;
++                    upper = next;
++                    f_upper = gas_residual(upper);
++                  }
++                }
+                 if (std::isfinite(f_upper) && f_upper >= 0.0) {
+                   for (int iteration=0; iteration<64; ++iteration) {
+                     const Real middle = 0.5*(lower+upper);
+@@ -1897,6 +1935,15 @@ void NRFLD::AddDifference(AthenaArray<Real> &u_rad,
+               }
+             }
+           }
++          if (local_gas_solved) {
++            ++exact_local_gas_cells;
++            const Real local_scale = std::max(
++                std::abs(u_gas_(k,j,i)) + std::abs(egas_old),
++                static_cast<Real>(1.0e-30));
++            exact_local_gas_residual_max = std::max(
++                exact_local_gas_residual_max,
++                std::abs(gas_residual(u_gas_(k,j,i)))/local_scale);
++          }
+         }
+ #endif
+         if (!local_gas_solved) {
+@@ -1923,6 +1970,11 @@ void NRFLD::AddDifference(AthenaArray<Real> &u_rad,
+         for (int i = is; i <= ie; ++i)
+           last_delta_rad_(1,k,j,i) *= step_scale;
+   }
++  if (pmy_driver_->diagnostic_verbosity_ >= 1 && pmy_block_->gid == 0
++      && Globals::my_rank == 0)
++    std::cout << "[NR_LOCAL_GAS] exact_cells=" << exact_local_gas_cells
++              << " residual_over_gas_scale_max=" << exact_local_gas_residual_max
++              << " mixed_active=" << mixed_active << std::endl;
+   // if(pmy_driver_->fshowdef_)  {
+   //   int k = (ks + ke) / 2;
+   //   int j = (js + je) / 2;
+diff --git a/src/nr_multigrid/NRFLD.hpp b/src/nr_multigrid/NRFLD.hpp
+index 4fcf7bd5..9e7f95a8 100644
+--- a/src/nr_multigrid/NRFLD.hpp
++++ b/src/nr_multigrid/NRFLD.hpp
+@@ -200,6 +200,8 @@ class NRFLD : public NewtonRaphson {
+   bool fixed_linear_coefficients_initialized_;
+   bool jacobian_check_;
+   bool jacobian_check_done_;
++  bool jacobian_check_each_cycle_{false};
++  int jacobian_check_last_cycle_{-1};
+   Real jacobian_check_epsilon_;
+   // AthenaArray<Real> *u_, *def_, *src_, *uold_, *coeff_, *matrix_;
+   // AthenaArray<Real> delta_u_;
+diff --git a/src/pgen/protostellar_core_fld.cpp b/src/pgen/protostellar_core_fld.cpp
+index 8b53a0ed..1efbec67 100644
+--- a/src/pgen/protostellar_core_fld.cpp
++++ b/src/pgen/protostellar_core_fld.cpp
+@@ -6,9 +6,8 @@
+ //! \file protostellar_core_fld.cpp
+ //! \brief Simplified rotating, magnetized protostellar-core collapse with grey FLD.
+ //!
+-//! This intentionally omits the non-ideal MHD, chemistry, tabulated EOS, sink particles,
+-//! and H2 dissociation used by Mayer et al. (2025/2026).  In particular, a fixed-gamma
+-//! ideal gas cannot follow second collapse or form a second Larson core.
++//! The ideal-gas setup omits non-ideal MHD, chemistry and sink particles.
++//! A tabulated material EOS/opacity can be selected for short numerical pilots.
+ 
+ #include <algorithm>
+ #include <cmath>
+@@ -24,6 +23,7 @@
+ #include "../eos/eos.hpp"
+ #include "../field/field.hpp"
+ #include "../fld/fld.hpp"
++#include "../fld/opacity_table.hpp"
+ #include "../globals.hpp"
+ #include "../hydro/hydro.hpp"
+ #include "../mesh/mesh.hpp"
+@@ -62,6 +62,8 @@ Real rho_unit, egas_unit, length_unit, velocity_unit, time_unit, magnetic_unit;
+ Real mass_core, radius_core, temperature_core, mean_molecular_weight;
+ Real density_core, density_ambient, omega_phys, b0_phys;
+ Real kappa_planck, kappa_rosseland, transition_width;
++bool use_opacity_table = false;
++UserOpacityTable *opacity_table = nullptr;
+ Real radius_core_code, transition_width_code;
+ Real gravity_code, jeans_number;
+ Real background_temperature, background_tracer_threshold;
+@@ -85,9 +87,15 @@ Real CoreWeight(Real radius_code) {
+ }
+ 
+ Real GasTemperature(const MeshBlock *pmb, int k, int j, int i) {
++#if EOS_TABLE_ENABLED
++  const Real rho = std::max(pmb->phydro->w(IDN,k,j,i), TINY_NUMBER);
++  const Real pres = std::max(pmb->phydro->w(IPR,k,j,i), TINY_NUMBER);
++  return pmb->peos->TempFromRhoEg(rho,pmb->peos->EgasFromRhoP(rho,pres));
++#else
+   const Real rho_phys = std::max(pmb->phydro->w(IDN,k,j,i)*rho_unit, TINY_NUMBER);
+   const Real pressure_phys = std::max(pmb->phydro->w(IPR,k,j,i)*egas_unit, 0.0);
+   return pressure_phys*mean_molecular_weight/(rho_phys*kGasConstant);
++#endif
+ }
+ 
+ Real RadiationTemperature(const MeshBlock *pmb, int k, int j, int i) {
+@@ -125,13 +133,21 @@ void DensityOpacity(MeshBlock *pmb, AthenaArray<Real> &u_fld,
+   if (pmb->block_size.nx3 > 1) { kl -= NGHOST; ku += NGHOST; }
+   for (int k=kl; k<=ku; ++k) {
+     for (int j=jl; j<=ju; ++j) {
+-#pragma omp simd
+       for (int i=il; i<=iu; ++i) {
+         const Real rho_phys = std::max(prim(IDN,k,j,i)*rho_unit, TINY_NUMBER);
++        Real kp=kappa_planck, kr=kappa_rosseland;
++        if (use_opacity_table) {
++          const Real rho=std::max(prim(IDN,k,j,i),TINY_NUMBER);
++          const Real pres=std::max(prim(IPR,k,j,i),TINY_NUMBER);
++          const Real temperature=pmb->peos->TempFromRhoEg(
++              rho,pmb->peos->EgasFromRhoP(rho,pres));
++          kp=opacity_table->GetOpacity(RadFLD::SIGMA_P,rho_phys,temperature);
++          kr=opacity_table->GetOpacity(RadFLD::SIGMA_R,rho_phys,temperature);
++        }
+         // FLD stores inverse-length coefficients in code units: sigma=kappa*rho*L.
+-        pmb->prfld->sigma_p(k,j,i) = kappa_planck*rho_phys*length_unit;
++        pmb->prfld->sigma_p(k,j,i) = kp*rho_phys*length_unit;
+         pmb->prfld->sigma_r(k,j,i) = std::max(
+-            kappa_rosseland*rho_phys*length_unit, TINY_NUMBER);
++            kr*rho_phys*length_unit, TINY_NUMBER);
+       }
+     }
+   }
+@@ -440,12 +456,14 @@ void Mesh::InitUserMeshData(ParameterInput *pin) {
+         << "fld/is_couple must be true and fld/only_rad must be false.";
+     ATHENA_ERROR(msg);
+   }
+-  const Real gamma=pin->GetReal("hydro","gamma");
++  const Real gamma=pin->GetOrAddReal("hydro","gamma",5.0/3.0);
++#if !GENERAL_EOS
+   if (std::abs(gamma-5.0/3.0) > 1.0e-10) {
+     std::stringstream msg;
+     msg << "### FATAL ERROR in protostellar_core_fld: hydro/gamma must be 5/3.";
+     ATHENA_ERROR(msg);
+   }
++#endif
+ 
+   rho_unit=pin->GetReal("hydro","rho_unit");
+   egas_unit=pin->GetReal("hydro","egas_unit");
+@@ -469,6 +487,13 @@ void Mesh::InitUserMeshData(ParameterInput *pin) {
+   transition_width=pin->GetOrAddReal("problem","transition_width",0.0)*kAu;
+   enable_rotation=pin->GetOrAddBoolean("problem","enable_rotation",true);
+   enable_magnetic_field=pin->GetOrAddBoolean("problem","enable_magnetic_field",true);
++#if EOS_TABLE_ENABLED
++  if (enable_magnetic_field) {
++    std::stringstream msg;
++    msg << "### FATAL ERROR in protostellar_core_fld: table EOS pilot requires B=0.";
++    ATHENA_ERROR(msg);
++  }
++#endif
+   const std::string test_mode=pin->GetOrAddString("problem","test_mode","collapse");
+   if (test_mode != "collapse" && test_mode != "uniform_equilibrium") {
+     std::stringstream msg;
+@@ -506,6 +531,8 @@ void Mesh::InitUserMeshData(ParameterInput *pin) {
+ 
+   kappa_planck=pin->GetOrAddReal("radiation","kappa_P",1.0);
+   kappa_rosseland=pin->GetOrAddReal("radiation","kappa_R",1.0);
++  use_opacity_table=pin->GetOrAddBoolean("fld","use_opacity_table",false);
++  if (use_opacity_table) opacity_table=new UserOpacityTable(pin);
+   density_core=3.0*mass_core/(4.0*kPi*std::pow(radius_core,3));
+   density_ambient=ambient_factor*density_core;
+   radius_core_code=radius_core/length_unit;
+@@ -662,7 +689,9 @@ void MeshBlock::InitUserMeshBlockData(ParameterInput *pin) {
+ 
+ void MeshBlock::ProblemGenerator(ParameterInput *pin) {
+   (void)pin;
++#if !EOS_TABLE_ENABLED
+   const Real gm1=peos->GetGamma()-1.0;
++#endif
+   const Real omega_code=omega_phys*time_unit;
+   const Real b_code=enable_magnetic_field ? b0_phys/magnetic_unit : 0.0;
+ 
+@@ -678,15 +707,21 @@ void MeshBlock::ProblemGenerator(ParameterInput *pin) {
+         const Real temperature=uniform_equilibrium ? temperature_core
+             : background_temperature+(temperature_core-background_temperature)*weight;
+         const Real rho=rho_phys/rho_unit;
+-        const Real pressure=rho_phys*kGasConstant*temperature
+-                            /mean_molecular_weight/egas_unit;
++        Real egas, pressure;
++#if EOS_TABLE_ENABLED
++        egas=peos->EgasFromRhoT(rho,temperature);
++        pressure=peos->PresFromRhoEg(rho,egas);
++#else
++        pressure=rho_phys*kGasConstant*temperature
++                 /mean_molecular_weight/egas_unit;
++        egas=pressure/gm1;
++#endif
+         const Real vx=enable_rotation ? -omega_code*y*weight : 0.0;
+         const Real vy=enable_rotation ?  omega_code*x*weight : 0.0;
+         phydro->u(IDN,k,j,i)=rho;
+         phydro->u(IM1,k,j,i)=rho*vx;
+         phydro->u(IM2,k,j,i)=rho*vy;
+         phydro->u(IM3,k,j,i)=0.0;
+-        const Real egas=pressure/gm1;
+         phydro->u(IEN,k,j,i)=egas+0.5*rho*(SQR(vx)+SQR(vy))+0.5*SQR(b_code);
+         prfld->u_gas(k,j,i)=egas;
+         prfld->u_rad(k,j,i)=kRadiationConst*std::pow(temperature,4)/egas_unit;
+@@ -723,7 +758,9 @@ static void ApplyBackgroundHeatSink(MeshBlock *pmb) {
+     }
+   }
+ #if NSCALARS > 0
++#if !EOS_TABLE_ENABLED
+   const Real gm1=pmb->peos->GetGamma()-1.0;
++#endif
+   const Real erad_target=kRadiationConst*std::pow(background_temperature,4)/egas_unit;
+   pmb->pfield->CalculateCellCenteredField(pmb->pfield->b,pmb->pfield->bcc,
+       pmb->pcoord,pmb->is,pmb->ie,pmb->js,pmb->je,pmb->ks,pmb->ke);
+@@ -733,9 +770,15 @@ static void ApplyBackgroundHeatSink(MeshBlock *pmb) {
+         const Real rho=std::max(pmb->phydro->u(IDN,k,j,i),TINY_NUMBER);
+         const Real background_fraction=pmb->pscalars->s(0,k,j,i)/rho;
+         if (background_fraction < background_tracer_threshold) continue;
+-        const Real pressure=rho*rho_unit*kGasConstant*background_temperature
+-                            /mean_molecular_weight/egas_unit;
+-        const Real eint=pressure/gm1;
++        Real pressure,eint;
++#if EOS_TABLE_ENABLED
++        eint=pmb->peos->EgasFromRhoT(rho,background_temperature);
++        pressure=pmb->peos->PresFromRhoEg(rho,eint);
++#else
++        pressure=rho*rho_unit*kGasConstant*background_temperature
++                 /mean_molecular_weight/egas_unit;
++        eint=pressure/gm1;
++#endif
+         const Real kinetic=0.5*(SQR(pmb->phydro->u(IM1,k,j,i))
+                                +SQR(pmb->phydro->u(IM2,k,j,i))
+                                +SQR(pmb->phydro->u(IM3,k,j,i)))/rho;

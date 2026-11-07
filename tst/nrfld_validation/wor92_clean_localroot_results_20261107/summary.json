@@ -1,0 +1,27 @@
+{
+  "base_commit": "9c584cc107a4303476f3d36dc180b57d0c1dfc27",
+  "candidate_patch_sha256": "e401925ac405c0b83f763a5d5bdd3f82d1b48142afe3c945db9928da8d6a288a",
+  "binary_sha256": "3cda116485bccaac0340be6b47bb1e546f2cacef5582a242505aa4be59435571",
+  "input_sha256": "fb0528ba69257f3577311eda896405341add4b3a9b883a3a7004c8b2f372d047",
+  "comparison": {
+    "clean3": {
+      "linear": true,
+      "newton": true,
+      "cycles": true
+    },
+    "clean30": {
+      "linear": true,
+      "newton": true,
+      "cycles": true
+    }
+  },
+  "history_30_bitwise_equal": true,
+  "clean_build_has_rank_face_and_energy_ledgers": false,
+  "run_log_sha256": {
+    "clean3": "746515468e97c3526681ef8b16a62f8f2e0f3f2dd2a296af603b1d71e0395bea",
+    "clean30": "eabc64e4cac2b9d72b33b3e69c6b5b8359a145540dbafe0472473c07d90b17ae",
+    "prior30": "7a2ab19959571f2983743d7b621d4bdee58ad8f3ab1aeda39915d55469cbe685"
+  },
+  "build_log_sha256": "11e2c7ef8f0389b30466da916957f8a393242ac0f87b2fbd89b7981d38bae893",
+  "configure_log_sha256": "5063815585b6f3bb49c93bcd989c92d2904ed27f9f8033d2c1065284ee75a5fd"
+}
