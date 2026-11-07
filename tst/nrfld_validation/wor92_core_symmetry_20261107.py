@@ -91,6 +91,17 @@ def main():
             assert history.shape[1] >= 36
             residuals = [float(v) for v in re.findall(
                 r"^\[LINEAR_FGMRES\] iterations=\d+ relative_residual=(\S+)", lines, re.M)]
+            fgmres_iterations = [int(v) for v in re.findall(
+                r"^\[LINEAR_FGMRES\] iterations=(\d+)", lines, re.M)]
+            backward = [float(v) for v in re.findall(
+                r"^\[LINEAR_FGMRES_BACKWARD\] local_stencil_eta_max=(\S+)", lines, re.M)]
+            local_gas = [float(v) for v in re.findall(
+                r"^\[NR_LOCAL_GAS\] exact_cells=\d+ residual_over_gas_scale_max=(\S+)", lines, re.M)]
+            accepted_temp = [float(v) for v in re.findall(
+                r"^\[WOR92_OPACITY_ACCEPTED\] cycle=\d+ Tmin_K=(\S+)", lines, re.M)]
+            jacobian = [tuple(map(float, match)) for match in re.findall(
+                r"^\[NRFLD Jacobian\].*?epsilon=(\S+).*?gas_l2_rel=(\S+).*?radiation_l2_rel=(\S+)",
+                lines, re.M)]
             newton = re.findall(r"^\[NR\] status=(\w+) iterations=(\d+)", lines, re.M)
             opacity = re.findall(r"^FLD_OPACITY_DIAGNOSTICS out_of_domain=(\d+) clamped=(\d+)", lines, re.M)
             for row in history:
@@ -110,6 +121,19 @@ def main():
                               jeans_target=32, newton_stages=len(newton),
                               newton_nonconverged=sum(status != "converged" for status, _ in newton),
                               fgmres_max_true_residual=max(residuals) if residuals else None,
+                              fgmres_max_iterations=max(fgmres_iterations) if fgmres_iterations else None,
+                              fgmres_backward_max=max(backward) if backward else None,
+                              fgmres_backward_last=backward[-1] if backward else None,
+                              local_gas_residual_max=max(local_gas) if local_gas else None,
+                              jacobian_gas_l2_eps1e4_max=max((v[1] for v in jacobian
+                                  if abs(v[0] / 1e-4 - 1) < 1e-12), default=None),
+                              jacobian_gas_l2_eps1e6_max=max((v[1] for v in jacobian
+                                  if abs(v[0] / 1e-6 - 1) < 1e-12), default=None),
+                              jacobian_rad_l2_max=max((v[2] for v in jacobian), default=None),
+                              accepted_Tmin_K=min(accepted_temp) if accepted_temp else None,
+                              precision_floor_accepts=sum(int(v) for v in re.findall(
+                                  r"\bprecision_floor_accept=(\d+)", lines)),
+                              positive_ghost_events=lines.count("[WOR92_NR_GHOST_CLIP]"),
                               opacity_trial_clamps=int(opacity[-1][1]) if opacity else None,
                               log_sha256=sha(log), history_sha256=sha(hst),
                               final_hdf5_sha256=sha(final_dump)))
