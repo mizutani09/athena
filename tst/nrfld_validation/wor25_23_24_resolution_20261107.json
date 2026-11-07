@@ -22525,5 +22525,170 @@
     "limitations": "all strict 1e-10 runs still fail; double-rounding and coarse/fine operator mismatch remain; do not mark WOR-25 resolved",
     "production_source_sha256": "0a6550139be6d1fa911ff6b4467d0b4662a15d662542ca9e26125ab865ce2cd4",
     "rebuild_note": "Rebuilt final production source with explanatory comment; non-OpenMP binary SHA-256 remains b50f3fc28095d0c4e27908c36bad374ff23bf16cb95cf943192d866a61ab0acf"
+  },
+  "wor25_strict_residual_independent_audit": {
+    "runs": [
+      {
+        "name": "strict_residual_audit_v2",
+        "source_commit_base": "43a2621d",
+        "trial_instrumentation": "call PrintHandoffDiagnostic(\"fgmres_strict_failure\", false) immediately before FGMRES abort; no production source change",
+        "trial_binary_sha256": "c6dd262ea513c99861df1074cba9867f394aa739b328e83388c0682e515bb25b",
+        "input_path": "/tmp/wor25_23_24_resolution_trials/wor25_mg_opacity_x20/input.used",
+        "input_sha256": "ba333aee43531158fe9d34b50a6e9cc97ffbfa70fdb43a1ae5dcbc4045fdf8d2",
+        "overrides": {
+          "nrfld/linear_solver": "fgmres",
+          "nrfld/fgmres_threshold": 1e-10,
+          "nrfld/fgmres_restart": 40,
+          "nrfld/fgmres_max_iterations": 400,
+          "nrfld/fgmres_mg_vcycles": 2,
+          "nrfld/fgmres_linearity_check": false,
+          "fld/const_opacity": 8.186332719786666e-08
+        },
+        "ranks": 1,
+        "threads": 1,
+        "run_log": "/tmp/wor25_23_24_resolution_trials/strict_residual_audit_v2/run.log",
+        "exit_status": 134,
+        "wall_time": "0:09.16",
+        "peak_rss_kb": 237352,
+        "fgmres_history": [
+          {
+            "iterations": 9,
+            "explicit_relative_residual": 2.3539630439318774e-11
+          },
+          {
+            "iterations": 400,
+            "explicit_relative_residual": 1.6297531892108874e-10
+          }
+        ],
+        "independent_handoff_by_region": {
+          "interior": {
+            "common_rel": 1.4781315201114883e-10,
+            "double_rel": 3.526540872371255e-10,
+            "roundoff_rel": 3.1881172186357233e-10,
+            "rhs_mean": 5.419130448119477e-09,
+            "residual_mean": -2.7348806956377394e-20,
+            "rhs_rms": 7.643211714050226e-08,
+            "residual_rms": 1.1297672149422994e-17,
+            "delta_mean": 6.347973395318064e-09,
+            "delta_fluct_rms": 6.975606539459312e-13
+          },
+          "same_level_face": {
+            "common_rel": 1.4619784774428024e-10,
+            "double_rel": 3.47617603613735e-10,
+            "roundoff_rel": 3.1315622671996204e-10,
+            "rhs_mean": 4.570153203668167e-09,
+            "residual_mean": 1.270883648221507e-20,
+            "rhs_rms": 7.886974798174611e-08,
+            "residual_rms": 1.153058740706507e-17,
+            "delta_mean": 6.34796643780749e-09,
+            "delta_fluct_rms": 6.910754843725699e-13
+          },
+          "coarse_fine_face": {
+            "common_rel": 1.0565372002027856e-10,
+            "double_rel": 2.521003902060434e-10,
+            "roundoff_rel": 2.3072633662977093e-10,
+            "rhs_mean": 3.485620915379056e-08,
+            "residual_mean": -2.1512622501623756e-20,
+            "rhs_rms": 8.89425886074882e-08,
+            "residual_rms": 9.397115354614376e-18,
+            "delta_mean": 6.3480726502901386e-09,
+            "delta_fluct_rms": 8.787767488918191e-13
+          },
+          "all": {
+            "common_rel": 1.4473336893985097e-10,
+            "double_rel": 3.4466518698466744e-10,
+            "roundoff_rel": 3.1111707658438237e-10,
+            "rhs_mean": 6.3479743513330505e-09,
+            "residual_mean": -5.79461273330857e-21,
+            "rhs_rms": 7.83579193427295e-08,
+            "residual_rms": 1.1341005649590354e-17,
+            "delta_mean": 6.3479743517173875e-09,
+            "delta_fluct_rms": 7.040479177368444e-13
+          }
+        },
+        "evaluation": "FAIL_STRICT_1E-10_ROUNDOFF_FLOOR"
+      },
+      {
+        "name": "strict_residual_audit_v2_r2",
+        "source_commit_base": "43a2621d",
+        "trial_instrumentation": "call PrintHandoffDiagnostic(\"fgmres_strict_failure\", false) immediately before FGMRES abort; no production source change",
+        "trial_binary_sha256": "c6dd262ea513c99861df1074cba9867f394aa739b328e83388c0682e515bb25b",
+        "input_path": "/tmp/wor25_23_24_resolution_trials/wor25_mg_opacity_x20/input.used",
+        "input_sha256": "ba333aee43531158fe9d34b50a6e9cc97ffbfa70fdb43a1ae5dcbc4045fdf8d2",
+        "overrides": {
+          "nrfld/linear_solver": "fgmres",
+          "nrfld/fgmres_threshold": 1e-10,
+          "nrfld/fgmres_restart": 40,
+          "nrfld/fgmres_max_iterations": 400,
+          "nrfld/fgmres_mg_vcycles": 2,
+          "nrfld/fgmres_linearity_check": false,
+          "fld/const_opacity": 8.186332719786666e-08
+        },
+        "ranks": 2,
+        "threads": 1,
+        "run_log": "/tmp/wor25_23_24_resolution_trials/strict_residual_audit_v2_r2/run.log",
+        "exit_status": 134,
+        "wall_time": "0:08.58",
+        "peak_rss_kb": 136368,
+        "fgmres_history": [
+          {
+            "iterations": 9,
+            "explicit_relative_residual": 2.361787890660874e-11
+          },
+          {
+            "iterations": 400,
+            "explicit_relative_residual": 1.6306897900900712e-10
+          }
+        ],
+        "independent_handoff_by_region": {
+          "interior": {
+            "common_rel": 1.4583835445368184e-10,
+            "double_rel": 3.505190251789603e-10,
+            "roundoff_rel": 3.177390341272805e-10,
+            "rhs_mean": 5.411099493618118e-09,
+            "residual_mean": -1.5631896367475017e-20,
+            "rhs_rms": 7.693315027957883e-08,
+            "residual_rms": 1.1219804039711588e-17,
+            "delta_mean": 6.34783804297278e-09,
+            "delta_fluct_rms": 6.97444670208421e-13
+          },
+          "same_level_face": {
+            "common_rel": 1.468075819178385e-10,
+            "double_rel": 3.4684266263524386e-10,
+            "roundoff_rel": 3.1406184314599946e-10,
+            "rhs_mean": 4.58392912626166e-09,
+            "residual_mean": 1.2092210602691653e-20,
+            "rhs_rms": 7.894127347765579e-08,
+            "residual_rms": 1.1589177472769445e-17,
+            "delta_mean": 6.347831090071604e-09,
+            "delta_fluct_rms": 6.909721761237444e-13
+          },
+          "coarse_fine_face": {
+            "common_rel": 1.0449297781238388e-10,
+            "double_rel": 2.518675523660567e-10,
+            "roundoff_rel": 2.375688081113471e-10,
+            "rhs_mean": 3.476947309593359e-08,
+            "residual_mean": 1.1339557822698656e-19,
+            "rhs_rms": 8.926178058739732e-08,
+            "residual_rms": 9.327229258412786e-18,
+            "delta_mean": 6.347937236574578e-09,
+            "delta_fluct_rms": 8.784969143558886e-13
+          },
+          "all": {
+            "common_rel": 1.4420593807456558e-10,
+            "double_rel": 3.433651697100744e-10,
+            "roundoff_rel": 3.114862979063121e-10,
+            "rhs_mean": 6.3478389985685374e-09,
+            "residual_mean": 5.144698332041414e-21,
+            "rhs_rms": 7.861961371898181e-08,
+            "residual_rms": 1.1337415147405758e-17,
+            "delta_mean": 6.347838998944115e-09,
+            "delta_fluct_rms": 7.039287654057132e-13
+          }
+        },
+        "evaluation": "FAIL_STRICT_1E-10_ROUNDOFF_FLOOR"
+      }
+    ],
+    "conclusion": "independent long-double residual remains above 1e-10 in both ranks; absolute residual RMS ~1.13e-17 for RHS RMS ~7.8e-8, similar across interior/same-level/coarse-fine faces. A coarse/fine-only error or FGMRES stopping-rule misreport is not supported."
   }
 }
