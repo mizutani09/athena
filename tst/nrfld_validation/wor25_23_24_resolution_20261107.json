@@ -2277,8 +2277,8 @@
   },
   "input_archive": {
     "path": "/home/kosuke/simulation/athena-wor25-23-24-resolution/tst/nrfld_validation/wor25_23_24_resolution_inputs_20261107.tar.gz",
-    "sha256": "df0307c0f78c7a5bcc00bce9e5b09a3747c4cca11fc2a2a7638baf9f03ed43b2",
-    "members": 115
+    "sha256": "df35b3718d833cccb7434de718a497f55486db5514530f82eb2ae4e5a7f5167a",
+    "members": 120
   },
   "large_collapse_trial": {
     "input_path": "/tmp/wor25_23_24_resolution_trials/collapse_conservative_trial_r1/input.used",
@@ -7626,5 +7626,770 @@
     ],
     "comparison": "At cycle 1 checkpoint, direct stage 2 rho_sum=3089.745455527496 and restart initialize rho_sum=3089.745455527496, but direct phi_after_sum=-13627.039573518801 and restart phi_after_sum=-13631.89106497358. Both have 15 blocks and FMG mode 0.",
     "note": "Temporary gravity driver logging only; no production code change."
+  },
+  "gravity_fmg_color_option": {
+    "source_commit": "d4f200ac6a1fb9a76f6d470aaf96dee836b272da",
+    "binary_sha256": "5c9b7dfa12b90d60997f16237168e9e78391ef48972b28f6f3aaa335c9dd3035",
+    "runs": [
+      {
+        "name": "gravity_option_static_r1_direct",
+        "source_commit": "d4f200ac6a1fb9a76f6d470aaf96dee836b272da",
+        "binary_sha256": "5c9b7dfa12b90d60997f16237168e9e78391ef48972b28f6f3aaa335c9dd3035",
+        "run_log": "/tmp/wor25_23_24_resolution_trials/gravity_option_static_r1_direct/run.log",
+        "evaluation": "PASS",
+        "newton_statuses": [
+          "dt_zero_initialization",
+          "converged",
+          "converged"
+        ],
+        "fgmres_history": [
+          {
+            "iterations": 14,
+            "true_relative_residual": 2.9666723854676286e-09
+          },
+          {
+            "iterations": 14,
+            "true_relative_residual": 2.940647666334855e-09
+          }
+        ],
+        "resources_per_rank": [
+          {
+            "rss_kb": 119908,
+            "elapsed_s": 0.88
+          }
+        ],
+        "input_path": "/tmp/wor25_23_24_resolution_trials/gravity_option_static_r1_direct/input.used",
+        "input_sha256": "17e8922976eab172b61ceb86bb3c745018178967f1b3c3adbd8943a8eeac5b25"
+      },
+      {
+        "name": "gravity_option_static_r1_restart",
+        "source_commit": "d4f200ac6a1fb9a76f6d470aaf96dee836b272da",
+        "binary_sha256": "5c9b7dfa12b90d60997f16237168e9e78391ef48972b28f6f3aaa335c9dd3035",
+        "run_log": "/tmp/wor25_23_24_resolution_trials/gravity_option_static_r1_restart/run.log",
+        "evaluation": "PASS",
+        "newton_statuses": [
+          "converged",
+          "converged"
+        ],
+        "fgmres_history": [
+          {
+            "iterations": 14,
+            "true_relative_residual": 2.940649497855658e-09
+          }
+        ],
+        "resources_per_rank": [
+          {
+            "rss_kb": 119692,
+            "elapsed_s": 0.68
+          }
+        ],
+        "checkpoint_path": "/tmp/wor25_23_24_resolution_trials/gravity_option_static_r1_direct/output/protostellar_core_fld_mayer5.00001.rst",
+        "checkpoint_sha256": "05f23546b87e0c550842f1984ac21a0889a4cea083b238abfd9a0d60ddf171ad"
+      },
+      {
+        "name": "gravity_option_static_r2_direct",
+        "source_commit": "d4f200ac6a1fb9a76f6d470aaf96dee836b272da",
+        "binary_sha256": "5c9b7dfa12b90d60997f16237168e9e78391ef48972b28f6f3aaa335c9dd3035",
+        "run_log": "/tmp/wor25_23_24_resolution_trials/gravity_option_static_r2_direct/run.log",
+        "evaluation": "PASS",
+        "newton_statuses": [
+          "dt_zero_initialization",
+          "converged",
+          "converged"
+        ],
+        "fgmres_history": [
+          {
+            "iterations": 14,
+            "true_relative_residual": 2.966672390734426e-09
+          },
+          {
+            "iterations": 14,
+            "true_relative_residual": 2.9406494852307047e-09
+          }
+        ],
+        "resources_per_rank": [
+          {
+            "rss_kb": 83212,
+            "elapsed_s": 0.69
+          },
+          {
+            "rss_kb": 76372,
+            "elapsed_s": 0.69
+          }
+        ],
+        "input_path": "/tmp/wor25_23_24_resolution_trials/gravity_option_static_r2_direct/input.used",
+        "input_sha256": "17e8922976eab172b61ceb86bb3c745018178967f1b3c3adbd8943a8eeac5b25"
+      },
+      {
+        "name": "gravity_option_static_r2_restart",
+        "source_commit": "d4f200ac6a1fb9a76f6d470aaf96dee836b272da",
+        "binary_sha256": "5c9b7dfa12b90d60997f16237168e9e78391ef48972b28f6f3aaa335c9dd3035",
+        "run_log": "/tmp/wor25_23_24_resolution_trials/gravity_option_static_r2_restart/run.log",
+        "evaluation": "PASS",
+        "newton_statuses": [
+          "converged",
+          "converged"
+        ],
+        "fgmres_history": [
+          {
+            "iterations": 14,
+            "true_relative_residual": 2.940646662331751e-09
+          }
+        ],
+        "resources_per_rank": [
+          {
+            "rss_kb": 76400,
+            "elapsed_s": 0.53
+          },
+          {
+            "rss_kb": 82568,
+            "elapsed_s": 0.52
+          }
+        ],
+        "checkpoint_path": "/tmp/wor25_23_24_resolution_trials/gravity_option_static_r2_direct/output/protostellar_core_fld_mayer5.00001.rst",
+        "checkpoint_sha256": "2df27d19117541a4ffa60fc18a637f6e0253d8adbe6c604a4ad348600051bd10"
+      },
+      {
+        "name": "gravity_option_adaptive_r1_direct",
+        "source_commit": "d4f200ac6a1fb9a76f6d470aaf96dee836b272da",
+        "binary_sha256": "5c9b7dfa12b90d60997f16237168e9e78391ef48972b28f6f3aaa335c9dd3035",
+        "run_log": "/tmp/wor25_23_24_resolution_trials/gravity_option_adaptive_r1_direct/run.log",
+        "evaluation": "PASS",
+        "newton_statuses": [
+          "dt_zero_initialization",
+          "converged",
+          "converged",
+          "converged",
+          "converged"
+        ],
+        "fgmres_history": [
+          {
+            "iterations": 14,
+            "true_relative_residual": 2.9666723854676286e-09
+          },
+          {
+            "iterations": 14,
+            "true_relative_residual": 2.940647666334855e-09
+          },
+          {
+            "iterations": 9,
+            "true_relative_residual": 1.557567611160897e-09
+          }
+        ],
+        "resources_per_rank": [
+          {
+            "rss_kb": 441840,
+            "elapsed_s": 2.19
+          }
+        ],
+        "input_path": "/tmp/wor25_23_24_resolution_trials/gravity_option_adaptive_r1_direct/input.used",
+        "input_sha256": "e54a0f7dcbce55b1eb2a633ac6e779da9709fcac4e0a8efb2a075993f70ded01"
+      },
+      {
+        "name": "gravity_option_adaptive_r1_restart",
+        "source_commit": "d4f200ac6a1fb9a76f6d470aaf96dee836b272da",
+        "binary_sha256": "5c9b7dfa12b90d60997f16237168e9e78391ef48972b28f6f3aaa335c9dd3035",
+        "run_log": "/tmp/wor25_23_24_resolution_trials/gravity_option_adaptive_r1_restart/run.log",
+        "evaluation": "PASS",
+        "newton_statuses": [
+          "converged",
+          "converged",
+          "converged",
+          "converged"
+        ],
+        "fgmres_history": [
+          {
+            "iterations": 14,
+            "true_relative_residual": 2.940649497855658e-09
+          },
+          {
+            "iterations": 9,
+            "true_relative_residual": 1.557565980218937e-09
+          }
+        ],
+        "resources_per_rank": [
+          {
+            "rss_kb": 440212,
+            "elapsed_s": 2.07
+          }
+        ],
+        "checkpoint_path": "/tmp/wor25_23_24_resolution_trials/gravity_option_adaptive_r1_direct/output/protostellar_core_fld_mayer5.00001.rst",
+        "checkpoint_sha256": "349bc007fa478172a227a7d46d6f87e5095c820e4970f41982507417b9fab829"
+      },
+      {
+        "name": "gravity_option_adaptive_r2_direct",
+        "source_commit": "d4f200ac6a1fb9a76f6d470aaf96dee836b272da",
+        "binary_sha256": "5c9b7dfa12b90d60997f16237168e9e78391ef48972b28f6f3aaa335c9dd3035",
+        "run_log": "/tmp/wor25_23_24_resolution_trials/gravity_option_adaptive_r2_direct/run.log",
+        "evaluation": "PASS",
+        "newton_statuses": [
+          "dt_zero_initialization",
+          "converged",
+          "converged",
+          "converged",
+          "converged"
+        ],
+        "fgmres_history": [
+          {
+            "iterations": 14,
+            "true_relative_residual": 2.966672390734426e-09
+          },
+          {
+            "iterations": 14,
+            "true_relative_residual": 2.9406494852307047e-09
+          },
+          {
+            "iterations": 9,
+            "true_relative_residual": 1.5575676380556376e-09
+          }
+        ],
+        "resources_per_rank": [
+          {
+            "rss_kb": 230056,
+            "elapsed_s": 1.62
+          },
+          {
+            "rss_kb": 265188,
+            "elapsed_s": 1.62
+          }
+        ],
+        "input_path": "/tmp/wor25_23_24_resolution_trials/gravity_option_adaptive_r2_direct/input.used",
+        "input_sha256": "e54a0f7dcbce55b1eb2a633ac6e779da9709fcac4e0a8efb2a075993f70ded01"
+      },
+      {
+        "name": "gravity_option_adaptive_r2_restart",
+        "source_commit": "d4f200ac6a1fb9a76f6d470aaf96dee836b272da",
+        "binary_sha256": "5c9b7dfa12b90d60997f16237168e9e78391ef48972b28f6f3aaa335c9dd3035",
+        "run_log": "/tmp/wor25_23_24_resolution_trials/gravity_option_adaptive_r2_restart/run.log",
+        "evaluation": "PASS",
+        "newton_statuses": [
+          "converged",
+          "converged",
+          "converged",
+          "converged"
+        ],
+        "fgmres_history": [
+          {
+            "iterations": 14,
+            "true_relative_residual": 2.940646662331751e-09
+          },
+          {
+            "iterations": 9,
+            "true_relative_residual": 1.557566030911463e-09
+          }
+        ],
+        "resources_per_rank": [
+          {
+            "rss_kb": 263504,
+            "elapsed_s": 1.49
+          },
+          {
+            "rss_kb": 230244,
+            "elapsed_s": 1.5
+          }
+        ],
+        "checkpoint_path": "/tmp/wor25_23_24_resolution_trials/gravity_option_adaptive_r2_direct/output/protostellar_core_fld_mayer5.00001.rst",
+        "checkpoint_sha256": "db77922f710080a717348b2ebf8f1bebc1438875f353b7c203fd1c19fcc1761f"
+      },
+      {
+        "name": "gravity_option_uniform_direct",
+        "source_commit": "d4f200ac6a1fb9a76f6d470aaf96dee836b272da",
+        "binary_sha256": "5c9b7dfa12b90d60997f16237168e9e78391ef48972b28f6f3aaa335c9dd3035",
+        "run_log": "/tmp/wor25_23_24_resolution_trials/gravity_option_uniform_direct/run.log",
+        "evaluation": "PASS",
+        "newton_statuses": [
+          "dt_zero_initialization",
+          "converged",
+          "converged"
+        ],
+        "fgmres_history": [
+          {
+            "iterations": 8,
+            "true_relative_residual": 5.334162196135758e-09
+          },
+          {
+            "iterations": 8,
+            "true_relative_residual": 1.460590634113051e-09
+          },
+          {
+            "iterations": 9,
+            "true_relative_residual": 1.7280527745147042e-09
+          },
+          {
+            "iterations": 9,
+            "true_relative_residual": 1.77221278838692e-09
+          },
+          {
+            "iterations": 9,
+            "true_relative_residual": 2.3274155638133182e-09
+          },
+          {
+            "iterations": 8,
+            "true_relative_residual": 1.4387328898547896e-09
+          },
+          {
+            "iterations": 9,
+            "true_relative_residual": 1.6033240962335636e-09
+          },
+          {
+            "iterations": 9,
+            "true_relative_residual": 1.5838805113004401e-09
+          }
+        ],
+        "resources_per_rank": [
+          {
+            "rss_kb": 61460,
+            "elapsed_s": 0.61
+          }
+        ],
+        "input_path": "/tmp/wor25_23_24_resolution_trials/gravity_option_uniform_direct/input.used",
+        "input_sha256": "652cfe868124a098da0f76a7889aee5663707a0994ea0bfca0250f8e53355229"
+      },
+      {
+        "name": "gravity_option_uniform_restart",
+        "source_commit": "d4f200ac6a1fb9a76f6d470aaf96dee836b272da",
+        "binary_sha256": "5c9b7dfa12b90d60997f16237168e9e78391ef48972b28f6f3aaa335c9dd3035",
+        "run_log": "/tmp/wor25_23_24_resolution_trials/gravity_option_uniform_restart/run.log",
+        "evaluation": "PASS",
+        "newton_statuses": [
+          "converged",
+          "converged"
+        ],
+        "fgmres_history": [
+          {
+            "iterations": 9,
+            "true_relative_residual": 2.327415563813318e-09
+          },
+          {
+            "iterations": 8,
+            "true_relative_residual": 1.43873288985479e-09
+          },
+          {
+            "iterations": 9,
+            "true_relative_residual": 1.603324096233564e-09
+          },
+          {
+            "iterations": 9,
+            "true_relative_residual": 1.58388051130044e-09
+          }
+        ],
+        "resources_per_rank": [
+          {
+            "rss_kb": 61540,
+            "elapsed_s": 0.52
+          }
+        ],
+        "checkpoint_path": "/tmp/wor25_23_24_resolution_trials/gravity_option_uniform_direct/output/protostellar_core_fld_mayer5.00001.rst",
+        "checkpoint_sha256": "828a4cb830530ec0c4397137f2f4f44d908f8780503e0b78bafdbf31c70f0a3b"
+      },
+      {
+        "name": "gravity_option_default_control",
+        "source_commit": "d4f200ac6a1fb9a76f6d470aaf96dee836b272da",
+        "binary_sha256": "5c9b7dfa12b90d60997f16237168e9e78391ef48972b28f6f3aaa335c9dd3035",
+        "run_log": "/tmp/wor25_23_24_resolution_trials/gravity_option_default_control/run.log",
+        "evaluation": "PASS",
+        "newton_statuses": [
+          "dt_zero_initialization",
+          "converged",
+          "converged"
+        ],
+        "fgmres_history": [
+          {
+            "iterations": 14,
+            "true_relative_residual": 2.966672945282566e-09
+          },
+          {
+            "iterations": 14,
+            "true_relative_residual": 2.9406792108502906e-09
+          }
+        ],
+        "resources_per_rank": [
+          {
+            "rss_kb": 119928,
+            "elapsed_s": 0.82
+          }
+        ],
+        "input_path": "/tmp/wor25_23_24_resolution_trials/gravity_option_default_control/input.used",
+        "input_sha256": "4fb964262124bbd630d4d0e8df6cefa95ff344fff378eae639746e68f4915c87"
+      },
+      {
+        "name": "gravity_option_defect_false",
+        "source_commit": "d4f200ac6a1fb9a76f6d470aaf96dee836b272da",
+        "binary_sha256": "5c9b7dfa12b90d60997f16237168e9e78391ef48972b28f6f3aaa335c9dd3035",
+        "run_log": "/tmp/wor25_23_24_resolution_trials/gravity_option_defect_false/run.log",
+        "evaluation": "PASS",
+        "newton_statuses": [
+          "dt_zero_initialization",
+          "converged",
+          "converged"
+        ],
+        "fgmres_history": [
+          {
+            "iterations": 14,
+            "true_relative_residual": 2.966672945282566e-09
+          },
+          {
+            "iterations": 14,
+            "true_relative_residual": 2.9406792108502906e-09
+          }
+        ],
+        "resources_per_rank": [
+          {
+            "rss_kb": 120116,
+            "elapsed_s": 0.85
+          }
+        ],
+        "input_path": "/tmp/wor25_23_24_resolution_trials/gravity_option_defect_false/input.used",
+        "input_sha256": "25254d6b89f5c120f8a171305463cba8bed8a2bbe4ec22c61298466dbe0e1b6d"
+      },
+      {
+        "name": "gravity_option_defect_true",
+        "source_commit": "d4f200ac6a1fb9a76f6d470aaf96dee836b272da",
+        "binary_sha256": "5c9b7dfa12b90d60997f16237168e9e78391ef48972b28f6f3aaa335c9dd3035",
+        "run_log": "/tmp/wor25_23_24_resolution_trials/gravity_option_defect_true/run.log",
+        "evaluation": "PASS",
+        "newton_statuses": [
+          "dt_zero_initialization",
+          "converged",
+          "converged"
+        ],
+        "fgmres_history": [
+          {
+            "iterations": 14,
+            "true_relative_residual": 2.9666723854676286e-09
+          },
+          {
+            "iterations": 14,
+            "true_relative_residual": 2.940647666334855e-09
+          }
+        ],
+        "resources_per_rank": [
+          {
+            "rss_kb": 120180,
+            "elapsed_s": 0.89
+          }
+        ],
+        "input_path": "/tmp/wor25_23_24_resolution_trials/gravity_option_defect_true/input.used",
+        "input_sha256": "88ec7704b95e4e68b41317b182d8b764ccf2d8d8dc52cbb559c658bd30aa92de"
+      }
+    ],
+    "comparisons": {
+      "static": {
+        "frame": "00003",
+        "rank_cases": {
+          "1": {
+            "direct_vs_restart": {
+              "prim": {
+                "relative_l1": 5.895789798815746e-10,
+                "max_abs": 1.6781888274979864e-08,
+                "same_levels": true,
+                "same_logical_locations": true
+              },
+              "fld": {
+                "relative_l1": 3.219383681219547e-11,
+                "max_abs": 1.2605685384414755e-09,
+                "same_levels": true,
+                "same_logical_locations": true
+              }
+            },
+            "initial_state": {
+              "mass_volume_integral": 704254494296.6775,
+              "rho_min": 0.052515854158814074,
+              "press_min": 0.025673981968652747,
+              "Er_min": 0.29064393120000004,
+              "phi_min": -4.5681772507554745,
+              "phi_max": -0.9187315514086432,
+              "blocks": 15
+            },
+            "final_state": {
+              "mass_volume_integral": 704254505233.5713,
+              "rho_min": 0.052359094080608154,
+              "press_min": 0.025596093005488107,
+              "Er_min": 0.290584563524698,
+              "phi_min": -4.565690626828846,
+              "phi_max": -0.918054680039301,
+              "blocks": 15
+            }
+          },
+          "2": {
+            "direct_vs_restart": {
+              "prim": {
+                "relative_l1": 5.895718620185322e-10,
+                "max_abs": 1.6781888274300968e-08,
+                "same_levels": true,
+                "same_logical_locations": true
+              },
+              "fld": {
+                "relative_l1": 3.2175959560480153e-11,
+                "max_abs": 1.2603145194134413e-09,
+                "same_levels": true,
+                "same_logical_locations": true
+              }
+            },
+            "initial_state": {
+              "mass_volume_integral": 704254494296.6775,
+              "rho_min": 0.052515854158814074,
+              "press_min": 0.025673981968652747,
+              "Er_min": 0.29064393120000004,
+              "phi_min": -4.5681772507554745,
+              "phi_max": -0.9187315514086432,
+              "blocks": 15
+            },
+            "final_state": {
+              "mass_volume_integral": 704254505233.5713,
+              "rho_min": 0.052359094080608154,
+              "press_min": 0.02559609300548841,
+              "Er_min": 0.29058456352471224,
+              "phi_min": -4.565690626828846,
+              "phi_max": -0.918054680039301,
+              "blocks": 15
+            }
+          }
+        },
+        "rank_comparisons": {
+          "direct": {
+            "prim": {
+              "relative_l1": 4.585894115291534e-15,
+              "max_abs": 3.064215547965432e-14,
+              "same_levels": true,
+              "same_logical_locations": true
+            },
+            "fld": {
+              "relative_l1": 1.156691357177748e-14,
+              "max_abs": 1.723066134218243e-13,
+              "same_levels": true,
+              "same_logical_locations": true
+            }
+          },
+          "restart": {
+            "prim": {
+              "relative_l1": 2.7002010668030932e-15,
+              "max_abs": 1.687538997430238e-14,
+              "same_levels": true,
+              "same_logical_locations": true
+            },
+            "fld": {
+              "relative_l1": 6.31048256501954e-15,
+              "max_abs": 9.592326932761353e-14,
+              "same_levels": true,
+              "same_logical_locations": true
+            }
+          }
+        }
+      },
+      "adaptive": {
+        "frame": "00004",
+        "rank_cases": {
+          "1": {
+            "direct_vs_restart": {
+              "prim": {
+                "relative_l1": 4.628780602548245e-10,
+                "max_abs": 1.8066715387323124e-08,
+                "same_levels": true,
+                "same_logical_locations": true
+              },
+              "fld": {
+                "relative_l1": 8.437637509358277e-12,
+                "max_abs": 6.104943217621894e-10,
+                "same_levels": true,
+                "same_logical_locations": true
+              }
+            },
+            "initial_state": {
+              "mass_volume_integral": 704254494296.6775,
+              "rho_min": 0.052515854158814074,
+              "press_min": 0.025673981968652747,
+              "Er_min": 0.29064393120000004,
+              "phi_min": -4.5681772507554745,
+              "phi_max": -0.9187315514086432,
+              "blocks": 15
+            },
+            "final_state": {
+              "mass_volume_integral": 704254572265.3444,
+              "rho_min": 0.0522880241781028,
+              "press_min": 0.025561625819065605,
+              "Er_min": 0.2905976355233386,
+              "phi_min": -4.399782099351451,
+              "phi_max": -0.8749108253172352,
+              "blocks": 64
+            }
+          },
+          "2": {
+            "direct_vs_restart": {
+              "prim": {
+                "relative_l1": 4.628765663371374e-10,
+                "max_abs": 1.8066715388773244e-08,
+                "same_levels": true,
+                "same_logical_locations": true
+              },
+              "fld": {
+                "relative_l1": 8.434176472310555e-12,
+                "max_abs": 6.104953209629116e-10,
+                "same_levels": true,
+                "same_logical_locations": true
+              }
+            },
+            "initial_state": {
+              "mass_volume_integral": 704254494296.6775,
+              "rho_min": 0.052515854158814074,
+              "press_min": 0.025673981968652747,
+              "Er_min": 0.29064393120000004,
+              "phi_min": -4.5681772507554745,
+              "phi_max": -0.9187315514086432,
+              "blocks": 15
+            },
+            "final_state": {
+              "mass_volume_integral": 704254572265.3444,
+              "rho_min": 0.052288024178102806,
+              "press_min": 0.025561625819065664,
+              "Er_min": 0.2905976355233411,
+              "phi_min": -4.399782099351449,
+              "phi_max": -0.8749108253172352,
+              "blocks": 64
+            }
+          }
+        },
+        "rank_comparisons": {
+          "direct": {
+            "prim": {
+              "relative_l1": 1.027200566112144e-15,
+              "max_abs": 7.549516567451064e-15,
+              "same_levels": true,
+              "same_logical_locations": true
+            },
+            "fld": {
+              "relative_l1": 2.0359625097935377e-15,
+              "max_abs": 4.263256414560601e-14,
+              "same_levels": true,
+              "same_logical_locations": true
+            }
+          },
+          "restart": {
+            "prim": {
+              "relative_l1": 7.677237881378055e-16,
+              "max_abs": 5.329070518200751e-15,
+              "same_levels": true,
+              "same_logical_locations": true
+            },
+            "fld": {
+              "relative_l1": 1.427718990137972e-15,
+              "max_abs": 3.019806626980426e-14,
+              "same_levels": true,
+              "same_logical_locations": true
+            }
+          }
+        }
+      },
+      "uniform": {
+        "frame": "00003",
+        "rank_cases": {
+          "1": {
+            "direct_vs_restart": {
+              "prim": {
+                "relative_l1": 1.6780317910799202e-19,
+                "max_abs": 2.7755575615628914e-17,
+                "same_levels": true,
+                "same_logical_locations": true
+              },
+              "fld": {
+                "relative_l1": 9.006070143963318e-28,
+                "max_abs": 3.048046386251096e-24,
+                "same_levels": true,
+                "same_logical_locations": true
+              }
+            },
+            "initial_state": {
+              "mass_volume_integral": 707029099892.6665,
+              "rho_min": 0.052515854158814074,
+              "press_min": 0.025673981968652747,
+              "Er_min": 0.29064393120000004,
+              "phi_min": -4.538446148094394,
+              "phi_max": -0.9550120487367,
+              "blocks": 8
+            },
+            "final_state": {
+              "mass_volume_integral": 707029099892.6665,
+              "rho_min": 0.05243488584293015,
+              "press_min": 0.025631691716385598,
+              "Er_min": 0.2905185108105305,
+              "phi_min": -4.533280002686798,
+              "phi_max": -0.953557956161971,
+              "blocks": 8
+            }
+          }
+        }
+      }
+    },
+    "default_control_vs_previous": {
+      "prim": {
+        "relative_l1": 0.0,
+        "max_abs": 0.0,
+        "same_levels": true,
+        "same_logical_locations": true
+      },
+      "fld": {
+        "relative_l1": 0.0,
+        "max_abs": 0.0,
+        "same_levels": true,
+        "same_logical_locations": true
+      }
+    },
+    "gravity_defects": {
+      "false": {
+        "before_fmg_l2": [
+          9.089650091166201e-08,
+          9.138969991058104e-08,
+          9.121046495168189e-08,
+          9.118030533186299e-08,
+          9.117987571890737e-08
+        ],
+        "after_fmg_l2": [
+          1.528003260539603e-08,
+          1.6161970353666236e-08,
+          1.6162163710469897e-08,
+          1.6156522512567076e-08,
+          1.6156514670347904e-08
+        ],
+        "divergent_vcycle_warnings": 5
+      },
+      "true": {
+        "before_fmg_l2": [
+          9.089650091166201e-08,
+          9.138969991058104e-08,
+          9.138975660809971e-08,
+          9.135961272130459e-08,
+          9.135913699922737e-08
+        ],
+        "after_fmg_l2": [
+          1.528003260539603e-08,
+          1.5250533424184083e-08,
+          1.5250529237444323e-08,
+          1.5242302355200317e-08,
+          1.52423023110072e-08
+        ],
+        "divergent_vcycle_warnings": 5
+      }
+    },
+    "checkpoint_input_trace": {
+      "direct_log": "/tmp/wor25_23_24_resolution_trials/gravity_mask_direct/run.log",
+      "restart_log": "/tmp/wor25_23_24_resolution_trials/gravity_mask_restart/run.log",
+      "binary_sha256": "a2b73c55ae55e68be078b9248ec6773a841296102cdabaf4a8b1bcf33c42f5d2",
+      "source_array_count": 63,
+      "all_source_and_active_hashes_equal": true,
+      "multipole_origin_and_coefficients_equal": true,
+      "direct_header": "[GRAVITY_TIMING_TRIAL] stage=2 cycle=0 blocks=15 mode=0 four_pi_G=1.87700924532628780e-07 rho_sum=3.08974545552749623e+03 phi_before_sum=-1.36270621928630735e+04 rho_hash=17437596350741236177",
+      "restart_header": "[GRAVITY_TIMING_TRIAL] stage=1 cycle=1 blocks=15 mode=0 four_pi_G=1.87700924532628780e-07 rho_sum=3.08974545552749623e+03 phi_before_sum=0.00000000000000000e+00 rho_hash=17437596350741236177",
+      "color_trace_direct": "/tmp/wor25_23_24_resolution_trials/gravity_coffset_direct/run.log",
+      "color_trace_restart": "/tmp/wor25_23_24_resolution_trials/gravity_coffset_restart/run.log",
+      "color_trace_binary_sha256": "fc9bf669da564b3858ba4dd8c886cb30c3d911e883e5e7e4ed60ff7e3c422af2"
+    },
+    "rejected_zeroing_state": {
+      "binary_sha256": "c73baee869ed0eec5d9ce0af71c7f296728105d2a1f5271ae0b5696e12a7be20",
+      "direct_log": "/tmp/wor25_23_24_resolution_trials/gravity_zero_fmg_direct/run.log",
+      "restart_log": "/tmp/wor25_23_24_resolution_trials/gravity_zero_fmg_restart/run.log",
+      "final_prim_relative_l1": 1.361456046443099e-07,
+      "final_fld_relative_l1": 1.0104738434275315e-08
+    },
+    "decision": "Keep opt-in color reset for validated restart improvement only; default unchanged. Remaining AMR gravity restart discrepancy not resolved."
   }
 }

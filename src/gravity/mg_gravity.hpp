@@ -57,6 +57,7 @@ class MGGravityDriver : public MultigridDriver {
   friend class MGGravity;
  private:
   Real four_pi_G_, omega_;
+  bool reset_fmg_color_each_solve_;
   GravityBoundaryTaskList *gtlist_;
 };
 
