@@ -2277,8 +2277,8 @@
   },
   "input_archive": {
     "path": "/home/kosuke/simulation/athena-wor25-23-24-resolution/tst/nrfld_validation/wor25_23_24_resolution_inputs_20261107.tar.gz",
-    "sha256": "0c76c625deb1607cd8ef8ecabfd908ef6f5dfee412d4dc837023322cf8baa122",
-    "members": 163
+    "sha256": "cf6cda93cea8582b9590788187fa53dca16fe887ca9c00373982cfcec2fedd3c",
+    "members": 197
   },
   "large_collapse_trial": {
     "input_path": "/tmp/wor25_23_24_resolution_trials/collapse_conservative_trial_r1/input.used",
@@ -11956,5 +11956,2914 @@
       "testc_coupled_variable_before_vs_after": true,
       "mach5_mixed_x5_before_vs_after": true
     }
+  },
+  "adaptive_partial_gravity_rank_followup": {
+    "source_commit": "8763a6139a6fe5fe56d988ebd53d80063f090320",
+    "standard_binary_sha256": "4caa33aacaafcdd8fd952bff20318075a0df2a6c13a31bd839eaa2930835c7c1",
+    "instrumented_refinement_binary_sha256": "d0e7f8b4431c6dad230e30b2e2690cca13e2e5f030b4d3532d598125a5b5ecf0",
+    "final_checkpoint_sha256": "42416ee70c7cc08b4065e33903fb64239d8389ac7dd356fa7ce631641bfcadb1",
+    "final_checkpoint_path": "/tmp/wor25_23_24_resolution_trials/collapse_adaptive_partial_direct_final_r1/protostellar_core_fld_mayer5.00006.rst",
+    "preliminary_threshold_and_control_runs": [
+      {
+        "case": "collapse_adaptive_syncjv_r1",
+        "source_commit": "8763a6139a6fe5fe56d988ebd53d80063f090320",
+        "binary_sha256": "4caa33aacaafcdd8fd952bff20318075a0df2a6c13a31bd839eaa2930835c7c1",
+        "mpi_ranks": 1,
+        "input_sha256": "1df30a2df16a55a169be0c73472c5843af26708e2a8d86eaf0ffe0eb4bcd140e",
+        "checkpoint_sha256": null,
+        "checkpoint_path": null,
+        "n_j": 7.6166,
+        "topology": [
+          {
+            "cycle": 0,
+            "blocks": 15,
+            "levels": {
+              "0": 7,
+              "1": 8
+            }
+          },
+          {
+            "cycle": 1,
+            "blocks": 15,
+            "levels": {
+              "0": 7,
+              "1": 8
+            }
+          },
+          {
+            "cycle": 2,
+            "blocks": 64,
+            "levels": {
+              "1": 64
+            }
+          },
+          {
+            "cycle": 3,
+            "blocks": 64,
+            "levels": {
+              "1": 64
+            }
+          }
+        ],
+        "newton_statuses": [
+          "converged",
+          "converged",
+          "converged"
+        ],
+        "fgmres_history": [
+          {
+            "iterations": 14,
+            "true_relative_residual": 2.966672945282566e-09
+          },
+          {
+            "iterations": 14,
+            "true_relative_residual": 2.9406792108502906e-09
+          },
+          {
+            "iterations": 9,
+            "true_relative_residual": 1.5564756102125927e-09
+          }
+        ],
+        "jv_coarsefine_h1e5": [
+          {
+            "cells": 1736,
+            "relative_l2": 3.095558618867433e-09,
+            "analytic_schur_relative_l2": 2.690437202402605e-15
+          },
+          {
+            "cells": 1736,
+            "relative_l2": 3.4672929627383122e-09,
+            "analytic_schur_relative_l2": 3.469402582453559e-15
+          }
+        ],
+        "max_interface_relative_mismatch": null,
+        "interface_pair_count": null,
+        "face_log_error": null,
+        "wall_seconds": 3.92,
+        "max_rss_kb": 463636,
+        "pass_fail": "PASS_SOLVER_NO_COARSEFINE_AFTER_REGRID",
+        "log_path": "/tmp/wor25_23_24_resolution_trials/collapse_adaptive_syncjv_r1/run.log",
+        "environment": {
+          "OMP_NUM_THREADS": "1",
+          "ATHENA_NRFLD_EXPERIMENTAL_COLLAPSE": "1",
+          "ATHENA_NRFLD_EXPERIMENTAL_REGRID": "1"
+        },
+        "command": "mpirun -np 1 /tmp/wor25_23_24_resolution_collapse_mixedjv_build/bin/athena -i input.used"
+      },
+      {
+        "case": "collapse_adaptive_syncjv_r2",
+        "source_commit": "8763a6139a6fe5fe56d988ebd53d80063f090320",
+        "binary_sha256": "4caa33aacaafcdd8fd952bff20318075a0df2a6c13a31bd839eaa2930835c7c1",
+        "mpi_ranks": 2,
+        "input_sha256": "1df30a2df16a55a169be0c73472c5843af26708e2a8d86eaf0ffe0eb4bcd140e",
+        "checkpoint_sha256": null,
+        "checkpoint_path": null,
+        "n_j": 7.6166,
+        "topology": [
+          {
+            "cycle": 0,
+            "blocks": 15,
+            "levels": {
+              "0": 7,
+              "1": 8
+            }
+          },
+          {
+            "cycle": 1,
+            "blocks": 15,
+            "levels": {
+              "0": 7,
+              "1": 8
+            }
+          },
+          {
+            "cycle": 2,
+            "blocks": 64,
+            "levels": {
+              "1": 64
+            }
+          },
+          {
+            "cycle": 3,
+            "blocks": 64,
+            "levels": {
+              "1": 64
+            }
+          }
+        ],
+        "newton_statuses": [
+          "converged",
+          "converged",
+          "converged"
+        ],
+        "fgmres_history": [
+          {
+            "iterations": 14,
+            "true_relative_residual": 2.966672922178125e-09
+          },
+          {
+            "iterations": 14,
+            "true_relative_residual": 2.9406799148291193e-09
+          },
+          {
+            "iterations": 9,
+            "true_relative_residual": 1.556475652714732e-09
+          }
+        ],
+        "jv_coarsefine_h1e5": [
+          {
+            "cells": 1736,
+            "relative_l2": 3.095558548865267e-09,
+            "analytic_schur_relative_l2": 2.690389088838752e-15
+          },
+          {
+            "cells": 1736,
+            "relative_l2": 3.2474347693252417e-09,
+            "analytic_schur_relative_l2": 3.4728300241125106e-15
+          }
+        ],
+        "max_interface_relative_mismatch": null,
+        "interface_pair_count": null,
+        "face_log_error": null,
+        "wall_seconds": 2.61,
+        "max_rss_kb": 268208,
+        "pass_fail": "PASS_SOLVER_NO_COARSEFINE_AFTER_REGRID",
+        "log_path": "/tmp/wor25_23_24_resolution_trials/collapse_adaptive_syncjv_r2/run.log",
+        "environment": {
+          "OMP_NUM_THREADS": "1",
+          "ATHENA_NRFLD_EXPERIMENTAL_COLLAPSE": "1",
+          "ATHENA_NRFLD_EXPERIMENTAL_REGRID": "1"
+        },
+        "command": "mpirun -np 2 /tmp/wor25_23_24_resolution_collapse_mixedjv_build/bin/athena -i input.used"
+      },
+      {
+        "case": "collapse_adaptive_partial_syncjv_r1",
+        "source_commit": "8763a6139a6fe5fe56d988ebd53d80063f090320",
+        "binary_sha256": "4caa33aacaafcdd8fd952bff20318075a0df2a6c13a31bd839eaa2930835c7c1",
+        "mpi_ranks": 1,
+        "input_sha256": "b6bbac24254c5dcf319b7d178d36f5dd6bd9793b6d2430b2c041f2eaa4b55e4c",
+        "checkpoint_sha256": null,
+        "checkpoint_path": null,
+        "n_j": 7.616532477,
+        "topology": [
+          {
+            "cycle": 0,
+            "blocks": 15,
+            "levels": {
+              "0": 7,
+              "1": 8
+            }
+          },
+          {
+            "cycle": 1,
+            "blocks": 15,
+            "levels": {
+              "0": 7,
+              "1": 8
+            }
+          },
+          {
+            "cycle": 2,
+            "blocks": 64,
+            "levels": {
+              "1": 64
+            }
+          },
+          {
+            "cycle": 3,
+            "blocks": 64,
+            "levels": {
+              "1": 64
+            }
+          }
+        ],
+        "newton_statuses": [
+          "converged",
+          "converged",
+          "converged"
+        ],
+        "fgmres_history": [
+          {
+            "iterations": 14,
+            "true_relative_residual": 2.966672945282566e-09
+          },
+          {
+            "iterations": 14,
+            "true_relative_residual": 2.9406792108502906e-09
+          },
+          {
+            "iterations": 9,
+            "true_relative_residual": 1.5564756102125927e-09
+          }
+        ],
+        "jv_coarsefine_h1e5": [
+          {
+            "cells": 1736,
+            "relative_l2": 3.095558618867433e-09,
+            "analytic_schur_relative_l2": 2.690437202402605e-15
+          },
+          {
+            "cells": 1736,
+            "relative_l2": 3.4672929627383122e-09,
+            "analytic_schur_relative_l2": 3.469402582453559e-15
+          }
+        ],
+        "max_interface_relative_mismatch": null,
+        "interface_pair_count": null,
+        "face_log_error": null,
+        "wall_seconds": 3.75,
+        "max_rss_kb": 463400,
+        "pass_fail": "FAIL_TARGET_TOPOLOGY_SOLVER_PASS",
+        "log_path": "/tmp/wor25_23_24_resolution_trials/collapse_adaptive_partial_syncjv_r1/run.log",
+        "environment": {
+          "OMP_NUM_THREADS": "1",
+          "ATHENA_NRFLD_EXPERIMENTAL_COLLAPSE": "1",
+          "ATHENA_NRFLD_EXPERIMENTAL_REGRID": "1"
+        },
+        "command": "mpirun -np 1 /tmp/wor25_23_24_resolution_collapse_mixedjv_build/bin/athena -i input.used"
+      },
+      {
+        "case": "collapse_adaptive_partial_syncjv_r2",
+        "source_commit": "8763a6139a6fe5fe56d988ebd53d80063f090320",
+        "binary_sha256": "4caa33aacaafcdd8fd952bff20318075a0df2a6c13a31bd839eaa2930835c7c1",
+        "mpi_ranks": 2,
+        "input_sha256": "b6bbac24254c5dcf319b7d178d36f5dd6bd9793b6d2430b2c041f2eaa4b55e4c",
+        "checkpoint_sha256": null,
+        "checkpoint_path": null,
+        "n_j": 7.616532477,
+        "topology": [
+          {
+            "cycle": 0,
+            "blocks": 15,
+            "levels": {
+              "0": 7,
+              "1": 8
+            }
+          },
+          {
+            "cycle": 1,
+            "blocks": 15,
+            "levels": {
+              "0": 7,
+              "1": 8
+            }
+          },
+          {
+            "cycle": 2,
+            "blocks": 64,
+            "levels": {
+              "1": 64
+            }
+          },
+          {
+            "cycle": 3,
+            "blocks": 64,
+            "levels": {
+              "1": 64
+            }
+          }
+        ],
+        "newton_statuses": [
+          "converged",
+          "converged",
+          "converged"
+        ],
+        "fgmres_history": [
+          {
+            "iterations": 14,
+            "true_relative_residual": 2.966672922178125e-09
+          },
+          {
+            "iterations": 14,
+            "true_relative_residual": 2.9406799148291193e-09
+          },
+          {
+            "iterations": 9,
+            "true_relative_residual": 1.556475652714732e-09
+          }
+        ],
+        "jv_coarsefine_h1e5": [
+          {
+            "cells": 1736,
+            "relative_l2": 3.095558548865267e-09,
+            "analytic_schur_relative_l2": 2.690389088838752e-15
+          },
+          {
+            "cells": 1736,
+            "relative_l2": 3.2474347693252417e-09,
+            "analytic_schur_relative_l2": 3.4728300241125106e-15
+          }
+        ],
+        "max_interface_relative_mismatch": null,
+        "interface_pair_count": null,
+        "face_log_error": null,
+        "wall_seconds": 2.82,
+        "max_rss_kb": 268212,
+        "pass_fail": "FAIL_TARGET_TOPOLOGY_SOLVER_PASS",
+        "log_path": "/tmp/wor25_23_24_resolution_trials/collapse_adaptive_partial_syncjv_r2/run.log",
+        "environment": {
+          "OMP_NUM_THREADS": "1",
+          "ATHENA_NRFLD_EXPERIMENTAL_COLLAPSE": "1",
+          "ATHENA_NRFLD_EXPERIMENTAL_REGRID": "1"
+        },
+        "command": "mpirun -np 2 /tmp/wor25_23_24_resolution_collapse_mixedjv_build/bin/athena -i input.used"
+      },
+      {
+        "case": "collapse_adaptive_partial2_syncjv_r1",
+        "source_commit": "8763a6139a6fe5fe56d988ebd53d80063f090320",
+        "binary_sha256": "4caa33aacaafcdd8fd952bff20318075a0df2a6c13a31bd839eaa2930835c7c1",
+        "mpi_ranks": 1,
+        "input_sha256": "a9ba0a000ebfded30e027e898f19cb53145549ec0f9c7466c01df7f3caec5e56",
+        "checkpoint_sha256": null,
+        "checkpoint_path": null,
+        "n_j": 7.616482094,
+        "topology": [
+          {
+            "cycle": 0,
+            "blocks": 15,
+            "levels": {
+              "0": 7,
+              "1": 8
+            }
+          },
+          {
+            "cycle": 1,
+            "blocks": 15,
+            "levels": {
+              "0": 7,
+              "1": 8
+            }
+          },
+          {
+            "cycle": 2,
+            "blocks": 15,
+            "levels": {
+              "0": 7,
+              "1": 8
+            }
+          },
+          {
+            "cycle": 3,
+            "blocks": 64,
+            "levels": {
+              "1": 64
+            }
+          }
+        ],
+        "newton_statuses": [
+          "converged",
+          "converged",
+          "converged"
+        ],
+        "fgmres_history": [
+          {
+            "iterations": 14,
+            "true_relative_residual": 2.966672945282566e-09
+          },
+          {
+            "iterations": 14,
+            "true_relative_residual": 2.9406792108502906e-09
+          },
+          {
+            "iterations": 14,
+            "true_relative_residual": 2.947732660669753e-09
+          }
+        ],
+        "jv_coarsefine_h1e5": [
+          {
+            "cells": 1736,
+            "relative_l2": 3.095558618867433e-09,
+            "analytic_schur_relative_l2": 2.690437202402605e-15
+          },
+          {
+            "cells": 1736,
+            "relative_l2": 3.4672929627383122e-09,
+            "analytic_schur_relative_l2": 3.469402582453559e-15
+          },
+          {
+            "cells": 1736,
+            "relative_l2": 3.3101785675162594e-09,
+            "analytic_schur_relative_l2": 3.5156509534636505e-15
+          }
+        ],
+        "max_interface_relative_mismatch": null,
+        "interface_pair_count": null,
+        "face_log_error": null,
+        "wall_seconds": 2.38,
+        "max_rss_kb": 439368,
+        "pass_fail": "FAIL_TARGET_TOPOLOGY_SOLVER_PASS",
+        "log_path": "/tmp/wor25_23_24_resolution_trials/collapse_adaptive_partial2_syncjv_r1/run.log",
+        "environment": {
+          "OMP_NUM_THREADS": "1",
+          "ATHENA_NRFLD_EXPERIMENTAL_COLLAPSE": "1",
+          "ATHENA_NRFLD_EXPERIMENTAL_REGRID": "1"
+        },
+        "command": "mpirun -np 1 /tmp/wor25_23_24_resolution_collapse_mixedjv_build/bin/athena -i input.used"
+      },
+      {
+        "case": "collapse_static3_jeans_probe",
+        "source_commit": "8763a6139a6fe5fe56d988ebd53d80063f090320",
+        "binary_sha256": "4caa33aacaafcdd8fd952bff20318075a0df2a6c13a31bd839eaa2930835c7c1",
+        "mpi_ranks": 1,
+        "input_sha256": "994185677cbe44f63ac398aa0df35ed144be1d979d6a1066d3cfe170be76f831",
+        "checkpoint_sha256": null,
+        "checkpoint_path": null,
+        "n_j": 16.0,
+        "topology": [
+          {
+            "cycle": 0,
+            "blocks": 15,
+            "levels": {
+              "0": 7,
+              "1": 8
+            }
+          },
+          {
+            "cycle": 1,
+            "blocks": 15,
+            "levels": {
+              "0": 7,
+              "1": 8
+            }
+          },
+          {
+            "cycle": 2,
+            "blocks": 15,
+            "levels": {
+              "0": 7,
+              "1": 8
+            }
+          },
+          {
+            "cycle": 3,
+            "blocks": 15,
+            "levels": {
+              "0": 7,
+              "1": 8
+            }
+          }
+        ],
+        "newton_statuses": [
+          "converged",
+          "converged",
+          "converged"
+        ],
+        "fgmres_history": [
+          {
+            "iterations": 14,
+            "true_relative_residual": 2.966672945282566e-09
+          },
+          {
+            "iterations": 14,
+            "true_relative_residual": 2.9406792108502906e-09
+          },
+          {
+            "iterations": 14,
+            "true_relative_residual": 2.947732660669753e-09
+          }
+        ],
+        "jv_coarsefine_h1e5": [],
+        "max_interface_relative_mismatch": null,
+        "interface_pair_count": null,
+        "face_log_error": null,
+        "wall_seconds": 1.24,
+        "max_rss_kb": 120556,
+        "pass_fail": "PASS_STATIC_CONTROL",
+        "log_path": "/tmp/wor25_23_24_resolution_trials/collapse_static3_jeans_probe/run.log",
+        "environment": {
+          "OMP_NUM_THREADS": "1",
+          "ATHENA_NRFLD_EXPERIMENTAL_COLLAPSE": "1"
+        },
+        "command": "mpirun -np 1 /tmp/wor25_23_24_resolution_collapse_mixedjv_build/bin/athena -i input.used"
+      },
+      {
+        "case": "collapse_adaptive_singleblock_syncjv_r1",
+        "source_commit": "8763a6139a6fe5fe56d988ebd53d80063f090320",
+        "binary_sha256": "4caa33aacaafcdd8fd952bff20318075a0df2a6c13a31bd839eaa2930835c7c1",
+        "mpi_ranks": 1,
+        "input_sha256": "53c7ad24715cd72e542b6a181e1f00a04712fcbb8fd465069c71fd62b7fb968f",
+        "checkpoint_sha256": null,
+        "checkpoint_path": null,
+        "n_j": 7.616458958,
+        "topology": [
+          {
+            "cycle": 0,
+            "blocks": 15,
+            "levels": {
+              "0": 7,
+              "1": 8
+            }
+          },
+          {
+            "cycle": 1,
+            "blocks": 15,
+            "levels": {
+              "0": 7,
+              "1": 8
+            }
+          },
+          {
+            "cycle": 2,
+            "blocks": 15,
+            "levels": {
+              "0": 7,
+              "1": 8
+            }
+          },
+          {
+            "cycle": 3,
+            "blocks": 15,
+            "levels": {
+              "0": 7,
+              "1": 8
+            }
+          },
+          {
+            "cycle": 4,
+            "blocks": 64,
+            "levels": {
+              "1": 64
+            }
+          }
+        ],
+        "newton_statuses": [
+          "converged",
+          "converged",
+          "converged",
+          "converged"
+        ],
+        "fgmres_history": [
+          {
+            "iterations": 14,
+            "true_relative_residual": 2.966672945282566e-09
+          },
+          {
+            "iterations": 14,
+            "true_relative_residual": 2.9406792108502906e-09
+          },
+          {
+            "iterations": 14,
+            "true_relative_residual": 2.947732660669753e-09
+          },
+          {
+            "iterations": 14,
+            "true_relative_residual": 2.961068925021387e-09
+          },
+          {
+            "iterations": 14,
+            "true_relative_residual": 1.949884185166087e-09
+          }
+        ],
+        "jv_coarsefine_h1e5": [
+          {
+            "cells": 1736,
+            "relative_l2": 3.095558618867433e-09,
+            "analytic_schur_relative_l2": 2.690437202402605e-15
+          },
+          {
+            "cells": 1736,
+            "relative_l2": 3.4672929627383122e-09,
+            "analytic_schur_relative_l2": 3.469402582453559e-15
+          },
+          {
+            "cells": 1736,
+            "relative_l2": 3.3101785675162594e-09,
+            "analytic_schur_relative_l2": 3.5156509534636505e-15
+          },
+          {
+            "cells": 1736,
+            "relative_l2": 3.2053386870832133e-09,
+            "analytic_schur_relative_l2": 3.5384959573065786e-15
+          }
+        ],
+        "max_interface_relative_mismatch": null,
+        "interface_pair_count": null,
+        "face_log_error": null,
+        "wall_seconds": 2.94,
+        "max_rss_kb": 439228,
+        "pass_fail": "FAIL_TARGET_TOPOLOGY_SOLVER_PASS",
+        "log_path": "/tmp/wor25_23_24_resolution_trials/collapse_adaptive_singleblock_syncjv_r1/run.log",
+        "environment": {
+          "OMP_NUM_THREADS": "1",
+          "ATHENA_NRFLD_EXPERIMENTAL_COLLAPSE": "1",
+          "ATHENA_NRFLD_EXPERIMENTAL_REGRID": "1"
+        },
+        "command": "mpirun -np 1 /tmp/wor25_23_24_resolution_collapse_mixedjv_build/bin/athena -i input.used"
+      },
+      {
+        "case": "collapse_static4_jeans_probe",
+        "source_commit": "8763a6139a6fe5fe56d988ebd53d80063f090320",
+        "binary_sha256": "4caa33aacaafcdd8fd952bff20318075a0df2a6c13a31bd839eaa2930835c7c1",
+        "mpi_ranks": 1,
+        "input_sha256": "4157d96b5a97b7eb7c09aed40a07b6d0ec319178dcf5e3c532b8d52d778e3cba",
+        "checkpoint_sha256": null,
+        "checkpoint_path": null,
+        "n_j": 16.0,
+        "topology": [
+          {
+            "cycle": 0,
+            "blocks": 15,
+            "levels": {
+              "0": 7,
+              "1": 8
+            }
+          },
+          {
+            "cycle": 1,
+            "blocks": 15,
+            "levels": {
+              "0": 7,
+              "1": 8
+            }
+          },
+          {
+            "cycle": 2,
+            "blocks": 15,
+            "levels": {
+              "0": 7,
+              "1": 8
+            }
+          },
+          {
+            "cycle": 3,
+            "blocks": 15,
+            "levels": {
+              "0": 7,
+              "1": 8
+            }
+          },
+          {
+            "cycle": 4,
+            "blocks": 15,
+            "levels": {
+              "0": 7,
+              "1": 8
+            }
+          }
+        ],
+        "newton_statuses": [
+          "converged",
+          "converged",
+          "converged",
+          "converged"
+        ],
+        "fgmres_history": [
+          {
+            "iterations": 14,
+            "true_relative_residual": 2.966672945282566e-09
+          },
+          {
+            "iterations": 14,
+            "true_relative_residual": 2.9406792108502906e-09
+          },
+          {
+            "iterations": 14,
+            "true_relative_residual": 2.947732660669753e-09
+          },
+          {
+            "iterations": 14,
+            "true_relative_residual": 2.961068925021387e-09
+          },
+          {
+            "iterations": 14,
+            "true_relative_residual": 1.949884185166087e-09
+          }
+        ],
+        "jv_coarsefine_h1e5": [],
+        "max_interface_relative_mismatch": null,
+        "interface_pair_count": null,
+        "face_log_error": null,
+        "wall_seconds": 1.21,
+        "max_rss_kb": 120564,
+        "pass_fail": "PASS_STATIC_CONTROL",
+        "log_path": "/tmp/wor25_23_24_resolution_trials/collapse_static4_jeans_probe/run.log",
+        "environment": {
+          "OMP_NUM_THREADS": "1",
+          "ATHENA_NRFLD_EXPERIMENTAL_COLLAPSE": "1"
+        },
+        "command": "mpirun -np 1 /tmp/wor25_23_24_resolution_collapse_mixedjv_build/bin/athena -i input.used"
+      },
+      {
+        "case": "collapse_adaptive_partial3_syncjv_r1",
+        "source_commit": "8763a6139a6fe5fe56d988ebd53d80063f090320",
+        "binary_sha256": "4caa33aacaafcdd8fd952bff20318075a0df2a6c13a31bd839eaa2930835c7c1",
+        "mpi_ranks": 1,
+        "input_sha256": "9c23687255d81f4bdc273d849191471ff78c6cdc47d27e507bb3481155a86311",
+        "checkpoint_sha256": null,
+        "checkpoint_path": null,
+        "n_j": 7.61643931,
+        "topology": [
+          {
+            "cycle": 0,
+            "blocks": 15,
+            "levels": {
+              "0": 7,
+              "1": 8
+            }
+          },
+          {
+            "cycle": 1,
+            "blocks": 15,
+            "levels": {
+              "0": 7,
+              "1": 8
+            }
+          },
+          {
+            "cycle": 2,
+            "blocks": 15,
+            "levels": {
+              "0": 7,
+              "1": 8
+            }
+          },
+          {
+            "cycle": 3,
+            "blocks": 15,
+            "levels": {
+              "0": 7,
+              "1": 8
+            }
+          },
+          {
+            "cycle": 4,
+            "blocks": 15,
+            "levels": {
+              "0": 7,
+              "1": 8
+            }
+          },
+          {
+            "cycle": 5,
+            "blocks": 64,
+            "levels": {
+              "1": 64
+            }
+          }
+        ],
+        "newton_statuses": [
+          "converged",
+          "converged",
+          "converged",
+          "converged",
+          "converged"
+        ],
+        "fgmres_history": [
+          {
+            "iterations": 14,
+            "true_relative_residual": 2.966672945282566e-09
+          },
+          {
+            "iterations": 14,
+            "true_relative_residual": 2.9406792108502906e-09
+          },
+          {
+            "iterations": 14,
+            "true_relative_residual": 2.947732660669753e-09
+          },
+          {
+            "iterations": 14,
+            "true_relative_residual": 2.961068925021387e-09
+          },
+          {
+            "iterations": 14,
+            "true_relative_residual": 1.949884185166087e-09
+          },
+          {
+            "iterations": 14,
+            "true_relative_residual": 2.9691355131754575e-09
+          },
+          {
+            "iterations": 14,
+            "true_relative_residual": 1.9215315682833122e-09
+          }
+        ],
+        "jv_coarsefine_h1e5": [
+          {
+            "cells": 1736,
+            "relative_l2": 3.095558618867433e-09,
+            "analytic_schur_relative_l2": 2.690437202402605e-15
+          },
+          {
+            "cells": 1736,
+            "relative_l2": 3.4672929627383122e-09,
+            "analytic_schur_relative_l2": 3.469402582453559e-15
+          },
+          {
+            "cells": 1736,
+            "relative_l2": 3.3101785675162594e-09,
+            "analytic_schur_relative_l2": 3.5156509534636505e-15
+          },
+          {
+            "cells": 1736,
+            "relative_l2": 3.2053386870832133e-09,
+            "analytic_schur_relative_l2": 3.5384959573065786e-15
+          },
+          {
+            "cells": 1736,
+            "relative_l2": 3.3139059198858257e-09,
+            "analytic_schur_relative_l2": 3.7555594066701526e-15
+          }
+        ],
+        "max_interface_relative_mismatch": null,
+        "interface_pair_count": null,
+        "face_log_error": null,
+        "wall_seconds": 3.44,
+        "max_rss_kb": 439520,
+        "pass_fail": "FAIL_TARGET_TOPOLOGY_SOLVER_PASS",
+        "log_path": "/tmp/wor25_23_24_resolution_trials/collapse_adaptive_partial3_syncjv_r1/run.log",
+        "environment": {
+          "OMP_NUM_THREADS": "1",
+          "ATHENA_NRFLD_EXPERIMENTAL_COLLAPSE": "1",
+          "ATHENA_NRFLD_EXPERIMENTAL_REGRID": "1"
+        },
+        "command": "mpirun -np 1 /tmp/wor25_23_24_resolution_collapse_mixedjv_build/bin/athena -i input.used"
+      },
+      {
+        "case": "collapse_static5_jeans_probe",
+        "source_commit": "8763a6139a6fe5fe56d988ebd53d80063f090320",
+        "binary_sha256": "4caa33aacaafcdd8fd952bff20318075a0df2a6c13a31bd839eaa2930835c7c1",
+        "mpi_ranks": 1,
+        "input_sha256": "3b782140341468793630c7537f1b5079072ba2f3b8846a8bbec90fe4fc9a3ece",
+        "checkpoint_sha256": null,
+        "checkpoint_path": null,
+        "n_j": 16.0,
+        "topology": [
+          {
+            "cycle": 0,
+            "blocks": 15,
+            "levels": {
+              "0": 7,
+              "1": 8
+            }
+          },
+          {
+            "cycle": 1,
+            "blocks": 15,
+            "levels": {
+              "0": 7,
+              "1": 8
+            }
+          },
+          {
+            "cycle": 2,
+            "blocks": 15,
+            "levels": {
+              "0": 7,
+              "1": 8
+            }
+          },
+          {
+            "cycle": 3,
+            "blocks": 15,
+            "levels": {
+              "0": 7,
+              "1": 8
+            }
+          },
+          {
+            "cycle": 4,
+            "blocks": 15,
+            "levels": {
+              "0": 7,
+              "1": 8
+            }
+          },
+          {
+            "cycle": 5,
+            "blocks": 15,
+            "levels": {
+              "0": 7,
+              "1": 8
+            }
+          }
+        ],
+        "newton_statuses": [
+          "converged",
+          "converged",
+          "converged",
+          "converged",
+          "converged"
+        ],
+        "fgmres_history": [
+          {
+            "iterations": 14,
+            "true_relative_residual": 2.966672945282566e-09
+          },
+          {
+            "iterations": 14,
+            "true_relative_residual": 2.9406792108502906e-09
+          },
+          {
+            "iterations": 14,
+            "true_relative_residual": 2.947732660669753e-09
+          },
+          {
+            "iterations": 14,
+            "true_relative_residual": 2.961068925021387e-09
+          },
+          {
+            "iterations": 14,
+            "true_relative_residual": 1.949884185166087e-09
+          },
+          {
+            "iterations": 14,
+            "true_relative_residual": 2.9691355131754575e-09
+          },
+          {
+            "iterations": 14,
+            "true_relative_residual": 1.9215315682833122e-09
+          }
+        ],
+        "jv_coarsefine_h1e5": [],
+        "max_interface_relative_mismatch": null,
+        "interface_pair_count": null,
+        "face_log_error": null,
+        "wall_seconds": 1.5,
+        "max_rss_kb": 120732,
+        "pass_fail": "PASS_STATIC_CONTROL",
+        "log_path": "/tmp/wor25_23_24_resolution_trials/collapse_static5_jeans_probe/run.log",
+        "environment": {
+          "OMP_NUM_THREADS": "1",
+          "ATHENA_NRFLD_EXPERIMENTAL_COLLAPSE": "1"
+        },
+        "command": "mpirun -np 1 /tmp/wor25_23_24_resolution_collapse_mixedjv_build/bin/athena -i input.used"
+      },
+      {
+        "case": "collapse_adaptive_partial4_syncjv_r1",
+        "source_commit": "8763a6139a6fe5fe56d988ebd53d80063f090320",
+        "binary_sha256": "4caa33aacaafcdd8fd952bff20318075a0df2a6c13a31bd839eaa2930835c7c1",
+        "mpi_ranks": 1,
+        "input_sha256": "158996433f81272246035063b4b32782f126e48f6bc2aa35c11b8fbfcff31136",
+        "checkpoint_sha256": null,
+        "checkpoint_path": null,
+        "n_j": 7.616416758,
+        "topology": [
+          {
+            "cycle": 0,
+            "blocks": 15,
+            "levels": {
+              "0": 7,
+              "1": 8
+            }
+          },
+          {
+            "cycle": 1,
+            "blocks": 15,
+            "levels": {
+              "0": 7,
+              "1": 8
+            }
+          },
+          {
+            "cycle": 2,
+            "blocks": 15,
+            "levels": {
+              "0": 7,
+              "1": 8
+            }
+          },
+          {
+            "cycle": 3,
+            "blocks": 15,
+            "levels": {
+              "0": 7,
+              "1": 8
+            }
+          },
+          {
+            "cycle": 4,
+            "blocks": 15,
+            "levels": {
+              "0": 7,
+              "1": 8
+            }
+          },
+          {
+            "cycle": 5,
+            "blocks": 15,
+            "levels": {
+              "0": 7,
+              "1": 8
+            }
+          }
+        ],
+        "newton_statuses": [
+          "converged",
+          "converged",
+          "converged",
+          "converged",
+          "converged"
+        ],
+        "fgmres_history": [
+          {
+            "iterations": 14,
+            "true_relative_residual": 2.966672945282566e-09
+          },
+          {
+            "iterations": 14,
+            "true_relative_residual": 2.9406792108502906e-09
+          },
+          {
+            "iterations": 14,
+            "true_relative_residual": 2.947732660669753e-09
+          },
+          {
+            "iterations": 14,
+            "true_relative_residual": 2.961068925021387e-09
+          },
+          {
+            "iterations": 14,
+            "true_relative_residual": 1.949884185166087e-09
+          },
+          {
+            "iterations": 14,
+            "true_relative_residual": 2.9691355131754575e-09
+          },
+          {
+            "iterations": 14,
+            "true_relative_residual": 1.9215315682833122e-09
+          }
+        ],
+        "jv_coarsefine_h1e5": [
+          {
+            "cells": 1736,
+            "relative_l2": 3.095558618867433e-09,
+            "analytic_schur_relative_l2": 2.690437202402605e-15
+          },
+          {
+            "cells": 1736,
+            "relative_l2": 3.4672929627383122e-09,
+            "analytic_schur_relative_l2": 3.469402582453559e-15
+          },
+          {
+            "cells": 1736,
+            "relative_l2": 3.3101785675162594e-09,
+            "analytic_schur_relative_l2": 3.5156509534636505e-15
+          },
+          {
+            "cells": 1736,
+            "relative_l2": 3.2053386870832133e-09,
+            "analytic_schur_relative_l2": 3.5384959573065786e-15
+          },
+          {
+            "cells": 1736,
+            "relative_l2": 3.3139059198858257e-09,
+            "analytic_schur_relative_l2": 3.7555594066701526e-15
+          }
+        ],
+        "max_interface_relative_mismatch": null,
+        "interface_pair_count": null,
+        "face_log_error": null,
+        "wall_seconds": 3.04,
+        "max_rss_kb": 132700,
+        "pass_fail": "FAIL_TARGET_TOPOLOGY_SOLVER_PASS",
+        "log_path": "/tmp/wor25_23_24_resolution_trials/collapse_adaptive_partial4_syncjv_r1/run.log",
+        "environment": {
+          "OMP_NUM_THREADS": "1",
+          "ATHENA_NRFLD_EXPERIMENTAL_COLLAPSE": "1",
+          "ATHENA_NRFLD_EXPERIMENTAL_REGRID": "1"
+        },
+        "command": "mpirun -np 1 /tmp/wor25_23_24_resolution_collapse_mixedjv_build/bin/athena -i input.used"
+      },
+      {
+        "case": "collapse_adaptive_partial4_syncjv_n6_r1",
+        "source_commit": "8763a6139a6fe5fe56d988ebd53d80063f090320",
+        "binary_sha256": "4caa33aacaafcdd8fd952bff20318075a0df2a6c13a31bd839eaa2930835c7c1",
+        "mpi_ranks": 1,
+        "input_sha256": "7d578c88e241806ac4490f5849b989c84278742d4ce8c87e311585c2887155a8",
+        "checkpoint_sha256": null,
+        "checkpoint_path": null,
+        "n_j": 7.616416758,
+        "topology": [
+          {
+            "cycle": 0,
+            "blocks": 15,
+            "levels": {
+              "0": 7,
+              "1": 8
+            }
+          },
+          {
+            "cycle": 1,
+            "blocks": 15,
+            "levels": {
+              "0": 7,
+              "1": 8
+            }
+          },
+          {
+            "cycle": 2,
+            "blocks": 15,
+            "levels": {
+              "0": 7,
+              "1": 8
+            }
+          },
+          {
+            "cycle": 3,
+            "blocks": 15,
+            "levels": {
+              "0": 7,
+              "1": 8
+            }
+          },
+          {
+            "cycle": 4,
+            "blocks": 15,
+            "levels": {
+              "0": 7,
+              "1": 8
+            }
+          },
+          {
+            "cycle": 5,
+            "blocks": 15,
+            "levels": {
+              "0": 7,
+              "1": 8
+            }
+          },
+          {
+            "cycle": 6,
+            "blocks": 64,
+            "levels": {
+              "1": 64
+            }
+          }
+        ],
+        "newton_statuses": [
+          "converged",
+          "converged",
+          "converged",
+          "converged",
+          "converged",
+          "converged"
+        ],
+        "fgmres_history": [
+          {
+            "iterations": 14,
+            "true_relative_residual": 2.966672945282566e-09
+          },
+          {
+            "iterations": 14,
+            "true_relative_residual": 2.9406792108502906e-09
+          },
+          {
+            "iterations": 14,
+            "true_relative_residual": 2.947732660669753e-09
+          },
+          {
+            "iterations": 14,
+            "true_relative_residual": 2.961068925021387e-09
+          },
+          {
+            "iterations": 14,
+            "true_relative_residual": 1.949884185166087e-09
+          },
+          {
+            "iterations": 14,
+            "true_relative_residual": 2.9691355131754575e-09
+          },
+          {
+            "iterations": 14,
+            "true_relative_residual": 1.9215315682833122e-09
+          },
+          {
+            "iterations": 13,
+            "true_relative_residual": 7.242884184502589e-09
+          },
+          {
+            "iterations": 12,
+            "true_relative_residual": 9.376515800463211e-09
+          }
+        ],
+        "jv_coarsefine_h1e5": [
+          {
+            "cells": 1736,
+            "relative_l2": 3.095558618867433e-09,
+            "analytic_schur_relative_l2": 2.690437202402605e-15
+          },
+          {
+            "cells": 1736,
+            "relative_l2": 3.4672929627383122e-09,
+            "analytic_schur_relative_l2": 3.469402582453559e-15
+          },
+          {
+            "cells": 1736,
+            "relative_l2": 3.3101785675162594e-09,
+            "analytic_schur_relative_l2": 3.5156509534636505e-15
+          },
+          {
+            "cells": 1736,
+            "relative_l2": 3.2053386870832133e-09,
+            "analytic_schur_relative_l2": 3.5384959573065786e-15
+          },
+          {
+            "cells": 1736,
+            "relative_l2": 3.3139059198858257e-09,
+            "analytic_schur_relative_l2": 3.7555594066701526e-15
+          },
+          {
+            "cells": 1736,
+            "relative_l2": 8.51844659254993e-10,
+            "analytic_schur_relative_l2": 9.55071702392586e-16
+          }
+        ],
+        "max_interface_relative_mismatch": null,
+        "interface_pair_count": null,
+        "face_log_error": null,
+        "wall_seconds": 3.98,
+        "max_rss_kb": 439424,
+        "pass_fail": "FAIL_TARGET_TOPOLOGY_SOLVER_PASS",
+        "log_path": "/tmp/wor25_23_24_resolution_trials/collapse_adaptive_partial4_syncjv_n6_r1/run.log",
+        "environment": {
+          "OMP_NUM_THREADS": "1",
+          "ATHENA_NRFLD_EXPERIMENTAL_COLLAPSE": "1",
+          "ATHENA_NRFLD_EXPERIMENTAL_REGRID": "1"
+        },
+        "command": "mpirun -np 1 /tmp/wor25_23_24_resolution_collapse_mixedjv_build/bin/athena -i input.used"
+      },
+      {
+        "case": "collapse_adaptive_refineprobe_r1",
+        "source_commit": "8763a6139a6fe5fe56d988ebd53d80063f090320",
+        "binary_sha256": "d0e7f8b4431c6dad230e30b2e2690cca13e2e5f030b4d3532d598125a5b5ecf0",
+        "mpi_ranks": 1,
+        "input_sha256": "7d578c88e241806ac4490f5849b989c84278742d4ce8c87e311585c2887155a8",
+        "checkpoint_sha256": null,
+        "checkpoint_path": null,
+        "n_j": 7.616416758,
+        "topology": [
+          {
+            "cycle": 0,
+            "blocks": 15,
+            "levels": {
+              "0": 7,
+              "1": 8
+            }
+          },
+          {
+            "cycle": 1,
+            "blocks": 15,
+            "levels": {
+              "0": 7,
+              "1": 8
+            }
+          },
+          {
+            "cycle": 2,
+            "blocks": 15,
+            "levels": {
+              "0": 7,
+              "1": 8
+            }
+          },
+          {
+            "cycle": 3,
+            "blocks": 15,
+            "levels": {
+              "0": 7,
+              "1": 8
+            }
+          },
+          {
+            "cycle": 4,
+            "blocks": 15,
+            "levels": {
+              "0": 7,
+              "1": 8
+            }
+          },
+          {
+            "cycle": 5,
+            "blocks": 15,
+            "levels": {
+              "0": 7,
+              "1": 8
+            }
+          },
+          {
+            "cycle": 6,
+            "blocks": 64,
+            "levels": {
+              "1": 64
+            }
+          }
+        ],
+        "newton_statuses": [
+          "converged",
+          "converged",
+          "converged",
+          "converged",
+          "converged",
+          "converged"
+        ],
+        "fgmres_history": [
+          {
+            "iterations": 14,
+            "true_relative_residual": 2.966672945282566e-09
+          },
+          {
+            "iterations": 14,
+            "true_relative_residual": 2.9406792108502906e-09
+          },
+          {
+            "iterations": 14,
+            "true_relative_residual": 2.947732660669753e-09
+          },
+          {
+            "iterations": 14,
+            "true_relative_residual": 2.961068925021387e-09
+          },
+          {
+            "iterations": 14,
+            "true_relative_residual": 1.949884185166087e-09
+          },
+          {
+            "iterations": 14,
+            "true_relative_residual": 2.9691355131754575e-09
+          },
+          {
+            "iterations": 14,
+            "true_relative_residual": 1.9215315682833122e-09
+          },
+          {
+            "iterations": 13,
+            "true_relative_residual": 7.242884184502589e-09
+          },
+          {
+            "iterations": 12,
+            "true_relative_residual": 9.376515800463211e-09
+          }
+        ],
+        "jv_coarsefine_h1e5": [],
+        "max_interface_relative_mismatch": null,
+        "interface_pair_count": null,
+        "face_log_error": null,
+        "wall_seconds": 2.35,
+        "max_rss_kb": 439568,
+        "pass_fail": "PASS_THRESHOLD_DIAGNOSTIC",
+        "log_path": "/tmp/wor25_23_24_resolution_trials/collapse_adaptive_refineprobe_r1/run.log",
+        "environment": {
+          "OMP_NUM_THREADS": "1",
+          "ATHENA_NRFLD_EXPERIMENTAL_COLLAPSE": "1",
+          "ATHENA_NRFLD_EXPERIMENTAL_REGRID": "1"
+        },
+        "command": "mpirun -np 1 /tmp/wor25_23_24_resolution_collapse_mixedjv_build/bin/athena -i input.used"
+      },
+      {
+        "case": "collapse_adaptive_partial_confirm_r1",
+        "source_commit": "8763a6139a6fe5fe56d988ebd53d80063f090320",
+        "binary_sha256": "d0e7f8b4431c6dad230e30b2e2690cca13e2e5f030b4d3532d598125a5b5ecf0",
+        "mpi_ranks": 1,
+        "input_sha256": "d26d31f89a9fc343bca5a4ca3c81ff3a77f1de080b549846aa9d42bc762a67ed",
+        "checkpoint_sha256": null,
+        "checkpoint_path": null,
+        "n_j": 7.61641019,
+        "topology": [
+          {
+            "cycle": 0,
+            "blocks": 15,
+            "levels": {
+              "0": 7,
+              "1": 8
+            }
+          },
+          {
+            "cycle": 1,
+            "blocks": 15,
+            "levels": {
+              "0": 7,
+              "1": 8
+            }
+          },
+          {
+            "cycle": 2,
+            "blocks": 15,
+            "levels": {
+              "0": 7,
+              "1": 8
+            }
+          },
+          {
+            "cycle": 3,
+            "blocks": 15,
+            "levels": {
+              "0": 7,
+              "1": 8
+            }
+          },
+          {
+            "cycle": 4,
+            "blocks": 15,
+            "levels": {
+              "0": 7,
+              "1": 8
+            }
+          },
+          {
+            "cycle": 5,
+            "blocks": 15,
+            "levels": {
+              "0": 7,
+              "1": 8
+            }
+          },
+          {
+            "cycle": 6,
+            "blocks": 43,
+            "levels": {
+              "0": 3,
+              "1": 40
+            }
+          }
+        ],
+        "newton_statuses": [
+          "converged",
+          "converged",
+          "converged",
+          "converged",
+          "converged",
+          "converged"
+        ],
+        "fgmres_history": [
+          {
+            "iterations": 14,
+            "true_relative_residual": 2.966672945282566e-09
+          },
+          {
+            "iterations": 14,
+            "true_relative_residual": 2.9406792108502906e-09
+          },
+          {
+            "iterations": 14,
+            "true_relative_residual": 2.947732660669753e-09
+          },
+          {
+            "iterations": 14,
+            "true_relative_residual": 2.961068925021387e-09
+          },
+          {
+            "iterations": 14,
+            "true_relative_residual": 1.949884185166087e-09
+          },
+          {
+            "iterations": 14,
+            "true_relative_residual": 2.9691355131754575e-09
+          },
+          {
+            "iterations": 14,
+            "true_relative_residual": 1.9215315682833122e-09
+          },
+          {
+            "iterations": 13,
+            "true_relative_residual": 7.242884184502589e-09
+          },
+          {
+            "iterations": 12,
+            "true_relative_residual": 9.376515800463211e-09
+          }
+        ],
+        "jv_coarsefine_h1e5": [
+          {
+            "cells": 1736,
+            "relative_l2": 3.095558618867433e-09,
+            "analytic_schur_relative_l2": 2.690437202402605e-15
+          },
+          {
+            "cells": 1736,
+            "relative_l2": 3.4672929627383122e-09,
+            "analytic_schur_relative_l2": 3.469402582453559e-15
+          },
+          {
+            "cells": 1736,
+            "relative_l2": 3.3101785675162594e-09,
+            "analytic_schur_relative_l2": 3.5156509534636505e-15
+          },
+          {
+            "cells": 1736,
+            "relative_l2": 3.2053386870832133e-09,
+            "analytic_schur_relative_l2": 3.5384959573065786e-15
+          },
+          {
+            "cells": 1736,
+            "relative_l2": 3.3139059198858257e-09,
+            "analytic_schur_relative_l2": 3.7555594066701526e-15
+          },
+          {
+            "cells": 1736,
+            "relative_l2": 8.51844659254993e-10,
+            "analytic_schur_relative_l2": 9.55071702392586e-16
+          }
+        ],
+        "max_interface_relative_mismatch": null,
+        "interface_pair_count": null,
+        "face_log_error": null,
+        "wall_seconds": 3.77,
+        "max_rss_kb": 301404,
+        "pass_fail": "PASS_PARTIAL_TOPOLOGY_INSTRUMENTED",
+        "log_path": "/tmp/wor25_23_24_resolution_trials/collapse_adaptive_partial_confirm_r1/run.log",
+        "environment": {
+          "OMP_NUM_THREADS": "1",
+          "ATHENA_NRFLD_EXPERIMENTAL_COLLAPSE": "1",
+          "ATHENA_NRFLD_EXPERIMENTAL_REGRID": "1"
+        },
+        "command": "mpirun -np 1 /tmp/wor25_23_24_resolution_collapse_mixedjv_build/bin/athena -i input.used"
+      },
+      {
+        "case": "collapse_adaptive_partial_direct_final_r1",
+        "source_commit": "8763a6139a6fe5fe56d988ebd53d80063f090320",
+        "binary_sha256": "4caa33aacaafcdd8fd952bff20318075a0df2a6c13a31bd839eaa2930835c7c1",
+        "mpi_ranks": 1,
+        "input_sha256": "d26d31f89a9fc343bca5a4ca3c81ff3a77f1de080b549846aa9d42bc762a67ed",
+        "checkpoint_sha256": null,
+        "checkpoint_path": null,
+        "n_j": 7.61641019,
+        "topology": [
+          {
+            "cycle": 0,
+            "blocks": 15,
+            "levels": {
+              "0": 7,
+              "1": 8
+            }
+          },
+          {
+            "cycle": 1,
+            "blocks": 15,
+            "levels": {
+              "0": 7,
+              "1": 8
+            }
+          },
+          {
+            "cycle": 2,
+            "blocks": 15,
+            "levels": {
+              "0": 7,
+              "1": 8
+            }
+          },
+          {
+            "cycle": 3,
+            "blocks": 15,
+            "levels": {
+              "0": 7,
+              "1": 8
+            }
+          },
+          {
+            "cycle": 4,
+            "blocks": 15,
+            "levels": {
+              "0": 7,
+              "1": 8
+            }
+          },
+          {
+            "cycle": 5,
+            "blocks": 15,
+            "levels": {
+              "0": 7,
+              "1": 8
+            }
+          },
+          {
+            "cycle": 6,
+            "blocks": 43,
+            "levels": {
+              "0": 3,
+              "1": 40
+            }
+          }
+        ],
+        "newton_statuses": [
+          "converged",
+          "converged",
+          "converged",
+          "converged",
+          "converged",
+          "converged"
+        ],
+        "fgmres_history": [
+          {
+            "iterations": 14,
+            "true_relative_residual": 2.966672945282566e-09
+          },
+          {
+            "iterations": 14,
+            "true_relative_residual": 2.9406792108502906e-09
+          },
+          {
+            "iterations": 14,
+            "true_relative_residual": 2.947732660669753e-09
+          },
+          {
+            "iterations": 14,
+            "true_relative_residual": 2.961068925021387e-09
+          },
+          {
+            "iterations": 14,
+            "true_relative_residual": 1.949884185166087e-09
+          },
+          {
+            "iterations": 14,
+            "true_relative_residual": 2.9691355131754575e-09
+          },
+          {
+            "iterations": 14,
+            "true_relative_residual": 1.9215315682833122e-09
+          },
+          {
+            "iterations": 13,
+            "true_relative_residual": 7.242884184502589e-09
+          },
+          {
+            "iterations": 12,
+            "true_relative_residual": 9.376515800463211e-09
+          }
+        ],
+        "jv_coarsefine_h1e5": [
+          {
+            "cells": 1736,
+            "relative_l2": 3.095558618867433e-09,
+            "analytic_schur_relative_l2": 2.690437202402605e-15
+          },
+          {
+            "cells": 1736,
+            "relative_l2": 3.4672929627383122e-09,
+            "analytic_schur_relative_l2": 3.469402582453559e-15
+          },
+          {
+            "cells": 1736,
+            "relative_l2": 3.3101785675162594e-09,
+            "analytic_schur_relative_l2": 3.5156509534636505e-15
+          },
+          {
+            "cells": 1736,
+            "relative_l2": 3.2053386870832133e-09,
+            "analytic_schur_relative_l2": 3.5384959573065786e-15
+          },
+          {
+            "cells": 1736,
+            "relative_l2": 3.3139059198858257e-09,
+            "analytic_schur_relative_l2": 3.7555594066701526e-15
+          },
+          {
+            "cells": 1736,
+            "relative_l2": 8.51844659254993e-10,
+            "analytic_schur_relative_l2": 9.55071702392586e-16
+          }
+        ],
+        "max_interface_relative_mismatch": null,
+        "interface_pair_count": null,
+        "face_log_error": null,
+        "wall_seconds": 3.77,
+        "max_rss_kb": 301548,
+        "pass_fail": "PASS_SOLVER_FAIL_MPI_PHI_AGREEMENT",
+        "log_path": "/tmp/wor25_23_24_resolution_trials/collapse_adaptive_partial_direct_final_r1/run.log",
+        "environment": {
+          "OMP_NUM_THREADS": "1",
+          "ATHENA_NRFLD_EXPERIMENTAL_COLLAPSE": "1",
+          "ATHENA_NRFLD_EXPERIMENTAL_REGRID": "1"
+        },
+        "command": "mpirun -np 1 /tmp/wor25_23_24_resolution_collapse_mixedjv_build/bin/athena -i input.used"
+      },
+      {
+        "case": "collapse_adaptive_partial_direct_r2",
+        "source_commit": "8763a6139a6fe5fe56d988ebd53d80063f090320",
+        "binary_sha256": "4caa33aacaafcdd8fd952bff20318075a0df2a6c13a31bd839eaa2930835c7c1",
+        "mpi_ranks": 2,
+        "input_sha256": "d26d31f89a9fc343bca5a4ca3c81ff3a77f1de080b549846aa9d42bc762a67ed",
+        "checkpoint_sha256": null,
+        "checkpoint_path": null,
+        "n_j": 7.61641019,
+        "topology": [
+          {
+            "cycle": 0,
+            "blocks": 15,
+            "levels": {
+              "0": 7,
+              "1": 8
+            }
+          },
+          {
+            "cycle": 1,
+            "blocks": 15,
+            "levels": {
+              "0": 7,
+              "1": 8
+            }
+          },
+          {
+            "cycle": 2,
+            "blocks": 15,
+            "levels": {
+              "0": 7,
+              "1": 8
+            }
+          },
+          {
+            "cycle": 3,
+            "blocks": 15,
+            "levels": {
+              "0": 7,
+              "1": 8
+            }
+          },
+          {
+            "cycle": 4,
+            "blocks": 15,
+            "levels": {
+              "0": 7,
+              "1": 8
+            }
+          },
+          {
+            "cycle": 5,
+            "blocks": 15,
+            "levels": {
+              "0": 7,
+              "1": 8
+            }
+          },
+          {
+            "cycle": 6,
+            "blocks": 43,
+            "levels": {
+              "0": 3,
+              "1": 40
+            }
+          }
+        ],
+        "newton_statuses": [
+          "converged",
+          "converged",
+          "converged",
+          "converged",
+          "converged",
+          "converged"
+        ],
+        "fgmres_history": [
+          {
+            "iterations": 14,
+            "true_relative_residual": 2.966672922178125e-09
+          },
+          {
+            "iterations": 14,
+            "true_relative_residual": 2.9406799148291193e-09
+          },
+          {
+            "iterations": 14,
+            "true_relative_residual": 2.9477323657246514e-09
+          },
+          {
+            "iterations": 14,
+            "true_relative_residual": 2.96106980275185e-09
+          },
+          {
+            "iterations": 14,
+            "true_relative_residual": 1.9637238510699332e-09
+          },
+          {
+            "iterations": 14,
+            "true_relative_residual": 2.969135100242662e-09
+          },
+          {
+            "iterations": 14,
+            "true_relative_residual": 1.9092871741424917e-09
+          },
+          {
+            "iterations": 13,
+            "true_relative_residual": 7.24288275671125e-09
+          },
+          {
+            "iterations": 12,
+            "true_relative_residual": 9.366400857240043e-09
+          }
+        ],
+        "jv_coarsefine_h1e5": [
+          {
+            "cells": 1736,
+            "relative_l2": 3.095558548865267e-09,
+            "analytic_schur_relative_l2": 2.690389088838752e-15
+          },
+          {
+            "cells": 1736,
+            "relative_l2": 3.2474347693252417e-09,
+            "analytic_schur_relative_l2": 3.4728300241125106e-15
+          },
+          {
+            "cells": 1736,
+            "relative_l2": 3.5765091615869386e-09,
+            "analytic_schur_relative_l2": 3.5431862525939713e-15
+          },
+          {
+            "cells": 1736,
+            "relative_l2": 3.5007277940112185e-09,
+            "analytic_schur_relative_l2": 3.6405172395094255e-15
+          },
+          {
+            "cells": 1736,
+            "relative_l2": 3.2667705783952956e-09,
+            "analytic_schur_relative_l2": 3.762208009976405e-15
+          },
+          {
+            "cells": 1736,
+            "relative_l2": 8.520540218900938e-10,
+            "analytic_schur_relative_l2": 9.37064422804359e-16
+          }
+        ],
+        "max_interface_relative_mismatch": null,
+        "interface_pair_count": null,
+        "face_log_error": null,
+        "wall_seconds": 2.47,
+        "max_rss_kb": 191004,
+        "pass_fail": "PASS_SOLVER_FAIL_MPI_PHI_AGREEMENT",
+        "log_path": "/tmp/wor25_23_24_resolution_trials/collapse_adaptive_partial_direct_r2/run.log",
+        "environment": {
+          "OMP_NUM_THREADS": "1",
+          "ATHENA_NRFLD_EXPERIMENTAL_COLLAPSE": "1",
+          "ATHENA_NRFLD_EXPERIMENTAL_REGRID": "1"
+        },
+        "command": "mpirun -np 2 /tmp/wor25_23_24_resolution_collapse_mixedjv_build/bin/athena -i input.used"
+      },
+      {
+        "case": "collapse_adaptive_partial_color_r1",
+        "source_commit": "8763a6139a6fe5fe56d988ebd53d80063f090320",
+        "binary_sha256": "4caa33aacaafcdd8fd952bff20318075a0df2a6c13a31bd839eaa2930835c7c1",
+        "mpi_ranks": 1,
+        "input_sha256": "d26d31f89a9fc343bca5a4ca3c81ff3a77f1de080b549846aa9d42bc762a67ed",
+        "checkpoint_sha256": null,
+        "checkpoint_path": null,
+        "n_j": 7.61641019,
+        "topology": [],
+        "newton_statuses": [],
+        "fgmres_history": [],
+        "jv_coarsefine_h1e5": [],
+        "max_interface_relative_mismatch": null,
+        "interface_pair_count": null,
+        "face_log_error": null,
+        "wall_seconds": 0.4,
+        "max_rss_kb": 23892,
+        "pass_fail": "FAIL_INVALID_COMMAND_PARAMETER",
+        "log_path": "/tmp/wor25_23_24_resolution_trials/collapse_adaptive_partial_color_r1/run.log",
+        "environment": {
+          "OMP_NUM_THREADS": "1",
+          "ATHENA_NRFLD_EXPERIMENTAL_COLLAPSE": "1",
+          "ATHENA_NRFLD_EXPERIMENTAL_REGRID": "1"
+        },
+        "command": "mpirun -np 1 /tmp/wor25_23_24_resolution_collapse_mixedjv_build/bin/athena -i input.used gravity/reset_fmg_color_each_solve=true"
+      },
+      {
+        "case": "collapse_adaptive_partial_color_r2",
+        "source_commit": "8763a6139a6fe5fe56d988ebd53d80063f090320",
+        "binary_sha256": "4caa33aacaafcdd8fd952bff20318075a0df2a6c13a31bd839eaa2930835c7c1",
+        "mpi_ranks": 2,
+        "input_sha256": "d26d31f89a9fc343bca5a4ca3c81ff3a77f1de080b549846aa9d42bc762a67ed",
+        "checkpoint_sha256": null,
+        "checkpoint_path": null,
+        "n_j": 7.61641019,
+        "topology": [],
+        "newton_statuses": [],
+        "fgmres_history": [],
+        "jv_coarsefine_h1e5": [],
+        "max_interface_relative_mismatch": null,
+        "interface_pair_count": null,
+        "face_log_error": null,
+        "wall_seconds": 0.63,
+        "max_rss_kb": 24100,
+        "pass_fail": "FAIL_INVALID_COMMAND_PARAMETER",
+        "log_path": "/tmp/wor25_23_24_resolution_trials/collapse_adaptive_partial_color_r2/run.log",
+        "environment": {
+          "OMP_NUM_THREADS": "1",
+          "ATHENA_NRFLD_EXPERIMENTAL_COLLAPSE": "1",
+          "ATHENA_NRFLD_EXPERIMENTAL_REGRID": "1"
+        },
+        "command": "mpirun -np 2 /tmp/wor25_23_24_resolution_collapse_mixedjv_build/bin/athena -i input.used gravity/reset_fmg_color_each_solve=true"
+      },
+      {
+        "case": "collapse_adaptive_partial_color2_r1",
+        "source_commit": "8763a6139a6fe5fe56d988ebd53d80063f090320",
+        "binary_sha256": "4caa33aacaafcdd8fd952bff20318075a0df2a6c13a31bd839eaa2930835c7c1",
+        "mpi_ranks": 1,
+        "input_sha256": "e8b60f917faeb77a6aefa0553c5dda0a233467e48c498722ec694c7057f647af",
+        "checkpoint_sha256": null,
+        "checkpoint_path": null,
+        "n_j": 7.61641019,
+        "topology": [
+          {
+            "cycle": 0,
+            "blocks": 15,
+            "levels": {
+              "0": 7,
+              "1": 8
+            }
+          },
+          {
+            "cycle": 1,
+            "blocks": 15,
+            "levels": {
+              "0": 7,
+              "1": 8
+            }
+          },
+          {
+            "cycle": 2,
+            "blocks": 15,
+            "levels": {
+              "0": 7,
+              "1": 8
+            }
+          },
+          {
+            "cycle": 3,
+            "blocks": 15,
+            "levels": {
+              "0": 7,
+              "1": 8
+            }
+          },
+          {
+            "cycle": 4,
+            "blocks": 15,
+            "levels": {
+              "0": 7,
+              "1": 8
+            }
+          },
+          {
+            "cycle": 5,
+            "blocks": 15,
+            "levels": {
+              "0": 7,
+              "1": 8
+            }
+          },
+          {
+            "cycle": 6,
+            "blocks": 64,
+            "levels": {
+              "1": 64
+            }
+          }
+        ],
+        "newton_statuses": [
+          "converged",
+          "converged",
+          "converged",
+          "converged",
+          "converged",
+          "converged"
+        ],
+        "fgmres_history": [
+          {
+            "iterations": 14,
+            "true_relative_residual": 2.9666723854676286e-09
+          },
+          {
+            "iterations": 14,
+            "true_relative_residual": 2.940647666334855e-09
+          },
+          {
+            "iterations": 14,
+            "true_relative_residual": 2.9476561927545345e-09
+          },
+          {
+            "iterations": 14,
+            "true_relative_residual": 2.9609759653363395e-09
+          },
+          {
+            "iterations": 14,
+            "true_relative_residual": 1.9686098130376546e-09
+          },
+          {
+            "iterations": 14,
+            "true_relative_residual": 2.9690333472621586e-09
+          },
+          {
+            "iterations": 14,
+            "true_relative_residual": 1.9055252030246255e-09
+          },
+          {
+            "iterations": 13,
+            "true_relative_residual": 7.242726378920923e-09
+          },
+          {
+            "iterations": 12,
+            "true_relative_residual": 9.361030519286454e-09
+          }
+        ],
+        "jv_coarsefine_h1e5": [
+          {
+            "cells": 1736,
+            "relative_l2": 3.355282839221572e-09,
+            "analytic_schur_relative_l2": 2.6888427784810405e-15
+          },
+          {
+            "cells": 1736,
+            "relative_l2": 3.4786989027199664e-09,
+            "analytic_schur_relative_l2": 3.401950916568372e-15
+          },
+          {
+            "cells": 1736,
+            "relative_l2": 3.265518079511184e-09,
+            "analytic_schur_relative_l2": 3.3826744877265547e-15
+          },
+          {
+            "cells": 1736,
+            "relative_l2": 3.329452138211579e-09,
+            "analytic_schur_relative_l2": 3.611140298572657e-15
+          },
+          {
+            "cells": 1736,
+            "relative_l2": 3.459402195422835e-09,
+            "analytic_schur_relative_l2": 3.641070048129039e-15
+          },
+          {
+            "cells": 1736,
+            "relative_l2": 8.568762062764517e-10,
+            "analytic_schur_relative_l2": 9.255123426681965e-16
+          }
+        ],
+        "max_interface_relative_mismatch": null,
+        "interface_pair_count": null,
+        "face_log_error": null,
+        "wall_seconds": 3.95,
+        "max_rss_kb": 439304,
+        "pass_fail": "INVALID_PARTIAL_COMPARISON_SOLVER_PASS",
+        "log_path": "/tmp/wor25_23_24_resolution_trials/collapse_adaptive_partial_color2_r1/run.log",
+        "environment": {
+          "OMP_NUM_THREADS": "1",
+          "ATHENA_NRFLD_EXPERIMENTAL_COLLAPSE": "1",
+          "ATHENA_NRFLD_EXPERIMENTAL_REGRID": "1"
+        },
+        "command": "mpirun -np 1 /tmp/wor25_23_24_resolution_collapse_mixedjv_build/bin/athena -i input.used"
+      },
+      {
+        "case": "collapse_adaptive_partial_color2_r2",
+        "source_commit": "8763a6139a6fe5fe56d988ebd53d80063f090320",
+        "binary_sha256": "4caa33aacaafcdd8fd952bff20318075a0df2a6c13a31bd839eaa2930835c7c1",
+        "mpi_ranks": 2,
+        "input_sha256": "e8b60f917faeb77a6aefa0553c5dda0a233467e48c498722ec694c7057f647af",
+        "checkpoint_sha256": null,
+        "checkpoint_path": null,
+        "n_j": 7.61641019,
+        "topology": [
+          {
+            "cycle": 0,
+            "blocks": 15,
+            "levels": {
+              "0": 7,
+              "1": 8
+            }
+          },
+          {
+            "cycle": 1,
+            "blocks": 15,
+            "levels": {
+              "0": 7,
+              "1": 8
+            }
+          },
+          {
+            "cycle": 2,
+            "blocks": 15,
+            "levels": {
+              "0": 7,
+              "1": 8
+            }
+          },
+          {
+            "cycle": 3,
+            "blocks": 15,
+            "levels": {
+              "0": 7,
+              "1": 8
+            }
+          },
+          {
+            "cycle": 4,
+            "blocks": 15,
+            "levels": {
+              "0": 7,
+              "1": 8
+            }
+          },
+          {
+            "cycle": 5,
+            "blocks": 15,
+            "levels": {
+              "0": 7,
+              "1": 8
+            }
+          },
+          {
+            "cycle": 6,
+            "blocks": 64,
+            "levels": {
+              "1": 64
+            }
+          }
+        ],
+        "newton_statuses": [
+          "converged",
+          "converged",
+          "converged",
+          "converged",
+          "converged",
+          "converged"
+        ],
+        "fgmres_history": [
+          {
+            "iterations": 14,
+            "true_relative_residual": 2.966672390734426e-09
+          },
+          {
+            "iterations": 14,
+            "true_relative_residual": 2.9406494852307047e-09
+          },
+          {
+            "iterations": 14,
+            "true_relative_residual": 2.9476558003380353e-09
+          },
+          {
+            "iterations": 14,
+            "true_relative_residual": 2.9609763237365924e-09
+          },
+          {
+            "iterations": 14,
+            "true_relative_residual": 1.96748148538641e-09
+          },
+          {
+            "iterations": 14,
+            "true_relative_residual": 2.969030721550805e-09
+          },
+          {
+            "iterations": 14,
+            "true_relative_residual": 1.9102556005428383e-09
+          },
+          {
+            "iterations": 13,
+            "true_relative_residual": 7.24273243973184e-09
+          },
+          {
+            "iterations": 12,
+            "true_relative_residual": 9.357807033911728e-09
+          }
+        ],
+        "jv_coarsefine_h1e5": [
+          {
+            "cells": 1736,
+            "relative_l2": 3.3626901596200027e-09,
+            "analytic_schur_relative_l2": 2.688928811269296e-15
+          },
+          {
+            "cells": 1736,
+            "relative_l2": 3.523086142073752e-09,
+            "analytic_schur_relative_l2": 3.404737383149731e-15
+          },
+          {
+            "cells": 1736,
+            "relative_l2": 3.142820020239159e-09,
+            "analytic_schur_relative_l2": 3.3833249747099676e-15
+          },
+          {
+            "cells": 1736,
+            "relative_l2": 3.584680453300396e-09,
+            "analytic_schur_relative_l2": 3.615410954132996e-15
+          },
+          {
+            "cells": 1736,
+            "relative_l2": 3.494492243012005e-09,
+            "analytic_schur_relative_l2": 3.653332018928873e-15
+          },
+          {
+            "cells": 1736,
+            "relative_l2": 8.504272171435585e-10,
+            "analytic_schur_relative_l2": 9.06127290230786e-16
+          }
+        ],
+        "max_interface_relative_mismatch": null,
+        "interface_pair_count": null,
+        "face_log_error": null,
+        "wall_seconds": 2.84,
+        "max_rss_kb": 263812,
+        "pass_fail": "INVALID_PARTIAL_COMPARISON_SOLVER_PASS",
+        "log_path": "/tmp/wor25_23_24_resolution_trials/collapse_adaptive_partial_color2_r2/run.log",
+        "environment": {
+          "OMP_NUM_THREADS": "1",
+          "ATHENA_NRFLD_EXPERIMENTAL_COLLAPSE": "1",
+          "ATHENA_NRFLD_EXPERIMENTAL_REGRID": "1"
+        },
+        "command": "mpirun -np 2 /tmp/wor25_23_24_resolution_collapse_mixedjv_build/bin/athena -i input.used"
+      },
+      {
+        "case": "collapse_partial_restart_syncjv_r1",
+        "source_commit": "8763a6139a6fe5fe56d988ebd53d80063f090320",
+        "binary_sha256": "4caa33aacaafcdd8fd952bff20318075a0df2a6c13a31bd839eaa2930835c7c1",
+        "mpi_ranks": 1,
+        "input_sha256": null,
+        "checkpoint_sha256": "bc1aa4cd2dc0e93123a7a4229109b89e46406def770d6bc1f1a44d812aa5917a",
+        "checkpoint_path": "/tmp/wor25_23_24_resolution_trials/collapse_adaptive_partial_confirm_r1/protostellar_core_fld_mayer5.00006.rst",
+        "n_j": 1.0,
+        "topology": [
+          {
+            "cycle": 7,
+            "blocks": 43,
+            "levels": {
+              "0": 3,
+              "1": 40
+            }
+          }
+        ],
+        "newton_statuses": [
+          "converged"
+        ],
+        "fgmres_history": [
+          {
+            "iterations": 14,
+            "true_relative_residual": 3.326561706892173e-09
+          },
+          {
+            "iterations": 14,
+            "true_relative_residual": 7.85794596661889e-09
+          }
+        ],
+        "jv_coarsefine_h1e5": [
+          {
+            "cells": 5120,
+            "relative_l2": 7.641894930356798e-09,
+            "analytic_schur_relative_l2": 7.890337476071147e-15
+          }
+        ],
+        "max_interface_relative_mismatch": null,
+        "interface_pair_count": null,
+        "face_log_error": null,
+        "wall_seconds": 2.35,
+        "max_rss_kb": 316796,
+        "pass_fail": "PASS_JV_FAIL_MPI_PHI_AGREEMENT",
+        "log_path": "/tmp/wor25_23_24_resolution_trials/collapse_partial_restart_syncjv_r1/run.log",
+        "environment": {
+          "OMP_NUM_THREADS": "1",
+          "ATHENA_NRFLD_EXPERIMENTAL_COLLAPSE": "1",
+          "ATHENA_NRFLD_EXPERIMENTAL_REGRID": "1"
+        },
+        "command": "mpirun -np 1 /tmp/wor25_23_24_resolution_collapse_mixedjv_build/bin/athena -r /tmp/wor25_23_24_resolution_trials/collapse_adaptive_partial_confirm_r1/protostellar_core_fld_mayer5.00006.rst -d output time/nlim=7 problem/N_J=1 nrfld/global_jacobian_check=true nrfld/global_jacobian_iteration=0"
+      },
+      {
+        "case": "collapse_partial_restart_syncjv_r2",
+        "source_commit": "8763a6139a6fe5fe56d988ebd53d80063f090320",
+        "binary_sha256": "4caa33aacaafcdd8fd952bff20318075a0df2a6c13a31bd839eaa2930835c7c1",
+        "mpi_ranks": 2,
+        "input_sha256": null,
+        "checkpoint_sha256": "bc1aa4cd2dc0e93123a7a4229109b89e46406def770d6bc1f1a44d812aa5917a",
+        "checkpoint_path": "/tmp/wor25_23_24_resolution_trials/collapse_adaptive_partial_confirm_r1/protostellar_core_fld_mayer5.00006.rst",
+        "n_j": 1.0,
+        "topology": [
+          {
+            "cycle": 7,
+            "blocks": 43,
+            "levels": {
+              "0": 3,
+              "1": 40
+            }
+          }
+        ],
+        "newton_statuses": [
+          "converged"
+        ],
+        "fgmres_history": [
+          {
+            "iterations": 14,
+            "true_relative_residual": 3.326560261062758e-09
+          },
+          {
+            "iterations": 14,
+            "true_relative_residual": 7.855418584728723e-09
+          }
+        ],
+        "jv_coarsefine_h1e5": [
+          {
+            "cells": 5120,
+            "relative_l2": 7.922210070381474e-09,
+            "analytic_schur_relative_l2": 8.072504016878857e-15
+          }
+        ],
+        "max_interface_relative_mismatch": null,
+        "interface_pair_count": null,
+        "face_log_error": null,
+        "wall_seconds": 1.63,
+        "max_rss_kb": 183476,
+        "pass_fail": "PASS_JV_FAIL_MPI_PHI_AGREEMENT",
+        "log_path": "/tmp/wor25_23_24_resolution_trials/collapse_partial_restart_syncjv_r2/run.log",
+        "environment": {
+          "OMP_NUM_THREADS": "1",
+          "ATHENA_NRFLD_EXPERIMENTAL_COLLAPSE": "1",
+          "ATHENA_NRFLD_EXPERIMENTAL_REGRID": "1"
+        },
+        "command": "mpirun -np 2 /tmp/wor25_23_24_resolution_collapse_mixedjv_build/bin/athena -r /tmp/wor25_23_24_resolution_trials/collapse_adaptive_partial_confirm_r1/protostellar_core_fld_mayer5.00006.rst -d output time/nlim=7 problem/N_J=1 nrfld/global_jacobian_check=true nrfld/global_jacobian_iteration=0"
+      },
+      {
+        "case": "collapse_partial_restart_both_syncjv_r1",
+        "source_commit": "8763a6139a6fe5fe56d988ebd53d80063f090320",
+        "binary_sha256": "4caa33aacaafcdd8fd952bff20318075a0df2a6c13a31bd839eaa2930835c7c1",
+        "mpi_ranks": 1,
+        "input_sha256": null,
+        "checkpoint_sha256": "bc1aa4cd2dc0e93123a7a4229109b89e46406def770d6bc1f1a44d812aa5917a",
+        "checkpoint_path": "/tmp/wor25_23_24_resolution_trials/collapse_adaptive_partial_confirm_r1/protostellar_core_fld_mayer5.00006.rst",
+        "n_j": 1.0,
+        "topology": [
+          {
+            "cycle": 7,
+            "blocks": 43,
+            "levels": {
+              "0": 3,
+              "1": 40
+            }
+          }
+        ],
+        "newton_statuses": [
+          "converged"
+        ],
+        "fgmres_history": [
+          {
+            "iterations": 14,
+            "true_relative_residual": 3.326563403190769e-09
+          },
+          {
+            "iterations": 14,
+            "true_relative_residual": 7.857964707971044e-09
+          }
+        ],
+        "jv_coarsefine_h1e5": [
+          {
+            "cells": 5120,
+            "relative_l2": 8.01917623400749e-09,
+            "analytic_schur_relative_l2": 7.98047711956275e-15
+          }
+        ],
+        "max_interface_relative_mismatch": null,
+        "interface_pair_count": null,
+        "face_log_error": null,
+        "wall_seconds": 2.42,
+        "max_rss_kb": 316816,
+        "pass_fail": "FAIL_MPI_PHI_AGREEMENT_SOLVER_PASS",
+        "log_path": "/tmp/wor25_23_24_resolution_trials/collapse_partial_restart_both_syncjv_r1/run.log",
+        "environment": {
+          "OMP_NUM_THREADS": "1",
+          "ATHENA_NRFLD_EXPERIMENTAL_COLLAPSE": "1",
+          "ATHENA_NRFLD_EXPERIMENTAL_REGRID": "1"
+        },
+        "command": "mpirun -np 1 /tmp/wor25_23_24_resolution_collapse_mixedjv_build/bin/athena -r /tmp/wor25_23_24_resolution_trials/collapse_adaptive_partial_confirm_r1/protostellar_core_fld_mayer5.00006.rst -d output time/nlim=7 problem/N_J=1 nrfld/global_jacobian_check=true nrfld/global_jacobian_iteration=0 gravity/reset_fmg_color_each_solve=true gravity/repeat_initial_fmg_after_restart=true"
+      },
+      {
+        "case": "collapse_partial_restart_both_syncjv_r2",
+        "source_commit": "8763a6139a6fe5fe56d988ebd53d80063f090320",
+        "binary_sha256": "4caa33aacaafcdd8fd952bff20318075a0df2a6c13a31bd839eaa2930835c7c1",
+        "mpi_ranks": 2,
+        "input_sha256": null,
+        "checkpoint_sha256": "bc1aa4cd2dc0e93123a7a4229109b89e46406def770d6bc1f1a44d812aa5917a",
+        "checkpoint_path": "/tmp/wor25_23_24_resolution_trials/collapse_adaptive_partial_confirm_r1/protostellar_core_fld_mayer5.00006.rst",
+        "n_j": 1.0,
+        "topology": [
+          {
+            "cycle": 7,
+            "blocks": 43,
+            "levels": {
+              "0": 3,
+              "1": 40
+            }
+          }
+        ],
+        "newton_statuses": [
+          "converged"
+        ],
+        "fgmres_history": [
+          {
+            "iterations": 14,
+            "true_relative_residual": 3.326562841604612e-09
+          },
+          {
+            "iterations": 14,
+            "true_relative_residual": 7.855096536957398e-09
+          }
+        ],
+        "jv_coarsefine_h1e5": [
+          {
+            "cells": 5120,
+            "relative_l2": 8.086928088468371e-09,
+            "analytic_schur_relative_l2": 8.026539768124991e-15
+          }
+        ],
+        "max_interface_relative_mismatch": null,
+        "interface_pair_count": null,
+        "face_log_error": null,
+        "wall_seconds": 2.05,
+        "max_rss_kb": 183388,
+        "pass_fail": "FAIL_MPI_PHI_AGREEMENT_SOLVER_PASS",
+        "log_path": "/tmp/wor25_23_24_resolution_trials/collapse_partial_restart_both_syncjv_r2/run.log",
+        "environment": {
+          "OMP_NUM_THREADS": "1",
+          "ATHENA_NRFLD_EXPERIMENTAL_COLLAPSE": "1",
+          "ATHENA_NRFLD_EXPERIMENTAL_REGRID": "1"
+        },
+        "command": "mpirun -np 2 /tmp/wor25_23_24_resolution_collapse_mixedjv_build/bin/athena -r /tmp/wor25_23_24_resolution_trials/collapse_adaptive_partial_confirm_r1/protostellar_core_fld_mayer5.00006.rst -d output time/nlim=7 problem/N_J=1 nrfld/global_jacobian_check=true nrfld/global_jacobian_iteration=0 gravity/reset_fmg_color_each_solve=true gravity/repeat_initial_fmg_after_restart=true"
+      },
+      {
+        "case": "collapse_partial_restart_tightgrav_r1",
+        "source_commit": "8763a6139a6fe5fe56d988ebd53d80063f090320",
+        "binary_sha256": "4caa33aacaafcdd8fd952bff20318075a0df2a6c13a31bd839eaa2930835c7c1",
+        "mpi_ranks": 1,
+        "input_sha256": null,
+        "checkpoint_sha256": "bc1aa4cd2dc0e93123a7a4229109b89e46406def770d6bc1f1a44d812aa5917a",
+        "checkpoint_path": "/tmp/wor25_23_24_resolution_trials/collapse_adaptive_partial_confirm_r1/protostellar_core_fld_mayer5.00006.rst",
+        "n_j": 1.0,
+        "topology": [
+          {
+            "cycle": 7,
+            "blocks": 43,
+            "levels": {
+              "0": 3,
+              "1": 40
+            }
+          }
+        ],
+        "newton_statuses": [
+          "converged"
+        ],
+        "fgmres_history": [
+          {
+            "iterations": 14,
+            "true_relative_residual": 3.326560534186924e-09
+          },
+          {
+            "iterations": 14,
+            "true_relative_residual": 7.848150054824343e-09
+          }
+        ],
+        "jv_coarsefine_h1e5": [],
+        "max_interface_relative_mismatch": null,
+        "interface_pair_count": null,
+        "face_log_error": null,
+        "wall_seconds": 1.81,
+        "max_rss_kb": 285560,
+        "pass_fail": "FAIL_MPI_PHI_AGREEMENT_SOLVER_PASS",
+        "log_path": "/tmp/wor25_23_24_resolution_trials/collapse_partial_restart_tightgrav_r1/run.log",
+        "environment": {
+          "OMP_NUM_THREADS": "1",
+          "ATHENA_NRFLD_EXPERIMENTAL_COLLAPSE": "1",
+          "ATHENA_NRFLD_EXPERIMENTAL_REGRID": "1"
+        },
+        "command": "mpirun -np 1 /tmp/wor25_23_24_resolution_collapse_mixedjv_build/bin/athena -r /tmp/wor25_23_24_resolution_trials/collapse_adaptive_partial_confirm_r1/protostellar_core_fld_mayer5.00006.rst -d output time/nlim=7 problem/N_J=1 nrfld/global_jacobian_check=false gravity/threshold=1e-12"
+      },
+      {
+        "case": "collapse_partial_restart_tightgrav_r2",
+        "source_commit": "8763a6139a6fe5fe56d988ebd53d80063f090320",
+        "binary_sha256": "4caa33aacaafcdd8fd952bff20318075a0df2a6c13a31bd839eaa2930835c7c1",
+        "mpi_ranks": 2,
+        "input_sha256": null,
+        "checkpoint_sha256": "bc1aa4cd2dc0e93123a7a4229109b89e46406def770d6bc1f1a44d812aa5917a",
+        "checkpoint_path": "/tmp/wor25_23_24_resolution_trials/collapse_adaptive_partial_confirm_r1/protostellar_core_fld_mayer5.00006.rst",
+        "n_j": 1.0,
+        "topology": [
+          {
+            "cycle": 7,
+            "blocks": 43,
+            "levels": {
+              "0": 3,
+              "1": 40
+            }
+          }
+        ],
+        "newton_statuses": [
+          "converged"
+        ],
+        "fgmres_history": [
+          {
+            "iterations": 14,
+            "true_relative_residual": 3.326562550399828e-09
+          },
+          {
+            "iterations": 14,
+            "true_relative_residual": 7.844541721942606e-09
+          }
+        ],
+        "jv_coarsefine_h1e5": [],
+        "max_interface_relative_mismatch": null,
+        "interface_pair_count": null,
+        "face_log_error": null,
+        "wall_seconds": 1.24,
+        "max_rss_kb": 169400,
+        "pass_fail": "FAIL_MPI_PHI_AGREEMENT_SOLVER_PASS",
+        "log_path": "/tmp/wor25_23_24_resolution_trials/collapse_partial_restart_tightgrav_r2/run.log",
+        "environment": {
+          "OMP_NUM_THREADS": "1",
+          "ATHENA_NRFLD_EXPERIMENTAL_COLLAPSE": "1",
+          "ATHENA_NRFLD_EXPERIMENTAL_REGRID": "1"
+        },
+        "command": "mpirun -np 2 /tmp/wor25_23_24_resolution_collapse_mixedjv_build/bin/athena -r /tmp/wor25_23_24_resolution_trials/collapse_adaptive_partial_confirm_r1/protostellar_core_fld_mayer5.00006.rst -d output time/nlim=7 problem/N_J=1 nrfld/global_jacobian_check=false gravity/threshold=1e-12"
+      },
+      {
+        "case": "collapse_partial_restart_defect_r1",
+        "source_commit": "8763a6139a6fe5fe56d988ebd53d80063f090320",
+        "binary_sha256": "4caa33aacaafcdd8fd952bff20318075a0df2a6c13a31bd839eaa2930835c7c1",
+        "mpi_ranks": 1,
+        "input_sha256": null,
+        "checkpoint_sha256": "bc1aa4cd2dc0e93123a7a4229109b89e46406def770d6bc1f1a44d812aa5917a",
+        "checkpoint_path": "/tmp/wor25_23_24_resolution_trials/collapse_adaptive_partial_confirm_r1/protostellar_core_fld_mayer5.00006.rst",
+        "n_j": 1.0,
+        "topology": [
+          {
+            "cycle": 7,
+            "blocks": 43,
+            "levels": {
+              "0": 3,
+              "1": 40
+            }
+          }
+        ],
+        "newton_statuses": [
+          "converged"
+        ],
+        "fgmres_history": [
+          {
+            "iterations": 14,
+            "true_relative_residual": 3.326561706892173e-09
+          },
+          {
+            "iterations": 14,
+            "true_relative_residual": 7.85794596661889e-09
+          }
+        ],
+        "jv_coarsefine_h1e5": [],
+        "max_interface_relative_mismatch": null,
+        "interface_pair_count": null,
+        "face_log_error": null,
+        "wall_seconds": 1.58,
+        "max_rss_kb": 285620,
+        "pass_fail": "FAIL_MPI_PHI_AGREEMENT_SOLVER_PASS",
+        "log_path": "/tmp/wor25_23_24_resolution_trials/collapse_partial_restart_defect_r1/run.log",
+        "environment": {
+          "OMP_NUM_THREADS": "1",
+          "ATHENA_NRFLD_EXPERIMENTAL_COLLAPSE": "1",
+          "ATHENA_NRFLD_EXPERIMENTAL_REGRID": "1"
+        },
+        "command": "mpirun -np 1 /tmp/wor25_23_24_resolution_collapse_mixedjv_build/bin/athena -r /tmp/wor25_23_24_resolution_trials/collapse_adaptive_partial_confirm_r1/protostellar_core_fld_mayer5.00006.rst -d output time/nlim=7 problem/N_J=1 nrfld/global_jacobian_check=false gravity/show_defect=true"
+      },
+      {
+        "case": "collapse_partial_restart_defect_r2",
+        "source_commit": "8763a6139a6fe5fe56d988ebd53d80063f090320",
+        "binary_sha256": "4caa33aacaafcdd8fd952bff20318075a0df2a6c13a31bd839eaa2930835c7c1",
+        "mpi_ranks": 2,
+        "input_sha256": null,
+        "checkpoint_sha256": "bc1aa4cd2dc0e93123a7a4229109b89e46406def770d6bc1f1a44d812aa5917a",
+        "checkpoint_path": "/tmp/wor25_23_24_resolution_trials/collapse_adaptive_partial_confirm_r1/protostellar_core_fld_mayer5.00006.rst",
+        "n_j": 1.0,
+        "topology": [
+          {
+            "cycle": 7,
+            "blocks": 43,
+            "levels": {
+              "0": 3,
+              "1": 40
+            }
+          }
+        ],
+        "newton_statuses": [
+          "converged"
+        ],
+        "fgmres_history": [
+          {
+            "iterations": 14,
+            "true_relative_residual": 3.326560261062758e-09
+          },
+          {
+            "iterations": 14,
+            "true_relative_residual": 7.855418584728723e-09
+          }
+        ],
+        "jv_coarsefine_h1e5": [],
+        "max_interface_relative_mismatch": null,
+        "interface_pair_count": null,
+        "face_log_error": null,
+        "wall_seconds": 1.16,
+        "max_rss_kb": 169076,
+        "pass_fail": "FAIL_MPI_PHI_AGREEMENT_SOLVER_PASS",
+        "log_path": "/tmp/wor25_23_24_resolution_trials/collapse_partial_restart_defect_r2/run.log",
+        "environment": {
+          "OMP_NUM_THREADS": "1",
+          "ATHENA_NRFLD_EXPERIMENTAL_COLLAPSE": "1",
+          "ATHENA_NRFLD_EXPERIMENTAL_REGRID": "1"
+        },
+        "command": "mpirun -np 2 /tmp/wor25_23_24_resolution_collapse_mixedjv_build/bin/athena -r /tmp/wor25_23_24_resolution_trials/collapse_adaptive_partial_confirm_r1/protostellar_core_fld_mayer5.00006.rst -d output time/nlim=7 problem/N_J=1 nrfld/global_jacobian_check=false gravity/show_defect=true"
+      },
+      {
+        "case": "collapse_partial_finalck_restart_jv_r1",
+        "source_commit": "8763a6139a6fe5fe56d988ebd53d80063f090320",
+        "binary_sha256": "4caa33aacaafcdd8fd952bff20318075a0df2a6c13a31bd839eaa2930835c7c1",
+        "mpi_ranks": 1,
+        "input_sha256": null,
+        "checkpoint_sha256": "42416ee70c7cc08b4065e33903fb64239d8389ac7dd356fa7ce631641bfcadb1",
+        "checkpoint_path": "/tmp/wor25_23_24_resolution_trials/collapse_adaptive_partial_direct_final_r1/protostellar_core_fld_mayer5.00006.rst",
+        "n_j": 1.0,
+        "topology": [
+          {
+            "cycle": 7,
+            "blocks": 43,
+            "levels": {
+              "0": 3,
+              "1": 40
+            }
+          }
+        ],
+        "newton_statuses": [
+          "converged"
+        ],
+        "fgmres_history": [
+          {
+            "iterations": 14,
+            "true_relative_residual": 3.326561706892173e-09
+          },
+          {
+            "iterations": 14,
+            "true_relative_residual": 7.85794596661889e-09
+          }
+        ],
+        "jv_coarsefine_h1e5": [
+          {
+            "cells": 5120,
+            "relative_l2": 7.641894930356798e-09,
+            "analytic_schur_relative_l2": 7.890337476071147e-15
+          }
+        ],
+        "max_interface_relative_mismatch": null,
+        "interface_pair_count": null,
+        "face_log_error": null,
+        "wall_seconds": 2.41,
+        "max_rss_kb": 316872,
+        "pass_fail": "PASS_JV_FAIL_MPI_PHI_AGREEMENT",
+        "log_path": "/tmp/wor25_23_24_resolution_trials/collapse_partial_finalck_restart_jv_r1/run.log",
+        "environment": {
+          "OMP_NUM_THREADS": "1",
+          "ATHENA_NRFLD_EXPERIMENTAL_COLLAPSE": "1",
+          "ATHENA_NRFLD_EXPERIMENTAL_REGRID": "1"
+        },
+        "command": "mpirun -np 1 /tmp/wor25_23_24_resolution_collapse_mixedjv_build/bin/athena -r /tmp/wor25_23_24_resolution_trials/collapse_adaptive_partial_direct_final_r1/protostellar_core_fld_mayer5.00006.rst -d output time/nlim=7 problem/N_J=1 nrfld/global_jacobian_check=true nrfld/global_jacobian_iteration=0"
+      },
+      {
+        "case": "collapse_partial_finalck_restart_jv_r2",
+        "source_commit": "8763a6139a6fe5fe56d988ebd53d80063f090320",
+        "binary_sha256": "4caa33aacaafcdd8fd952bff20318075a0df2a6c13a31bd839eaa2930835c7c1",
+        "mpi_ranks": 2,
+        "input_sha256": null,
+        "checkpoint_sha256": "42416ee70c7cc08b4065e33903fb64239d8389ac7dd356fa7ce631641bfcadb1",
+        "checkpoint_path": "/tmp/wor25_23_24_resolution_trials/collapse_adaptive_partial_direct_final_r1/protostellar_core_fld_mayer5.00006.rst",
+        "n_j": 1.0,
+        "topology": [
+          {
+            "cycle": 7,
+            "blocks": 43,
+            "levels": {
+              "0": 3,
+              "1": 40
+            }
+          }
+        ],
+        "newton_statuses": [
+          "converged"
+        ],
+        "fgmres_history": [
+          {
+            "iterations": 14,
+            "true_relative_residual": 3.326560261062758e-09
+          },
+          {
+            "iterations": 14,
+            "true_relative_residual": 7.855418584728723e-09
+          }
+        ],
+        "jv_coarsefine_h1e5": [
+          {
+            "cells": 5120,
+            "relative_l2": 7.922210070381474e-09,
+            "analytic_schur_relative_l2": 8.072504016878857e-15
+          }
+        ],
+        "max_interface_relative_mismatch": null,
+        "interface_pair_count": null,
+        "face_log_error": null,
+        "wall_seconds": 1.61,
+        "max_rss_kb": 182476,
+        "pass_fail": "PASS_JV_FAIL_MPI_PHI_AGREEMENT",
+        "log_path": "/tmp/wor25_23_24_resolution_trials/collapse_partial_finalck_restart_jv_r2/run.log",
+        "environment": {
+          "OMP_NUM_THREADS": "1",
+          "ATHENA_NRFLD_EXPERIMENTAL_COLLAPSE": "1",
+          "ATHENA_NRFLD_EXPERIMENTAL_REGRID": "1"
+        },
+        "command": "mpirun -np 2 /tmp/wor25_23_24_resolution_collapse_mixedjv_build/bin/athena -r /tmp/wor25_23_24_resolution_trials/collapse_adaptive_partial_direct_final_r1/protostellar_core_fld_mayer5.00006.rst -d output time/nlim=7 problem/N_J=1 nrfld/global_jacobian_check=true nrfld/global_jacobian_iteration=0"
+      },
+      {
+        "case": "collapse_partial_finalck_restart_ledger_r1",
+        "source_commit": "8763a6139a6fe5fe56d988ebd53d80063f090320",
+        "binary_sha256": "4caa33aacaafcdd8fd952bff20318075a0df2a6c13a31bd839eaa2930835c7c1",
+        "mpi_ranks": 1,
+        "input_sha256": null,
+        "checkpoint_sha256": "42416ee70c7cc08b4065e33903fb64239d8389ac7dd356fa7ce631641bfcadb1",
+        "checkpoint_path": "/tmp/wor25_23_24_resolution_trials/collapse_adaptive_partial_direct_final_r1/protostellar_core_fld_mayer5.00006.rst",
+        "n_j": 1.0,
+        "topology": [
+          {
+            "cycle": 7,
+            "blocks": 43,
+            "levels": {
+              "0": 3,
+              "1": 40
+            }
+          }
+        ],
+        "newton_statuses": [
+          "converged"
+        ],
+        "fgmres_history": [
+          {
+            "iterations": 14,
+            "true_relative_residual": 3.326561706892173e-09
+          },
+          {
+            "iterations": 14,
+            "true_relative_residual": 7.85794596661889e-09
+          }
+        ],
+        "jv_coarsefine_h1e5": [],
+        "max_interface_relative_mismatch": 2.0524323905148182e-07,
+        "interface_pair_count": 9,
+        "face_log_error": null,
+        "wall_seconds": 1.82,
+        "max_rss_kb": 285624,
+        "pass_fail": "PASS_FACE_BALANCE_FAIL_MPI_PHI_AGREEMENT",
+        "log_path": "/tmp/wor25_23_24_resolution_trials/collapse_partial_finalck_restart_ledger_r1/run.log",
+        "environment": {
+          "OMP_NUM_THREADS": "1",
+          "ATHENA_NRFLD_EXPERIMENTAL_COLLAPSE": "1",
+          "ATHENA_NRFLD_EXPERIMENTAL_REGRID": "1",
+          "ATHENA_NRFLD_INTERFACE_LEDGER": "1",
+          "ATHENA_NRFLD_ENERGY_LEDGER": "1"
+        },
+        "command": "mpirun -np 1 /tmp/wor25_23_24_resolution_collapse_mixedjv_build/bin/athena -r /tmp/wor25_23_24_resolution_trials/collapse_adaptive_partial_direct_final_r1/protostellar_core_fld_mayer5.00006.rst -d output time/nlim=7 problem/N_J=1 nrfld/global_jacobian_check=false"
+      },
+      {
+        "case": "collapse_partial_finalck_restart_ledger_r2",
+        "source_commit": "8763a6139a6fe5fe56d988ebd53d80063f090320",
+        "binary_sha256": "4caa33aacaafcdd8fd952bff20318075a0df2a6c13a31bd839eaa2930835c7c1",
+        "mpi_ranks": 2,
+        "input_sha256": null,
+        "checkpoint_sha256": "42416ee70c7cc08b4065e33903fb64239d8389ac7dd356fa7ce631641bfcadb1",
+        "checkpoint_path": "/tmp/wor25_23_24_resolution_trials/collapse_adaptive_partial_direct_final_r1/protostellar_core_fld_mayer5.00006.rst",
+        "n_j": 1.0,
+        "topology": [
+          {
+            "cycle": 7,
+            "blocks": 43,
+            "levels": {
+              "0": 3,
+              "1": 40
+            }
+          }
+        ],
+        "newton_statuses": [
+          "converged"
+        ],
+        "fgmres_history": [
+          {
+            "iterations": 14,
+            "true_relative_residual": 3.326560261062758e-09
+          },
+          {
+            "iterations": 14,
+            "true_relative_residual": 7.855418584728723e-09
+          }
+        ],
+        "jv_coarsefine_h1e5": [],
+        "max_interface_relative_mismatch": null,
+        "interface_pair_count": null,
+        "face_log_error": "MPI stdout interleaving corrupted one face record; rerun in *_clean with per-rank stdout",
+        "wall_seconds": 1.26,
+        "max_rss_kb": 169244,
+        "pass_fail": "INVALID_MPI_LOG",
+        "log_path": "/tmp/wor25_23_24_resolution_trials/collapse_partial_finalck_restart_ledger_r2/run.log",
+        "environment": {
+          "OMP_NUM_THREADS": "1",
+          "ATHENA_NRFLD_EXPERIMENTAL_COLLAPSE": "1",
+          "ATHENA_NRFLD_EXPERIMENTAL_REGRID": "1",
+          "ATHENA_NRFLD_INTERFACE_LEDGER": "1",
+          "ATHENA_NRFLD_ENERGY_LEDGER": "1"
+        },
+        "command": "mpirun -np 2 /tmp/wor25_23_24_resolution_collapse_mixedjv_build/bin/athena -r /tmp/wor25_23_24_resolution_trials/collapse_adaptive_partial_direct_final_r1/protostellar_core_fld_mayer5.00006.rst -d output time/nlim=7 problem/N_J=1 nrfld/global_jacobian_check=false"
+      },
+      {
+        "case": "collapse_partial_finalck_restart_ledger_r2_clean",
+        "source_commit": "8763a6139a6fe5fe56d988ebd53d80063f090320",
+        "binary_sha256": "4caa33aacaafcdd8fd952bff20318075a0df2a6c13a31bd839eaa2930835c7c1",
+        "mpi_ranks": 2,
+        "input_sha256": null,
+        "checkpoint_sha256": "42416ee70c7cc08b4065e33903fb64239d8389ac7dd356fa7ce631641bfcadb1",
+        "checkpoint_path": "/tmp/wor25_23_24_resolution_trials/collapse_adaptive_partial_direct_final_r1/protostellar_core_fld_mayer5.00006.rst",
+        "n_j": 1.0,
+        "topology": [
+          {
+            "cycle": 7,
+            "blocks": 43,
+            "levels": {
+              "0": 3,
+              "1": 40
+            }
+          }
+        ],
+        "newton_statuses": [
+          "converged"
+        ],
+        "fgmres_history": [
+          {
+            "iterations": 14,
+            "true_relative_residual": 3.326560261062758e-09
+          },
+          {
+            "iterations": 14,
+            "true_relative_residual": 7.855418584728723e-09
+          }
+        ],
+        "jv_coarsefine_h1e5": [],
+        "max_interface_relative_mismatch": 1.5619696012527532e-07,
+        "interface_pair_count": 9,
+        "face_log_error": null,
+        "wall_seconds": 1.4,
+        "max_rss_kb": 169412,
+        "pass_fail": "PASS_FACE_BALANCE_FAIL_MPI_PHI_AGREEMENT",
+        "log_path": "/tmp/wor25_23_24_resolution_trials/collapse_partial_finalck_restart_ledger_r2_clean/run.log",
+        "environment": {
+          "OMP_NUM_THREADS": "1",
+          "ATHENA_NRFLD_EXPERIMENTAL_COLLAPSE": "1",
+          "ATHENA_NRFLD_EXPERIMENTAL_REGRID": "1",
+          "ATHENA_NRFLD_INTERFACE_LEDGER": "1",
+          "ATHENA_NRFLD_ENERGY_LEDGER": "1"
+        },
+        "command": "mpirun --output-filename mpi_logs -np 2 /tmp/wor25_23_24_resolution_collapse_mixedjv_build/bin/athena -r /tmp/wor25_23_24_resolution_trials/collapse_adaptive_partial_direct_final_r1/protostellar_core_fld_mayer5.00006.rst -d output time/nlim=7 problem/N_J=1 nrfld/global_jacobian_check=false"
+      }
+    ],
+    "comparisons": {
+      "direct_rank_1_vs_2_before_regrid_phi_relative_l1_max": 3.7857316945091487e-16,
+      "direct_rank_1_vs_2_after_partial_regrid_phi_relative_l1": 0.00022739439391597786,
+      "direct_rank_1_vs_2_after_partial_regrid_rho_relative_l1": 2.243809098929496e-16,
+      "direct_rank_1_vs_2_after_partial_regrid_Er_relative_l1": 7.65704047606292e-13,
+      "restart_rank_1_vs_2_phi_relative_l1": 0.00022676568588541094,
+      "restart_rank_1_vs_2_prim_relative_l1": 0.00011016312494905561,
+      "restart_rank_1_vs_2_Er_relative_l1": 8.31284998736838e-09,
+      "restart_both_optins_phi_relative_l1": 0.00022676568632531356,
+      "restart_tight_gravity_phi_relative_l1": 0.0002272901578206988,
+      "jv_on_off_final_hdf_numeric_exact_r2": true
+    },
+    "verdict": "PASS_WOR23_JV_AND_FACE_LEDGER; FAIL_WOR24_GRAVITY_MPI_REPRODUCIBILITY"
   }
 }

@@ -9,10 +9,19 @@ from pathlib import Path
 
 def read_faces(path):
     rows = []
+    required = {"cycle", "stage", "gid", "level", "x1min", "x1max",
+                "x2min", "x2max", "x3min", "x3max", "xminus_delta",
+                "xplus_delta", "yminus_delta", "yplus_delta",
+                "zminus_delta", "zplus_delta"}
     for line in path.read_text().splitlines():
         if line.startswith("[NR_INTERFACE_LEDGER]"):
-            rows.append({key: float(value) for key, value in re.findall(
-                r"([A-Za-z0-9_]+)=([+-]?[0-9.eE+-]+)", line)})
+            row = {key: float(value) for key, value in re.findall(
+                r"([A-Za-z0-9_]+)=([+-]?[0-9.eE+-]+)", line)}
+            missing = required - row.keys()
+            if missing:
+                raise ValueError(f"Truncated MPI ledger line in {path}: "
+                                 f"missing {sorted(missing)}")
+            rows.append(row)
     return rows
 
 
@@ -54,13 +63,13 @@ def compare(rows):
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("log", type=Path)
+    parser.add_argument("log", type=Path, nargs="+")
     parser.add_argument("--tolerance", type=float, default=1e-6)
     parser.add_argument("--require-conservation", action="store_true")
     args = parser.parse_args()
-    pairs = compare(read_faces(args.log))
+    pairs = compare([row for path in args.log for row in read_faces(path)])
     maximum = max((pair["relative_mismatch"] for pair in pairs), default=None)
-    result = {"log": str(args.log), "pairs": pairs,
+    result = {"logs": [str(path) for path in args.log], "pairs": pairs,
               "max_relative_mismatch": maximum,
               "pass": maximum is not None and maximum <= args.tolerance}
     print(json.dumps(result, indent=2))
