@@ -57837,5 +57837,688 @@
     ],
     "tol15_final_rank_hdf_exact": true,
     "decision": "At the second time step, both ranks fail the 1e-8 FGMRES target around 1.12e-8; 2 MG V-cycles also fail around 1.13e-8. The 1.5e-8 exploratory setting permits five steps and records per-cycle face balance, but is not adopted as a production tolerance. Face mismatch persistence must be interpreted with this solver-setting caveat. No default or operator change."
+  },
+  "wor25_fgmres_norm_floor_audit": {
+    "scope": "Opt-in logging only of already-computed RHS and true-residual L2 norms in the 5-step strict 3-level coupled variable-limiter case.",
+    "cases": [
+      {
+        "name": "threelevel_coupled_variable_long5_norm_on_r1",
+        "ranks": 1,
+        "threads_per_rank": 1,
+        "source_commit_before_run": "6bc87e3d",
+        "changed_source_sha256": "5afac13a2693ca347251dedd41fb0e6433596bebf2cb8eee3e8bf3954e4bc3a8",
+        "binary_sha256": "cd318bba13fa90e2c3cf701779234dbdef8b71f0afb546555a3c7b32bd9e1372",
+        "input_path": "/home/kosuke/simulation/athena-wor25-23-24-resolution/tst/nrfld_validation/testc_threelevel_shifted_20261107.in",
+        "input_sha256": "c1ffedae69f670d6f17740805077b6741c7cefdaf2baf4639cc7ab5f1fa38a74",
+        "command": "mpirun --output-filename /tmp/wor25_23_24_resolution_trials/threelevel_coupled_variable_long5_norm_on_r1/mpi -n 1 /tmp/wor25_23_24_resolution_fgmres_norm_audit_build/bin/athena -i /home/kosuke/simulation/athena-wor25-23-24-resolution/tst/nrfld_validation/testc_threelevel_shifted_20261107.in -d /tmp/wor25_23_24_resolution_trials/threelevel_coupled_variable_long5_norm_on_r1/output nrfld/linear_solver=fgmres nrfld/fgmres_linearity_check=false nrfld/global_jacobian_check=false fld/is_couple=true fld/only_rad=false fld/fixed_flux_limiter=false time/nlim=5 time/tlim=0.001",
+        "environment": {
+          "OMP_NUM_THREADS": 1,
+          "ATHENA_NRFLD_INTERFACE_LEDGER": 1,
+          "ATHENA_NRFLD_ENERGY_LEDGER": 1,
+          "ATHENA_NRFLD_FGMRES_NORM_AUDIT": 1
+        },
+        "run_log": "/tmp/wor25_23_24_resolution_trials/threelevel_coupled_variable_long5_norm_on_r1/run.log",
+        "exit_status": 134,
+        "wall_time": "0:25.64",
+        "peak_rss_kb": 463748,
+        "fgmres_history": [
+          {
+            "iterations": 18,
+            "true_relative_residual": 4.174342424551554e-09
+          },
+          {
+            "iterations": 17,
+            "true_relative_residual": 7.321668344929564e-09
+          },
+          {
+            "iterations": 17,
+            "true_relative_residual": 7.997646043347438e-09
+          },
+          {
+            "iterations": 17,
+            "true_relative_residual": 7.44447484695445e-09
+          },
+          {
+            "iterations": 17,
+            "true_relative_residual": 7.544082066472222e-09
+          },
+          {
+            "iterations": 17,
+            "true_relative_residual": 8.756412105927004e-09
+          },
+          {
+            "iterations": 17,
+            "true_relative_residual": 7.44796014931074e-09
+          },
+          {
+            "iterations": 17,
+            "true_relative_residual": 8.227557162612893e-09
+          },
+          {
+            "iterations": 17,
+            "true_relative_residual": 7.3144218256755065e-09
+          },
+          {
+            "iterations": 17,
+            "true_relative_residual": 8.219961947328955e-09
+          },
+          {
+            "iterations": 17,
+            "true_relative_residual": 7.657750434623499e-09
+          },
+          {
+            "iterations": 17,
+            "true_relative_residual": 9.018127703656283e-09
+          },
+          {
+            "iterations": 17,
+            "true_relative_residual": 8.66530025457719e-09
+          },
+          {
+            "iterations": 17,
+            "true_relative_residual": 7.563615080125985e-09
+          },
+          {
+            "iterations": 11,
+            "true_relative_residual": 2.4043715766300617e-09
+          },
+          {
+            "iterations": 80,
+            "true_relative_residual": 1.1241349694711611e-08
+          }
+        ],
+        "fgmres_norm_history": [
+          {
+            "iterations": 18,
+            "rhs_norm": 12614.41659943957,
+            "true_residual_norm": 5.265689437200795e-05,
+            "target_norm": 0.0001261441659943957
+          },
+          {
+            "iterations": 17,
+            "rhs_norm": 6104.0587090703775,
+            "true_residual_norm": 4.46918934257922e-05,
+            "target_norm": 6.104058709070377e-05
+          },
+          {
+            "iterations": 17,
+            "rhs_norm": 4577.95716387002,
+            "true_residual_norm": 3.6612880998239125e-05,
+            "target_norm": 4.57795716387002e-05
+          },
+          {
+            "iterations": 17,
+            "rhs_norm": 3433.2378447868614,
+            "true_residual_norm": 2.55586527791279e-05,
+            "target_norm": 3.433237844786861e-05
+          },
+          {
+            "iterations": 17,
+            "rhs_norm": 2574.3403270937874,
+            "true_residual_norm": 1.9421034694624475e-05,
+            "target_norm": 2.5743403270937877e-05
+          },
+          {
+            "iterations": 17,
+            "rhs_norm": 1929.2859924094864,
+            "true_residual_norm": 1.689362321972982e-05,
+            "target_norm": 1.9292859924094864e-05
+          },
+          {
+            "iterations": 17,
+            "rhs_norm": 1443.3538640648007,
+            "true_residual_norm": 1.0750042060908305e-05,
+            "target_norm": 1.4433538640648007e-05
+          },
+          {
+            "iterations": 17,
+            "rhs_norm": 1073.7757264914164,
+            "true_residual_norm": 8.834551169534318e-06,
+            "target_norm": 1.0737757264914165e-05
+          },
+          {
+            "iterations": 17,
+            "rhs_norm": 784.6428774904409,
+            "true_residual_norm": 5.7392089884769135e-06,
+            "target_norm": 7.846428774904409e-06
+          },
+          {
+            "iterations": 17,
+            "rhs_norm": 541.9760258463156,
+            "true_residual_norm": 4.455022308821288e-06,
+            "target_norm": 5.419760258463156e-06
+          },
+          {
+            "iterations": 17,
+            "rhs_norm": 315.840886331938,
+            "true_residual_norm": 2.418630684580269e-06,
+            "target_norm": 3.15840886331938e-06
+          },
+          {
+            "iterations": 17,
+            "rhs_norm": 115.44752670453758,
+            "true_residual_norm": 1.041120538892789e-06,
+            "target_norm": 1.1544752670453759e-06
+          },
+          {
+            "iterations": 17,
+            "rhs_norm": 14.327647793903331,
+            "true_residual_norm": 1.2415337007600284e-07,
+            "target_norm": 1.432764779390333e-07
+          },
+          {
+            "iterations": 17,
+            "rhs_norm": 0.20428709714014934,
+            "true_residual_norm": 1.5451489686043955e-09,
+            "target_norm": 2.0428709714014933e-09
+          },
+          {
+            "iterations": 11,
+            "rhs_norm": 16224.039936651314,
+            "true_residual_norm": 3.900862048179541e-05,
+            "target_norm": 0.00016224039936651313
+          },
+          {
+            "iterations": 80,
+            "rhs_norm": 265.57680715691697,
+            "true_residual_norm": 2.9854417600558933e-06,
+            "target_norm": 2.65576807156917e-06
+          }
+        ],
+        "fgmres_total_iterations": 330,
+        "fgmres_fatal": "FGMRES did not reach its requested relative residual: iterations=80, relative_residual=1.12413e-08, target=1e-08, breakdown=0.",
+        "last_output": {
+          "file": "/tmp/wor25_23_24_resolution_trials/threelevel_coupled_variable_long5_norm_on_r1/output/nrfld_diff_amr_interface.fields.00001.athdf",
+          "minimum_Er": 144.06199645996094,
+          "time": 0.00019999999494757503
+        },
+        "evaluation": "FAIL_SOLVER"
+      },
+      {
+        "name": "threelevel_coupled_variable_long5_norm_off_r1",
+        "ranks": 1,
+        "threads_per_rank": 1,
+        "source_commit_before_run": "6bc87e3d",
+        "changed_source_sha256": "5afac13a2693ca347251dedd41fb0e6433596bebf2cb8eee3e8bf3954e4bc3a8",
+        "binary_sha256": "cd318bba13fa90e2c3cf701779234dbdef8b71f0afb546555a3c7b32bd9e1372",
+        "input_path": "/home/kosuke/simulation/athena-wor25-23-24-resolution/tst/nrfld_validation/testc_threelevel_shifted_20261107.in",
+        "input_sha256": "c1ffedae69f670d6f17740805077b6741c7cefdaf2baf4639cc7ab5f1fa38a74",
+        "command": "mpirun --output-filename /tmp/wor25_23_24_resolution_trials/threelevel_coupled_variable_long5_norm_off_r1/mpi -n 1 /tmp/wor25_23_24_resolution_fgmres_norm_audit_build/bin/athena -i /home/kosuke/simulation/athena-wor25-23-24-resolution/tst/nrfld_validation/testc_threelevel_shifted_20261107.in -d /tmp/wor25_23_24_resolution_trials/threelevel_coupled_variable_long5_norm_off_r1/output nrfld/linear_solver=fgmres nrfld/fgmres_linearity_check=false nrfld/global_jacobian_check=false fld/is_couple=true fld/only_rad=false fld/fixed_flux_limiter=false time/nlim=5 time/tlim=0.001",
+        "environment": {
+          "OMP_NUM_THREADS": 1,
+          "ATHENA_NRFLD_INTERFACE_LEDGER": 1,
+          "ATHENA_NRFLD_ENERGY_LEDGER": 1,
+          "ATHENA_NRFLD_FGMRES_NORM_AUDIT": 0
+        },
+        "run_log": "/tmp/wor25_23_24_resolution_trials/threelevel_coupled_variable_long5_norm_off_r1/run.log",
+        "exit_status": 134,
+        "wall_time": "0:28.66",
+        "peak_rss_kb": 463632,
+        "fgmres_history": [
+          {
+            "iterations": 18,
+            "true_relative_residual": 4.174342424551554e-09
+          },
+          {
+            "iterations": 17,
+            "true_relative_residual": 7.321668344929564e-09
+          },
+          {
+            "iterations": 17,
+            "true_relative_residual": 7.997646043347438e-09
+          },
+          {
+            "iterations": 17,
+            "true_relative_residual": 7.44447484695445e-09
+          },
+          {
+            "iterations": 17,
+            "true_relative_residual": 7.544082066472222e-09
+          },
+          {
+            "iterations": 17,
+            "true_relative_residual": 8.756412105927004e-09
+          },
+          {
+            "iterations": 17,
+            "true_relative_residual": 7.44796014931074e-09
+          },
+          {
+            "iterations": 17,
+            "true_relative_residual": 8.227557162612893e-09
+          },
+          {
+            "iterations": 17,
+            "true_relative_residual": 7.3144218256755065e-09
+          },
+          {
+            "iterations": 17,
+            "true_relative_residual": 8.219961947328955e-09
+          },
+          {
+            "iterations": 17,
+            "true_relative_residual": 7.657750434623499e-09
+          },
+          {
+            "iterations": 17,
+            "true_relative_residual": 9.018127703656283e-09
+          },
+          {
+            "iterations": 17,
+            "true_relative_residual": 8.66530025457719e-09
+          },
+          {
+            "iterations": 17,
+            "true_relative_residual": 7.563615080125985e-09
+          },
+          {
+            "iterations": 11,
+            "true_relative_residual": 2.4043715766300617e-09
+          },
+          {
+            "iterations": 80,
+            "true_relative_residual": 1.1241349694711611e-08
+          }
+        ],
+        "fgmres_norm_history": [],
+        "fgmres_total_iterations": 330,
+        "fgmres_fatal": "FGMRES did not reach its requested relative residual: iterations=80, relative_residual=1.12413e-08, target=1e-08, breakdown=0.",
+        "last_output": {
+          "file": "/tmp/wor25_23_24_resolution_trials/threelevel_coupled_variable_long5_norm_off_r1/output/nrfld_diff_amr_interface.fields.00001.athdf",
+          "minimum_Er": 144.06199645996094,
+          "time": 0.00019999999494757503
+        },
+        "evaluation": "FAIL_SOLVER"
+      },
+      {
+        "name": "threelevel_coupled_variable_long5_norm_on_r2",
+        "ranks": 2,
+        "threads_per_rank": 1,
+        "source_commit_before_run": "6bc87e3d",
+        "changed_source_sha256": "5afac13a2693ca347251dedd41fb0e6433596bebf2cb8eee3e8bf3954e4bc3a8",
+        "binary_sha256": "cd318bba13fa90e2c3cf701779234dbdef8b71f0afb546555a3c7b32bd9e1372",
+        "input_path": "/home/kosuke/simulation/athena-wor25-23-24-resolution/tst/nrfld_validation/testc_threelevel_shifted_20261107.in",
+        "input_sha256": "c1ffedae69f670d6f17740805077b6741c7cefdaf2baf4639cc7ab5f1fa38a74",
+        "command": "mpirun --output-filename /tmp/wor25_23_24_resolution_trials/threelevel_coupled_variable_long5_norm_on_r2/mpi -n 2 /tmp/wor25_23_24_resolution_fgmres_norm_audit_build/bin/athena -i /home/kosuke/simulation/athena-wor25-23-24-resolution/tst/nrfld_validation/testc_threelevel_shifted_20261107.in -d /tmp/wor25_23_24_resolution_trials/threelevel_coupled_variable_long5_norm_on_r2/output nrfld/linear_solver=fgmres nrfld/fgmres_linearity_check=false nrfld/global_jacobian_check=false fld/is_couple=true fld/only_rad=false fld/fixed_flux_limiter=false time/nlim=5 time/tlim=0.001",
+        "environment": {
+          "OMP_NUM_THREADS": 1,
+          "ATHENA_NRFLD_INTERFACE_LEDGER": 1,
+          "ATHENA_NRFLD_ENERGY_LEDGER": 1,
+          "ATHENA_NRFLD_FGMRES_NORM_AUDIT": 1
+        },
+        "run_log": "/tmp/wor25_23_24_resolution_trials/threelevel_coupled_variable_long5_norm_on_r2/run.log",
+        "exit_status": 134,
+        "wall_time": "0:22.97",
+        "peak_rss_kb": 256072,
+        "fgmres_history": [
+          {
+            "iterations": 18,
+            "true_relative_residual": 4.1172088044592464e-09
+          },
+          {
+            "iterations": 17,
+            "true_relative_residual": 7.3690576271378246e-09
+          },
+          {
+            "iterations": 17,
+            "true_relative_residual": 7.846448061754567e-09
+          },
+          {
+            "iterations": 17,
+            "true_relative_residual": 7.553368210551274e-09
+          },
+          {
+            "iterations": 17,
+            "true_relative_residual": 7.684779918848556e-09
+          },
+          {
+            "iterations": 17,
+            "true_relative_residual": 8.524335820172858e-09
+          },
+          {
+            "iterations": 17,
+            "true_relative_residual": 7.3775890423726566e-09
+          },
+          {
+            "iterations": 17,
+            "true_relative_residual": 8.380377897954668e-09
+          },
+          {
+            "iterations": 17,
+            "true_relative_residual": 7.285676729633415e-09
+          },
+          {
+            "iterations": 17,
+            "true_relative_residual": 8.246974579621848e-09
+          },
+          {
+            "iterations": 17,
+            "true_relative_residual": 7.725107450627106e-09
+          },
+          {
+            "iterations": 17,
+            "true_relative_residual": 8.876168363797298e-09
+          },
+          {
+            "iterations": 17,
+            "true_relative_residual": 8.85713768674191e-09
+          },
+          {
+            "iterations": 17,
+            "true_relative_residual": 7.545005533289628e-09
+          },
+          {
+            "iterations": 11,
+            "true_relative_residual": 2.395279562803118e-09
+          },
+          {
+            "iterations": 80,
+            "true_relative_residual": 1.1368668648681974e-08
+          }
+        ],
+        "fgmres_norm_history": [
+          {
+            "iterations": 18,
+            "rhs_norm": 12614.41659943957,
+            "true_residual_norm": 5.193618708632946e-05,
+            "target_norm": 0.0001261441659943957
+          },
+          {
+            "iterations": 17,
+            "rhs_norm": 6104.058708835056,
+            "true_residual_norm": 4.498116038483803e-05,
+            "target_norm": 6.104058708835056e-05
+          },
+          {
+            "iterations": 17,
+            "rhs_norm": 4577.957164115619,
+            "true_residual_norm": 3.592070311717043e-05,
+            "target_norm": 4.5779571641156194e-05
+          },
+          {
+            "iterations": 17,
+            "rhs_norm": 3433.237844803504,
+            "true_residual_norm": 2.5932509596200356e-05,
+            "target_norm": 3.433237844803504e-05
+          },
+          {
+            "iterations": 17,
+            "rhs_norm": 2574.340327044827,
+            "true_residual_norm": 1.978323884955611e-05,
+            "target_norm": 2.5743403270448272e-05
+          },
+          {
+            "iterations": 17,
+            "rhs_norm": 1929.2859926070096,
+            "true_residual_norm": 1.644588169413768e-05,
+            "target_norm": 1.9292859926070097e-05
+          },
+          {
+            "iterations": 17,
+            "rhs_norm": 1443.3538640000902,
+            "true_residual_norm": 1.0648471651313298e-05,
+            "target_norm": 1.4433538640000902e-05
+          },
+          {
+            "iterations": 17,
+            "rhs_norm": 1073.775726513601,
+            "true_residual_norm": 8.998646365834798e-06,
+            "target_norm": 1.073775726513601e-05
+          },
+          {
+            "iterations": 17,
+            "rhs_norm": 784.6428775433974,
+            "true_residual_norm": 5.716654353990531e-06,
+            "target_norm": 7.846428775433974e-06
+          },
+          {
+            "iterations": 17,
+            "rhs_norm": 541.9760260551619,
+            "true_residual_norm": 4.4696625096413895e-06,
+            "target_norm": 5.41976026055162e-06
+          },
+          {
+            "iterations": 17,
+            "rhs_norm": 315.84088620965866,
+            "true_residual_norm": 2.439904783270902e-06,
+            "target_norm": 3.1584088620965866e-06
+          },
+          {
+            "iterations": 17,
+            "rhs_norm": 115.44752669704363,
+            "true_residual_norm": 1.0247316841469427e-06,
+            "target_norm": 1.1544752669704363e-06
+          },
+          {
+            "iterations": 17,
+            "rhs_norm": 14.327647761916714,
+            "true_residual_norm": 1.269019489544359e-07,
+            "target_norm": 1.4327647761916714e-07
+          },
+          {
+            "iterations": 17,
+            "rhs_norm": 0.2042871203538588,
+            "true_residual_norm": 1.541347453449669e-09,
+            "target_norm": 2.042871203538588e-09
+          },
+          {
+            "iterations": 11,
+            "rhs_norm": 16224.039933928965,
+            "true_residual_norm": 3.88611112798417e-05,
+            "target_norm": 0.00016224039933928966
+          },
+          {
+            "iterations": 80,
+            "rhs_norm": 265.5768051461221,
+            "true_residual_norm": 3.0192546984818404e-06,
+            "target_norm": 2.6557680514612216e-06
+          }
+        ],
+        "fgmres_total_iterations": 330,
+        "fgmres_fatal": "FGMRES did not reach its requested relative residual: iterations=80, relative_residual=1.13687e-08, target=1e-08, breakdown=0.",
+        "last_output": {
+          "file": "/tmp/wor25_23_24_resolution_trials/threelevel_coupled_variable_long5_norm_on_r2/output/nrfld_diff_amr_interface.fields.00001.athdf",
+          "minimum_Er": 144.06199645996094,
+          "time": 0.00019999999494757503
+        },
+        "evaluation": "FAIL_SOLVER"
+      },
+      {
+        "name": "threelevel_coupled_variable_long5_max200_r1",
+        "ranks": 1,
+        "threads_per_rank": 1,
+        "source_commit_before_run": "6bc87e3d",
+        "changed_source_sha256": "5afac13a2693ca347251dedd41fb0e6433596bebf2cb8eee3e8bf3954e4bc3a8",
+        "binary_sha256": "cd318bba13fa90e2c3cf701779234dbdef8b71f0afb546555a3c7b32bd9e1372",
+        "input_path": "/home/kosuke/simulation/athena-wor25-23-24-resolution/tst/nrfld_validation/testc_threelevel_shifted_20261107.in",
+        "input_sha256": "c1ffedae69f670d6f17740805077b6741c7cefdaf2baf4639cc7ab5f1fa38a74",
+        "command": "mpirun --output-filename /tmp/wor25_23_24_resolution_trials/threelevel_coupled_variable_long5_max200_r1/mpi -n 1 /tmp/wor25_23_24_resolution_fgmres_norm_audit_build/bin/athena -i /home/kosuke/simulation/athena-wor25-23-24-resolution/tst/nrfld_validation/testc_threelevel_shifted_20261107.in -d /tmp/wor25_23_24_resolution_trials/threelevel_coupled_variable_long5_max200_r1/output nrfld/linear_solver=fgmres nrfld/fgmres_linearity_check=false nrfld/global_jacobian_check=false nrfld/fgmres_max_iterations=200 fld/is_couple=true fld/only_rad=false fld/fixed_flux_limiter=false time/nlim=5 time/tlim=0.001",
+        "environment": {
+          "OMP_NUM_THREADS": 1,
+          "ATHENA_NRFLD_INTERFACE_LEDGER": 1,
+          "ATHENA_NRFLD_ENERGY_LEDGER": 1,
+          "ATHENA_NRFLD_FGMRES_NORM_AUDIT": 1
+        },
+        "run_log": "/tmp/wor25_23_24_resolution_trials/threelevel_coupled_variable_long5_max200_r1/run.log",
+        "exit_status": 134,
+        "wall_time": "0:27.87",
+        "peak_rss_kb": 463600,
+        "fgmres_history": [
+          {
+            "iterations": 18,
+            "true_relative_residual": 4.174342424551554e-09
+          },
+          {
+            "iterations": 17,
+            "true_relative_residual": 7.321668344929564e-09
+          },
+          {
+            "iterations": 17,
+            "true_relative_residual": 7.997646043347438e-09
+          },
+          {
+            "iterations": 17,
+            "true_relative_residual": 7.44447484695445e-09
+          },
+          {
+            "iterations": 17,
+            "true_relative_residual": 7.544082066472222e-09
+          },
+          {
+            "iterations": 17,
+            "true_relative_residual": 8.756412105927004e-09
+          },
+          {
+            "iterations": 17,
+            "true_relative_residual": 7.44796014931074e-09
+          },
+          {
+            "iterations": 17,
+            "true_relative_residual": 8.227557162612893e-09
+          },
+          {
+            "iterations": 17,
+            "true_relative_residual": 7.3144218256755065e-09
+          },
+          {
+            "iterations": 17,
+            "true_relative_residual": 8.219961947328955e-09
+          },
+          {
+            "iterations": 17,
+            "true_relative_residual": 7.657750434623499e-09
+          },
+          {
+            "iterations": 17,
+            "true_relative_residual": 9.018127703656283e-09
+          },
+          {
+            "iterations": 17,
+            "true_relative_residual": 8.66530025457719e-09
+          },
+          {
+            "iterations": 17,
+            "true_relative_residual": 7.563615080125985e-09
+          },
+          {
+            "iterations": 11,
+            "true_relative_residual": 2.4043715766300617e-09
+          },
+          {
+            "iterations": 200,
+            "true_relative_residual": 1.1314503145137345e-08
+          }
+        ],
+        "fgmres_norm_history": [
+          {
+            "iterations": 18,
+            "rhs_norm": 12614.41659943957,
+            "true_residual_norm": 5.265689437200795e-05,
+            "target_norm": 0.0001261441659943957
+          },
+          {
+            "iterations": 17,
+            "rhs_norm": 6104.0587090703775,
+            "true_residual_norm": 4.46918934257922e-05,
+            "target_norm": 6.104058709070377e-05
+          },
+          {
+            "iterations": 17,
+            "rhs_norm": 4577.95716387002,
+            "true_residual_norm": 3.6612880998239125e-05,
+            "target_norm": 4.57795716387002e-05
+          },
+          {
+            "iterations": 17,
+            "rhs_norm": 3433.2378447868614,
+            "true_residual_norm": 2.55586527791279e-05,
+            "target_norm": 3.433237844786861e-05
+          },
+          {
+            "iterations": 17,
+            "rhs_norm": 2574.3403270937874,
+            "true_residual_norm": 1.9421034694624475e-05,
+            "target_norm": 2.5743403270937877e-05
+          },
+          {
+            "iterations": 17,
+            "rhs_norm": 1929.2859924094864,
+            "true_residual_norm": 1.689362321972982e-05,
+            "target_norm": 1.9292859924094864e-05
+          },
+          {
+            "iterations": 17,
+            "rhs_norm": 1443.3538640648007,
+            "true_residual_norm": 1.0750042060908305e-05,
+            "target_norm": 1.4433538640648007e-05
+          },
+          {
+            "iterations": 17,
+            "rhs_norm": 1073.7757264914164,
+            "true_residual_norm": 8.834551169534318e-06,
+            "target_norm": 1.0737757264914165e-05
+          },
+          {
+            "iterations": 17,
+            "rhs_norm": 784.6428774904409,
+            "true_residual_norm": 5.7392089884769135e-06,
+            "target_norm": 7.846428774904409e-06
+          },
+          {
+            "iterations": 17,
+            "rhs_norm": 541.9760258463156,
+            "true_residual_norm": 4.455022308821288e-06,
+            "target_norm": 5.419760258463156e-06
+          },
+          {
+            "iterations": 17,
+            "rhs_norm": 315.840886331938,
+            "true_residual_norm": 2.418630684580269e-06,
+            "target_norm": 3.15840886331938e-06
+          },
+          {
+            "iterations": 17,
+            "rhs_norm": 115.44752670453758,
+            "true_residual_norm": 1.041120538892789e-06,
+            "target_norm": 1.1544752670453759e-06
+          },
+          {
+            "iterations": 17,
+            "rhs_norm": 14.327647793903331,
+            "true_residual_norm": 1.2415337007600284e-07,
+            "target_norm": 1.432764779390333e-07
+          },
+          {
+            "iterations": 17,
+            "rhs_norm": 0.20428709714014934,
+            "true_residual_norm": 1.5451489686043955e-09,
+            "target_norm": 2.0428709714014933e-09
+          },
+          {
+            "iterations": 11,
+            "rhs_norm": 16224.039936651314,
+            "true_residual_norm": 3.900862048179541e-05,
+            "target_norm": 0.00016224039936651313
+          },
+          {
+            "iterations": 200,
+            "rhs_norm": 265.57680715691697,
+            "true_residual_norm": 3.004869619852471e-06,
+            "target_norm": 2.65576807156917e-06
+          }
+        ],
+        "fgmres_total_iterations": 450,
+        "fgmres_fatal": "FGMRES did not reach its requested relative residual: iterations=200, relative_residual=1.13145e-08, target=1e-08, breakdown=0.",
+        "last_output": {
+          "file": "/tmp/wor25_23_24_resolution_trials/threelevel_coupled_variable_long5_max200_r1/output/nrfld_diff_amr_interface.fields.00001.athdf",
+          "minimum_Er": 144.06199645996094,
+          "time": 0.00019999999494757503
+        },
+        "evaluation": "FAIL_SOLVER"
+      }
+    ],
+    "on_off_rank1_hdf_exact": true,
+    "on_off_rank1_fgmres_history_exact": true,
+    "decision": "This opt-in diagnostic exposes the absolute RHS and true-residual scales behind the FGMRES relative-residual failure without changing the target or failure policy. In the failed second step, RHS L2 is about 265.6 and true residual about 3e-6 versus target 2.66e-6; this alone does not prove machine-roundoff saturation. Raising the iteration cap to 200 does not reach 1e-8. ON/OFF solver and output controls are exact. Retain as a diagnostic only; do not relax the production stopping criterion."
   }
 }

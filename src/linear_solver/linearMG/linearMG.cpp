@@ -14,6 +14,7 @@
 #include <cstdint>
 #include <cstdlib>
 #include <cstring>
+#include <iomanip>
 #include <iostream>
 #include <limits>
 #include <sstream>    // sstream
@@ -1759,6 +1760,21 @@ void linearMGDriver::SolveFGMRES(int stage) {
               << " workspace_rebuilt=" << workspace_rebuilt
               << " workspace_rebuilds=" << fgmres_workspace_rebuilds_
               << " breakdown=" << breakdown << std::endl;
+    if (std::getenv("ATHENA_NRFLD_FGMRES_NORM_AUDIT") != nullptr) {
+      const auto flags = std::cout.flags();
+      const auto precision = std::cout.precision();
+      // Both norms were already computed for the true-residual stop test.
+      // This exposes the absolute scale behind a relative-residual stop,
+      // including cases where matrix application loses low-order bits.
+      std::cout << std::scientific << std::setprecision(18)
+                << "[LINEAR_FGMRES_NORM_AUDIT] iterations=" << total_iterations
+                << " rhs_norm=" << bnorm
+                << " true_residual_norm=" << beta
+                << " target_norm=" << static_cast<long double>(fgmres_threshold_)*bnorm
+                << std::endl;
+      std::cout.flags(flags);
+      std::cout.precision(precision);
+    }
   }
   if (breakdown || !(relative_residual <= fgmres_threshold_)
       || !std::isfinite(relative_residual)) {
