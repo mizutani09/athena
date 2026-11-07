@@ -1,0 +1,222 @@
+<comment>
+problem = Tabular-EOS and tabular-opacity protostellar collapse experiment
+configure = --prob=protostellar_core_fld --coord=cartesian --eos=general/eos_table -b --grav=mg -nrmgfld --flux=hlld_fld --nscalars=1
+benchmark = first saved snapshot with rho_max >= 1e-10 g cm^-3
+scope = Tomida H/He EOS, Semenov dust/gas opacity; no rotation and no magnetic field
+
+<job>
+problem_id = cfl030_flux_precision16_local
+
+<output1>
+file_type = hst
+dcycle = 1
+
+<output2>
+file_type = hdf5
+id = prim
+variable = prim
+dcycle = 1
+
+<output3>
+file_type = hdf5
+id = fld
+variable = uov
+dt = 1000
+
+<output4>
+file_type = rst
+dcycle = 5
+
+<output5>
+file_type = hdf5
+id = xy
+variable = prim,uov
+dt = 1000
+x3_slice = 0.0
+
+<output6>
+file_type = hdf5
+id = xline
+variable = prim,uov
+dcycle = 1000
+x2_slice = 0.0
+x3_slice = 0.0
+
+<time>
+cfl_number = 0.3
+nlim = 30
+tlim = 2100.0
+integrator = rk2
+xorder = 2
+ncycle_out = 1
+
+<mesh>
+nx1 = 32
+x1min = -6000.0
+x1max = 6000.0
+ix1_bc = periodic
+ox1_bc = periodic
+nx2 = 32
+x2min = -6000.0
+x2max = 6000.0
+ix2_bc = periodic
+ox2_bc = periodic
+nx3 = 32
+x3min = -6000.0
+x3max = 6000.0
+ix3_bc = periodic
+ox3_bc = periodic
+refinement = adaptive
+numlevel = 2
+derefine_count = 5
+
+<meshblock>
+nx1 = 8
+nx2 = 8
+nx3 = 8
+
+<hydro>
+rho_unit = 1.0e-18
+egas_unit = 1.0e-9
+leng_unit = 1.495978707e13
+mu = 2.381
+density_floor = 1.0e-8
+pressure_floor = 1.0e-10
+dfloor = 1.0e-3
+pfloor = 1.0e-10
+tfloor = 5.02
+eos_file_name = data/eos/protostellar_tomida2015_material.tab
+eos_file_type = ascii
+eos_read_ratios = true
+eos_rho_unit = 1.0e-18
+eos_egas_unit = 1.0e-9
+eos_temp_unit = 1.0
+T_unit = 1.0
+dens_pow = -1.0
+eos_table_clamp = false
+
+<gravity>
+reset_fmg_color_each_solve = true
+repeat_initial_fmg_after_restart = true
+mgmode = FMG
+threshold = 0.0
+output_defect = true
+ix1_bc = multipole
+ox1_bc = multipole
+ix2_bc = multipole
+ox2_bc = multipole
+ix3_bc = multipole
+ox3_bc = multipole
+mporder = 2
+auto_mporigin = true
+
+<nrfld>
+mgmode = MGI
+fas = false
+linear_solver = fgmres
+sync_radiation_before_implicit = true
+coarse_operator = rediscretized
+prolongation = trilinear
+amr_correction_prolongation = tangent
+fgmres_threshold = 2e-8
+fgmres_restart = 40
+fgmres_max_iterations = 300
+fgmres_mg_vcycles = 2
+fgmres_linearity_check = false
+fgmres_compact_basis = true
+fgmres_reuse_basis = true
+fgmres_batched_reductions = true
+fgmres_flux_form_matvec = true
+fgmres_precision_floor_factor = 0
+smoother = jacobi-rb
+symmetric_rb_sweeps = true
+npresmooth = 2
+npostsmooth = 2
+omega = 1.0
+threshold = 1.0e-8
+niteration = -1
+linear_max_vcycles = 100
+linear_divergence_patience = 1
+linear_max_transient_growth = 2.0
+nr_threshold = 1e-5
+nr_accept_l2_threshold = 1e-5
+nr_accept_max_threshold = 1e-5
+nr_niteration = 100
+nr_max_iterations = 128
+diagnostic_verbosity = 1
+smoothing_only = false
+post_mg_smooth = 16
+cache_coefficient_hierarchy = true
+coarse_solver = direct
+coarse_direct_max_cells = 64
+coarse_diagnostics = false
+coarse_diagnostic_limit = 4
+coefficient_diagnostics = false
+coefficient_diagnostic_limit = 1
+coarse_correction_scale = 1.0
+nr_mg_coarse_retry_max = 0
+nr_mg_coarse_retry_factor = 0.5
+nr_mg_coarse_retry_min_scale = 0.0625
+nr_backtrack_max = 20
+nr_backtrack_factor = 0.5
+nr_min_step_scale = 1.0e-6
+nr_use_mg_smoothing_fallback = false
+failure_policy = abort
+max_update_fraction = -1.0
+ix1_bc = periodic
+ox1_bc = periodic
+ix2_bc = periodic
+ox2_bc = periodic
+ix3_bc = periodic
+ox3_bc = periodic
+exact_local_gas_solve = true
+fgmres_backward_error_diagnostics = true
+jacobian_check = true
+jacobian_check_each_cycle = true
+jacobian_check_epsilon = 1e-4
+
+<fld>
+output_defect = true
+is_couple = true
+only_rad = false
+cut_diff = false
+include_radiation_force = true
+fixed_flux_limiter = false
+fixed_u_rad = false
+include_mixed_frame_terms = true
+mixed_frame_transport = true
+use_opacity_table = true
+opacity_table_file = data/opacity/protostellar_semenov2003_nrm_c_a.h5
+opacity_table_file_type = hdf5
+opacity_table_axis = trho
+opacity_table_domain_policy = clamp
+opacity_accepted_state_guard = true
+opacity_table_planck_format = log10
+opacity_table_rosseland_format = log10
+
+<radiation>
+kappa_P = 1.0
+kappa_R = 1.0
+
+<problem>
+M_core = 1.0
+R_core = 3000.0
+T_core = 14.0
+mu = 2.381
+Omega = 1.48e-13
+B0 = 1.29e-4
+rho_ambient_factor = 1.0e-2
+background_pressure_ratio = 1.0e-2
+fix_background_temperature = true
+background_fix_radiation = true
+background_sink_after_implicit = false
+background_tracer_threshold = 0.5
+transition_width = 187.5
+enable_rotation = false
+enable_magnetic_field = false
+test_mode = collapse
+N_J = 32
+refinement_mode = jeans
+target_cell_mass_msun = 3.33e-7
+mass_refine_factor = 2.0
+mass_derefine_factor = 0.25
