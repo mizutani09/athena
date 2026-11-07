@@ -1,0 +1,44 @@
+--- a/src/nr_multigrid/NRFLD.cpp
++++ b/src/nr_multigrid/NRFLD.cpp
+@@ -515,6 +515,41 @@
+               } else {
+                 face_term = face_coeff[face]*(neighbor[face]-center);
+               }
++              if (interface_ledger && face < 2
++                  && ((face == XMinus && mb->block_size.x1min == 0.5 && i == mb->is)
++                      || (face == XPlus && mb->block_size.x1max == 0.5
++                          && i == mb->ie))
++                  && mb->pbval->nblevel[1][1][face == XMinus ? 0 : 2]
++                      != mb->loc.level) {
++                const int mi = face == XMinus ? i-1 : i;
++                const int mf = face == XMinus ? XPlus : XPlus;
++                std::ostringstream detail;
++                detail << std::scientific << std::setprecision(17)
++                       << "[NR_FACE_EXACT_PROBE] rank=" << Globals::my_rank
++                       << " cycle=" << pmy_mesh_->ncycle
++                       << " gid=" << mb->gid << " level=" << mb->loc.level
++                       << " face=" << face << " x1min=" << mb->block_size.x1min
++                       << " x1max=" << mb->block_size.x1max
++                       << " x2=" << mb->pcoord->x2v(j)
++                       << " x3=" << mb->pcoord->x3v(k)
++                       << " k=" << k << " j=" << j << " i=" << i
++                       << " center=" << center
++                       << " ghost=" << neighbor[face]
++                       << " coefficient=" << face_coeff[face]
++                       << " term=" << face_term
++                       << " volume=" << volume << " dt=" << dt_
++                       << " idx2=" << idx2
++                       << " moment_d=" << nr->interface_moments_(2*mf,k,j,mi)
++                       << " moment_de=" << nr->interface_moments_(2*mf+1,k,j,mi)
++                       << " offset=" << (face == XPlus
++                           ? NRFLDFaceReconstruction::TangentialOffset(
++                               nr->u_,0,mb,face,k,j,i) : 0.0)
++                       << " coarse_ref=" << (face == XPlus
++                           ? nr->NewtonRaphson::coarse_u_(
++                               0,mb->cks+(k-mb->ks)/2,
++                               mb->cjs+(j-mb->js)/2,mb->cie+1) : 0.0);
++                std::cout << detail.str() << std::endl;
++              }
+               face_sum += face_term;
+               if (interface_ledger &&
+                   ((face == XMinus && i == mb->is)
