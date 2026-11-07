@@ -45696,5 +45696,1353 @@
         "decision": "REJECT_DIAGNOSTIC_ARITHMETIC_AS_FIX"
       }
     ]
+  },
+  "wor29_natural_postcfl_color_threshold": {
+    "scope": "Natural 43-to-64-leaf regrid from common cycle-15 checkpoint with post-implicit CFL fix; both RBGS flags explicitly overridden.",
+    "binary_sha256": "41a2a02a414eb56e458d53b239fe4188eac6ac2a701f47fd54aab944163b1a39",
+    "checkpoint_sha256": "f4cc6f049c970b4ed3efc43abdd92da0d3e2b6fe6cf817147a2d08e5598c5507",
+    "runs": [
+      {
+        "name": "collapse_natural_postflddt_colors_default_r1",
+        "ranks": 1,
+        "threads": 2,
+        "source_commit_before_run": "4a2d5e03",
+        "binary_sha256": "41a2a02a414eb56e458d53b239fe4188eac6ac2a701f47fd54aab944163b1a39",
+        "checkpoint_path": "/tmp/wor25_23_24_resolution_trials/collapse_postflddt_opacity_natural_r1/output/protostellar_core_fld_mayer5.00015.rst",
+        "checkpoint_sha256": "f4cc6f049c970b4ed3efc43abdd92da0d3e2b6fe6cf817147a2d08e5598c5507",
+        "overrides": {
+          "nrfld/consistent_rb_colors": false,
+          "nrfld/symmetric_rb_sweeps": false,
+          "nrfld/fgmres_threshold": 1e-08,
+          "nrfld/global_jacobian_check": false,
+          "gravity/reset_fmg_color_each_solve": true,
+          "gravity/repeat_initial_fmg_after_restart": true,
+          "problem/N_J": 7.616,
+          "time/nlim": 17
+        },
+        "environment": {
+          "ATHENA_NRFLD_EXPERIMENTAL_COLLAPSE": 1,
+          "ATHENA_NRFLD_INTERFACE_LEDGER": 1,
+          "ATHENA_NRFLD_ENERGY_LEDGER": 1,
+          "OMP_NUM_THREADS": 2
+        },
+        "command": "mpirun --output-filename /tmp/wor25_23_24_resolution_trials/collapse_natural_postflddt_colors_default_r1/mpi -n 1 /tmp/wor25_23_24_resolution_collapse_postflddt_build/bin/athena -r /tmp/wor25_23_24_resolution_trials/collapse_postflddt_opacity_natural_r1/output/protostellar_core_fld_mayer5.00015.rst -d output mesh/num_threads=2 time/nlim=17 problem/N_J=7.6160 nrfld/global_jacobian_check=false gravity/reset_fmg_color_each_solve=true gravity/repeat_initial_fmg_after_restart=true nrfld/consistent_rb_colors=false nrfld/symmetric_rb_sweeps=false",
+        "run_log": "/tmp/wor25_23_24_resolution_trials/collapse_natural_postflddt_colors_default_r1/run.log",
+        "exit_status": 0,
+        "wall_time": "0:41.49",
+        "peak_rss_kb": 420836,
+        "newton_history": [
+          {
+            "status": "converged",
+            "iterations": 0
+          },
+          {
+            "status": "converged",
+            "iterations": 2
+          },
+          {
+            "status": "converged",
+            "iterations": 0
+          },
+          {
+            "status": "converged",
+            "iterations": 3
+          }
+        ],
+        "fgmres_history": [
+          {
+            "iterations": 13,
+            "true_relative_residual": 7.650329686415597e-09
+          },
+          {
+            "iterations": 13,
+            "true_relative_residual": 9.496651753790292e-09
+          },
+          {
+            "iterations": 7,
+            "true_relative_residual": 7.743802425313238e-09
+          },
+          {
+            "iterations": 9,
+            "true_relative_residual": 1.453706181193258e-09
+          },
+          {
+            "iterations": 8,
+            "true_relative_residual": 5.695737382255837e-09
+          }
+        ],
+        "fgmres_total_iterations": 50,
+        "max_true_relative_residual": 9.496651753790292e-09,
+        "face_ledger": {
+          "pair_count": 9,
+          "max_relative_mismatch": 1.3003897535488776e-06,
+          "bad_pair": {
+            "cycle": 15,
+            "stage": 0,
+            "coarse_gid": 24,
+            "axis": 3,
+            "side": "max",
+            "fine_count": 4,
+            "coarse_flux": 135436.6067350228,
+            "fine_flux": -135436.25449472954,
+            "mismatch": 0.35224029325763695,
+            "relative_mismatch": 1.3003897535488776e-06
+          },
+          "relative_tolerance": 1e-06,
+          "pass": false,
+          "logs": [
+            "/tmp/wor25_23_24_resolution_trials/collapse_natural_postflddt_colors_default_r1/mpi/1/rank.0/stdout"
+          ]
+        },
+        "max_implicit_energy_absolute_relative_balance": 3.5644218273778513e-10,
+        "mass_volume_integral": {
+          "initial": 704254625794.6189,
+          "final": 704254647857.8673,
+          "relative_change": 3.132851046337354e-08
+        },
+        "final_minima": {
+          "rho": 0.0517825273210102,
+          "press": 0.0253143820436865,
+          "Er": 0.29059143274494187
+        },
+        "final_level_counts": {
+          "1": 64
+        },
+        "solver_pass": true,
+        "evaluation": "FAIL_FACE_RELATIVE_ONLY"
+      },
+      {
+        "name": "collapse_natural_postflddt_colors_default_r2",
+        "ranks": 2,
+        "threads": 2,
+        "source_commit_before_run": "4a2d5e03",
+        "binary_sha256": "41a2a02a414eb56e458d53b239fe4188eac6ac2a701f47fd54aab944163b1a39",
+        "checkpoint_path": "/tmp/wor25_23_24_resolution_trials/collapse_postflddt_opacity_natural_r1/output/protostellar_core_fld_mayer5.00015.rst",
+        "checkpoint_sha256": "f4cc6f049c970b4ed3efc43abdd92da0d3e2b6fe6cf817147a2d08e5598c5507",
+        "overrides": {
+          "nrfld/consistent_rb_colors": false,
+          "nrfld/symmetric_rb_sweeps": false,
+          "nrfld/fgmres_threshold": 1e-08,
+          "nrfld/global_jacobian_check": false,
+          "gravity/reset_fmg_color_each_solve": true,
+          "gravity/repeat_initial_fmg_after_restart": true,
+          "problem/N_J": 7.616,
+          "time/nlim": 17
+        },
+        "environment": {
+          "ATHENA_NRFLD_EXPERIMENTAL_COLLAPSE": 1,
+          "ATHENA_NRFLD_INTERFACE_LEDGER": 1,
+          "ATHENA_NRFLD_ENERGY_LEDGER": 1,
+          "OMP_NUM_THREADS": 2
+        },
+        "command": "mpirun --output-filename /tmp/wor25_23_24_resolution_trials/collapse_natural_postflddt_colors_default_r2/mpi -n 2 /tmp/wor25_23_24_resolution_collapse_postflddt_build/bin/athena -r /tmp/wor25_23_24_resolution_trials/collapse_postflddt_opacity_natural_r1/output/protostellar_core_fld_mayer5.00015.rst -d output mesh/num_threads=2 time/nlim=17 problem/N_J=7.6160 nrfld/global_jacobian_check=false gravity/reset_fmg_color_each_solve=true gravity/repeat_initial_fmg_after_restart=true nrfld/consistent_rb_colors=false nrfld/symmetric_rb_sweeps=false",
+        "run_log": "/tmp/wor25_23_24_resolution_trials/collapse_natural_postflddt_colors_default_r2/run.log",
+        "exit_status": 0,
+        "wall_time": "0:49.73",
+        "peak_rss_kb": 257592,
+        "newton_history": [
+          {
+            "status": "converged",
+            "iterations": 0
+          },
+          {
+            "status": "converged",
+            "iterations": 2
+          },
+          {
+            "status": "converged",
+            "iterations": 0
+          },
+          {
+            "status": "converged",
+            "iterations": 3
+          }
+        ],
+        "fgmres_history": [
+          {
+            "iterations": 13,
+            "true_relative_residual": 7.650331536525194e-09
+          },
+          {
+            "iterations": 13,
+            "true_relative_residual": 9.498004310670552e-09
+          },
+          {
+            "iterations": 7,
+            "true_relative_residual": 7.743802425463461e-09
+          },
+          {
+            "iterations": 9,
+            "true_relative_residual": 1.454158496062636e-09
+          },
+          {
+            "iterations": 8,
+            "true_relative_residual": 5.689242852269397e-09
+          }
+        ],
+        "fgmres_total_iterations": 50,
+        "max_true_relative_residual": 9.498004310670552e-09,
+        "face_ledger": {
+          "pair_count": 9,
+          "max_relative_mismatch": 1.953075050362131e-07,
+          "bad_pair": {
+            "cycle": 15,
+            "stage": 0,
+            "coarse_gid": 34,
+            "axis": 2,
+            "side": "min",
+            "fine_count": 4,
+            "coarse_flux": 510194.29029727745,
+            "fine_flux": -510194.0910077685,
+            "mismatch": 0.19928950892062858,
+            "relative_mismatch": 1.953075050362131e-07
+          },
+          "relative_tolerance": 1e-06,
+          "pass": true,
+          "logs": [
+            "/tmp/wor25_23_24_resolution_trials/collapse_natural_postflddt_colors_default_r2/mpi/1/rank.0/stdout",
+            "/tmp/wor25_23_24_resolution_trials/collapse_natural_postflddt_colors_default_r2/mpi/1/rank.1/stdout"
+          ]
+        },
+        "max_implicit_energy_absolute_relative_balance": 4.341425196397349e-10,
+        "mass_volume_integral": {
+          "initial": 704254625794.6189,
+          "final": 704254647857.8673,
+          "relative_change": 3.132851046337354e-08
+        },
+        "final_minima": {
+          "rho": 0.05178252732101019,
+          "press": 0.025314382043686405,
+          "Er": 0.29059143274493754
+        },
+        "final_level_counts": {
+          "1": 64
+        },
+        "solver_pass": true,
+        "evaluation": "PASS"
+      },
+      {
+        "name": "collapse_natural_postflddt_colors_consistent_r1",
+        "ranks": 1,
+        "threads": 2,
+        "source_commit_before_run": "4a2d5e03",
+        "binary_sha256": "41a2a02a414eb56e458d53b239fe4188eac6ac2a701f47fd54aab944163b1a39",
+        "checkpoint_path": "/tmp/wor25_23_24_resolution_trials/collapse_postflddt_opacity_natural_r1/output/protostellar_core_fld_mayer5.00015.rst",
+        "checkpoint_sha256": "f4cc6f049c970b4ed3efc43abdd92da0d3e2b6fe6cf817147a2d08e5598c5507",
+        "overrides": {
+          "nrfld/consistent_rb_colors": true,
+          "nrfld/symmetric_rb_sweeps": false,
+          "nrfld/fgmres_threshold": 1e-08,
+          "nrfld/global_jacobian_check": false,
+          "gravity/reset_fmg_color_each_solve": true,
+          "gravity/repeat_initial_fmg_after_restart": true,
+          "problem/N_J": 7.616,
+          "time/nlim": 17
+        },
+        "environment": {
+          "ATHENA_NRFLD_EXPERIMENTAL_COLLAPSE": 1,
+          "ATHENA_NRFLD_INTERFACE_LEDGER": 1,
+          "ATHENA_NRFLD_ENERGY_LEDGER": 1,
+          "OMP_NUM_THREADS": 2
+        },
+        "command": "mpirun --output-filename /tmp/wor25_23_24_resolution_trials/collapse_natural_postflddt_colors_consistent_r1/mpi -n 1 /tmp/wor25_23_24_resolution_collapse_postflddt_build/bin/athena -r /tmp/wor25_23_24_resolution_trials/collapse_postflddt_opacity_natural_r1/output/protostellar_core_fld_mayer5.00015.rst -d output mesh/num_threads=2 time/nlim=17 problem/N_J=7.6160 nrfld/global_jacobian_check=false gravity/reset_fmg_color_each_solve=true gravity/repeat_initial_fmg_after_restart=true nrfld/consistent_rb_colors=true nrfld/symmetric_rb_sweeps=false",
+        "run_log": "/tmp/wor25_23_24_resolution_trials/collapse_natural_postflddt_colors_consistent_r1/run.log",
+        "exit_status": 0,
+        "wall_time": "0:42.43",
+        "peak_rss_kb": 420960,
+        "newton_history": [
+          {
+            "status": "converged",
+            "iterations": 0
+          },
+          {
+            "status": "converged",
+            "iterations": 2
+          },
+          {
+            "status": "converged",
+            "iterations": 0
+          },
+          {
+            "status": "converged",
+            "iterations": 3
+          }
+        ],
+        "fgmres_history": [
+          {
+            "iterations": 14,
+            "true_relative_residual": 2.927902926366863e-09
+          },
+          {
+            "iterations": 14,
+            "true_relative_residual": 6.414222613035807e-09
+          },
+          {
+            "iterations": 7,
+            "true_relative_residual": 7.74284263476923e-09
+          },
+          {
+            "iterations": 9,
+            "true_relative_residual": 1.452149329278079e-09
+          },
+          {
+            "iterations": 8,
+            "true_relative_residual": 5.694891579637788e-09
+          }
+        ],
+        "fgmres_total_iterations": 52,
+        "max_true_relative_residual": 7.74284263476923e-09,
+        "face_ledger": {
+          "pair_count": 9,
+          "max_relative_mismatch": 5.859990361493183e-07,
+          "bad_pair": {
+            "cycle": 15,
+            "stage": 0,
+            "coarse_gid": 34,
+            "axis": 1,
+            "side": "max",
+            "fine_count": 4,
+            "coarse_flux": 135436.62100656301,
+            "fine_flux": -135436.4622751973,
+            "mismatch": 0.1587313657219056,
+            "relative_mismatch": 5.859990361493183e-07
+          },
+          "relative_tolerance": 1e-06,
+          "pass": true,
+          "logs": [
+            "/tmp/wor25_23_24_resolution_trials/collapse_natural_postflddt_colors_consistent_r1/mpi/1/rank.0/stdout"
+          ]
+        },
+        "max_implicit_energy_absolute_relative_balance": 3.5433820709464734e-10,
+        "mass_volume_integral": {
+          "initial": 704254625794.6189,
+          "final": 704254647857.8672,
+          "relative_change": 3.132851029004091e-08
+        },
+        "final_minima": {
+          "rho": 0.05178252732101047,
+          "press": 0.025314382043684,
+          "Er": 0.2905914327448149
+        },
+        "final_level_counts": {
+          "1": 64
+        },
+        "solver_pass": true,
+        "evaluation": "PASS"
+      },
+      {
+        "name": "collapse_natural_postflddt_colors_consistent_r2",
+        "ranks": 2,
+        "threads": 2,
+        "source_commit_before_run": "4a2d5e03",
+        "binary_sha256": "41a2a02a414eb56e458d53b239fe4188eac6ac2a701f47fd54aab944163b1a39",
+        "checkpoint_path": "/tmp/wor25_23_24_resolution_trials/collapse_postflddt_opacity_natural_r1/output/protostellar_core_fld_mayer5.00015.rst",
+        "checkpoint_sha256": "f4cc6f049c970b4ed3efc43abdd92da0d3e2b6fe6cf817147a2d08e5598c5507",
+        "overrides": {
+          "nrfld/consistent_rb_colors": true,
+          "nrfld/symmetric_rb_sweeps": false,
+          "nrfld/fgmres_threshold": 1e-08,
+          "nrfld/global_jacobian_check": false,
+          "gravity/reset_fmg_color_each_solve": true,
+          "gravity/repeat_initial_fmg_after_restart": true,
+          "problem/N_J": 7.616,
+          "time/nlim": 17
+        },
+        "environment": {
+          "ATHENA_NRFLD_EXPERIMENTAL_COLLAPSE": 1,
+          "ATHENA_NRFLD_INTERFACE_LEDGER": 1,
+          "ATHENA_NRFLD_ENERGY_LEDGER": 1,
+          "OMP_NUM_THREADS": 2
+        },
+        "command": "mpirun --output-filename /tmp/wor25_23_24_resolution_trials/collapse_natural_postflddt_colors_consistent_r2/mpi -n 2 /tmp/wor25_23_24_resolution_collapse_postflddt_build/bin/athena -r /tmp/wor25_23_24_resolution_trials/collapse_postflddt_opacity_natural_r1/output/protostellar_core_fld_mayer5.00015.rst -d output mesh/num_threads=2 time/nlim=17 problem/N_J=7.6160 nrfld/global_jacobian_check=false gravity/reset_fmg_color_each_solve=true gravity/repeat_initial_fmg_after_restart=true nrfld/consistent_rb_colors=true nrfld/symmetric_rb_sweeps=false",
+        "run_log": "/tmp/wor25_23_24_resolution_trials/collapse_natural_postflddt_colors_consistent_r2/run.log",
+        "exit_status": 0,
+        "wall_time": "0:50.06",
+        "peak_rss_kb": 257376,
+        "newton_history": [
+          {
+            "status": "converged",
+            "iterations": 0
+          },
+          {
+            "status": "converged",
+            "iterations": 2
+          },
+          {
+            "status": "converged",
+            "iterations": 0
+          },
+          {
+            "status": "converged",
+            "iterations": 3
+          }
+        ],
+        "fgmres_history": [
+          {
+            "iterations": 14,
+            "true_relative_residual": 2.927902811264292e-09
+          },
+          {
+            "iterations": 14,
+            "true_relative_residual": 6.412812041785538e-09
+          },
+          {
+            "iterations": 7,
+            "true_relative_residual": 7.742842643835593e-09
+          },
+          {
+            "iterations": 9,
+            "true_relative_residual": 1.45827332378577e-09
+          },
+          {
+            "iterations": 8,
+            "true_relative_residual": 5.689798397482761e-09
+          }
+        ],
+        "fgmres_total_iterations": 52,
+        "max_true_relative_residual": 7.742842643835593e-09,
+        "face_ledger": {
+          "pair_count": 9,
+          "max_relative_mismatch": 5.848666053860232e-07,
+          "bad_pair": {
+            "cycle": 15,
+            "stage": 0,
+            "coarse_gid": 33,
+            "axis": 2,
+            "side": "max",
+            "fine_count": 4,
+            "coarse_flux": 135436.2420941439,
+            "fine_flux": -135436.40051850688,
+            "mismatch": -0.1584243629768025,
+            "relative_mismatch": 5.848666053860232e-07
+          },
+          "relative_tolerance": 1e-06,
+          "pass": true,
+          "logs": [
+            "/tmp/wor25_23_24_resolution_trials/collapse_natural_postflddt_colors_consistent_r2/mpi/1/rank.0/stdout",
+            "/tmp/wor25_23_24_resolution_trials/collapse_natural_postflddt_colors_consistent_r2/mpi/1/rank.1/stdout"
+          ]
+        },
+        "max_implicit_energy_absolute_relative_balance": 4.2687269115981096e-10,
+        "mass_volume_integral": {
+          "initial": 704254625794.6189,
+          "final": 704254647857.8672,
+          "relative_change": 3.132851029004091e-08
+        },
+        "final_minima": {
+          "rho": 0.05178252732101048,
+          "press": 0.025314382043684143,
+          "Er": 0.2905914327448217
+        },
+        "final_level_counts": {
+          "1": 64
+        },
+        "solver_pass": true,
+        "evaluation": "PASS"
+      },
+      {
+        "name": "collapse_natural_postflddt_colors_symmetric_r1",
+        "ranks": 1,
+        "threads": 2,
+        "source_commit_before_run": "4a2d5e03",
+        "binary_sha256": "41a2a02a414eb56e458d53b239fe4188eac6ac2a701f47fd54aab944163b1a39",
+        "checkpoint_path": "/tmp/wor25_23_24_resolution_trials/collapse_postflddt_opacity_natural_r1/output/protostellar_core_fld_mayer5.00015.rst",
+        "checkpoint_sha256": "f4cc6f049c970b4ed3efc43abdd92da0d3e2b6fe6cf817147a2d08e5598c5507",
+        "overrides": {
+          "nrfld/consistent_rb_colors": false,
+          "nrfld/symmetric_rb_sweeps": true,
+          "nrfld/fgmres_threshold": 1e-08,
+          "nrfld/global_jacobian_check": false,
+          "gravity/reset_fmg_color_each_solve": true,
+          "gravity/repeat_initial_fmg_after_restart": true,
+          "problem/N_J": 7.616,
+          "time/nlim": 17
+        },
+        "environment": {
+          "ATHENA_NRFLD_EXPERIMENTAL_COLLAPSE": 1,
+          "ATHENA_NRFLD_INTERFACE_LEDGER": 1,
+          "ATHENA_NRFLD_ENERGY_LEDGER": 1,
+          "OMP_NUM_THREADS": 2
+        },
+        "command": "mpirun --output-filename /tmp/wor25_23_24_resolution_trials/collapse_natural_postflddt_colors_symmetric_r1/mpi -n 1 /tmp/wor25_23_24_resolution_collapse_postflddt_build/bin/athena -r /tmp/wor25_23_24_resolution_trials/collapse_postflddt_opacity_natural_r1/output/protostellar_core_fld_mayer5.00015.rst -d output mesh/num_threads=2 time/nlim=17 problem/N_J=7.6160 nrfld/global_jacobian_check=false gravity/reset_fmg_color_each_solve=true gravity/repeat_initial_fmg_after_restart=true nrfld/consistent_rb_colors=false nrfld/symmetric_rb_sweeps=true",
+        "run_log": "/tmp/wor25_23_24_resolution_trials/collapse_natural_postflddt_colors_symmetric_r1/run.log",
+        "exit_status": 0,
+        "wall_time": "0:44.38",
+        "peak_rss_kb": 421040,
+        "newton_history": [
+          {
+            "status": "converged",
+            "iterations": 0
+          },
+          {
+            "status": "converged",
+            "iterations": 2
+          },
+          {
+            "status": "converged",
+            "iterations": 0
+          },
+          {
+            "status": "converged",
+            "iterations": 3
+          }
+        ],
+        "fgmres_history": [
+          {
+            "iterations": 14,
+            "true_relative_residual": 2.910839869761283e-09
+          },
+          {
+            "iterations": 14,
+            "true_relative_residual": 4.690799886211161e-09
+          },
+          {
+            "iterations": 8,
+            "true_relative_residual": 5.99940942376375e-09
+          },
+          {
+            "iterations": 9,
+            "true_relative_residual": 5.70957061066943e-09
+          },
+          {
+            "iterations": 9,
+            "true_relative_residual": 3.734107714277994e-09
+          }
+        ],
+        "fgmres_total_iterations": 54,
+        "max_true_relative_residual": 5.99940942376375e-09,
+        "face_ledger": {
+          "pair_count": 9,
+          "max_relative_mismatch": 6.848455224085476e-07,
+          "bad_pair": {
+            "cycle": 15,
+            "stage": 0,
+            "coarse_gid": 24,
+            "axis": 3,
+            "side": "max",
+            "fine_count": 4,
+            "coarse_flux": 135436.28162887727,
+            "fine_flux": -135436.09612314223,
+            "mismatch": 0.18550573504762724,
+            "relative_mismatch": 6.848455224085476e-07
+          },
+          "relative_tolerance": 1e-06,
+          "pass": true,
+          "logs": [
+            "/tmp/wor25_23_24_resolution_trials/collapse_natural_postflddt_colors_symmetric_r1/mpi/1/rank.0/stdout"
+          ]
+        },
+        "max_implicit_energy_absolute_relative_balance": 3.609236598773309e-10,
+        "mass_volume_integral": {
+          "initial": 704254625794.6189,
+          "final": 704254647857.8672,
+          "relative_change": 3.132851029004091e-08
+        },
+        "final_minima": {
+          "rho": 0.05178252732101048,
+          "press": 0.025314382043684674,
+          "Er": 0.29059143274484744
+        },
+        "final_level_counts": {
+          "1": 64
+        },
+        "solver_pass": true,
+        "evaluation": "PASS"
+      },
+      {
+        "name": "collapse_natural_postflddt_colors_symmetric_r2",
+        "ranks": 2,
+        "threads": 2,
+        "source_commit_before_run": "4a2d5e03",
+        "binary_sha256": "41a2a02a414eb56e458d53b239fe4188eac6ac2a701f47fd54aab944163b1a39",
+        "checkpoint_path": "/tmp/wor25_23_24_resolution_trials/collapse_postflddt_opacity_natural_r1/output/protostellar_core_fld_mayer5.00015.rst",
+        "checkpoint_sha256": "f4cc6f049c970b4ed3efc43abdd92da0d3e2b6fe6cf817147a2d08e5598c5507",
+        "overrides": {
+          "nrfld/consistent_rb_colors": false,
+          "nrfld/symmetric_rb_sweeps": true,
+          "nrfld/fgmres_threshold": 1e-08,
+          "nrfld/global_jacobian_check": false,
+          "gravity/reset_fmg_color_each_solve": true,
+          "gravity/repeat_initial_fmg_after_restart": true,
+          "problem/N_J": 7.616,
+          "time/nlim": 17
+        },
+        "environment": {
+          "ATHENA_NRFLD_EXPERIMENTAL_COLLAPSE": 1,
+          "ATHENA_NRFLD_INTERFACE_LEDGER": 1,
+          "ATHENA_NRFLD_ENERGY_LEDGER": 1,
+          "OMP_NUM_THREADS": 2
+        },
+        "command": "mpirun --output-filename /tmp/wor25_23_24_resolution_trials/collapse_natural_postflddt_colors_symmetric_r2/mpi -n 2 /tmp/wor25_23_24_resolution_collapse_postflddt_build/bin/athena -r /tmp/wor25_23_24_resolution_trials/collapse_postflddt_opacity_natural_r1/output/protostellar_core_fld_mayer5.00015.rst -d output mesh/num_threads=2 time/nlim=17 problem/N_J=7.6160 nrfld/global_jacobian_check=false gravity/reset_fmg_color_each_solve=true gravity/repeat_initial_fmg_after_restart=true nrfld/consistent_rb_colors=false nrfld/symmetric_rb_sweeps=true",
+        "run_log": "/tmp/wor25_23_24_resolution_trials/collapse_natural_postflddt_colors_symmetric_r2/run.log",
+        "exit_status": 0,
+        "wall_time": "0:50.37",
+        "peak_rss_kb": 258484,
+        "newton_history": [
+          {
+            "status": "converged",
+            "iterations": 0
+          },
+          {
+            "status": "converged",
+            "iterations": 2
+          },
+          {
+            "status": "converged",
+            "iterations": 0
+          },
+          {
+            "status": "converged",
+            "iterations": 3
+          }
+        ],
+        "fgmres_history": [
+          {
+            "iterations": 14,
+            "true_relative_residual": 2.910840115495261e-09
+          },
+          {
+            "iterations": 14,
+            "true_relative_residual": 4.688235544324412e-09
+          },
+          {
+            "iterations": 8,
+            "true_relative_residual": 5.999409412950342e-09
+          },
+          {
+            "iterations": 9,
+            "true_relative_residual": 5.709221397883606e-09
+          },
+          {
+            "iterations": 9,
+            "true_relative_residual": 3.723941976030122e-09
+          }
+        ],
+        "fgmres_total_iterations": 54,
+        "max_true_relative_residual": 5.999409412950342e-09,
+        "face_ledger": {
+          "pair_count": 9,
+          "max_relative_mismatch": 2.1615453478513945e-07,
+          "bad_pair": {
+            "cycle": 15,
+            "stage": 0,
+            "coarse_gid": 34,
+            "axis": 1,
+            "side": "max",
+            "fine_count": 4,
+            "coarse_flux": 135436.39233582353,
+            "fine_flux": -135436.45088621695,
+            "mismatch": -0.058550393412588164,
+            "relative_mismatch": 2.1615453478513945e-07
+          },
+          "relative_tolerance": 1e-06,
+          "pass": true,
+          "logs": [
+            "/tmp/wor25_23_24_resolution_trials/collapse_natural_postflddt_colors_symmetric_r2/mpi/1/rank.0/stdout",
+            "/tmp/wor25_23_24_resolution_trials/collapse_natural_postflddt_colors_symmetric_r2/mpi/1/rank.1/stdout"
+          ]
+        },
+        "max_implicit_energy_absolute_relative_balance": 4.2526187407015166e-10,
+        "mass_volume_integral": {
+          "initial": 704254625794.6189,
+          "final": 704254647857.8672,
+          "relative_change": 3.132851029004091e-08
+        },
+        "final_minima": {
+          "rho": 0.05178252732101048,
+          "press": 0.02531438204368531,
+          "Er": 0.2905914327448779
+        },
+        "final_level_counts": {
+          "1": 64
+        },
+        "solver_pass": true,
+        "evaluation": "PASS"
+      },
+      {
+        "name": "collapse_natural_postflddt_colors_default_strict1e9_r1",
+        "ranks": 1,
+        "threads": 2,
+        "source_commit_before_run": "4a2d5e03",
+        "binary_sha256": "41a2a02a414eb56e458d53b239fe4188eac6ac2a701f47fd54aab944163b1a39",
+        "checkpoint_path": "/tmp/wor25_23_24_resolution_trials/collapse_postflddt_opacity_natural_r1/output/protostellar_core_fld_mayer5.00015.rst",
+        "checkpoint_sha256": "f4cc6f049c970b4ed3efc43abdd92da0d3e2b6fe6cf817147a2d08e5598c5507",
+        "overrides": {
+          "nrfld/consistent_rb_colors": false,
+          "nrfld/symmetric_rb_sweeps": false,
+          "nrfld/fgmres_threshold": 1e-09,
+          "nrfld/global_jacobian_check": false,
+          "gravity/reset_fmg_color_each_solve": true,
+          "gravity/repeat_initial_fmg_after_restart": true,
+          "problem/N_J": 7.616,
+          "time/nlim": 17
+        },
+        "environment": {
+          "ATHENA_NRFLD_EXPERIMENTAL_COLLAPSE": 1,
+          "ATHENA_NRFLD_INTERFACE_LEDGER": 1,
+          "ATHENA_NRFLD_ENERGY_LEDGER": 1,
+          "OMP_NUM_THREADS": 2
+        },
+        "command": "mpirun --output-filename /tmp/wor25_23_24_resolution_trials/collapse_natural_postflddt_colors_default_strict1e9_r1/mpi -n 1 /tmp/wor25_23_24_resolution_collapse_postflddt_build/bin/athena -r /tmp/wor25_23_24_resolution_trials/collapse_postflddt_opacity_natural_r1/output/protostellar_core_fld_mayer5.00015.rst -d output mesh/num_threads=2 time/nlim=17 problem/N_J=7.6160 nrfld/global_jacobian_check=false gravity/reset_fmg_color_each_solve=true gravity/repeat_initial_fmg_after_restart=true nrfld/consistent_rb_colors=false nrfld/symmetric_rb_sweeps=false nrfld/fgmres_threshold=1e-9",
+        "run_log": "/tmp/wor25_23_24_resolution_trials/collapse_natural_postflddt_colors_default_strict1e9_r1/run.log",
+        "exit_status": 0,
+        "wall_time": "0:04.69",
+        "peak_rss_kb": 421164,
+        "newton_history": [
+          {
+            "status": "converged",
+            "iterations": 0
+          },
+          {
+            "status": "converged",
+            "iterations": 2
+          },
+          {
+            "status": "converged",
+            "iterations": 0
+          },
+          {
+            "status": "converged",
+            "iterations": 3
+          }
+        ],
+        "fgmres_history": [
+          {
+            "iterations": 15,
+            "true_relative_residual": 3.966675182919016e-10
+          },
+          {
+            "iterations": 15,
+            "true_relative_residual": 5.619248132077021e-10
+          },
+          {
+            "iterations": 8,
+            "true_relative_residual": 5.988457193413551e-10
+          },
+          {
+            "iterations": 9,
+            "true_relative_residual": 9.30063569386811e-10
+          },
+          {
+            "iterations": 9,
+            "true_relative_residual": 4.553017161205972e-10
+          }
+        ],
+        "fgmres_total_iterations": 56,
+        "max_true_relative_residual": 9.30063569386811e-10,
+        "face_ledger": {
+          "pair_count": 9,
+          "max_relative_mismatch": 1.6906775665597056e-07,
+          "bad_pair": {
+            "cycle": 15,
+            "stage": 0,
+            "coarse_gid": 24,
+            "axis": 1,
+            "side": "min",
+            "fine_count": 4,
+            "coarse_flux": 510194.1861920147,
+            "fine_flux": -510194.01367727085,
+            "mismatch": 0.17251474387012422,
+            "relative_mismatch": 1.6906775665597056e-07
+          },
+          "relative_tolerance": 1e-06,
+          "pass": true,
+          "logs": [
+            "/tmp/wor25_23_24_resolution_trials/collapse_natural_postflddt_colors_default_strict1e9_r1/mpi/1/rank.0/stdout"
+          ]
+        },
+        "max_implicit_energy_absolute_relative_balance": 3.586896050169013e-10,
+        "mass_volume_integral": {
+          "initial": 704254625794.6189,
+          "final": 704254647857.8672,
+          "relative_change": 3.132851029004091e-08
+        },
+        "final_minima": {
+          "rho": 0.051782527321010526,
+          "press": 0.025314382043687727,
+          "Er": 0.29059143274499344
+        },
+        "final_level_counts": {
+          "1": 64
+        },
+        "solver_pass": true,
+        "evaluation": "PASS"
+      },
+      {
+        "name": "collapse_natural_postflddt_colors_default_strict1e9_r2",
+        "ranks": 2,
+        "threads": 2,
+        "source_commit_before_run": "4a2d5e03",
+        "binary_sha256": "41a2a02a414eb56e458d53b239fe4188eac6ac2a701f47fd54aab944163b1a39",
+        "checkpoint_path": "/tmp/wor25_23_24_resolution_trials/collapse_postflddt_opacity_natural_r1/output/protostellar_core_fld_mayer5.00015.rst",
+        "checkpoint_sha256": "f4cc6f049c970b4ed3efc43abdd92da0d3e2b6fe6cf817147a2d08e5598c5507",
+        "overrides": {
+          "nrfld/consistent_rb_colors": false,
+          "nrfld/symmetric_rb_sweeps": false,
+          "nrfld/fgmres_threshold": 1e-09,
+          "nrfld/global_jacobian_check": false,
+          "gravity/reset_fmg_color_each_solve": true,
+          "gravity/repeat_initial_fmg_after_restart": true,
+          "problem/N_J": 7.616,
+          "time/nlim": 17
+        },
+        "environment": {
+          "ATHENA_NRFLD_EXPERIMENTAL_COLLAPSE": 1,
+          "ATHENA_NRFLD_INTERFACE_LEDGER": 1,
+          "ATHENA_NRFLD_ENERGY_LEDGER": 1,
+          "OMP_NUM_THREADS": 2
+        },
+        "command": "mpirun --output-filename /tmp/wor25_23_24_resolution_trials/collapse_natural_postflddt_colors_default_strict1e9_r2/mpi -n 2 /tmp/wor25_23_24_resolution_collapse_postflddt_build/bin/athena -r /tmp/wor25_23_24_resolution_trials/collapse_postflddt_opacity_natural_r1/output/protostellar_core_fld_mayer5.00015.rst -d output mesh/num_threads=2 time/nlim=17 problem/N_J=7.6160 nrfld/global_jacobian_check=false gravity/reset_fmg_color_each_solve=true gravity/repeat_initial_fmg_after_restart=true nrfld/consistent_rb_colors=false nrfld/symmetric_rb_sweeps=false nrfld/fgmres_threshold=1e-9",
+        "run_log": "/tmp/wor25_23_24_resolution_trials/collapse_natural_postflddt_colors_default_strict1e9_r2/run.log",
+        "exit_status": 0,
+        "wall_time": "0:03.60",
+        "peak_rss_kb": 257580,
+        "newton_history": [
+          {
+            "status": "converged",
+            "iterations": 0
+          },
+          {
+            "status": "converged",
+            "iterations": 2
+          },
+          {
+            "status": "converged",
+            "iterations": 0
+          },
+          {
+            "status": "converged",
+            "iterations": 3
+          }
+        ],
+        "fgmres_history": [
+          {
+            "iterations": 15,
+            "true_relative_residual": 3.966675718038205e-10
+          },
+          {
+            "iterations": 15,
+            "true_relative_residual": 5.640888770722745e-10
+          },
+          {
+            "iterations": 8,
+            "true_relative_residual": 5.988457206992805e-10
+          },
+          {
+            "iterations": 9,
+            "true_relative_residual": 9.280595393147466e-10
+          },
+          {
+            "iterations": 9,
+            "true_relative_residual": 4.564229633454925e-10
+          }
+        ],
+        "fgmres_total_iterations": 56,
+        "max_true_relative_residual": 9.280595393147466e-10,
+        "face_ledger": {
+          "pair_count": 9,
+          "max_relative_mismatch": 5.484175216429984e-07,
+          "bad_pair": {
+            "cycle": 15,
+            "stage": 0,
+            "coarse_gid": 34,
+            "axis": 1,
+            "side": "max",
+            "fine_count": 4,
+            "coarse_flux": 135436.51333961668,
+            "fine_flux": -135436.36478818418,
+            "mismatch": 0.1485514325031545,
+            "relative_mismatch": 5.484175216429984e-07
+          },
+          "relative_tolerance": 1e-06,
+          "pass": true,
+          "logs": [
+            "/tmp/wor25_23_24_resolution_trials/collapse_natural_postflddt_colors_default_strict1e9_r2/mpi/1/rank.0/stdout",
+            "/tmp/wor25_23_24_resolution_trials/collapse_natural_postflddt_colors_default_strict1e9_r2/mpi/1/rank.1/stdout"
+          ]
+        },
+        "max_implicit_energy_absolute_relative_balance": 4.2089011968769884e-10,
+        "mass_volume_integral": {
+          "initial": 704254625794.6189,
+          "final": 704254647857.8672,
+          "relative_change": 3.132851029004091e-08
+        },
+        "final_minima": {
+          "rho": 0.05178252732101057,
+          "press": 0.025314382043685007,
+          "Er": 0.29059143274486116
+        },
+        "final_level_counts": {
+          "1": 64
+        },
+        "solver_pass": true,
+        "evaluation": "PASS"
+      },
+      {
+        "name": "collapse_natural_postflddt_colors_consistent_strict1e9_r1",
+        "ranks": 1,
+        "threads": 2,
+        "source_commit_before_run": "4a2d5e03",
+        "binary_sha256": "41a2a02a414eb56e458d53b239fe4188eac6ac2a701f47fd54aab944163b1a39",
+        "checkpoint_path": "/tmp/wor25_23_24_resolution_trials/collapse_postflddt_opacity_natural_r1/output/protostellar_core_fld_mayer5.00015.rst",
+        "checkpoint_sha256": "f4cc6f049c970b4ed3efc43abdd92da0d3e2b6fe6cf817147a2d08e5598c5507",
+        "overrides": {
+          "nrfld/consistent_rb_colors": true,
+          "nrfld/symmetric_rb_sweeps": false,
+          "nrfld/fgmres_threshold": 1e-09,
+          "nrfld/global_jacobian_check": false,
+          "gravity/reset_fmg_color_each_solve": true,
+          "gravity/repeat_initial_fmg_after_restart": true,
+          "problem/N_J": 7.616,
+          "time/nlim": 17
+        },
+        "environment": {
+          "ATHENA_NRFLD_EXPERIMENTAL_COLLAPSE": 1,
+          "ATHENA_NRFLD_INTERFACE_LEDGER": 1,
+          "ATHENA_NRFLD_ENERGY_LEDGER": 1,
+          "OMP_NUM_THREADS": 2
+        },
+        "command": "mpirun --output-filename /tmp/wor25_23_24_resolution_trials/collapse_natural_postflddt_colors_consistent_strict1e9_r1/mpi -n 1 /tmp/wor25_23_24_resolution_collapse_postflddt_build/bin/athena -r /tmp/wor25_23_24_resolution_trials/collapse_postflddt_opacity_natural_r1/output/protostellar_core_fld_mayer5.00015.rst -d output mesh/num_threads=2 time/nlim=17 problem/N_J=7.6160 nrfld/global_jacobian_check=false gravity/reset_fmg_color_each_solve=true gravity/repeat_initial_fmg_after_restart=true nrfld/consistent_rb_colors=true nrfld/symmetric_rb_sweeps=false nrfld/fgmres_threshold=1e-9",
+        "run_log": "/tmp/wor25_23_24_resolution_trials/collapse_natural_postflddt_colors_consistent_strict1e9_r1/run.log",
+        "exit_status": 0,
+        "wall_time": "0:21.44",
+        "peak_rss_kb": 421112,
+        "newton_history": [
+          {
+            "status": "converged",
+            "iterations": 0
+          },
+          {
+            "status": "converged",
+            "iterations": 2
+          },
+          {
+            "status": "converged",
+            "iterations": 0
+          },
+          {
+            "status": "converged",
+            "iterations": 3
+          }
+        ],
+        "fgmres_history": [
+          {
+            "iterations": 15,
+            "true_relative_residual": 7.674255920560442e-10
+          },
+          {
+            "iterations": 15,
+            "true_relative_residual": 5.39763270907876e-10
+          },
+          {
+            "iterations": 8,
+            "true_relative_residual": 5.987729263214104e-10
+          },
+          {
+            "iterations": 9,
+            "true_relative_residual": 9.305713881394427e-10
+          },
+          {
+            "iterations": 9,
+            "true_relative_residual": 4.551154825428271e-10
+          }
+        ],
+        "fgmres_total_iterations": 56,
+        "max_true_relative_residual": 9.305713881394427e-10,
+        "face_ledger": {
+          "pair_count": 9,
+          "max_relative_mismatch": 3.8566132663995586e-07,
+          "bad_pair": {
+            "cycle": 15,
+            "stage": 0,
+            "coarse_gid": 24,
+            "axis": 3,
+            "side": "max",
+            "fine_count": 4,
+            "coarse_flux": 135436.35616785943,
+            "fine_flux": -135436.25170277013,
+            "mismatch": 0.10446508930181153,
+            "relative_mismatch": 3.8566132663995586e-07
+          },
+          "relative_tolerance": 1e-06,
+          "pass": true,
+          "logs": [
+            "/tmp/wor25_23_24_resolution_trials/collapse_natural_postflddt_colors_consistent_strict1e9_r1/mpi/1/rank.0/stdout"
+          ]
+        },
+        "max_implicit_energy_absolute_relative_balance": 3.6160746734538763e-10,
+        "mass_volume_integral": {
+          "initial": 704254625794.6189,
+          "final": 704254647857.8672,
+          "relative_change": 3.132851029004091e-08
+        },
+        "final_minima": {
+          "rho": 0.05178252732101057,
+          "press": 0.02531438204368552,
+          "Er": 0.29059143274488586
+        },
+        "final_level_counts": {
+          "1": 64
+        },
+        "solver_pass": true,
+        "evaluation": "PASS"
+      },
+      {
+        "name": "collapse_natural_postflddt_colors_consistent_strict1e9_r2",
+        "ranks": 2,
+        "threads": 2,
+        "source_commit_before_run": "4a2d5e03",
+        "binary_sha256": "41a2a02a414eb56e458d53b239fe4188eac6ac2a701f47fd54aab944163b1a39",
+        "checkpoint_path": "/tmp/wor25_23_24_resolution_trials/collapse_postflddt_opacity_natural_r1/output/protostellar_core_fld_mayer5.00015.rst",
+        "checkpoint_sha256": "f4cc6f049c970b4ed3efc43abdd92da0d3e2b6fe6cf817147a2d08e5598c5507",
+        "overrides": {
+          "nrfld/consistent_rb_colors": true,
+          "nrfld/symmetric_rb_sweeps": false,
+          "nrfld/fgmres_threshold": 1e-09,
+          "nrfld/global_jacobian_check": false,
+          "gravity/reset_fmg_color_each_solve": true,
+          "gravity/repeat_initial_fmg_after_restart": true,
+          "problem/N_J": 7.616,
+          "time/nlim": 17
+        },
+        "environment": {
+          "ATHENA_NRFLD_EXPERIMENTAL_COLLAPSE": 1,
+          "ATHENA_NRFLD_INTERFACE_LEDGER": 1,
+          "ATHENA_NRFLD_ENERGY_LEDGER": 1,
+          "OMP_NUM_THREADS": 2
+        },
+        "command": "mpirun --output-filename /tmp/wor25_23_24_resolution_trials/collapse_natural_postflddt_colors_consistent_strict1e9_r2/mpi -n 2 /tmp/wor25_23_24_resolution_collapse_postflddt_build/bin/athena -r /tmp/wor25_23_24_resolution_trials/collapse_postflddt_opacity_natural_r1/output/protostellar_core_fld_mayer5.00015.rst -d output mesh/num_threads=2 time/nlim=17 problem/N_J=7.6160 nrfld/global_jacobian_check=false gravity/reset_fmg_color_each_solve=true gravity/repeat_initial_fmg_after_restart=true nrfld/consistent_rb_colors=true nrfld/symmetric_rb_sweeps=false nrfld/fgmres_threshold=1e-9",
+        "run_log": "/tmp/wor25_23_24_resolution_trials/collapse_natural_postflddt_colors_consistent_strict1e9_r2/run.log",
+        "exit_status": 0,
+        "wall_time": "0:22.37",
+        "peak_rss_kb": 258240,
+        "newton_history": [
+          {
+            "status": "converged",
+            "iterations": 0
+          },
+          {
+            "status": "converged",
+            "iterations": 2
+          },
+          {
+            "status": "converged",
+            "iterations": 0
+          },
+          {
+            "status": "converged",
+            "iterations": 3
+          }
+        ],
+        "fgmres_history": [
+          {
+            "iterations": 15,
+            "true_relative_residual": 7.674255774831379e-10
+          },
+          {
+            "iterations": 15,
+            "true_relative_residual": 5.421944124242517e-10
+          },
+          {
+            "iterations": 8,
+            "true_relative_residual": 5.98772915067459e-10
+          },
+          {
+            "iterations": 9,
+            "true_relative_residual": 9.291895835458915e-10
+          },
+          {
+            "iterations": 9,
+            "true_relative_residual": 4.548395249765293e-10
+          }
+        ],
+        "fgmres_total_iterations": 56,
+        "max_true_relative_residual": 9.291895835458915e-10,
+        "face_ledger": {
+          "pair_count": 9,
+          "max_relative_mismatch": 5.462101391614735e-07,
+          "bad_pair": {
+            "cycle": 15,
+            "stage": 0,
+            "coarse_gid": 33,
+            "axis": 2,
+            "side": "max",
+            "fine_count": 4,
+            "coarse_flux": 135436.15561342583,
+            "fine_flux": -135436.30356670945,
+            "mismatch": -0.14795328362379223,
+            "relative_mismatch": 5.462101391614735e-07
+          },
+          "relative_tolerance": 1e-06,
+          "pass": true,
+          "logs": [
+            "/tmp/wor25_23_24_resolution_trials/collapse_natural_postflddt_colors_consistent_strict1e9_r2/mpi/1/rank.0/stdout",
+            "/tmp/wor25_23_24_resolution_trials/collapse_natural_postflddt_colors_consistent_strict1e9_r2/mpi/1/rank.1/stdout"
+          ]
+        },
+        "max_implicit_energy_absolute_relative_balance": 4.2996086298166143e-10,
+        "mass_volume_integral": {
+          "initial": 704254625794.6189,
+          "final": 704254647857.8672,
+          "relative_change": 3.132851029004091e-08
+        },
+        "final_minima": {
+          "rho": 0.05178252732101059,
+          "press": 0.02531438204368328,
+          "Er": 0.2905914327447771
+        },
+        "final_level_counts": {
+          "1": 64
+        },
+        "solver_pass": true,
+        "evaluation": "PASS"
+      },
+      {
+        "name": "collapse_natural_postflddt_colors_symmetric_strict1e9_r1",
+        "ranks": 1,
+        "threads": 2,
+        "source_commit_before_run": "4a2d5e03",
+        "binary_sha256": "41a2a02a414eb56e458d53b239fe4188eac6ac2a701f47fd54aab944163b1a39",
+        "checkpoint_path": "/tmp/wor25_23_24_resolution_trials/collapse_postflddt_opacity_natural_r1/output/protostellar_core_fld_mayer5.00015.rst",
+        "checkpoint_sha256": "f4cc6f049c970b4ed3efc43abdd92da0d3e2b6fe6cf817147a2d08e5598c5507",
+        "overrides": {
+          "nrfld/consistent_rb_colors": false,
+          "nrfld/symmetric_rb_sweeps": true,
+          "nrfld/fgmres_threshold": 1e-09,
+          "nrfld/global_jacobian_check": false,
+          "gravity/reset_fmg_color_each_solve": true,
+          "gravity/repeat_initial_fmg_after_restart": true,
+          "problem/N_J": 7.616,
+          "time/nlim": 17
+        },
+        "environment": {
+          "ATHENA_NRFLD_EXPERIMENTAL_COLLAPSE": 1,
+          "ATHENA_NRFLD_INTERFACE_LEDGER": 1,
+          "ATHENA_NRFLD_ENERGY_LEDGER": 1,
+          "OMP_NUM_THREADS": 2
+        },
+        "command": "mpirun --output-filename /tmp/wor25_23_24_resolution_trials/collapse_natural_postflddt_colors_symmetric_strict1e9_r1/mpi -n 1 /tmp/wor25_23_24_resolution_collapse_postflddt_build/bin/athena -r /tmp/wor25_23_24_resolution_trials/collapse_postflddt_opacity_natural_r1/output/protostellar_core_fld_mayer5.00015.rst -d output mesh/num_threads=2 time/nlim=17 problem/N_J=7.6160 nrfld/global_jacobian_check=false gravity/reset_fmg_color_each_solve=true gravity/repeat_initial_fmg_after_restart=true nrfld/consistent_rb_colors=false nrfld/symmetric_rb_sweeps=true nrfld/fgmres_threshold=1e-9",
+        "run_log": "/tmp/wor25_23_24_resolution_trials/collapse_natural_postflddt_colors_symmetric_strict1e9_r1/run.log",
+        "exit_status": 0,
+        "wall_time": "0:21.59",
+        "peak_rss_kb": 421340,
+        "newton_history": [
+          {
+            "status": "converged",
+            "iterations": 0
+          },
+          {
+            "status": "converged",
+            "iterations": 2
+          },
+          {
+            "status": "converged",
+            "iterations": 0
+          },
+          {
+            "status": "converged",
+            "iterations": 3
+          }
+        ],
+        "fgmres_history": [
+          {
+            "iterations": 15,
+            "true_relative_residual": 7.202288822857778e-10
+          },
+          {
+            "iterations": 15,
+            "true_relative_residual": 8.644781518957752e-10
+          },
+          {
+            "iterations": 9,
+            "true_relative_residual": 5.931852419602343e-10
+          },
+          {
+            "iterations": 10,
+            "true_relative_residual": 6.124146144018409e-10
+          },
+          {
+            "iterations": 10,
+            "true_relative_residual": 3.514753065359814e-10
+          }
+        ],
+        "fgmres_total_iterations": 59,
+        "max_true_relative_residual": 8.644781518957752e-10,
+        "face_ledger": {
+          "pair_count": 9,
+          "max_relative_mismatch": 1.090885408682775e-06,
+          "bad_pair": {
+            "cycle": 15,
+            "stage": 0,
+            "coarse_gid": 24,
+            "axis": 3,
+            "side": "max",
+            "fine_count": 4,
+            "coarse_flux": 135436.55950995936,
+            "fine_flux": -135436.26401874857,
+            "mismatch": 0.2954912107961718,
+            "relative_mismatch": 1.090885408682775e-06
+          },
+          "relative_tolerance": 1e-06,
+          "pass": false,
+          "logs": [
+            "/tmp/wor25_23_24_resolution_trials/collapse_natural_postflddt_colors_symmetric_strict1e9_r1/mpi/1/rank.0/stdout"
+          ]
+        },
+        "max_implicit_energy_absolute_relative_balance": 3.608561925176127e-10,
+        "mass_volume_integral": {
+          "initial": 704254625794.6189,
+          "final": 704254647857.8672,
+          "relative_change": 3.132851029004091e-08
+        },
+        "final_minima": {
+          "rho": 0.05178252732101057,
+          "press": 0.025314382043684643,
+          "Er": 0.2905914327448436
+        },
+        "final_level_counts": {
+          "1": 64
+        },
+        "solver_pass": true,
+        "evaluation": "FAIL_FACE_RELATIVE_ONLY"
+      },
+      {
+        "name": "collapse_natural_postflddt_colors_symmetric_strict1e9_r2",
+        "ranks": 2,
+        "threads": 2,
+        "source_commit_before_run": "4a2d5e03",
+        "binary_sha256": "41a2a02a414eb56e458d53b239fe4188eac6ac2a701f47fd54aab944163b1a39",
+        "checkpoint_path": "/tmp/wor25_23_24_resolution_trials/collapse_postflddt_opacity_natural_r1/output/protostellar_core_fld_mayer5.00015.rst",
+        "checkpoint_sha256": "f4cc6f049c970b4ed3efc43abdd92da0d3e2b6fe6cf817147a2d08e5598c5507",
+        "overrides": {
+          "nrfld/consistent_rb_colors": false,
+          "nrfld/symmetric_rb_sweeps": true,
+          "nrfld/fgmres_threshold": 1e-09,
+          "nrfld/global_jacobian_check": false,
+          "gravity/reset_fmg_color_each_solve": true,
+          "gravity/repeat_initial_fmg_after_restart": true,
+          "problem/N_J": 7.616,
+          "time/nlim": 17
+        },
+        "environment": {
+          "ATHENA_NRFLD_EXPERIMENTAL_COLLAPSE": 1,
+          "ATHENA_NRFLD_INTERFACE_LEDGER": 1,
+          "ATHENA_NRFLD_ENERGY_LEDGER": 1,
+          "OMP_NUM_THREADS": 2
+        },
+        "command": "mpirun --output-filename /tmp/wor25_23_24_resolution_trials/collapse_natural_postflddt_colors_symmetric_strict1e9_r2/mpi -n 2 /tmp/wor25_23_24_resolution_collapse_postflddt_build/bin/athena -r /tmp/wor25_23_24_resolution_trials/collapse_postflddt_opacity_natural_r1/output/protostellar_core_fld_mayer5.00015.rst -d output mesh/num_threads=2 time/nlim=17 problem/N_J=7.6160 nrfld/global_jacobian_check=false gravity/reset_fmg_color_each_solve=true gravity/repeat_initial_fmg_after_restart=true nrfld/consistent_rb_colors=false nrfld/symmetric_rb_sweeps=true nrfld/fgmres_threshold=1e-9",
+        "run_log": "/tmp/wor25_23_24_resolution_trials/collapse_natural_postflddt_colors_symmetric_strict1e9_r2/run.log",
+        "exit_status": 0,
+        "wall_time": "0:22.60",
+        "peak_rss_kb": 257364,
+        "newton_history": [
+          {
+            "status": "converged",
+            "iterations": 0
+          },
+          {
+            "status": "converged",
+            "iterations": 2
+          },
+          {
+            "status": "converged",
+            "iterations": 0
+          },
+          {
+            "status": "converged",
+            "iterations": 3
+          }
+        ],
+        "fgmres_history": [
+          {
+            "iterations": 15,
+            "true_relative_residual": 7.20228940959742e-10
+          },
+          {
+            "iterations": 15,
+            "true_relative_residual": 8.639286800188019e-10
+          },
+          {
+            "iterations": 9,
+            "true_relative_residual": 5.931852471406379e-10
+          },
+          {
+            "iterations": 10,
+            "true_relative_residual": 6.154155831754964e-10
+          },
+          {
+            "iterations": 10,
+            "true_relative_residual": 3.527101932515249e-10
+          }
+        ],
+        "fgmres_total_iterations": 59,
+        "max_true_relative_residual": 8.639286800188019e-10,
+        "face_ledger": {
+          "pair_count": 9,
+          "max_relative_mismatch": 4.2853558157249793e-07,
+          "bad_pair": {
+            "cycle": 15,
+            "stage": 0,
+            "coarse_gid": 34,
+            "axis": 1,
+            "side": "max",
+            "fine_count": 4,
+            "coarse_flux": 135436.50408959715,
+            "fine_flux": -135436.3880109248,
+            "mismatch": 0.11607867234852165,
+            "relative_mismatch": 4.2853558157249793e-07
+          },
+          "relative_tolerance": 1e-06,
+          "pass": true,
+          "logs": [
+            "/tmp/wor25_23_24_resolution_trials/collapse_natural_postflddt_colors_symmetric_strict1e9_r2/mpi/1/rank.0/stdout",
+            "/tmp/wor25_23_24_resolution_trials/collapse_natural_postflddt_colors_symmetric_strict1e9_r2/mpi/1/rank.1/stdout"
+          ]
+        },
+        "max_implicit_energy_absolute_relative_balance": 4.344712653638679e-10,
+        "mass_volume_integral": {
+          "initial": 704254625794.6189,
+          "final": 704254647857.8672,
+          "relative_change": 3.132851029004091e-08
+        },
+        "final_minima": {
+          "rho": 0.051782527321010546,
+          "press": 0.025314382043685416,
+          "Er": 0.2905914327448813
+        },
+        "final_level_counts": {
+          "1": 64
+        },
+        "solver_pass": true,
+        "evaluation": "PASS"
+      }
+    ],
+    "rank_comparisons_final_relative_l1": {
+      "default": {
+        "prim": 1.6220167500772406e-15,
+        "fld": 3.5488272526436475e-15
+      },
+      "consistent": {
+        "prim": 2.471781941108949e-15,
+        "fld": 5.555670284188394e-15
+      },
+      "symmetric": {
+        "prim": 1.059244761238826e-14,
+        "fld": 2.4960532960579943e-14
+      },
+      "default_strict1e9": {
+        "prim": 4.509543799269544e-14,
+        "fld": 1.0825872383832249e-13
+      },
+      "consistent_strict1e9": {
+        "prim": 3.7127793596159214e-14,
+        "fld": 8.897584846129508e-14
+      },
+      "symmetric_strict1e9": {
+        "prim": 1.3036620028024337e-14,
+        "fld": 3.0845152527361326e-14
+      }
+    },
+    "decision": "At 1e-8 default uses 50 FGMRES iterations but 1-rank face criterion fails (1.30e-6); consistent uses 52 and both ranks pass; symmetric uses 54 and both pass. At 1e-9 default and consistent use 56 and both ranks pass; symmetric uses 59 but 1-rank face criterion fails (1.09e-6). No robust color-order advantage. Stricter threshold is an input-level mitigation for this collapse case, not a global default because strong Test C reaches a residual floor."
   }
 }
