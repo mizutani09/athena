@@ -21834,5 +21834,696 @@
       }
     ],
     "conclusion": "consistent colors retains 28 iterations and bitwise-identical final HDF; symmetric RB sweeps increases to 41 iterations and four linear solves. Timing differences under 0.4 s are not evidence for a setting change; both options rejected."
+  },
+  "wor25_stable_matvec_trial": {
+    "decision": "retain as numerical-stability improvement, not a solution of strict 1e-10 failure",
+    "candidate_nonomp_binary_sha256": "b50f3fc28095d0c4e27908c36bad374ff23bf16cb95cf943192d866a61ab0acf",
+    "candidate_collapse_omp_binary_sha256": "aa8a7e7ba18650053a86e470699991d4f264aae514b8608e9b2619a6d8b0bfce",
+    "runs": [
+      {
+        "name": "strict_matvec_base",
+        "source_commit_base": "0fbdeb9d",
+        "candidate_source": "difference-form long-double matvec in linearMG.cpp (no other production source change)",
+        "binary_sha256": "99e0908c1a704f1dc00b64fdd8dff2209ae6ba52fceed0b72751abc624cf408c",
+        "ranks": 1,
+        "threads": 1,
+        "run_log": "/tmp/wor25_23_24_resolution_trials/strict_matvec_base/run.log",
+        "input_path": "/tmp/wor25_23_24_resolution_trials/wor25_mg_opacity_x20/input.used",
+        "input_sha256": "ba333aee43531158fe9d34b50a6e9cc97ffbfa70fdb43a1ae5dcbc4045fdf8d2",
+        "overrides": {
+          "nrfld/linear_solver": "fgmres",
+          "nrfld/fgmres_threshold": 1e-10,
+          "nrfld/fgmres_restart": 40,
+          "nrfld/fgmres_max_iterations": 400,
+          "nrfld/fgmres_mg_vcycles": 1,
+          "nrfld/fgmres_linearity_check": false,
+          "fld/const_opacity": 8.186332719786666e-08
+        },
+        "exit_status": 134,
+        "wall_time": "0:06.82",
+        "peak_rss_kb": 237376,
+        "newton_statuses": [
+          {
+            "status": "dt_zero_initialization",
+            "iterations": 0
+          }
+        ],
+        "fgmres_history": [
+          {
+            "iterations": 11,
+            "explicit_relative_residual": 9.566514059871227e-11
+          },
+          {
+            "iterations": 400,
+            "explicit_relative_residual": 1.1682229975264943e-09
+          }
+        ],
+        "evaluation": "FAIL_STRICT_1E-10"
+      },
+      {
+        "name": "strict_matvec_stable",
+        "source_commit_base": "0fbdeb9d",
+        "candidate_source": "difference-form long-double matvec in linearMG.cpp (no other production source change)",
+        "binary_sha256": "b50f3fc28095d0c4e27908c36bad374ff23bf16cb95cf943192d866a61ab0acf",
+        "ranks": 1,
+        "threads": 1,
+        "run_log": "/tmp/wor25_23_24_resolution_trials/strict_matvec_stable/run.log",
+        "input_path": "/tmp/wor25_23_24_resolution_trials/wor25_mg_opacity_x20/input.used",
+        "input_sha256": "ba333aee43531158fe9d34b50a6e9cc97ffbfa70fdb43a1ae5dcbc4045fdf8d2",
+        "overrides": {
+          "nrfld/linear_solver": "fgmres",
+          "nrfld/fgmres_threshold": 1e-10,
+          "nrfld/fgmres_restart": 40,
+          "nrfld/fgmres_max_iterations": 400,
+          "nrfld/fgmres_mg_vcycles": 1,
+          "nrfld/fgmres_linearity_check": false,
+          "fld/const_opacity": 8.186332719786666e-08
+        },
+        "exit_status": 134,
+        "wall_time": "0:07.09",
+        "peak_rss_kb": 237468,
+        "newton_statuses": [
+          {
+            "status": "dt_zero_initialization",
+            "iterations": 0
+          }
+        ],
+        "fgmres_history": [
+          {
+            "iterations": 11,
+            "explicit_relative_residual": 8.188501911682236e-11
+          },
+          {
+            "iterations": 400,
+            "explicit_relative_residual": 4.891417168578685e-10
+          }
+        ],
+        "evaluation": "FAIL_STRICT_1E-10"
+      },
+      {
+        "name": "strict_matvec_base_v2",
+        "source_commit_base": "0fbdeb9d",
+        "candidate_source": "difference-form long-double matvec in linearMG.cpp (no other production source change)",
+        "binary_sha256": "99e0908c1a704f1dc00b64fdd8dff2209ae6ba52fceed0b72751abc624cf408c",
+        "ranks": 1,
+        "threads": 1,
+        "run_log": "/tmp/wor25_23_24_resolution_trials/strict_matvec_base_v2/run.log",
+        "input_path": "/tmp/wor25_23_24_resolution_trials/wor25_mg_opacity_x20/input.used",
+        "input_sha256": "ba333aee43531158fe9d34b50a6e9cc97ffbfa70fdb43a1ae5dcbc4045fdf8d2",
+        "overrides": {
+          "nrfld/linear_solver": "fgmres",
+          "nrfld/fgmres_threshold": 1e-10,
+          "nrfld/fgmres_restart": 40,
+          "nrfld/fgmres_max_iterations": 400,
+          "nrfld/fgmres_mg_vcycles": 2,
+          "nrfld/fgmres_linearity_check": false,
+          "fld/const_opacity": 8.186332719786666e-08
+        },
+        "exit_status": 134,
+        "wall_time": "0:10.32",
+        "peak_rss_kb": 237212,
+        "newton_statuses": [
+          {
+            "status": "dt_zero_initialization",
+            "iterations": 0
+          }
+        ],
+        "fgmres_history": [
+          {
+            "iterations": 9,
+            "explicit_relative_residual": 3.021758959589814e-11
+          },
+          {
+            "iterations": 400,
+            "explicit_relative_residual": 2.7242075142785137e-10
+          }
+        ],
+        "evaluation": "FAIL_STRICT_1E-10"
+      },
+      {
+        "name": "strict_matvec_stable_v2",
+        "source_commit_base": "0fbdeb9d",
+        "candidate_source": "difference-form long-double matvec in linearMG.cpp (no other production source change)",
+        "binary_sha256": "b50f3fc28095d0c4e27908c36bad374ff23bf16cb95cf943192d866a61ab0acf",
+        "ranks": 1,
+        "threads": 1,
+        "run_log": "/tmp/wor25_23_24_resolution_trials/strict_matvec_stable_v2/run.log",
+        "input_path": "/tmp/wor25_23_24_resolution_trials/wor25_mg_opacity_x20/input.used",
+        "input_sha256": "ba333aee43531158fe9d34b50a6e9cc97ffbfa70fdb43a1ae5dcbc4045fdf8d2",
+        "overrides": {
+          "nrfld/linear_solver": "fgmres",
+          "nrfld/fgmres_threshold": 1e-10,
+          "nrfld/fgmres_restart": 40,
+          "nrfld/fgmres_max_iterations": 400,
+          "nrfld/fgmres_mg_vcycles": 2,
+          "nrfld/fgmres_linearity_check": false,
+          "fld/const_opacity": 8.186332719786666e-08
+        },
+        "exit_status": 134,
+        "wall_time": "0:10.31",
+        "peak_rss_kb": 237552,
+        "newton_statuses": [
+          {
+            "status": "dt_zero_initialization",
+            "iterations": 0
+          }
+        ],
+        "fgmres_history": [
+          {
+            "iterations": 9,
+            "explicit_relative_residual": 2.3539630439318774e-11
+          },
+          {
+            "iterations": 400,
+            "explicit_relative_residual": 1.6297531892108874e-10
+          }
+        ],
+        "evaluation": "FAIL_STRICT_1E-10"
+      },
+      {
+        "name": "strict_matvec_stable_v2_restart80",
+        "source_commit_base": "0fbdeb9d",
+        "candidate_source": "difference-form long-double matvec in linearMG.cpp (no other production source change)",
+        "binary_sha256": "b50f3fc28095d0c4e27908c36bad374ff23bf16cb95cf943192d866a61ab0acf",
+        "ranks": 1,
+        "threads": 1,
+        "run_log": "/tmp/wor25_23_24_resolution_trials/strict_matvec_stable_v2_restart80/run.log",
+        "input_path": "/tmp/wor25_23_24_resolution_trials/wor25_mg_opacity_x20/input.used",
+        "input_sha256": "ba333aee43531158fe9d34b50a6e9cc97ffbfa70fdb43a1ae5dcbc4045fdf8d2",
+        "overrides": {
+          "nrfld/linear_solver": "fgmres",
+          "nrfld/fgmres_threshold": 1e-10,
+          "nrfld/fgmres_restart": 80,
+          "nrfld/fgmres_max_iterations": 400,
+          "nrfld/fgmres_mg_vcycles": 2,
+          "nrfld/fgmres_linearity_check": false,
+          "fld/const_opacity": 8.186332719786666e-08
+        },
+        "exit_status": 134,
+        "wall_time": "0:11.52",
+        "peak_rss_kb": 248868,
+        "newton_statuses": [
+          {
+            "status": "dt_zero_initialization",
+            "iterations": 0
+          }
+        ],
+        "fgmres_history": [
+          {
+            "iterations": 9,
+            "explicit_relative_residual": 2.3539630439318774e-11
+          },
+          {
+            "iterations": 400,
+            "explicit_relative_residual": 1.6297531892108874e-10
+          }
+        ],
+        "evaluation": "FAIL_STRICT_1E-10"
+      },
+      {
+        "name": "default_matvec_stable_r1",
+        "source_commit_base": "0fbdeb9d",
+        "candidate_source": "difference-form long-double matvec in linearMG.cpp (no other production source change)",
+        "binary_sha256": "b50f3fc28095d0c4e27908c36bad374ff23bf16cb95cf943192d866a61ab0acf",
+        "ranks": 1,
+        "threads": 1,
+        "run_log": "/tmp/wor25_23_24_resolution_trials/default_matvec_stable_r1/run.log",
+        "input_path": "/tmp/wor25_23_24_resolution_trials/wor25_mg_opacity_x20/input.used",
+        "input_sha256": "ba333aee43531158fe9d34b50a6e9cc97ffbfa70fdb43a1ae5dcbc4045fdf8d2",
+        "overrides": {
+          "nrfld/linear_solver": "fgmres",
+          "nrfld/fgmres_linearity_check": false,
+          "fld/const_opacity": 8.186332719786666e-08
+        },
+        "exit_status": 0,
+        "wall_time": "0:02.26",
+        "peak_rss_kb": 231796,
+        "newton_statuses": [
+          {
+            "status": "dt_zero_initialization",
+            "iterations": 0
+          },
+          {
+            "status": "converged",
+            "iterations": 2
+          }
+        ],
+        "fgmres_history": [
+          {
+            "iterations": 9,
+            "explicit_relative_residual": 6.6397951433202364e-09
+          },
+          {
+            "iterations": 9,
+            "explicit_relative_residual": 9.504982372900224e-09
+          }
+        ],
+        "evaluation": "PASS",
+        "Er_final_integral_single_hdf": 0.01578165590763092,
+        "Er_final_minimum": 1.0100253820419312,
+        "final_hdf_exact_vs_original_production": true
+      },
+      {
+        "name": "default_matvec_stable_r2",
+        "source_commit_base": "0fbdeb9d",
+        "candidate_source": "difference-form long-double matvec in linearMG.cpp (no other production source change)",
+        "binary_sha256": "b50f3fc28095d0c4e27908c36bad374ff23bf16cb95cf943192d866a61ab0acf",
+        "ranks": 2,
+        "threads": 1,
+        "run_log": "/tmp/wor25_23_24_resolution_trials/default_matvec_stable_r2/run.log",
+        "input_path": "/tmp/wor25_23_24_resolution_trials/wor25_mg_opacity_x20/input.used",
+        "input_sha256": "ba333aee43531158fe9d34b50a6e9cc97ffbfa70fdb43a1ae5dcbc4045fdf8d2",
+        "overrides": {
+          "nrfld/linear_solver": "fgmres",
+          "nrfld/fgmres_linearity_check": false,
+          "fld/const_opacity": 8.186332719786666e-08
+        },
+        "exit_status": 0,
+        "wall_time": "0:01.52",
+        "peak_rss_kb": 133516,
+        "newton_statuses": [
+          {
+            "status": "dt_zero_initialization",
+            "iterations": 0
+          },
+          {
+            "status": "converged",
+            "iterations": 2
+          }
+        ],
+        "fgmres_history": [
+          {
+            "iterations": 9,
+            "explicit_relative_residual": 6.639808289530971e-09
+          },
+          {
+            "iterations": 9,
+            "explicit_relative_residual": 9.52496632672261e-09
+          }
+        ],
+        "evaluation": "PASS",
+        "Er_final_integral_single_hdf": 0.01578165590763092,
+        "Er_final_minimum": 1.0100253820419312,
+        "final_hdf_exact_vs_original_production": true
+      },
+      {
+        "name": "stable_matvec_variable_shifted_r1",
+        "source_commit_base": "0fbdeb9d",
+        "candidate_source": "difference-form long-double matvec in linearMG.cpp (no other production source change)",
+        "binary_sha256": "b50f3fc28095d0c4e27908c36bad374ff23bf16cb95cf943192d866a61ab0acf",
+        "ranks": 1,
+        "threads": 1,
+        "run_log": "/tmp/wor25_23_24_resolution_trials/stable_matvec_variable_shifted_r1/run.log",
+        "input_path": "/tmp/wor25_23_24_resolution_trials/wor25_variable_precond_vcycles_1/input.used",
+        "input_sha256": "c09f44803c3545162239529a30d847182e086309b2a9b2d71e3e9f3a4894d9bf",
+        "overrides": {
+          "nrfld/fgmres_linearity_check": false,
+          "fld/fixed_flux_limiter": false,
+          "fld/const_opacity": 8.186332719786666e-05
+        },
+        "exit_status": 0,
+        "wall_time": "0:03.92",
+        "peak_rss_kb": 229472,
+        "newton_statuses": [
+          {
+            "status": "dt_zero_initialization",
+            "iterations": 0
+          },
+          {
+            "status": "converged",
+            "iterations": 20
+          }
+        ],
+        "fgmres_history": [
+          {
+            "iterations": 10,
+            "explicit_relative_residual": 4.937790364894866e-09
+          },
+          {
+            "iterations": 10,
+            "explicit_relative_residual": 4.8965475129464855e-09
+          },
+          {
+            "iterations": 10,
+            "explicit_relative_residual": 4.896562059051879e-09
+          },
+          {
+            "iterations": 10,
+            "explicit_relative_residual": 4.8965428304779194e-09
+          },
+          {
+            "iterations": 10,
+            "explicit_relative_residual": 4.896432711736043e-09
+          },
+          {
+            "iterations": 10,
+            "explicit_relative_residual": 4.89667721429033e-09
+          },
+          {
+            "iterations": 10,
+            "explicit_relative_residual": 4.896697028167508e-09
+          },
+          {
+            "iterations": 10,
+            "explicit_relative_residual": 4.8964222297807365e-09
+          },
+          {
+            "iterations": 10,
+            "explicit_relative_residual": 4.896832068430439e-09
+          },
+          {
+            "iterations": 10,
+            "explicit_relative_residual": 4.8968115944550314e-09
+          },
+          {
+            "iterations": 10,
+            "explicit_relative_residual": 4.8986522020904026e-09
+          },
+          {
+            "iterations": 10,
+            "explicit_relative_residual": 4.90286294308926e-09
+          },
+          {
+            "iterations": 10,
+            "explicit_relative_residual": 4.917066103728783e-09
+          },
+          {
+            "iterations": 10,
+            "explicit_relative_residual": 4.962275990432718e-09
+          },
+          {
+            "iterations": 10,
+            "explicit_relative_residual": 5.107288197584075e-09
+          },
+          {
+            "iterations": 10,
+            "explicit_relative_residual": 5.578946127354884e-09
+          },
+          {
+            "iterations": 10,
+            "explicit_relative_residual": 7.046718549954824e-09
+          },
+          {
+            "iterations": 10,
+            "explicit_relative_residual": 9.870896723192134e-09
+          },
+          {
+            "iterations": 11,
+            "explicit_relative_residual": 2.016288706488042e-09
+          },
+          {
+            "iterations": 11,
+            "explicit_relative_residual": 2.083454896620342e-09
+          }
+        ],
+        "evaluation": "PASS",
+        "Er_final_integral_single_hdf": 2.337947368621826,
+        "Er_final_minimum": 149.62567138671875,
+        "final_hdf_exact_vs_original_production": true
+      },
+      {
+        "name": "stable_matvec_variable_shifted_r2",
+        "source_commit_base": "0fbdeb9d",
+        "candidate_source": "difference-form long-double matvec in linearMG.cpp (no other production source change)",
+        "binary_sha256": "b50f3fc28095d0c4e27908c36bad374ff23bf16cb95cf943192d866a61ab0acf",
+        "ranks": 2,
+        "threads": 1,
+        "run_log": "/tmp/wor25_23_24_resolution_trials/stable_matvec_variable_shifted_r2/run.log",
+        "input_path": "/tmp/wor25_23_24_resolution_trials/wor25_variable_precond_vcycles_1/input.used",
+        "input_sha256": "c09f44803c3545162239529a30d847182e086309b2a9b2d71e3e9f3a4894d9bf",
+        "overrides": {
+          "nrfld/fgmres_linearity_check": false,
+          "fld/fixed_flux_limiter": false,
+          "fld/const_opacity": 8.186332719786666e-05
+        },
+        "exit_status": 0,
+        "wall_time": "0:02.65",
+        "peak_rss_kb": 132264,
+        "newton_statuses": [
+          {
+            "status": "dt_zero_initialization",
+            "iterations": 0
+          },
+          {
+            "status": "converged",
+            "iterations": 20
+          }
+        ],
+        "fgmres_history": [
+          {
+            "iterations": 10,
+            "explicit_relative_residual": 4.937719314831947e-09
+          },
+          {
+            "iterations": 10,
+            "explicit_relative_residual": 4.8964906784243906e-09
+          },
+          {
+            "iterations": 10,
+            "explicit_relative_residual": 4.8964792555658305e-09
+          },
+          {
+            "iterations": 10,
+            "explicit_relative_residual": 4.896562065793985e-09
+          },
+          {
+            "iterations": 10,
+            "explicit_relative_residual": 4.896502928319625e-09
+          },
+          {
+            "iterations": 10,
+            "explicit_relative_residual": 4.896711122693114e-09
+          },
+          {
+            "iterations": 10,
+            "explicit_relative_residual": 4.8967951924500835e-09
+          },
+          {
+            "iterations": 10,
+            "explicit_relative_residual": 4.896722690363872e-09
+          },
+          {
+            "iterations": 10,
+            "explicit_relative_residual": 4.896632332554939e-09
+          },
+          {
+            "iterations": 10,
+            "explicit_relative_residual": 4.89685560405568e-09
+          },
+          {
+            "iterations": 10,
+            "explicit_relative_residual": 4.898665151727186e-09
+          },
+          {
+            "iterations": 10,
+            "explicit_relative_residual": 4.902848391503245e-09
+          },
+          {
+            "iterations": 10,
+            "explicit_relative_residual": 4.917103957732973e-09
+          },
+          {
+            "iterations": 10,
+            "explicit_relative_residual": 4.962406004254411e-09
+          },
+          {
+            "iterations": 10,
+            "explicit_relative_residual": 5.107501281373998e-09
+          },
+          {
+            "iterations": 10,
+            "explicit_relative_residual": 5.579025647054147e-09
+          },
+          {
+            "iterations": 10,
+            "explicit_relative_residual": 7.0468651478177505e-09
+          },
+          {
+            "iterations": 10,
+            "explicit_relative_residual": 9.87088380339868e-09
+          },
+          {
+            "iterations": 11,
+            "explicit_relative_residual": 2.0161600878726734e-09
+          },
+          {
+            "iterations": 11,
+            "explicit_relative_residual": 2.0832103336703843e-09
+          }
+        ],
+        "evaluation": "PASS",
+        "Er_final_integral_single_hdf": 2.337947368621826,
+        "Er_final_minimum": 149.62567138671875,
+        "final_hdf_exact_vs_original_production": true
+      },
+      {
+        "name": "stable_matvec_linearity_r2",
+        "source_commit_base": "0fbdeb9d",
+        "candidate_source": "difference-form long-double matvec in linearMG.cpp (no other production source change)",
+        "binary_sha256": "b50f3fc28095d0c4e27908c36bad374ff23bf16cb95cf943192d866a61ab0acf",
+        "ranks": 2,
+        "threads": 1,
+        "run_log": "/tmp/wor25_23_24_resolution_trials/stable_matvec_linearity_r2/run.log",
+        "input_path": "/tmp/wor25_23_24_resolution_trials/wor25_mg_opacity_x20/input.used",
+        "input_sha256": "ba333aee43531158fe9d34b50a6e9cc97ffbfa70fdb43a1ae5dcbc4045fdf8d2",
+        "overrides": {
+          "nrfld/linear_solver": "fgmres",
+          "nrfld/fgmres_linearity_check": true,
+          "fld/const_opacity": 8.186332719786666e-08
+        },
+        "exit_status": 0,
+        "wall_time": "0:01.45",
+        "peak_rss_kb": 133380,
+        "newton_statuses": [
+          {
+            "status": "dt_zero_initialization",
+            "iterations": 0
+          },
+          {
+            "status": "converged",
+            "iterations": 2
+          }
+        ],
+        "fgmres_history": [
+          {
+            "iterations": 9,
+            "explicit_relative_residual": 6.639808289530971e-09
+          },
+          {
+            "iterations": 9,
+            "explicit_relative_residual": 9.52496632672261e-09
+          }
+        ],
+        "evaluation": "PASS",
+        "Er_final_integral_single_hdf": 0.01578165590763092,
+        "Er_final_minimum": 1.0100253820419312,
+        "linearity_check": {
+          "additivity_rel": 2.469319965295962e-16,
+          "homogeneity_rel": 5.568111357392942e-16
+        }
+      },
+      {
+        "name": "stable_matvec_collapse43_r1",
+        "source_commit_base": "0fbdeb9d",
+        "candidate_source": "difference-form long-double matvec in linearMG.cpp (no other production source change)",
+        "binary_sha256": "aa8a7e7ba18650053a86e470699991d4f264aae514b8608e9b2619a6d8b0bfce",
+        "ranks": 1,
+        "threads": 2,
+        "run_log": "/tmp/wor25_23_24_resolution_trials/stable_matvec_collapse43_r1/run.log",
+        "input_path": "/tmp/wor25_23_24_resolution_trials/collapse_adaptive_partial_direct_final_r1/protostellar_core_fld_mayer5.00006.rst",
+        "input_sha256": "42416ee70c7cc08b4065e33903fb64239d8389ac7dd356fa7ce631641bfcadb1",
+        "overrides": {
+          "mesh/num_threads": 2,
+          "time/nlim": 7,
+          "problem/N_J": 1,
+          "nrfld/global_jacobian_check": true
+        },
+        "exit_status": 0,
+        "wall_time": "0:02.39",
+        "peak_rss_kb": 317104,
+        "newton_statuses": [
+          {
+            "status": "converged",
+            "iterations": 0
+          },
+          {
+            "status": "converged",
+            "iterations": 2
+          }
+        ],
+        "fgmres_history": [
+          {
+            "iterations": 14,
+            "explicit_relative_residual": 3.326561709021467e-09
+          },
+          {
+            "iterations": 14,
+            "explicit_relative_residual": 7.857899952713333e-09
+          }
+        ],
+        "evaluation": "PASS",
+        "environment": {
+          "OMP_NUM_THREADS": "2",
+          "ATHENA_NRFLD_EXPERIMENTAL_COLLAPSE": "1",
+          "ATHENA_NRFLD_INTERFACE_LEDGER": "1",
+          "ATHENA_NRFLD_ENERGY_LEDGER": "1"
+        },
+        "coarse_fine_face_conservation": {
+          "pairs": 9,
+          "max_relative_mismatch": 1.7118455383724662e-07,
+          "pass": true
+        },
+        "final_hdf_relative_l1_vs_original_production": {
+          "prim": 1.0184438542751625e-13,
+          "fld": 2.5320681494359737e-13
+        }
+      },
+      {
+        "name": "stable_matvec_collapse43_r2",
+        "source_commit_base": "0fbdeb9d",
+        "candidate_source": "difference-form long-double matvec in linearMG.cpp (no other production source change)",
+        "binary_sha256": "aa8a7e7ba18650053a86e470699991d4f264aae514b8608e9b2619a6d8b0bfce",
+        "ranks": 2,
+        "threads": 2,
+        "run_log": "/tmp/wor25_23_24_resolution_trials/stable_matvec_collapse43_r2/run.log",
+        "input_path": "/tmp/wor25_23_24_resolution_trials/collapse_adaptive_partial_direct_final_r1/protostellar_core_fld_mayer5.00006.rst",
+        "input_sha256": "42416ee70c7cc08b4065e33903fb64239d8389ac7dd356fa7ce631641bfcadb1",
+        "overrides": {
+          "mesh/num_threads": 2,
+          "time/nlim": 7,
+          "problem/N_J": 1,
+          "nrfld/global_jacobian_check": true
+        },
+        "exit_status": 0,
+        "wall_time": "0:01.74",
+        "peak_rss_kb": 184064,
+        "newton_statuses": [
+          {
+            "status": "converged",
+            "iterations": 0
+          },
+          {
+            "status": "converged",
+            "iterations": 2
+          }
+        ],
+        "fgmres_history": [
+          {
+            "iterations": 14,
+            "explicit_relative_residual": 3.326561120412814e-09
+          },
+          {
+            "iterations": 14,
+            "explicit_relative_residual": 7.858690350011729e-09
+          }
+        ],
+        "evaluation": "PASS",
+        "environment": {
+          "OMP_NUM_THREADS": "2",
+          "ATHENA_NRFLD_EXPERIMENTAL_COLLAPSE": "1",
+          "ATHENA_NRFLD_INTERFACE_LEDGER": "1",
+          "ATHENA_NRFLD_ENERGY_LEDGER": "1"
+        },
+        "coarse_fine_face_conservation": {
+          "pairs": 9,
+          "max_relative_mismatch": 1.1255797091776173e-07,
+          "pass": true
+        },
+        "final_hdf_relative_l1_vs_original_production": {
+          "prim": 1.4435899914622001e-13,
+          "fld": 3.589080088101544e-13
+        }
+      }
+    ],
+    "strict_second_solve_floor": {
+      "base_v1": 1.1682229975264943e-09,
+      "candidate_v1": 4.891417168578685e-10,
+      "base_v2": 2.7242075142785137e-10,
+      "candidate_v2": 1.6297531892108874e-10,
+      "candidate_v2_restart80": 1.6297531892108874e-10
+    },
+    "limitations": "all strict 1e-10 runs still fail; double-rounding and coarse/fine operator mismatch remain; do not mark WOR-25 resolved",
+    "production_source_sha256": "0a6550139be6d1fa911ff6b4467d0b4662a15d662542ca9e26125ab865ce2cd4",
+    "rebuild_note": "Rebuilt final production source with explanatory comment; non-OpenMP binary SHA-256 remains b50f3fc28095d0c4e27908c36bad374ff23bf16cb95cf943192d866a61ab0acf"
   }
 }

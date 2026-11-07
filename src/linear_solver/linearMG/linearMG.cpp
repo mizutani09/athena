@@ -1441,26 +1441,30 @@ void linearMGDriver::SolveFGMRES(int stage) {
       MeshBlock *pmb = pmg->pmy_block_;
       const AthenaArray<Real> &delta = pmg->pnr_->delta_u_;
       const AthenaArray<Real> &coeff = pmg->pnr_->coeff_;
-      const Real fac = dt_/SQR(pmb->pcoord->dx1f(pmb->is));
+      const long double fac = static_cast<long double>(dt_)
+          /SQR(static_cast<long double>(pmb->pcoord->dx1f(pmb->is)));
       y[b].ZeroClear();
       for (int k = pmb->ks; k <= pmb->ke; ++k) {
         for (int j = pmb->js; j <= pmb->je; ++j) {
           for (int i = pmb->is; i <= pmb->ie; ++i) {
-            Real value = (fac*coeff(linearSolver::DCCF,k,j,i)
-                         + coeff(linearSolver::DCCS,k,j,i))*delta(k,j,i);
-            value += (fac*coeff(linearSolver::DXMF,k,j,i)
-                     + coeff(linearSolver::DXMS,k,j,i))*delta(k,j,i-1);
-            value += (fac*coeff(linearSolver::DXPF,k,j,i)
-                     + coeff(linearSolver::DXPS,k,j,i))*delta(k,j,i+1);
-            value += (fac*coeff(linearSolver::DYMF,k,j,i)
-                     + coeff(linearSolver::DYMS,k,j,i))*delta(k,j-1,i);
-            value += (fac*coeff(linearSolver::DYPF,k,j,i)
-                     + coeff(linearSolver::DYPS,k,j,i))*delta(k,j+1,i);
-            value += (fac*coeff(linearSolver::DZMF,k,j,i)
-                     + coeff(linearSolver::DZMS,k,j,i))*delta(k-1,j,i);
-            value += (fac*coeff(linearSolver::DZPF,k,j,i)
-                     + coeff(linearSolver::DZPS,k,j,i))*delta(k+1,j,i);
-            at(y,b,k,j,i) = value;
+            const long double center = delta(k,j,i);
+            long double face_sum = coeff(linearSolver::DCCF,k,j,i);
+            long double value = static_cast<long double>(
+                coeff(linearSolver::DCCS,k,j,i))*center;
+            const long double neighbor[6] = {
+                delta(k,j,i-1),delta(k,j,i+1),delta(k,j-1,i),
+                delta(k,j+1,i),delta(k-1,j,i),delta(k+1,j,i)};
+            // Preserve the stored matrix row while avoiding cancellation of
+            // large opposite face terms in strongly diffusive FLD matvecs.
+            for (int face = 0; face < 6; ++face) {
+              const long double flux = coeff(linearSolver::DXMF+face,k,j,i);
+              face_sum += flux;
+              value += fac*flux*(neighbor[face]-center)
+                  + static_cast<long double>(
+                      coeff(linearSolver::DXMS+face,k,j,i))*neighbor[face];
+            }
+            value += fac*face_sum*center;
+            at(y,b,k,j,i) = static_cast<Real>(value);
           }
         }
       }
