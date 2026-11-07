@@ -1471,7 +1471,7 @@ void linearMGDriver::SolveFGMRES(int stage) {
       }
     }
   };
-  if (fgmres_linearity_check_ && fgmres_linearity_check_count_ == 0) {
+  auto audit_linearity = [&]() {
     BlockVector lx = make_vector(), ly = make_vector(), lxy = make_vector();
     BlockVector alx = make_vector(), aly = make_vector(), alxy = make_vector();
     BlockVector scaled_x = make_vector(), a_scaled_x = make_vector();
@@ -1517,10 +1517,11 @@ void linearMGDriver::SolveFGMRES(int stage) {
       std::cout << "[LINEAR_FGMRES_LINEARITY] additivity_rel=" << additivity
                 << " homogeneity_rel=" << homogeneity
                 << " alpha=" << alpha
-                << " multilevel=" << pmy_mesh_->multilevel << std::endl;
+                << " multilevel=" << pmy_mesh_->multilevel
+                << " solve_index=" << fgmres_linearity_check_count_ << std::endl;
     }
     ++fgmres_linearity_check_count_;
-  }
+  };
   int preconditioner_calls = 0;
   auto apply_preconditioner = [&](const BlockVector &rhs, BlockVector &z) {
     current_level_ = fmglevel_ = ntotallevel_ - 1;
@@ -1744,6 +1745,9 @@ void linearMGDriver::SolveFGMRES(int stage) {
     relative_residual = static_cast<Real>(beta/bnorm);
     if (breakdown) break;
   }
+  if (fgmres_linearity_check_ && (fgmres_linearity_check_count_ == 0
+      || std::getenv("ATHENA_NRFLD_FGMRES_LINEARITY_EACH_SOLVE") != nullptr))
+    audit_linearity();
   load_delta(x);
   if (Globals::my_rank == 0) {
     std::cout << "[LINEAR_FGMRES] iterations=" << total_iterations

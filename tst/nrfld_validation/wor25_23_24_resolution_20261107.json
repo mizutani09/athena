@@ -58907,5 +58907,766 @@
       }
     ],
     "decision": "The actual fine-side coarse reference is bitwise identical to the coarse active center for all 1024 cells. Exact arithmetic on stored binary64 inputs decomposes the x1=0.5 imbalance into coarse ghost/coefficient, fine ghost and restricted D*Er moment rounding. Subtracting the common coarse reference before moment averaging substantially reduces the offline aggregate mismatch but does not pass the original 1e-6 relative face criterion at every coarse block. This is a diagnostic candidate only: making it a solver fix requires the Newton residual, correction boundary and FGMRES matvec to use the same shifted flux representation; no production operator change is made."
+  },
+  "wor25_linearity_each_solve_audit": {
+    "scope": "Coupled variable-limiter 3-level shifted Test C, two steps, 1/2 ranks; post-solve opt-in linearity audit ON/OFF on the same binary. One-rank restart-80 control on older isolated binary.",
+    "cases": [
+      {
+        "name": "threelevel_coupled_linearity_after_off_r1",
+        "ranks": 1,
+        "threads_per_rank": 1,
+        "audit_enabled": false,
+        "binary_sha256": "904c041ca759970952f6a878a37927437e39bf8dcc3b903ea80d3d8c55598d2b",
+        "input_path": "/home/kosuke/simulation/athena-wor25-23-24-resolution/tst/nrfld_validation/testc_threelevel_shifted_20261107.in",
+        "input_sha256": "c1ffedae69f670d6f17740805077b6741c7cefdaf2baf4639cc7ab5f1fa38a74",
+        "command": "mpirun --output-filename /tmp/wor25_23_24_resolution_trials/threelevel_coupled_linearity_after_off_r1/mpi -n 1 /tmp/wor25_23_24_resolution_fgmres_norm_audit_build/bin/athena -i /home/kosuke/simulation/athena-wor25-23-24-resolution/tst/nrfld_validation/testc_threelevel_shifted_20261107.in -d /tmp/wor25_23_24_resolution_trials/threelevel_coupled_linearity_after_off_r1/output nrfld/linear_solver=fgmres nrfld/fgmres_linearity_check=false nrfld/global_jacobian_check=false fld/is_couple=true fld/only_rad=false fld/fixed_flux_limiter=false time/nlim=2 time/tlim=0.001",
+        "environment": {
+          "OMP_NUM_THREADS": 1,
+          "ATHENA_NRFLD_INTERFACE_LEDGER": 1,
+          "ATHENA_NRFLD_ENERGY_LEDGER": 1,
+          "ATHENA_NRFLD_FGMRES_LINEARITY_EACH_SOLVE": 0,
+          "ATHENA_NRFLD_FGMRES_NORM_AUDIT": 0
+        },
+        "run_log": "/tmp/wor25_23_24_resolution_trials/threelevel_coupled_linearity_after_off_r1/run.log",
+        "face_logs": [
+          "/tmp/wor25_23_24_resolution_trials/threelevel_coupled_linearity_after_off_r1/mpi/1/rank.0/stdout"
+        ],
+        "exit_status": 134,
+        "wall_time": "0:40.57",
+        "peak_rss_kb": 463468,
+        "newton_history": [
+          {
+            "status": "dt_zero_initialization",
+            "iterations": 0,
+            "cycle": 0
+          },
+          {
+            "status": "converged",
+            "iterations": 15,
+            "cycle": 0
+          }
+        ],
+        "fgmres_history": [
+          {
+            "iterations": 17,
+            "true_relative_residual": 9.84235986934005e-09
+          },
+          {
+            "iterations": 18,
+            "true_relative_residual": 4.336483943822e-09
+          },
+          {
+            "iterations": 18,
+            "true_relative_residual": 4.2605227019555105e-09
+          },
+          {
+            "iterations": 18,
+            "true_relative_residual": 3.723724880310707e-09
+          },
+          {
+            "iterations": 18,
+            "true_relative_residual": 3.830851156242977e-09
+          },
+          {
+            "iterations": 18,
+            "true_relative_residual": 4.4072757542225655e-09
+          },
+          {
+            "iterations": 18,
+            "true_relative_residual": 4.4442127651169845e-09
+          },
+          {
+            "iterations": 18,
+            "true_relative_residual": 4.356689444035729e-09
+          },
+          {
+            "iterations": 18,
+            "true_relative_residual": 3.9006890990958e-09
+          },
+          {
+            "iterations": 18,
+            "true_relative_residual": 4.779298590722215e-09
+          },
+          {
+            "iterations": 18,
+            "true_relative_residual": 4.254757974081531e-09
+          },
+          {
+            "iterations": 18,
+            "true_relative_residual": 4.240775260451399e-09
+          },
+          {
+            "iterations": 18,
+            "true_relative_residual": 4.2048653859506834e-09
+          },
+          {
+            "iterations": 18,
+            "true_relative_residual": 4.188956324765571e-09
+          },
+          {
+            "iterations": 18,
+            "true_relative_residual": 4.309724309466933e-09
+          },
+          {
+            "iterations": 11,
+            "true_relative_residual": 2.803486200874951e-09
+          },
+          {
+            "iterations": 80,
+            "true_relative_residual": 1.7496746442824834e-08
+          }
+        ],
+        "fgmres_linearity_history": [],
+        "fgmres_fatal": "FGMRES did not reach its requested relative residual: iterations=80, relative_residual=1.74967e-08, target=1e-08, breakdown=0.",
+        "first_cycle_face_count": 10,
+        "first_cycle_max_face_relative_mismatch": 0.0027109779615842843,
+        "evaluation": "FAIL_STRICT_SOLVER"
+      },
+      {
+        "name": "threelevel_coupled_linearity_after_r1",
+        "ranks": 1,
+        "threads_per_rank": 1,
+        "audit_enabled": true,
+        "binary_sha256": "904c041ca759970952f6a878a37927437e39bf8dcc3b903ea80d3d8c55598d2b",
+        "input_path": "/home/kosuke/simulation/athena-wor25-23-24-resolution/tst/nrfld_validation/testc_threelevel_shifted_20261107.in",
+        "input_sha256": "c1ffedae69f670d6f17740805077b6741c7cefdaf2baf4639cc7ab5f1fa38a74",
+        "command": "mpirun --output-filename /tmp/wor25_23_24_resolution_trials/threelevel_coupled_linearity_after_r1/mpi -n 1 /tmp/wor25_23_24_resolution_fgmres_norm_audit_build/bin/athena -i /home/kosuke/simulation/athena-wor25-23-24-resolution/tst/nrfld_validation/testc_threelevel_shifted_20261107.in -d /tmp/wor25_23_24_resolution_trials/threelevel_coupled_linearity_after_r1/output nrfld/linear_solver=fgmres nrfld/fgmres_linearity_check=true nrfld/global_jacobian_check=false fld/is_couple=true fld/only_rad=false fld/fixed_flux_limiter=false time/nlim=2 time/tlim=0.001",
+        "environment": {
+          "OMP_NUM_THREADS": 1,
+          "ATHENA_NRFLD_INTERFACE_LEDGER": 1,
+          "ATHENA_NRFLD_ENERGY_LEDGER": 1,
+          "ATHENA_NRFLD_FGMRES_LINEARITY_EACH_SOLVE": 1,
+          "ATHENA_NRFLD_FGMRES_NORM_AUDIT": 1
+        },
+        "run_log": "/tmp/wor25_23_24_resolution_trials/threelevel_coupled_linearity_after_r1/run.log",
+        "face_logs": [
+          "/tmp/wor25_23_24_resolution_trials/threelevel_coupled_linearity_after_r1/mpi/1/rank.0/stdout"
+        ],
+        "exit_status": 134,
+        "wall_time": "0:40.42",
+        "peak_rss_kb": 465136,
+        "newton_history": [
+          {
+            "status": "dt_zero_initialization",
+            "iterations": 0,
+            "cycle": 0
+          },
+          {
+            "status": "converged",
+            "iterations": 15,
+            "cycle": 0
+          }
+        ],
+        "fgmres_history": [
+          {
+            "iterations": 17,
+            "true_relative_residual": 9.84235986934005e-09
+          },
+          {
+            "iterations": 18,
+            "true_relative_residual": 4.336483943822e-09
+          },
+          {
+            "iterations": 18,
+            "true_relative_residual": 4.2605227019555105e-09
+          },
+          {
+            "iterations": 18,
+            "true_relative_residual": 3.723724880310707e-09
+          },
+          {
+            "iterations": 18,
+            "true_relative_residual": 3.830851156242977e-09
+          },
+          {
+            "iterations": 18,
+            "true_relative_residual": 4.4072757542225655e-09
+          },
+          {
+            "iterations": 18,
+            "true_relative_residual": 4.4442127651169845e-09
+          },
+          {
+            "iterations": 18,
+            "true_relative_residual": 4.356689444035729e-09
+          },
+          {
+            "iterations": 18,
+            "true_relative_residual": 3.9006890990958e-09
+          },
+          {
+            "iterations": 18,
+            "true_relative_residual": 4.779298590722215e-09
+          },
+          {
+            "iterations": 18,
+            "true_relative_residual": 4.254757974081531e-09
+          },
+          {
+            "iterations": 18,
+            "true_relative_residual": 4.240775260451399e-09
+          },
+          {
+            "iterations": 18,
+            "true_relative_residual": 4.2048653859506834e-09
+          },
+          {
+            "iterations": 18,
+            "true_relative_residual": 4.188956324765571e-09
+          },
+          {
+            "iterations": 18,
+            "true_relative_residual": 4.309724309466933e-09
+          },
+          {
+            "iterations": 11,
+            "true_relative_residual": 2.803486200874951e-09
+          },
+          {
+            "iterations": 80,
+            "true_relative_residual": 1.7496746442824834e-08
+          }
+        ],
+        "fgmres_linearity_history": [
+          {
+            "additivity_rel": 8.957624179459622e-17,
+            "homogeneity_rel": 5.532558255406443e-16,
+            "solve_index": 0
+          },
+          {
+            "additivity_rel": 8.976901755391477e-17,
+            "homogeneity_rel": 5.52353185887323e-16,
+            "solve_index": 1
+          },
+          {
+            "additivity_rel": 9.048239329790696e-17,
+            "homogeneity_rel": 5.540208916707287e-16,
+            "solve_index": 2
+          },
+          {
+            "additivity_rel": 9.072760967202895e-17,
+            "homogeneity_rel": 5.547378265744768e-16,
+            "solve_index": 3
+          },
+          {
+            "additivity_rel": 9.018430987650551e-17,
+            "homogeneity_rel": 5.531449403139947e-16,
+            "solve_index": 4
+          },
+          {
+            "additivity_rel": 9.165121378752728e-17,
+            "homogeneity_rel": 5.547882577545508e-16,
+            "solve_index": 5
+          },
+          {
+            "additivity_rel": 8.98915646125577e-17,
+            "homogeneity_rel": 5.536903576239358e-16,
+            "solve_index": 6
+          },
+          {
+            "additivity_rel": 9.116188855945896e-17,
+            "homogeneity_rel": 5.537065948538597e-16,
+            "solve_index": 7
+          },
+          {
+            "additivity_rel": 9.068051902606876e-17,
+            "homogeneity_rel": 5.548697605789087e-16,
+            "solve_index": 8
+          },
+          {
+            "additivity_rel": 9.078256102476944e-17,
+            "homogeneity_rel": 5.535518999394133e-16,
+            "solve_index": 9
+          },
+          {
+            "additivity_rel": 9.103842680466773e-17,
+            "homogeneity_rel": 5.533911975596748e-16,
+            "solve_index": 10
+          },
+          {
+            "additivity_rel": 9.10739695113063e-17,
+            "homogeneity_rel": 5.541472850001827e-16,
+            "solve_index": 11
+          },
+          {
+            "additivity_rel": 8.936119181742343e-17,
+            "homogeneity_rel": 5.537003148681177e-16,
+            "solve_index": 12
+          },
+          {
+            "additivity_rel": 8.961041014331431e-17,
+            "homogeneity_rel": 5.52818099592316e-16,
+            "solve_index": 13
+          },
+          {
+            "additivity_rel": 9.025772492178527e-17,
+            "homogeneity_rel": 5.545178311875826e-16,
+            "solve_index": 14
+          },
+          {
+            "additivity_rel": 2.807702937971067e-16,
+            "homogeneity_rel": 3.976310435041086e-16,
+            "solve_index": 15
+          },
+          {
+            "additivity_rel": 2.8104121421562757e-16,
+            "homogeneity_rel": 3.9723119797796696e-16,
+            "solve_index": 16
+          }
+        ],
+        "fgmres_fatal": "FGMRES did not reach its requested relative residual: iterations=80, relative_residual=1.74967e-08, target=1e-08, breakdown=0.",
+        "first_cycle_face_count": 10,
+        "first_cycle_max_face_relative_mismatch": 0.0027109779615842843,
+        "evaluation": "FAIL_STRICT_SOLVER"
+      },
+      {
+        "name": "threelevel_coupled_linearity_after_off_r2",
+        "ranks": 2,
+        "threads_per_rank": 1,
+        "audit_enabled": false,
+        "binary_sha256": "904c041ca759970952f6a878a37927437e39bf8dcc3b903ea80d3d8c55598d2b",
+        "input_path": "/home/kosuke/simulation/athena-wor25-23-24-resolution/tst/nrfld_validation/testc_threelevel_shifted_20261107.in",
+        "input_sha256": "c1ffedae69f670d6f17740805077b6741c7cefdaf2baf4639cc7ab5f1fa38a74",
+        "command": "mpirun --output-filename /tmp/wor25_23_24_resolution_trials/threelevel_coupled_linearity_after_off_r2/mpi -n 2 /tmp/wor25_23_24_resolution_fgmres_norm_audit_build/bin/athena -i /home/kosuke/simulation/athena-wor25-23-24-resolution/tst/nrfld_validation/testc_threelevel_shifted_20261107.in -d /tmp/wor25_23_24_resolution_trials/threelevel_coupled_linearity_after_off_r2/output nrfld/linear_solver=fgmres nrfld/fgmres_linearity_check=false nrfld/global_jacobian_check=false fld/is_couple=true fld/only_rad=false fld/fixed_flux_limiter=false time/nlim=2 time/tlim=0.001",
+        "environment": {
+          "OMP_NUM_THREADS": 1,
+          "ATHENA_NRFLD_INTERFACE_LEDGER": 1,
+          "ATHENA_NRFLD_ENERGY_LEDGER": 1,
+          "ATHENA_NRFLD_FGMRES_LINEARITY_EACH_SOLVE": 0,
+          "ATHENA_NRFLD_FGMRES_NORM_AUDIT": 0
+        },
+        "run_log": "/tmp/wor25_23_24_resolution_trials/threelevel_coupled_linearity_after_off_r2/run.log",
+        "face_logs": [
+          "/tmp/wor25_23_24_resolution_trials/threelevel_coupled_linearity_after_off_r2/mpi/1/rank.0/stdout",
+          "/tmp/wor25_23_24_resolution_trials/threelevel_coupled_linearity_after_off_r2/mpi/1/rank.1/stdout"
+        ],
+        "exit_status": 134,
+        "wall_time": "0:32.42",
+        "peak_rss_kb": 255928,
+        "newton_history": [
+          {
+            "status": "dt_zero_initialization",
+            "iterations": 0,
+            "cycle": 0
+          },
+          {
+            "status": "converged",
+            "iterations": 15,
+            "cycle": 0
+          }
+        ],
+        "fgmres_history": [
+          {
+            "iterations": 17,
+            "true_relative_residual": 9.651691637518944e-09
+          },
+          {
+            "iterations": 18,
+            "true_relative_residual": 4.223503379714256e-09
+          },
+          {
+            "iterations": 18,
+            "true_relative_residual": 4.222683681450275e-09
+          },
+          {
+            "iterations": 18,
+            "true_relative_residual": 3.974925056181941e-09
+          },
+          {
+            "iterations": 18,
+            "true_relative_residual": 4.1488553538033655e-09
+          },
+          {
+            "iterations": 18,
+            "true_relative_residual": 4.997176642786636e-09
+          },
+          {
+            "iterations": 18,
+            "true_relative_residual": 4.051797870182821e-09
+          },
+          {
+            "iterations": 18,
+            "true_relative_residual": 4.379614705658764e-09
+          },
+          {
+            "iterations": 18,
+            "true_relative_residual": 3.941308729104321e-09
+          },
+          {
+            "iterations": 18,
+            "true_relative_residual": 4.239200639303783e-09
+          },
+          {
+            "iterations": 18,
+            "true_relative_residual": 4.230302232977838e-09
+          },
+          {
+            "iterations": 18,
+            "true_relative_residual": 4.252313516096606e-09
+          },
+          {
+            "iterations": 18,
+            "true_relative_residual": 4.296524234605684e-09
+          },
+          {
+            "iterations": 18,
+            "true_relative_residual": 4.142148666921293e-09
+          },
+          {
+            "iterations": 18,
+            "true_relative_residual": 4.325240612036455e-09
+          },
+          {
+            "iterations": 11,
+            "true_relative_residual": 2.786241909457716e-09
+          },
+          {
+            "iterations": 80,
+            "true_relative_residual": 1.7695895976673482e-08
+          }
+        ],
+        "fgmres_linearity_history": [],
+        "fgmres_fatal": "FGMRES did not reach its requested relative residual: iterations=80, relative_residual=1.76959e-08, target=1e-08, breakdown=0.",
+        "first_cycle_face_count": 10,
+        "first_cycle_max_face_relative_mismatch": 0.003101105721384669,
+        "evaluation": "FAIL_STRICT_SOLVER"
+      },
+      {
+        "name": "threelevel_coupled_linearity_after_r2",
+        "ranks": 2,
+        "threads_per_rank": 1,
+        "audit_enabled": true,
+        "binary_sha256": "904c041ca759970952f6a878a37927437e39bf8dcc3b903ea80d3d8c55598d2b",
+        "input_path": "/home/kosuke/simulation/athena-wor25-23-24-resolution/tst/nrfld_validation/testc_threelevel_shifted_20261107.in",
+        "input_sha256": "c1ffedae69f670d6f17740805077b6741c7cefdaf2baf4639cc7ab5f1fa38a74",
+        "command": "mpirun --output-filename /tmp/wor25_23_24_resolution_trials/threelevel_coupled_linearity_after_r2/mpi -n 2 /tmp/wor25_23_24_resolution_fgmres_norm_audit_build/bin/athena -i /home/kosuke/simulation/athena-wor25-23-24-resolution/tst/nrfld_validation/testc_threelevel_shifted_20261107.in -d /tmp/wor25_23_24_resolution_trials/threelevel_coupled_linearity_after_r2/output nrfld/linear_solver=fgmres nrfld/fgmres_linearity_check=true nrfld/global_jacobian_check=false fld/is_couple=true fld/only_rad=false fld/fixed_flux_limiter=false time/nlim=2 time/tlim=0.001",
+        "environment": {
+          "OMP_NUM_THREADS": 1,
+          "ATHENA_NRFLD_INTERFACE_LEDGER": 1,
+          "ATHENA_NRFLD_ENERGY_LEDGER": 1,
+          "ATHENA_NRFLD_FGMRES_LINEARITY_EACH_SOLVE": 1,
+          "ATHENA_NRFLD_FGMRES_NORM_AUDIT": 1
+        },
+        "run_log": "/tmp/wor25_23_24_resolution_trials/threelevel_coupled_linearity_after_r2/run.log",
+        "face_logs": [
+          "/tmp/wor25_23_24_resolution_trials/threelevel_coupled_linearity_after_r2/mpi/1/rank.0/stdout",
+          "/tmp/wor25_23_24_resolution_trials/threelevel_coupled_linearity_after_r2/mpi/1/rank.1/stdout"
+        ],
+        "exit_status": 134,
+        "wall_time": "0:30.12",
+        "peak_rss_kb": 256392,
+        "newton_history": [
+          {
+            "status": "dt_zero_initialization",
+            "iterations": 0,
+            "cycle": 0
+          },
+          {
+            "status": "converged",
+            "iterations": 15,
+            "cycle": 0
+          }
+        ],
+        "fgmres_history": [
+          {
+            "iterations": 17,
+            "true_relative_residual": 9.651691637518944e-09
+          },
+          {
+            "iterations": 18,
+            "true_relative_residual": 4.223503379714256e-09
+          },
+          {
+            "iterations": 18,
+            "true_relative_residual": 4.222683681450275e-09
+          },
+          {
+            "iterations": 18,
+            "true_relative_residual": 3.974925056181941e-09
+          },
+          {
+            "iterations": 18,
+            "true_relative_residual": 4.1488553538033655e-09
+          },
+          {
+            "iterations": 18,
+            "true_relative_residual": 4.997176642786636e-09
+          },
+          {
+            "iterations": 18,
+            "true_relative_residual": 4.051797870182821e-09
+          },
+          {
+            "iterations": 18,
+            "true_relative_residual": 4.379614705658764e-09
+          },
+          {
+            "iterations": 18,
+            "true_relative_residual": 3.941308729104321e-09
+          },
+          {
+            "iterations": 18,
+            "true_relative_residual": 4.239200639303783e-09
+          },
+          {
+            "iterations": 18,
+            "true_relative_residual": 4.230302232977838e-09
+          },
+          {
+            "iterations": 18,
+            "true_relative_residual": 4.252313516096606e-09
+          },
+          {
+            "iterations": 18,
+            "true_relative_residual": 4.296524234605684e-09
+          },
+          {
+            "iterations": 18,
+            "true_relative_residual": 4.142148666921293e-09
+          },
+          {
+            "iterations": 18,
+            "true_relative_residual": 4.325240612036455e-09
+          },
+          {
+            "iterations": 11,
+            "true_relative_residual": 2.786241909457716e-09
+          },
+          {
+            "iterations": 80,
+            "true_relative_residual": 1.7695895976673482e-08
+          }
+        ],
+        "fgmres_linearity_history": [
+          {
+            "additivity_rel": 8.957624179459622e-17,
+            "homogeneity_rel": 5.532558255406443e-16,
+            "solve_index": 0
+          },
+          {
+            "additivity_rel": 8.976901755391477e-17,
+            "homogeneity_rel": 5.52353185887323e-16,
+            "solve_index": 1
+          },
+          {
+            "additivity_rel": 9.048239329790696e-17,
+            "homogeneity_rel": 5.540208916707287e-16,
+            "solve_index": 2
+          },
+          {
+            "additivity_rel": 9.072760967202895e-17,
+            "homogeneity_rel": 5.547378265744768e-16,
+            "solve_index": 3
+          },
+          {
+            "additivity_rel": 9.018430987650551e-17,
+            "homogeneity_rel": 5.531449403139947e-16,
+            "solve_index": 4
+          },
+          {
+            "additivity_rel": 9.165121378752728e-17,
+            "homogeneity_rel": 5.547882577545508e-16,
+            "solve_index": 5
+          },
+          {
+            "additivity_rel": 8.98915646125577e-17,
+            "homogeneity_rel": 5.536903576239358e-16,
+            "solve_index": 6
+          },
+          {
+            "additivity_rel": 9.116188855945896e-17,
+            "homogeneity_rel": 5.537065948538597e-16,
+            "solve_index": 7
+          },
+          {
+            "additivity_rel": 9.068051902606876e-17,
+            "homogeneity_rel": 5.548697605789087e-16,
+            "solve_index": 8
+          },
+          {
+            "additivity_rel": 9.078256102476944e-17,
+            "homogeneity_rel": 5.535518999394133e-16,
+            "solve_index": 9
+          },
+          {
+            "additivity_rel": 9.103842680466773e-17,
+            "homogeneity_rel": 5.533911975596748e-16,
+            "solve_index": 10
+          },
+          {
+            "additivity_rel": 9.10739695113063e-17,
+            "homogeneity_rel": 5.541472850001827e-16,
+            "solve_index": 11
+          },
+          {
+            "additivity_rel": 8.936119181742343e-17,
+            "homogeneity_rel": 5.537003148681177e-16,
+            "solve_index": 12
+          },
+          {
+            "additivity_rel": 8.961041014331431e-17,
+            "homogeneity_rel": 5.52818099592316e-16,
+            "solve_index": 13
+          },
+          {
+            "additivity_rel": 9.025772492178527e-17,
+            "homogeneity_rel": 5.545178311875826e-16,
+            "solve_index": 14
+          },
+          {
+            "additivity_rel": 2.8060487365009464e-16,
+            "homogeneity_rel": 3.9648111726390136e-16,
+            "solve_index": 15
+          },
+          {
+            "additivity_rel": 2.8067982340343116e-16,
+            "homogeneity_rel": 3.970025390237701e-16,
+            "solve_index": 16
+          }
+        ],
+        "fgmres_fatal": "FGMRES did not reach its requested relative residual: iterations=80, relative_residual=1.76959e-08, target=1e-08, breakdown=0.",
+        "first_cycle_face_count": 10,
+        "first_cycle_max_face_relative_mismatch": 0.003101105721384669,
+        "evaluation": "FAIL_STRICT_SOLVER"
+      },
+      {
+        "name": "threelevel_coupled_variable_restart80_r1",
+        "ranks": 1,
+        "threads_per_rank": 1,
+        "audit_enabled": false,
+        "binary_sha256": "8d4fe3dee26242afa4864f3282ce14b2d53c3e4ae4f8c2375c4e5880e4db9fd6",
+        "input_path": "/home/kosuke/simulation/athena-wor25-23-24-resolution/tst/nrfld_validation/testc_threelevel_shifted_20261107.in",
+        "input_sha256": "c1ffedae69f670d6f17740805077b6741c7cefdaf2baf4639cc7ab5f1fa38a74",
+        "command": "mpirun --output-filename /tmp/wor25_23_24_resolution_trials/threelevel_coupled_variable_restart80_r1/mpi -n 1 /tmp/wor25_23_24_resolution_roundoff_production_testc_build/bin/athena -i /home/kosuke/simulation/athena-wor25-23-24-resolution/tst/nrfld_validation/testc_threelevel_shifted_20261107.in -d /tmp/wor25_23_24_resolution_trials/threelevel_coupled_variable_restart80_r1/output nrfld/linear_solver=fgmres nrfld/fgmres_linearity_check=false nrfld/global_jacobian_check=false fld/is_couple=true fld/only_rad=false fld/fixed_flux_limiter=false nrfld/fgmres_restart=80 time/nlim=5 time/tlim=0.001",
+        "environment": {
+          "OMP_NUM_THREADS": 1,
+          "ATHENA_NRFLD_INTERFACE_LEDGER": 1,
+          "ATHENA_NRFLD_ENERGY_LEDGER": 1,
+          "ATHENA_NRFLD_FGMRES_LINEARITY_EACH_SOLVE": 0,
+          "ATHENA_NRFLD_FGMRES_NORM_AUDIT": 0
+        },
+        "run_log": "/tmp/wor25_23_24_resolution_trials/threelevel_coupled_variable_restart80_r1/run.log",
+        "face_logs": [
+          "/tmp/wor25_23_24_resolution_trials/threelevel_coupled_variable_restart80_r1/mpi/1/rank.0/stdout"
+        ],
+        "exit_status": 134,
+        "wall_time": "0:38.52",
+        "peak_rss_kb": 508280,
+        "newton_history": [
+          {
+            "status": "dt_zero_initialization",
+            "iterations": 0,
+            "cycle": 0
+          },
+          {
+            "status": "converged",
+            "iterations": 14,
+            "cycle": 0
+          }
+        ],
+        "fgmres_history": [
+          {
+            "iterations": 18,
+            "true_relative_residual": 4.174342424551554e-09
+          },
+          {
+            "iterations": 17,
+            "true_relative_residual": 7.321668344929564e-09
+          },
+          {
+            "iterations": 17,
+            "true_relative_residual": 7.997646043347438e-09
+          },
+          {
+            "iterations": 17,
+            "true_relative_residual": 7.44447484695445e-09
+          },
+          {
+            "iterations": 17,
+            "true_relative_residual": 7.544082066472222e-09
+          },
+          {
+            "iterations": 17,
+            "true_relative_residual": 8.756412105927004e-09
+          },
+          {
+            "iterations": 17,
+            "true_relative_residual": 7.44796014931074e-09
+          },
+          {
+            "iterations": 17,
+            "true_relative_residual": 8.227557162612893e-09
+          },
+          {
+            "iterations": 17,
+            "true_relative_residual": 7.3144218256755065e-09
+          },
+          {
+            "iterations": 17,
+            "true_relative_residual": 8.219961947328955e-09
+          },
+          {
+            "iterations": 17,
+            "true_relative_residual": 7.657750434623499e-09
+          },
+          {
+            "iterations": 17,
+            "true_relative_residual": 9.018127703656283e-09
+          },
+          {
+            "iterations": 17,
+            "true_relative_residual": 8.66530025457719e-09
+          },
+          {
+            "iterations": 17,
+            "true_relative_residual": 7.563615080125985e-09
+          },
+          {
+            "iterations": 11,
+            "true_relative_residual": 2.4043715766300617e-09
+          },
+          {
+            "iterations": 80,
+            "true_relative_residual": 1.1241349694711611e-08
+          }
+        ],
+        "fgmres_linearity_history": [],
+        "fgmres_fatal": "FGMRES did not reach its requested relative residual: iterations=80, relative_residual=1.12413e-08, target=1e-08, breakdown=0.",
+        "first_cycle_face_count": 10,
+        "first_cycle_max_face_relative_mismatch": 0.0030064392361138464,
+        "evaluation": "FAIL_STRICT_SOLVER"
+      }
+    ],
+    "on_off_comparisons": [
+      {
+        "ranks": 1,
+        "same_binary": true,
+        "fgmres_history_exact": true,
+        "newton_history_exact": true,
+        "all_available_hdf_numeric_arrays_exact": true,
+        "max_audited_additivity_rel": 2.8104121421562757e-16,
+        "max_audited_homogeneity_rel": 5.548697605789087e-16,
+        "failed_solve_linearity": {
+          "additivity_rel": 2.8104121421562757e-16,
+          "homogeneity_rel": 3.9723119797796696e-16,
+          "solve_index": 16
+        }
+      },
+      {
+        "ranks": 2,
+        "same_binary": true,
+        "fgmres_history_exact": true,
+        "newton_history_exact": true,
+        "all_available_hdf_numeric_arrays_exact": true,
+        "max_audited_additivity_rel": 2.8067982340343116e-16,
+        "max_audited_homogeneity_rel": 5.548697605789087e-16,
+        "failed_solve_linearity": {
+          "additivity_rel": 2.8067982340343116e-16,
+          "homogeneity_rel": 3.970025390237701e-16,
+          "solve_index": 16
+        }
+      }
+    ],
+    "decision": "The failing second-step FGMRES solve is linear to ~3e-16 on the probe vectors. Audit ON/OFF histories and HDF arrays match exactly within each rank and binary; the strict 1e-8 solve still fails at 80 iterations. Restart 80 also fails on the older binary. No tolerance or operator change."
   }
 }
