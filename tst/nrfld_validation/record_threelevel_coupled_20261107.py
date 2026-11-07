@@ -29,7 +29,7 @@ def get(pattern, text, default=None):
 
 
 def run(name, level, mode, ranks, opacity='q1e7', trial='base', threads=1,
-        source_commit='9a8567ed'):
+        source_commit='9a8567ed', amplitude=0.1):
     directory = TRIALS / name
     log = (directory / 'run.log').read_text(errors='replace')
     timing = (directory / 'time.log').read_text(errors='replace')
@@ -56,6 +56,12 @@ def run(name, level, mode, ranks, opacity='q1e7', trial='base', threads=1,
         jv.append({'direction': values['direction'], 'epsilon': float(values['epsilon']),
                    'coarse_fine_cells': int(values['cells']),
                    'relative_l2': float(values['rel2'])})
+    ghost_tangent = []
+    for direction, cells, rel in re.findall(
+            r'\[NRFLD coupled ghost tangent\] direction=(\w+) '
+            r'epsilon=1.0000000000000000e-04 cells=(\d+) rel=([\deE+.-]+)', log):
+        ghost_tangent.append({'direction': direction, 'coarse_fine_cells': int(cells),
+                              'relative_l2': float(rel)})
     hdf = sorted((directory / 'output').glob('*.fields.*.athdf'))
     final_output = None
     if len(hdf) > 1:
@@ -74,6 +80,7 @@ def run(name, level, mode, ranks, opacity='q1e7', trial='base', threads=1,
     return {
         'name': name, 'level_count': level, 'limiter': mode, 'ranks': ranks,
         'threads_per_rank': threads, 'opacity_case': opacity, 'trial': trial,
+        'initial_pulse_amplitude': amplitude,
         'source_commit_before_run': source_commit, 'binary_sha256': sha(BINARY),
         'input_path': str(input_path), 'input_sha256': sha(input_path),
         'command': command,
@@ -90,6 +97,7 @@ def run(name, level, mode, ranks, opacity='q1e7', trial='base', threads=1,
         'newton_history': newton, 'fgmres_fatal': get(
             r'(FGMRES did not reach its requested relative residual:[^\n]*)', log),
         'coupled_jv_coarse_fine_h1e4': jv,
+        'coupled_ghost_tangent_h1e4': ghost_tangent,
         'max_implicit_energy_absolute_relative_balance': max(energy) if energy else None,
         'coarse_fine_face_pair_count': len(pairs),
         'worst_face_pair': worst,
@@ -128,6 +136,11 @@ for trial, ranks in [('max160', 2), ('v2', 1), ('v2', 2),
 thread_trials = [run(f'threelevel_coupled_variable_omp2_r{rank}', 3,
                      'variable', rank, trial='omp2', threads=2,
                      source_commit='5e133f4d') for rank in (1, 2)]
+amplitude_trials = [run(f'threelevel_coupled_variable_amp{tag}_r{rank}', 3,
+                        'variable', rank, trial='pulse_amplitude',
+                        source_commit='c8136c81', amplitude=value)
+                    for tag, value in [('1p0', 1.0), ('0p01', 0.01)]
+                    for rank in (1, 2)]
 rank_pairs = {}
 for level in (2, 3):
     for mode in ('fixed', 'variable'):
@@ -146,6 +159,14 @@ report['threelevel_coupled_screen'] = {
     'scope': 'Coupled Newton/FGMRES, coarse/fine Jv and face ledger, 2/3 levels, fixed/variable limiter, 1/2 MPI ranks; q1e7 and q1e6 3-level opacity; FGMRES options in fixed q1e7 case.',
     'base_cases': base, 'fgmres_option_trials': trials,
     'thread_trials': thread_trials,
+    'amplitude_trials': amplitude_trials,
+    'amplitude_rank_comparisons': {tag: {
+        'rank1': f'threelevel_coupled_variable_amp{tag}_r1',
+        'rank2': f'threelevel_coupled_variable_amp{tag}_r2',
+        'final_hdf_numeric_arrays_exact': hdf_equal(
+            f'threelevel_coupled_variable_amp{tag}_r1',
+            f'threelevel_coupled_variable_amp{tag}_r2')}
+        for tag in ('1p0', '0p01')},
     'thread_comparisons': {str(rank): {
         'omp1': f'threelevel_coupled_variable_r{rank}',
         'omp2': f'threelevel_coupled_variable_omp2_r{rank}',
@@ -162,7 +183,7 @@ report['threelevel_coupled_screen'] = {
                                      'worst_face_pair']}
         for rank in (1, 2)},
     'rank_comparisons': rank_pairs,
-    'decision': 'Two-level coupled controls pass face tolerance on both ranks. Three-level coupled cases converge except q1e7 fixed 2-rank strict FGMRES target, but all completed three-level cases fail the 1e-6 relative face criterion on very small face flux. Smooth coarse/fine Schur Jv and global energy balance remain small. Max iterations, 2 MG cycles, restart width and unbatched reductions do not give a robust strict-target fix. Relaxed 1.2e-8 target is a diagnostic only; it does not address face mismatch. OMP2 variable-limiter controls test thread sensitivity without changing the operator. Retain opt-in roundoff-scale diagnostic and leave conservation discrepancy unresolved.'
+    'decision': 'Two-level coupled controls pass face tolerance on both ranks. Three-level base cases converge except q1e7 fixed 2-rank strict FGMRES target, but all completed base three-level cases fail the 1e-6 relative face criterion on very small face flux. Pulse-amplitude controls separate Jv accuracy from face relative failure: the same operator/Jv diagnostic passes face tolerance at larger amplitude, while small amplitude fails more strongly. Max iterations, 2 MG cycles, restart width and unbatched reductions do not give a robust strict-target fix. Relaxed 1.2e-8 target is a diagnostic only; it does not address face mismatch. OMP2 variable-limiter controls test thread sensitivity without changing the operator. Retain opt-in roundoff-scale diagnostic and leave exact face conservation discrepancy unresolved.'
 }
 REPORT.write_text(json.dumps(report, indent=2, ensure_ascii=False) + '\n')
 print(json.dumps({'base': [(r['name'], r['evaluation'], r['max_face_relative_mismatch'])
@@ -171,4 +192,7 @@ print(json.dumps({'base': [(r['name'], r['evaluation'], r['max_face_relative_mis
                               r['maximum_true_relative_residual']) for r in trials],
                   'thread_trials': [(r['name'], r['evaluation'],
                                       r['max_face_relative_mismatch']) for r in thread_trials],
+                  'amplitude_trials': [(r['name'], r['evaluation'],
+                                         r['max_face_relative_mismatch'])
+                                        for r in amplitude_trials],
                   'rank_comparisons': rank_pairs}, indent=2))
