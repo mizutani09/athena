@@ -1,0 +1,11 @@
+{
+  "cases": 11,
+  "max_relative_root_error": 7.982655555911641e-16,
+  "max_normalized_residual": 7.844766572455344e-16,
+  "mixed_active": true,
+  "eos_sha256": "742a3456923d4c7056c3705accbcc793af3e0c79408a2f597a0cd9271b13ba43",
+  "harness_sha256": "bdb58359c70355f1035dff23d2f103f2f3e164f480efd5a1259af04ea1457dcb",
+  "probe_binary_sha256": "03a69e0308ae854b267e25e613de938a4fbc90854f0edcc5b8166077ec831410",
+  "cases_sha256": "585157d15d47e726931c462c4f4b43755759a4be321e953ad6584277bda362fe",
+  "log_sha256": "a0330a25320d1ff908ddb6683283b26009be3cd4f3755cb5358284d79c459cbf"
+}

@@ -45,6 +45,35 @@ absolute relative balances were `2.18e-7` and `2.16e-7`. This is a
 consistency check at the configured Newton tolerance, not a proof of
 long-duration conservation or mixed-frame physical accuracy.
 
+### Direct table-root probe with nonzero mixed drift
+
+An isolated harness linked to the same trial solver objects calls the
+production `NRFLD::AddDifference` on a prescribed cell. At code density
+`rho=5`, the 11 cases cover initial temperatures about 45, 320, and
+1176 K, Planck coupling `dt c sigma_P` from `1e2` to `1e8`, and a Tomida
+table energy-coordinate knot from both neighboring floating-point values.
+The synthetic mixed drift contributes `-0.1 ΔEr` to the gas equation;
+the log confirms `mixed_active=1` and 512 exact-root cells in the sampled
+block. An independent Python table interpolator and bisection solve
+match the production gas root to at most `7.98e-16` relative to old gas.
+The largest independent residual divided by old gas is `7.85e-16`.
+This directly checks the mixed-frame scalar root over the sampled table
+states. It prescribes opacity coupling and drift, so it does not test
+Semenov interpolation or the assembled global Jacobian.
+
+![Table-root probe](wor92_local_general_cell_results_20261107/cell_probe.png)
+
+The [cell-probe summary](wor92_local_general_cell_results_20261107/summary.json),
+[case CSV](wor92_local_general_cell_results_20261107/cell_probe.csv), and
+[harness, input and log archive](wor92_local_general_cell_results_20261107/evidence.tar.gz)
+record this check. Regenerate the independent reference and figure with
+`python3 tst/nrfld_validation/wor92_local_general_cell_20261107.py`.
+To rebuild the archived harness, compile its `local_probe.cpp` against the
+archived isolated `build/src` headers and all objects in that build except
+`main.o`, with `mpicxx -std=c++11 -O2 -lhdf5`. Run from the bundle directory
+with the same `ATHENA_NRFLD_*` environment above and arguments
+`<collapse input> <Tomida table> <Semenov table> <cases_mixed_valid.txt> 5 7.5657e-20`.
+
 The earlier **strict** Semenov table run still fails the second cycle-0
 FGMRES solve at `3.87966e-8` with the local solve on, versus `4.27213e-8`
 with it off. The precision-floor ten-cycle success therefore does not
@@ -96,9 +125,9 @@ that missing variable was excluded from the comparison.
 
 ## Remaining checks
 
-1. Probe table states later in collapse, across temperature knots and
-   pressure floors, with the mixed-frame local root; the present 10-cycle
-   test is only an early-collapse pilot.
+1. Probe states later in a physical collapse and near pressure floors;
+   the table-knot check above is a synthetic cell test and the 10-cycle
+   collapse control is only an early-time pilot.
 2. Compute a true assembled AMR-aware componentwise backward error for
    the stalled linear solve, including ghost interpolation. The current
    local-stencil proxy omits that operation.
