@@ -47904,5 +47904,310 @@
     "probe_hdf_exact_vs_base": true,
     "variable_amplitude_1_rank_hdf_exact": true,
     "decision": "All amplitude cases converge. Fixed limiter: all three fail the 1e-6 per-face criterion, with worst-face absolute mismatch O(1e-14) and lower relative mismatch at larger amplitude. Variable limiter: amplitude 0.01/0.1 fail, amplitude 1.0 passes at 2.86e-9/3.59e-9 for 1/2 ranks with exact HDF equality; limiter nonlinearity means flux does not scale linearly. At fixed amplitude 0.1, mismatch 2.40e-14 is 5.3% of the local epsilon-weighted face scale 4.56e-13. Scale is heuristic, not a rigorous error bound. Test-only diagnostic does not change fields. No production operator or tolerance change; root cause of arithmetic discrepancy not proven."
+  },
+  "threelevel_rank_facecell_probe": {
+    "scope": "Fixed-limiter q=1e7 three-level shifted Test C, level-1/2 x=0.5 face, 1/2 MPI ranks; test-only diagnostic",
+    "probe_patch_sha256": "6c03fba7388a1feaccb723eed1a348c8c064cae712aa2129c784a4959e3f021b",
+    "runs": [
+      {
+        "name": "threelevel_facecell2_r1",
+        "ranks": 1,
+        "threads_per_rank": 1,
+        "fgmres_batched_reductions": true,
+        "base_source_commit": "9ee735fa",
+        "binary_sha256": "ec1ad3313faf4221cd3840f065af546b15d22d3cd824ac41fa469dda993a3594",
+        "input_path": "/home/kosuke/simulation/athena-wor25-23-24-resolution/tst/nrfld_validation/testc_threelevel_shifted_20261107.in",
+        "input_sha256": "c1ffedae69f670d6f17740805077b6741c7cefdaf2baf4639cc7ab5f1fa38a74",
+        "command": "mpirun --output-filename /tmp/wor25_23_24_resolution_trials/threelevel_facecell2_r1/mpi -n 1 /tmp/wor25_23_24_resolution_threelevel_facecell_build/bin/athena -i /home/kosuke/simulation/athena-wor25-23-24-resolution/tst/nrfld_validation/testc_threelevel_shifted_20261107.in -d /tmp/wor25_23_24_resolution_trials/threelevel_facecell2_r1/output nrfld/linear_solver=fgmres nrfld/fgmres_linearity_check=false",
+        "environment": {
+          "OMP_NUM_THREADS": 1,
+          "ATHENA_NRFLD_INTERFACE_LEDGER": 1,
+          "ATHENA_NRFLD_ENERGY_LEDGER": 1
+        },
+        "run_log": "/tmp/wor25_23_24_resolution_trials/threelevel_facecell2_r1/run.log",
+        "face_logs": [
+          "/tmp/wor25_23_24_resolution_trials/threelevel_facecell2_r1/mpi/1/rank.0/stdout"
+        ],
+        "exit_status": 0,
+        "wall_time": "0:10.33",
+        "peak_rss_kb": 545708,
+        "newton_statuses": [
+          [
+            "dt_zero_initialization",
+            "0"
+          ],
+          [
+            "converged",
+            "2"
+          ]
+        ],
+        "fgmres_history": [
+          {
+            "iterations": 11,
+            "true_relative_residual": 1.6679146734320208e-09
+          },
+          {
+            "iterations": 11,
+            "true_relative_residual": 3.107110220354198e-09
+          }
+        ],
+        "max_true_relative_residual": 3.107110220354198e-09,
+        "max_implicit_energy_absolute_relative_balance": 8.425652312329366e-12,
+        "face_pair_count": 10,
+        "max_face_relative_mismatch": 9.716067918716044e-06,
+        "evaluation": "FAIL_FACE_RELATIVE_ONLY"
+      },
+      {
+        "name": "threelevel_facecell2_r2",
+        "ranks": 2,
+        "threads_per_rank": 1,
+        "fgmres_batched_reductions": true,
+        "base_source_commit": "9ee735fa",
+        "binary_sha256": "ec1ad3313faf4221cd3840f065af546b15d22d3cd824ac41fa469dda993a3594",
+        "input_path": "/home/kosuke/simulation/athena-wor25-23-24-resolution/tst/nrfld_validation/testc_threelevel_shifted_20261107.in",
+        "input_sha256": "c1ffedae69f670d6f17740805077b6741c7cefdaf2baf4639cc7ab5f1fa38a74",
+        "command": "mpirun --output-filename /tmp/wor25_23_24_resolution_trials/threelevel_facecell2_r2/mpi -n 2 /tmp/wor25_23_24_resolution_threelevel_facecell_build/bin/athena -i /home/kosuke/simulation/athena-wor25-23-24-resolution/tst/nrfld_validation/testc_threelevel_shifted_20261107.in -d /tmp/wor25_23_24_resolution_trials/threelevel_facecell2_r2/output nrfld/linear_solver=fgmres nrfld/fgmres_linearity_check=false",
+        "environment": {
+          "OMP_NUM_THREADS": 1,
+          "ATHENA_NRFLD_INTERFACE_LEDGER": 1,
+          "ATHENA_NRFLD_ENERGY_LEDGER": 1
+        },
+        "run_log": "/tmp/wor25_23_24_resolution_trials/threelevel_facecell2_r2/run.log",
+        "face_logs": [
+          "/tmp/wor25_23_24_resolution_trials/threelevel_facecell2_r2/mpi/1/rank.0/stdout",
+          "/tmp/wor25_23_24_resolution_trials/threelevel_facecell2_r2/mpi/1/rank.1/stdout"
+        ],
+        "exit_status": 0,
+        "wall_time": "0:07.60",
+        "peak_rss_kb": 296472,
+        "newton_statuses": [
+          [
+            "dt_zero_initialization",
+            "0"
+          ],
+          [
+            "converged",
+            "2"
+          ]
+        ],
+        "fgmres_history": [
+          {
+            "iterations": 11,
+            "true_relative_residual": 1.6718264085802486e-09
+          },
+          {
+            "iterations": 11,
+            "true_relative_residual": 3.140991266777498e-09
+          }
+        ],
+        "max_true_relative_residual": 3.140991266777498e-09,
+        "max_implicit_energy_absolute_relative_balance": 1.0215523057990038e-11,
+        "face_pair_count": 10,
+        "max_face_relative_mismatch": 1.657458247766642e-05,
+        "evaluation": "FAIL_FACE_RELATIVE_ONLY"
+      }
+    ],
+    "compared_face_cell_count": 256,
+    "field_rank_differences": {
+      "center": {
+        "nonzero_cell_count": 256,
+        "max_absolute": 1.1972645097557688e-12,
+        "rms": 1.1969956342627923e-12
+      },
+      "ghost": {
+        "nonzero_cell_count": 256,
+        "max_absolute": 1.1970424651508438e-12,
+        "rms": 1.1970389960206463e-12
+      },
+      "coefficient": {
+        "nonzero_cell_count": 0,
+        "max_absolute": 0.0,
+        "rms": 0.0
+      },
+      "dbar": {
+        "nonzero_cell_count": 0,
+        "max_absolute": 0.0,
+        "rms": 0.0
+      },
+      "debar": {
+        "nonzero_cell_count": 256,
+        "max_absolute": 3.6531127989292145e-06,
+        "rms": 3.6531055234280875e-06
+      },
+      "term": {
+        "nonzero_cell_count": 94,
+        "max_absolute": 9.035018104040223e-10,
+        "rms": 5.474859409293457e-10
+      }
+    },
+    "gradient_rank1_max_absolute": 3.035349749325178e-12,
+    "gradient_rank_difference_max_absolute": 2.220446049250313e-16,
+    "gradient_rank_difference_nonzero_cell_count": 94,
+    "face_comparisons": [
+      {
+        "x2min": 0.0,
+        "x3min": 0.0,
+        "coarse_flux_rank1": 1.2350178004657114e-09,
+        "coarse_flux_rank2": 1.2350107418578177e-09,
+        "fine_flux_rank1": -1.2350417997325502e-09,
+        "fine_flux_rank2": -1.2350417997325502e-09,
+        "coarse_flux_difference_from_ledger": 7.0586078937169044e-15,
+        "coarse_flux_difference_from_cell_terms": 7.0586078937814246e-15,
+        "prediction_absolute_error": 6.452014457712133e-26,
+        "relative_mismatch_rank1": 9.716067918716044e-06,
+        "relative_mismatch_rank2": 1.2573770885263394e-05
+      },
+      {
+        "x2min": 0.0,
+        "x3min": 0.0625,
+        "coarse_flux_rank1": 1.2350290942383414e-09,
+        "coarse_flux_rank2": 1.2350008598067663e-09,
+        "fine_flux_rank1": -1.2350417997325502e-09,
+        "fine_flux_rank2": -1.2350417997325502e-09,
+        "coarse_flux_difference_from_ledger": 2.8234431575074413e-14,
+        "coarse_flux_difference_from_cell_terms": 2.8234431575125698e-14,
+        "prediction_absolute_error": 5.128542517022842e-26,
+        "relative_mismatch_rank1": 5.143777144140638e-06,
+        "relative_mismatch_rank2": 1.657458247766642e-05
+      },
+      {
+        "x2min": 0.0625,
+        "x3min": 0.0,
+        "coarse_flux_rank1": 1.2350290942383414e-09,
+        "coarse_flux_rank2": 1.2350008598067663e-09,
+        "fine_flux_rank1": -1.2350417997325502e-09,
+        "fine_flux_rank2": -1.2350417997325502e-09,
+        "coarse_flux_difference_from_ledger": 2.8234431575074413e-14,
+        "coarse_flux_difference_from_cell_terms": 2.8234431575125698e-14,
+        "prediction_absolute_error": 5.128542517022842e-26,
+        "relative_mismatch_rank1": 5.143777144140638e-06,
+        "relative_mismatch_rank2": 1.657458247766642e-05
+      },
+      {
+        "x2min": 0.0625,
+        "x3min": 0.0625,
+        "coarse_flux_rank1": 1.2350178004657114e-09,
+        "coarse_flux_rank2": 1.2350107418578177e-09,
+        "fine_flux_rank1": -1.2350417997325502e-09,
+        "fine_flux_rank2": -1.2350417997325502e-09,
+        "coarse_flux_difference_from_ledger": 7.0586078937169044e-15,
+        "coarse_flux_difference_from_cell_terms": 7.0586078937814246e-15,
+        "prediction_absolute_error": 6.452014457712133e-26,
+        "relative_mismatch_rank1": 9.716067918716044e-06,
+        "relative_mismatch_rank2": 1.2573770885263394e-05
+      }
+    ],
+    "rank_hdf_exact": true,
+    "probe_hdf_exact_vs_base": {
+      "1": true,
+      "2": true
+    },
+    "unbatched_reductions_trial": {
+      "runs": [
+        {
+          "name": "threelevel_facecell_unbatched_r1",
+          "ranks": 1,
+          "threads_per_rank": 1,
+          "fgmres_batched_reductions": false,
+          "base_source_commit": "9ee735fa",
+          "binary_sha256": "ec1ad3313faf4221cd3840f065af546b15d22d3cd824ac41fa469dda993a3594",
+          "input_path": "/home/kosuke/simulation/athena-wor25-23-24-resolution/tst/nrfld_validation/testc_threelevel_shifted_20261107.in",
+          "input_sha256": "c1ffedae69f670d6f17740805077b6741c7cefdaf2baf4639cc7ab5f1fa38a74",
+          "command": "mpirun --output-filename /tmp/wor25_23_24_resolution_trials/threelevel_facecell_unbatched_r1/mpi -n 1 /tmp/wor25_23_24_resolution_threelevel_facecell_build/bin/athena -i /home/kosuke/simulation/athena-wor25-23-24-resolution/tst/nrfld_validation/testc_threelevel_shifted_20261107.in -d /tmp/wor25_23_24_resolution_trials/threelevel_facecell_unbatched_r1/output nrfld/linear_solver=fgmres nrfld/fgmres_linearity_check=false nrfld/fgmres_batched_reductions=false",
+          "environment": {
+            "OMP_NUM_THREADS": 1,
+            "ATHENA_NRFLD_INTERFACE_LEDGER": 1,
+            "ATHENA_NRFLD_ENERGY_LEDGER": 1
+          },
+          "run_log": "/tmp/wor25_23_24_resolution_trials/threelevel_facecell_unbatched_r1/run.log",
+          "face_logs": [
+            "/tmp/wor25_23_24_resolution_trials/threelevel_facecell_unbatched_r1/mpi/1/rank.0/stdout"
+          ],
+          "exit_status": 0,
+          "wall_time": "0:10.22",
+          "peak_rss_kb": 545768,
+          "newton_statuses": [
+            [
+              "dt_zero_initialization",
+              "0"
+            ],
+            [
+              "converged",
+              "2"
+            ]
+          ],
+          "fgmres_history": [
+            {
+              "iterations": 11,
+              "true_relative_residual": 1.6709154313597145e-09
+            },
+            {
+              "iterations": 11,
+              "true_relative_residual": 3.1398941688581005e-09
+            }
+          ],
+          "max_true_relative_residual": 3.1398941688581005e-09,
+          "max_implicit_energy_absolute_relative_balance": 9.683230350745698e-12,
+          "face_pair_count": 10,
+          "max_face_relative_mismatch": 9.716067918716044e-06,
+          "evaluation": "FAIL_FACE_RELATIVE_ONLY"
+        },
+        {
+          "name": "threelevel_facecell_unbatched_r2",
+          "ranks": 2,
+          "threads_per_rank": 1,
+          "fgmres_batched_reductions": false,
+          "base_source_commit": "9ee735fa",
+          "binary_sha256": "ec1ad3313faf4221cd3840f065af546b15d22d3cd824ac41fa469dda993a3594",
+          "input_path": "/home/kosuke/simulation/athena-wor25-23-24-resolution/tst/nrfld_validation/testc_threelevel_shifted_20261107.in",
+          "input_sha256": "c1ffedae69f670d6f17740805077b6741c7cefdaf2baf4639cc7ab5f1fa38a74",
+          "command": "mpirun --output-filename /tmp/wor25_23_24_resolution_trials/threelevel_facecell_unbatched_r2/mpi -n 2 /tmp/wor25_23_24_resolution_threelevel_facecell_build/bin/athena -i /home/kosuke/simulation/athena-wor25-23-24-resolution/tst/nrfld_validation/testc_threelevel_shifted_20261107.in -d /tmp/wor25_23_24_resolution_trials/threelevel_facecell_unbatched_r2/output nrfld/linear_solver=fgmres nrfld/fgmres_linearity_check=false nrfld/fgmres_batched_reductions=false",
+          "environment": {
+            "OMP_NUM_THREADS": 1,
+            "ATHENA_NRFLD_INTERFACE_LEDGER": 1,
+            "ATHENA_NRFLD_ENERGY_LEDGER": 1
+          },
+          "run_log": "/tmp/wor25_23_24_resolution_trials/threelevel_facecell_unbatched_r2/run.log",
+          "face_logs": [
+            "/tmp/wor25_23_24_resolution_trials/threelevel_facecell_unbatched_r2/mpi/1/rank.0/stdout",
+            "/tmp/wor25_23_24_resolution_trials/threelevel_facecell_unbatched_r2/mpi/1/rank.1/stdout"
+          ],
+          "exit_status": 0,
+          "wall_time": "0:07.70",
+          "peak_rss_kb": 296436,
+          "newton_statuses": [
+            [
+              "dt_zero_initialization",
+              "0"
+            ],
+            [
+              "converged",
+              "2"
+            ]
+          ],
+          "fgmres_history": [
+            {
+              "iterations": 11,
+              "true_relative_residual": 1.6689505497379948e-09
+            },
+            {
+              "iterations": 11,
+              "true_relative_residual": 3.1523076149366442e-09
+            }
+          ],
+          "max_true_relative_residual": 3.1523076149366442e-09,
+          "max_implicit_energy_absolute_relative_balance": 1.1484814186867226e-11,
+          "face_pair_count": 10,
+          "max_face_relative_mismatch": 1.028739554007112e-05,
+          "evaluation": "FAIL_FACE_RELATIVE_ONLY"
+        }
+      ],
+      "rank_max_center_difference": 8.448353128187591e-12,
+      "rank_max_gradient_difference": 4.440892098500626e-16,
+      "rank_coefficient_and_dbar_exact": true,
+      "rank_hdf_exact": true,
+      "decision": "REJECT_AS_FIX: Newton/FGMRES converge with 11+11 iterations, but 1/2-rank per-face maxima remain 9.72e-6/1.03e-5 above 1e-6. The internal double center rank difference grows to 8.45e-12 and gradient difference to 4.44e-16. Do not change batched-reduction default."
+    },
+    "decision": "Shared diffusion coefficient and Dbar are bitwise identical across all 256 coarse face cells. Double-precision center and ghost differ by about 1.2e-12 despite exactly equal float32 HDF arrays. The face gradient is only 3.0e-12 and differs by at most one binary64 ulp (2.22e-16) across ranks, producing the observed coarse flux differences. Fine integrated flux agrees across ranks in this fixed-limiter case. This localizes rank sensitivity to the actual double state and subtraction on a near-zero gradient; it does not establish why the tiny state difference arose, or prove exact face conservation. Per-face relative criterion remains FAIL. No production change."
   }
 }

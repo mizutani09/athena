@@ -1,0 +1,27 @@
+--- a/src/nr_multigrid/NRFLD.cpp
++++ b/src/nr_multigrid/NRFLD.cpp
+@@ -514,6 +514,24 @@
+               } else {
+                 face_term = face_coeff[face]*(neighbor[face]-center);
+               }
++              if (interface_ledger
++                  && mb->block_size.x1min == 0.5 && face == XMinus
++                  && i == mb->is) {
++                std::ostringstream detail;
++                detail << std::scientific << std::setprecision(17)
++                       << "[NR_FACE_CELL] rank=" << Globals::my_rank
++                       << " gid=" << mb->gid
++                       << " x2min=" << mb->block_size.x2min
++                       << " x3min=" << mb->block_size.x3min
++                       << " k=" << k << " j=" << j << " i=" << i
++                       << " center=" << center
++                       << " ghost=" << neighbor[face]
++                       << " coefficient=" << face_coeff[face]
++                       << " dbar=" << nr->interface_moments_(2*XPlus,k,j,i-1)
++                       << " debar=" << nr->interface_moments_(2*XPlus+1,k,j,i-1)
++                       << " term=" << face_term;
++                std::cout << detail.str() << std::endl;
++              }
+               face_sum += face_term;
+               if (interface_ledger &&
+                   ((face == XMinus && i == mb->is)
