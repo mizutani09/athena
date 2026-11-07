@@ -1,0 +1,25 @@
+--- a/src/linear_solver/linearMG/linearMG.cpp
++++ b/src/linear_solver/linearMG/linearMG.cpp
+@@ -1767,7 +1767,21 @@
+       copy(x_before,x); copy(r_before,r);
+       for (int j=0; j<used; ++j) axpy(requested,y[j],z[j]);
+     }
+-    for (int j = 0; j < used; ++j) axpy(x, y[j], z[j]);
++    if (std::getenv("ATHENA_NRFLD_FGMRES_LONG_DOUBLE_UPDATE_TRIAL") != nullptr) {
++      for (std::size_t block=0; block<x.size(); ++block) {
++        MeshBlock *pmb=static_cast<linearMG*>(vmg_[block])->pmy_block_;
++        for (int k=pmb->ks; k<=pmb->ke; ++k)
++          for (int jj=pmb->js; jj<=pmb->je; ++jj)
++            for (int i=pmb->is; i<=pmb->ie; ++i) {
++              long double value=cat(x,block,k,jj,i);
++              for (int j=0; j<used; ++j)
++                value+=static_cast<long double>(y[j])*cat(z[j],block,k,jj,i);
++              at(x,block,k,jj,i)=static_cast<Real>(value);
++            }
++      }
++    } else {
++      for (int j = 0; j < used; ++j) axpy(x, y[j], z[j]);
++    }
+     long double update_data[3]={};
+     long long stale_cells=0;
+     long double predicted_rel=0.0L, amplified_gap_rel=0.0L;

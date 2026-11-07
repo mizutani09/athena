@@ -800,6 +800,11 @@ unless `--reanalyze` is used. Existing production binaries are not overwritten.
 
 ## Test C operator audits / WOR-23 and WOR-24
 
+The [2026-11-07 centered conservative face trial](wor24_centered_wor25_roundoff_20261107.md)
+records coupled coarse/fine Jv, 1/2-rank strict FGMRES and face ledgers,
+AMR redistribution/restart, and the separate WOR-25 double-update residual
+floor. The face change is Test C opt-in pending broader validation.
+
 The optional `test_c_controlled.py --global-jv --handoff --mpi-ranks 2` now
 aggregates boundary-inclusive Jv and four-stage MG handoff diagnostics across
 MPI ranks. It remains restricted to the periodic, uncoupled Test C. Use
