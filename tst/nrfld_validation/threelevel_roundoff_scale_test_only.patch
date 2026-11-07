@@ -1,0 +1,53 @@
+--- a/src/nr_multigrid/NRFLD.cpp
++++ b/src/nr_multigrid/NRFLD.cpp
+@@ -490,6 +490,8 @@
+       const Real dx = mb->pcoord->dx1f(mb->is);
+       const Real idx2 = 1.0/SQR(dx);
+       long double block_face_delta[6] = {};
++      long double block_face_roundoff_scale[6] = {};
++      long double block_face_abs[6] = {};
+       for (int k=mb->ks; k<=mb->ke; ++k)
+         for (int j=mb->js; j<=mb->je; ++j)
+           for (int i=mb->is; i<=mb->ie; ++i) {
+@@ -522,8 +524,18 @@
+                    || (face == YPlus && j == mb->je)
+                    || (face == ZMinus && k == mb->ks)
+                    || (face == ZPlus && k == mb->ke)))
+-                block_face_delta[face] +=
+-                    static_cast<long double>(dt_*face_term*idx2)*volume;
++                {
++                  const long double weight = static_cast<long double>(dt_)
++                      * static_cast<long double>(idx2) * volume;
++                  block_face_delta[face] +=
++                      static_cast<long double>(dt_*face_term*idx2)*volume;
++                  block_face_abs[face] += weight * std::abs(face_term);
++                  block_face_roundoff_scale[face] +=
++                      std::numeric_limits<Real>::epsilon() * weight
++                      * std::abs(face_coeff[face])
++                      * (std::abs(static_cast<long double>(neighbor[face]))
++                         + std::abs(static_cast<long double>(center)));
++                }
+             }
+             const Real dg = first->only_rad ? 0.0
+                 : nr->u_gas_(k,j,i)-fld->u_gas(k,j,i);
+@@ -555,7 +567,19 @@
+              << " yminus_delta=" << block_face_delta[YMinus]
+              << " yplus_delta=" << block_face_delta[YPlus]
+              << " zminus_delta=" << block_face_delta[ZMinus]
+-             << " zplus_delta=" << block_face_delta[ZPlus];
++             << " zplus_delta=" << block_face_delta[ZPlus]
++             << " xminus_roundoff_scale=" << block_face_roundoff_scale[XMinus]
++             << " xplus_roundoff_scale=" << block_face_roundoff_scale[XPlus]
++             << " yminus_roundoff_scale=" << block_face_roundoff_scale[YMinus]
++             << " yplus_roundoff_scale=" << block_face_roundoff_scale[YPlus]
++             << " zminus_roundoff_scale=" << block_face_roundoff_scale[ZMinus]
++             << " zplus_roundoff_scale=" << block_face_roundoff_scale[ZPlus]
++             << " xminus_abs=" << block_face_abs[XMinus]
++             << " xplus_abs=" << block_face_abs[XPlus]
++             << " yminus_abs=" << block_face_abs[YMinus]
++             << " yplus_abs=" << block_face_abs[YPlus]
++             << " zminus_abs=" << block_face_abs[ZMinus]
++             << " zplus_abs=" << block_face_abs[ZPlus];
+         std::cout << line.str() << std::endl;
+       }
+     }

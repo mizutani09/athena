@@ -47286,5 +47286,305 @@
       }
     ],
     "decision": "At 1e-8 default uses 50 FGMRES iterations but 1-rank face criterion fails (1.30e-6); consistent uses 52 and both ranks pass; symmetric uses 54 and both pass. At 1e-9 default and consistent use 56 and both ranks pass; symmetric uses 59 but 1-rank face criterion fails (1.09e-6). No robust color-order advantage. FGMRES 1e-9 is an input-level mitigation for default-color collapse on this checkpoint, not a global default because strong Test C reaches a residual floor. Tightening Newton to 1e-6 did not robustly improve face conservation: symmetric 1-rank still fails at 1.12e-6."
+  },
+  "threelevel_roundoff_scale_probe": {
+    "scope": "Fixed-limiter q=1e7 three-level shifted Test C, 1 MPI rank, one step; amplitude screen and test-only face diagnostic",
+    "probe_patch_sha256": "007865974227c0135477e4f8cfbb633fb9cdac86f92ed4497737b4b845c98716",
+    "cases": [
+      {
+        "name": "threelevel_amp001_r1",
+        "base_binary_source_commit": "9ee735fa",
+        "binary_sha256": "6ec1605edef342be76656101904865dc5da106d011cfb7aa5b5039de36a8fc52",
+        "input_path": "/home/kosuke/simulation/athena-wor25-23-24-resolution/tst/nrfld_validation/testc_threelevel_shifted_20261107.in",
+        "input_sha256": "c1ffedae69f670d6f17740805077b6741c7cefdaf2baf4639cc7ab5f1fa38a74",
+        "overrides": {
+          "problem/erad_amplitude": 0.01,
+          "nrfld/linear_solver": "fgmres",
+          "nrfld/fgmres_linearity_check": false
+        },
+        "command": "mpirun --output-filename /tmp/wor25_23_24_resolution_trials/threelevel_amp001_r1/mpi -n 1 /tmp/wor25_23_24_resolution_mode_k1_audit_build/bin/athena -i /home/kosuke/simulation/athena-wor25-23-24-resolution/tst/nrfld_validation/testc_threelevel_shifted_20261107.in -d /tmp/wor25_23_24_resolution_trials/threelevel_amp001_r1/output nrfld/linear_solver=fgmres nrfld/fgmres_linearity_check=false problem/erad_amplitude=0.01",
+        "environment": {
+          "OMP_NUM_THREADS": 1,
+          "ATHENA_NRFLD_INTERFACE_LEDGER": 1,
+          "ATHENA_NRFLD_ENERGY_LEDGER": 1
+        },
+        "run_log": "/tmp/wor25_23_24_resolution_trials/threelevel_amp001_r1/run.log",
+        "face_logs": [
+          "/tmp/wor25_23_24_resolution_trials/threelevel_amp001_r1/mpi/1/rank.0/stdout"
+        ],
+        "exit_status": 0,
+        "wall_time": "0:06.11",
+        "peak_rss_kb": 545792,
+        "newton_statuses": [
+          [
+            "dt_zero_initialization",
+            "0"
+          ],
+          [
+            "converged",
+            "2"
+          ]
+        ],
+        "fgmres_history": [
+          {
+            "iterations": 11,
+            "true_relative_residual": 1.6722847211797623e-09
+          },
+          {
+            "iterations": 11,
+            "true_relative_residual": 3.6938294729140797e-09
+          }
+        ],
+        "max_true_relative_residual": 3.6938294729140797e-09,
+        "face_pair_count": 10,
+        "worst_pair": {
+          "cycle": 0,
+          "stage": 0,
+          "coarse_gid": 81,
+          "axis": 1,
+          "side": "min",
+          "fine_count": 4,
+          "coarse_flux": 1.2350869748230706e-10,
+          "fine_flux": -1.2346352239178682e-10,
+          "mismatch": 4.517509052023797e-14,
+          "relative_mismatch": 0.0001829156758734572
+        },
+        "worst_pair_coarse_level": 4,
+        "worst_pair_fine_gids": [
+          26,
+          28,
+          30,
+          32
+        ],
+        "worst_pair_roundoff_scale": null,
+        "worst_pair_abs_mismatch_over_roundoff_scale": null,
+        "max_implicit_energy_absolute_relative_balance": 9.728016083614436e-12,
+        "final_er_min": 1.001002550125122,
+        "solver_pass": true,
+        "face_pass": false,
+        "evaluation": "FAIL_FACE_RELATIVE_ONLY"
+      },
+      {
+        "name": "testc_threelevel_shifted_r1",
+        "base_binary_source_commit": "9ee735fa",
+        "binary_sha256": "6ec1605edef342be76656101904865dc5da106d011cfb7aa5b5039de36a8fc52",
+        "input_path": "/home/kosuke/simulation/athena-wor25-23-24-resolution/tst/nrfld_validation/testc_threelevel_shifted_20261107.in",
+        "input_sha256": "c1ffedae69f670d6f17740805077b6741c7cefdaf2baf4639cc7ab5f1fa38a74",
+        "overrides": {
+          "problem/erad_amplitude": 0.1,
+          "nrfld/linear_solver": "fgmres",
+          "nrfld/fgmres_linearity_check": false
+        },
+        "command": "mpirun --output-filename /tmp/wor25_23_24_resolution_trials/testc_threelevel_shifted_r1/mpi -n 1 /tmp/wor25_23_24_resolution_mode_k1_audit_build/bin/athena -i /tmp/wor25_23_24_resolution_trials/testc_threelevel_shifted.in -d output nrfld/linear_solver=fgmres nrfld/fgmres_linearity_check=false",
+        "environment": {
+          "OMP_NUM_THREADS": 1,
+          "ATHENA_NRFLD_INTERFACE_LEDGER": 1,
+          "ATHENA_NRFLD_ENERGY_LEDGER": 1
+        },
+        "run_log": "/tmp/wor25_23_24_resolution_trials/testc_threelevel_shifted_r1/run.log",
+        "face_logs": [
+          "/tmp/wor25_23_24_resolution_trials/testc_threelevel_shifted_r1/mpi/1/rank.0/stdout"
+        ],
+        "exit_status": 0,
+        "wall_time": "0:06.09",
+        "peak_rss_kb": 545724,
+        "newton_statuses": [
+          [
+            "dt_zero_initialization",
+            "0"
+          ],
+          [
+            "converged",
+            "2"
+          ]
+        ],
+        "fgmres_history": [
+          {
+            "iterations": 11,
+            "true_relative_residual": 1.6679146734320208e-09
+          },
+          {
+            "iterations": 11,
+            "true_relative_residual": 3.107110220354198e-09
+          }
+        ],
+        "max_true_relative_residual": 3.107110220354198e-09,
+        "face_pair_count": 10,
+        "worst_pair": {
+          "cycle": 0,
+          "stage": 0,
+          "coarse_gid": 81,
+          "axis": 1,
+          "side": "min",
+          "fine_count": 4,
+          "coarse_flux": 1.2350178004657114e-09,
+          "fine_flux": -1.2350417997325502e-09,
+          "mismatch": -2.399926683880291e-14,
+          "relative_mismatch": 9.716067918716044e-06
+        },
+        "worst_pair_coarse_level": 4,
+        "worst_pair_fine_gids": [
+          26,
+          28,
+          30,
+          32
+        ],
+        "worst_pair_roundoff_scale": null,
+        "worst_pair_abs_mismatch_over_roundoff_scale": null,
+        "max_implicit_energy_absolute_relative_balance": 8.425652312329366e-12,
+        "final_er_min": 1.0100252628326416,
+        "solver_pass": true,
+        "face_pass": false,
+        "evaluation": "FAIL_FACE_RELATIVE_ONLY"
+      },
+      {
+        "name": "threelevel_amp1_r1",
+        "base_binary_source_commit": "9ee735fa",
+        "binary_sha256": "6ec1605edef342be76656101904865dc5da106d011cfb7aa5b5039de36a8fc52",
+        "input_path": "/home/kosuke/simulation/athena-wor25-23-24-resolution/tst/nrfld_validation/testc_threelevel_shifted_20261107.in",
+        "input_sha256": "c1ffedae69f670d6f17740805077b6741c7cefdaf2baf4639cc7ab5f1fa38a74",
+        "overrides": {
+          "problem/erad_amplitude": 1.0,
+          "nrfld/linear_solver": "fgmres",
+          "nrfld/fgmres_linearity_check": false
+        },
+        "command": "mpirun --output-filename /tmp/wor25_23_24_resolution_trials/threelevel_amp1_r1/mpi -n 1 /tmp/wor25_23_24_resolution_mode_k1_audit_build/bin/athena -i /home/kosuke/simulation/athena-wor25-23-24-resolution/tst/nrfld_validation/testc_threelevel_shifted_20261107.in -d /tmp/wor25_23_24_resolution_trials/threelevel_amp1_r1/output nrfld/linear_solver=fgmres nrfld/fgmres_linearity_check=false problem/erad_amplitude=1.0",
+        "environment": {
+          "OMP_NUM_THREADS": 1,
+          "ATHENA_NRFLD_INTERFACE_LEDGER": 1,
+          "ATHENA_NRFLD_ENERGY_LEDGER": 1
+        },
+        "run_log": "/tmp/wor25_23_24_resolution_trials/threelevel_amp1_r1/run.log",
+        "face_logs": [
+          "/tmp/wor25_23_24_resolution_trials/threelevel_amp1_r1/mpi/1/rank.0/stdout"
+        ],
+        "exit_status": 0,
+        "wall_time": "0:06.07",
+        "peak_rss_kb": 545752,
+        "newton_statuses": [
+          [
+            "dt_zero_initialization",
+            "0"
+          ],
+          [
+            "converged",
+            "2"
+          ]
+        ],
+        "fgmres_history": [
+          {
+            "iterations": 11,
+            "true_relative_residual": 1.668339754801245e-09
+          },
+          {
+            "iterations": 11,
+            "true_relative_residual": 4.606643245657329e-09
+          }
+        ],
+        "max_true_relative_residual": 4.606643245657329e-09,
+        "face_pair_count": 10,
+        "worst_pair": {
+          "cycle": 0,
+          "stage": 0,
+          "coarse_gid": 81,
+          "axis": 1,
+          "side": "min",
+          "fine_count": 4,
+          "coarse_flux": 1.2350238708684999e-08,
+          "fine_flux": -1.2350282472053942e-08,
+          "mismatch": -4.376336894257509e-14,
+          "relative_mismatch": 1.7717589285808692e-06
+        },
+        "worst_pair_coarse_level": 4,
+        "worst_pair_fine_gids": [
+          26,
+          28,
+          30,
+          32
+        ],
+        "worst_pair_roundoff_scale": null,
+        "worst_pair_abs_mismatch_over_roundoff_scale": null,
+        "max_implicit_energy_absolute_relative_balance": 9.722405763763564e-12,
+        "final_er_min": 1.1002529859542847,
+        "solver_pass": true,
+        "face_pass": false,
+        "evaluation": "FAIL_FACE_RELATIVE_ONLY"
+      },
+      {
+        "name": "threelevel_roundoff_scale_r1",
+        "base_binary_source_commit": "9ee735fa",
+        "binary_sha256": "1aca7ff96541a21a8f10a1d6652ef122b1affa7cc8ee667a28a98fce18508cbc",
+        "input_path": "/home/kosuke/simulation/athena-wor25-23-24-resolution/tst/nrfld_validation/testc_threelevel_shifted_20261107.in",
+        "input_sha256": "c1ffedae69f670d6f17740805077b6741c7cefdaf2baf4639cc7ab5f1fa38a74",
+        "overrides": {
+          "problem/erad_amplitude": 0.1,
+          "nrfld/linear_solver": "fgmres",
+          "nrfld/fgmres_linearity_check": false
+        },
+        "command": "mpirun --output-filename /tmp/wor25_23_24_resolution_trials/threelevel_roundoff_scale_r1/mpi -n 1 /tmp/wor25_23_24_resolution_threelevel_roundoff_build/bin/athena -i /home/kosuke/simulation/athena-wor25-23-24-resolution/tst/nrfld_validation/testc_threelevel_shifted_20261107.in -d /tmp/wor25_23_24_resolution_trials/threelevel_roundoff_scale_r1/output nrfld/linear_solver=fgmres nrfld/fgmres_linearity_check=false",
+        "environment": {
+          "OMP_NUM_THREADS": 1,
+          "ATHENA_NRFLD_INTERFACE_LEDGER": 1,
+          "ATHENA_NRFLD_ENERGY_LEDGER": 1
+        },
+        "run_log": "/tmp/wor25_23_24_resolution_trials/threelevel_roundoff_scale_r1/run.log",
+        "face_logs": [
+          "/tmp/wor25_23_24_resolution_trials/threelevel_roundoff_scale_r1/mpi/1/rank.0/stdout"
+        ],
+        "exit_status": 0,
+        "wall_time": "0:06.35",
+        "peak_rss_kb": 545852,
+        "newton_statuses": [
+          [
+            "dt_zero_initialization",
+            "0"
+          ],
+          [
+            "converged",
+            "2"
+          ]
+        ],
+        "fgmres_history": [
+          {
+            "iterations": 11,
+            "true_relative_residual": 1.6679146734320208e-09
+          },
+          {
+            "iterations": 11,
+            "true_relative_residual": 3.107110220354198e-09
+          }
+        ],
+        "max_true_relative_residual": 3.107110220354198e-09,
+        "face_pair_count": 10,
+        "worst_pair": {
+          "cycle": 0,
+          "stage": 0,
+          "coarse_gid": 81,
+          "axis": 1,
+          "side": "min",
+          "fine_count": 4,
+          "coarse_flux": 1.2350178004657114e-09,
+          "fine_flux": -1.2350417997325502e-09,
+          "mismatch": -2.399926683880291e-14,
+          "relative_mismatch": 9.716067918716044e-06
+        },
+        "worst_pair_coarse_level": 4,
+        "worst_pair_fine_gids": [
+          26,
+          28,
+          30,
+          32
+        ],
+        "worst_pair_roundoff_scale": 4.562806506166127e-13,
+        "worst_pair_abs_mismatch_over_roundoff_scale": 0.05259759932044141,
+        "max_implicit_energy_absolute_relative_balance": 8.425652312329366e-12,
+        "final_er_min": 1.0100252628326416,
+        "solver_pass": true,
+        "face_pass": false,
+        "evaluation": "FAIL_FACE_RELATIVE_ONLY"
+      }
+    ],
+    "probe_hdf_exact_vs_base": true,
+    "decision": "All three amplitudes converge but fail 1e-6 per-face relative criterion. Absolute worst-face mismatch stays O(1e-14) while relative mismatch falls as pulse amplitude grows. At amplitude 0.1, mismatch 2.40e-14 is 5.3% of the local epsilon-weighted face scale 4.56e-13. Scale is heuristic, not a rigorous error bound. Test-only diagnostic does not change fields. No production operator or tolerance change; root cause of arithmetic discrepancy not proven."
   }
 }
