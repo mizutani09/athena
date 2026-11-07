@@ -36375,6 +36375,788 @@
         "candidate_rank1_vs_rank2": 0.0
       }
     },
+    "static_partial_15leaf": {
+      "input_sha256": "880bba6f428c1a2adb41c17bf17e567962e8b276c5223068b3e6641cac328584",
+      "baseline": [
+        {
+          "mass_volume_integral": {
+            "initial": 704254494296.6775,
+            "final": 704254514487.77,
+            "relative_change": 2.8670164965665213e-08
+          },
+          "final_minima": {
+            "rho": 0.052219707977364964,
+            "press": 0.025527879472923804,
+            "Er": 0.2905810565351928
+          },
+          "run": "collapse_postflddt_uniform_collapse_baseline_r1",
+          "binary_sha256": "98c04abdac490b182aa6bf028c7be45b9c8790e841aee1eacf3d130ff4188c2b",
+          "checkpoint": null,
+          "checkpoint_sha256": null,
+          "input": "/home/kosuke/simulation/athena-wor25-23-24-resolution/tst/nrfld_validation/collapse_postflddt_static_partial_20261107.in",
+          "input_sha256": "880bba6f428c1a2adb41c17bf17e567962e8b276c5223068b3e6641cac328584",
+          "command": "mpirun --output-filename /tmp/wor25_23_24_resolution_trials/collapse_postflddt_uniform_collapse_baseline_r1/mpi -n 1 /tmp/wor25_23_24_resolution_collapse_natural_postsync_build/bin/athena -i /tmp/wor25_23_24_resolution_trials/collapse_postflddt_uniform_collapse.in -d output time/nlim=4",
+          "environment": {
+            "OMP_NUM_THREADS": 2,
+            "ATHENA_NRFLD_INTERFACE_LEDGER": 1,
+            "ATHENA_NRFLD_ENERGY_LEDGER": 1,
+            "ATHENA_NRFLD_EXPERIMENTAL_COLLAPSE": 1
+          },
+          "exit_status": 0,
+          "wall_time": "0:03.84",
+          "peak_rss_kb": 120936,
+          "coarsefine_newton_jv": [],
+          "fgmres_history": [
+            {
+              "iterations": 14,
+              "true_relative_residual": 2.966672318389449e-09
+            },
+            {
+              "iterations": 14,
+              "true_relative_residual": 2.9406709578593088e-09
+            },
+            {
+              "iterations": 14,
+              "true_relative_residual": 2.9476874002719007e-09
+            },
+            {
+              "iterations": 14,
+              "true_relative_residual": 2.9610112806772217e-09
+            },
+            {
+              "iterations": 14,
+              "true_relative_residual": 1.9407755397694093e-09
+            }
+          ],
+          "fgmres_total_iterations": 70,
+          "max_true_relative_residual": 2.966672318389449e-09,
+          "newton_history": [
+            {
+              "status": "dt_zero_initialization",
+              "iterations": 0,
+              "final_l2": 0.0,
+              "final_max": 0.0,
+              "cycle": 0,
+              "dt": 0.0
+            },
+            {
+              "status": "converged",
+              "iterations": 1,
+              "final_l2": 6.190741493493926e-07,
+              "final_max": 7.80356152940046e-06,
+              "cycle": 0,
+              "dt": 1.0361589749317786
+            },
+            {
+              "status": "converged",
+              "iterations": 1,
+              "final_l2": 7.921146123088928e-07,
+              "final_max": 9.541097932424886e-06,
+              "cycle": 1,
+              "dt": 1.0347982771196902
+            },
+            {
+              "status": "converged",
+              "iterations": 1,
+              "final_l2": 8.33861973898946e-07,
+              "final_max": 9.934126847870617e-06,
+              "cycle": 2,
+              "dt": 1.0334881124872848
+            },
+            {
+              "status": "converged",
+              "iterations": 2,
+              "final_l2": 3.659953011058332e-10,
+              "final_max": 2.5674296824523017e-09,
+              "cycle": 3,
+              "dt": 1.0322569056084494
+            }
+          ],
+          "face_ledger": {
+            "pair_count": 12,
+            "max_relative_mismatch": 1.3339569634365148e-07,
+            "pass": true,
+            "logs": [
+              "/tmp/wor25_23_24_resolution_trials/collapse_postflddt_uniform_collapse_baseline_r1/mpi/1/rank.0/stdout"
+            ]
+          },
+          "max_implicit_energy_absolute_relative_balance": 1.0042671126117414e-08,
+          "topology_by_output": [
+            {
+              "file": "protostellar_core_fld_mayer5.prim.00000.athdf",
+              "leaves": 15,
+              "levels": {
+                "0": 7,
+                "1": 8
+              }
+            },
+            {
+              "file": "protostellar_core_fld_mayer5.prim.00001.athdf",
+              "leaves": 15,
+              "levels": {
+                "0": 7,
+                "1": 8
+              }
+            },
+            {
+              "file": "protostellar_core_fld_mayer5.prim.00002.athdf",
+              "leaves": 15,
+              "levels": {
+                "0": 7,
+                "1": 8
+              }
+            },
+            {
+              "file": "protostellar_core_fld_mayer5.prim.00003.athdf",
+              "leaves": 15,
+              "levels": {
+                "0": 7,
+                "1": 8
+              }
+            },
+            {
+              "file": "protostellar_core_fld_mayer5.prim.00004.athdf",
+              "leaves": 15,
+              "levels": {
+                "0": 7,
+                "1": 8
+              }
+            },
+            {
+              "file": "protostellar_core_fld_mayer5.prim.00005.athdf",
+              "leaves": 15,
+              "levels": {
+                "0": 7,
+                "1": 8
+              }
+            }
+          ],
+          "pass": true
+        }
+      ],
+      "candidate": [
+        {
+          "mass_volume_integral": {
+            "initial": 704254494296.6775,
+            "final": 704254514488.6777,
+            "relative_change": 2.8671453867406136e-08
+          },
+          "final_minima": {
+            "rho": 0.05221969084016663,
+            "press": 0.025527870980179494,
+            "Er": 0.2905810512914705
+          },
+          "run": "collapse_postflddt_uniform_collapse_candidate_r1",
+          "binary_sha256": "7e07869c74e27866022064736d5e6dddc6255a467dab29ffe34b860b22bd0079",
+          "checkpoint": null,
+          "checkpoint_sha256": null,
+          "input": "/home/kosuke/simulation/athena-wor25-23-24-resolution/tst/nrfld_validation/collapse_postflddt_static_partial_20261107.in",
+          "input_sha256": "880bba6f428c1a2adb41c17bf17e567962e8b276c5223068b3e6641cac328584",
+          "command": "mpirun --output-filename /tmp/wor25_23_24_resolution_trials/collapse_postflddt_uniform_collapse_candidate_r1/mpi -n 1 /tmp/wor25_23_24_resolution_collapse_postflddt_build/bin/athena -i /tmp/wor25_23_24_resolution_trials/collapse_postflddt_uniform_collapse.in -d output time/nlim=4",
+          "environment": {
+            "OMP_NUM_THREADS": 2,
+            "ATHENA_NRFLD_INTERFACE_LEDGER": 1,
+            "ATHENA_NRFLD_ENERGY_LEDGER": 1,
+            "ATHENA_NRFLD_EXPERIMENTAL_COLLAPSE": 1
+          },
+          "exit_status": 0,
+          "wall_time": "0:03.71",
+          "peak_rss_kb": 121160,
+          "coarsefine_newton_jv": [],
+          "fgmres_history": [
+            {
+              "iterations": 14,
+              "true_relative_residual": 2.966672318389449e-09
+            },
+            {
+              "iterations": 14,
+              "true_relative_residual": 2.9405389467227844e-09
+            },
+            {
+              "iterations": 14,
+              "true_relative_residual": 2.947506067436864e-09
+            },
+            {
+              "iterations": 14,
+              "true_relative_residual": 2.9608087920631494e-09
+            },
+            {
+              "iterations": 14,
+              "true_relative_residual": 1.9390246171636896e-09
+            }
+          ],
+          "fgmres_total_iterations": 70,
+          "max_true_relative_residual": 2.966672318389449e-09,
+          "newton_history": [
+            {
+              "status": "dt_zero_initialization",
+              "iterations": 0,
+              "final_l2": 0.0,
+              "final_max": 0.0,
+              "cycle": 0,
+              "dt": 0.0
+            },
+            {
+              "status": "converged",
+              "iterations": 1,
+              "final_l2": 6.190741493493926e-07,
+              "final_max": 7.80356152940046e-06,
+              "cycle": 0,
+              "dt": 1.0361589749317786
+            },
+            {
+              "status": "converged",
+              "iterations": 1,
+              "final_l2": 7.922633842456e-07,
+              "final_max": 9.542923479281951e-06,
+              "cycle": 1,
+              "dt": 1.0348669098992764
+            },
+            {
+              "status": "converged",
+              "iterations": 1,
+              "final_l2": 8.340643531722232e-07,
+              "final_max": 9.936545663298276e-06,
+              "cycle": 2,
+              "dt": 1.0335734252122144
+            },
+            {
+              "status": "converged",
+              "iterations": 2,
+              "final_l2": 3.762321118542943e-10,
+              "final_max": 2.4375868300922317e-09,
+              "cycle": 3,
+              "dt": 1.032346131411934
+            }
+          ],
+          "face_ledger": {
+            "pair_count": 12,
+            "max_relative_mismatch": 1.3754266621270944e-07,
+            "pass": true,
+            "logs": [
+              "/tmp/wor25_23_24_resolution_trials/collapse_postflddt_uniform_collapse_candidate_r1/mpi/1/rank.0/stdout"
+            ]
+          },
+          "max_implicit_energy_absolute_relative_balance": 1.0042671126117414e-08,
+          "topology_by_output": [
+            {
+              "file": "protostellar_core_fld_mayer5.prim.00000.athdf",
+              "leaves": 15,
+              "levels": {
+                "0": 7,
+                "1": 8
+              }
+            },
+            {
+              "file": "protostellar_core_fld_mayer5.prim.00001.athdf",
+              "leaves": 15,
+              "levels": {
+                "0": 7,
+                "1": 8
+              }
+            },
+            {
+              "file": "protostellar_core_fld_mayer5.prim.00002.athdf",
+              "leaves": 15,
+              "levels": {
+                "0": 7,
+                "1": 8
+              }
+            },
+            {
+              "file": "protostellar_core_fld_mayer5.prim.00003.athdf",
+              "leaves": 15,
+              "levels": {
+                "0": 7,
+                "1": 8
+              }
+            },
+            {
+              "file": "protostellar_core_fld_mayer5.prim.00004.athdf",
+              "leaves": 15,
+              "levels": {
+                "0": 7,
+                "1": 8
+              }
+            },
+            {
+              "file": "protostellar_core_fld_mayer5.prim.00005.athdf",
+              "leaves": 15,
+              "levels": {
+                "0": 7,
+                "1": 8
+              }
+            }
+          ],
+          "pass": true
+        },
+        {
+          "mass_volume_integral": {
+            "initial": 704254494296.6775,
+            "final": 704254514488.6777,
+            "relative_change": 2.8671453867406136e-08
+          },
+          "final_minima": {
+            "rho": 0.052219690840166644,
+            "press": 0.02552787098018054,
+            "Er": 0.29058105129151957
+          },
+          "run": "collapse_postflddt_uniform_collapse_candidate_r2",
+          "binary_sha256": "7e07869c74e27866022064736d5e6dddc6255a467dab29ffe34b860b22bd0079",
+          "checkpoint": null,
+          "checkpoint_sha256": null,
+          "input": "/home/kosuke/simulation/athena-wor25-23-24-resolution/tst/nrfld_validation/collapse_postflddt_static_partial_20261107.in",
+          "input_sha256": "880bba6f428c1a2adb41c17bf17e567962e8b276c5223068b3e6641cac328584",
+          "command": "mpirun --output-filename /tmp/wor25_23_24_resolution_trials/collapse_postflddt_uniform_collapse_candidate_r2/mpi -n 2 /tmp/wor25_23_24_resolution_collapse_postflddt_build/bin/athena -i /tmp/wor25_23_24_resolution_trials/collapse_postflddt_uniform_collapse.in -d output time/nlim=4",
+          "environment": {
+            "OMP_NUM_THREADS": 2,
+            "ATHENA_NRFLD_INTERFACE_LEDGER": 1,
+            "ATHENA_NRFLD_ENERGY_LEDGER": 1,
+            "ATHENA_NRFLD_EXPERIMENTAL_COLLAPSE": 1
+          },
+          "exit_status": 0,
+          "wall_time": "0:03.78",
+          "peak_rss_kb": 83456,
+          "coarsefine_newton_jv": [],
+          "fgmres_history": [
+            {
+              "iterations": 14,
+              "true_relative_residual": 2.9666714762093043e-09
+            },
+            {
+              "iterations": 14,
+              "true_relative_residual": 2.9405391842461476e-09
+            },
+            {
+              "iterations": 14,
+              "true_relative_residual": 2.9475055587831375e-09
+            },
+            {
+              "iterations": 14,
+              "true_relative_residual": 2.960808588095184e-09
+            },
+            {
+              "iterations": 14,
+              "true_relative_residual": 1.9506531926129784e-09
+            }
+          ],
+          "fgmres_total_iterations": 70,
+          "max_true_relative_residual": 2.9666714762093043e-09,
+          "newton_history": [
+            {
+              "status": "dt_zero_initialization",
+              "iterations": 0,
+              "final_l2": 0.0,
+              "final_max": 0.0,
+              "cycle": 0,
+              "dt": 0.0
+            },
+            {
+              "status": "converged",
+              "iterations": 1,
+              "final_l2": 7.922639432751865e-07,
+              "final_max": 9.542923482870687e-06,
+              "cycle": 1,
+              "dt": 1.0348669098992758
+            },
+            {
+              "status": "converged",
+              "iterations": 1,
+              "final_l2": 8.340639207401035e-07,
+              "final_max": 9.936545657347391e-06,
+              "cycle": 2,
+              "dt": 1.0335734252121456
+            },
+            {
+              "status": "converged",
+              "iterations": 2,
+              "final_l2": 3.829181395438821e-10,
+              "final_max": 2.4531835460559275e-09,
+              "cycle": 3,
+              "dt": 1.0323461314119766
+            }
+          ],
+          "face_ledger": {
+            "pair_count": 12,
+            "max_relative_mismatch": 1.3730951424931805e-07,
+            "pass": true,
+            "logs": [
+              "/tmp/wor25_23_24_resolution_trials/collapse_postflddt_uniform_collapse_candidate_r2/mpi/1/rank.0/stdout",
+              "/tmp/wor25_23_24_resolution_trials/collapse_postflddt_uniform_collapse_candidate_r2/mpi/1/rank.1/stdout"
+            ]
+          },
+          "max_implicit_energy_absolute_relative_balance": 3.6597237365321286e-08,
+          "topology_by_output": [
+            {
+              "file": "protostellar_core_fld_mayer5.prim.00000.athdf",
+              "leaves": 15,
+              "levels": {
+                "0": 7,
+                "1": 8
+              }
+            },
+            {
+              "file": "protostellar_core_fld_mayer5.prim.00001.athdf",
+              "leaves": 15,
+              "levels": {
+                "0": 7,
+                "1": 8
+              }
+            },
+            {
+              "file": "protostellar_core_fld_mayer5.prim.00002.athdf",
+              "leaves": 15,
+              "levels": {
+                "0": 7,
+                "1": 8
+              }
+            },
+            {
+              "file": "protostellar_core_fld_mayer5.prim.00003.athdf",
+              "leaves": 15,
+              "levels": {
+                "0": 7,
+                "1": 8
+              }
+            },
+            {
+              "file": "protostellar_core_fld_mayer5.prim.00004.athdf",
+              "leaves": 15,
+              "levels": {
+                "0": 7,
+                "1": 8
+              }
+            },
+            {
+              "file": "protostellar_core_fld_mayer5.prim.00005.athdf",
+              "leaves": 15,
+              "levels": {
+                "0": 7,
+                "1": 8
+              }
+            }
+          ],
+          "pass": true
+        }
+      ],
+      "restart_from_cycle2": [
+        {
+          "mass_volume_integral": {
+            "initial": 704254510163.786,
+            "final": 704254514488.6777,
+            "relative_change": 6.1410919791298e-09
+          },
+          "final_minima": {
+            "rho": 0.05221969084016664,
+            "press": 0.025527870980186804,
+            "Er": 0.2905810512918173
+          },
+          "run": "collapse_postflddt_uniform_collapse_restart2_r1",
+          "binary_sha256": "7e07869c74e27866022064736d5e6dddc6255a467dab29ffe34b860b22bd0079",
+          "checkpoint": "/tmp/wor25_23_24_resolution_trials/collapse_postflddt_uniform_collapse_candidate_r1/output/protostellar_core_fld_mayer5.00002.rst",
+          "checkpoint_sha256": "f823dc29238e75f4124663e844f7bc66f894f2f2369d9558bc3294fc734331fa",
+          "input": null,
+          "input_sha256": null,
+          "command": "mpirun --output-filename /tmp/wor25_23_24_resolution_trials/collapse_postflddt_uniform_collapse_restart2_r1/mpi -n 1 /tmp/wor25_23_24_resolution_collapse_postflddt_build/bin/athena -r /tmp/wor25_23_24_resolution_trials/collapse_postflddt_uniform_collapse_candidate_r1/output/protostellar_core_fld_mayer5.00002.rst -d output mesh/num_threads=2 time/nlim=4 gravity/reset_fmg_color_each_solve=true gravity/repeat_initial_fmg_after_restart=true",
+          "environment": {
+            "OMP_NUM_THREADS": 2,
+            "ATHENA_NRFLD_INTERFACE_LEDGER": 1,
+            "ATHENA_NRFLD_ENERGY_LEDGER": 1,
+            "ATHENA_NRFLD_EXPERIMENTAL_COLLAPSE": 1
+          },
+          "exit_status": 0,
+          "wall_time": "0:01.85",
+          "peak_rss_kb": 121008,
+          "coarsefine_newton_jv": [],
+          "fgmres_history": [
+            {
+              "iterations": 14,
+              "true_relative_residual": 2.947505574292752e-09
+            },
+            {
+              "iterations": 14,
+              "true_relative_residual": 2.96080862642029e-09
+            },
+            {
+              "iterations": 14,
+              "true_relative_residual": 1.946285788596764e-09
+            }
+          ],
+          "fgmres_total_iterations": 42,
+          "max_true_relative_residual": 2.96080862642029e-09,
+          "newton_history": [
+            {
+              "status": "converged",
+              "iterations": 0,
+              "final_l2": 0.0,
+              "final_max": 0.0,
+              "cycle": 2,
+              "dt": 0.0
+            },
+            {
+              "status": "converged",
+              "iterations": 1,
+              "final_l2": 8.340641488409409e-07,
+              "final_max": 9.936545662259557e-06,
+              "cycle": 2,
+              "dt": 1.033573425212214
+            },
+            {
+              "status": "converged",
+              "iterations": 2,
+              "final_l2": 3.70201178882253e-10,
+              "final_max": 2.563640614236737e-09,
+              "cycle": 3,
+              "dt": 1.032346131411932
+            }
+          ],
+          "face_ledger": {
+            "pair_count": 6,
+            "max_relative_mismatch": 8.810058726854923e-08,
+            "pass": true,
+            "logs": [
+              "/tmp/wor25_23_24_resolution_trials/collapse_postflddt_uniform_collapse_restart2_r1/mpi/1/rank.0/stdout"
+            ]
+          },
+          "max_implicit_energy_absolute_relative_balance": 9.674774230504168e-09,
+          "topology_by_output": [
+            {
+              "file": "protostellar_core_fld_mayer5.prim.00003.athdf",
+              "leaves": 15,
+              "levels": {
+                "0": 7,
+                "1": 8
+              }
+            },
+            {
+              "file": "protostellar_core_fld_mayer5.prim.00004.athdf",
+              "leaves": 15,
+              "levels": {
+                "0": 7,
+                "1": 8
+              }
+            },
+            {
+              "file": "protostellar_core_fld_mayer5.prim.00005.athdf",
+              "leaves": 15,
+              "levels": {
+                "0": 7,
+                "1": 8
+              }
+            }
+          ],
+          "pass": true
+        },
+        {
+          "mass_volume_integral": {
+            "initial": 704254510163.786,
+            "final": 704254514488.6777,
+            "relative_change": 6.1410919791298e-09
+          },
+          "final_minima": {
+            "rho": 0.052219690840166644,
+            "press": 0.025527870980185087,
+            "Er": 0.29058105129173545
+          },
+          "run": "collapse_postflddt_uniform_collapse_restart2_r2",
+          "binary_sha256": "7e07869c74e27866022064736d5e6dddc6255a467dab29ffe34b860b22bd0079",
+          "checkpoint": "/tmp/wor25_23_24_resolution_trials/collapse_postflddt_uniform_collapse_candidate_r1/output/protostellar_core_fld_mayer5.00002.rst",
+          "checkpoint_sha256": "f823dc29238e75f4124663e844f7bc66f894f2f2369d9558bc3294fc734331fa",
+          "input": null,
+          "input_sha256": null,
+          "command": "mpirun --output-filename /tmp/wor25_23_24_resolution_trials/collapse_postflddt_uniform_collapse_restart2_r2/mpi -n 2 /tmp/wor25_23_24_resolution_collapse_postflddt_build/bin/athena -r /tmp/wor25_23_24_resolution_trials/collapse_postflddt_uniform_collapse_candidate_r1/output/protostellar_core_fld_mayer5.00002.rst -d output mesh/num_threads=2 time/nlim=4 gravity/reset_fmg_color_each_solve=true gravity/repeat_initial_fmg_after_restart=true",
+          "environment": {
+            "OMP_NUM_THREADS": 2,
+            "ATHENA_NRFLD_INTERFACE_LEDGER": 1,
+            "ATHENA_NRFLD_ENERGY_LEDGER": 1,
+            "ATHENA_NRFLD_EXPERIMENTAL_COLLAPSE": 1
+          },
+          "exit_status": 0,
+          "wall_time": "0:01.68",
+          "peak_rss_kb": 83392,
+          "coarsefine_newton_jv": [],
+          "fgmres_history": [
+            {
+              "iterations": 14,
+              "true_relative_residual": 2.947505210236877e-09
+            },
+            {
+              "iterations": 14,
+              "true_relative_residual": 2.960808743603753e-09
+            },
+            {
+              "iterations": 14,
+              "true_relative_residual": 1.944483937236283e-09
+            }
+          ],
+          "fgmres_total_iterations": 42,
+          "max_true_relative_residual": 2.960808743603753e-09,
+          "newton_history": [
+            {
+              "status": "converged",
+              "iterations": 0,
+              "final_l2": 0.0,
+              "final_max": 0.0,
+              "cycle": 2,
+              "dt": 0.0
+            },
+            {
+              "status": "converged",
+              "iterations": 1,
+              "final_l2": 8.340642418882329e-07,
+              "final_max": 9.936545664951333e-06,
+              "cycle": 2,
+              "dt": 1.033573425212214
+            }
+          ],
+          "face_ledger": {
+            "pair_count": 6,
+            "max_relative_mismatch": 8.757752689451815e-08,
+            "pass": true,
+            "logs": [
+              "/tmp/wor25_23_24_resolution_trials/collapse_postflddt_uniform_collapse_restart2_r2/mpi/1/rank.0/stdout",
+              "/tmp/wor25_23_24_resolution_trials/collapse_postflddt_uniform_collapse_restart2_r2/mpi/1/rank.1/stdout"
+            ]
+          },
+          "max_implicit_energy_absolute_relative_balance": 3.507098240467641e-08,
+          "topology_by_output": [
+            {
+              "file": "protostellar_core_fld_mayer5.prim.00003.athdf",
+              "leaves": 15,
+              "levels": {
+                "0": 7,
+                "1": 8
+              }
+            },
+            {
+              "file": "protostellar_core_fld_mayer5.prim.00004.athdf",
+              "leaves": 15,
+              "levels": {
+                "0": 7,
+                "1": 8
+              }
+            },
+            {
+              "file": "protostellar_core_fld_mayer5.prim.00005.athdf",
+              "leaves": 15,
+              "levels": {
+                "0": 7,
+                "1": 8
+              }
+            }
+          ],
+          "pass": true
+        }
+      ],
+      "final_relative_l1": {
+        "prim": {
+          "candidate_rank": 1.6043335454233597e-14,
+          "restart_rank": 2.6829610884635743e-14,
+          "direct_vs_restart_r1": 1.1258465524888673e-13,
+          "direct_vs_restart_r2": 7.00927830134473e-14,
+          "baseline_vs_candidate_r1": 2.3284123863330094e-07
+        },
+        "fld": {
+          "candidate_rank": 4.003295474545978e-14,
+          "restart_rank": 6.680537208669053e-14,
+          "direct_vs_restart_r1": 2.829697149634561e-13,
+          "direct_vs_restart_r2": 1.7613303727586186e-13,
+          "baseline_vs_candidate_r1": 1.4135454058582123e-08
+        }
+      }
+    },
+    "excluded_static_screening": [
+      {
+        "rank": 1,
+        "run_log": "/tmp/wor25_23_24_resolution_trials/collapse_postflddt_uniform_r1/run.log",
+        "input_sha256": "a494b4f58bb53bd5fea7fac2d72c779511e381583471f5c385bf41d88ede2477",
+        "binary_sha256": "7e07869c74e27866022064736d5e6dddc6255a467dab29ffe34b860b22bd0079",
+        "command": "mpirun --output-filename /tmp/wor25_23_24_resolution_trials/collapse_postflddt_uniform_r1/mpi -n 1 /tmp/wor25_23_24_resolution_collapse_postflddt_build/bin/athena -i /tmp/wor25_23_24_resolution_trials/collapse_uniform2_direct2/input.used -d output mesh/num_threads=2 time/nlim=3 gravity/reset_fmg_color_each_solve=true gravity/repeat_initial_fmg_after_restart=true",
+        "exit_status": 0,
+        "fatal_message": "### FATAL ERROR in function [ParameterInput::ModifyFromCmdline]",
+        "newton_history": [],
+        "wall_time": "0:00.48",
+        "peak_rss_kb": 24100,
+        "reason": "INVALID: absent mesh/num_threads command-line override produced FATAL message despite MPI exit 0",
+        "pass": false
+      },
+      {
+        "rank": 1,
+        "run_log": "/tmp/wor25_23_24_resolution_trials/collapse_postflddt_uniform_r1/run_valid.log",
+        "input_sha256": "2c1123a0d8b24d31db92bca916d4f056fb5fc839ba25114960ec68ed1ea7b9b6",
+        "binary_sha256": "7e07869c74e27866022064736d5e6dddc6255a467dab29ffe34b860b22bd0079",
+        "command": "mpirun --output-filename /tmp/wor25_23_24_resolution_trials/collapse_postflddt_uniform_r1/mpi_valid -n 1 /tmp/wor25_23_24_resolution_collapse_postflddt_build/bin/athena -i /tmp/wor25_23_24_resolution_trials/collapse_postflddt_uniform.in -d output time/nlim=3",
+        "exit_status": 0,
+        "fatal_message": null,
+        "newton_history": [
+          [
+            "dt_zero_initialization",
+            "0"
+          ],
+          [
+            "converged",
+            "0"
+          ],
+          [
+            "converged",
+            "0"
+          ],
+          [
+            "converged",
+            "0"
+          ]
+        ],
+        "wall_time": "0:01.15",
+        "peak_rss_kb": 118688,
+        "reason": "EXCLUDED: uniform equilibrium produced zero Newton corrections",
+        "pass": false
+      },
+      {
+        "rank": 2,
+        "run_log": "/tmp/wor25_23_24_resolution_trials/collapse_postflddt_uniform_r2/run.log",
+        "input_sha256": "a494b4f58bb53bd5fea7fac2d72c779511e381583471f5c385bf41d88ede2477",
+        "binary_sha256": "7e07869c74e27866022064736d5e6dddc6255a467dab29ffe34b860b22bd0079",
+        "command": "mpirun --output-filename /tmp/wor25_23_24_resolution_trials/collapse_postflddt_uniform_r2/mpi -n 2 /tmp/wor25_23_24_resolution_collapse_postflddt_build/bin/athena -i /tmp/wor25_23_24_resolution_trials/collapse_uniform2_direct2/input.used -d output mesh/num_threads=2 time/nlim=3 gravity/reset_fmg_color_each_solve=true gravity/repeat_initial_fmg_after_restart=true",
+        "exit_status": 0,
+        "fatal_message": "### FATAL ERROR in function [ParameterInput::ModifyFromCmdline]",
+        "newton_history": [],
+        "wall_time": "0:00.59",
+        "peak_rss_kb": 24444,
+        "reason": "INVALID: absent mesh/num_threads command-line override produced FATAL message despite MPI exit 0",
+        "pass": false
+      },
+      {
+        "rank": 2,
+        "run_log": "/tmp/wor25_23_24_resolution_trials/collapse_postflddt_uniform_r2/run_valid.log",
+        "input_sha256": "2c1123a0d8b24d31db92bca916d4f056fb5fc839ba25114960ec68ed1ea7b9b6",
+        "binary_sha256": "7e07869c74e27866022064736d5e6dddc6255a467dab29ffe34b860b22bd0079",
+        "command": "mpirun --output-filename /tmp/wor25_23_24_resolution_trials/collapse_postflddt_uniform_r2/mpi_valid -n 2 /tmp/wor25_23_24_resolution_collapse_postflddt_build/bin/athena -i /tmp/wor25_23_24_resolution_trials/collapse_postflddt_uniform.in -d output time/nlim=3",
+        "exit_status": 0,
+        "fatal_message": null,
+        "newton_history": [
+          [
+            "dt_zero_initialization",
+            "0"
+          ],
+          [
+            "converged",
+            "0"
+          ],
+          [
+            "converged",
+            "0"
+          ],
+          [
+            "converged",
+            "0"
+          ]
+        ],
+        "wall_time": "0:00.96",
+        "peak_rss_kb": 82028,
+        "reason": "EXCLUDED: uniform equilibrium produced zero Newton corrections",
+        "pass": false
+      }
+    ],
     "interpretation": "Post-implicit, post-AMR block CFL recompute restores restart consistency in natural 43-to-64 leaf transition. Mach5 trajectory changes because the previously stale CFL differs; both ranks agree and all solver/ledger checks pass. Background source and hydro prevent a closed global energy proof."
   }
 }
