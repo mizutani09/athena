@@ -1,0 +1,299 @@
+{
+  "base_commit": "ebf7634a8e877edfd58724de1e3810638a76ca7e",
+  "runs": [
+    {
+      "factor": 16,
+      "exit_code": 134,
+      "requested_cycles": 10,
+      "last_cycle": 4,
+      "linear_solves": 11,
+      "newton_converged": 4,
+      "first_dt": 31.114819909241852,
+      "last_reported_dt": 29.075848300063846,
+      "max_true_relative_residual": 3.879657772402538e-08,
+      "floor_acceptances": 1,
+      "input_sha256": "4221182b9e6303a28f656123033ed1bdcde30f7067d8bbf2ae486ee6d7adc7a7",
+      "log_sha256": "9170ea105db8494122f3ea72c1660c9e5e5e2e48750df990a22c8e2f268fd4f5"
+    },
+    {
+      "factor": 32,
+      "exit_code": 0,
+      "requested_cycles": 10,
+      "last_cycle": 10,
+      "linear_solves": 22,
+      "newton_converged": 10,
+      "first_dt": 31.114819909241852,
+      "last_reported_dt": 28.535938604319917,
+      "max_true_relative_residual": 4.7613850925189436e-08,
+      "floor_acceptances": 4,
+      "input_sha256": "3ba2f2f2e48c8beb93047e3e5f618f01e07457a2d4d41a5aad40bd24d12902eb",
+      "log_sha256": "44c78565cbd3bea100bf89e55cd3e14de657ee300bdb1ebdb262d4355edac9ae"
+    }
+  ],
+  "solves": [
+    {
+      "factor": 16,
+      "solve": 0,
+      "iterations": 156,
+      "true_relative_residual": 1.2189076473846429e-08,
+      "local_stencil_eta_max": 6.308695355577749e-09,
+      "precision_floor_accept": 0
+    },
+    {
+      "factor": 16,
+      "solve": 1,
+      "iterations": 300,
+      "true_relative_residual": 3.879657772402538e-08,
+      "local_stencil_eta_max": 3.0863910692131486e-15,
+      "precision_floor_accept": 1
+    },
+    {
+      "factor": 16,
+      "solve": 2,
+      "iterations": 46,
+      "true_relative_residual": 1.962747028234763e-08,
+      "local_stencil_eta_max": 3.061954816246353e-09,
+      "precision_floor_accept": 0
+    },
+    {
+      "factor": 16,
+      "solve": 3,
+      "iterations": 44,
+      "true_relative_residual": 1.8203523106294948e-08,
+      "local_stencil_eta_max": 5.821878149262906e-14,
+      "precision_floor_accept": 0
+    },
+    {
+      "factor": 16,
+      "solve": 4,
+      "iterations": 69,
+      "true_relative_residual": 1.8335613331960807e-08,
+      "local_stencil_eta_max": 3.316244280786125e-08,
+      "precision_floor_accept": 0
+    },
+    {
+      "factor": 16,
+      "solve": 5,
+      "iterations": 60,
+      "true_relative_residual": 1.6336082845202765e-08,
+      "local_stencil_eta_max": 1.9407912459786787e-11,
+      "precision_floor_accept": 0
+    },
+    {
+      "factor": 16,
+      "solve": 6,
+      "iterations": 66,
+      "true_relative_residual": 1.2638654810733713e-08,
+      "local_stencil_eta_max": 4.624916488299098e-11,
+      "precision_floor_accept": 0
+    },
+    {
+      "factor": 16,
+      "solve": 7,
+      "iterations": 33,
+      "true_relative_residual": 1.5143777885430008e-08,
+      "local_stencil_eta_max": 1.2243357196385317e-09,
+      "precision_floor_accept": 0
+    },
+    {
+      "factor": 16,
+      "solve": 8,
+      "iterations": 46,
+      "true_relative_residual": 1.78566817537397e-08,
+      "local_stencil_eta_max": 4.462733027091931e-15,
+      "precision_floor_accept": 0
+    },
+    {
+      "factor": 16,
+      "solve": 9,
+      "iterations": 49,
+      "true_relative_residual": 1.372928825298592e-08,
+      "local_stencil_eta_max": 1.6405375686674885e-09,
+      "precision_floor_accept": 0
+    },
+    {
+      "factor": 16,
+      "solve": 10,
+      "iterations": 300,
+      "true_relative_residual": 3.344532482273417e-08,
+      "local_stencil_eta_max": 3.7805204655388094e-15,
+      "precision_floor_accept": 0
+    },
+    {
+      "factor": 32,
+      "solve": 0,
+      "iterations": 156,
+      "true_relative_residual": 1.2189076473846429e-08,
+      "local_stencil_eta_max": 6.308695355577749e-09,
+      "precision_floor_accept": 0
+    },
+    {
+      "factor": 32,
+      "solve": 1,
+      "iterations": 300,
+      "true_relative_residual": 3.879657772402538e-08,
+      "local_stencil_eta_max": 3.0863910692131486e-15,
+      "precision_floor_accept": 1
+    },
+    {
+      "factor": 32,
+      "solve": 2,
+      "iterations": 46,
+      "true_relative_residual": 1.962747028234763e-08,
+      "local_stencil_eta_max": 3.061954816246353e-09,
+      "precision_floor_accept": 0
+    },
+    {
+      "factor": 32,
+      "solve": 3,
+      "iterations": 44,
+      "true_relative_residual": 1.8203523106294948e-08,
+      "local_stencil_eta_max": 5.821878149262906e-14,
+      "precision_floor_accept": 0
+    },
+    {
+      "factor": 32,
+      "solve": 4,
+      "iterations": 69,
+      "true_relative_residual": 1.8335613331960807e-08,
+      "local_stencil_eta_max": 3.316244280786125e-08,
+      "precision_floor_accept": 0
+    },
+    {
+      "factor": 32,
+      "solve": 5,
+      "iterations": 60,
+      "true_relative_residual": 1.6336082845202765e-08,
+      "local_stencil_eta_max": 1.9407912459786787e-11,
+      "precision_floor_accept": 0
+    },
+    {
+      "factor": 32,
+      "solve": 6,
+      "iterations": 66,
+      "true_relative_residual": 1.2638654810733713e-08,
+      "local_stencil_eta_max": 4.624916488299098e-11,
+      "precision_floor_accept": 0
+    },
+    {
+      "factor": 32,
+      "solve": 7,
+      "iterations": 33,
+      "true_relative_residual": 1.5143777885430008e-08,
+      "local_stencil_eta_max": 1.2243357196385317e-09,
+      "precision_floor_accept": 0
+    },
+    {
+      "factor": 32,
+      "solve": 8,
+      "iterations": 46,
+      "true_relative_residual": 1.78566817537397e-08,
+      "local_stencil_eta_max": 4.462733027091931e-15,
+      "precision_floor_accept": 0
+    },
+    {
+      "factor": 32,
+      "solve": 9,
+      "iterations": 49,
+      "true_relative_residual": 1.372928825298592e-08,
+      "local_stencil_eta_max": 1.6405375686674885e-09,
+      "precision_floor_accept": 0
+    },
+    {
+      "factor": 32,
+      "solve": 10,
+      "iterations": 300,
+      "true_relative_residual": 3.344532482273417e-08,
+      "local_stencil_eta_max": 3.7805204655388094e-15,
+      "precision_floor_accept": 1
+    },
+    {
+      "factor": 32,
+      "solve": 11,
+      "iterations": 53,
+      "true_relative_residual": 1.2802099410588725e-08,
+      "local_stencil_eta_max": 1.495857897674761e-09,
+      "precision_floor_accept": 0
+    },
+    {
+      "factor": 32,
+      "solve": 12,
+      "iterations": 300,
+      "true_relative_residual": 3.681345574197123e-08,
+      "local_stencil_eta_max": 5.330855945739853e-15,
+      "precision_floor_accept": 1
+    },
+    {
+      "factor": 32,
+      "solve": 13,
+      "iterations": 66,
+      "true_relative_residual": 1.5773700979622985e-08,
+      "local_stencil_eta_max": 1.5077391935080586e-09,
+      "precision_floor_accept": 0
+    },
+    {
+      "factor": 32,
+      "solve": 14,
+      "iterations": 300,
+      "true_relative_residual": 4.7613850925189436e-08,
+      "local_stencil_eta_max": 3.948667266380377e-15,
+      "precision_floor_accept": 1
+    },
+    {
+      "factor": 32,
+      "solve": 15,
+      "iterations": 103,
+      "true_relative_residual": 1.4012622349220792e-08,
+      "local_stencil_eta_max": 9.471036581877708e-09,
+      "precision_floor_accept": 0
+    },
+    {
+      "factor": 32,
+      "solve": 16,
+      "iterations": 105,
+      "true_relative_residual": 1.8497070261937047e-08,
+      "local_stencil_eta_max": 1.4492852018326253e-14,
+      "precision_floor_accept": 0
+    },
+    {
+      "factor": 32,
+      "solve": 17,
+      "iterations": 62,
+      "true_relative_residual": 1.5660025293788127e-08,
+      "local_stencil_eta_max": 6.09720213028809e-09,
+      "precision_floor_accept": 0
+    },
+    {
+      "factor": 32,
+      "solve": 18,
+      "iterations": 58,
+      "true_relative_residual": 1.3029274118392459e-08,
+      "local_stencil_eta_max": 8.4978324677148e-13,
+      "precision_floor_accept": 0
+    },
+    {
+      "factor": 32,
+      "solve": 19,
+      "iterations": 74,
+      "true_relative_residual": 1.9849013889093568e-08,
+      "local_stencil_eta_max": 3.925983602811962e-15,
+      "precision_floor_accept": 0
+    },
+    {
+      "factor": 32,
+      "solve": 20,
+      "iterations": 67,
+      "true_relative_residual": 1.8776999435163544e-08,
+      "local_stencil_eta_max": 2.0935737512404237e-09,
+      "precision_floor_accept": 0
+    },
+    {
+      "factor": 32,
+      "solve": 21,
+      "iterations": 62,
+      "true_relative_residual": 1.490075898069474e-08,
+      "local_stencil_eta_max": 2.3381809359853105e-13,
+      "precision_floor_accept": 0
+    }
+  ]
+}
