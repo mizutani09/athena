@@ -46,6 +46,14 @@ record['static_partial_15leaf']={
  'restart_from_cycle2':[run(f'collapse_postflddt_uniform_collapse_restart2_r{n}',newbin,checkpoint=B/'collapse_postflddt_uniform_collapse_candidate_r1/output/protostellar_core_fld_mayer5.00002.rst') for n in (1,2)],
  'final_relative_l1':{k:{'candidate_rank':diff('collapse_postflddt_uniform_collapse_candidate_r1','collapse_postflddt_uniform_collapse_candidate_r2',k,4),'restart_rank':diff('collapse_postflddt_uniform_collapse_restart2_r1','collapse_postflddt_uniform_collapse_restart2_r2',k,4),'direct_vs_restart_r1':diff('collapse_postflddt_uniform_collapse_candidate_r1','collapse_postflddt_uniform_collapse_restart2_r1',k,4),'direct_vs_restart_r2':diff('collapse_postflddt_uniform_collapse_candidate_r2','collapse_postflddt_uniform_collapse_restart2_r2',k,4),'baseline_vs_candidate_r1':diff('collapse_postflddt_uniform_collapse_baseline_r1','collapse_postflddt_uniform_collapse_candidate_r1',k,4)} for k in ('prim','fld')},
 }
+fivebin=Path('/tmp/wor25_23_24_resolution_collapse_postflddt_5swap_build/bin/athena')
+fiveck=B/'collapse_postflddt_5swap_r1/output/protostellar_core_fld_mayer5.00014.rst'
+record['forced_five_swap_43leaf']={
+ 'test_only_pgen_sha256':sha('/tmp/wor25_23_24_resolution_collapse_postflddt_5swap_build/src/pgen/protostellar_core_fld.cpp'),
+ 'direct':[run(f'collapse_postflddt_5swap_r{n}',fivebin,checkpoint=orig) for n in (1,2)],
+ 'restart_from_cycle14':[run(f'collapse_postflddt_5swap_restart14_r{n}',fivebin,checkpoint=fiveck) for n in (1,2)],
+ 'final_relative_l1':{k:{'direct_rank':diff('collapse_postflddt_5swap_r1','collapse_postflddt_5swap_r2',k,17),'restart_rank':diff('collapse_postflddt_5swap_restart14_r1','collapse_postflddt_5swap_restart14_r2',k,17),'direct_vs_restart_r1':diff('collapse_postflddt_5swap_r1','collapse_postflddt_5swap_restart14_r1',k,17),'direct_vs_restart_r2':diff('collapse_postflddt_5swap_r2','collapse_postflddt_5swap_restart14_r2',k,17)} for k in ('prim','fld')},
+}
 record['excluded_static_screening']=[]
 for n in (1,2):
  for logfile,reason,input_path in [('run.log','INVALID: absent mesh/num_threads command-line override produced FATAL message despite MPI exit 0',B/'collapse_uniform2_direct2/input.used'),('run_valid.log','EXCLUDED: uniform equilibrium produced zero Newton corrections',B/'collapse_postflddt_uniform.in')]:
