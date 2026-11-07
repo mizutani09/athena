@@ -17397,6 +17397,117 @@
       "long adaptive repeated regrid",
       "closed energy budget",
       "real-scale gravity accuracy"
-    ]
+    ],
+    "regular_octet_boundary_center_trial": {
+      "candidate": "SetBoundariesOctets non-prolongation cbuf center filled before physical BC",
+      "binary_sha256": "f257b9aac75794857230bf53e8917609c29dc4e2b6376b0abf6a8623694d06f4",
+      "disposition": "NO_IMPROVEMENT_REVERTED",
+      "runs": [
+        {
+          "name": "gravity_octetregular_center_twooct_r1_t1",
+          "ranks": 1,
+          "threads": 1,
+          "input_path": "/tmp/wor25_23_24_resolution_trials/gravity_octetregular_center_twooct_r1_t1/input.used",
+          "input_sha256": "bf8de755d89175cd29f8a6a48369182bd9966cdf7df9af707a238ad67950e533",
+          "run_log": "/tmp/wor25_23_24_resolution_trials/gravity_octetregular_center_twooct_r1_t1/run.log",
+          "wall_time": "0:02.60",
+          "peak_rss_kb": 162536,
+          "newton_statuses": [
+            "dt_zero_initialization",
+            "converged",
+            "converged"
+          ],
+          "fgmres_history": [
+            {
+              "iterations": 14,
+              "explicit_relative_residual": 3.4581778958220322e-09
+            },
+            {
+              "iterations": 14,
+              "explicit_relative_residual": 3.4006076884171818e-09
+            }
+          ],
+          "evaluation": "NO_IMPROVEMENT_REVERTED"
+        },
+        {
+          "name": "gravity_octetregular_center_twooct_r1_t2",
+          "ranks": 1,
+          "threads": 2,
+          "input_path": "/tmp/wor25_23_24_resolution_trials/gravity_octetregular_center_twooct_r1_t2/input.used",
+          "input_sha256": "bf8de755d89175cd29f8a6a48369182bd9966cdf7df9af707a238ad67950e533",
+          "run_log": "/tmp/wor25_23_24_resolution_trials/gravity_octetregular_center_twooct_r1_t2/run.log",
+          "wall_time": "0:02.67",
+          "peak_rss_kb": 162516,
+          "newton_statuses": [
+            "dt_zero_initialization",
+            "converged",
+            "converged"
+          ],
+          "fgmres_history": [
+            {
+              "iterations": 14,
+              "explicit_relative_residual": 3.4581778958220322e-09
+            },
+            {
+              "iterations": 14,
+              "explicit_relative_residual": 3.4006076884171818e-09
+            }
+          ],
+          "evaluation": "NO_IMPROVEMENT_REVERTED"
+        },
+        {
+          "name": "gravity_octetregular_center_twooct_r2_t2",
+          "ranks": 2,
+          "threads": 2,
+          "input_path": "/tmp/wor25_23_24_resolution_trials/gravity_octetregular_center_twooct_r2_t2/input.used",
+          "input_sha256": "bf8de755d89175cd29f8a6a48369182bd9966cdf7df9af707a238ad67950e533",
+          "run_log": "/tmp/wor25_23_24_resolution_trials/gravity_octetregular_center_twooct_r2_t2/run.log",
+          "wall_time": "0:02.59",
+          "peak_rss_kb": 103636,
+          "newton_statuses": [
+            "dt_zero_initialization",
+            "converged",
+            "converged"
+          ],
+          "fgmres_history": [
+            {
+              "iterations": 14,
+              "explicit_relative_residual": 3.4581781750723204e-09
+            },
+            {
+              "iterations": 14,
+              "explicit_relative_residual": 3.4006019442400385e-09
+            }
+          ],
+          "evaluation": "NO_IMPROVEMENT_REVERTED"
+        },
+        {
+          "name": "gravity_octetregular_center_43_r1_t2",
+          "ranks": 1,
+          "threads": 2,
+          "checkpoint_path": "/tmp/wor25_23_24_resolution_trials/collapse_adaptive_partial_direct_final_r1/protostellar_core_fld_mayer5.00006.rst",
+          "run_log": "/tmp/wor25_23_24_resolution_trials/gravity_octetregular_center_43_r1_t2/run.log",
+          "wall_time": "0:01.60",
+          "peak_rss_kb": 286088,
+          "newton_statuses": [
+            "converged",
+            "converged"
+          ],
+          "fgmres_history": [
+            {
+              "iterations": 14,
+              "explicit_relative_residual": 3.326563524751395e-09
+            },
+            {
+              "iterations": 14,
+              "explicit_relative_residual": 7.858220861587502e-09
+            }
+          ],
+          "evaluation": "NO_IMPROVEMENT_REVERTED"
+        }
+      ],
+      "gravity_centerfill_prod_r1_t1_all_numeric_exact": true,
+      "gravity_centerfill_43_restart_r1_t2_all_numeric_exact": true
+    }
   }
 }
