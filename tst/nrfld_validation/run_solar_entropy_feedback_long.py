@@ -173,6 +173,14 @@ def render(root: Path, state: dict) -> None:
                      f"{config['segment_code']:.0f}-code-time updates, "
                      f"cumulative entropy limit ±{config['max_total_entropy_change_cgs']:.0f}. "
                      f"Source: {html.escape(state['forked_from'])}</p>")
+    for change in state.get("resume_changes", []):
+        lines.append(
+            f"<p><strong>Continuation at t={change['at_time_code']:.0f}:</strong> "
+            f"target {change['old_target_time_code']:.0f} → "
+            f"{change['new_target_time_code']:.0f}; cumulative entropy limit "
+            f"±{change['old_max_total_entropy_change_cgs']:.0f} → "
+            f"±{change['new_max_total_entropy_change_cgs']:.0f} "
+            "erg g<sup>−1</sup> K<sup>−1</sup>.</p>")
     if (root / "combined" / "index.html").is_file():
         lines.append("<p><strong>Full-campaign analysis:</strong> "
                      "<a href='combined/index.html'>joined flux checks, plots, "
@@ -349,11 +357,25 @@ def main() -> None:
             if key == "target_time_code":
                 if value < old[key]:
                     parser.error("Cannot reduce an existing target time")
+            elif key == "max_total_entropy_change_cgs":
+                if value < old[key]:
+                    parser.error("Cannot reduce an existing cumulative entropy limit")
             elif value != old.get(key, 1.0e6 if key == "max_total_entropy_change_cgs" else None):
                 parser.error(f"Resume config differs: {key}")
+        if (args.target_time != old["target_time_code"] or
+                args.max_total_entropy_change != old["max_total_entropy_change_cgs"]):
+            state.setdefault("resume_changes", []).append({
+                "at_time_code": (state["completed"][-1]["end_time_code"]
+                                 if state["completed"] else 0.0),
+                "recorded_at": now(),
+                "old_target_time_code": old["target_time_code"],
+                "new_target_time_code": args.target_time,
+                "old_max_total_entropy_change_cgs": old["max_total_entropy_change_cgs"],
+                "new_max_total_entropy_change_cgs": args.max_total_entropy_change})
         if custom_input.read_text() != campaign_input(base_input.read_text(), OUTPUT_CADENCE):
             parser.error("Campaign input has changed")
         state["config"]["target_time_code"] = args.target_time
+        state["config"]["max_total_entropy_change_cgs"] = args.max_total_entropy_change
         state["status"] = "running"
         state["stop_reason"] = None
         state["resumed_at"] = now()
