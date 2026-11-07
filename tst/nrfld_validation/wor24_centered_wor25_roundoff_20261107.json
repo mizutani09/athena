@@ -12960,6 +12960,279 @@
       "trial_validity": "valid",
       "face_pass": true,
       "log_path": "/tmp/wor24_centered_wor25_roundoff_trials/centered_5step_truecap10_r2/run.log"
+    },
+    {
+      "name": "centered_final_off_r1",
+      "centered_face_trial": "off, final-source performance control",
+      "ranks": 1,
+      "source_base_git_hash": "2d6821233229ed68bc172ed94d85b0d81243736d",
+      "source_git_hash": "e786abc429684cf413d23f423b6d48df5838437d",
+      "binary_sha256": "1b47730af10734229823cd2347a3c003e8dfd1370ee5c32997092049d8fc9d66",
+      "input": "/home/kosuke/simulation/athena-wor24-centered-wor25-roundoff/tst/nrfld_validation/testc_threelevel_shifted_20261107.in",
+      "input_sha256": "c1ffedae69f670d6f17740805077b6741c7cefdaf2baf4639cc7ab5f1fa38a74",
+      "command": "timeout 360s mpirun --output-filename /tmp/wor24_centered_wor25_roundoff_trials/centered_final_off_r1/mpi -n 1 /tmp/wor24_centered_wor25_roundoff_final_v2_build/bin/athena -i /home/kosuke/simulation/athena-wor24-centered-wor25-roundoff/tst/nrfld_validation/testc_threelevel_shifted_20261107.in -d /tmp/wor24_centered_wor25_roundoff_trials/centered_final_off_r1/output nrfld/linear_solver=fgmres nrfld/fgmres_linearity_check=false nrfld/global_jacobian_check=false nrfld/diagnostic_verbosity=0 fld/is_couple=true fld/only_rad=false fld/fixed_flux_limiter=false time/nlim=1 time/tlim=0.001",
+      "opacity_override": null,
+      "effective_operator_path": "conservative",
+      "environment": {
+        "OMP_NUM_THREADS": 1,
+        "ATHENA_NRFLD_CENTERED_FACE_TRIAL": false,
+        "ATHENA_NRFLD_FGMRES_LONG_DOUBLE_UPDATE_TRIAL": false,
+        "ATHENA_NRFLD_FGMRES_UPDATE_AUDIT": false,
+        "ATHENA_NRFLD_CONSERVATIVE_PROTOTYPE": false,
+        "ATHENA_NRFLD_CONSERVATIVE_SHARED_COEFF": false,
+        "ATHENA_NRFLD_CONSERVATIVE_DIFFERENCE_JV": null,
+        "ATHENA_NRFLD_INTERFACE_LEDGER": true,
+        "ATHENA_NRFLD_ENERGY_LEDGER": true
+      },
+      "elapsed": "1:13.80",
+      "peak_rss_kb": 458804,
+      "exit_status": 0,
+      "newton_history": [
+        {
+          "status": "dt_zero_initialization",
+          "iterations": 0,
+          "final_l2": 0.0,
+          "final_max": 0.0
+        },
+        {
+          "status": "converged",
+          "iterations": 16,
+          "final_l2": 1.3188732721548426e-09,
+          "final_max": 5.4374167875228745e-09
+        }
+      ],
+      "fgmres_history": [
+        {
+          "iterations": 17,
+          "true_relative_residual": 8.090749531420312e-09
+        },
+        {
+          "iterations": 18,
+          "true_relative_residual": 4.549724141468168e-09
+        },
+        {
+          "iterations": 18,
+          "true_relative_residual": 5.846355453452369e-09
+        },
+        {
+          "iterations": 18,
+          "true_relative_residual": 4.638265526977738e-09
+        },
+        {
+          "iterations": 18,
+          "true_relative_residual": 4.966880825753556e-09
+        },
+        {
+          "iterations": 18,
+          "true_relative_residual": 6.404241472025839e-09
+        },
+        {
+          "iterations": 18,
+          "true_relative_residual": 5.0976767551124435e-09
+        },
+        {
+          "iterations": 18,
+          "true_relative_residual": 5.126274014425337e-09
+        },
+        {
+          "iterations": 18,
+          "true_relative_residual": 4.7251628696960546e-09
+        },
+        {
+          "iterations": 18,
+          "true_relative_residual": 5.709407333646888e-09
+        },
+        {
+          "iterations": 18,
+          "true_relative_residual": 4.918329640400362e-09
+        },
+        {
+          "iterations": 18,
+          "true_relative_residual": 5.891347833246064e-09
+        },
+        {
+          "iterations": 18,
+          "true_relative_residual": 5.98447863208237e-09
+        },
+        {
+          "iterations": 18,
+          "true_relative_residual": 4.915528848690571e-09
+        },
+        {
+          "iterations": 18,
+          "true_relative_residual": 6.361092064468906e-09
+        },
+        {
+          "iterations": 19,
+          "true_relative_residual": 4.649835450826479e-09
+        }
+      ],
+      "fgmres_total_iterations": 288,
+      "max_true_relative_residual": 8.090749531420312e-09,
+      "jv": [],
+      "update_audit": [],
+      "face_pairs": [
+        {
+          "cycle": 0,
+          "stage": 0,
+          "coarse_gid": 0,
+          "axis": 1,
+          "side": "max",
+          "fine_count": 4,
+          "coarse_flux": 1.9562476638590454e-05,
+          "fine_flux": -1.9562476638590454e-05,
+          "mismatch": 0.0,
+          "relative_mismatch": 0.0,
+          "roundoff_scale": 6.611116164493628e-10,
+          "mismatch_over_roundoff_scale": 0.0
+        },
+        {
+          "cycle": 0,
+          "stage": 0,
+          "coarse_gid": 10,
+          "axis": 1,
+          "side": "max",
+          "fine_count": 4,
+          "coarse_flux": 1.463645046846814e-05,
+          "fine_flux": -1.4636450927014644e-05,
+          "mismatch": -4.585465037190706e-13,
+          "relative_mismatch": 1.5664538937361047e-08,
+          "roundoff_scale": 5.807326564956319e-12,
+          "mismatch_over_roundoff_scale": 0.07895999968145749
+        },
+        {
+          "cycle": 0,
+          "stage": 0,
+          "coarse_gid": 12,
+          "axis": 1,
+          "side": "max",
+          "fine_count": 4,
+          "coarse_flux": 1.4636450484341157e-05,
+          "fine_flux": -1.4636451016332012e-05,
+          "mismatch": -5.319908552445457e-13,
+          "relative_mismatch": 1.8173492478438184e-08,
+          "roundoff_scale": 5.807326564956319e-12,
+          "mismatch_over_roundoff_scale": 0.09160684340618741
+        },
+        {
+          "cycle": 0,
+          "stage": 0,
+          "coarse_gid": 14,
+          "axis": 1,
+          "side": "max",
+          "fine_count": 4,
+          "coarse_flux": 1.4636450643081021e-05,
+          "fine_flux": -1.46364510341507e-05,
+          "mismatch": -3.910696788779868e-13,
+          "relative_mismatch": 1.3359443597016497e-08,
+          "roundoff_scale": 5.807326564956319e-12,
+          "mismatch_over_roundoff_scale": 0.06734074182048833
+        },
+        {
+          "cycle": 0,
+          "stage": 0,
+          "coarse_gid": 16,
+          "axis": 1,
+          "side": "max",
+          "fine_count": 4,
+          "coarse_flux": 1.463645042084896e-05,
+          "fine_flux": -1.4636450968740876e-05,
+          "mismatch": -5.478919167721487e-13,
+          "relative_mismatch": 1.8716693281623e-08,
+          "roundoff_scale": 5.807326564956319e-12,
+          "mismatch_over_roundoff_scale": 0.09434494696377897
+        },
+        {
+          "cycle": 0,
+          "stage": 0,
+          "coarse_gid": 81,
+          "axis": 1,
+          "side": "min",
+          "fine_count": 4,
+          "coarse_flux": -4.258110532554321e-11,
+          "fine_flux": 4.2870856581439644e-11,
+          "mismatch": 2.8975125589643095e-13,
+          "relative_mismatch": 0.0033908087003530043,
+          "roundoff_scale": 5.8108694187375795e-12,
+          "mismatch_over_roundoff_scale": 0.049863666693680385
+        },
+        {
+          "cycle": 0,
+          "stage": 0,
+          "coarse_gid": 83,
+          "axis": 1,
+          "side": "min",
+          "fine_count": 4,
+          "coarse_flux": -4.270859194970863e-11,
+          "fine_flux": 4.295419618135074e-11,
+          "mismatch": 2.4560423164210896e-13,
+          "relative_mismatch": 0.002867105274070089,
+          "roundoff_scale": 5.810869418737578e-12,
+          "mismatch_over_roundoff_scale": 0.042266348448674475
+        },
+        {
+          "cycle": 0,
+          "stage": 0,
+          "coarse_gid": 85,
+          "axis": 1,
+          "side": "min",
+          "fine_count": 4,
+          "coarse_flux": -4.2533943661808534e-11,
+          "fine_flux": 4.2751918901061034e-11,
+          "mismatch": 2.179752392525e-13,
+          "relative_mismatch": 0.002555819132295423,
+          "roundoff_scale": 5.8108694187375795e-12,
+          "mismatch_over_roundoff_scale": 0.037511639574901244
+        },
+        {
+          "cycle": 0,
+          "stage": 0,
+          "coarse_gid": 87,
+          "axis": 1,
+          "side": "min",
+          "fine_count": 4,
+          "coarse_flux": -4.2676826148911643e-11,
+          "fine_flux": 4.297213288507053e-11,
+          "mismatch": 2.953067361588854e-13,
+          "relative_mismatch": 0.0034478730330128027,
+          "roundoff_scale": 5.810869418737578e-12,
+          "mismatch_over_roundoff_scale": 0.050819716444951764
+        },
+        {
+          "cycle": 0,
+          "stage": 0,
+          "coarse_gid": 89,
+          "axis": 1,
+          "side": "min",
+          "fine_count": 4,
+          "coarse_flux": 5.8547129502132895e-05,
+          "fine_flux": -5.854713001183538e-05,
+          "mismatch": -5.097024825860899e-13,
+          "relative_mismatch": 4.35292459853924e-09,
+          "roundoff_scale": 1.220224785057344e-11,
+          "mismatch_over_roundoff_scale": 0.0417711956704876
+        }
+      ],
+      "max_face_relative_mismatch": 0.0034478730330128027,
+      "energy_absolute_relative_balance_history": [
+        5.134138668591337e-10
+      ],
+      "max_implicit_energy_absolute_relative_balance": 5.134138668591337e-10,
+      "final_output": {
+        "file": "/tmp/wor24_centered_wor25_roundoff_trials/centered_final_off_r1/output/nrfld_diff_amr_interface.fields.00001.athdf",
+        "file_sha256": "c77a4f9e1ad3cf7bef8356f9a0dbf69f689c2c2fe34bcc6bf2778f6609aa0070",
+        "numeric_arrays_sha256": "de0d6d58331258918345d2362e2d6bc6b6f247824c86893a9d73d28e19b84e74",
+        "radiation_min": 146.3442840576172,
+        "radiation_max": 146.34437561035156
+      },
+      "fgmres_fatal": null,
+      "fgmres_target": 1e-08,
+      "solver_pass": true,
+      "strict_target_met_by_history": true,
+      "expected_support_guard": false,
+      "trial_validity": "valid",
+      "face_pass": false,
+      "log_path": "/tmp/wor24_centered_wor25_roundoff_trials/centered_final_off_r1/run.log"
     }
   ],
   "output_comparisons": [
