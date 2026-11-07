@@ -33,7 +33,7 @@ def fields(name):
                            'Er_min':float(er.min()),'Er_volume_integral_from_float32_hdf':float(np.sum(er*vol))})
     return result
 
-def record(name, input_path, fixed, opacity, threshold, ranks):
+def record(name, input_path, fixed, opacity, threshold, ranks, pulse_center=0.5):
     d=B/name;log=(d/'run.log').read_text(errors='replace')
     fg=[{'iterations':int(a),'true_relative_residual':float(b)} for a,b in
         re.findall(r'\[LINEAR_FGMRES\] iterations=(\d+) relative_residual=([\deE+.-]+)',log)]
@@ -64,7 +64,8 @@ def record(name, input_path, fixed, opacity, threshold, ranks):
     return {'name':name,'source_commit_before_run':'9ee735fa','binary_sha256':sha(BINARY),
             'input_path':str(input_path),'input_sha256':sha(input_path),'ranks':ranks,'threads':1,
             'overrides':{'nrfld/linear_solver':'fgmres','fld/fixed_flux_limiter':fixed,
-                         'fld/const_opacity':opacity,'nrfld/fgmres_threshold':threshold,
+                         'fld/const_opacity':opacity,'problem/pulse_center':pulse_center,
+                         'nrfld/fgmres_threshold':threshold,
                          'nrfld/fgmres_linearity_check':False},
             'command':re.search(r'Command being timed: "([^"]+)"',log).group(1),
             'run_log':str(d/'run.log'),'exit_status':exit_status,
@@ -103,16 +104,20 @@ for mode,fixed in [('fixed',True),('variable',False)]:
     for rank in (1,2):
         runs.append(record(f'testc_threelevel_{mode}_opacity10_r{rank}',INPUT3,fixed,8.186332719786666e-7,1e-8,rank))
     runs.append(record(f'testc_twolevel_{mode}_ledger_r1',INPUT2,fixed,8.186332719786666e-8,1e-8,1))
+    for rank in (1,2):
+        runs.append(record(f'testc_threelevel_{mode}_pulse045_r{rank}',INPUT3,fixed,8.186332719786666e-8,1e-8,rank,pulse_center=0.45))
 summary={'original_threelevel_face_relative_fail_count':sum(r['evaluation']=='FAIL_FACE_RELATIVE_ONLY' for r in runs if r['name'].startswith('testc_threelevel_shifted')),
          'twolevel_fixed_face_relative':next(r['face_ledger']['max_relative_mismatch'] for r in runs if r['name']=='testc_twolevel_fixed_ledger_r1'),
          'fixed_original_rank_hdf_exact':rank_equal('testc_threelevel_shifted_r1','testc_threelevel_shifted_r2'),
          'variable_original_rank_hdf_exact':rank_equal('testc_threelevel_shifted_variable_r1','testc_threelevel_shifted_variable_r2'),
          'fixed_opacity10_rank_hdf_exact':rank_equal('testc_threelevel_fixed_opacity10_r1','testc_threelevel_fixed_opacity10_r2'),
-         'variable_opacity10_rank_hdf_exact':rank_equal('testc_threelevel_variable_opacity10_r1','testc_threelevel_variable_opacity10_r2')}
+         'variable_opacity10_rank_hdf_exact':rank_equal('testc_threelevel_variable_opacity10_r1','testc_threelevel_variable_opacity10_r2'),
+         'fixed_pulse045_rank_hdf_exact':rank_equal('testc_threelevel_fixed_pulse045_r1','testc_threelevel_fixed_pulse045_r2'),
+         'variable_pulse045_rank_hdf_exact':rank_equal('testc_threelevel_variable_pulse045_r1','testc_threelevel_variable_pulse045_r2')}
 x=json.loads(REPORT.read_text())
 x['threelevel_small_flux_conservation_screen']={'scope':'92-leaf 3-level shifted Test C, periodic radiation-only, fixed/variable limiter, 1/2 MPI ranks',
  'runs':runs,'summary':summary,
- 'decision':'Original strong-diffusion cases FAIL the 1e-6 per-face relative ledger criterion on tiny 1e-9 flux; report failure. Absolute mismatch 1e-14 to 1e-13, global implicit energy balance near 1e-11 or better, rank HDF exact. Stricter FGMRES did not resolve; 10x opacity makes criterion pass but changes physics and is not a code fix. No production operator change.'}
+ 'decision':'Original strong-diffusion cases FAIL the 1e-6 per-face relative ledger criterion on tiny 1e-9 flux; report failure. Absolute mismatch 1e-14 to 1e-13, global implicit energy balance near 1e-11 or better, rank HDF exact. Stricter FGMRES did not resolve. Moving the pulse off the level-1/2 boundary at unchanged opacity makes the tiny boundary flux large and the relative criterion pass, isolating the near-zero denominator. 10x opacity also passes but changes physics. No production operator change.'}
 def alternate_ledger(name, suffix):
     d=B/name;logs=sorted((d/'mpi').glob('**/rank.*/stdout'))
     transformed=[]
