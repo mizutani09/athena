@@ -24,6 +24,19 @@ constexpr int dk[6]={0,0,0,0,-1,1};
 const int cf[6]={linearSolver::DXMF,linearSolver::DXPF,linearSolver::DYMF,
                 linearSolver::DYPF,linearSolver::DZMF,linearSolver::DZPF};
 
+long double MixedDriftDirection(const AthenaArray<Real> &drift,
+                                const AthenaArray<Real> &v,
+                                int k,int j,int i,long double half_idx) {
+  const long double center=v(k,j,i);
+  return half_idx*(
+      drift(1,k,j,i)*(static_cast<long double>(v(k,j,i+1))-center)
+    + drift(0,k,j,i)*(center-static_cast<long double>(v(k,j,i-1)))
+    + drift(3,k,j,i)*(static_cast<long double>(v(k,j+1,i))-center)
+    + drift(2,k,j,i)*(center-static_cast<long double>(v(k,j-1,i)))
+    + drift(5,k,j,i)*(static_cast<long double>(v(k+1,j,i))-center)
+    + drift(4,k,j,i)*(center-static_cast<long double>(v(k-1,j,i))));
+}
+
 void Snapshot(AthenaArray<Real> &dest, const AthenaArray<Real> &source) {
   // Copy assignment does not allocate. Empty optional arrays must not be
   // passed to AthenaArray's allocating copy constructor either.
@@ -187,6 +200,23 @@ void NRFLDDriver::CheckCoupledGlobalJacobian(bool actual_direction) {
   }
   plmgd_->SynchronizeCorrectionBoundaries(stage_);
   for (Saved &s:saved) s.vr=s.nr->delta_u_;
+  // The gas row contains -dt times the implicit mixed-frame drift.  The
+  // actual Newton direction eliminates that full row, including its spatial
+  // radiation coupling, after the radiation ghosts have been synchronized.
+  if (actual_direction) for (Saved &s:saved) {
+    NRFLD *nr=s.nr; MeshBlock *mb=nr->pmy_block_;
+    const long double half_idx=0.5L/mb->pcoord->dx1f(mb->is);
+    for (int k=mb->ks;k<=mb->ke;++k)
+      for (int j=mb->js;j<=mb->je;++j)
+        for (int i=mb->is;i<=mb->ie;++i) {
+          const auto &d=s.baseline_deriv;
+          const long double drift_jv=dt_*MixedDriftDirection(
+              nr->mixed_drift_,s.vr,k,j,i,half_idx);
+          s.vg(k,j,i)=static_cast<Real>((drift_jv
+              -d(NewtonRaphsonFLD::dFg_dEr,k,j,i)*s.vr(k,j,i))
+              /d(NewtonRaphsonFLD::dFg_deg,k,j,i));
+        }
+  }
   const auto flags=std::cout.flags(); const auto precision=std::cout.precision();
   std::cout << std::scientific << std::setprecision(16);
   for (int pass=0;pass<4;++pass) {
@@ -223,10 +253,13 @@ void NRFLDDriver::CheckCoupledGlobalJacobian(bool actual_direction) {
           for (int i=mb->is;i<=mb->ie;++i) {
             const auto &d=s.baseline_deriv;
             const long double vr=s.vr(k,j,i),vg=s.vg(k,j,i);
+            const long double mixed_jv=dt_*MixedDriftDirection(
+                nr->mixed_drift_,s.vr,k,j,i,
+                0.5L/mb->pcoord->dx1f(mb->is));
             const long double jg=d(NewtonRaphsonFLD::dFg_deg,k,j,i)*vg
-                +d(NewtonRaphsonFLD::dFg_dEr,k,j,i)*vr;
+                +d(NewtonRaphsonFLD::dFg_dEr,k,j,i)*vr-mixed_jv;
             long double jr=d(NewtonRaphsonFLD::dFr_deg,k,j,i)*vg
-                +d(NewtonRaphsonFLD::dFr_dEr,k,j,i)*vr;
+                +d(NewtonRaphsonFLD::dFr_dEr,k,j,i)*vr+mixed_jv;
             long double schur=(fac*s.coeff(linearSolver::DCCF,k,j,i)
                 +s.coeff(linearSolver::DCCS,k,j,i))*vr;
             for (int f=0;f<6;++f) {
@@ -308,7 +341,7 @@ void NRFLDDriver::CheckGlobalJacobian(bool actual_direction) {
       NRFLD *nr=static_cast<NRFLD*>(base);
       FLD *fld=nr->pmy_block_->prfld;
       supported &= fld->is_couple && !fld->only_rad && !fld->fixed_u_rad
-                   && !fld->MixedFrameCoupled() && !fld->marshak_top_boundary;
+                   && !fld->marshak_top_boundary;
       const bool periodic=std::all_of(nr_mesh_bcs_,nr_mesh_bcs_+6,
           [](BoundaryFlag flag) { return flag==BoundaryFlag::periodic; });
       const bool mach5_user_x1=nr_mesh_bcs_[0]==BoundaryFlag::user
@@ -320,7 +353,7 @@ void NRFLDDriver::CheckGlobalJacobian(bool actual_direction) {
     if (!supported) {
       std::stringstream msg;
       msg << "coupled global_jacobian_check requires periodic Test C or "
-             "user-x1 Mach 5 without mixed drift.";
+             "user-x1 Mach 5 without a Marshak boundary.";
       ATHENA_ERROR(msg);
     }
     CheckCoupledGlobalJacobian(actual_direction);
