@@ -1,0 +1,29 @@
+--- base/linearMG.cpp
++++ trace/linearMG.cpp
+@@ -13,6 +13,7 @@
+ #include <cmath>
+ #include <cstdint>
+ #include <cstdlib>
++#include <iomanip>
+ #include <cstring>
+ #include <iostream>
+ #include <limits>
+@@ -1780,6 +1781,18 @@
+     axpy(r, -1.0, ax);
+     beta = norm(r);
+     relative_residual = static_cast<Real>(beta/bnorm);
++    if (std::getenv("ATHENA_WOR92_FGMRES_RESTART_TRACE") != nullptr
++        && Globals::my_rank == 0)
++      std::cout << std::scientific << std::setprecision(16)
++                << "[WOR92 FGMRES restart] cycle=" << pmy_mesh_->ncycle
++                << " total_iterations=" << total_iterations
++                << " used=" << used
++                << " arnoldi_relative=" << std::abs(g[used])/bnorm
++                << " true_relative=" << relative_residual
++                << " true_to_arnoldi=" << relative_residual
++                     /std::max(static_cast<Real>(std::abs(g[used])/bnorm),
++                               std::numeric_limits<Real>::min())
++                << std::endl;
+     if (breakdown) break;
+   }
+   Real componentwise_backward_error_max = 0.0;

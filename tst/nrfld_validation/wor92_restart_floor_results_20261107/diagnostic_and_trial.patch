@@ -1,0 +1,40 @@
+--- base/linearMG.cpp
++++ deep_arnoldi/linearMG.cpp
+@@ -13,6 +13,7 @@
+ #include <cmath>
+ #include <cstdint>
+ #include <cstdlib>
++#include <iomanip>
+ #include <cstring>
+ #include <iostream>
+ #include <limits>
+@@ -1755,7 +1756,9 @@
+       used = j + 1;
+       ++total_iterations;
+       relative_residual = std::abs(g[j+1])/static_cast<Real>(bnorm);
+-      if (relative_residual <= fgmres_threshold_
++      const Real arnoldi_target = (std::getenv("ATHENA_WOR92_FGMRES_DEEP_ARNOLDI")
++                                   != nullptr ? 0.1 : 1.0)*fgmres_threshold_;
++      if (relative_residual <= arnoldi_target
+           || hnext <= std::numeric_limits<Real>::epsilon()*bnorm) break;
+     }
+     if (used == 0) {
+@@ -1780,6 +1783,18 @@
+     axpy(r, -1.0, ax);
+     beta = norm(r);
+     relative_residual = static_cast<Real>(beta/bnorm);
++    if (std::getenv("ATHENA_WOR92_FGMRES_RESTART_TRACE") != nullptr
++        && Globals::my_rank == 0)
++      std::cout << std::scientific << std::setprecision(16)
++                << "[WOR92 FGMRES restart] cycle=" << pmy_mesh_->ncycle
++                << " total_iterations=" << total_iterations
++                << " used=" << used
++                << " arnoldi_relative=" << std::abs(g[used])/bnorm
++                << " true_relative=" << relative_residual
++                << " true_to_arnoldi=" << relative_residual
++                     /std::max(static_cast<Real>(std::abs(g[used])/bnorm),
++                               std::numeric_limits<Real>::min())
++                << std::endl;
+     if (breakdown) break;
+   }
+   Real componentwise_backward_error_max = 0.0;
