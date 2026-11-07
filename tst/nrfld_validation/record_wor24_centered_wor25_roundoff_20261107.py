@@ -55,6 +55,8 @@ RUNS = {
     'centered_final_jv_r1': ('on, final-source coupled Jv', 1, '1b47730af10734229823cd2347a3c003e8dfd1370ee5c32997092049d8fc9d66'),
     'centered_final_jv_r2': ('on, final-source coupled Jv', 2, '1b47730af10734229823cd2347a3c003e8dfd1370ee5c32997092049d8fc9d66'),
     'centered_final_nojv_r1': ('on, final-source Jv-off control', 1, '1b47730af10734229823cd2347a3c003e8dfd1370ee5c32997092049d8fc9d66'),
+    'centered_5step_truecap10_r1': ('on, five-step true residual cap 1e-7 pilot', 1, '1b47730af10734229823cd2347a3c003e8dfd1370ee5c32997092049d8fc9d66'),
+    'centered_5step_truecap10_r2': ('on, five-step true residual cap 1e-7 pilot', 2, '1b47730af10734229823cd2347a3c003e8dfd1370ee5c32997092049d8fc9d66'),
 }
 
 
@@ -186,6 +188,7 @@ def main():
             ('centered_final_jv_r1', 'centered_final_jv_r2'),
             ('centered_final_jv_r1', 'centered_final_nojv_r1'),
             ('centered_2step_truecap10_r1', 'centered_2step_truecap10_r2'),
+            ('centered_5step_truecap10_r1', 'centered_5step_truecap10_r2'),
             ('centered_fixed_cap5_r1', 'centered_fixed_cap5_r2'),
             ('uniform_forced_default_r1', 'uniform_forced_centered_r1'),
             ('uniform_forced_centered_r1', 'uniform_forced_centered_r2')):
