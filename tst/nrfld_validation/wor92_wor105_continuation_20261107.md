@@ -63,6 +63,7 @@ not first-core formation.
 | Table, all level-1 leaves, restart 40, MG2, strict | fails cycle 0 | 2 | 9.119e-8 | 0 |
 | Table, exact local gas solve off, restart 40, MG2, strict | fails cycle 0 | 2 | 4.272e-8 | 0 |
 | Table, operator linearity checked each solve, strict | fails cycle 0 | 2 | 3.880e-8 | 0 |
+| Table, max 600 iterations, restart 40, MG2, strict | fails cycle 0 | 2 | 3.896e-8 | 0 |
 
 All completed cases also met the configured Newton criterion. CFL 0.05
 had first `dt=5.185803318` and reached `t=15.402771269`; 2 and 4 ranks
@@ -88,6 +89,10 @@ Checking additivity and homogeneity separately in both linear solves gave
 second solve's `3.8797e-8` true residual was unchanged. This rules out a
 gross nonlinearity in the sampled frozen linear operator, but it is not a
 global finite-difference Jacobian check at AMR boundaries.
+Doubling the maximum FGMRES iterations from 300 to 600, with all other
+settings fixed, left the second solve above target (`3.8958e-8` at 600
+versus `3.8797e-8` at 300). This confirms stagnation rather than an
+iteration cap reached just before convergence in this configuration.
 
 ## Operator and conservation diagnostics
 
