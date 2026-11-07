@@ -38,6 +38,7 @@ CASES = [
     ("table_local_gas_off_strict", "table_mixed_amr_restart40_mg2_strict_local_off", "table", .3, 40, 2, 0, 1, 2, "input_mixed_amr_restart40_mg2_strict_local_off.used"),
     ("table_linearity_each_solve", "table_mixed_amr_restart40_mg2_strict_linearity", "table", .3, 40, 2, 0, 1, 2, "input_mixed_amr_restart40_mg2_strict_linearity.used"),
     ("table_max600_strict", "table_mixed_amr_restart40_mg2_strict_max600", "table", .3, 40, 2, 0, 1, 2, "input_mixed_amr_restart40_mg2_strict_max600.used"),
+    ("table_resmin_prolongation", "table_mixed_amr_restart40_mg2_strict_resmin", "table", .3, 40, 2, 0, 1, 2, "input_mixed_amr_restart40_mg2_strict_resmin.used"),
 ]
 
 
