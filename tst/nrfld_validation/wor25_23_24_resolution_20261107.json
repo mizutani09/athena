@@ -3889,5 +3889,274 @@
         "time_b": 3.0887012418560067
       }
     }
+  },
+  "adaptive_derefine_validation": {
+    "control": "restart from level-1 64-leaf cycle-2 checkpoint, override problem/N_J=1 and mesh/derefine_count=1 to trigger diagnostic derefinement",
+    "runs": [
+      {
+        "name": "collapse_adaptive_derefine_r1",
+        "mode": "conservative_trial",
+        "mpi_ranks": 1,
+        "input_checkpoint_path": "/tmp/wor25_23_24_resolution_trials/collapse_adaptive_trigger_r1/output/protostellar_core_fld_mayer5.00002.rst",
+        "input_checkpoint_sha256": "d8b092f7a6991132189dbe0705913e521a668d1d11f079220ff6de722107b392",
+        "input_overrides": [
+          "time/nlim=4",
+          "problem/N_J=1.0",
+          "mesh/derefine_count=1"
+        ],
+        "run_log": "/tmp/wor25_23_24_resolution_trials/collapse_adaptive_derefine_r1/run.log",
+        "binary_sha256": "5e9137f6553675ef96b232ebb6b7779ce7827fe6fa43602e39c47b9fb4b15001",
+        "evaluation": "PASS",
+        "newton_statuses": [
+          "converged",
+          "converged",
+          "converged",
+          "converged"
+        ],
+        "fgmres_history": [
+          {
+            "iterations": 9,
+            "true_relative_residual": 1.556475592721954e-09
+          },
+          {
+            "iterations": 8,
+            "true_relative_residual": 1.452626640676473e-09
+          },
+          {
+            "iterations": 8,
+            "true_relative_residual": 8.35852356429252e-09
+          }
+        ],
+        "resources_per_rank": [
+          {
+            "rss_kb": 446752,
+            "elapsed_s": 1.91
+          }
+        ],
+        "snapshots": [
+          {
+            "time": 3.0887012572373713,
+            "levels": {
+              "0": 8
+            },
+            "mass": 704254572265.5825,
+            "radiation_energy": 502152792847.69543,
+            "rho_min": 0.052478241676758346,
+            "pressure_min": 0.025654656184236298,
+            "radiation_min": 0.29059764334002003
+          },
+          {
+            "time": 5.124189147495107,
+            "levels": {
+              "0": 8
+            },
+            "mass": 704254577414.3561,
+            "radiation_energy": 502047672307.78906,
+            "rho_min": 0.05245256814753667,
+            "pressure_min": 0.025640730949067613,
+            "radiation_min": 0.2905367964155137
+          },
+          {
+            "time": 5.124189147495107,
+            "levels": {
+              "0": 8
+            },
+            "mass": 704254577414.3561,
+            "radiation_energy": 502047672307.78906,
+            "rho_min": 0.05245256814753667,
+            "pressure_min": 0.025640730949067613,
+            "radiation_min": 0.2905367964155137
+          }
+        ]
+      },
+      {
+        "name": "collapse_adaptive_derefine_r2",
+        "mode": "conservative_trial",
+        "mpi_ranks": 2,
+        "input_checkpoint_path": "/tmp/wor25_23_24_resolution_trials/collapse_adaptive_trigger_r1/output/protostellar_core_fld_mayer5.00002.rst",
+        "input_checkpoint_sha256": "d8b092f7a6991132189dbe0705913e521a668d1d11f079220ff6de722107b392",
+        "input_overrides": [
+          "time/nlim=4",
+          "problem/N_J=1.0",
+          "mesh/derefine_count=1"
+        ],
+        "run_log": "/tmp/wor25_23_24_resolution_trials/collapse_adaptive_derefine_r2/run.log",
+        "binary_sha256": "5e9137f6553675ef96b232ebb6b7779ce7827fe6fa43602e39c47b9fb4b15001",
+        "evaluation": "PASS",
+        "newton_statuses": [
+          "converged",
+          "converged",
+          "converged",
+          "converged"
+        ],
+        "fgmres_history": [
+          {
+            "iterations": 9,
+            "true_relative_residual": 1.556475655447135e-09
+          },
+          {
+            "iterations": 8,
+            "true_relative_residual": 1.45262653415975e-09
+          },
+          {
+            "iterations": 8,
+            "true_relative_residual": 8.351292120832627e-09
+          }
+        ],
+        "resources_per_rank": [
+          {
+            "rss_kb": 245360,
+            "elapsed_s": 1.33
+          },
+          {
+            "rss_kb": 245664,
+            "elapsed_s": 1.33
+          }
+        ],
+        "snapshots": [
+          {
+            "time": 3.0887012572373713,
+            "levels": {
+              "0": 8
+            },
+            "mass": 704254572265.5825,
+            "radiation_energy": 502152792847.6946,
+            "rho_min": 0.052478241676758346,
+            "pressure_min": 0.02565465618423628,
+            "radiation_min": 0.2905976433400194
+          },
+          {
+            "time": 5.124189147495107,
+            "levels": {
+              "0": 8
+            },
+            "mass": 704254577414.3561,
+            "radiation_energy": 502047672307.7889,
+            "rho_min": 0.05245256814753667,
+            "pressure_min": 0.025640730949067613,
+            "radiation_min": 0.29053679641551355
+          },
+          {
+            "time": 5.124189147495107,
+            "levels": {
+              "0": 8
+            },
+            "mass": 704254577414.3561,
+            "radiation_energy": 502047672307.7889,
+            "rho_min": 0.05245256814753667,
+            "pressure_min": 0.025640730949067613,
+            "radiation_min": 0.29053679641551355
+          }
+        ]
+      },
+      {
+        "name": "collapse_adaptive_derefine_legacy_r1",
+        "mode": "legacy",
+        "mpi_ranks": 1,
+        "input_checkpoint_path": "/tmp/wor25_23_24_resolution_trials/collapse_adaptive_trigger_legacy_r1/output/protostellar_core_fld_mayer5.00002.rst",
+        "input_checkpoint_sha256": "ae118bfaa1b1c150dc78695212ae4672fd9bcfde3dcf8ba85fd5697764a8e3ce",
+        "input_overrides": [
+          "time/nlim=4",
+          "problem/N_J=1.0",
+          "mesh/derefine_count=1"
+        ],
+        "run_log": "/tmp/wor25_23_24_resolution_trials/collapse_adaptive_derefine_legacy_r1/run.log",
+        "binary_sha256": "8c2ce99e49135f8630c46872b59e0268fdb6a5de1b61d79ba450145ffa3b6917",
+        "evaluation": "PASS",
+        "newton_statuses": [
+          "converged",
+          "converged",
+          "converged",
+          "converged"
+        ],
+        "fgmres_history": [
+          {
+            "iterations": 10,
+            "true_relative_residual": 7.252694087043795e-09
+          },
+          {
+            "iterations": 9,
+            "true_relative_residual": 3.706706421011339e-09
+          },
+          {
+            "iterations": 10,
+            "true_relative_residual": 2.921016536954158e-09
+          },
+          {
+            "iterations": 10,
+            "true_relative_residual": 2.902394518970493e-09
+          },
+          {
+            "iterations": 9,
+            "true_relative_residual": 1.994310485368118e-09
+          },
+          {
+            "iterations": 8,
+            "true_relative_residual": 2.683732099559755e-09
+          },
+          {
+            "iterations": 9,
+            "true_relative_residual": 1.842504289707925e-09
+          },
+          {
+            "iterations": 9,
+            "true_relative_residual": 1.772731506067707e-09
+          }
+        ],
+        "resources_per_rank": [
+          {
+            "rss_kb": 399472,
+            "elapsed_s": 1.98
+          }
+        ],
+        "snapshots": [
+          {
+            "time": 3.088701080074741,
+            "levels": {
+              "0": 8
+            },
+            "mass": 704254572265.5496,
+            "radiation_energy": 502160540278.9679,
+            "rho_min": 0.05247824167326258,
+            "pressure_min": 0.025654750994896926,
+            "radiation_min": 0.2906021208432205
+          },
+          {
+            "time": 5.124188616007215,
+            "levels": {
+              "0": 8
+            },
+            "mass": 704254577414.377,
+            "radiation_energy": 502049504640.68,
+            "rho_min": 0.05245256777134518,
+            "pressure_min": 0.025640753705003537,
+            "radiation_min": 0.2905378573429708
+          },
+          {
+            "time": 5.124188616007215,
+            "levels": {
+              "0": 8
+            },
+            "mass": 704254577414.377,
+            "radiation_energy": 502049504640.68,
+            "rho_min": 0.05245256777134518,
+            "pressure_min": 0.025640753705003537,
+            "radiation_min": 0.2905378573429708
+          }
+        ]
+      }
+    ],
+    "rank_comparisons": {
+      "prim": {
+        "relative_l1": 1.6837365485884026e-16,
+        "max_abs": 4.440892098500626e-15,
+        "same_topology": true
+      },
+      "fld": {
+        "relative_l1": 1.0446669806006315e-16,
+        "max_abs": 8.881784197001252e-15,
+        "same_topology": true
+      }
+    }
   }
 }
