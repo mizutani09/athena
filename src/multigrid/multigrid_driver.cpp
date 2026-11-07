@@ -1247,6 +1247,96 @@ void MultigridDriver::PrintAMROperatorMismatch(
   }
 }
 
+// The octet cell and the coarsest MeshBlock cell represent the same volume.
+// Compare the octet operator with the restriction of the action on the first
+// 2^3 MeshBlock level after the correction has actually crossed this handoff.
+// This audit is only called with stage diagnostics enabled.
+void MultigridDriver::PrintOctetBlockMismatch(
+    const std::vector<AthenaArray<Real>> &fine_before, int coarse_level) {
+  long double fine2 = 0.0L, coarse2 = 0.0L, mismatch2 = 0.0L, dot = 0.0L;
+  long double copied2 = 0.0L, copied_error2 = 0.0L;
+  int samples = 0;
+  std::size_t b = 0;
+  for (auto *base : vmg_) {
+    Multigrid *pmg = static_cast<Multigrid*>(base);
+    const LogicalLocation &loc = pmg->loc_;
+    const AthenaArray<Real> &before = fine_before[b++];
+    if (loc.level == locrootlevel_ || pmg->current_level_ != 1
+        || before.GetSize() != pmg->u_[1].GetSize()) continue;
+    LogicalLocation oloc;
+    oloc.lx1 = loc.lx1 >> 1;
+    oloc.lx2 = loc.lx2 >> 1;
+    oloc.lx3 = loc.lx3 >> 1;
+    oloc.level = loc.level - 1;
+    const int olev = oloc.level - locrootlevel_;
+    MGOctet &oct = octets_[olev][octetmap_[olev][oloc]];
+    const int ngh = mgroot_->ngh_;
+    const int ci = static_cast<int>(loc.lx1 & 1) + ngh;
+    const int cj = static_cast<int>(loc.lx2 & 1) + ngh;
+    const int ck = static_cast<int>(loc.lx3 & 1) + ngh;
+
+    AthenaArray<Real> fine_delta(pmg->u_[1]);
+    for (std::size_t q = 0; q < fine_delta.GetSize(); ++q)
+      fine_delta.data()[q] -= before.data()[q];
+    AthenaArray<Real> fine_zero(fine_delta), fine_action(fine_delta);
+    fine_zero.ZeroClear();
+    const int fi = pmg->ngh_;
+    pmg->CalculateDefect(fine_action, fine_delta, fine_zero,
+                         pmg->coeff_[1], pmg->matrix_[1],
+                         -(pmg->nlevel_-2), fi, fi+1, fi, fi+1,
+                         fi, fi+1, false);
+
+    AthenaArray<Real> coarse_delta(oct.u);
+    if (ffas_)
+      for (std::size_t q = 0; q < coarse_delta.GetSize(); ++q)
+        coarse_delta.data()[q] -= oct.uold.data()[q];
+    AthenaArray<Real> coarse_zero(coarse_delta), coarse_action(coarse_delta);
+    coarse_zero.ZeroClear();
+    mgroot_->CalculateDefect(coarse_action, coarse_delta, coarse_zero,
+                             oct.coeff, oct.matrix, olev+1,
+                             ci, ci, cj, cj, ck, ck, false);
+    for (int v = 0; v < nvar_; ++v) {
+      const long double rahp = RestrictOne(fine_action, v, fi, fi, fi);
+      const long double ahe = coarse_corr_scale_*coarse_action(v,ck,cj,ci);
+      fine2 += rahp*rahp;
+      coarse2 += ahe*ahe;
+      mismatch2 += (rahp-ahe)*(rahp-ahe);
+      dot += rahp*ahe;
+      const long double copy = pmg->u_[0](v,fi,fi,fi);
+      const long double parent = coarse_delta(v,ck,cj,ci);
+      copied2 += parent*parent;
+      copied_error2 += (copy-parent)*(copy-parent);
+      ++samples;
+    }
+  }
+#ifdef MPI_PARALLEL
+  long double sums[6] = {fine2, coarse2, mismatch2, dot, copied2, copied_error2};
+  MPI_Allreduce(MPI_IN_PLACE, sums, 6, MPI_LONG_DOUBLE, MPI_SUM,
+                MPI_COMM_MULTIGRID);
+  fine2=sums[0]; coarse2=sums[1]; mismatch2=sums[2]; dot=sums[3];
+  copied2=sums[4]; copied_error2=sums[5];
+  MPI_Allreduce(MPI_IN_PLACE, &samples, 1, MPI_INT, MPI_SUM, MPI_COMM_MULTIGRID);
+#endif
+  if (Globals::my_rank == 0 && samples > 0) {
+    const long double scale = std::max({fine2, coarse2,
+                                       std::numeric_limits<long double>::min()});
+    std::cout << "[NRFLD AMR Galerkin] vcycle=" << stage_diagnostic_vcycle_
+              << " coarse_level=" << coarse_level
+              << " fine_level=" << coarse_level+1
+              << " transfer=octet_to_meshblock"
+              << " samples=" << samples
+              << " rahp_l2=" << std::sqrt(fine2)
+              << " scaled_ahe_l2=" << std::sqrt(coarse2)
+              << " mismatch_relative_l2=" << std::sqrt(mismatch2/scale)
+              << " cosine=" << dot/std::sqrt(std::max(fine2*coarse2,
+                                                std::numeric_limits<long double>::min()))
+              << " copied_correction_relative_l2="
+              << std::sqrt(copied_error2/std::max(copied2,
+                                                  std::numeric_limits<long double>::min()))
+              << std::endl;
+  }
+}
+
 
 //----------------------------------------------------------------------------------------
 //! \fn void MultigridDriver::SolveVCycle(int npresmooth, int npostsmooth)
@@ -1370,7 +1460,19 @@ void MultigridDriver::SolveVCycle(int npresmooth, int npostsmooth) {
                 pmg->u_[pmg->GetCurrentLevel() + 1]);
         }
       }
+      if (!coarse_valid && stage_diagnostics_active_ && nreflevel_ > 0) {
+        fine_data_before.reserve(vmg_.size());
+        for (auto *base : vmg_) {
+          Multigrid *pmg = static_cast<Multigrid*>(base);
+          fine_data_before.emplace_back(pmg->u_[1]);
+        }
+      }
       OneStepToFiner(0);
+      if (!coarse_valid && stage_diagnostics_active_ && nreflevel_ > 0) {
+        mgtlist_->SetMGTaskListBoundaryCommunication();
+        mgtlist_->DoTaskListOneStage(this);
+        PrintOctetBlockMismatch(fine_data_before, coarse_level);
+      }
       if (coarse_valid && stage_diagnostics_active_) {
         mgtlist_->SetMGTaskListBoundaryCommunication();
         mgtlist_->DoTaskListOneStage(this);

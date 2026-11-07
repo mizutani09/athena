@@ -46,7 +46,16 @@ int Region(MeshBlock *mb,int k,int j,int i) {
   int region=0;
   const bool face[6]={i==mb->is,i==mb->ie,j==mb->js,j==mb->je,
                       k==mb->ks,k==mb->ke};
+  const RegionSize &block=mb->block_size;
+  const RegionSize &mesh=mb->pmy_mesh->mesh_size;
+  const bool physical[6]={block.x1min==mesh.x1min,block.x1max==mesh.x1max,
+                          block.x2min==mesh.x2min,block.x2max==mesh.x2max,
+                          block.x3min==mesh.x3min,block.x3max==mesh.x3max};
   for (int f=0;f<6;++f) if (face[f]) {
+    if (physical[f] && mb->pmy_mesh->mesh_bcs[f]!=BoundaryFlag::periodic) {
+      region=3;
+      continue;
+    }
     const int level=mb->pbval->nblevel[1+dk[f]][1+dj[f]][1+di[f]];
     region=std::max(region,level==mb->loc.level ? 1 : 2);
   }
@@ -73,7 +82,250 @@ void NRFLDDriver::RunDirectionDiagnostic() {
   ++global_jv_solve_;
 }
 
+// Frozen-coefficient, full-domain two-equation Jv and eliminated Schur audit.
+// The radiation direction is exchanged through the same correction boundary
+// path as FGMRES.  The smooth probe uses independent gas/radiation directions;
+// the Newton probe eliminates the local gas row as linearMG does.
+void NRFLDDriver::CheckCoupledGlobalJacobian(bool actual_direction) {
+  struct Saved {
+    NRFLD *nr;
+    AthenaArray<Real> u, gas, delta, coeff, deriv, baseline_deriv, src,
+                      baseline_src, defcoeff,
+                      coarse_u, coarse_delta, moments, coarse_moments, marshak;
+    AthenaArray<Real> baseline, gas_baseline, vr, vg;
+    bool initialized;
+  };
+  std::vector<Saved> saved(vnr_.size());
+  for (std::size_t b=0; b<saved.size(); ++b) {
+    Saved &s=saved[b]; s.nr=static_cast<NRFLD*>(vnr_[b]);
+    NRFLD *nr=s.nr;
+    Snapshot(s.u,nr->u_); Snapshot(s.gas,nr->u_gas_);
+    Snapshot(s.delta,nr->delta_u_); Snapshot(s.coeff,nr->coeff_);
+    Snapshot(s.deriv,nr->derivetive_); Snapshot(s.src,nr->src_);
+    Snapshot(s.defcoeff,nr->def_coeff_);
+    Snapshot(s.coarse_u,nr->NewtonRaphson::coarse_u_);
+    Snapshot(s.coarse_delta,nr->coarse_delta_u_);
+    if (NRFLDPrototype::SharedCoeff()) {
+      Snapshot(s.moments,nr->interface_moments_);
+      Snapshot(s.coarse_moments,nr->coarse_interface_moments_);
+    }
+    Snapshot(s.marshak,nr->pmy_block_->prfld->marshak_dface);
+    s.initialized=nr->fixed_linear_coefficients_initialized_;
+  }
+  auto restore=[&]() {
+    for (Saved &s:saved) {
+      NRFLD *nr=s.nr;
+      nr->u_=s.u; nr->u_gas_=s.gas; nr->delta_u_=s.delta;
+      nr->coeff_=s.coeff; nr->derivetive_=s.deriv; nr->src_=s.src;
+      nr->def_coeff_=s.defcoeff;
+      nr->NewtonRaphson::coarse_u_=s.coarse_u;
+      nr->coarse_delta_u_=s.coarse_delta;
+      if (NRFLDPrototype::SharedCoeff()) {
+        nr->interface_moments_=s.moments;
+        nr->coarse_interface_moments_=s.coarse_moments;
+      }
+      nr->pmy_block_->prfld->marshak_dface=s.marshak;
+      nr->fixed_linear_coefficients_initialized_=s.initialized;
+    }
+  };
+  NewtonRaphsonTaskList boundary(this,NewtonRaphsonTaskList::Mode::boundary);
+  boundary.DoTaskListOneStage(stage_);
+  for (Saved &s:saved) {
+    NRFLD *nr=s.nr;
+    nr->coeff_=s.coeff; nr->derivetive_=s.deriv;
+    nr->fixed_linear_coefficients_initialized_=true;
+    nr->CalculateCoefficients(nr->uold_,nr->u_,nr->def_coeff_,
+                              nr->coeff_,nr->derivetive_,nr->src_,dt_);
+    Snapshot(s.baseline_deriv,nr->derivetive_);
+    Snapshot(s.baseline_src,nr->src_);
+  }
+  Real amplitude=0.0;
+  for (Saved &s:saved) {
+    NRFLD *nr=s.nr; MeshBlock *mb=nr->pmy_block_;
+    Snapshot(s.baseline,nr->u_); Snapshot(s.gas_baseline,nr->u_gas_);
+    Snapshot(s.vr,nr->u_); s.vr.ZeroClear();
+    Snapshot(s.vg,nr->u_gas_); s.vg.ZeroClear();
+    const Real length=mb->pmy_mesh->mesh_size.x1max-mb->pmy_mesh->mesh_size.x1min;
+    for (int k=mb->ks;k<=mb->ke;++k)
+      for (int j=mb->js;j<=mb->je;++j)
+        for (int i=mb->is;i<=mb->ie;++i) {
+          const Real x=(mb->pcoord->x1v(i)-mb->pmy_mesh->mesh_size.x1min)/length;
+          const Real shape=0.55*std::sin(2.0*3.141592653589793*x)
+                          +0.25*std::cos(4.0*3.141592653589793*x);
+          const Real vr=actual_direction ? s.delta(k,j,i)
+                                          : s.baseline(k,j,i)*shape;
+          const Real denom=s.baseline_deriv(NewtonRaphsonFLD::dFg_deg,k,j,i);
+          const Real vg=actual_direction
+              ? -s.baseline_deriv(NewtonRaphsonFLD::dFg_dEr,k,j,i)*vr/denom
+              : 0.35*s.gas_baseline(k,j,i)*shape;
+          s.vr(k,j,i)=vr; s.vg(k,j,i)=vg;
+          amplitude=std::max(amplitude,std::abs(vr)/
+                  std::max(std::abs(s.baseline(k,j,i)),TINY_NUMBER));
+          amplitude=std::max(amplitude,std::abs(vg)/
+                  std::max(std::abs(s.gas_baseline(k,j,i)),TINY_NUMBER));
+        }
+    nr->delta_u_=s.vr;
+  }
+#ifdef MPI_PARALLEL
+  MPI_Allreduce(MPI_IN_PLACE,&amplitude,1,MPI_ATHENA_REAL,MPI_MAX,MPI_COMM_WORLD);
+#endif
+  if (amplitude==0.0 || !std::isfinite(amplitude)) {
+    restore();
+    if (Globals::my_rank==0)
+      std::cout << "[NRFLD coupled Jv skipped] reason=zero_or_invalid_direction"
+                << std::endl;
+    return;
+  }
+  for (Saved &s:saved) {
+    MeshBlock *mb=s.nr->pmy_block_;
+    for (int k=mb->ks;k<=mb->ke;++k)
+      for (int j=mb->js;j<=mb->je;++j)
+        for (int i=mb->is;i<=mb->ie;++i) {
+          s.vr(k,j,i)/=amplitude; s.vg(k,j,i)/=amplitude;
+          s.nr->delta_u_(k,j,i)=s.vr(k,j,i);
+        }
+  }
+  plmgd_->SynchronizeCorrectionBoundaries(stage_);
+  for (Saved &s:saved) s.vr=s.nr->delta_u_;
+  const auto flags=std::cout.flags(); const auto precision=std::cout.precision();
+  std::cout << std::scientific << std::setprecision(16);
+  for (int pass=0;pass<4;++pass) {
+    const Real h=global_jv_epsilon_*std::pow(0.1,pass);
+    for (Saved &s:saved) {
+      NRFLD *nr=s.nr; MeshBlock *mb=nr->pmy_block_;
+      nr->u_=s.baseline; nr->u_gas_=s.gas_baseline;
+      for (int k=mb->ks;k<=mb->ke;++k)
+        for (int j=mb->js;j<=mb->je;++j)
+          for (int i=mb->is;i<=mb->ie;++i) {
+            nr->u_(k,j,i)+=h*s.vr(k,j,i);
+            nr->u_gas_(k,j,i)+=h*s.vg(k,j,i);
+          }
+    }
+    boundary.DoTaskListOneStage(stage_);
+    // Preserve the diffusion closure and face coefficients of the production
+    // Newton solve. CalculateCoefficients still reevaluates its two residuals.
+    for (Saved &s:saved) {
+      NRFLD *nr=s.nr;
+      nr->derivetive_=s.baseline_deriv; nr->coeff_=s.coeff;
+      nr->fixed_linear_coefficients_initialized_=true;
+      nr->CalculateCoefficients(nr->uold_,nr->u_,nr->def_coeff_,
+                                nr->coeff_,nr->derivetive_,nr->src_,dt_);
+    }
+    // error^2, reference^2 for gas, radiation, Schur and the analytic
+    // full-system-vs-assembled-Schur check, split by interior/same/AMR face.
+    long double sums[4][8] = {};
+    long long counts[4] = {};
+    for (Saved &s:saved) {
+      NRFLD *nr=s.nr; MeshBlock *mb=nr->pmy_block_;
+      const Real fac=dt_/SQR(mb->pcoord->dx1f(mb->is));
+      for (int k=mb->ks;k<=mb->ke;++k)
+        for (int j=mb->js;j<=mb->je;++j)
+          for (int i=mb->is;i<=mb->ie;++i) {
+            const auto &d=s.baseline_deriv;
+            const long double vr=s.vr(k,j,i),vg=s.vg(k,j,i);
+            const long double jg=d(NewtonRaphsonFLD::dFg_deg,k,j,i)*vg
+                +d(NewtonRaphsonFLD::dFg_dEr,k,j,i)*vr;
+            long double jr=d(NewtonRaphsonFLD::dFr_deg,k,j,i)*vg
+                +d(NewtonRaphsonFLD::dFr_dEr,k,j,i)*vr;
+            long double schur=(fac*s.coeff(linearSolver::DCCF,k,j,i)
+                +s.coeff(linearSolver::DCCS,k,j,i))*vr;
+            for (int f=0;f<6;++f) {
+              const long double vn=s.vr(k+dk[f],j+dj[f],i+di[f]);
+              jr+=fac*s.coeff(cf[f],k,j,i)*vn;
+              schur+=(fac*s.coeff(cf[f],k,j,i)
+                  +s.coeff(linearSolver::DXMS+f,k,j,i))*vn;
+            }
+            const long double fdg=(nr->derivetive_(NewtonRaphsonFLD::Fg,k,j,i)
+                         -d(NewtonRaphsonFLD::Fg,k,j,i))/h;
+            const long double fdr=(nr->derivetive_(NewtonRaphsonFLD::Fr,k,j,i)
+                         -d(NewtonRaphsonFLD::Fr,k,j,i))/h;
+            const long double ratio=d(NewtonRaphsonFLD::dFr_deg,k,j,i)
+                              /d(NewtonRaphsonFLD::dFg_deg,k,j,i);
+            // Production forms Ftotal directly and src=-Ftotal+Fg/dFg_deg.
+            // Freeze the eliminated gas denominator at the baseline when
+            // differencing; separately rounded Fr and Fg lose the small
+            // Schur signal in stiff matter/radiation exchange.
+            const long double inv_base=1.0L
+                /d(NewtonRaphsonFLD::dFg_deg,k,j,i);
+            const long double inv_pert=1.0L
+                /nr->derivetive_(NewtonRaphsonFLD::dFg_deg,k,j,i);
+            const long double fg_pert=nr->derivetive_(NewtonRaphsonFLD::Fg,k,j,i);
+            const long double stable_pert=-nr->src_(k,j,i)
+                +fg_pert*(inv_pert-inv_base);
+            const long double fdschur=(stable_pert+s.baseline_src(k,j,i))/h;
+            const long double jacschur=jr-ratio*jg;
+            const long double e[4]={fdg-jg,fdr-jr,fdschur-schur,
+                                    jacschur-schur};
+            const long double ref[4]={jg,jr,schur,schur};
+            const int region=Region(mb,k,j,i);
+            for (int r : {0,region}) {
+              for (int n=0;n<4;++n) {
+                sums[r][2*n]+=e[n]*e[n];
+                sums[r][2*n+1]+=ref[n]*ref[n];
+              }
+              ++counts[r];
+              if (region==0) break;
+            }
+          }
+    }
+#ifdef MPI_PARALLEL
+    MPI_Allreduce(MPI_IN_PLACE,sums,32,MPI_LONG_DOUBLE,MPI_SUM,MPI_COMM_WORLD);
+    MPI_Allreduce(MPI_IN_PLACE,counts,4,MPI_LONG_LONG,MPI_SUM,MPI_COMM_WORLD);
+#endif
+    if (Globals::my_rank==0)
+      for (int r=0;r<4;++r) if (counts[r]) {
+        std::cout << "[NRFLD coupled Jv] direction="
+                  << (actual_direction ? "newton" : "smooth")
+                  << " epsilon=" << h << " region=" << r
+                  << " cells=" << counts[r];
+        if (actual_direction)
+          std::cout << " gas_null_fd_l2=" << std::sqrt(sums[r][0])
+                    << " gas_null_jac_l2=" << std::sqrt(sums[r][1]);
+        else
+          std::cout << " rel0=" << std::sqrt(sums[r][0]
+                        /std::max(sums[r][1],1.e-300L));
+        for (int n=1;n<4;++n)
+          std::cout << " rel" << n << "="
+                    << std::sqrt(sums[r][2*n]
+                        /std::max(sums[r][2*n+1],1.e-300L));
+        std::cout << std::endl;
+      }
+  }
+  restore();
+  std::cout.flags(flags); std::cout.precision(precision);
+}
+
 void NRFLDDriver::CheckGlobalJacobian(bool actual_direction) {
+  bool coupled=false;
+  for (auto base:vnr_) {
+    NRFLD *nr=static_cast<NRFLD*>(base);
+    FLD *fld=nr->pmy_block_->prfld;
+    coupled |= fld->is_couple && !fld->only_rad && !fld->fixed_u_rad;
+  }
+  if (coupled) {
+    bool supported=true;
+    for (auto base:vnr_) {
+      NRFLD *nr=static_cast<NRFLD*>(base);
+      FLD *fld=nr->pmy_block_->prfld;
+      supported &= fld->is_couple && !fld->only_rad && !fld->fixed_u_rad
+                   && !fld->MixedFrameCoupled() && !fld->marshak_top_boundary;
+      const bool periodic=std::all_of(nr_mesh_bcs_,nr_mesh_bcs_+6,
+          [](BoundaryFlag flag) { return flag==BoundaryFlag::periodic; });
+      const bool mach5_user_x1=nr_mesh_bcs_[0]==BoundaryFlag::user
+          && nr_mesh_bcs_[1]==BoundaryFlag::user
+          && std::all_of(nr_mesh_bcs_+2,nr_mesh_bcs_+6,
+              [](BoundaryFlag flag) { return flag==BoundaryFlag::periodic; });
+      supported &= periodic || mach5_user_x1;
+    }
+    if (!supported) {
+      std::stringstream msg;
+      msg << "coupled global_jacobian_check requires periodic Test C or "
+             "user-x1 Mach 5 without mixed drift.";
+      ATHENA_ERROR(msg);
+    }
+    CheckCoupledGlobalJacobian(actual_direction);
+    return;
+  }
   for (auto base:vnr_) {
     NRFLD *nr=static_cast<NRFLD*>(base);
     FLD *fld=nr->pmy_block_->prfld;

@@ -227,6 +227,8 @@ class MultigridDriver {
   void OneStepToCoarser(int nsmooth);
   void PrintAMROperatorMismatch(
       const std::vector<AthenaArray<Real>> &fine_before, int coarse_level);
+  void PrintOctetBlockMismatch(
+      const std::vector<AthenaArray<Real>> &fine_before, int coarse_level);
   void FMGProlongate();
   void SolveVCycle(int npresmooth, int npostsmooth);
   void SolveFMGCycle();

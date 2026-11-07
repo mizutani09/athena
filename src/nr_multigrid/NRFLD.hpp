@@ -246,6 +246,7 @@ class NRFLDDriver : public NewtonRaphsonDriver {
 
   // Single-rank, periodic, uncoupled Test C diagnostics; disabled by default.
   void CheckGlobalJacobian(bool actual_direction);
+  void CheckCoupledGlobalJacobian(bool actual_direction);
   bool global_jv_{false};
   int global_jv_iteration_{0}, global_jv_solve_{0};
   Real global_jv_epsilon_{1.e-4};
