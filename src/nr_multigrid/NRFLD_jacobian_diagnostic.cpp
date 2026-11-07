@@ -144,6 +144,9 @@ void NRFLDDriver::CheckCoupledGlobalJacobian(bool actual_direction) {
   };
   NewtonRaphsonTaskList boundary(this,NewtonRaphsonTaskList::Mode::boundary);
   boundary.DoTaskListOneStage(stage_);
+  // The production residual replaces coarse-side ghosts by the shared
+  // fine-face D and D*Er moments before evaluating the diffusion term.
+  if (NRFLDPrototype::SharedCoeff()) SyncInterfaceFaceMoments();
   for (Saved &s:saved) {
     NRFLD *nr=s.nr;
     nr->coeff_=s.coeff; nr->derivetive_=s.deriv;
@@ -233,6 +236,7 @@ void NRFLDDriver::CheckCoupledGlobalJacobian(bool actual_direction) {
           }
     }
     boundary.DoTaskListOneStage(stage_);
+    if (NRFLDPrototype::SharedCoeff()) SyncInterfaceFaceMoments();
     long double ghost_sums[2]={0.0L,0.0L};
     long long ghost_count=0;
     for (Saved &s:saved) {
