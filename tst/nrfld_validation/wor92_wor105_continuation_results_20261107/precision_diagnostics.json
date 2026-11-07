@@ -1,0 +1,83 @@
+{
+  "base_commit": "143b3403324db869b9690a2b33569252fdb5cb80",
+  "source_patch_sha256": "1160d61a4da428186df2c290faf86eba5d9722413c71b2c2bdf85bdbfd9e8a22",
+  "level_source_patch_sha256": "fdeb2f02b06326870b122ce34ac4498eb1635610f46d9ee3a5afaa03fb338bf9",
+  "initial_binary_sha256": "591a2f79652ad57ba6c3a71b7137e4a104cf3e9921a4318723e1dd8fa6036452",
+  "level_binary_sha256": "d6adaf5d9e570ccdcfe7a8746ab81bf12d60716830bc24c93fe0d6913d8edc9f",
+  "cases": [
+    {
+      "case": "precise_residual_on",
+      "log_sha256": "1b8283ba6610e001e6dbef5554a7aa3caaa381050236fa5983fd8560f8d2c6c8",
+      "standard_true_residuals": [
+        1.2189076473846429e-08,
+        3.879657772402538e-08
+      ],
+      "precise_true_residuals": [
+        1.2189076473880444e-08,
+        3.879657772399637e-08
+      ],
+      "rounded_ax_error_relative": [
+        4.616731475920033e-17,
+        5.253823571220186e-17
+      ],
+      "level_diagnostics": []
+    },
+    {
+      "case": "precise_residual_off",
+      "log_sha256": "5c8893dc99e75d71f49d3a6637ff3eda11a64badaf98dbacd72ce71c2e2a1c0e",
+      "standard_true_residuals": [
+        1.2189076473846429e-08,
+        3.879657772402538e-08
+      ],
+      "precise_true_residuals": [],
+      "rounded_ax_error_relative": [],
+      "level_diagnostics": []
+    },
+    {
+      "case": "residual_level_diag",
+      "log_sha256": "cf80daaed6225b78d5419abdb5a4cec4748347d02a22c78e4e91a1815f5adbda",
+      "standard_true_residuals": [
+        1.2189076473846429e-08,
+        3.879657772402538e-08
+      ],
+      "precise_true_residuals": [
+        1.2189076473880444e-08,
+        3.879657772399637e-08
+      ],
+      "rounded_ax_error_relative": [
+        4.616731475920033e-17,
+        5.253823571220186e-17
+      ],
+      "level_diagnostics": [
+        {
+          "level": 2,
+          "residual_relative_global": 2.7518950431085172e-09,
+          "rhs_fraction": 0.03368509161624841,
+          "edge_fraction_of_residual": 0.9980956948652033,
+          "interior_fraction_of_residual": 0.061684551482091746
+        },
+        {
+          "level": 3,
+          "residual_relative_global": 1.1874369834100304e-08,
+          "rhs_fraction": 0.9994324962711614,
+          "edge_fraction_of_residual": 0.9948422416735527,
+          "interior_fraction_of_residual": 0.10143428504179643
+        },
+        {
+          "level": 2,
+          "residual_relative_global": 1.2581255232087071e-08,
+          "rhs_fraction": 0.25702574866795774,
+          "edge_fraction_of_residual": 0.7612716390384461,
+          "interior_fraction_of_residual": 0.6484331049504781
+        },
+        {
+          "level": 3,
+          "residual_relative_global": 3.669995176947e-08,
+          "rhs_fraction": 0.9664045553088395,
+          "edge_fraction_of_residual": 0.8067310468446094,
+          "interior_fraction_of_residual": 0.5909187914231537
+        }
+      ]
+    }
+  ]
+}

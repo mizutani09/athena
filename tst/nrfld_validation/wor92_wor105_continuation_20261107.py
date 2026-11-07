@@ -34,6 +34,7 @@ CASES = [
     ("table_cfl01_strict", "table_mixed_amr_cfl01_restart40_mg2_strict", "table", .1, 40, 2, 0, 1, 2, "input_mixed_amr_cfl01_restart40_mg2_strict.used"),
     ("table_cfl005_strict", "table_mixed_amr_cfl005_restart40_mg2_strict", "table", .05, 40, 2, 0, 1, 2, "input_mixed_amr_cfl005_restart40_mg2_strict.used"),
     ("table_cfl005_4rank_strict", "table_mixed_amr_cfl005_restart40_mg2_strict_4rank", "table", .05, 40, 2, 0, 1, 4, "input_mixed_amr_cfl005_restart40_mg2_strict.used"),
+    ("table_uniform_l1_strict", "table_uniform_l1_restart40_mg2_strict", "table", .3, 40, 2, 0, 1, 2, "input_uniform_l1_restart40_mg2_strict.used"),
 ]
 
 
@@ -119,6 +120,31 @@ ax.legend()
 fig.tight_layout()
 fig.savefig(OUT / "true_residual_matrix.png", dpi=160)
 
+precise_cases = []
+for name in ("precise_residual_on", "precise_residual_off", "residual_level_diag"):
+    path = AUDIT / name / "run.log"
+    s = path.read_text(errors="replace")
+    precise = re.findall(r"\[LINEAR_FGMRES_PRECISE_RESIDUAL\][^\n]*", s)
+    standard = re.findall(r"\[LINEAR_FGMRES\][^\n]*", s)
+    levels = re.findall(r"\[LINEAR_FGMRES_RESIDUAL_LEVEL\][^\n]*", s)
+    precise_cases.append(dict(case=name, log_sha256=sha(path),
+        standard_true_residuals=[field(x, "relative_residual") for x in standard],
+        precise_true_residuals=[field(x, "relative") for x in precise],
+        rounded_ax_error_relative=[field(x, "rounded_ax_error_relative") for x in precise],
+        level_diagnostics=[dict(level=field(x, "level", int),
+            residual_relative_global=field(x, "residual_relative_global"),
+            rhs_fraction=field(x, "rhs_fraction"),
+            edge_fraction_of_residual=field(x, "edge_fraction_of_residual"),
+            interior_fraction_of_residual=field(x, "interior_fraction_of_residual"))
+            for x in levels]))
+(OUT / "precision_diagnostics.json").write_text(
+    json.dumps(dict(base_commit="143b3403324db869b9690a2b33569252fdb5cb80",
+                    source_patch_sha256=sha(AUDIT / "source_precise_residual_trial.patch"),
+                    level_source_patch_sha256=sha(AUDIT / "source_level_breakdown_trial.patch"),
+                    initial_binary_sha256="591a2f79652ad57ba6c3a71b7137e4a104cf3e9921a4318723e1dd8fa6036452",
+                    level_binary_sha256="d6adaf5d9e570ccdcfe7a8746ab81bf12d60716830bc24c93fe0d6913d8edc9f",
+                    cases=precise_cases), indent=2) + "\n")
+
 # Preserve the compact raw evidence with the pushed report. Large simulation
 # output remains in the isolated local artifact directory.
 with tarfile.open(OUT / "logs_inputs.tar.gz", "w:gz") as archive:
@@ -126,6 +152,8 @@ with tarfile.open(OUT / "logs_inputs.tar.gz", "w:gz") as archive:
     paths.add(ROOT / "source_integration.patch")
     paths.add(AUDIT / "input_ideal_onecycle.used")
     paths.add(AUDIT / "source_trial.patch")
+    paths.add(AUDIT / "source_precise_residual_trial.patch")
+    paths.add(AUDIT / "source_level_breakdown_trial.patch")
     for row in rows:
         directory = Path(row["directory"])
         paths.add(directory / "run.log")
@@ -133,6 +161,9 @@ with tarfile.open(OUT / "logs_inputs.tar.gz", "w:gz") as archive:
     paths.add(ROOT / "table_mixed_amr_tangent_restart40_mg2_ledger" / "run.log")
     paths.add(ROOT / "table_mixed_amr_tangent_restart40_mg2_ledger" /
               "ledger_audit" / "summary.json")
+    for name in ("precise_residual_on", "precise_residual_off", "residual_level_diag"):
+        paths.add(AUDIT / name / "run.log")
+        paths.add(AUDIT / name / "status.txt")
     for path in sorted(paths):
         if path.exists():
             prefix = "audit" if AUDIT in path.parents else "trial"

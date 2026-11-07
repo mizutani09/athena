@@ -60,6 +60,7 @@ not first-core formation.
 | Table, CFL 0.1, restart 40, MG2, strict | fails cycle 1 | 4 | 2.261e-8 | 0 |
 | Table, CFL 0.05, restart 40, MG2, strict, 2 ranks | 3 | 6 | 1.981e-8 | 0 |
 | Table, same, 4 ranks | 3 | 6 | 1.981e-8 | 0 |
+| Table, all level-1 leaves, restart 40, MG2, strict | fails cycle 0 | 2 | 9.119e-8 | 0 |
 
 All completed cases also met the configured Newton criterion. CFL 0.05
 had first `dt=5.185803318` and reached `t=15.402771269`; 2 and 4 ranks
@@ -100,6 +101,34 @@ The old route's first-cycle sum was `-2.78088e8`. These are substantial
 improvements but not roundoff-level conservation, and the current parser
 only pairs x1 faces. Full 3D and clean per-rank logging remain required.
 
+## Precision and mesh-localization follow-up
+
+An isolated diagnostic build on the WOR-25 audit branch recomputed the final
+flux-form `Ax` row in long double before subtracting it from `b`; its
+acceptance gate was unchanged. With the strict table CFL-0.3 input, the
+second FGMRES solve remained at 300 iterations. The normal true residual
+was `3.8796577724025381e-8`; the higher-precision final evaluation was
+`3.8796577723996370e-8`. Rounding `Ax` to `Real` contributed only
+`5.25382e-17` relative to the RHS norm. Diagnostic ON/OFF gave identical
+iterations and normal residuals. Final `Ax` rounding alone therefore does
+not explain the plateau. The tiny local-stencil backward-error proxy
+`3.08639e-15` instead reflects a different row-scaled criterion and does
+not cover an assembled AMR global row.
+
+The failed solve's level-2 and level-3 contributions to the global true
+residual were `1.25813e-8` and `3.67000e-8`; level 3 contributes about
+89.5% of the squared norm. Block-edge cells account for about 65.1% of
+the level-3 squared residual, leaving 34.9% in block interiors. These are
+block edges, including same-level and physical boundaries, rather than a
+specific coarse/fine classification.
+
+A second controlled run changed only the meshblock from 8³ to 16³, yielding
+64 level-1 leaf blocks and **no coarse/fine leaf face**, with the same
+table physics, CFL 0.3, restart 40, MG2 and strict gate. It still failed
+the second solve at `9.1188031e-8` after 300 iterations. Thus a coarse/fine
+face is not necessary for this precision-limited failure. The smaller
+8³ mixed-level case remains the better reproducer for combined AMR checks.
+
 ## Reproduce and next experiments
 
 Full logs, exact inputs, source patch and isolated builds are under
@@ -111,6 +140,9 @@ The companion [CSV](wor92_wor105_continuation_results_20261107/runs.csv),
 and [compressed raw logs/inputs](wor92_wor105_continuation_results_20261107/logs_inputs.tar.gz)
 are generated with
 `python3 tst/nrfld_validation/wor92_wor105_continuation_20261107.py`.
+The [precision/level JSON](wor92_wor105_continuation_results_20261107/precision_diagnostics.json)
+records the diagnostic binary and source-patch hashes. The archive contains
+both high-precision diagnostic patches and their ON/OFF logs.
 Each record contains the exact input and log SHA-256. The prior report
 contains the configure/build commands. Representative run from the bundle
 directory (relative table paths resolve there):
@@ -130,11 +162,11 @@ env ATHENA_NRFLD_CONSERVATIVE_PROTOTYPE=1 \
 ```
 
 The next useful work is to inspect the precision-limited solve using an
-assembled AMR-aware componentwise backward error and repeat the true residual
-with higher-precision accumulation, while logging per-rank boundaries
-without MPI stdout interleaving. Compare MG correction/error modes at
-restart 10 and 40; test CFL 0.1 and 0.3 after a targeted numerical change,
-then rerun full 3D conservation, regrid/restart and longer Newton regression.
+assembled AMR-aware componentwise backward error, while logging per-rank
+boundaries without MPI stdout interleaving. Compare MG correction/error
+modes at restart 10 and 40; test CFL 0.1 and 0.3 after a targeted numerical
+change, then rerun full 3D conservation, regrid/restart and longer Newton
+regression.
 The Semenov/Optab opacity-definition difference remains a separate physical
 model issue. WOR-92 remains **In Progress**; CFL 0.3 strict convergence and
 protostellar production readiness are unproven. No XD2000 job was run.
