@@ -8,6 +8,7 @@ import datetime as dt
 import html
 import json
 import os
+import statistics
 from pathlib import Path
 
 import matplotlib
@@ -111,10 +112,24 @@ def main() -> None:
                 f"<td>{item['vertical_crossing_times']:.2f}</td></tr>")
 
     last = rows[-1]
+    last_run = Path(report["source_runs"][-1])
+    surface = json.loads((last_run / "surface3d.json").read_text())["records"][-1]
+    last_link = html.escape(os.path.relpath(last_run / "index.html", output))
+    surface_image = html.escape(os.path.relpath(
+        last_run / "imgs" / "simple_convection_surface3d_last.png", output))
+    flux_image = html.escape(os.path.relpath(
+        last_run / "imgs" / "simple_convection_flux3d.png", output))
     offset = last["entropy_cgs"] - base
     cap_remaining = cap - (last["next_entropy_cgs"] - base)
     generated = dt.datetime.now(dt.timezone(dt.timedelta(hours=9))).strftime(
         "%Y-%m-%d %H:%M JST")
+    target = state["config"]["target_time_code"]
+    recent_wall = [item["total_wall_seconds"] for item in rows[-20:]]
+    remaining_segments = max(0, (target - args.through_time)
+                             / state["config"]["segment_code"])
+    eta = (dt.datetime.now(dt.timezone(dt.timedelta(hours=9)))
+           + dt.timedelta(seconds=remaining_segments*statistics.median(recent_wall)))
+    eta_text = eta.strftime("%Y-%m-%d %H:%M JST")
     verdict = ("太陽流束の基準は未達" if not report["stationarity_candidate"]
                else "定常性の暫定基準を通過")
     page = f"""<!doctype html><html lang='ja'><meta charset='utf-8'>
@@ -128,12 +143,13 @@ img,video{{max-width:100%;width:100%}}figure{{margin:1.5rem 0}}
 figcaption{{font-weight:bold}}</style>
 <h1>太陽対流・流入エントロピー制御の途中経過</h1>
 <p><strong>確定済みの t=5000～{args.through_time:.0f} を解析</strong>。
-作成時刻 {generated}。計算は t=20000 を目標に継続中です。</p>
+作成時刻 {generated}。計算は t={target:.0f} を目標に継続中です。
+直近20区間の実測速度を延長した終了目安は {eta_text} です。</p>
 <p class='status'>{verdict}：直近の上端流束は約
 {late['top_total_flux_over_solar']:.3f} F<sub>sun</sub> で、合格範囲
 0.9～1.1 F<sub>sun</sub> には届いていません。</p>
-<p>直近2つの1000コード時間窓では、流束と蓄熱率は以下の通りです。
-各窓は約8.7回の鉛直横断時間に相当します。</p>
+<p>終端側の2つの窓では、流束と蓄熱率は以下の通りです。
+各窓の長さと鉛直横断回数は表に示します。</p>
 <table><thead><tr><th>窓</th><th>コード時間</th><th>上端 / Fsun</th>
 <th>下端 hydro / Fsun</th><th>蓄熱傾き / Fsun</th><th>鉛直横断回数</th>
 </tr></thead><tbody>{row('前半', early)}{row('後半', late)}</tbody></table>
@@ -147,6 +163,14 @@ erg g<sup>−1</sup> K<sup>−1</sup>。次の更新を含めても、累積上�
 上端流束への長期応答はまだ確定していません。</p>
 <h2>流束・蓄熱・制御の履歴</h2><img src='controller.png' alt='Controller history'>
 <h2>計算の空間分布</h2>{''.join(movie_cards)}
+<p>最後の完了時刻 t={surface['time_code']:.0f} では、3D 光学的厚さ τ=2/3 面の
+平均温度は {surface['T_tau23_mean_K']:.0f} K、鉛直速度 RMS は
+{surface['vz_tau23_rms_km_s']:.2f} km/s です。
+<a href='{last_link}'>この区間の詳細</a>。</p>
+<figure><img src='{surface_image}' alt='Final optical-depth surface'>
+<figcaption>直近の光球面</figcaption></figure>
+<figure><img src='{flux_image}' alt='Final vertical energy-flux profiles'>
+<figcaption>直近の鉛直エネルギー流束分布。内部セル中心の再構成値です。</figcaption></figure>
 <h2>詳細</h2><p><a href='index.html'>結合した収支判定と各区間へのリンク</a> ·
 <a href='history.png'>全履歴の図</a> ·
 <a href='energy_budget.png'>エネルギー収支の図</a> ·

@@ -321,3 +321,29 @@ hydro flux by `0.322 F_sun` and the differential stored-energy rate by
 `-0.0000018 F_sun`. This checks the boundary response and illustrates the
 thermal lag; it is not a steady calibration. The short-run analyzer now skips
 the time-averaged 3D profile only when fewer than two volume snapshots exist.
+
+## Local feedback continuation: t=21200 interim snapshot (2026-11-08)
+
+The 16-rank rolling-500 feedback run continues toward `t=40000` under
+`/mnt/d/output/rad/wor74_feedback_20261106/from_t5000_96km_rolling500_t20000/`.
+The completed-prefix report through `t=21200` is
+`interim_t5000_21200/overview.html`; its detailed companion is `index.html`.
+Both embed three 120-frame movies of the last `t≈19200–21200`: an xz slice
+with the optical-depth-one contour, an xy slice with raw vertical velocity,
+and an xy slice with the plane mean removed. The report also shows the
+controller, boundary-flux/energy ledger, last photospheric surface, and
+vertical energy-flux profile. `state_snapshot.json` fixes the exact set of
+completed segments used for the report, excluding the live segment.
+
+The two late ≈4050-code-time windows were `t=13100–17150` and
+`17150–21200`. Their top fluxes were `0.62896` and `0.62920 F_sun`, lower
+hydro fluxes `0.63490` and `0.63539 F_sun`, and stored-energy trends
+`+0.00662` and `+0.00648 F_sun`. Every one of 231,924 reported Newton
+solves converged; no slow-MG warnings or fatal errors occurred. The only
+failed stationarity screen is the target-solar-flux check. At `t=21200`,
+the 3D τ=2/3 mean gas temperature was ≈5181 K and its vertical velocity
+RMS ≈1.19 km/s. The cumulative applied inflow-entropy increase was
+≈2.16×10^6 erg g^-1 K^-1, below the widened 5×10^6 limit. A solar-flux
+response after full thermal equilibration of each applied entropy increment
+is not yet established. Continue to `t=40000` and reassess the same
+long-window criteria without stopping the running driver.
