@@ -186,7 +186,10 @@ increase the cap.
 
 Exact batch scripts, `experimental.patch`, `sacct.txt`, double-precision
 restart comparison JSON, 3D face audit JSON and the audit scripts accompany
-this report. The compact launcher/provenance/history archive is
+this report. The compact launcher/provenance/history archives are
+`wor92_adaptive_inexact_jobs_337871_337890.tar.gz` (SHA-256
+`548150b63aff347de37e824f3ac00af7a6d5e0e644d099926a6f74b535081fc7`)
+and
 `wor92_adaptive_inexact_jobs_337892_337922.tar.gz` (SHA-256
 `696aafe44f7aa2cbba755f09a49ee1daf1ce1078a10f82c7edfdab1734dae2b7`).
 The full restarts remain at their immutable XD job paths and in the isolated
