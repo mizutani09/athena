@@ -54,6 +54,12 @@ inline bool SharedCoeff() {
                                     DefaultEnabled());
 }
 
+inline bool CenteredFaceTrial() {
+  return SharedCoeff() && ((Mode().test_c
+      && Flag("ATHENA_NRFLD_CENTERED_FACE_TRIAL"))
+      || Flag("ATHENA_WOR92_CENTERED_FACE_TRIAL"));
+}
+
 inline bool TangentialReconstruction() {
   return Enabled() && FlagOrDefault(
       "ATHENA_NRFLD_EXPERIMENTAL_TANGENTIAL_RECONSTRUCTION", DefaultEnabled());

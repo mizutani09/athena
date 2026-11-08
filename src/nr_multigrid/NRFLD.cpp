@@ -369,9 +369,11 @@ void NRFLDDriver::SyncInterfaceFaceMoments() {
   // refluxes their difference from the coarse flux during an implicit
   // update.  Athena++ advances all AMR levels at one time here, so the
   // composite residual can use that fine-face flux immediately: each fine
-  // face sends D and D*Er, and restriction averages the four subfaces.
-  // The coarse row then evaluates the same area-integrated flux with the
-  // opposite sign.  This exchange also works across MPI ranks.
+  // face sends D and D*(Er-tangential offset), and restriction averages
+  // the four subfaces.
+  // The centered-face trial instead sends D*(Er-offset-coarse reference),
+  // so coarse and fine rows evaluate the same small face difference.
+  // This exchange also works across MPI ranks.
   for (NewtonRaphson *base : vnr_) {
     NRFLD *nr = static_cast<NRFLD*>(base);
     MeshBlock *mb = nr->pmy_block_;
@@ -381,6 +383,10 @@ void NRFLDDriver::SyncInterfaceFaceMoments() {
         mb->pbval->nblevel[1][1][0]<level,mb->pbval->nblevel[1][1][2]<level,
         mb->pbval->nblevel[1][0][1]<level,mb->pbval->nblevel[1][2][1]<level,
         mb->pbval->nblevel[0][1][1]<level,mb->pbval->nblevel[2][1][1]<level};
+    const int moment_neighbor_level[6]={
+        mb->pbval->nblevel[1][1][0],mb->pbval->nblevel[1][1][2],
+        mb->pbval->nblevel[1][0][1],mb->pbval->nblevel[1][2][1],
+        mb->pbval->nblevel[0][1][1],mb->pbval->nblevel[2][1][1]};
     for (int k=mb->ks; k<=mb->ke; ++k)
       for (int j=mb->js; j<=mb->je; ++j)
         for (int i=mb->is; i<=mb->ie; ++i)
@@ -395,7 +401,18 @@ void NRFLDDriver::SyncInterfaceFaceMoments() {
                 ? NRFLDFaceReconstruction::TangentialOffset(
                     nr->u_,0,mb,face,k,j,i) : 0.0;
             moment(2*face,k,j,i) = d;
-            moment(2*face+1,k,j,i) = d*(nr->u_(k,j,i)-correction);
+            if (NRFLDPrototype::CenteredFaceTrial() && coarser[face]
+                && moment_neighbor_level[face]>=0
+                && at_face) {
+              const Real coarse_ref=NRFLDFaceReconstruction::CoarseReference(
+                  nr->NewtonRaphson::coarse_u_,mb,face,k,j,i);
+              moment(2*face+1,k,j,i) = static_cast<Real>(
+                  static_cast<long double>(d)
+                  * ((static_cast<long double>(nr->u_(k,j,i))-correction)
+                      -coarse_ref));
+            } else {
+              moment(2*face+1,k,j,i) = d*(nr->u_(k,j,i)-correction);
+            }
           }
     nr->interface_bvar_->StartReceiving(BoundaryCommSubset::all);
   }
@@ -464,11 +481,68 @@ void NRFLDDriver::SyncInterfaceFaceMoments() {
                   << i << ") D=" << dbar << " DE=" << debar;
               ATHENA_ERROR(msg);
             }
-            nr->u_(gk,gj,gi) = debar/dbar;
+            nr->u_(gk,gj,gi) = NRFLDPrototype::CenteredFaceTrial()
+                ? nr->u_(k,j,i)+debar/dbar : debar/dbar;
             nr->derivetive_(NewtonRaphsonFLD::dFr_dEr_xm+face,k,j,i)
                 = (4.0/3.0)*dbar;
           }
         }
+  }
+}
+
+void NRFLDDriver::SyncCorrectionFaceMoments() {
+  if (!NRFLDPrototype::CenteredFaceTrial()) return;
+  // FGMRES uses the same shifted face difference for a correction vector.
+  // The Newton driver restores state moments after applying the correction.
+  for (NewtonRaphson *base : vnr_) {
+    NRFLD *nr=static_cast<NRFLD*>(base);
+    MeshBlock *mb=nr->pmy_block_;
+    AthenaArray<Real> &moment=nr->interface_moments_;
+    const AthenaArray<Real> &delta=nr->delta_u_;
+    const AthenaArray<Real> &coeff=nr->coeff_;
+    const int level=mb->loc.level;
+    const int neighbor_level[6]={
+        mb->pbval->nblevel[1][1][0],mb->pbval->nblevel[1][1][2],
+        mb->pbval->nblevel[1][0][1],mb->pbval->nblevel[1][2][1],
+        mb->pbval->nblevel[0][1][1],mb->pbval->nblevel[2][1][1]};
+    for (int k=mb->ks; k<=mb->ke; ++k)
+      for (int j=mb->js; j<=mb->je; ++j)
+        for (int i=mb->is; i<=mb->ie; ++i)
+          for (int face=0; face<6; ++face) {
+            const Real d=-coeff(linearSolver::DXMF+face,k,j,i);
+            moment(2*face,k,j,i)=d;
+            const bool at_face=(face<2 ? (face==0 ? i==mb->is : i==mb->ie)
+                : face<4 ? (face==2 ? j==mb->js : j==mb->je)
+                : (face==4 ? k==mb->ks : k==mb->ke));
+            if (neighbor_level[face]>=0 && neighbor_level[face]<level && at_face) {
+              const Real offset=NRFLDPrototype::TangentialReconstruction()
+                  ? NRFLDFaceReconstruction::TangentialOffset(
+                      delta,0,mb,face,k,j,i) : 0.0;
+              const Real coarse_ref=NRFLDFaceReconstruction::CoarseReference(
+                  nr->coarse_delta_u_,mb,face,k,j,i);
+              moment(2*face+1,k,j,i)=static_cast<Real>(
+                  static_cast<long double>(d)
+                  * ((static_cast<long double>(delta(k,j,i))-offset)
+                      -coarse_ref));
+            } else {
+              moment(2*face+1,k,j,i)=0.0;
+            }
+          }
+    nr->interface_bvar_->StartReceiving(BoundaryCommSubset::all);
+  }
+  for (NewtonRaphson *base : vnr_)
+    static_cast<NRFLD*>(base)->interface_bvar_->SendBoundaryBuffers();
+  bool complete=false;
+  while (!complete) {
+    complete=true;
+    for (NewtonRaphson *base : vnr_)
+      complete &= static_cast<NRFLD*>(base)->interface_bvar_
+          ->ReceiveBoundaryBuffers();
+  }
+  for (NewtonRaphson *base : vnr_) {
+    NRFLD *nr=static_cast<NRFLD*>(base);
+    nr->interface_bvar_->SetBoundaries();
+    nr->interface_bvar_->ClearBoundary(BoundaryCommSubset::all);
   }
 }
 
@@ -512,7 +586,9 @@ void NRFLDDriver::RunCommittedDiagnostic() {
                     fld,face,k,j,i,center,dx,nullptr)*dx;
                 boundary_sum += face_term;
               } else {
-                face_term = face_coeff[face]*(neighbor[face]-center);
+                face_term = nr->CenteredInterfaceFaceTerm(
+                    nr->u_,face_coeff[face],neighbor[face],center,
+                    face,k,j,i);
               }
               face_sum += face_term;
               if (interface_ledger &&
@@ -1161,6 +1237,34 @@ void NRFLD::CalculateCoefficientsOnce(const AthenaArray<Real> &u_pre,
   }
 }
 
+long double NRFLD::CenteredInterfaceFaceTerm(const AthenaArray<Real> &state,
+                                     Real coefficient, Real neighbor, Real center,
+                                     int face, int k, int j, int i) const {
+  if (!NRFLDPrototype::CenteredFaceTrial())
+    return coefficient*(neighbor-center);
+  MeshBlock *mb=pmy_block_;
+  const bool at_face[6]={i==mb->is,i==mb->ie,j==mb->js,j==mb->je,
+                         k==mb->ks,k==mb->ke};
+  if (!at_face[face]) return coefficient*(neighbor-center);
+  const int neighbor_level[6]={
+      mb->pbval->nblevel[1][1][0],mb->pbval->nblevel[1][1][2],
+      mb->pbval->nblevel[1][0][1],mb->pbval->nblevel[1][2][1],
+      mb->pbval->nblevel[0][1][1],mb->pbval->nblevel[2][1][1]};
+  if (neighbor_level[face]<0)
+    return coefficient*(neighbor-center);
+  if (neighbor_level[face] < mb->loc.level) {
+    return -2.0L/3.0L * interface_moments_(2*face+1,k,j,i);
+  }
+  if (neighbor_level[face] > mb->loc.level) {
+    const int gi=i+(face==0 ? -1 : face==1 ? 1 : 0);
+    const int gj=j+(face==2 ? -1 : face==3 ? 1 : 0);
+    const int gk=k+(face==4 ? -1 : face==5 ? 1 : 0);
+    return 4.0L/3.0L
+        * interface_moments_(2*(face^1)+1,gk,gj,gi);
+  }
+  return coefficient*(neighbor-center);
+}
+
 void NRFLD::CalculateCoefficients(const AthenaArray<Real> &u_rad_old,
                                   const AthenaArray<Real> &u_rad_new,
                                   // const AthenaArray<Real> &u_gas_old,
@@ -1230,7 +1334,9 @@ void NRFLD::CalculateCoefficients(const AthenaArray<Real> &u_rad_old,
             diff_term -= MarshakFlux(pfld, face,k,j,i,center,dx,&derivative)*dx;
             marshak_dflux_sum += derivative;
           } else {
-            diff_term += face_coeff[face]*(neighbor[face] - center);
+            diff_term += CenteredInterfaceFaceTerm(
+                u_rad_new,face_coeff[face],neighbor[face],center,
+                face,k,j,i);
           }
         }
         diff_term *= idx2;
@@ -1506,7 +1612,9 @@ void NRFLD::CalculateDefect(AthenaArray<Real> &def, const AthenaArray<Real> &u,
             face_term = -MarshakFlux(
                 pfld,face,k,j,i,center,dx,nullptr)*dx;
           } else {
-            face_term = matrix_face[face]*(neighbor[face]-center);
+            face_term = CenteredInterfaceFaceTerm(
+                u,matrix_face[face],neighbor[face],center,
+                face,k,j,i);
           }
           diff_term += face_term;
           diff_abs_term += std::abs(face_term);

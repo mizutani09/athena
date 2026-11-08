@@ -30,6 +30,7 @@
 #include "../../hydro/hydro.hpp"
 #include "../../linear_solver/linear_solver.hpp"
 #include "../../mesh/mesh.hpp"
+#include "../../nr_multigrid/NRFLD.hpp"
 #include "../../parameter_input.hpp"
 #include "../../task_list/linmg_task_list.hpp"
 #include "../../utils/nrfld_prototype_flags.hpp"
@@ -179,6 +180,7 @@ linearMGDriver::linearMGDriver(Mesh *pm, ParameterInput *pin, NewtonRaphsonDrive
     ATHENA_ERROR(msg);
   }
   fgmres_threshold_ = pin->GetOrAddReal("nrfld", "fgmres_threshold", 1.0e-8);
+  fgmres_roundoff_cap_ = pin->GetOrAddReal("nrfld", "fgmres_roundoff_cap", 0.0);
   fgmres_precision_floor_factor_ = pin->GetOrAddReal(
       "nrfld", "fgmres_precision_floor_factor", 0.0);
   fgmres_flux_form_matvec_ = pin->GetOrAddBoolean(
@@ -224,12 +226,17 @@ linearMGDriver::linearMGDriver(Mesh *pm, ParameterInput *pin, NewtonRaphsonDrive
       || !std::isfinite(uniform_pcg_threshold_)
       || uniform_pcg_max_iterations_ <= 0
       || !(fgmres_threshold_ > 0.0) || !std::isfinite(fgmres_threshold_)
+      || !std::isfinite(fgmres_roundoff_cap_) || fgmres_roundoff_cap_ < 0.0
+      || (fgmres_roundoff_cap_ > 0.0
+          && (fgmres_roundoff_cap_ < fgmres_threshold_
+              || fgmres_roundoff_cap_ > 10.0*fgmres_threshold_))
       || fgmres_restart_ <= 0 || fgmres_max_iterations_ <= 0
       || fgmres_mg_vcycles_ <= 0) {
     std::stringstream msg;
     msg << "### FATAL ERROR in linearMGDriver::linearMGDriver" << std::endl
         << "Krylov thresholds must be finite and positive, and iteration, "
-        << "restart, and MG V-cycle counts must be positive." << std::endl;
+        << "restart, and MG V-cycle counts must be positive. The opt-in "
+        << "roundoff cap must lie in [target, 10*target]." << std::endl;
     ATHENA_ERROR(msg);
   }
   cache_coefficient_hierarchy_ =
@@ -1409,6 +1416,9 @@ void linearMGDriver::SolveFGMRES(int stage) {
   };
   auto apply_operator = [&](const BlockVector &x, BlockVector &y) {
     load_delta(x);
+    if (NRFLDPrototype::CenteredFaceTrial())
+      static_cast<NRFLDDriver*>(static_cast<linearMG*>(vmg_.front())
+          ->pnr_->pmy_driver_)->SyncCorrectionFaceMoments();
     if (NRFLDPrototype::Enabled() && NRFLDPrototype::DifferenceJv()) {
       // A secant of the frozen-coefficient radiation residual.  The Newton
       // state and Krylov direction already have identical coarse/fine ghost
@@ -1460,6 +1470,27 @@ void linearMGDriver::SolveFGMRES(int stage) {
       for (int k = pmb->ks; k <= pmb->ke; ++k) {
         for (int j = pmb->js; j <= pmb->je; ++j) {
           for (int i = pmb->is; i <= pmb->ie; ++i) {
+            if (NRFLDPrototype::CenteredFaceTrial()) {
+              const long double center = delta(k,j,i);
+              long double face_sum = coeff(linearSolver::DCCF,k,j,i);
+              long double centered_value = static_cast<long double>(
+                  coeff(linearSolver::DCCS,k,j,i))*center;
+              const long double neighbor[6] = {
+                  delta(k,j,i-1),delta(k,j,i+1),delta(k,j-1,i),
+                  delta(k,j+1,i),delta(k-1,j,i),delta(k+1,j,i)};
+              for (int face = 0; face < 6; ++face) {
+                const long double flux = coeff(linearSolver::DXMF+face,k,j,i);
+                face_sum += flux;
+                centered_value -= static_cast<long double>(fac)
+                    *static_cast<NRFLD*>(pmg->pnr_)->CenteredInterfaceFaceTerm(
+                        delta,-flux,neighbor[face],center,face,k,j,i);
+                centered_value += static_cast<long double>(
+                    coeff(linearSolver::DXMS+face,k,j,i))*neighbor[face];
+              }
+              centered_value += static_cast<long double>(fac)*face_sum*center;
+              at(y,b,k,j,i) = static_cast<Real>(centered_value);
+              continue;
+            }
             Real value = (fac*coeff(linearSolver::DCCF,k,j,i)
                          + coeff(linearSolver::DCCS,k,j,i))*delta(k,j,i);
             value += (fac*coeff(linearSolver::DXMF,k,j,i)
@@ -1680,6 +1711,10 @@ void linearMGDriver::SolveFGMRES(int stage) {
   Real relative_residual = static_cast<Real>(beta/bnorm);
   int total_iterations = 0;
   bool breakdown = false;
+  bool roundoff_accepted = false;
+  long double accepted_predicted_rel = 0.0L;
+  long double accepted_gap_rel = 0.0L;
+  long double accepted_closure_rel = 0.0L;
   // Optional WOR-92 experiment: stop an unproductive restarted Krylov solve
   // only after independently checking the true residual against the bounded
   // inexact-Newton cap.  The default path is unchanged.
@@ -1788,12 +1823,62 @@ void linearMGDriver::SolveFGMRES(int stage) {
       }
       y[row] = value/diag;
     }
+    const bool audit_roundoff = fgmres_roundoff_cap_ > 0.0;
+    BlockVector x_before, requested, r_before, a_requested, update_gap, a_gap;
+    if (audit_roundoff) {
+      x_before = make_vector(); requested = make_vector();
+      r_before = make_vector(); a_requested = make_vector();
+      update_gap = make_vector(); a_gap = make_vector();
+      copy(x_before, x);
+      copy(r_before, r);
+      for (int j = 0; j < used; ++j) axpy(requested, y[j], z[j]);
+    }
     for (int j = 0; j < used; ++j) axpy(x, y[j], z[j]);
+    long double predicted_rel = 0.0L, amplified_gap_rel = 0.0L;
+    if (audit_roundoff) {
+      for (std::size_t block = 0; block < x.size(); ++block) {
+        MeshBlock *pmb = static_cast<linearMG*>(vmg_[block])->pmy_block_;
+        for (int k = pmb->ks; k <= pmb->ke; ++k)
+          for (int j = pmb->js; j <= pmb->je; ++j)
+            for (int i = pmb->is; i <= pmb->ie; ++i) {
+              const long double wanted = cat(requested,block,k,j,i);
+              const long double realized = static_cast<long double>(
+                  cat(x,block,k,j,i)) - cat(x_before,block,k,j,i);
+              at(update_gap,block,k,j,i) = static_cast<Real>(wanted-realized);
+            }
+      }
+      apply_operator(requested, a_requested);
+      apply_operator(update_gap, a_gap);
+      axpy(r_before, -1.0, a_requested);
+      predicted_rel = norm(r_before)/bnorm;
+      amplified_gap_rel = norm(a_gap)/bnorm;
+    }
     apply_operator(x, ax);
     copy(r,b);
     axpy(r, -1.0, ax);
     beta = norm(r);
     relative_residual = static_cast<Real>(beta/bnorm);
+    if (audit_roundoff && !breakdown && std::isfinite(relative_residual)) {
+      BlockVector closure = make_vector();
+      copy(closure, r);
+      axpy(closure, -1.0, r_before);
+      axpy(closure, -1.0, a_gap);
+      const long double closure_rel = norm(closure)/bnorm;
+      const bool projected_ok = std::abs(g[used])/bnorm <= fgmres_threshold_;
+      if (relative_residual > fgmres_threshold_
+          && relative_residual <= fgmres_roundoff_cap_
+          && projected_ok && predicted_rel <= fgmres_threshold_
+          && amplified_gap_rel >= 0.5L*relative_residual
+          && closure_rel <= 0.25L*relative_residual
+          && std::isfinite(predicted_rel)
+          && std::isfinite(amplified_gap_rel)
+          && std::isfinite(closure_rel)) {
+        roundoff_accepted = true;
+        accepted_predicted_rel = predicted_rel;
+        accepted_gap_rel = amplified_gap_rel;
+        accepted_closure_rel = closure_rel;
+      }
+    }
     if (stagnation_enabled && !breakdown) {
       const Real progress_ratio = relative_residual/previous_true_residual;
       if (Globals::my_rank == 0) {
@@ -1812,6 +1897,7 @@ void linearMGDriver::SolveFGMRES(int stage) {
       previous_true_residual = relative_residual;
     }
     if (breakdown) break;
+    if (roundoff_accepted) break;
     if (stagnation_stop) break;
   }
   Real componentwise_backward_error_max = 0.0;
@@ -1885,6 +1971,11 @@ void linearMGDriver::SolveFGMRES(int stage) {
               << " inexact_accept=" << inexact_accept
               << " inexact_cap=" << inexact_cap
               << " stagnation_stop=" << stagnation_stop
+              << " roundoff_accepted=" << roundoff_accepted
+              << " roundoff_cap=" << fgmres_roundoff_cap_
+              << " roundoff_predicted_rel=" << accepted_predicted_rel
+              << " roundoff_gap_rel=" << accepted_gap_rel
+              << " roundoff_closure_rel=" << accepted_closure_rel
               << " breakdown=" << breakdown << std::endl;
     if (fgmres_backward_error_diagnostics_)
       std::cout << "[LINEAR_FGMRES_BACKWARD] local_stencil_eta_max="
@@ -1892,7 +1983,8 @@ void linearMGDriver::SolveFGMRES(int stage) {
                 << " note=AMR_ghosts_are_interpolated" << std::endl;
   }
   if (breakdown || (!(relative_residual <= fgmres_threshold_)
-                    && !precision_floor_accept && !inexact_accept)
+                    && !precision_floor_accept && !inexact_accept
+                    && !roundoff_accepted)
       || !std::isfinite(relative_residual)) {
     std::stringstream msg;
     msg << "### FATAL ERROR in linearMGDriver::SolveFGMRES" << std::endl

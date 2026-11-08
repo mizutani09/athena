@@ -181,7 +181,8 @@ AthenaArray<T>::~AthenaArray() {
 // copy constructor (does a deep copy)
 
 template<typename T>
-__attribute__((nothrow)) AthenaArray<T>::AthenaArray(const AthenaArray<T>& src) {
+__attribute__((nothrow)) AthenaArray<T>::AthenaArray(const AthenaArray<T>& src)
+    : pdata_(nullptr), state_(DataStatus::empty) {
   nx1_ = src.nx1_;
   nx2_ = src.nx2_;
   nx3_ = src.nx3_;
@@ -223,7 +224,8 @@ AthenaArray<T> &AthenaArray<T>::operator= (const AthenaArray<T> &src) {
 
 // move constructor
 template<typename T>
-__attribute__((nothrow)) AthenaArray<T>::AthenaArray(AthenaArray<T>&& src) {
+__attribute__((nothrow)) AthenaArray<T>::AthenaArray(AthenaArray<T>&& src)
+    : pdata_(nullptr), state_(DataStatus::empty) {
   nx1_ = src.nx1_;
   nx2_ = src.nx2_;
   nx3_ = src.nx3_;
