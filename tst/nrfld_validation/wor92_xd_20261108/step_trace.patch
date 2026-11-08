@@ -1,0 +1,146 @@
+--- a/src/linear_solver/linearMG/linearMG.cpp
++++ b/src/linear_solver/linearMG/linearMG.cpp
+@@ -1774,12 +1774,143 @@
+       }
+       y[row] = value/diag;
+     }
++    const bool step_trace = std::getenv("ATHENA_WOR92_STEP_TRACE") != nullptr;
++    BlockVector x_before, attempted;
++    if (step_trace) {
++      x_before = make_vector();
++      attempted = make_vector();
++      copy(x_before,x);
++      for (int j = 0; j < used; ++j) axpy(attempted, y[j], z[j]);
++    }
+     for (int j = 0; j < used; ++j) axpy(x, y[j], z[j]);
++    BlockVector predicted, ax_before, ax_step, ax_realized;
++    long double predicted_sq = 0.0L;
++    if (step_trace) {
++      BlockVector realized = make_vector();
++      ax_before = make_vector();
++      ax_step = make_vector();
++      ax_realized = make_vector();
++      predicted = make_vector();
++      for (std::size_t block=0; block<x.size(); ++block) {
++        MeshBlock *pmb = static_cast<linearMG*>(vmg_[block])->pmy_block_;
++        for (int k=pmb->ks; k<=pmb->ke; ++k)
++          for (int j=pmb->js; j<=pmb->je; ++j)
++            for (int i=pmb->is; i<=pmb->ie; ++i)
++              at(realized,block,k,j,i) = cat(x,block,k,j,i)
++                  - cat(x_before,block,k,j,i);
++      }
++      apply_operator(x_before, ax_before);
++      apply_operator(realized, ax_realized);
++      apply_operator(attempted, ax_step);
++      copy(predicted, r);
++      axpy(predicted, -1.0, ax_step);
++      predicted_sq = local_dot(predicted, predicted);
++#ifdef MPI_PARALLEL
++      MPI_Allreduce(MPI_IN_PLACE, &predicted_sq, 1, MPI_LONG_DOUBLE,
++                    MPI_SUM, MPI_COMM_WORLD);
++#endif
++    }
++    long double step_data[5] = {};
++    long long step_counts[2] = {};
++    if (step_trace) {
++      for (std::size_t block=0; block<x.size(); ++block) {
++        MeshBlock *pmb = static_cast<linearMG*>(vmg_[block])->pmy_block_;
++        for (int k=pmb->ks; k<=pmb->ke; ++k)
++          for (int j=pmb->js; j<=pmb->je; ++j)
++            for (int i=pmb->is; i<=pmb->ie; ++i) {
++              const long double old = cat(x_before,block,k,j,i);
++              const long double wanted = cat(attempted,block,k,j,i);
++              const long double got = static_cast<long double>(cat(x,block,k,j,i))-old;
++              step_data[0] += old*old;
++              step_data[1] += wanted*wanted;
++              step_data[2] += got*got;
++              step_data[3] += wanted*got;
++              step_data[4] += (wanted-got)*(wanted-got);
++              if (wanted != 0.0L) {
++                ++step_counts[0];
++                if (got == 0.0L) ++step_counts[1];
++              }
++            }
++      }
++#ifdef MPI_PARALLEL
++      MPI_Allreduce(MPI_IN_PLACE, step_data, 5, MPI_LONG_DOUBLE,
++                    MPI_SUM, MPI_COMM_WORLD);
++      MPI_Allreduce(MPI_IN_PLACE, step_counts, 2, MPI_LONG_LONG,
++                    MPI_SUM, MPI_COMM_WORLD);
++#endif
++    }
+     apply_operator(x, ax);
+     copy(r,b);
+     axpy(r, -1.0, ax);
+     beta = norm(r);
+     relative_residual = static_cast<Real>(beta/bnorm);
++    long double gap_sq = 0.0L;
++    long double update_rep_gap_sq = 0.0L;
++    long double operator_eval_gap_sq = 0.0L;
++    long double region_gap_sq[3] = {};
++    if (step_trace) {
++      for (std::size_t block=0; block<r.size(); ++block) {
++        MeshBlock *pmb = static_cast<linearMG*>(vmg_[block])->pmy_block_;
++        for (int k=pmb->ks; k<=pmb->ke; ++k)
++          for (int j=pmb->js; j<=pmb->je; ++j)
++            for (int i=pmb->is; i<=pmb->ie; ++i) {
++              const long double gap = static_cast<long double>(cat(r,block,k,j,i))
++                  - cat(predicted,block,k,j,i);
++              gap_sq += gap*gap;
++              const long double rep_gap = static_cast<long double>(cat(ax_realized,block,k,j,i))
++                  - cat(ax_step,block,k,j,i);
++              const long double eval_gap = static_cast<long double>(cat(ax,block,k,j,i))
++                  - cat(ax_before,block,k,j,i) - cat(ax_realized,block,k,j,i);
++              update_rep_gap_sq += rep_gap*rep_gap;
++              operator_eval_gap_sq += eval_gap*eval_gap;
++              const bool face[6] = {i == pmb->is, i == pmb->ie,
++                  j == pmb->js, j == pmb->je, k == pmb->ks, k == pmb->ke};
++              const int di[6] = {-1,1,0,0,0,0};
++              const int dj[6] = {0,0,-1,1,0,0};
++              const int dk[6] = {0,0,0,0,-1,1};
++              int region = 0;
++              for (int f=0; f<6; ++f)
++                if (face[f]) {
++                  const int level = pmb->pbval->nblevel[1+dk[f]][1+dj[f]][1+di[f]];
++                  region = std::max(region, level == pmb->loc.level ? 1 : 2);
++                }
++              region_gap_sq[region] += gap*gap;
++            }
++      }
++#ifdef MPI_PARALLEL
++      MPI_Allreduce(MPI_IN_PLACE, &gap_sq, 1, MPI_LONG_DOUBLE,
++                    MPI_SUM, MPI_COMM_WORLD);
++      MPI_Allreduce(MPI_IN_PLACE, &update_rep_gap_sq, 1, MPI_LONG_DOUBLE,
++                    MPI_SUM, MPI_COMM_WORLD);
++      MPI_Allreduce(MPI_IN_PLACE, &operator_eval_gap_sq, 1, MPI_LONG_DOUBLE,
++                    MPI_SUM, MPI_COMM_WORLD);
++      MPI_Allreduce(MPI_IN_PLACE, region_gap_sq, 3, MPI_LONG_DOUBLE,
++                    MPI_SUM, MPI_COMM_WORLD);
++#endif
++    }
++    if (step_trace && Globals::my_rank == 0) {
++      const long double requested = std::sqrt(step_data[1]);
++      const long double realized = std::sqrt(step_data[2]);
++      const long double cosine = step_data[3]/std::max(requested*realized,1.0e-300L);
++      std::cout << "[LINEAR_FGMRES_STEP] iteration=" << total_iterations
++                << " used=" << used
++                << " projected=" << static_cast<Real>(std::abs(g[used])/bnorm)
++                << " predicted=" << static_cast<Real>(std::sqrt(predicted_sq)/bnorm)
++                << " true=" << relative_residual
++                << " operator_gap=" << static_cast<Real>(std::sqrt(gap_sq)/bnorm)
++                << " update_rep_gap=" << static_cast<Real>(std::sqrt(update_rep_gap_sq)/bnorm)
++                << " operator_eval_gap=" << static_cast<Real>(std::sqrt(operator_eval_gap_sq)/bnorm)
++                << " gap_interior=" << static_cast<Real>(std::sqrt(region_gap_sq[0])/bnorm)
++                << " gap_same_face=" << static_cast<Real>(std::sqrt(region_gap_sq[1])/bnorm)
++                << " gap_cf_face=" << static_cast<Real>(std::sqrt(region_gap_sq[2])/bnorm)
++                << " xnorm=" << static_cast<Real>(std::sqrt(step_data[0]))
++                << " requested_step=" << static_cast<Real>(requested)
++                << " realized_step=" << static_cast<Real>(realized)
++                << " step_roundoff=" << static_cast<Real>(std::sqrt(step_data[4]))
++                << " step_cosine=" << static_cast<Real>(cosine)
++                << " stale_cells=" << step_counts[1]
++                << " requested_cells=" << step_counts[0] << std::endl;
++    }
+     if (breakdown) break;
+   }
+   Real componentwise_backward_error_max = 0.0;

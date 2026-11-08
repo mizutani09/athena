@@ -8,6 +8,8 @@ import tarfile
 ROOT = Path(__file__).resolve().parent
 LONG = ROOT / 'wor92_xd_long337351_evidence.tar.gz'
 RETRY = ROOT / 'wor92_xd_fgmres600_debug_evidence.tar.gz'
+WIDTH = ROOT / 'wor92_xd_restart_width_diagnostics_evidence.tar.gz'
+ROUNDOFF = ROOT / 'wor92_xd_cycle28_roundoff_evidence.tar.gz'
 
 
 def member_text(archive, member):
@@ -22,6 +24,15 @@ def fgmres(log):
             rows.append((int(re.search(r'iterations=(\d+)', line).group(1)),
                          float(re.search(r'relative_residual=([\d.eE+-]+)', line).group(1))))
     return rows
+
+
+def last_step(log):
+    lines = [line for line in log.splitlines()
+             if line.startswith('[LINEAR_FGMRES_STEP]')]
+    result = {}
+    for key, value in re.findall(r'([a-z_]+)=([\d.eE+-]+)', lines[-1]):
+        result[key] = float(value)
+    return result
 
 
 def history(text):
@@ -75,10 +86,25 @@ rows = history(member_text(LONG, 'job_337351/output/cfl030_flux_precision16_loca
 old = fgmres(segment1)
 new = fgmres(retry10)
 next_rows = fgmres(retry14)
+width_32 = fgmres(member_text(WIDTH, 'job_337773/launcher.log'))
+width_80 = fgmres(member_text(WIDTH, 'job_337775/launcher.log'))
+width_30 = fgmres(member_text(WIDTH, 'job_337788/launcher.log'))
+direct_40 = fgmres(member_text(WIDTH, 'job_337789/launcher.log'))
+direct_80 = fgmres(member_text(WIDTH, 'job_337790/launcher.log'))
+strict_28 = fgmres(member_text(ROUNDOFF, 'job_337802/launcher.log'))
+strict_29 = fgmres(member_text(ROUNDOFF, 'job_337807/launcher.log'))
+trace_13 = last_step(member_text(ROUNDOFF, 'job_337809/launcher.log'))
+trace_28 = last_step(member_text(ROUNDOFF, 'job_337808/launcher.log'))
 assert len(rows) == 14 and len(old) == 8 and len(new) == 9 and len(next_rows) == 14
 assert old[-1][0] == 300 and old[-1][1] > 2e-8
 assert max(value for _, value in new + next_rows) < 2e-8
 assert max(count for count, _ in new) == 480
+assert width_32[-1][1] > 1e-6 and direct_40[-1][1] > 8e-7
+assert max(value for _, value in width_80 + direct_80) < 2e-8
+assert sum(value > 2e-8 for _, value in width_30) == 2
+assert strict_28[-1][1] > 2e-8 and strict_29[-1][1] > 2e-8
+assert abs(trace_13['true'] - direct_40[-1][1]) < 1e-16
+assert abs(trace_28['true'] - strict_28[-1][1]) < 1e-16
 
 rho0, jeans0 = rows[0][15], rows[0][34]
 times = [row[0] for row in rows]
@@ -109,12 +135,12 @@ figure{{margin:1rem 0}}figure svg{{width:100%;height:auto}}figcaption{{font-size
 table{{width:100%;border-collapse:collapse;background:#fff}}th,td{{text-align:left;padding:.55rem .65rem;border-bottom:1px solid #dfe9ec;vertical-align:top}}th{{background:#e2edf1}}
 .scroll{{overflow-x:auto}}a{{color:#086b83}}code{{font-size:.88em;overflow-wrap:anywhere}}.note{{background:#fff6e9;border-left:4px solid #bd6a25;padding:.8rem 1rem}}
 </style></head><body>
-<header><div>ATHENA++ / WOR-92</div><h1>XD計算の確認と再開試験</h1><p>2026-11-08 JST時点の検証記録。第一コア形成の判定にはまだ到達していません。</p></header>
+<header><div>ATHENA++ / WOR-92</div><h1>XD計算の確認と二つの収束限界</h1><p>2026-11-08 JST時点の検証記録。第一コア形成の判定にはまだ到達していません。</p></header>
 <main>
 <section><h2>現在の状態</h2><div class="cards">
 <div class="card bad"><strong>337351 · FAILED</strong>P-large-a。cycle 10まで保存後、cycle 13の線形解で300反復上限に達した。</div>
 <div class="card good"><strong>337766 / 337771 · PASS</strong>反復上限600で同じcheckpointからcycle 20まで厳格残差目標を維持。</div>
-<div class="card wait"><strong>337772 · SUBMITTED</strong>cycle 20 checkpointからのP-large-a継続。投入時は利用枠待ち。</div></div></section>
+<div class="card wait"><strong>長時間ジョブは停止</strong>337772と337800は待機中に取消。現在WOR-92の長時間ジョブはありません。</div></div></section>
 <section><h2>失敗の切り分け</h2><p>337351の初回区間はcycle 0–10を完了し、Newton 10段階とFGMRES 33回が収束しました。再開区間はcycle 10–12のNewtonが収束した後、cycle 13のFGMRESが300反復で相対残差 <code>1.2641885398e-6</code>にとどまりました。要求値は<code>2e-8</code>です。計算環境やcheckpoint読み取りの失敗ではありません。</p>
 <div class="scroll"><table><thead><tr><th>ジョブ</th><th>条件</th><th>結果</th><th>最大FGMRES反復</th><th>最大真相対残差</th></tr></thead><tbody>
 <tr><td>337351</td><td>64 rank、上限300、0→10→13</td><td>失敗。最終保存checkpointはcycle 10</td><td>300（未収束）</td><td>1.2641885398e-6</td></tr>
@@ -123,6 +149,14 @@ table{{width:100%;border-collapse:collapse;background:#fff}}th,td{{text-align:le
 </tbody></table></div><p>上限600は収束基準を緩めません。cycle 20のcheckpointは960 MeshBlock、時刻<code>268.26820770391913</code>で正常に保存されました。337766/337771ともopacity表の範囲外・clamp・非有限値の診断件数は0です。</p>
 <figure>{iterations}<figcaption>赤：元の300反復上限、緑：600反復での再試験。同じcycle 10 checkpointから開始。線の連結は解の順序を示します。</figcaption></figure>
 <div class="legend"><span><i class="dot" style="background:#bd493f"></i>元の上限300</span><span><i class="dot" style="background:#147d69"></i>再試験の上限600</span></div></section>
+<section><h2>なぜ上限に達したか</h2><p>以前の改善は真の残差に上限を設け、Newtonが受理できない線形解を止めるものです。反復回数や丸め誤差の限界が全状態で消える保証はありません。今回、同じ保存状態からのP-debug比較で二つの原因を分離しました。</p>
+<div class="scroll"><table><thead><tr><th>状態</th><th>対照試験</th><th>観測</th><th>判断</th></tr></thead><tbody>
+<tr><td>cycle 13</td><td>同一checkpointで幅40/MG2（337789）と幅80/MG2（337790）</td><td>幅40は300回で<code>{direct_40[-1][1]:.3e}</code>、幅80は最大{max(count for count,_ in direct_80)}回で厳格収束。32 rankでも幅40は<code>{width_32[-1][1]:.3e}</code>で停止。</td><td>小さいrestart幅とMG2で収束が遅い。MPI rank数だけの問題ではない。</td></tr>
+<tr><td>cycle 28</td><td>同一checkpointの幅80/MG2、inexact受理なし（337802/337808）</td><td>600回で真残差<code>{trace_28['true']:.3e}</code>。予測残差は<code>{trace_28['predicted']:.3e}</code>、補正の表現誤差による演算子差は<code>{trace_28['update_rep_gap']:.3e}</code>。</td><td>double精度で補正を保存する際の丸め誤差が拡散演算子で増幅。</td></tr>
+<tr><td>cycle 29</td><td>幅80/MG3、inexact受理なし（337807）</td><td>600回で<code>{strict_29[-1][1]:.3e}</code>、厳格目標<code>2e-8</code>に未到達。</td><td>前処理を強めても全サイクルの厳格収束は保証できない。</td></tr>
+</tbody></table></div>
+<p>cycle 13の補正診断（337809）は予測<code>{trace_13['predicted']:.3e}</code>、真残差<code>{trace_13['true']:.3e}</code>、演算子差<code>{trace_13['operator_gap']:.3e}</code>で、丸め誤差が主因ではありません。cycle 28では要求した補正のノルム<code>{trace_28['requested_step']:.3e}</code>に対する表現差は<code>{trace_28['step_roundoff']:.3e}</code>と小さいものの、演算子適用後に残差を押し上げます。</p>
+<p class="note">337788はcycle 30までジョブとして完了しましたが、20回のFGMRESのうち2回は600反復後に<code>2e-8</code>を超え、<code>1e-7</code>のinexact規則で受理されました。厳格収束の証拠ではないため、待機中の長時間ジョブを取り消しました。</p></section>
 <section><h2>計算履歴と物理量</h2><figure>{trajectory}<figcaption>水色：最大密度、橙色：最小Jeans解像度。337351のhistory出力から重複したrestart行を除いたもの。</figcaption></figure>
 <div class="legend"><span><i class="dot" style="background:#0e7490"></i>ρmax</span><span><i class="dot" style="background:#bd6a25"></i>Jeans minimum</span></div>
 <p>失敗直前のhistory時刻は約180.712、最大密度<code>5.34277e-18 g/cm³</code>、最大気体温度<code>13.9862 K</code>、Jeans最小<code>60.1467</code>。第一コア比較の密度<code>1e-10 g/cm³</code>には達していません。</p>
@@ -131,9 +165,11 @@ table{{width:100%;border-collapse:collapse;background:#fff}}th,td{{text-align:le
 <li><a href="README.md">検証記録・Git hash・入力・制限</a></li>
 <li><a href="wor92_xd_long337351_evidence.tar.gz">337351のログ、history、provenance</a></li>
 <li><a href="wor92_xd_fgmres600_debug_evidence.tar.gz">337766/337771のログ、history、provenance</a></li>
+<li><a href="wor92_xd_restart_width_diagnostics_evidence.tar.gz">rank・MG・restart幅の対照試験</a></li>
+<li><a href="wor92_xd_cycle28_roundoff_evidence.tar.gz">cycle 13/28の補正・丸め誤差診断</a> / <a href="step_trace.patch">診断パッチ</a></li>
 <li><a href="wor92_pdebug_cycle10_fgmres600.sbatch">cycle 10からのP-debug試験</a> / <a href="wor92_pdebug_cycle14_fgmres600.sbatch">cycle 14からのP-debug試験</a></li>
-<li><a href="wor92_plarge_cap6_fgmres600_continuation.sbatch">337772に投入したP-large-a継続スクリプト</a></li>
-</ul><p>コード変更は分離ブランチ<code>codex/wor92-xd-restart-sync-20261107</code>、実行binary SHA-256は<code>41f16d20537cef3615a41d1b2150338878d64bf9f9888dc80925edd6a299d72c</code>です。WOR-92は長時間継続と物理・保存検証が残るためIn Progressです。</p></section>
+<li><a href="wor92_pdebug_cycle28_steptrace_strict.sbatch">cycle 28診断ジョブ</a> / <a href="wor92_pdebug_cycle13_steptrace_strict.sbatch">cycle 13診断ジョブ</a></li>
+</ul><p>ソルバは分離ブランチ<code>codex/wor92-xd-restart-sync-20261107</code>、診断のみの変更は<code>codex/wor92-xd-steptrace-20261108</code>です。実行binary SHA-256は通常版<code>41f16d20537cef3615a41d1b2150338878d64bf9f9888dc80925edd6a299d72c</code>、診断版<code>9885712327eb7bcffac75338d2eda7b4161ec8cf2f4468d6d5ef08d6211d8640</code>。WOR-92は長時間継続と物理・保存検証が残るためIn Progressです。</p></section>
 </main></body></html>'''
 (ROOT / 'report.html').write_text(html, encoding='utf-8')
 print(ROOT / 'report.html')
