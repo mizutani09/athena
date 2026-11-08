@@ -93,7 +93,7 @@ contribution functions, run:
 python tst/nrfld_validation/solar_convection_spectral_formation.py OUTPUT_ROOT
 ```
 
-This writes `formation.csv`, `contribution_functions.npz`, two plots, and
+This writes `formation.csv`, `contribution_functions.npz`, three plots, and
 `formation_summary.json`. The contribution functions are checked against an
 independent vertical formal-ray calculation.
 
@@ -146,11 +146,20 @@ The post-processor used t=23800, 23900, and 24000 on a 64×64×32 box with
   observations until the atmosphere is extended and the transfer recomputed.
 - The monochromatic τ=1 surface is inside the 3D box at 159 of 160 sampled
   300–2500 nm wavelengths. At 397.0 nm it is above the simulated top.
+- On the **same frozen snapshot**, averaging 2×2×2 cells changes the 497.9
+  nm synthesized flux by **+25.8%**. Vertical-only averaging changes it by
+  **+26.1%**, horizontal-only by **−0.03%**. At 1610.1 nm the corresponding
+  changes are +0.7%, +1.1%, and −0.2%. This diagnoses the transfer's
+  sensitivity to the photospheric vertical gradient. It is **not** a
+  convergence estimate for the underlying 96 km hydrodynamics; that needs
+  independently evolved 48 km and finer runs as tracked in WOR-91.
 
-The broad color difference from the Sun is largely consistent with the lower
-flux-derived temperature. Higher-resolution, non-grey convection and a taller
-upper atmosphere are still needed before evaluating detailed solar line
-profiles or limb darkening as an observational fit.
+The broad color difference from the Sun is broadly consistent with the lower
+flux-derived temperature on this grid. The strong optical vertical-resolution
+sensitivity limits how far that interpretation can be taken. Higher-resolution,
+non-grey convection and a taller upper atmosphere are still needed before
+evaluating detailed solar line profiles or limb darkening as an observational
+fit.
 
 ## Sources
 

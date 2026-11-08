@@ -539,14 +539,31 @@ def main() -> None:
         ("intensity_maps.png","Surface intensity maps at four wavelengths"),
         ("transfer_limits.png","Scattering and upper-boundary checks")))
     formation_summary_path=output/"formation_summary.json"
-    formation_ready=(formation_summary_path.is_file() and
-                     abs(json.loads(formation_summary_path.read_text())
-                         ["snapshot_time_code"]-per_snapshot[-1]["time"])<1e-6)
+    formation_data=(json.loads(formation_summary_path.read_text())
+                    if formation_summary_path.is_file() else None)
+    formation_ready=(formation_data is not None and
+                     abs(formation_data["snapshot_time_code"]-
+                         per_snapshot[-1]["time"])<1e-6)
     image_tags+="".join(
         f"<figure><img src='images/{name}' alt='{name}'><figcaption>{title}</figcaption></figure>"
         for name,title in (("formation_height.png","波長別の τ=1 高度"),
-                           ("contribution_functions.png","鉛直方向の強度への寄与"))
+                           ("contribution_functions.png","鉛直方向の強度への寄与"),
+                           ("vertical_resolution_sensitivity.png",
+                            "固定スナップショットでの格子粗視化感度"))
         if formation_ready and (images/name).is_file())
+    coarsening_note=""
+    if formation_ready and formation_data.get("fixed_snapshot_2x_coarsening"):
+        values=formation_data["fixed_snapshot_2x_coarsening"]
+        near500=min(values,key=lambda k:abs(float(k.removesuffix("nm"))-500))
+        row=values[near500]
+        coarsening_note=(
+            "<p style='color:#9b2424'><strong>鉛直解像度に敏感:</strong> "
+            f"{near500} の同一スナップショットを鉛直方向だけ 2 倍粗くすると、"
+            f"合成流束は {100*row['vertical_only_relative_difference']:+.1f}% 変わる。"
+            "水平のみの粗視化は "
+            f"{100*row['horizontal_only_relative_difference']:+.2f}%。"
+            "これは固定データの後処理感度であり、96 km HD 計算そのものの収束誤差ではない。"
+            "XD の鉛直高解像度計算で再検証が必要。</p>")
     movie_tags="".join(
         f"<figure><video controls preload='metadata' poster='movies/{p}.png'>"
         f"<source src='movies/{p}.mp4' type='video/mp4'></video>"
@@ -605,6 +622,7 @@ table{{border-collapse:collapse}}td,th{{border-bottom:1px solid #ccd5dc;padding:
 <p style="color:#9b2424"><strong>短波長の一部は上端で光学的に厚い:</strong>
 {', '.join(f'{w:.1f}' for w in wavelengths_nm[affected])} nm の点で最上部半セル τ&gt;0.1。
 これらの線の形成層は計算領域より上にも続くため、個別の線強度は信用できません。</p>
+{coarsening_note}
 <h2>可視化</h2>{image_tags}
 <h2>対流の時間発展</h2>{movie_tags}
 <h2>解釈の範囲</h2><p>{html.escape(note)}</p>
