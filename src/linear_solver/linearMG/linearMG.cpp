@@ -1680,6 +1680,20 @@ void linearMGDriver::SolveFGMRES(int stage) {
   Real relative_residual = static_cast<Real>(beta/bnorm);
   int total_iterations = 0;
   bool breakdown = false;
+  // Optional WOR-92 experiment: stop an unproductive restarted Krylov solve
+  // only after independently checking the true residual against the bounded
+  // inexact-Newton cap.  The default path is unchanged.
+  const char *inexact_text = std::getenv("ATHENA_WOR92_INEXACT_TRUE_CAP");
+  const Real inexact_cap = inexact_text != nullptr ? std::strtod(inexact_text, nullptr) : 0.0;
+  const char *stagnation_text = std::getenv("ATHENA_WOR92_INEXACT_STAGNATION_RATIO");
+  const Real stagnation_ratio = stagnation_text != nullptr
+      ? std::strtod(stagnation_text, nullptr) : 0.0;
+  const bool stagnation_enabled = std::isfinite(inexact_cap)
+      && inexact_cap > fgmres_threshold_ && inexact_cap <= 1.0e-6
+      && std::isfinite(stagnation_ratio)
+      && stagnation_ratio > 0.0 && stagnation_ratio < 1.0;
+  bool stagnation_stop = false;
+  Real previous_true_residual = relative_residual;
 
   while (relative_residual > fgmres_threshold_
          && total_iterations < fgmres_max_iterations_) {
@@ -1780,7 +1794,25 @@ void linearMGDriver::SolveFGMRES(int stage) {
     axpy(r, -1.0, ax);
     beta = norm(r);
     relative_residual = static_cast<Real>(beta/bnorm);
+    if (stagnation_enabled && !breakdown) {
+      const Real progress_ratio = relative_residual/previous_true_residual;
+      if (Globals::my_rank == 0) {
+        std::cout << "[LINEAR_FGMRES_RESTART] iterations=" << total_iterations
+                  << " true_relative_residual=" << relative_residual
+                  << " progress_ratio=" << progress_ratio
+                  << " inexact_cap=" << inexact_cap
+                  << " stagnation_ratio=" << stagnation_ratio << std::endl;
+      }
+      // A slow restart alone is not sufficient: the true residual must
+      // already meet the explicit inexact limit before Newton sees it.
+      stagnation_stop = total_iterations > width
+          && relative_residual > fgmres_threshold_
+          && relative_residual <= inexact_cap
+          && progress_ratio >= stagnation_ratio;
+      previous_true_residual = relative_residual;
+    }
     if (breakdown) break;
+    if (stagnation_stop) break;
   }
   Real componentwise_backward_error_max = 0.0;
   if (fgmres_backward_error_diagnostics_ || fgmres_precision_floor_factor_ > 0.0) {
@@ -1831,8 +1863,6 @@ void linearMGDriver::SolveFGMRES(int stage) {
       && relative_residual > fgmres_threshold_
       && componentwise_backward_error_max
           <= fgmres_precision_floor_factor_*std::numeric_limits<Real>::epsilon();
-  const char *inexact_text = std::getenv("ATHENA_WOR92_INEXACT_TRUE_CAP");
-  const Real inexact_cap = inexact_text != nullptr ? std::strtod(inexact_text, nullptr) : 0.0;
   const bool inexact_accept = !breakdown && std::isfinite(relative_residual)
       && std::isfinite(inexact_cap) && inexact_cap > fgmres_threshold_
       && inexact_cap <= 1.0e-6 && relative_residual <= inexact_cap;
@@ -1854,6 +1884,7 @@ void linearMGDriver::SolveFGMRES(int stage) {
               << " precision_floor_accept=" << precision_floor_accept
               << " inexact_accept=" << inexact_accept
               << " inexact_cap=" << inexact_cap
+              << " stagnation_stop=" << stagnation_stop
               << " breakdown=" << breakdown << std::endl;
     if (fgmres_backward_error_diagnostics_)
       std::cout << "[LINEAR_FGMRES_BACKWARD] local_stencil_eta_max="

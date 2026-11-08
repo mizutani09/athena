@@ -1,0 +1,52 @@
+{
+  "left": "/home/kosuke/simulation/test/rad_nr/wor92_xd_20261107/adaptive_inexact_evidence/job_337904/output/cfl030_flux_precision16_local.final.rst",
+  "right": "/home/kosuke/simulation/test/rad_nr/wor92_xd_20261107/adaptive_inexact_evidence/job_337907/output/cfl030_flux_precision16_local.final.rst",
+  "left_cycle": 47,
+  "right_cycle": 49,
+  "left_time": 597.24740576715,
+  "right_time": 597.24740576715,
+  "fields": {
+    "rho": {
+      "max_relative": 0.033969625954972674,
+      "rms_relative": 7.328748174164907e-05,
+      "integral_relative": 1.4274043376820994e-06,
+      "changed_cells": 491520
+    },
+    "momentum_x1": {
+      "max_relative": 1.9968451428538074,
+      "rms_relative": 0.0001319812432685761,
+      "integral_relative": -7.114922819293817,
+      "changed_cells": 491520
+    },
+    "momentum_x2": {
+      "max_relative": 1.9824231926704456,
+      "rms_relative": 0.00013198059199906475,
+      "integral_relative": -0.7403609273656236,
+      "changed_cells": 491520
+    },
+    "momentum_x3": {
+      "max_relative": 1.987409222068158,
+      "rms_relative": 0.00013198158043207936,
+      "integral_relative": 0.3068411073913313,
+      "changed_cells": 491520
+    },
+    "hydro_total_energy": {
+      "max_relative": 0.0358816384789451,
+      "rms_relative": 0.00024167801797115782,
+      "integral_relative": 0.0002349839599579078,
+      "changed_cells": 491520
+    },
+    "radiation_energy": {
+      "max_relative": 0.000994375459119448,
+      "rms_relative": 0.0009953357851199543,
+      "integral_relative": 0.0009953278780574768,
+      "changed_cells": 491520
+    }
+  },
+  "combined_energy": {
+    "max_relative": 0.0032480387692795038,
+    "rms_relative": 0.00030846651635267364,
+    "integral_relative": 0.0005934844828046364,
+    "changed_cells": 491520
+  }
+}
