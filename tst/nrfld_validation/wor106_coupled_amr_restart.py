@@ -58,6 +58,8 @@ def compare(direct, restarted, tolerance, time_ulps):
     with h5py.File(files[0]) as a, h5py.File(files[1]) as b:
         time_a = float(a.attrs["Time"])
         time_b = float(b.attrs["Time"])
+        if not math.isfinite(time_a) or not math.isfinite(time_b):
+            raise AssertionError("non-finite restart time")
         time_diff = abs(time_a - time_b)
         time_limit = time_ulps * math.ulp(max(abs(time_a), abs(time_b)))
         if time_diff > time_limit:
@@ -66,6 +68,8 @@ def compare(direct, restarted, tolerance, time_ulps):
         if not np.array_equal(a["LogicalLocations"][:], b["LogicalLocations"][:]):
             raise AssertionError("restart AMR topology differs")
         x, y = a["user_out_var"][:], b["user_out_var"][:]
+        if not np.isfinite(x).all() or not np.isfinite(y).all():
+            raise AssertionError("non-finite restart field")
         max_diff = float(np.max(np.abs(x-y)))
         if max_diff > tolerance:
             raise AssertionError(f"field mismatch {max_diff} exceeds {tolerance}")
@@ -84,6 +88,8 @@ def main():
     args = parser.parse_args()
     if args.time_ulps < 0:
         parser.error("--time-ulps must be nonnegative")
+    if not math.isfinite(args.tolerance) or args.tolerance < 0:
+        parser.error("--tolerance must be finite and nonnegative")
     binary, source = args.binary.resolve(), args.input.resolve()
     args.output.mkdir(parents=True, exist_ok=True)
     baseline_flags = dict(os.environ)
