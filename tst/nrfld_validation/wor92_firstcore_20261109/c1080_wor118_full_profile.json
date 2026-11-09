@@ -1,0 +1,21 @@
+{
+  "source": "/home/kosuke/simulation/test/rad_nr/wor92_xd_20261107/firstcore_integration_evidence/profiles/c1080_wor118_full.athdf",
+  "cycle": 1080,
+  "time_code": 1941.903564453125,
+  "time_years": 29110.462393204292,
+  "max_level": 11,
+  "meshblocks": 3704,
+  "rho_max_g_cm3": 1.0441448e-10,
+  "rho_max_radius_au": 0.15857398750935767,
+  "rho_max_velocity_radial_km_s": -0.013788535652207431,
+  "temperature_at_rho_max_K": 434.5237910117575,
+  "temperature_max_K": 434.5237910117575,
+  "eos_cells_outside_table": 0,
+  "gas_mass_g": 2.2729978864652296e+33,
+  "octant_density_relative_spread": {
+    "0_to_5_au": 0.0022644425641103025,
+    "5_to_10_au": 0.002669777564798417,
+    "10_to_20_au": 0.0007267857419648411
+  },
+  "profile_csv": "tst/nrfld_validation/wor92_firstcore_20261109/c1080_wor118_full_profile.csv"
+}

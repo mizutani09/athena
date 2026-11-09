@@ -1,0 +1,65 @@
+{
+  "source_commit": "ff60f8f07842acb00e7753932bcfe30867e3a66e",
+  "binary_sha256": "908d5def56faf5e0993526f1c709b2593eec814a2a26ffd83d4a0133b6ac0810",
+  "input_sha256": "aad81db83087d27351db59ef70b9b14a68e8a2dc3e6fc164a4cb73e8d413e7e6",
+  "final_hdf_sha256": "13767189008f53ffb9e802b7ef66dcd97faff7045adbdd59051d19269a0354ac",
+  "final_hdf_external_path": "/home/kosuke/simulation/test/rad_nr/wor92_xd_20261107/firstcore_integration_evidence/profiles/c1080_wor118_full.athdf",
+  "jobs": [
+    {
+      "id": 338469,
+      "start_cycle": 0,
+      "end_cycle": 10,
+      "nodes": 1,
+      "elapsed_seconds": 400,
+      "state": "COMPLETED 0:0"
+    },
+    {
+      "id": 338485,
+      "start_cycle": 10,
+      "end_cycle": 500,
+      "nodes": 5,
+      "elapsed_seconds": 1506,
+      "state": "COMPLETED 0:0"
+    },
+    {
+      "id": 338486,
+      "start_cycle": 500,
+      "end_cycle": 1080,
+      "nodes": 5,
+      "elapsed_seconds": 2510,
+      "state": "COMPLETED 0:0"
+    }
+  ],
+  "criterion": "rho_max >= 1e-10 g/cm3 at first saved 10-cycle checkpoint, plus structural shock check",
+  "cycle": 1080,
+  "time_years": 29110.462393204292,
+  "rho_max_g_cm3": 1.0441448e-10,
+  "temperature_max_K": 434.5237910117575,
+  "jeans_min_cells": 35.94989399486436,
+  "meshblocks": 3704,
+  "eos_cells_outside_table": 0,
+  "gas_mass_c0_g": "2.272997886412213E+33",
+  "gas_mass_final_g": "2.272997886412202E+33",
+  "gas_mass_relative_change": -4.839423769708305e-15,
+  "axis_shock": {
+    "inner_au": 7.50732421875,
+    "outer_au": 7.87353515625,
+    "inner_over_outer_density": 4.749943704315621,
+    "inner_infall_km_s": 0.4692042604860305,
+    "outer_infall_km_s": 1.8370933473858484
+  },
+  "central_rho_max_velocity_km_s": -0.013788535652207431,
+  "octant_density_relative_spread": {
+    "0_to_5_au": 0.0022644425641103025,
+    "5_to_10_au": 0.002669777564798417,
+    "10_to_20_au": 0.0007267857419648411
+  },
+  "main_job_newton_converged": 650,
+  "main_job_fgmres_solves": 1527,
+  "main_job_fgmres_iterations": 14729,
+  "main_job_max_true_linear_relative_residual": 1.9989992313138435e-08,
+  "main_job_max_step_rss_kib": 20012740,
+  "opacity_nonzero_diagnostic_segments": 0,
+  "history_rows": 1189,
+  "scope": "Full corrected c0-to-threshold run with default implicit mixed drift, Cartesian AMR; not a Mayer Section 5 one-to-one replication"
+}
