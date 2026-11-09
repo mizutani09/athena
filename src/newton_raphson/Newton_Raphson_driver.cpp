@@ -616,15 +616,16 @@ NewtonSolveResult NewtonRaphsonDriver::Solve_general(int stage, Real dt) {
       def = norms.l2_norm;
       defmax = norms.max_norm;
 
-      // Accept a trial only when the nonlinear merit function decreases by
-      // more than roundoff.  Accepting an exactly unchanged defect can make
-      // a large Newton step appear successful even though it has overshot the
-      // root; this is especially visible for fixed-radiation, stiff coupling.
+      // A finite trial that already meets both requested stopping norms is a
+      // solution even if its L2 merit has risen slightly from a near-root
+      // iterate.  Otherwise require a decrease beyond roundoff, so an
+      // unchanged defect cannot make an unconverged step appear successful.
       const Real merit_tol =
           32.0 * std::numeric_limits<Real>::epsilon()
           * std::max(std::abs(olddef), static_cast<Real>(1.0e-30));
+      const bool trial_converged = !fixed_mode && meets_stopping();
       const bool trial_accepted =
-          norms.finite && def < olddef - merit_tol;
+          norms.finite && (trial_converged || def < olddef - merit_tol);
       const int current_trial = trial_attempt++;
       if (diagnostic_verbosity_ >= 1 && Globals::my_rank == 0) {
         const Real conv = (olddef > 0.0 ? def/olddef : 0.0);
@@ -632,6 +633,7 @@ NewtonSolveResult NewtonRaphsonDriver::Solve_general(int stage, Real dt) {
         std::cout << "[NR_TRIAL] iteration=" << n
                   << " trial=" << current_trial
                   << " accepted=" << trial_accepted
+                  << " converged_trial=" << trial_converged
                   << " finite=" << norms.finite
                   << " step_scale=" << step_scale_
                   << " coarse_correction_scale=" << coarse_corr_trial_scale
