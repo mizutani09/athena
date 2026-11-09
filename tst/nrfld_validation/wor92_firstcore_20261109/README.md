@@ -34,3 +34,18 @@ P-large-a 337975 を修正済み binary・cycle 160 checkpoint（337973）から
 P-debug の追加先行計算 337976 は cycle 160→200、最大 AMR level 10、中心化 ON で exit 0。224 block 増加して合計 1856、最大 level 7、`rho_max=3.77335e-16 g cm^-3`、最小 Jeans cells `32.1281`、最大 Tgas `14.0464 K`。42 個の Newton status はすべて収束し、80 個の FGMRES solve の最大 true 相対残差は `1.9731e-8`、最大 Newton `final_max=7.513e-7`。opacity domain 問題なし。履歴上の質量増分はこの区間で約 `3.96e-5`。まだ first core 形成密度から遠いので、長時間計算が必要である。
 
 XD 詳細ログ archive: `/work/mizutaniks/output/fld/collapse/wor92_xd_20261107/scripts/wor92_firstcore_pdebug_evidence_20261109.tar.gz`、SHA-256 `1ffc372c3b894b4c2d8f36da856cc75581c836192c662df28218bb8afcef834d`。ローカルコピー: `/home/kosuke/simulation/test/rad_nr/wor92_xd_20261107/firstcore_integration_evidence/`。画像や HTML は新たに作らず、ログと JSON・CSV で再現可能な記録を残した。
+
+## M キューでのメモリ・速度比較（2026-11-09 11:55 JST）
+
+`M-test-a` は最大30分の試験キューであり、`M-debug` と同じ M 系ノードを使用する。修正済み binary `53aeab99...`、同じ入力 `95d9fca3...`、同じ cycle 280 checkpoint（338101）から cycle 320 まで、CFL 0.3・AMR 最大 level 10・MG3 で比較した。各ジョブの完全な環境・ファイル SHA は XD の `debug/job_ID/provenance.txt` または `test/job_ID/provenance.txt` に保存している。試験スクリプトはこのディレクトリの `wor92_mdebug_*` と `wor92_mtest_5node_*`。スクリプト内の `source_restart_gravity_trial` SHA は旧ソースの補助記録であり、**実行 binary は全試験とも上記の修正済み binary** である。
+
+| job | キュー、構成 | 280→320 wall | step MaxRSS | Newton / FGMRES | 最大 Newton final_max / 線形真残差 | 結果 |
+|---|---|---:|---:|---:|---:|---|
+| 338114 | M-debug、1 node、64 rank | 7:55 | 32,126,148 K | 44 / 80 solve、1168 iteration | 1.517e-7 / 1.920e-8 | PASS |
+| 338127 | M-debug、1 node、128 rank | 4:57 | 46,339,468 K | 44 / 80、1168 | 1.502e-7 / 1.920e-8 | PASS |
+| 338128 | M-debug、1 node、192 rank | 3:42 | 51,847,844 K | 44 / 80、1168 | 1.526e-7 / 1.920e-8 | PASS |
+| 338122 | M-test-a、5 node、各64 rank | 2:05 | 17,372,448 K | 44 / 80、1168 | 1.568e-7 / 1.920e-8 | PASS |
+
+全試験の最終履歴は ρmax=`1.22169e-14`、Tgas,max=`14.453` K、gas mass=`2.27373e33` g、Erad=`1.68443e42` erg、最大 level 9 で一致した（Jeans min は 192 rank の `35.3804` を除き `35.3806`）。cycle 280→320 の gas mass 相対変化は各 `+1.3194e-5`、opacity の out-of-domain/clamp/negative/zero/nonfinite は全て0。5 node の checkpoint byte hash は1 node と異なるが、rank 分割に伴う浮動小数点の演算順序差があり、上記の履歴と真残差で物理解の一致を確認した。M-test-a 5 node は1 node 64 rank 比3.8倍速い。
+
+長時間計算は先に M-large-a 1 node job **338117** を cycle 320 から開始し、cycle 330 の成功（ρmax=`1.74513e-14`、Jeans min=`34.3736`、opacity正常）後に P-large-a 予備 **337975** を取り消した。M-large-a 5 node job **338133** は job 338117 の cycle 330 checkpoint を hash 照合してコピーし、cycle 340、350 を正常完了。cycle 350 の検証済み checkpoint が1 node の cycle 340 を上回った時点で job 338117 を取り消し、5 node のみ継続中。スクリプトは `wor92_mlarge_5node_firstcore_l10_continuation.sbatch`、実行記録は XD の `long/job_338133/`。現在のジョブの完了理由と first-core 判定は後続の progress・密度構造評価で決める。
