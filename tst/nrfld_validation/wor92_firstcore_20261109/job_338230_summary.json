@@ -1,0 +1,21 @@
+{
+  "case": "/home/kosuke/simulation/test/rad_nr/wor92_xd_20261107/firstcore_integration_evidence/job_338230",
+  "segments": 34,
+  "first_cycle": 590,
+  "last_cycle": 930,
+  "last_reason": "CONTINUE",
+  "rho_max_g_cm3": 6.9759e-11,
+  "tgas_max_K": 368.594,
+  "min_jeans_cells": 31.9892,
+  "gas_mass_relative_change_history_precision": 4.397982205822796e-06,
+  "newton_status_counts": {
+    "converged": 381
+  },
+  "newton_converged_max_final": 9.7976486508488e-06,
+  "fgmres_solves": 962,
+  "fgmres_iterations_total": 9786,
+  "fgmres_max_true_relative_residual": 1.9981728479812483e-08,
+  "accepted_converged_trial_with_l2_increase": [],
+  "opacity_missing_diagnostic_segments": [],
+  "opacity_nonzero_diagnostic_segments": []
+}

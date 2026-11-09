@@ -1,0 +1,19 @@
+{
+  "source": "/home/kosuke/simulation/test/rad_nr/wor92_xd_20261107/firstcore_integration_evidence/profiles/c1010_absorption_trial.athdf",
+  "cycle": 1010,
+  "time_code": 1941.841796875,
+  "axis_cells": 544,
+  "eos_cells_outside_table": 0,
+  "rho_max_on_axis_g_cm3": 1.00816338e-10,
+  "temperature_max_on_axis_K": 431.2581330220091,
+  "positive_negative_x_max_relative_rho_3_to_15_au": 0.006180700013568531,
+  "positive_negative_x_max_relative_temperature_3_to_15_au": 0.0002017013723807978,
+  "steepest_positive_x_density_drop_3_to_15_au": {
+    "inner_au": 7.50732421875,
+    "outer_au": 7.87353515625,
+    "inner_over_outer_density": 4.000029547533975,
+    "inner_infall_km_s": 0.4343011505395462,
+    "outer_infall_km_s": 1.6652295740064351
+  },
+  "profile_csv": "tst/nrfld_validation/wor92_firstcore_20261109/c1010_absorption_axis.csv"
+}

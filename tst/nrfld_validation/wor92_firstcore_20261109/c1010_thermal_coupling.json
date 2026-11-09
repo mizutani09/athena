@@ -1,0 +1,22 @@
+{
+  "snapshot_sha256": "bdd4c72640d16f1872725904c3a66bcd74e56577016f4593e114a3e91e25974f",
+  "eos_table_sha256": "742a3456923d4c7056c3705accbcc793af3e0c79408a2f597a0cd9271b13ba43",
+  "cycle": 1010,
+  "eos_cells_outside_table": 0,
+  "regions": {
+    "core_r_below_5au_and_rho_above_1e-14": {
+      "cells": 81608,
+      "median_abs_Tgas_minus_Trad_K": 0.004609001368010013,
+      "p99_abs_Tgas_minus_Trad_K": 0.015276378256024823,
+      "max_abs_Tgas_minus_Trad_K": 0.01685407957722873,
+      "p99_relative_difference": 4.202349162781556e-05
+    },
+    "shock_5_to_12au_and_rho_above_1e-14": {
+      "cells": 155136,
+      "median_abs_Tgas_minus_Trad_K": 0.0016403063276015928,
+      "p99_abs_Tgas_minus_Trad_K": 0.008470387093746012,
+      "max_abs_Tgas_minus_Trad_K": 0.01082052988670057,
+      "p99_relative_difference": 4.7244897095731404e-05
+    }
+  }
+}

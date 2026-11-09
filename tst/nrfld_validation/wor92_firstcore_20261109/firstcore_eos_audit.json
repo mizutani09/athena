@@ -14,6 +14,8 @@
   "energy_p_to_e_inverse_max_absolute_relative_error": 5.2963390831273216e-05,
   "cv_min_erg_g_K": 51973646.73234007,
   "cv_max_erg_g_K": 80998157.64639938,
+  "temperature_log_derivative_samples": 472,
+  "temperature_log_derivative_max_absolute_error": 1.0745193623762361e-09,
   "low_temperature_analytic_cv_erg_g_K": 51973647.1558342,
   "plot": "tst/nrfld_validation/wor92_firstcore_20261109/firstcore_eos_audit.png",
   "scope": "first core 14\u2013431.3 K; dissociation and second collapse not tested"

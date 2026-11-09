@@ -1,0 +1,58 @@
+--- a/src/hydro/add_flux_divergence.cpp
++++ b/src/hydro/add_flux_divergence.cpp
+@@ -11,6 +11,9 @@
+ 
+ // C++ headers
+ #include <algorithm>  // std::binary_search
++#include <cstdlib>
++#include <iomanip>
++#include <iostream>
+ #include <vector>     // std::vector
+ 
+ // Athena++ headers
+@@ -46,6 +49,8 @@
+   AthenaArray<Real> &x1area = x1face_area_, &x2area = x2face_area_,
+                  &x2area_p1 = x2face_area_p1_, &x3area = x3face_area_,
+                  &x3area_p1 = x3face_area_p1_, &vol = cell_volume_, &dflx = dflx_;
++  const bool mass_ledger = (std::getenv("ATHENA_WOR92_HYDRO_MASS_LEDGER") != nullptr);
++  long double block_flux_mass_delta = 0.0L;
+ 
+   for (int k=ks; k<=ke; ++k) {
+     for (int j=js; j<=je; ++j) {
+@@ -82,6 +87,12 @@
+         }
+       }
+ 
++      if (mass_ledger) {
++        for (int i=is; i<=ie; ++i) {
++          block_flux_mass_delta -= static_cast<long double>(wght)
++              * static_cast<long double>(dflx(IDN,i));
++        }
++      }
+       // update conserved variables
+       pmb->pcoord->CellVolume(k, j, is, ie, vol);
+       for (int n=0; n<NHYDRO; ++n) {
+@@ -91,6 +102,14 @@
+         }
+       }
+     }
++  }
++  if (mass_ledger) {
++    std::cout << std::setprecision(17) << "[WOR92_HYDRO_MASS_FLUX]"
++              << " rank=" << Globals::my_rank
++              << " cycle=" << pmb->pmy_mesh->ncycle
++              << " gid=" << pmb->gid
++              << " wght=" << wght
++              << " delta_code=" << block_flux_mass_delta << std::endl;
+   }
+   return;
+ }
+@@ -115,6 +134,8 @@
+   AthenaArray<Real> &x1area = x1face_area_, &x2area = x2face_area_,
+                  &x2area_p1 = x2face_area_p1_, &x3area = x3face_area_,
+                  &x3area_p1 = x3face_area_p1_, &vol = cell_volume_, &dflx = dflx_;
++  const bool mass_ledger = (std::getenv("ATHENA_WOR92_HYDRO_MASS_LEDGER") != nullptr);
++  long double block_flux_mass_delta = 0.0L;
+ 
+   for (int k=ks; k<=ke; ++k) {
+     for (int j=js; j<=je; ++j) {

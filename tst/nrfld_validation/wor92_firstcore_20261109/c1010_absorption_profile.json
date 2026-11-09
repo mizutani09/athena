@@ -1,0 +1,21 @@
+{
+  "source": "/home/kosuke/simulation/test/rad_nr/wor92_xd_20261107/firstcore_integration_evidence/profiles/c1010_absorption_trial.athdf",
+  "cycle": 1010,
+  "time_code": 1941.841796875,
+  "time_years": 29109.536454968722,
+  "max_level": 11,
+  "meshblocks": 3704,
+  "rho_max_g_cm3": 1.00818968e-10,
+  "rho_max_radius_au": 0.15857398750935767,
+  "rho_max_velocity_radial_km_s": -0.013365037511882281,
+  "temperature_at_rho_max_K": 431.25295386928633,
+  "temperature_max_K": 431.26342442185324,
+  "eos_cells_outside_table": 0,
+  "gas_mass_g": 2.2737825688205528e+33,
+  "octant_density_relative_spread": {
+    "0_to_5_au": 0.0023840596640237986,
+    "5_to_10_au": 0.0025094708088101996,
+    "10_to_20_au": 0.0008652428554343467
+  },
+  "profile_csv": "tst/nrfld_validation/wor92_firstcore_20261109/c1010_absorption_profile.csv"
+}

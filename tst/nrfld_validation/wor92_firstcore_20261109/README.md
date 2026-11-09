@@ -2,6 +2,8 @@
 
 **最新結果:** cycle1010でρmax=`1.00819e-10 g cm^-3`、Jeans最小36.45 cells、第一コア形成を3D密度・温度・速度構造から確認。採用したcycle47保存点以降の計算量は約5.07ノード時間。[単独で閲覧できるHTMLレポート](report.html)に3D構造・ソルバ収束・保存量・計算量をまとめた。最終詳細は[第一コア密度到達・最終解析](#第一コア密度到達最終解析2026-11-09-1251-jst)、元の密度・温度・流速図は[PNG](first_core_profiles.png)を参照。途中の「未到達」「継続中」は各時点の履歴である。
 
+**最終判定:** c590→1010のPlanck吸収補正A/B、第一コアEOS微分、c930/c1000のFLD粗細面、hydro質量収支まで診断した。WOR-92の第一コア形成・CFL0.3という達成範囲は完了。gas massの厳密な保存は満たしておらず、相対`+2.930e-6`の残存誤差を[WOR-118](https://linear.app/work-on-fld/issue/WOR-118/amr-collapseのhydro同一level面周期境界の質量flux不一致を解消する)で切り分け・修正する。第一コア後の高温ガスopacityや第二崩壊は今回検証していない。
+
 ## コードと入力
 
 - 隔離 worktree: `/home/kosuke/simulation/athena-wor92-firstcore-integration`
@@ -110,18 +112,44 @@ job338228はfinal restartのcycleが正しく1001で、Newtonは収束、opacity
 
 ### 質量の高精度historyとPlanck吸収感度
 
-M-debug 64 rank の同一c930 restartからc940まで、元表の参照（job **338222**、Slurm COMPLETED、3:15、step MaxRSS `35,742,588 K`）と診断用吸収表（job **338225**、Slurm COMPLETED、3:10、step MaxRSS `35,720,036 K`）を同じbinaryで実行。両方で `output1/data_format=%22.15e` とし、10/10 Newton収束、30 FGMRES solve・292反復、最大true relative residualは各 `1.970175e-8` / `1.970198e-8`、opacity異常0。参照のc931→c940 gas mass は `2.273781246448054e33`→`2.273781403761505e33 g`、相対 `+6.91858e-8`。HDF5のc930/c940は3536 blocksで `Levels` と `LogicalLocations` が完全一致し、mesh再配置がない区間でも増分が続く。密度floorの閾値より最小密度は十分高い。全期間c670→1010の質量増分`+2.93e-6`をAMR再配置のみでは説明できない。放射FLDの面収支は上の直接試験で機械精度なので、hydro側の質量収支が次の切り分け対象。全エネルギーはambient固定源項のため厳密保存量ではない。
+M-debug 64 rank の同一c930 restartからc940まで、元表の参照（job **338222**、Slurm COMPLETED、3:15、step MaxRSS `35,742,588 K`）と診断用吸収表（job **338225**、Slurm COMPLETED、3:10、step MaxRSS `35,720,036 K`）を同じbinaryで実行。両方で `output1/data_format=%22.15e` とし、10/10 Newton収束、30 FGMRES solve・292反復、最大true relative residualは各 `1.970175e-8` / `1.970198e-8`、opacity異常0。参照のc931→c940 gas mass は `2.273781246448054e33`→`2.273781403761505e33 g`、相対 `+6.91858e-8`。HDF5のc930/c940は3536 blocksで `Levels` と `LogicalLocations` が完全一致し、実行ログも「0 created, 0 destroyed」を記録。mesh再配置が**一度もない**区間でも増分が続く。密度floorの閾値より最小密度は十分高い。全期間c670→1010の質量増分`+2.93e-6`をAMR再配置のみでは説明できない。放射FLDの面収支は上の直接試験で機械精度なので、hydro側の質量収支が次の切り分け対象。全エネルギーはambient固定源項のため厳密保存量ではない。
 
 Semenovの公開 `opacity.f` はPlanck/Rosseland meanを消散と表記する。著者の単色NRM複合凝集体データ `nrm.zip` の列は、合計=吸収+散乱およびPlanck積分と公開mean表の照合から、輸送消散・全消散・吸収・散乱と推定できる。この単色比をPlanck表へ適用し、著者コードと同形の蒸発遷移を持たせた**診断用**表を `build_semenov_absorption_trial.py` で作成。元表SHA `6c424454...`、単色archive SHA `a7d2358280c5f4598c4bb0b931e036af2c481f572c75c4b52b87436b9b32a945`、診断表SHA `347baa6e7b0d4303eca1abf762b2fde5042137e42739ef65961eeb68b88dad05`。ρ=1e-10 g/cm³で診断/元のκPは14/350/431 Kで`0.999/0.691/0.523`、κRは同一。共通域431 KではκPが元Semenov `5.909`、診断表`3.093`、Optab`3.057 cm²/g`で、定義差がPlanckの隔たりの大部分を説明する。ただしOptabの低温Rosselandはダストモデルが異なり、同一の物理表として扱わない。高温ガス域の吸収定義もこの表では未検証。
 
 同一c930 restartからの10 cycle A/Bではc940のρmaxは`7.281453102655851e-11`→`7.281453131229435e-11 g/cm³`（相対`+3.924e-9`）、最大Tgasは`375.401214507`→`375.401215138 K`（相対`+1.681e-9`）、Erad総量は相対`-3.257e-8`、gas mass差は`1.0e-14`。短い高密度区間では解にほぼ影響しないが、全collapse経路の感度は別に確認する。数値・反復は `opacity_replay_comparison.json`、図は `opacity_replay_comparison.png`、ログarchiveは `wor92_c930_opacity_replays_338222_338225.tar.gz`（SHA `d973a3a438cde6f046073de5395ebff8c09b049a77bafc34ee519e07a59d507d`）。
 
+さらにHDF5の**保存変数** `cons/dens` を用いて、同じc930 restartを進めないsnapshot job **338236** とc930→940の10-cycle job **338232** をM-debug 64 rankで比較した。両方Slurm COMPLETED、wallは各0:16/3:10、step MaxRSSは`31,732,612 K`/`35,757,508 K`。出力に記録されたcycleは930/940、AMRの `Levels`・`LogicalLocations` は完全一致。float32保存値をfloat64に変換してから面座標由来の体積で積分したgas massは `2.273781229032851e33`→`2.273781403703997e33 g`、相対`+7.681968e-8`。従って増分はprimitive historyだけの表示差ではなく保存変数にも存在する。HDF量子化の影響は各massでhistoryとの差約3e-11相対以下で、この増分より十分小さい。局所原因はまだ特定していない。
+
+#### Hydro面fluxの診断
+
+実行binaryの**隔離コピー**にのみ `hydro_mass_flux_ledger.patch` を当てた診断binary SHA `61e7dda7651d5419e0cb5fc51bb8db53e209cf6d14a134d6402f19f4a18ac480` をM-debugで構築（job **338241**、元binaryは変更なし）。job **338242**（M-debug 1 node・64 rank、c930→931、COMPLETED 0:36、step MaxRSS `35,658,172 K`）では、RK2の2段階・3536 MeshBlockそれぞれのhydro `IDN` flux発散をrank別ログに記録。元binaryのc931高精度historyと診断binaryのc931はgas massを15桁表示で完全再現。実行前c930の高精度historyはjob338236から取得。
+
+高精度historyの質量増分は `1.7553286e25 g`（相対`7.71987e-9`）。診断の面flux合計はRK2第1段階（重み0.01232227）が `1.08616e21 g`、最終段階（重み0.00616113）が `1.7552743e25 g`、合計 `1.75538293e25 g`（history比`1.00003095`）。従って**増分のほぼ全量はhydro最終段階のflux発散**で説明され、FLD・history表示・密度floorが主因という仮説は支持されない。診断archive `job_338242_hydro_mass_ledger.tar.gz` のSHAは `a72bbfe48e48381c8852aaf496fcf1010f99d718fb1fb59039f2b7e61d36327e`。結果 `c930_hydro_mass_flux.json`、解析 `audit_hydro_mass_flux.py`、高精度history `c930_cons_snapshot.hst` と `c931_hydro_flux_trial.hst`。
+
+さらに隔離コピーで6面ごとの質量fluxを出す `hydro_mass_face_ledger.patch`（診断binary SHA `439f22a970b468f5c20fc65a04b4e57d3dea970f300500516193f43809361cac`）を構築し、job **338248**（M-debug 1 node・64 rank、c930→931、COMPLETED 0:36、step MaxRSS `35,658,172 K`）で完全数監査。最終RK2段階の280組/方向の**hydro粗細面**fluxは重み付き相対不一致 x1/x2/x3=`4.286e-18 / 4.305e-18 / 4.311e-18`、net≈0。同一level面2784組/方向は`1.451e-5 / 1.412e-5 / 1.473e-5`で、net質量変化は各`1338 / 1302 / 1359` code単位。境界104組/方向のnetは各`413 / 425 / 406` code単位。合計`5242.866` code単位で、block内部flux発散和との差は`2.0e-10` code単位。第1RK2段階の同一level面の重み付き不一致は各約`5.85e-10`で、net質量差は最終段階より4桁小さい。同一level面のnetの大半は外側level3の面。したがって**この高密度1ステップではhydroの同一level面と周期境界**に主因がある。具体的にどのghost状態・共有処理が不一致を作るかは未確定で、推測でproduction修正はしない。archive `job_338248_hydro_mass_faces.tar.gz` SHA `6e33fb5afb56a6a6f0c72a332ea5bdb390640eb3eeb90dabee0021d4b1e82486`、結果 `c930_hydro_mass_faces.json`、解析 `audit_hydro_mass_faces.py`。ジョブ338245は転送スクリプトの参照patch名ミスで先の簡易ledgerを再ビルドし、依存338246は開始直後に重複と判明して取消。修正後の構築はjob338247、監査が338248。
+
+第一コア到達c1010の3D HDF5では、ρ>1e-14 g/cm³かつ中心5 au以内の81,608セルの|Tgas−Trad|は99%点`0.01528 K`、最大`0.01685 K`。5–12 au衝撃波領域155,136セルでは99%点`0.00847 K`、最大`0.01082 K`。`audit_thermal_coupling.py` と `c1010_thermal_coupling.json` に元HDF/EOS SHAと領域条件を保存した。この近LTE状態が、c930→940におけるPlanck吸収表差の小ささを説明する可能性があるが、全経路への外挿はしない。
+
+第一コアのOptab共通域ρ=1e-10 g/cm³、316.3–431.3 Kを `compare_firstcore_opacity_means.py` で再比較した。431 KのκPは元Semenov `5.909`、診断用吸収 `3.093`、Optab `3.057 cm²/g`。診断用/Optabは`1.012`。一方κRはSemenov/診断用`5.006`、Optab`4.145e-8 cm²/g`で桁違いであり、Planckの一点一致を同一物理モデルの証明として扱わない。Optabの元表・sidecar SHAと定義を含め `firstcore_opacity_means.json/png` に記録した。
+
 ### EOSと基準計算
 
-表SHA `742a3456...` をソルバから独立したPythonの双一次補間で読み、ρ=1e-16〜1e-10 g/cm³、T=14〜431.3 Kの480点を調べた。H₂/He理想混合気体の解析圧力 `P=ρk_B T(X/2+Y/4)/m_H`、X=0.70、Y=0.28に対する最大相対差は`1.743e-12`。P→e逆変換の最大相対差は`5.296e-5`、差分で求めた`c_v`は`5.197e7`〜`8.100e7 erg g^-1 K^-1`で全点正。これは第一コア温度域の単位・補間・熱的安定性の検証であり、H₂解離や第二崩壊への外挿はしない。結果 `firstcore_eos_audit.json/png`、コード `audit_firstcore_eos.py`。
+表SHA `742a3456...` をソルバから独立したPythonの双一次補間で読み、ρ=1e-16〜1e-10 g/cm³、T=14〜431.3 Kの480点を調べた。H₂/He理想混合気体の解析圧力 `P=ρk_B T(X/2+Y/4)/m_H`、X=0.70、Y=0.28に対する最大相対差は`1.743e-12`。P→e逆変換の最大相対差は`5.296e-5`、差分で求めた`c_v`は`5.197e7`〜`8.100e7 erg g^-1 K^-1`で全点正。温度のlog微分`d ln T/d ln e`は472点で双一次セル内の解析傾きと独立中心差分の最大絶対差`1.075e-9`。これは第一コア温度域の単位・補間・熱的安定性の検証であり、H₂解離や第二崩壊への外挿はしない。結果 `firstcore_eos_audit.json/png`、コード `audit_firstcore_eos.py`。
 
 旧理想気体・一定opacity計算job335063の元x軸CSVと今回c1010のx軸CSVを、同程度の最大密度で `compare_reference_axis.py` により重ねた。`reference_axis_comparison.png/json`。旧計算の最大軸温度712.595 K、今回431.255 K。旧shockの6.226〜6.958 au、今回7.507〜7.874 auは持続する降着衝撃波に整合するが、EOS、opacity、解像度、実行経路が異なるため単一原因へ帰属しない。旧shock付近のセル幅0.732 au、今回0.366 au。
 
-### 継続中
+### 高密度の追加対照と全経路感度
 
-元表と診断用吸収表の物理経路感度をc590から比較する M-test-a 5 node job **338230** を投入。start restartのcycle、表SHA、binary SHAをジョブ内で検査し、10 cycle区間ごとにNewton・Jeans・opacity・質量を監視する。30分壁時計で中断した場合は検証済みfinal restartから同条件で再開する。診断用表は高温域の吸収表として採用していない。WOR-92はこの長いA/Bの評価とhydro質量収支の説明が済むまで In Progress を維持する。
+#### Hydro質量増分の追加対照（2026-11-09 14:18 JST）
+
+同一c930 restart・元のopacity表・同一最終binary SHA `ac13cce7...` で時間積分のみ `rk2`→`vl2` に変更した M-debug 64 rank job **338249** はc940までSlurm COMPLETED 0:0（3:09）。c930の高精度質量 `2.273781228894768e33 g` からc940で `2.273781396922404e33 g`、相対`+7.389789e-8`。元のRK2・2次 job338222の同じ区間は`+7.690570e-8`であり、VL2への変更だけでは質量増分は残る。元表・同一restart・同一CFLの短い対照であり、VL2を本線には採用しない。job338249のinput、binary、restart、表SHAはXD `debug/job_338249/provenance.txt`、高精度HSTはローカル外部evidenceの `profiles/c930_c940_vl2.hst`（SHA `43efae610093555368cad1181ec41a48d12396cd7e5ae92754af3c2264f4c64b`）。
+
+同じc930 restartからhydro面診断binary SHA `439f22a9...` で再構成だけ `time/xorder=1` に変えたM-debug 64 rank job **338258** はc931までSlurm COMPLETED 0:0（0:35、step MaxRSS `35,665,816 K`）。c931の高精度gas massは `2.273781228668356e33 g`、c930比`-9.957510e-11`で、元のRK2・2次の1ステップ`+7.719866e-9`より約78倍小さい。ただし符号が反転して完全保存ではない。RK2第1段階の同一level面不一致は機械精度、最終段階の外側level3のnetは各方向`4.1e-5 code`まで減少する一方、内側level12のnetは各約`-16.9 code`残る。全域のhydro面flux発散は最終段階`-67.627 code`であり、元の`+5242.866 code`から大幅に減少した。この結果は2次の再構成境界状態が外側の不一致に大きく寄与することを示すが、ghost通信そのものの不具合の証明ではない。1次化は空間精度を落とすため採用せず、コード修正は面状態の比較後に限定する。全64 rankのログarchiveは `job_338258_hydro_mass_faces_xorder1.tar.gz`、SHA `e9bb3165e21a276dbf9a035ed2cabf1cc2766f1e0c15d24f0585f4cfcb305687`。集計 `c930_hydro_mass_faces_xorder1.json`、対照表 `hydro_mass_controls.json`。
+
+追加の`time/xorder=2c`（特性変数での2次再構成）job **338262** は実行開始時に`General EOS does not support characteristic reconstruction`と明示的に停止（Slurm FAILED、0:13）。この構成はソルバで禁止されているため物理試験のFAILとは数えず、解決策として採用しない。隔離診断binary・元表のみを使い、元の計算には変更がない。
+
+Mayer et al. (2025) Section 5 の[原著](https://arxiv.org/html/2510.12620#S5)では非回転・非磁化、1 M☉、14 Kの球状雲から`ρmax>1e-10 g/cm³`の第一コアへ約29.09 kyr、衝撃波から得た半径6–7 auと報告。今回の29.1095 kyr・7.51–7.87 auは同規模だが、論文Section 5はAREPO移動メッシュ・固定EOS/opacityであり、table EOS/opacityとAthena++ AMRを使う本計算との一致を要求しない。
+
+元表と診断用吸収表の物理経路感度をc590から比較した M-test-a 5 node job **338230** はc590→930をSlurm COMPLETED 0:0（24:49、最大step MaxRSS `18,310,744 K`）。継続の **338233** はc930→1010をCOMPLETED 0:0（6:31、最大step MaxRSS `19,544,476 K`）で終え、ρmax=`1.00819e-10 g/cm³`、Tgas,max=`431.263 K`、Jeans min=`36.4486`で所定の目標に正常停止。全42 segmentのNewtonは**474/474収束**、FGMRESは**1202 solve/12063反復**で、元表の経路と反復数まで同一。最大true linear relative residualは`1.998173e-8`、最大収束Newton final_maxは`9.797649e-6`、opacity out-of-domain/clamp/負/非有限はすべて0。AMR配置はc930（3536 block）、c1010（3704 block）で元表の経路と完全一致。binary・元EOS・checkpoint・診断表SHAと環境変数は各jobの`provenance.txt`に記録。ジョブログarchive SHAはjob338230 `054472991f65cbccbe412fbd341d219fd066e22b72085ad564009b0f2aab94da`、job338233 `606cf02887506a8ccb43460729a620766dfaed259bcd3c2356e9bcfed64fbdc8`。実行表そのものは `semenov_planck_absorption_trial.h5`（174,264 bytes、SHA `347baa6e...`）として同梱した。
+
+c1010の独立3D解析では元表→診断吸収表で最大密度`1.00818888e-10`→`1.00818968e-10 g/cm³`（相対`+7.935e-7`）、最大温度`431.263254`→`431.263424 K`（相対`+3.941e-7`）、gas mass相対差`+5.633e-12`。正のx軸shock位置は両方7.507–7.874 auで一致。ρ>1e-14 g/cm³の486,172 leaf cellsにおける密度相対差99%点は`1.299e-6`、最大`1.086e-5`。前者・後者にはfloat32 HDF5保存量子化も含む。比較は `absorption_branch_comparison.json/png` と `compare_absorption_branch.py`。これにより**第一コア形成まで**の計算結果は、検出したPlanck消散/吸収定義差に対して頑健と確認した。高温ガス域の診断表は未検証で、第二崩壊へ外挿しない。

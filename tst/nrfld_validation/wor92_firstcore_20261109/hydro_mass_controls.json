@@ -1,0 +1,29 @@
+{
+  "start_cycle": 930,
+  "start_gas_mass_g": "2.273781228894768E+33",
+  "controls": {
+    "rk2_xorder2": {
+      "job": 338222,
+      "end_cycle": 940,
+      "end_gas_mass_g": 2.273781403761505e+33,
+      "relative_change_from_c930": 7.690569997580579e-08
+    },
+    "vl2_xorder2": {
+      "job": 338249,
+      "end_cycle": 940,
+      "end_gas_mass_g": "2.273781396922404E+33",
+      "relative_change_from_c930": 7.38978903795746e-08,
+      "history_sha256": "43efae610093555368cad1181ec41a48d12396cd7e5ae92754af3c2264f4c64b"
+    },
+    "rk2_xorder1": {
+      "job": 338258,
+      "end_cycle": 931,
+      "end_gas_mass_g": "2.273781228668356E+33",
+      "relative_change_from_c930": -9.957510297068183e-11,
+      "history_sha256": "0312aff7e0ba97763c8ef2cc10e638f70fa24b2363f84a38592847913022ff92",
+      "face_ledger_json": "c930_hydro_mass_faces_xorder1.json",
+      "log_archive_sha256": "e9bb3165e21a276dbf9a035ed2cabf1cc2766f1e0c15d24f0585f4cfcb305687"
+    }
+  },
+  "interpretation": "VL2 has similar mass drift; xorder1 reduces outer same-level face mismatch but residual central mismatch remains. Neither is adopted as production fix."
+}

@@ -1,0 +1,178 @@
+{
+  "start_cycle": 590,
+  "end_cycle": 1010,
+  "table_trial_sha256": "347baa6e7b0d4303eca1abf762b2fde5042137e42739ef65961eeb68b88dad05",
+  "final": {
+    "rho_max_g_cm3": {
+      "reference": 1.0081888800000001e-10,
+      "trial": 1.00818968e-10,
+      "trial_over_reference_minus_one": 7.935021064664483e-07
+    },
+    "temperature_max_K": {
+      "reference": 431.26325446369225,
+      "trial": 431.26342442185324,
+      "trial_over_reference_minus_one": 3.9409376806354146e-07
+    },
+    "gas_mass_g": {
+      "reference": 2.2737825688077456e+33,
+      "trial": 2.2737825688205528e+33,
+      "trial_over_reference_minus_one": 5.632605493133269e-12
+    },
+    "positive_x_shock": {
+      "reference": {
+        "inner_au": 7.50732421875,
+        "outer_au": 7.87353515625,
+        "inner_over_outer_density": 4.00003601778815,
+        "inner_infall_km_s": 0.4343007264482109,
+        "outer_infall_km_s": 1.6652296870847492
+      },
+      "trial": {
+        "inner_au": 7.50732421875,
+        "outer_au": 7.87353515625,
+        "inner_over_outer_density": 4.000029547533975,
+        "inner_infall_km_s": 0.4343011505395462,
+        "outer_infall_km_s": 1.6652295740064351
+      }
+    }
+  },
+  "hdf_comparison": {
+    "930": {
+      "cycle": 930,
+      "meshblocks": 3536,
+      "dense_cells": 401088,
+      "reference_hdf_sha256": "4be196fd2c34c253e716859c42595c34024b36b40b5434342a095321448024c3",
+      "trial_hdf_sha256": "326d3b753556c09555a5817844a5421e16717453288c6e7abd350445f040d40e",
+      "fields": {
+        "rho": {
+          "max_absolute_relative": 2.8302230814489217e-06,
+          "p99_absolute_relative": 1.3002657516779836e-06
+        },
+        "pressure": {
+          "max_absolute_relative": 8.471717388721277e-06,
+          "p99_absolute_relative": 2.5475866553298405e-06
+        },
+        "radiation_energy": {
+          "max_absolute_relative": 2.8787634741928683e-06,
+          "p99_absolute_relative": 2.4170180577056658e-06
+        }
+      }
+    },
+    "1010": {
+      "cycle": 1010,
+      "meshblocks": 3704,
+      "dense_cells": 486172,
+      "reference_hdf_sha256": "bdd4c72640d16f1872725904c3a66bcd74e56577016f4593e114a3e91e25974f",
+      "trial_hdf_sha256": "a9d59077653ff7e9cee04ea4d6357bb97cdcbd2909716bcf605e68fdc7a44e99",
+      "fields": {
+        "rho": {
+          "max_absolute_relative": 1.0858028562044133e-05,
+          "p99_absolute_relative": 1.2991659883907512e-06
+        },
+        "pressure": {
+          "max_absolute_relative": 1.6277325402903082e-05,
+          "p99_absolute_relative": 3.052106180378358e-06
+        },
+        "radiation_energy": {
+          "max_absolute_relative": 4.138945107060563e-06,
+          "p99_absolute_relative": 3.960975961650746e-06
+        }
+      }
+    }
+  },
+  "jobs": {
+    "338156": {
+      "case": "/work/mizutaniks/output/fld/collapse/wor92_xd_20261107/long/job_338156",
+      "segments": 34,
+      "first_cycle": 590,
+      "last_cycle": 930,
+      "last_reason": "CONTINUE",
+      "rho_max_g_cm3": 6.97589e-11,
+      "tgas_max_K": 368.593,
+      "min_jeans_cells": 31.9891,
+      "gas_mass_relative_change_history_precision": 4.397982205822796e-06,
+      "newton_status_counts": {
+        "converged": 381
+      },
+      "newton_converged_max_final": 9.799682216654624e-06,
+      "fgmres_solves": 962,
+      "fgmres_iterations_total": 9786,
+      "fgmres_max_true_relative_residual": 1.9981290288540806e-08,
+      "accepted_converged_trial_with_l2_increase": [
+        [
+          6,
+          1.0005129255636946
+        ]
+      ],
+      "opacity_missing_diagnostic_segments": [],
+      "opacity_nonzero_diagnostic_segments": []
+    },
+    "338171": {
+      "case": "/work/mizutaniks/output/fld/collapse/wor92_xd_20261107/long/job_338171",
+      "segments": 8,
+      "first_cycle": 930,
+      "last_cycle": 1010,
+      "last_reason": "FIRST_CORE_DENSITY_CANDIDATE",
+      "rho_max_g_cm3": 1.00819e-10,
+      "tgas_max_K": 431.263,
+      "min_jeans_cells": 32.0018,
+      "gas_mass_relative_change_history_precision": 0.0,
+      "newton_status_counts": {
+        "converged": 93
+      },
+      "newton_converged_max_final": 1.9448713820472312e-08,
+      "fgmres_solves": 240,
+      "fgmres_iterations_total": 2277,
+      "fgmres_max_true_relative_residual": 1.996039811883949e-08,
+      "accepted_converged_trial_with_l2_increase": [],
+      "opacity_missing_diagnostic_segments": [],
+      "opacity_nonzero_diagnostic_segments": []
+    },
+    "338230": {
+      "case": "/home/kosuke/simulation/test/rad_nr/wor92_xd_20261107/firstcore_integration_evidence/job_338230",
+      "segments": 34,
+      "first_cycle": 590,
+      "last_cycle": 930,
+      "last_reason": "CONTINUE",
+      "rho_max_g_cm3": 6.9759e-11,
+      "tgas_max_K": 368.594,
+      "min_jeans_cells": 31.9892,
+      "gas_mass_relative_change_history_precision": 4.397982205822796e-06,
+      "newton_status_counts": {
+        "converged": 381
+      },
+      "newton_converged_max_final": 9.7976486508488e-06,
+      "fgmres_solves": 962,
+      "fgmres_iterations_total": 9786,
+      "fgmres_max_true_relative_residual": 1.9981728479812483e-08,
+      "accepted_converged_trial_with_l2_increase": [],
+      "opacity_missing_diagnostic_segments": [],
+      "opacity_nonzero_diagnostic_segments": []
+    },
+    "338233": {
+      "case": "/home/kosuke/simulation/test/rad_nr/wor92_xd_20261107/firstcore_integration_evidence/job_338233",
+      "segments": 8,
+      "first_cycle": 930,
+      "last_cycle": 1010,
+      "last_reason": "FIRST_CORE_DENSITY_CANDIDATE",
+      "rho_max_g_cm3": 1.00819e-10,
+      "tgas_max_K": 431.263,
+      "min_jeans_cells": 32.0018,
+      "gas_mass_relative_change_history_precision": 0.0,
+      "newton_status_counts": {
+        "converged": 93
+      },
+      "newton_converged_max_final": 2.0095245076900544e-08,
+      "fgmres_solves": 240,
+      "fgmres_iterations_total": 2277,
+      "fgmres_max_true_relative_residual": 1.9962211306315444e-08,
+      "accepted_converged_trial_with_l2_increase": [],
+      "opacity_missing_diagnostic_segments": [],
+      "opacity_nonzero_diagnostic_segments": []
+    }
+  },
+  "trial_logs_sha256": {
+    "338230": "054472991f65cbccbe412fbd341d219fd066e22b72085ad564009b0f2aab94da",
+    "338233": "606cf02887506a8ccb43460729a620766dfaed259bcd3c2356e9bcfed64fbdc8"
+  },
+  "note": "Same c590 restart and binary. Only Planck table changed; Rosseland table identical. The trial table is validated here only through first-core temperatures."
+}

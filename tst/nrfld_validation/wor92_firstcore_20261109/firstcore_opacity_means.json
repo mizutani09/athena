@@ -1,0 +1,38 @@
+{
+  "density_g_cm3": 1e-10,
+  "temperature_range_K": [
+    316.3,
+    431.3
+  ],
+  "inputs": {
+    "Semenov extinction": {
+      "path": "/home/kosuke/simulation/athena/data/opacity/protostellar_semenov2003_nrm_c_a.h5",
+      "sha256": "6c42445452bca6aeca1253f31ab049b2ff107dea3601f946b4c61c93db022f94"
+    },
+    "Semenov absorption estimate": {
+      "path": "tst/nrfld_validation/wor92_firstcore_20261109/semenov_planck_absorption_trial.h5",
+      "sha256": "347baa6e7b0d4303eca1abf762b2fde5042137e42739ef65961eeb68b88dad05"
+    },
+    "Optab": {
+      "path": "/home/kosuke/simulation/athena/data/opacity/rsg_gray_opacity_wor55.h5",
+      "sha256": "00c517e858f33e85fb3fab26618600f43335c445b99ea01d3393549fc27eaefb"
+    }
+  },
+  "at_431K_cm2_g": {
+    "Semenov extinction": {
+      "planck": 5.909318518251466,
+      "rosseland": 5.006074219159487
+    },
+    "Semenov absorption estimate": {
+      "planck": 3.0929508178531013,
+      "rosseland": 5.006074219159487
+    },
+    "Optab": {
+      "planck": 3.056550927102433,
+      "rosseland": 4.145140480170219e-08
+    }
+  },
+  "trial_planck_over_optab_at_431K": 1.0119088121280462,
+  "limitation": "Optab omits Semenov's low-temperature dust model; equal Planck means at one point do not imply equal physical opacity models",
+  "plot": "tst/nrfld_validation/wor92_firstcore_20261109/firstcore_opacity_means.png"
+}
