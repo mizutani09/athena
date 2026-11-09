@@ -194,3 +194,9 @@ XD M-debug 64 rankの同一c930 restart対照では、ambient温度固定をOFF�
 | N128 | 0.061106→0.061074 | 1.895114→1.895115 | 1→1 | 0.0754% |
 
 温度と放射エネルギーの圧縮波周辺の有意極値数も両解像度で0→0。N128の密度全変動の増加は`1.57e-6`（正規化値）で、振動の新たな増加とは判定しない。N64ではradiation energyと全圧の参照L1がそれぞれ約0.10%/0.12%悪化し、他物理量とN128のL1は概ね改善。差はいずれも非常に小さく、修正前後の曲線は図でほぼ重なる。N4096との大きなL1差は両版に共通する数値拡散を含み、WOR-118の局所修正で解消されたとは主張しない。結果 `wor118_shock_tube_regression.json/png`、比較コード `compare_wor118_shock_tube.py`、完全ログ・動画等の外部証拠 `/home/kosuke/simulation/test/rad_nr/wor118_shock_tube_20261109/`。
+
+### Riemann放射圧ON/OFFの因果切り分け
+
+同じ修正版N64・2 rank binary SHA `623c9f87978e3f9c7107e85d77f324703d34d5a794771766c2dbd2ccb949784c`で、Riemann solver内の`fld/radiation_pressure_in_riemann`だけをfalseにした対照をt=0.1まで実施。放射力など他の設定はONのままなので、物理的一貫性のある代替モデルではなく局所寄与の診断である。OFFの入力SHAは`7fce54aa94d57cffc6812955556298c3026f23ce94cab4ef6f274fefebfd14c8`、1381/1381 Newton収束、4179 FGMRES solve/4179反復、wall 11:48.98。最初に行ったコマンドライン上だけの指定はAthena++が未登録パラメータとして計算前に拒否し、`setup_failed.log`として外部証拠へ保管。入力ファイルへ設定を明記した再実行が本対照である。
+
+最終t=0.1の独立N4096参照への相対L1はON→OFFで密度`0.100413→0.100674`、速度`0.038046→0.060868`、放射エネルギー`0.021414→0.034805`、全圧`0.016783→0.029898`。密度の圧縮波周辺の有意極値数は両方1で、OFFでも破局的な密度振動は再現しない。一方、全21時刻の系列にはOFFで各物理量に最大2個の追加有意極値が見られる時刻があり、t≈0.015の温度・放射エネルギーの谷もOFFで深い。これらは放射圧ONが解の一致と一部波形を改善する根拠だが、OFFは物理モデルも変えるため、歴史的な振動の唯一の解消要因とまでは断定しない。新旧修正の放射圧ON回帰がPASSであることが今回の採用判定で、OFFは採用しない。全指標と入力・log SHAは `wor118_riemann_radp_ablation.json`、図は `wor118_riemann_radp_ablation.png`、再生成コードは `compare_riemann_radp_ablation.py`。生ログは外部証拠 `wor118_shock_tube_20261109/radp_off_n64_control/`。

@@ -48,6 +48,8 @@ def render():
         (ROOT / "firstcore_reference_comparison.png").read_bytes()).decode("ascii")
     shock_chart = base64.b64encode(
         (ROOT / "wor118_shock_tube_regression.png").read_bytes()).decode("ascii")
+    radp_ablation_chart = base64.b64encode(
+        (ROOT / "wor118_riemann_radp_ablation.png").read_bytes()).decode("ascii")
     eos_audit = read_json("firstcore_eos_audit.json")
     opacity_replay = read_json("opacity_replay_comparison.json")
     opacity_table = read_json("semenov_planck_absorption_trial.json")
@@ -70,6 +72,7 @@ def render():
     repaired_vl2 = read_json("wor118_c930_c940_vl2.json")
     uniform_one_rank = read_json("wor118_uniform_one_rank_short.json")
     shock_regression = read_json("wor118_shock_tube_regression.json")
+    radp_ablation = read_json("wor118_riemann_radp_ablation.json")
     firstcore_reference = read_json("firstcore_reference_comparison.json")
     ambient_regions = hydro_ambient["stages"]["0.00616113437895963317"]
     ambient_by_region = {region: sum(value["net_code"] for name, value in ambient_regions.items()
@@ -171,6 +174,9 @@ code{{font-size:.9em;overflow-wrap:anywhere}}.note{{background:#fff6e9;border-le
 <figure><img src="data:image/png;base64,{shock_chart}" alt="N64とN128のshock tubeの密度、ガス温度、放射エネルギーを修正前後と独立参照解で比較" loading="lazy"><figcaption>旧版と修正版の曲線はほぼ重なる。参照解との幅の差は両方に共通するFLD数値拡散を含む。元図は<a href="wor118_shock_tube_regression.png">こちら</a>。</figcaption></figure>
 <div class="scroll"><table><thead><tr><th>解像度</th><th>密度L1・旧</th><th>密度L1・修正後</th><th>圧縮波周辺の正規化全変動</th><th>有意な極値数</th></tr></thead><tbody>{shock_rows}</tbody></table></div>
 <p>N64/N128の密度L1はそれぞれ0.100440→0.100413、0.061106→0.061074。波面周辺の密度極値数はどちらも1→1、温度・放射エネルギーは0→0。N128の密度全変動の変化は約1.6×10⁻⁶で、視認できる新たな振動はありません。5物理量の新旧最大点差は参照解の全振幅の0.076%以下。入力・binary・ソースSHA、残差、実行時間、メモリ、全物理量の誤差は<a href="wor118_shock_tube_regression.json">比較JSON</a>と各実験ディレクトリのsummaryに記録しました。</p></section>
+<h3>Riemann放射圧だけをOFFにした診断</h3><p>修正版N64の同じbinaryと初期条件で、Riemann solver内の放射圧だけをOFFにしてt=0.1まで実行しました。放射力など他の設定はONのままなので、これは物理的に一貫した代替モデルではなく寄与の切り分けです。{radp_ablation['off_newton_converged']}/{radp_ablation['off_cycles']} Newton収束、FGMRES {radp_ablation['off_fgmres_solves']} solve、最大true relative residual {radp_ablation['off_fgmres_max_true_relative_residual']:.2e}。</p>
+<figure><img src="data:image/png;base64,{radp_ablation_chart}" alt="放射圧をRiemann solverで有効・無効にしたN64 shock tubeのt0.03とt0.1の密度・温度・放射エネルギー" loading="lazy"><figcaption>密度に破局的な振動は生じませんが、途中の温度・放射エネルギーの谷はOFFで深く、最終曲線にも小さな差があります。元図は<a href="wor118_riemann_radp_ablation.png">こちら</a>。</figcaption></figure>
+<p>最終時刻の参照解への相対L1は、ON→OFFで密度{radp_ablation['fields']['rho']['on_reference_relative_l1']:.6f}→{radp_ablation['fields']['rho']['off_reference_relative_l1_diagnostic_only']:.6f}、速度{radp_ablation['fields']['velocity']['on_reference_relative_l1']:.6f}→{radp_ablation['fields']['velocity']['off_reference_relative_l1_diagnostic_only']:.6f}、放射エネルギー{radp_ablation['fields']['radiation_energy']['on_reference_relative_l1']:.6f}→{radp_ablation['fields']['radiation_energy']['off_reference_relative_l1_diagnostic_only']:.6f}。OFFの全時刻系列にはONより有意な極値が最大2個多い時刻があります。放射圧ONが解の一致と波形を改善することは示唆されますが、歴史的な振動の唯一の解消要因とは断定できません。診断OFFは本線には採用しません。<a href="wor118_riemann_radp_ablation.json">全21時刻の集計と入力SHA</a>。</p></section>
 <section id="opacity"><h2>Planck吸収係数の感度</h2>
 <p>Semenov公開表のPlanck平均は消散として記述されます。公開単色データの吸収/輸送消散比から第一コア温度域だけに適用する<strong>診断用</strong>Planck吸収表を生成しました。ρ=10⁻¹⁰ g/cm³における試験表/元表の係数比は14 Kで{opacity_table['correction_near_14_200_350_431K_at_rho1e-10']['14']:.3f}、350 Kで{opacity_table['correction_near_14_200_350_431K_at_rho1e-10']['350']:.3f}、431 Kで{opacity_table['correction_near_14_200_350_431K_at_rho1e-10']['431']:.3f}。Rosseland平均は同一です。</p>
 <figure><img src="data:image/png;base64,{opacity_means_chart}" alt="第一コア共通範囲でのSemenov元表・吸収試験表・OptabのPlanck/Rosseland平均比較" loading="lazy"><figcaption>ρ=10⁻¹⁰ g/cm³、T=316–431 K。431 KのPlanck平均は元Semenov 5.91、診断表3.09、Optab 3.06 cm²/gで、後二者の比は{opacity_means['trial_planck_over_optab_at_431K']:.3f}。一方Rosseland平均はSemenov 5.01、Optab 4.15×10⁻⁸ cm²/gで、表の物理モデルは一致しない。</figcaption></figure>
@@ -211,6 +217,7 @@ code{{font-size:.9em;overflow-wrap:anywhere}}.note{{background:#fff6e9;border-le
 <li><a href="wor118_c930_c1010_repaired_run.json">修正版c930→1010の反復・質量・最終量</a> / <a href="wor118_mtest_production_c930to1010.sbatch">XD再現入力</a> / <a href="summarize_wor118_repaired_run.py">集計コード</a></li>
 <li><a href="wor118_c930_c940_vl2.json">修正版VL2の10ステップ</a> / <a href="wor118_mdebug_vl2_c930to940.sbatch">XD再現入力</a> / <a href="wor118_uniform_one_rank_short.json">1 rank uniform短時間試験</a></li>
 <li><a href="wor118_shock_tube_regression.json">shock tube N64/N128新旧比較</a> / <a href="wor118_shock_tube_regression.png">圧縮波の拡大図</a> / <a href="compare_wor118_shock_tube.py">比較コード</a></li>
+<li><a href="wor118_riemann_radp_ablation.json">Riemann放射圧ON/OFFの診断</a> / <a href="wor118_riemann_radp_ablation.png">中間・最終波形</a> / <a href="compare_riemann_radp_ablation.py">比較コード</a></li>
 <li><a href="wor118_rad_sync_diagnostic.txt">RK段階の放射ghost追跡</a> / <a href="wor118_mdebug_rad_sync_diag_c930to931.sbatch">XD再現入力</a></li>
 <li><a href="opacity_replay_comparison.json">Planck補正A/B</a> / <a href="semenov_planck_absorption_trial.json">診断表の生成記録</a> / <a href="firstcore_eos_audit.json">EOS独立監査</a></li>
 <li><a href="absorption_branch_comparison.json">c590→1010の吸収表感度</a> / <a href="semenov_planck_absorption_trial.h5">診断用HDF5表</a> / <a href="compare_absorption_branch.py">比較・作図コード</a></li>
