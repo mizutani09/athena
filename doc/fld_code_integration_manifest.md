@@ -47,4 +47,3 @@ No prior long-run or XD output is represented as a run of this integration commi
 5. Freeze a candidate SHA with build/input/table hashes, exact solver options, known failures and figure provenance. Draft PR review precedes any tag or merge.
 
 The upstream implementation split, non-FLD compatibility, Princeton main tracking and proposal work are handed to WOR-117; publication qualification of this fork remains WOR-114.
-

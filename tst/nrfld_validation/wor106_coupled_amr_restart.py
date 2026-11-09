@@ -6,6 +6,7 @@ The test intentionally compares active fields at the same cycle and time.
 """
 
 import argparse
+import math
 import os
 from pathlib import Path
 import re
@@ -51,21 +52,24 @@ dcycle = 2
     output.write_text(content)
 
 
-def compare(direct, restarted, tolerance):
+def compare(direct, restarted, tolerance, time_ulps):
     files = [sorted(folder.glob("*.fields.*.athdf"))[-1]
              for folder in (direct, restarted)]
     with h5py.File(files[0]) as a, h5py.File(files[1]) as b:
         time_a = float(a.attrs["Time"])
         time_b = float(b.attrs["Time"])
-        if time_a != time_b:
-            raise AssertionError(f"restart timestep differs: {time_a} vs {time_b}")
+        time_diff = abs(time_a - time_b)
+        time_limit = time_ulps * math.ulp(max(abs(time_a), abs(time_b)))
+        if time_diff > time_limit:
+            raise AssertionError(f"restart time differs: {time_a} vs {time_b} "
+                                 f"(allowed {time_ulps} ULP)")
         if not np.array_equal(a["LogicalLocations"][:], b["LogicalLocations"][:]):
             raise AssertionError("restart AMR topology differs")
         x, y = a["user_out_var"][:], b["user_out_var"][:]
         max_diff = float(np.max(np.abs(x-y)))
         if max_diff > tolerance:
             raise AssertionError(f"field mismatch {max_diff} exceeds {tolerance}")
-    return time_a, max_diff
+    return time_a, time_diff, max_diff
 
 
 def main():
@@ -75,7 +79,11 @@ def main():
                         default=Path("inputs/radiation/athinput.nrfld_diff_amr_interface"))
     parser.add_argument("--output", type=Path, default=Path("/tmp/wor106_restart_regression"))
     parser.add_argument("--tolerance", type=float, default=1e-10)
+    parser.add_argument("--time-ulps", type=int, default=0,
+                        help="Allowed final-time difference in binary64 ULPs (default: exact)")
     args = parser.parse_args()
+    if args.time_ulps < 0:
+        parser.error("--time-ulps must be nonnegative")
     binary, source = args.binary.resolve(), args.input.resolve()
     args.output.mkdir(parents=True, exist_ok=True)
     baseline_flags = dict(os.environ)
@@ -117,8 +125,10 @@ def main():
         command = ["mpirun", "-n", "4", str(binary), "-r", str(checkpoint),
                    "-d", str(restarted), "time/nlim=5"]
         run(command, flags, folder / "restart.log")
-        time, difference = compare(direct, restarted, args.tolerance)
-        print(f"{name}: time={time:.16g} max_field_diff={difference:.3e}")
+        time, time_diff, difference = compare(direct, restarted, args.tolerance,
+                                              args.time_ulps)
+        print(f"{name}: time={time:.16g} time_diff={time_diff:.3e} "
+              f"max_field_diff={difference:.3e}")
 
 
 if __name__ == "__main__":
