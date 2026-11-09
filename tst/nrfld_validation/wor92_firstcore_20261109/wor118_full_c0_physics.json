@@ -1,0 +1,79 @@
+{
+  "source": "c1080_wor118_full_profile.csv and wor118_full_c0_history.csv",
+  "initial_uniform_density_g_cm3": 5.2515854158814074e-18,
+  "pressureless_freefall_time_kyr": 29.047484513863097,
+  "snapshot_time_over_freefall": 1.0021680946996063,
+  "first_core_shock_radius_midpoint_au": 7.6904296875,
+  "enclosed_gas_mass_at_shock_msun": 0.030338052091152975,
+  "envelope_window_au": [
+    20,
+    300
+  ],
+  "envelope_density_power_law_slope": -2.0679196005645792,
+  "envelope_median_rho_over_Larson_Penston_isothermal_asymptote": 1.279346932730003,
+  "envelope_temperature_range_K": [
+    14.074567030502049,
+    64.67576001844472
+  ],
+  "maximum_absolute_gas_mass_relative_drift": 5.27937138513633e-15,
+  "density_crossings": {
+    "1e-15": {
+      "time_kyr": 28.0354849331309,
+      "temperature_K": 14.0764386367748
+    },
+    "1e-13": {
+      "time_kyr": 28.8837999221171,
+      "temperature_K": 17.87695729737289
+    },
+    "1e-12": {
+      "time_kyr": 28.9494278211556,
+      "temperature_K": 42.7085771500355
+    },
+    "1e-11": {
+      "time_kyr": 29.0015386291397,
+      "temperature_K": 154.7127412856226
+    },
+    "1e-10": {
+      "time_kyr": 29.1090874098761,
+      "temperature_K": 427.0055949101674
+    }
+  },
+  "mayer_section5_approximate_figure7_ratios": {
+    "1": {
+      "model_rho_over_approx_paper": 0.9684704076323398,
+      "model_temperature_over_approx_paper": 0.49056929654539605,
+      "earlier_ideal_xaxis_temperature_over_approx_paper": 0.8033635031477754
+    },
+    "3": {
+      "model_rho_over_approx_paper": 0.567791006990231,
+      "model_temperature_over_approx_paper": 0.5348222955357163,
+      "earlier_ideal_xaxis_temperature_over_approx_paper": 0.7578033936343249
+    },
+    "5": {
+      "model_rho_over_approx_paper": 0.506285451154642,
+      "model_temperature_over_approx_paper": 0.5949904621374781,
+      "earlier_ideal_xaxis_temperature_over_approx_paper": 0.6770150999386598
+    },
+    "10": {
+      "model_rho_over_approx_paper": 0.3765277721284857,
+      "model_temperature_over_approx_paper": 0.5663106281816032,
+      "earlier_ideal_xaxis_temperature_over_approx_paper": 0.6129748240133838
+    },
+    "30": {
+      "model_rho_over_approx_paper": 0.5025449439037472,
+      "model_temperature_over_approx_paper": 0.36696700388598896,
+      "earlier_ideal_xaxis_temperature_over_approx_paper": 0.6435248659605257
+    },
+    "100": {
+      "model_rho_over_approx_paper": 0.5086955690481053,
+      "model_temperature_over_approx_paper": 0.36612388186034944,
+      "earlier_ideal_xaxis_temperature_over_approx_paper": 0.6714316400988348
+    },
+    "300": {
+      "model_rho_over_approx_paper": 0.5499730105490205,
+      "model_temperature_over_approx_paper": 0.7252348210645171,
+      "earlier_ideal_xaxis_temperature_over_approx_paper": 0.7972008960763204
+    }
+  },
+  "reference_limitations": "Mayer Figure 7 points were read approximately from a raster figure; Section 5 has different EOS, opacity, mesh, and ambient pressure. The Larson-Penston curve is an isothermal asymptote, not an exact RHD solution. The core mass interpolates cumulative spherical-shell mass and is approximate."
+}
