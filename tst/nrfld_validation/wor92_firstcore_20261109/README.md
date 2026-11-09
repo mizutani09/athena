@@ -92,3 +92,36 @@ cycle1010 の独立3D HDF5解析（3704 leaf blocks、8³ cells/block、約189�
 ### 人に伝える計算量の目安
 
 **「XD2000で第一コアの目標密度まで、採用したcycle47保存点から約5ノード時間。最後の高密度420ステップはMノード5台で約31分」**。この5.07ノード時間は採用したcheckpoint列を作った各ジョブの実測wall×ノード数の合計で、約324 MPI rank時間（各ノード64 rank）。途中のjob338133（cycle530まで進行後、cycle500から高解像度へ分岐）とjob338144（cycle588失敗後、cycle580から修正再開）の実使用時間も含む。最後のjob338156+338171だけなら31:18×5=**2.608ノード時間**、約167 MPI rank時間。node-hourはキュー待ちを含まず、cycle0→46の初期保存点作成とA/B検証・失敗原因調査・重複試験は含まない。したがって初期状態からの全研究コストの数字としては使わない。
+
+## 第一コア後続監査（2026-11-09）
+
+すべての図を埋め込んだ [HTMLレポート](report.html) に、従来基準との正のx軸比較、EOS独立監査、Planck吸収の感度、c930/c1000の粗細面監査を追加した。HTMLは単体閲覧可能であり、生成コードは `make_report.py`。元PNG、JSON、スクリプトも同じディレクトリに置いた。
+
+### 高密度でのFLD面収支
+
+同じ最終binary SHA `ac13cce7...`、元のEOS/opacity表、保存的面中心化を用い、M-debug 1 node・64 rankでc930→931（job **338226**、Slurm COMPLETED、39秒、step MaxRSS `35,638,392 K`）とc1000→1001（job **338228**、物理step完了、37秒、step MaxRSS `36,870,452 K`）を実行。各rankの `[NR_INTERFACE_LEDGER]` と `[NR_ENERGY_LEDGER]` を `audit_high_density_faces.py` で完全数監査した。
+
+| 開始cycle | leaf blocks | 各方向の粗細面group | x1/x2/x3 面積重み相対不一致 | 暗黙FLDの全域符号付き収支比 | 判定 |
+|---:|---:|---:|---|---:|---|
+| 930 | 3536 | 280 | `6.030e-18 / 6.068e-18 / 6.207e-18` | `3.992e-14` | PASS |
+| 1000 | 3704 | 296 | `5.976e-18 / 5.259e-18 / 6.071e-18` | `6.213e-14` | 物理・監査PASS、Slurm statusはスクリプトの終了比較ミス |
+
+job338228はfinal restartのcycleが正しく1001で、Newtonは収束、opacity診断すべて0、64 rankのledgerと3704 blockが揃った。ただしsbatchの最後だけ `1001` を古い `931` と比較し、`FAIL_WRONG_END_CYCLE` を書いてexit1した。この失敗は物理計算の失敗として扱わない。実行時の誤判定はXDの `debug/job_338228/status.txt` とarchiveに保存し、repoのスクリプトは判定値を修正済み。rankログのローカルarchiveは `firstcore_integration_evidence/job_338226_face_ledger.tar.gz`（SHA `ee356b49ab0c27277d265214a49dffb7db1dd16420ff4854c4ea761332712f75`）と `job_338228_face_ledger.tar.gz`（SHA `25adab5591c9f41806eca5b1a9c86634ea13b1d7dcf748b8fe281b4a1711e9f4`）。集計JSONは `c930_face_audit.json`、`c1000_face_audit.json`。
+
+### 質量の高精度historyとPlanck吸収感度
+
+M-debug 64 rank の同一c930 restartからc940まで、元表の参照（job **338222**、Slurm COMPLETED、3:15、step MaxRSS `35,742,588 K`）と診断用吸収表（job **338225**、Slurm COMPLETED、3:10、step MaxRSS `35,720,036 K`）を同じbinaryで実行。両方で `output1/data_format=%22.15e` とし、10/10 Newton収束、30 FGMRES solve・292反復、最大true relative residualは各 `1.970175e-8` / `1.970198e-8`、opacity異常0。参照のc931→c940 gas mass は `2.273781246448054e33`→`2.273781403761505e33 g`、相対 `+6.91858e-8`。HDF5のc930/c940は3536 blocksで `Levels` と `LogicalLocations` が完全一致し、mesh再配置がない区間でも増分が続く。密度floorの閾値より最小密度は十分高い。全期間c670→1010の質量増分`+2.93e-6`をAMR再配置のみでは説明できない。放射FLDの面収支は上の直接試験で機械精度なので、hydro側の質量収支が次の切り分け対象。全エネルギーはambient固定源項のため厳密保存量ではない。
+
+Semenovの公開 `opacity.f` はPlanck/Rosseland meanを消散と表記する。著者の単色NRM複合凝集体データ `nrm.zip` の列は、合計=吸収+散乱およびPlanck積分と公開mean表の照合から、輸送消散・全消散・吸収・散乱と推定できる。この単色比をPlanck表へ適用し、著者コードと同形の蒸発遷移を持たせた**診断用**表を `build_semenov_absorption_trial.py` で作成。元表SHA `6c424454...`、単色archive SHA `a7d2358280c5f4598c4bb0b931e036af2c481f572c75c4b52b87436b9b32a945`、診断表SHA `347baa6e7b0d4303eca1abf762b2fde5042137e42739ef65961eeb68b88dad05`。ρ=1e-10 g/cm³で診断/元のκPは14/350/431 Kで`0.999/0.691/0.523`、κRは同一。共通域431 KではκPが元Semenov `5.909`、診断表`3.093`、Optab`3.057 cm²/g`で、定義差がPlanckの隔たりの大部分を説明する。ただしOptabの低温Rosselandはダストモデルが異なり、同一の物理表として扱わない。高温ガス域の吸収定義もこの表では未検証。
+
+同一c930 restartからの10 cycle A/Bではc940のρmaxは`7.281453102655851e-11`→`7.281453131229435e-11 g/cm³`（相対`+3.924e-9`）、最大Tgasは`375.401214507`→`375.401215138 K`（相対`+1.681e-9`）、Erad総量は相対`-3.257e-8`、gas mass差は`1.0e-14`。短い高密度区間では解にほぼ影響しないが、全collapse経路の感度は別に確認する。数値・反復は `opacity_replay_comparison.json`、図は `opacity_replay_comparison.png`、ログarchiveは `wor92_c930_opacity_replays_338222_338225.tar.gz`（SHA `d973a3a438cde6f046073de5395ebff8c09b049a77bafc34ee519e07a59d507d`）。
+
+### EOSと基準計算
+
+表SHA `742a3456...` をソルバから独立したPythonの双一次補間で読み、ρ=1e-16〜1e-10 g/cm³、T=14〜431.3 Kの480点を調べた。H₂/He理想混合気体の解析圧力 `P=ρk_B T(X/2+Y/4)/m_H`、X=0.70、Y=0.28に対する最大相対差は`1.743e-12`。P→e逆変換の最大相対差は`5.296e-5`、差分で求めた`c_v`は`5.197e7`〜`8.100e7 erg g^-1 K^-1`で全点正。これは第一コア温度域の単位・補間・熱的安定性の検証であり、H₂解離や第二崩壊への外挿はしない。結果 `firstcore_eos_audit.json/png`、コード `audit_firstcore_eos.py`。
+
+旧理想気体・一定opacity計算job335063の元x軸CSVと今回c1010のx軸CSVを、同程度の最大密度で `compare_reference_axis.py` により重ねた。`reference_axis_comparison.png/json`。旧計算の最大軸温度712.595 K、今回431.255 K。旧shockの6.226〜6.958 au、今回7.507〜7.874 auは持続する降着衝撃波に整合するが、EOS、opacity、解像度、実行経路が異なるため単一原因へ帰属しない。旧shock付近のセル幅0.732 au、今回0.366 au。
+
+### 継続中
+
+元表と診断用吸収表の物理経路感度をc590から比較する M-test-a 5 node job **338230** を投入。start restartのcycle、表SHA、binary SHAをジョブ内で検査し、10 cycle区間ごとにNewton・Jeans・opacity・質量を監視する。30分壁時計で中断した場合は検証済みfinal restartから同条件で再開する。診断用表は高温域の吸収表として採用していない。WOR-92はこの長いA/Bの評価とhydro質量収支の説明が済むまで In Progress を維持する。

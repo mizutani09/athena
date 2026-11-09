@@ -1,0 +1,20 @@
+{
+  "source_table_sha256": "742a3456923d4c7056c3705accbcc793af3e0c79408a2f597a0cd9271b13ba43",
+  "density_range_g_cm3": [
+    1e-16,
+    1e-10
+  ],
+  "temperature_range_K": [
+    14.0,
+    431.3
+  ],
+  "samples": 480,
+  "analytic_pressure": "rho*k_B*T/m_H*(X/2+Y/4), X=0.70, Y=0.28",
+  "pressure_max_absolute_relative_error": 1.7430501486614958e-12,
+  "energy_p_to_e_inverse_max_absolute_relative_error": 5.2963390831273216e-05,
+  "cv_min_erg_g_K": 51973646.73234007,
+  "cv_max_erg_g_K": 80998157.64639938,
+  "low_temperature_analytic_cv_erg_g_K": 51973647.1558342,
+  "plot": "tst/nrfld_validation/wor92_firstcore_20261109/firstcore_eos_audit.png",
+  "scope": "first core 14\u2013431.3 K; dissociation and second collapse not tested"
+}

@@ -34,6 +34,17 @@ def render():
                and not job["opacity_nonzero_diagnostic_segments"] for job in jobs)
     assert abs(node_hours - 5.067222222222222) < 1e-9
     chart = base64.b64encode((ROOT / "first_core_profiles.png").read_bytes()).decode("ascii")
+    comparison_chart = base64.b64encode(
+        (ROOT / "reference_axis_comparison.png").read_bytes()).decode("ascii")
+    opacity_chart = base64.b64encode(
+        (ROOT / "opacity_replay_comparison.png").read_bytes()).decode("ascii")
+    eos_chart = base64.b64encode(
+        (ROOT / "firstcore_eos_audit.png").read_bytes()).decode("ascii")
+    eos_audit = read_json("firstcore_eos_audit.json")
+    opacity_replay = read_json("opacity_replay_comparison.json")
+    opacity_table = read_json("semenov_planck_absorption_trial.json")
+    faces = {cycle: read_json(f"c{cycle}_face_audit.json")[0]
+             for cycle in (930, 1000)}
     stage_rows = "".join(tr(cycle,
                             f"{stages[cycle]['time_years']/1000:.4f}",
                             f"{stages[cycle]['rho_max_g_cm3']:.3e}",
@@ -74,7 +85,7 @@ code{{font-size:.9em;overflow-wrap:anywhere}}.note{{background:#fff6e9;border-le
 .split{{display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:1rem}}footer{{max-width:1120px;margin:auto;padding:0 1.2rem 2rem;color:#536b74}}
 </style></head><body>
 <header><div>ATHENA++ / WOR-92 / XD2000</div><h1>Table EOS・opacityで第一コアの目標密度に到達</h1><p>2026-11-09 JST。Tomida系EOSとSemenov opacityを使ったCFL=0.3の3D AMR計算。採用した計算経路の到達点と、物理解釈上の限界を分けて示します。</p></header>
-<nav><a href="#result">到達点</a><a href="#structure">3D構造</a><a href="#solver">収束</a><a href="#conservation">保存量</a><a href="#cost">計算量</a><a href="#comparison">比較と残件</a><a href="#evidence">再現情報</a></nav>
+<nav><a href="#result">到達点</a><a href="#structure">3D構造</a><a href="#solver">収束</a><a href="#conservation">保存量</a><a href="#opacity">opacity試験</a><a href="#eos">EOS監査</a><a href="#cost">計算量</a><a href="#comparison">基準計算</a><a href="#evidence">再現情報</a></nav>
 <main>
 <section id="result"><h2>到達点</h2><div class="cards">
 <div class="card good"><strong>1.008×10⁻¹⁰ g/cm³</strong>cycle 1010で目標密度1×10⁻¹⁰ g/cm³を超え、正常終了。</div>
@@ -94,16 +105,28 @@ code{{font-size:.9em;overflow-wrap:anywhere}}.note{{background:#fff6e9;border-le
 <section id="conservation"><h2>保存量</h2><div class="split"><div class="panel"><h3>Gas mass</h3><table><tbody>
 {''.join(tr(f'cycle {cycle}',f'{stages[cycle]["gas_mass_g"]:.10e} g') for cycle in (670,780,1010))}
 </tbody></table><p>cycle 670→1010の相対変化は<code>+{mass_drift:.3e}</code>。完全な保存とは判定しません。</p></div>
-<div class="panel"><h3>FLDと全エネルギー</h3><p>cycle 46の同一checkpoint A/Bでは保存的粗細面を有効にすると面積重み付きflux不一致が各方向約6×10⁻⁷から約2×10⁻¹⁷に下がりました。最終高密度状態での直接面監査は未実施です。</p><p>ambientのガス・放射温度を固定する源項があるため、全エネルギーは厳密な保存量として評価しません。</p></div></div></section>
+<div class="panel"><h3>FLDと全エネルギー</h3><p>cycle 46の同一checkpoint A/Bでは保存的粗細面を有効にすると面積重み付きflux不一致が各方向約6×10⁻⁷から約2×10⁻¹⁷に下がりました。高密度checkpointのc930、c1000から1 stepずつ64 rankで監査し、各軸それぞれ280・296組の粗細面に対して、重み付き不一致は最大でも{max(faces[c]['faces'][f'x{i}:coarse_fine']['weighted_relative_mismatch'] for c in faces for i in (1,2,3)):.2e}でした。暗黙FLDの符号付き全域収支は最大{max(faces[c]['global_signed_balance_fraction'] for c in faces):.2e}。</p><p>c1000のSlurm終了状態だけは、実行スクリプトが正しく到達した1001を誤って931と比較したためFAILED。物理計算・64 rank監査ログ・final restartは正常です。ambientのガス・放射温度を固定する源項があるため、全エネルギーは厳密な保存量として評価しません。</p></div></div>
+<p class="note">c930→940を15桁のhistoryで再実行すると、AMRのMeshBlock配置が同一でもgas massはc931→940で{opacity_replay['reference']['mass_change_c931_to_c940_relative']:.3e}増加。したがって長期の質量増分をAMR再配置だけで説明できません。放射FLDの粗細面収支とは別に、hydro側の質量収支を調べる必要があります。</p></section>
+<section id="opacity"><h2>Planck吸収係数の感度</h2>
+<p>Semenov公開表のPlanck平均は消散として記述されます。公開単色データの吸収/輸送消散比から第一コア温度域だけに適用する<strong>診断用</strong>Planck吸収表を生成しました。ρ=10⁻¹⁰ g/cm³における試験表/元表の係数比は14 Kで{opacity_table['correction_near_14_200_350_431K_at_rho1e-10']['14']:.3f}、350 Kで{opacity_table['correction_near_14_200_350_431K_at_rho1e-10']['350']:.3f}、431 Kで{opacity_table['correction_near_14_200_350_431K_at_rho1e-10']['431']:.3f}。Rosseland平均は同一です。</p>
+<figure><img src="data:image/png;base64,{opacity_chart}" alt="cycle930からの吸収係数変更試験の密度履歴と差" loading="lazy"><figcaption>同一c930 restart・同一binary・64 rankで10 cycle。実線と破線はほぼ重なるため、下段は10⁻⁹単位の相対差を表示。</figcaption></figure>
+<div class="scroll"><table><thead><tr><th>指標 c940</th><th>元表</th><th>診断用吸収表</th><th>相対差</th></tr></thead><tbody>
+{''.join(tr(name, f'{opacity_replay["reference"]["final"][name]:.10e}', f'{opacity_replay["absorption_trial"]["final"][name]:.10e}', f'{opacity_replay["trial_over_reference_final_relative"][name]:+.3e}') for name in ("rho_max_g_cm3", "Tgas_max_K", "Erad_total_erg", "gas_mass_g"))}
+</tbody></table></div><p>両試験ともNewtonは10/10収束、FGMRESは30 solve・292反復、最大true relative residualは1.98×10⁻⁸以下。10 cycleの結果だけで全collapse経路に対する感度は判断できないため、c590からの長い分岐試験を追加しました。診断表は高温ガスopacityの吸収定義を検証した製品表ではありません。</p></section>
+<section id="eos"><h2>第一コア温度域のEOS監査</h2><figure><img src="data:image/png;base64,{eos_chart}" alt="第一コア範囲のEOS熱容量" loading="lazy"><figcaption>表を実行ソルバとは別のPythonで読み、ρ=10⁻¹⁶〜10⁻¹⁰ g/cm³、T=14〜431.3 Kの480点を調査。破線は低温H₂/Heの並進熱容量。</figcaption></figure>
+<p>H₂/He理想混合気体の解析式 P=ρk<sub>B</sub>T(X/2+Y/4)/m<sub>H</sub>（X=0.70、Y=0.28）に対する最大相対差は{eos_audit['pressure_max_absolute_relative_error']:.3e}。表のP→e逆変換の最大相対差は{eos_audit['energy_p_to_e_inverse_max_absolute_relative_error']:.3e}、差分で求めたc<sub>v</sub>は全点で正でした。対象は第一コア形成までで、H₂解離・第二崩壊のEOS妥当性を示すものではありません。</p></section>
 <section id="cost"><h2>計算量の目安</h2><p class="panel"><strong>cycle 47保存点→目標密度: {node_hours:.2f}ノード時間、約{rank_hours:.0f} MPI rank時間。</strong> 最後のcycle 590→1010はMノード5台で31分18秒、2.608ノード時間。キュー待ち、cycle 0→46の初期保存点作成、重複した診断計算は含めません。</p>
 <details><summary>採用したcheckpoint列の13ジョブを表示</summary><div class="scroll"><table><thead><tr><th>job</th><th>採用区間</th><th>ノード</th><th>実行時間 [分]</th><th>ノード時間</th><th>ジョブ結果</th></tr></thead><tbody>{cost_rows}</tbody></table></div><p class="small">job 338133はcycle 530まで進み、cycle 500から高解像度へ分岐。338144はcycle 588で失敗し、検証済みcycle 580から修正再開。両ジョブの実際の消費時間を含めます。</p></details></section>
-<section id="comparison"><h2>基準計算との比較と残件</h2><div class="scroll"><table><thead><tr><th>指標</th><th>理想気体・一定opacity基準</th><th>今回のtable EOS・Semenov</th></tr></thead><tbody>
+<section id="comparison"><h2>基準計算との比較と残件</h2><figure><img src="data:image/png;base64,{comparison_chart}" alt="従来基準とWOR-92の密度、温度、流入速度の正のx軸比較" loading="lazy"><figcaption>両計算ともρmax≈10⁻¹⁰ g/cm³の時点。元の正のx軸データを比較し、球殻平均と混同しない。</figcaption></figure><div class="scroll"><table><thead><tr><th>指標</th><th>理想気体・一定opacity基準</th><th>今回のtable EOS・Semenov</th></tr></thead><tbody>
 {tr('目標密度時刻','約29.1585 kyr','29.1095 kyr')}{tr('中心温度','約694.6 K','431.3 K')}{tr('衝撃波の位置','6.23–6.96 au','7.51–7.87 au')}
-</tbody></table></div><p class="note">EOS、opacity、AMR解像度、計算経路が異なります。この表だけで差を単一の物理要因に帰属しません。SemenovのPlanck meanは文献上「extinction」と記述され、FLDの吸収係数として使うことはpilot近似です。高密度状態の粗細面flux、mass drift、独立したopacityモデルとの比較を継続します。</p></section>
+</tbody></table></div><p class="note">EOS、opacity、AMR解像度（基準の衝撃波付近0.732 au、今回0.366 au）、計算経路が異なります。差を単一の物理要因に帰属しません。SemenovのPlanck meanをFLDの吸収係数として使うことはpilot近似です。公開単色データからの吸収補正の全経路感度とhydro質量増分を引き続き調査します。</p></section>
 <section id="evidence"><h2>証拠・再現情報</h2><ul>
 <li><a href="README.md">全検証記録、入力・Git hash、制限</a> / <a href="runs.csv">ジョブ別の反復・残差・資源</a></li>
 <li><a href="c1010_profile.csv">最終3Dの球殻平均</a> / <a href="c1010_axis.csv">正負x軸</a> / <a href="adopted_path_cost.csv">採用経路のコスト</a></li>
 <li><a href="job_338156_summary.json">job 338156集計</a> / <a href="job_338171_summary.json">job 338171集計</a></li>
+<li><a href="c930_face_audit.json">c930粗細面監査</a> / <a href="c1000_face_audit.json">c1000粗細面監査</a> / <a href="audit_high_density_faces.py">監査コード</a></li>
+<li><a href="opacity_replay_comparison.json">Planck補正A/B</a> / <a href="semenov_planck_absorption_trial.json">診断表の生成記録</a> / <a href="firstcore_eos_audit.json">EOS独立監査</a></li>
+<li><a href="reference_axis_comparison.json">基準軸との比較</a> / <a href="baseline_first_core_xline.csv">基準の元x軸CSV</a> / <a href="compare_reference_axis.py">比較図コード</a></li>
 <li><a href="analyze_core_profile.py">3D球殻解析</a> / <a href="analyze_axis_profile.py">軸解析</a> / <a href="plot_first_core_profiles.py">図の生成</a></li>
 </ul><p>最終HDF5のSHA-256: <code>bdd4c72640d16f1872725904c3a66bcd74e56577016f4593e114a3e91e25974f</code>。XD上の元データ: <code>/work/mizutaniks/output/fld/collapse/wor92_xd_20261107/long/job_338171/</code>。Gitブランチ: <code>codex/wor92-firstcore-integration-20261109</code>。このHTMLは図を埋め込んでおり単独で閲覧できます。</p></section>
 </main><footer>Generated from local CSV/JSON and PNG evidence. This is a fixed analysis snapshot, not a live job monitor.</footer></body></html>'''

@@ -1,0 +1,13 @@
+{
+  "control_csv": "tst/nrfld_validation/wor92_firstcore_20261109/baseline_first_core_xline.csv",
+  "table_csv": "tst/nrfld_validation/wor92_firstcore_20261109/c1010_axis.csv",
+  "control_time_code": 1945.280517578125,
+  "control_max_rho_g_cm3": 1.0575090803044418e-10,
+  "table_max_rho_g_cm3_on_axis": 1.00815922e-10,
+  "control_max_axis_temperature_K": 712.5946655273438,
+  "table_max_axis_temperature_K": 431.2554368602664,
+  "control_min_dx_au": 0.732421875,
+  "table_min_positive_x_spacing_au": 0.18310546875,
+  "plot": "tst/nrfld_validation/wor92_firstcore_20261109/reference_axis_comparison.png",
+  "limitation": "Different EOS, opacity, AMR resolution, and execution paths; not a one-variable causal comparison"
+}

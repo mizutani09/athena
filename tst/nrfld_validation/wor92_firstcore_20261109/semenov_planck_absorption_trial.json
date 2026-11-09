@@ -1,0 +1,52 @@
+{
+  "source_table_sha256": "6c42445452bca6aeca1253f31ab049b2ff107dea3601f946b4c61c93db022f94",
+  "monochromatic_archive_sha256": "a7d2358280c5f4598c4bb0b931e036af2c481f572c75c4b52b87436b9b32a945",
+  "source_url": "https://semenov.www3.mpia.de/Opacities/MAC/nrm.zip",
+  "method": "author mean Planck extinction multiplied by monochromatic Planck absorption/transport-extinction ratio; sinusoidal evaporation transition weights",
+  "monochromatic_columns_inferred": [
+    "wavelength_um",
+    "transport_extinction",
+    "total_extinction",
+    "absorption",
+    "scattering"
+  ],
+  "region_ratios": [
+    {
+      "region": 1,
+      "ratio_at_14K": 0.9990588526784009,
+      "ratio_at_431K": 0.7775470896692345
+    },
+    {
+      "region": 2,
+      "ratio_at_14K": 0.9990869953208249,
+      "ratio_at_431K": 0.6254602766603523
+    },
+    {
+      "region": 3,
+      "ratio_at_14K": 0.9991216905999286,
+      "ratio_at_431K": 0.5961018075253391
+    },
+    {
+      "region": 4,
+      "ratio_at_14K": 0.9994367507734486,
+      "ratio_at_431K": 0.48141908464632793
+    },
+    {
+      "region": 5,
+      "ratio_at_14K": 0.998164195944974,
+      "ratio_at_431K": 0.8002329614847361
+    }
+  ],
+  "correction_minmax": [
+    0.44158871432907393,
+    1.0
+  ],
+  "correction_near_14_200_350_431K_at_rho1e-10": {
+    "14": 0.999057354606623,
+    "200": 0.8819219147645028,
+    "350": 0.6906546245865242,
+    "431": 0.5233941856678944
+  },
+  "valid_scope": "first core <=431.3 K; gas-opacity absorption above dust evaporation is not independently validated",
+  "trial_table_sha256": "347baa6e7b0d4303eca1abf762b2fde5042137e42739ef65961eeb68b88dad05"
+}

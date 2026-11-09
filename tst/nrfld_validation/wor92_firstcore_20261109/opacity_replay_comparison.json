@@ -1,0 +1,50 @@
+{
+  "reference": {
+    "job": "job_338222",
+    "cycles": 10,
+    "newton_converged": 10,
+    "newton_max_final_max": 1.5058202670970128e-08,
+    "fgmres_solves": 30,
+    "fgmres_iterations_total": 292,
+    "fgmres_max_true_relative_residual": 1.970175223514334e-08,
+    "final": {
+      "rho_max_g_cm3": 7.281453102655851e-11,
+      "Tgas_max_K": 375.4012145070616,
+      "Trad_max_K": 375.397612292343,
+      "gas_mass_g": 2.273781403761505e+33,
+      "Erad_total_erg": 1.684290308940282e+42,
+      "Jeans_min_cells": 32.10454090630139
+    },
+    "mass_change_c931_to_c940_relative": 6.918583350667973e-08,
+    "status": "PASS_C930_TO_940_HIGH_PRECISION_HISTORY"
+  },
+  "absorption_trial": {
+    "job": "job_338225",
+    "cycles": 10,
+    "newton_converged": 10,
+    "newton_max_final_max": 1.8476214375782188e-08,
+    "fgmres_solves": 30,
+    "fgmres_iterations_total": 292,
+    "fgmres_max_true_relative_residual": 1.970198299709884e-08,
+    "final": {
+      "rho_max_g_cm3": 7.281453131229435e-11,
+      "Tgas_max_K": 375.401215138188,
+      "Trad_max_K": 375.3976127468405,
+      "gas_mass_g": 2.273781403761528e+33,
+      "Erad_total_erg": 1.684290254082117e+42,
+      "Jeans_min_cells": 32.10454089137377
+    },
+    "mass_change_c931_to_c940_relative": 6.918584372073155e-08,
+    "status": "PASS_C930_TO_940_ABSORPTION_TRIAL"
+  },
+  "trial_over_reference_final_relative": {
+    "rho_max_g_cm3": 3.92415966388171e-09,
+    "Tgas_max_K": 1.6812049530301465e-09,
+    "Trad_max_K": 1.2107095326285844e-09,
+    "gas_mass_g": 9.992007221626409e-15,
+    "Erad_total_erg": -3.257049252525235e-08,
+    "Jeans_min_cells": -4.64968952229583e-10
+  },
+  "limitation": "10 late cycles, same restart and binary; does not establish entire collapse-path sensitivity",
+  "plot": "tst/nrfld_validation/wor92_firstcore_20261109/opacity_replay_comparison.png"
+}

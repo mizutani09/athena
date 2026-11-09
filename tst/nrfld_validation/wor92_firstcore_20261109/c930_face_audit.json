@@ -1,0 +1,86 @@
+[
+  {
+    "job": "job_338226_face_ledger",
+    "cycle_stage": [
+      930,
+      0
+    ],
+    "ranks": 64,
+    "blocks": 3536,
+    "level_counts": {
+      "2": 8,
+      "3": 392,
+      "4": 392,
+      "5": 392,
+      "6": 392,
+      "7": 392,
+      "8": 392,
+      "9": 416,
+      "10": 224,
+      "11": 224,
+      "12": 248,
+      "13": 64
+    },
+    "global_signed_balance_fraction": 3.9917364509831106e-14,
+    "rank_abs_balance_fraction": 2.4203306707460296e-13,
+    "rank_max_relative_balance": 1.0084791869842176e-12,
+    "rank_max_absolute_relative_balance": 3.746242118034836e-10,
+    "face_interior_sum_minus_ledger": 1.5058e-09,
+    "faces": {
+      "x1:boundary": {
+        "count": 104,
+        "max_relative_mismatch": 1.0,
+        "weighted_relative_mismatch": 1.0,
+        "net_balance": 0.0
+      },
+      "x1:coarse_fine": {
+        "count": 280,
+        "max_relative_mismatch": 2.0259181896813925e-17,
+        "weighted_relative_mismatch": 6.03021511950101e-18,
+        "net_balance": -9.673e-10
+      },
+      "x1:same": {
+        "count": 2784,
+        "max_relative_mismatch": 0.0,
+        "weighted_relative_mismatch": 0.0,
+        "net_balance": 0.0
+      },
+      "x2:boundary": {
+        "count": 104,
+        "max_relative_mismatch": 1.0,
+        "weighted_relative_mismatch": 1.0,
+        "net_balance": 0.0
+      },
+      "x2:coarse_fine": {
+        "count": 280,
+        "max_relative_mismatch": 2.225465413584971e-17,
+        "weighted_relative_mismatch": 6.067736714390832e-18,
+        "net_balance": -2.428e-10
+      },
+      "x2:same": {
+        "count": 2784,
+        "max_relative_mismatch": 0.0,
+        "weighted_relative_mismatch": 0.0,
+        "net_balance": 0.0
+      },
+      "x3:boundary": {
+        "count": 104,
+        "max_relative_mismatch": 1.0,
+        "weighted_relative_mismatch": 1.0,
+        "net_balance": 0.0
+      },
+      "x3:coarse_fine": {
+        "count": 280,
+        "max_relative_mismatch": 3.182413047477043e-17,
+        "weighted_relative_mismatch": 6.207018374280924e-18,
+        "net_balance": 1.1416e-09
+      },
+      "x3:same": {
+        "count": 2784,
+        "max_relative_mismatch": 0.0,
+        "weighted_relative_mismatch": 0.0,
+        "net_balance": 0.0
+      }
+    }
+  }
+]
