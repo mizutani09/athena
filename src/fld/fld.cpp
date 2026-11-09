@@ -27,6 +27,7 @@
 #include "../bvals/cc/bvals_cc.hpp"
 #include "../coordinates/coordinates.hpp"
 #include "../eos/eos.hpp"
+#include "../field/field.hpp"
 #include "../globals.hpp"
 #include "../mesh/mesh.hpp"
 #include "../parameter_input.hpp"
@@ -34,6 +35,20 @@
 #include "fld.hpp"
 
 namespace {
+
+Real MagneticEnergyAt(const MeshBlock *pmb, const int k,
+                      const int j, const int i) {
+#if MAGNETIC_FIELDS_ENABLED
+  const FaceField &b = pmb->pfield->b;
+  const Real bx = 0.5*(b.x1f(k,j,i) + b.x1f(k,j,i+1));
+  const Real by = 0.5*(b.x2f(k,j,i) + b.x2f(k,j+1,i));
+  const Real bz = 0.5*(b.x3f(k,j,i) + b.x3f(k+1,j,i));
+  return 0.5*(bx*bx + by*by + bz*bz);
+#else
+  (void)pmb; (void)k; (void)j; (void)i;
+  return 0.0;
+#endif
+}
 
 struct EnvironmentFlag {
   bool present{false};
@@ -532,14 +547,16 @@ void FLD::LoadHydroVariables(const AthenaArray<Real> &w,
           const Real my = hydro_u(IM2,k,j,i);
           const Real mz = hydro_u(IM3,k,j,i);
           const Real kinetic = 0.5*(mx*mx + my*my + mz*mz)/rho;
-          const Real egas = hydro_u(IEN,k,j,i) - kinetic;
+          const Real magnetic = MagneticEnergyAt(pmy_block, k, j, i);
+          const Real egas = hydro_u(IEN,k,j,i) - kinetic - magnetic;
           if (!std::isfinite(egas) || egas <= 0.0) {
             std::stringstream msg;
             msg << "### FATAL ERROR in FLD::LoadHydroVariables" << std::endl
                 << "Invalid conserved gas energy at gid=" << pmy_block->gid
                 << " (k,j,i)=(" << k << "," << j << "," << i << ")"
                 << " rho=" << rho << " total_energy=" << hydro_u(IEN,k,j,i)
-                << " kinetic_energy=" << kinetic << " gas_energy=" << egas;
+                << " kinetic_energy=" << kinetic
+                << " magnetic_energy=" << magnetic << " gas_energy=" << egas;
             ATHENA_ERROR(msg);
           }
           fld_u_gas(k,j,i) = egas;
@@ -577,9 +594,10 @@ void FLD::UpdateHydroVariables(AthenaArray<Real> &w, AthenaArray<Real> &hydro_u,
     kl -= NGHOST, ku += NGHOST;
   
   // The implicit solve changes internal energy, not momentum. Reconstruct
-  // active-cell total energy from the new gas energy and conserved kinetic
-  // energy, so u(IEN), w(IPR), and the FLD gas cache remain consistent across
-  // a restart even if the old cache and conserved state had drifted apart.
+  // active-cell total energy from the new gas energy, conserved kinetic
+  // energy, and cell-centered magnetic energy, so u(IEN), w(IPR), and the
+  // FLD gas cache remain consistent across a restart even if the old cache
+  // and conserved state had drifted apart.
   // Ghost cells are still updated incrementally; their conserved momentum
   // need not be valid until the next boundary exchange.
   if (!only_rad) {
@@ -598,7 +616,8 @@ void FLD::UpdateHydroVariables(AthenaArray<Real> &w, AthenaArray<Real> &hydro_u,
             const Real my = hydro_u(IM2,k,j,i);
             const Real mz = hydro_u(IM3,k,j,i);
             const Real kinetic = 0.5*(mx*mx + my*my + mz*mz)/rho_cons;
-            hydro_u(IEN,k,j,i) = fld_u_gas(k,j,i) + kinetic;
+            hydro_u(IEN,k,j,i) = fld_u_gas(k,j,i) + kinetic
+                                + MagneticEnergyAt(pmy_block, k, j, i);
           } else {
             hydro_u(IEN,k,j,i) += (fld_u_gas(k,j,i) - egas_old);
           }

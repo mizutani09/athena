@@ -33,6 +33,7 @@
 #include "../bvals/bvals.hpp"
 #include "../coordinates/coordinates.hpp"
 #include "../eos/eos.hpp"
+#include "../field/field.hpp"
 #include "../hydro/hydro.hpp"
 #include "../hydro/srcterms/hydro_srcterms.hpp"
 #include "../mesh/mesh.hpp"
@@ -63,6 +64,9 @@ namespace {
   // Optional t=0 seed with developed 3D convective fluctuations. The binary
   // contains code-unit primitive variables on the exact root grid.
   std::string initial_seed_file;
+  Real magnetic_seed_gauss = 0.0;
+  std::string magnetic_seed_mode = "uniform_vertical";
+  std::string magnetic_top_mode = "vertical";
   std::vector<double> initial_seed_data;
   int initial_seed_nx[3] = {0, 0, 0};
   double initial_seed_bounds[6] = {};
@@ -127,6 +131,11 @@ namespace {
   Real HistoryTopTotalFluxCgs(MeshBlock *pmb, int iout);
   Real HistoryBottomAdvectiveRadiationFluxCgs(MeshBlock *pmb, int iout);
   Real HistoryTopAdvectiveRadiationFluxCgs(MeshBlock *pmb, int iout);
+#if MAGNETIC_FIELDS_ENABLED
+  Real HistoryMagEnergy(MeshBlock *pmb, int iout);
+  Real HistoryDivBdxRel(MeshBlock *pmb, int iout);
+  Real HistoryTopUnsignedBz(MeshBlock *pmb, int iout);
+#endif
   // Real HistoryL1norm(MeshBlock *pmb, int iout);
 }
 
@@ -162,6 +171,49 @@ enum HD2StateIndex {
 
 static Real &HD2State(Mesh *pm, const HD2StateIndex index) {
   return pm->GetRealUserMeshData()[0](index);
+}
+
+static Real MagneticEnergyAt(const MeshBlock *pmb, const int k,
+                             const int j, const int i) {
+#if MAGNETIC_FIELDS_ENABLED
+  const FaceField &b = pmb->pfield->b;
+  const Real bx = 0.5*(b.x1f(k,j,i) + b.x1f(k,j,i+1));
+  const Real by = 0.5*(b.x2f(k,j,i) + b.x2f(k,j+1,i));
+  const Real bz = 0.5*(b.x3f(k,j,i) + b.x3f(k+1,j,i));
+  return 0.5*(bx*bx + by*by + bz*bz);
+#else
+  (void)pmb; (void)k; (void)j; (void)i;
+  return 0.0;
+#endif
+}
+
+static void CopyVerticalMagneticGhost(FaceField &b, int is, int ie,
+                                      int js, int je, int ks, int ke,
+                                      int ngh, bool inner) {
+#if MAGNETIC_FIELDS_ENABLED
+  const int ka = inner ? ks : ke;
+  const int kf = inner ? ks : ke + 1;
+  const Real tangential_sign = (!inner && magnetic_top_mode == "vertical")
+      ? -1.0 : 1.0;
+  for (int n = 1; n <= ngh; ++n) {
+    const int kg = inner ? ks - n : ke + n;
+    const int kfg = inner ? ks - n : ke + 1 + n;
+    for (int j = js; j <= je; ++j) {
+      for (int i = is; i <= ie + 1; ++i)
+        b.x1f(kg,j,i) = tangential_sign*b.x1f(ka,j,i);
+    }
+    for (int j = js; j <= je + 1; ++j) {
+      for (int i = is; i <= ie; ++i)
+        b.x2f(kg,j,i) = tangential_sign*b.x2f(ka,j,i);
+    }
+    for (int j = js; j <= je; ++j) {
+      for (int i = is; i <= ie; ++i) b.x3f(kfg,j,i) = b.x3f(kf,j,i);
+    }
+  }
+#else
+  (void)b; (void)is; (void)ie; (void)js; (void)je;
+  (void)ks; (void)ke; (void)ngh; (void)inner;
+#endif
 }
 
 void AddRadiativeForceAndWork(MeshBlock *pmb, const Real time, const Real dt,
@@ -642,7 +694,8 @@ static void SetHydroGhostConserved(MeshBlock *pmb, const int k, const int j,
   pmb->phydro->u(IM2, k, j, i) = rho*vy;
   pmb->phydro->u(IM3, k, j, i) = rho*vz;
   pmb->phydro->u(IEN, k, j, i) =
-      egas + 0.5*rho*(vx*vx + vy*vy + vz*vz);
+      egas + 0.5*rho*(vx*vx + vy*vy + vz*vz)
+      + MagneticEnergyAt(pmb, k, j, i);
   pmb->prfld->u_gas(k, j, i) = egas;
   // This is the FLD-specific LTE extension; HD2 itself is hydrodynamic.
   pmb->prfld->u_rad(k, j, i) = a_r_sim*std::pow(temp, 4);
@@ -664,7 +717,8 @@ static Real HD2GasEnergyAt(MeshBlock *pmb, const int k, const int j,
                             *pmb->phydro->u(IM2, k, j, i)
                             +pmb->phydro->u(IM3, k, j, i)
                             *pmb->phydro->u(IM3, k, j, i))/rho;
-  return std::max(pmb->phydro->u(IEN, k, j, i) - kinetic, TINY_NUMBER);
+  return std::max(pmb->phydro->u(IEN, k, j, i) - kinetic
+                  - MagneticEnergyAt(pmb, k, j, i), TINY_NUMBER);
 }
 
 static void SimpleHD2Bottom(MeshBlock *pmb, AthenaArray<Real> &prim,
@@ -808,7 +862,8 @@ static void SimpleHydroBoundary(MeshBlock *pmb, Coordinates *pco,
                                 AthenaArray<Real> &prim, FaceField &b,
                                 Real time, Real dt, int is, int ie, int js,
                                 int je, int ks, int ke, int ngh, bool inner) {
-  (void)pco; (void)b; (void)time; (void)dt; (void)ke;
+  (void)pco; (void)time; (void)dt;
+  CopyVerticalMagneticGhost(b, is, ie, js, je, ks, ke, ngh, inner);
   if (inner && bottom_bc_mode == "rempel_hd2") {
     SimpleHD2Bottom(pmb, prim, is, ie, js, je, ks, ke, ngh);
     return;
@@ -1097,7 +1152,8 @@ static void SimpleHydroOuter(MeshBlock *pmb, Coordinates *pco,
                              AthenaArray<Real> &prim, FaceField &b,
                              Real time, Real dt, int is, int ie, int js,
                              int je, int ks, int ke, int ngh) {
-  (void)pco; (void)b; (void)time; (void)dt;
+  (void)pco; (void)time; (void)dt;
+  CopyVerticalMagneticGhost(b, is, ie, js, je, ks, ke, ngh, false);
   if (!IsPhysicalUpperBoundary(pmb)) {
     for (int n = 1; n <= ngh; ++n) {
       const int kg = ke + n;
@@ -1135,13 +1191,16 @@ static void SimpleHydroOuter(MeshBlock *pmb, Coordinates *pco,
           const Real pres = std::max(prim(IPR, ka, j, i), p_floor);
           const Real vx = prim(IVX, ka, j, i);
           const Real vy = prim(IVY, ka, j, i);
-          const Real vz = std::max(prim(IVZ, ka, j, i), 0.0);
+          // Reflect an inward active velocity across the face.  A zero-velocity
+          // ghost still permits inward HLLD mass flux at a subsonic boundary.
+          const Real vz = std::abs(prim(IVZ, ka, j, i));
           const Real rho_cons = std::max(pmb->phydro->u(IDN, ka, j, i), rho_floor);
           const Real mx = pmb->phydro->u(IM1, ka, j, i);
           const Real my = pmb->phydro->u(IM2, ka, j, i);
           const Real mz = pmb->phydro->u(IM3, ka, j, i);
           const Real kinetic = 0.5*(mx*mx + my*my + mz*mz)/rho_cons;
-          const Real egas = pmb->phydro->u(IEN, ka, j, i) - kinetic;
+          const Real egas = pmb->phydro->u(IEN, ka, j, i) - kinetic
+                          - MagneticEnergyAt(pmb, ka, j, i);
           if (!std::isfinite(rho) || !std::isfinite(pres) ||
               !std::isfinite(egas) || egas <= e_floor) {
             std::stringstream msg;
@@ -1163,7 +1222,8 @@ static void SimpleHydroOuter(MeshBlock *pmb, Coordinates *pco,
           pmb->phydro->u(IM2, kg, j, i) = rho*vy;
           pmb->phydro->u(IM3, kg, j, i) = rho*vz;
           pmb->phydro->u(IEN, kg, j, i) = egas
-              + 0.5*rho*(vx*vx + vy*vy + vz*vz);
+              + 0.5*rho*(vx*vx + vy*vy + vz*vz)
+              + MagneticEnergyAt(pmb, kg, j, i);
           pmb->prfld->u_gas(kg, j, i) = egas;
         }
       }
@@ -1562,6 +1622,26 @@ void Mesh::InitUserMeshData(ParameterInput *pin) {
     }
     LoadInitialSeed3D(initial_seed_file, mesh_size);
   }
+  magnetic_seed_gauss = pin->GetOrAddReal("problem", "magnetic_seed_gauss", 0.0);
+  magnetic_seed_mode = pin->GetOrAddString(
+      "problem", "magnetic_seed_mode", "uniform_vertical");
+  magnetic_top_mode = pin->GetOrAddString(
+      "problem", "magnetic_top_mode", "vertical");
+  if (!std::isfinite(magnetic_seed_gauss) || magnetic_seed_gauss < 0.0 ||
+      (magnetic_seed_mode != "uniform_vertical" &&
+       magnetic_seed_mode != "zero_net_vertical") ||
+      (magnetic_top_mode != "vertical" && magnetic_top_mode != "symmetric")) {
+    std::stringstream msg;
+    msg << "### FATAL ERROR: invalid magnetic_seed_gauss or magnetic_seed_mode";
+    ATHENA_ERROR(msg);
+  }
+#if !MAGNETIC_FIELDS_ENABLED
+  if (magnetic_seed_gauss > 0.0) {
+    std::stringstream msg;
+    msg << "### FATAL ERROR: magnetic_seed_gauss requires an MHD build (-b).";
+    ATHENA_ERROR(msg);
+  }
+#endif
   top_outflow_only = pin->GetOrAddBoolean("problem", "top_outflow_only", true);
   top_impenetrable = pin->GetOrAddBoolean("problem", "top_impenetrable", false);
   top_bc_mode = pin->GetOrAddString("problem", "top_bc_mode", "rempel_outflow");
@@ -1650,7 +1730,11 @@ void Mesh::InitUserMeshData(ParameterInput *pin) {
     EnrollUserNRBoundaryFunction(BoundaryFace::outer_x3, SimpleNROuter);
   }
 
+#if MAGNETIC_FIELDS_ENABLED
+  AllocateUserHistoryOutput(33);
+#else
   AllocateUserHistoryOutput(30);
+#endif
   EnrollUserHistoryOutput(0, HistoryTg, "T_gas", UserHistoryOperation::max);
   EnrollUserHistoryOutput(1, HistoryTr, "T_rad", UserHistoryOperation::max);
   EnrollUserHistoryOutput(2, HistoryEg, "e_gas", UserHistoryOperation::max);
@@ -1685,6 +1769,13 @@ void Mesh::InitUserMeshData(ParameterInput *pin) {
                           "FhydUpBottom", UserHistoryOperation::sum);
   EnrollUserHistoryOutput(29, HistoryBottomHydroDownFluxCgs,
                           "FhydDownBottom", UserHistoryOperation::sum);
+#if MAGNETIC_FIELDS_ENABLED
+  EnrollUserHistoryOutput(30, HistoryMagEnergy, "Emag", UserHistoryOperation::sum);
+  EnrollUserHistoryOutput(31, HistoryDivBdxRel, "DivBdxRel",
+                          UserHistoryOperation::max);
+  EnrollUserHistoryOutput(32, HistoryTopUnsignedBz, "TopAbsBzG",
+                          UserHistoryOperation::sum);
+#endif
   // EnrollUserHistoryOutput(7, HistoryL1norm, "L1norm", UserHistoryOperation::sum);
 
   EnrollUserExplicitSourceFunction(AddRadiativeForceAndWork);
@@ -1739,6 +1830,9 @@ void MeshBlock::ProblemGenerator(ParameterInput *pin) {
               << " initial_profile="
               << (use_initial_profile ? initial_profile_file : "polytrope")
               << " initial_seed=" << initial_seed_file
+              << " magnetic_seed_gauss=" << magnetic_seed_gauss
+              << " magnetic_seed_mode=" << magnetic_seed_mode
+              << " magnetic_top_mode=" << magnetic_top_mode
               << " temp_noise_amp=" << temp_noise_amp
               << " smooth_temp_noise=" << smooth_temp_noise
               << " top_outflow_only=" << top_outflow_only
@@ -1796,6 +1890,34 @@ void MeshBlock::ProblemGenerator(ParameterInput *pin) {
   int il = is-NGHOST;
   int iu = ie+NGHOST;
 
+#if MAGNETIC_FIELDS_ENABLED
+  // B is stored in Athena's sqrt(4*pi) convention.  Bz(x) is independent
+  // of z, so both choices have exactly zero discrete divergence initially.
+  const Real b_unit_gauss = std::sqrt(4.0*M_PI*egas_unit);
+  const Real b0 = magnetic_seed_gauss/b_unit_gauss;
+  const Real x0 = pmy_mesh->mesh_size.x1min;
+  const Real lx = pmy_mesh->mesh_size.x1max - x0;
+  for (int k=ks; k<=ke; ++k) {
+    for (int j=js; j<=je; ++j) {
+      for (int i=is; i<=ie+1; ++i) pfield->b.x1f(k,j,i) = 0.0;
+    }
+  }
+  for (int k=ks; k<=ke; ++k) {
+    for (int j=js; j<=je+1; ++j) {
+      for (int i=is; i<=ie; ++i) pfield->b.x2f(k,j,i) = 0.0;
+    }
+  }
+  for (int k=ks; k<=ke+1; ++k) {
+    for (int j=js; j<=je; ++j) {
+      for (int i=is; i<=ie; ++i) {
+        const Real shape = magnetic_seed_mode == "zero_net_vertical"
+            ? std::sin(2.0*M_PI*(pcoord->x1v(i)-x0)/lx) : 1.0;
+        pfield->b.x3f(k,j,i) = b0*shape;
+      }
+    }
+  }
+#endif
+
   for(int k=kl; k<=ku; ++k) {
     for (int j=jl; j<=ju; ++j) {
       for (int i=il; i<=iu; ++i) {
@@ -1838,7 +1960,10 @@ void MeshBlock::ProblemGenerator(ParameterInput *pin) {
         phydro->u(IM1,k,j,i) = rho*vx;
         phydro->u(IM2,k,j,i) = rho*vy;
         phydro->u(IM3,k,j,i) = rho*vz;
-        phydro->u(IEN,k,j,i) = egas + 0.5*rho*(vx*vx + vy*vy + vz*vz);
+        const bool active = k >= ks && k <= ke && j >= js && j <= je
+                            && i >= is && i <= ie;
+        phydro->u(IEN,k,j,i) = egas + 0.5*rho*(vx*vx + vy*vy + vz*vz)
+                              + (active ? MagneticEnergyAt(this, k, j, i) : 0.0);
         prfld->u_gas(k,j,i) = egas;
         // With the usual 1D start, keep imported radiation horizontally
         // smooth. A 3D seed supplies its own radiation fluctuations.
@@ -1851,13 +1976,13 @@ void MeshBlock::ProblemGenerator(ParameterInput *pin) {
   // record initial profile
   if (gid == 0) {
     std::cout << "simple initial sample rho=" << phydro->u(IDN,ks,js,is)
-              << " egas=" << phydro->u(IEN,ks,js,is)
+              << " egas=" << prfld->u_gas(ks,js,is)
               << " u_gas=" << prfld->u_gas(ks,js,is)
               << " u_rad=" << prfld->u_rad(ks,js,is)
               << " P_EOS=" << GasPresFromRhoEg(
-                   peos, phydro->u(IDN,ks,js,is), phydro->u(IEN,ks,js,is))
+                   peos, phydro->u(IDN,ks,js,is), prfld->u_gas(ks,js,is))
               << " T_EOS=" << GasTempFromRhoEg(
-                   peos, phydro->u(IDN,ks,js,is), phydro->u(IEN,ks,js,is))
+                   peos, phydro->u(IDN,ks,js,is), prfld->u_gas(ks,js,is))
               << "\n";
     Real rho_target, p_target, erad_target;
     SimplePolytrope(pcoord->x3v(ks), rho_target, p_target, erad_target);
@@ -1872,7 +1997,7 @@ void MeshBlock::ProblemGenerator(ParameterInput *pin) {
     if (peos->ptable != nullptr) {
       const Real x1 = std::log10(std::max(
           phydro->u(IDN,ks,js,is)*peos->ptable->rhoUnit, TINY_NUMBER));
-      const Real x2 = EosTableX2(peos, 3, phydro->u(IEN,ks,js,is),
+      const Real x2 = EosTableX2(peos, 3, prfld->u_gas(ks,js,is),
                                  phydro->u(IDN,ks,js,is));
       const bool outside = x1 < peos->ptable->logRhoMin ||
                            x1 > peos->ptable->logRhoMax ||
@@ -2449,6 +2574,52 @@ Real HistoryTopHydroFluxCgs(MeshBlock *pmb, int iout) {
 Real HistoryTopTotalFluxCgs(MeshBlock *pmb, int iout) {
   return HistoryTopHydroFluxCgs(pmb, iout) + HistoryTopFlux(pmb, iout);
 }
+
+#if MAGNETIC_FIELDS_ENABLED
+Real HistoryMagEnergy(MeshBlock *pmb, int iout) {
+  (void)iout;
+  Real total = 0.0;
+  for (int k=pmb->ks; k<=pmb->ke; ++k)
+    for (int j=pmb->js; j<=pmb->je; ++j)
+      for (int i=pmb->is; i<=pmb->ie; ++i)
+        total += MagneticEnergyAt(pmb,k,j,i)*pmb->pcoord->GetCellVolume(k,j,i);
+  return total*egas_unit*leng_unit*leng_unit*leng_unit;
+}
+
+Real HistoryDivBdxRel(MeshBlock *pmb, int iout) {
+  (void)iout;
+  const FaceField &b = pmb->pfield->b;
+  Real maximum = 0.0;
+  const Real b_ref = magnetic_seed_gauss/std::sqrt(4.0*M_PI*egas_unit);
+  for (int k=pmb->ks; k<=pmb->ke; ++k)
+    for (int j=pmb->js; j<=pmb->je; ++j)
+      for (int i=pmb->is; i<=pmb->ie; ++i) {
+        const Real dx = pmb->pcoord->dx1f(i);
+        const Real dy = pmb->pcoord->dx2f(j);
+        const Real dz = pmb->pcoord->dx3f(k);
+        const Real div = (b.x1f(k,j,i+1)-b.x1f(k,j,i))/dx
+                       +(b.x2f(k,j+1,i)-b.x2f(k,j,i))/dy
+                       +(b.x3f(k+1,j,i)-b.x3f(k,j,i))/dz;
+        const Real scale = std::max(std::sqrt(2.0*MagneticEnergyAt(pmb,k,j,i)),
+                                    std::max(b_ref, 1.0e-12));
+        maximum = std::max(maximum, std::abs(div)*std::min(dx,std::min(dy,dz))/scale);
+      }
+  return maximum;
+}
+
+Real HistoryTopUnsignedBz(MeshBlock *pmb, int iout) {
+  (void)iout;
+  if (!IsPhysicalUpperBoundary(pmb)) return 0.0;
+  const FaceField &b = pmb->pfield->b;
+  Real total = 0.0;
+  const Real b_unit = std::sqrt(4.0*M_PI*egas_unit);
+  for (int j=pmb->js; j<=pmb->je; ++j)
+    for (int i=pmb->is; i<=pmb->ie; ++i)
+      total += std::abs(b.x3f(pmb->ke+1,j,i))*b_unit
+               *pmb->pcoord->GetFace3Area(pmb->ke+1,j,i);
+  return total/HorizontalArea(pmb);
+}
+#endif
 
 Real HistoryBottomAdvectiveRadiationFluxCgs(MeshBlock *pmb, int iout) {
   (void)iout;
