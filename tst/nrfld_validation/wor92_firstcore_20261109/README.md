@@ -1,5 +1,7 @@
 # WOR-92 first-core 継続検証（2026-11-09）
 
+**最新結果:** cycle1010でρmax=`1.00819e-10 g cm^-3`、Jeans最小36.45 cells、第一コア形成を3D密度・温度・速度構造から確認。採用したcycle47保存点以降の計算量は約5.07ノード時間。最終詳細は[第一コア密度到達・最終解析](#第一コア密度到達最終解析2026-11-09-1251-jst)、密度・温度・流速図は[PNG](first_core_profiles.png)を参照。途中の「未到達」「継続中」は各時点の履歴である。
+
 ## コードと入力
 
 - 隔離 worktree: `/home/kosuke/simulation/athena-wor92-firstcore-integration`
@@ -74,3 +76,19 @@ AMR11 の M-test-a 5 node job **338144** は cycle 580→590 の cycle 588 で N
 同ジョブの cycle 670 3D HDF5（code time `1937.3640`、約29.042 kyr、3536 leaf MeshBlocks、HDF5 `MaxLevel=11`）を `analyze_core_profile.py` と `analyze_axis_profile.py` で解析した。ρmax=`4.09842e-11`、中心温度=`295.085` K、中心放射温度=`295.093` K（差0.008 K）、gas mass=`2.27377591e33` g、EOS table 外セル0。半径5.95 au以内のgas massは約`0.0145 M_sun`。正のx軸の5.676–6.226 auで隣接セル密度比は2.886、外側の流入速度1.198 km/sに対し内側0.350 km/s。半径5–10 auの8象限平均密度の相対範囲は0.319%、正負x軸の半径3–15 auの最大密度差は0.293%。この時点でほぼ球対称の降着衝撃波**候補**が現れている。ρmaxはまだ所定の`1e-10`に達していないため、最終判定は後続出力で行う。数値は `c670_profile.csv/json` と `c670_axis.csv/json` に保存した。比較対象の理想気体・一定opacity計算では密度しきい値近傍のshockが6.23–6.96 auだったが、EOSとopacityが異なるため半径の一致だけで表計算を検証済みとはしない。
 
 cycle 780 の3D HDF5（code time `1938.8917`、約29.065 kyr、3200 leaf MeshBlocks）ではρmax=`5.07516e-11`、中心Tgas=`322.580` K、Trad=`322.590` K、中心流速=`0.0041` km/s。正のx軸6.958–7.690 auの密度比は2.881、内側/外側の流入速度は0.799/1.592 km/s。半径7.01 au内のgas massは`0.0203 M_sun`、5–10 auの8象限平均密度の相対範囲は0.266%。cycle670からshock候補が持続して外へ移り、中心がほぼ静止していることは**物理的な第一コア形成の強い証拠**である。EOS table外セル0。密度`1e-10`の比較基準には未到達なので継続計算する。`c780_profile.csv/json` と `c780_axis.csv/json` に保存した。
+
+## 第一コア密度到達・最終解析（2026-11-09 12:51 JST）
+
+M-test-a 5 node × 64 MPI rank の修正 binary `ac13cce7...` による job **338156** は cycle590→930 を24:42で完了し、計画どおり wall budget 停止。検証済み cycle930 restartを引き継いだ job **338171** は cycle930→1010を6:36で完了し、`rho_max >= 1e-10 g cm^-3` で `FIRST_CORE_DENSITY_CANDIDATE` として正常停止。予備 job **338183** は先行到達を検知して計算せず終了した。全ジョブは Slurm `COMPLETED 0:0`。使用 binary、入力、EOS/opacity表、checkpoint の SHA-256 は各 XD `long/job_ID/provenance.txt` に記録。最終 restart は `long/job_338171/output/cfl030_flux_precision16_local.final.rst`（cycle1010、約697 MB）。最終3D HDF5 `prim.00237.athdf` の SHA-256 は `bdd4c72640d16f1872725904c3a66bcd74e56577016f4593e114a3e91e25974f`。元データは XD の `/work/mizutaniks/output/fld/collapse/wor92_xd_20261107/`、解析用 HDF5 のローカルコピーは `/home/kosuke/simulation/test/rad_nr/wor92_xd_20261107/firstcore_integration_evidence/profiles/c1010.athdf`。
+
+最後の420 cycleについて Newton status **474/474 converged**、FGMRES **1202 solve / 12063 iteration**。独立真線形相対残差の最大は`1.99813e-8`、収束した Newton の最終最大残差は高々`9.79968e-6`（要求`1e-5`）。opacity 範囲逸脱・clamp・負値・非有限診断は全42 segmentで0。最終 segment の Jeans 解像度は**36.4486 cells**、ジョブ338156全体の最小は31.9891、338171の最小は32.0018で、停止基準16を十分上回る。最大 Slurm step MaxRSS は338156で`18,336,664 K`、338171で`19,488,060 K`、両ジョブともノード当たり110 Gのメモリ指定内で終了した。詳細集計は `job_338156_summary.json`、`job_338171_summary.json`、`runs.csv`。
+
+cycle1010 の独立3D HDF5解析（3704 leaf blocks、8³ cells/block、約189万 leaf cells、code time1941.8418、**29.1095 kyr**）では最大密度`1.00818888e-10 g cm^-3`、そのセルのガス温度`431.253 K`、放射温度`431.258 K`。EOS表外セルは0。正のx軸の7.507–7.874 auで隣接セル密度比`4.000`、内外の流入速度`0.434/1.665 km s^-1`。密度最大セルの半径方向流速は`-0.0134 km s^-1`。7.013 au内の質量は`0.02845 M_sun`、8.272 au内は`0.03150 M_sun`。半径5–10 auの8象限平均密度の相対範囲は`0.251%`、正負x軸の3–15 au最大密度差は`0.618%`。cycle670/780から持続し外へ進む降着衝撃波、低速の中心、ほぼ球対称の構造とJeans解像度がそろったので、**第一コア形成および従来の目標密度到達を確認**した。図 `first_core_profiles.png` は同じ3D出力の体積重み半径プロファイルを重ねたもの。再生成は `python3 plot_first_core_profiles.py first_core_profiles.png`。
+
+3D leaf-cell積分のgas massはcycle670で`2.2737759073e33 g`、780で`2.2737782486e33 g`、1010で`2.2737825688e33 g`。cycle670→1010の相対増分は**`2.930e-6`**、旧AMR経路を含むcycle390→1010では`1.196e-5`。完全な質量保存とは報告しない。FLDの粗細面 flux 一致はcycle46 A/Bで直接検証したが、最終高密度状態の面ごとの監査は未実施。全エネルギーはambient温度固定源項があるため厳密保存量として扱わない。
+
+理想気体・一定opacity基準の目標密度時刻約29.1585 kyr、中心温度約694.6 K、shock 6.23–6.96 auと比べると、今回のtable EOS/Semenovでは約29.1095 kyr、431 K、7.5–7.9 au。物理表・AMR解像度・計算経路が異なるため、差を単独でEOS/opacityに帰属しない。SemenovのPlanck extinctionとOptab absorptionのモデル選択、最終高密度状態での直接粗細面監査、質量増分の原因は追加検証項目として残す。
+
+### 人に伝える計算量の目安
+
+**「XD2000で第一コアの目標密度まで、採用したcycle47保存点から約5ノード時間。最後の高密度420ステップはMノード5台で約31分」**。この5.07ノード時間は採用したcheckpoint列を作った各ジョブの実測wall×ノード数の合計で、約324 MPI rank時間（各ノード64 rank）。途中のjob338133（cycle530まで進行後、cycle500から高解像度へ分岐）とjob338144（cycle588失敗後、cycle580から修正再開）の実使用時間も含む。最後のjob338156+338171だけなら31:18×5=**2.608ノード時間**、約167 MPI rank時間。node-hourはキュー待ちを含まず、cycle0→46の初期保存点作成とA/B検証・失敗原因調査・重複試験は含まない。したがって初期状態からの全研究コストの数字としては使わない。

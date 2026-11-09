@@ -1,0 +1,14 @@
+job,used_start_cycle,used_end_cycle,allocated_nodes,mpi_ranks_per_node,slurm_elapsed_seconds,job_final_state,note
+337950,47,95,1,64,510,COMPLETED,
+337974,95,150,1,64,338,COMPLETED,
+337973,150,160,1,64,82,COMPLETED,
+337976,160,200,1,64,327,COMPLETED,
+338099,200,240,1,64,395,COMPLETED,
+338101,240,280,1,64,433,COMPLETED,
+338114,280,320,1,64,475,COMPLETED,
+338117,320,330,1,64,302,CANCELLED,continued_beyond_selected_checkpoint
+338133,330,500,5,64,839,COMPLETED,continued_to_cycle530_before_resolution_branch
+338144,500,580,5,64,311,FAILED,failed_at_cycle588_after_valid_cycle580_checkpoint
+338150,580,590,5,64,48,COMPLETED,
+338156,590,930,5,64,1482,COMPLETED,
+338171,930,1010,5,64,396,COMPLETED,first_core_density_target_reached

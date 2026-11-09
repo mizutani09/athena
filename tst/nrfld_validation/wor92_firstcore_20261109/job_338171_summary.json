@@ -1,0 +1,21 @@
+{
+  "case": "/work/mizutaniks/output/fld/collapse/wor92_xd_20261107/long/job_338171",
+  "segments": 8,
+  "first_cycle": 930,
+  "last_cycle": 1010,
+  "last_reason": "FIRST_CORE_DENSITY_CANDIDATE",
+  "rho_max_g_cm3": 1.00819e-10,
+  "tgas_max_K": 431.263,
+  "min_jeans_cells": 32.0018,
+  "gas_mass_relative_change_history_precision": 0.0,
+  "newton_status_counts": {
+    "converged": 93
+  },
+  "newton_converged_max_final": 1.9448713820472312e-08,
+  "fgmres_solves": 240,
+  "fgmres_iterations_total": 2277,
+  "fgmres_max_true_relative_residual": 1.996039811883949e-08,
+  "accepted_converged_trial_with_l2_increase": [],
+  "opacity_missing_diagnostic_segments": [],
+  "opacity_nonzero_diagnostic_segments": []
+}
