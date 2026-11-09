@@ -73,6 +73,7 @@ def main() -> None:
         "entropy_late_minus_early": entropy["late_minus_early"],
         "xd_last_history_time_code": xd["xd_24km"]["last_history_time_code"],
         "xd_late_window": xd["xd_24km"]["windows"][-1],
+        "xd_surface_at_t900": xd.get("surface_at_t900"),
         "sweep_common_window_code": sweep["common_window_code"],
         "sweep_delta_from_baseline": {
             key: row["difference_from_baseline"] for key, row in sweep["cases"].items()},
@@ -92,6 +93,16 @@ def main() -> None:
     late = entropy["late_window"]
     ds = entropy["late_minus_early"]
     xw = xd["xd_24km"]["windows"][-1]
+    surface = xd.get("surface_at_t900")
+    surface_para = ""
+    if surface:
+        surface_para = (
+            "<p>t≈900では、24/96 kmの最上層放射エネルギー比は "
+            f"{surface['top_cell_E_rad_ratio_24_over_96']:.3f}、上端流束比は "
+            f"{surface['top_flux_ratio_24_over_96']:.3f}で一致します。"
+            "上端の流束差は表面の放射エネルギー差に伴います。"
+            "表面温度が違う原因はまだ未分離です。</p>"
+        )
     plus = sweep["cases"]["splus_1e6"]["difference_from_baseline"]
     minus = sweep["cases"]["sminus_1e6"]["difference_from_baseline"]
     sweep_rel = "../wor74_coarse_sweep_20261109/report/index.html"
@@ -128,6 +139,7 @@ t={late['start_code']:.0f}–{late['end_code']:.0f} にかけて指定s<sub>in</
 <p>最新の1000–1103 code-time窓は上端 {xw['top_flux_over_solar']:.4f}、
 下端 {xw['bottom_flux_over_solar']:.4f}、蓄積傾向 {xw['storage_trend_over_solar']:+.4f} F☉。
 箱内はまだ冷却中です。24 kmはprofile由来s<sub>in</sub>固定、96 kmはfeedback実行中で、条件が異なります。</p>
+{surface_para}
 <img src="xd_24km/early_flux_context.png" alt="XDとローカルの初期流束比較">
 <h2>詳細</h2><ul>
 <li><a href="bottom_entropy/index.html">下端エントロピーの時間変化</a></li>

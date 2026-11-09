@@ -42,6 +42,8 @@ The XD history and the local 96 km early history have the same box dimensions bu
 
 The XD 24 km flow is still cooling over this latest window, and the shared result is not a long thermal-time calculation. Its separate matched-restart `±1e6` test at `t=940–960` finds lower-face responses near `±0.3 F_sun` and almost no upper-face response, consistent with the local short-time branch. The XD investigation also reports a rapid initial upper-cell cooling after the initially solar-like top flux. Its discrete top-face residual and the longer response remain open.
 
+At `t≈900`, the XD 24 km uppermost radiation-energy mean is `2.35546` in code units; the local 96 km uppermost mean from its full 3D output is `2.65873`. Their ratio is `0.88593`. The **simultaneous upper-flux ratio** from the two histories is `0.88698`, so the flux discrepancy follows the different radiation energy held at the top. At the same physical height `z=1.45 Mm`, the mean gas temperatures are `4206` and `4332 K`. The top cell centres themselves differ (`1.524` versus `1.488 Mm`), and entropy policy and transient history also differ. This establishes where the flux difference appears in the output; it does not prove which numerical or physical factor produced the temperature difference. The XD derived profiles and boundary-energy JSON are SHA-256 checked against the shared Dropbox manifest.
+
 ## Reproduce the reports
 
 Run the scripts from the repository root. The data roots below are local to this workstation; download the two XD HST files from the Dropbox snapshot and check their SHA-256 before using them.
@@ -59,6 +61,10 @@ python3 tst/nrfld_validation/solar_convection_xd_context.py \
   --xd-continuation /mnt/d/output/rad/wor74_coarse_diagnostics_20261109/xd_24km/continuation_337953.hst \
   --local-root /mnt/d/output/rad/wor74_feedback_20261105/from_t0_96km_t5000 \
   --local-input /mnt/d/output/rad/wor74_feedback_20261105/from_t0_96km_t5000/feedback_001_t100/athinput.generated \
+  --xd-profiles /mnt/d/output/rad/wor74_coarse_diagnostics_20261109/xd_24km/profiles3d.json \
+  --local-profile /mnt/d/output/rad/wor74_feedback_20261105/from_t0_96km_t5000/feedback_009_t900/profiles3d.json \
+  --xd-boundary-energy /mnt/d/output/rad/wor74_coarse_diagnostics_20261109/xd_24km/boundary_energy.json \
+  --local-uov /mnt/d/output/rad/wor74_feedback_20261105/from_t0_96km_t5000/feedback_009_t900/simple_convection_general_6Mm_box.uov_full.00018.athdf \
   --output /mnt/d/output/rad/wor74_coarse_diagnostics_20261109/xd_24km
 python3 tst/nrfld_validation/solar_convection_wor74_overview.py \
   --campaign /mnt/d/output/rad/wor74_feedback_20261106/from_t5000_96km_rolling500_t20000 \
