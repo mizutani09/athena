@@ -228,6 +228,10 @@ th:first-child,td:nth-child(2){{text-align:left}}img{{max-width:100%;height:auto
 <p class="note"><strong>同一 t=24000 restart</strong>から、流入エントロピーを
 変更。約310 code-time（鉛直横断約2.7回）の応答であり、
 全箱熱時間約2万 code-timeの定常応答ではありません。</p>
+<p>基準状態の上端放射エネルギーは約<strong>2.65 erg cm⁻³</strong>。
+同じMarshak係数0.5でF☉を出す境界面の目安は
+<strong>4.20 erg cm⁻³</strong>（放射温度約4855 K）です。
+セル中心値と境界面値は同一ではないため、この数値は較正の目安です。</p>
 <table><tr><th>時間窓</th><th>条件</th><th>上端 / F☉</th><th>下端 / F☉</th>
 <th>蓄熱 / F☉</th><th>上端差</th><th>下端差</th></tr>{''.join(rows)}</table>
 <img src="branch_response.png" alt="境界対照の流束時系列">

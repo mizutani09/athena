@@ -144,14 +144,16 @@ def render(root: Path, state: dict) -> None:
             f"<td>{row.get('rolling_bottom_total_flux_over_solar', row['bottom_hydro_flux_over_solar']):.5f}</td>"
             f"<td>{row['entropy_cgs']:.7e}</td>"
             f"<td>{row['wall_seconds']/60:.1f}</td></tr>")
+    campaign_title = ("Solar entropy feedback continuation" if state.get("forked_from")
+                      else "Solar entropy feedback from t=0")
     lines = ["<!doctype html><html lang='en'><meta charset='utf-8'>",
-             "<title>Solar entropy feedback from t=0</title>",
+             f"<title>{campaign_title}</title>",
              "<style>body{font:20px/1.55 system-ui;max-width:1250px;margin:2rem auto;padding:0 1rem}"
              "h1{font-size:2rem}h2{font-size:1.45rem}strong{color:#18446f}"
              "img{max-width:100%}table{border-collapse:collapse;width:100%}"
              "th,td{padding:.4rem .6rem;border-bottom:1px solid #bbb;text-align:right}"
              "th:first-child,td:first-child{text-align:left}</style>",
-             "<h1>Solar inflow-entropy feedback from t=0</h1>",
+             f"<h1>{campaign_title}</h1>",
              f"<p><strong>Status: {html.escape(state['status'])}.</strong> "
              f"Reached t={last_time:.0f} / {config['target_time_code']:.0f} "
              f"with {len(completed)} completed restart segments. "
@@ -546,8 +548,13 @@ def main() -> None:
             log = report["log"]
             counts = log["nr_status_counts"]
             if (not log["completed"] or log["fatal_count"] or
+                    (args.feedback_face == "bottom" and
+                     log["slow_mg_warning_count"]) or
                     set(counts).difference({"converged", "dt_zero_initialization"})):
                 raise RuntimeError(f"{name} did not pass solver-status checks: {counts}")
+            if (args.feedback_face == "bottom" and
+                    report["late_window"]["max_abs_mass_drift"] > 0.01):
+                raise RuntimeError(f"{name} exceeded 1% mass drift")
             selected = history["time"] >= max(
                 history["time"][0], end_time-args.segment_code)
             t = history["time"][selected]
@@ -563,6 +570,8 @@ def main() -> None:
             controlled_flux = (filtered["bottom_total_over_solar"]
                                if args.feedback_face == "bottom"
                                else filtered["top_over_solar"])
+            if not np.isfinite(controlled_flux):
+                raise RuntimeError(f"{name} has nonfinite controlled flux")
             proposed = (args.segment_code/args.tau_kh_code) * (1.0-controlled_flux)
             proposed *= 1.0e6/args.response_fsun_per_1e6
             next_entropy = float(np.clip(entropy + np.clip(
