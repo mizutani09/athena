@@ -90,4 +90,3 @@ Snapshot 2026-11-09. This is a scope index for FLD and RSG-related WOR issues vi
 | [WOR-117](https://linear.app/work-on-fld/issue/WOR-117) | Backlog | 【将来のupstream統合】PrincetonUniversity/athena向けFLD実装の分割・互換性・提案PR準備 | — |
 
 Branch names are unverified pointers that may refer to trials or historical outputs; no adoption is implied. Untracked local files and unpublished commits are listed by worktree in the branch inventory.
-

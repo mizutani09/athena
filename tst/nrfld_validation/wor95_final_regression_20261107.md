@@ -1,7 +1,7 @@
 # WOR-95 local regression, 2026-11-07 JST
 
 Source: `209e22398` (`nr_mgrad_dev` snapshot), isolated worktree
-`/home/kosuke/simulation/athena_wor95_validation`, branch
+`${SIMULATION_ROOT}/athena_wor95_validation`, branch
 `codex/wor95-validation-20261107`. No main or development branch was changed.
 
 ## Jeans AMR
@@ -56,17 +56,19 @@ pointwise difference.
 
 ## Reproduction and artifacts
 
+Set `SIMULATION_ROOT` to the local simulation directory before running the historical commands below.
+
 ```bash
-cd /home/kosuke/simulation/athena_wor95_validation
+cd ${SIMULATION_ROOT}/athena_wor95_validation
 python3 tst/nrfld_validation/diffusion_convergence.py --max-cores 2 \
-  --output-root /home/kosuke/simulation/test/rad_nr/wor95_20261107 \
+  --output-root ${SIMULATION_ROOT}/test/rad_nr/wor95_20261107 \
   --run-name diffusion
 python3 tst/nrfld_validation/diffusion_convergence.py --max-cores 2 \
-  --binary /home/kosuke/simulation/test/rad_nr/wor95_20261107/diffusion/build_source/bin/athena \
+  --binary ${SIMULATION_ROOT}/test/rad_nr/wor95_20261107/diffusion/build_source/bin/athena \
   --linear-solver fgmres \
-  --output-root /home/kosuke/simulation/test/rad_nr/wor95_20261107 \
+  --output-root ${SIMULATION_ROOT}/test/rad_nr/wor95_20261107 \
   --run-name diffusion_fgmres
-cd /home/kosuke/simulation/test/rad_nr/wor95_20261107/amr
+cd ${SIMULATION_ROOT}/test/rad_nr/wor95_20261107/amr
 python3 make_inputs.py
 mpirun -np 2 build_source/bin/athena -i nj4/input.used -d nj4/output
 mpirun -np 2 build_source/bin/athena -i nj32/input.used -d nj32/output
@@ -80,7 +82,7 @@ The AMR build uses `--prob=protostellar_core_fld --coord=cartesian
 `amr/build_source/config.log`. The diffusion build command and source tree
 hash are in `diffusion/manifest.json`.
 
-Artifact root: `/home/kosuke/simulation/test/rad_nr/wor95_20261107/`.
+Artifact root: `${SIMULATION_ROOT}/test/rad_nr/wor95_20261107/`.
 `summary.json`, `amr_summary.csv`, `diffusion_samples.csv`,
 `amr_blocks.png`, both `diffusion*/convergence.png`, manifests, exact
 inputs, and raw logs are retained there. The JSON/CSV and figures are also

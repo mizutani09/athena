@@ -1,6 +1,6 @@
 # FLD branch and worktree audit (WOR-114)
 
-Local snapshot 2026-11-09: 41 `origin` heads, 26 local heads, 18 Athena worktrees. Remote count independently checked with `git ls-remote --heads origin` (41). Ahead/behind is **baseline-only commits / branch-only commits** against `origin/codex/wor92-firstcore-integration-20261109`; it is not a test result. Source/test count is changed paths from merge-base, and an ancestor branch may have zero branch-only paths. Remote-only branches still have local tracking objects.
+Local snapshot 2026-11-09: 41 `origin` heads, 26 local heads, 18 Athena worktrees (17 pre-existing, plus the new WOR-114 worktree). Remote count independently checked with `git ls-remote --heads origin` (41). Ahead/behind is **baseline-only commits / branch-only commits** against `origin/codex/wor92-firstcore-integration-20261109`; it is not a test result. Source/test count is changed paths from merge-base, and an ancestor branch may have zero branch-only paths. Remote-only branches still have local tracking objects.
 
 ## GitHub fork remote branches
 
@@ -69,7 +69,7 @@ Uncommitted files are excluded from the integration branch. This table records n
 | `athena_wor103` | `codex/wor-103-default-pdfs` | `c2549ff8` | clean |
 | `athena_wor105_review` | `codex/wor105-castro-face-sync-20261106` | `ebf7634a` | clean |
 | `athena_wor11` | `codex/wor11-numerics-audit` | `3ded4d77` | clean |
-| `athena_wor114` | `codex/wor114-fld-paper-integration-20261109` | `8e0ee6aa` | `? doc/fld_code_integration_manifest.md` |
+| `athena_wor114` | `codex/wor114-fld-paper-integration-20261109` | `8e0ee6aa` | Created during this audit; initial manifest later committed. |
 | `athena_wor12` | `codex/wor12-paper-plan` | `f5c94254` | clean |
 | `athena_wor20_pilot` | `codex/wor20-pilot-20261107` | `961d9197` | clean |
 | `athena_wor70` | `codex/wor111-solar-mhd-fld-20261109` | `c79e78a8` | clean |
@@ -90,3 +90,7 @@ Uncommitted files are excluded from the integration branch. This table records n
 - `mizutani09/fld-paper#6` and `#9`: open draft manuscript PRs; `#9` is stacked on `#6` and neither is a code merge target.
 
 Historical test summaries are branch-specific and are indexed in the main integration manifest. This inventory is a graph/file survey; a branch name or Done issue does not certify the selected source.
+
+## Separate local repositories
+
+`simulation/mhd/athena_st` is a clean checkout of `takasao/athena_st` on `ce_main_particle` (`70743593`), with its own `master` and CE/MHD branch network. It is not an FLD fork worktree and is excluded from this integration. `simulation/test/rad_nr/Mizutani_Mulitigrid_plus_FLD` and `simulation/fld-paper-wor107` are clean worktrees of the separate `mizutani09/fld-paper` manuscript repository; their PRs and branch state are not merged here.

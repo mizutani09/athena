@@ -28,15 +28,17 @@ The WOR-24/25 branch and WOR-92 modify `src/linear_solver/linearMG/linearMG.cpp`
 
 | Gate | Configuration | Measurement / acceptance | Status on integration SHA |
 |---|---|---|---|
-| Build | clean GNU serial, MPI 1/2, HDF5; hydro-only control | compile and run, recorded commands/toolchain | Pending |
-| Core FLD | diffusion, low/high coupling, streaming, Mach 2/5, closed box | Newton/FGMRES true residual, energy, reference errors, mixed-frame flux | Pending |
+| Build | clean GNU serial, MPI 1/2, HDF5; hydro-only control | compile and run, recorded commands/toolchain | MPI/HDF5 builds PASS; serial and hydro-only pending |
+| Core FLD | diffusion, low/high coupling, streaming, Mach 2/5, closed box | Newton/FGMRES true residual, energy, reference errors, mixed-frame flux | Diffusion and low coupling PASS; other cases pending |
 | AMR operator | Test C fixed/variable limiter, aligned/shifted, 2/3 levels, 1/2 ranks | coarse/fine face balance, full-boundary Jv, FGMRES true residual; compare WOR-24 default vs WOR-92 trial | Pending |
-| Restart/regrid | coupled AMR 1→1, 2→2, changed rank; solar HD | first step and next dt; mass/energy and field differences | Pending |
-| Collapse | ideal-gas constant opacity and table EOS local/AMR, Jeans trigger | source/input/table SHA256, CFL, bounded-inexact decisions, end reason; first core is a separate physical gate | Pending |
+| Restart/regrid | coupled AMR 1→1, 2→2, changed rank; solar HD | first step and next dt; mass/energy and field differences | WOR-106 six cases PASS with explicit 2-ULP time bound; strict equality fails in two static cases; solar pending |
+| Collapse | ideal-gas constant opacity and table EOS local/AMR, Jeans trigger | source/input/table SHA256, CFL, bounded-inexact decisions, end reason; first core is a separate physical gate | Table uniform 1-step smoke PASS with precision-floor acceptance; table AMR guarded; other gates pending |
 | Solar | HD then MHD 0/weak B; serial/MPI | restart, div B, energy, boundary flux; report transient separately from steady-state | Pending |
 | Upstream | PrincetonUniversity/athena current main | non-FLD build/tests, split patches and compatibility | WOR-117 |
 
 No prior long-run or XD output is represented as a run of this integration commit. External EOS/opacity tables and existing raw data require hashes before a reproducible release. Figures affected by face/default or mixed-frame changes need source-specific review in WOR-87/88/90.
+
+Measured test values, toolchain, binary hashes and current limitations are in `fld_reproducibility_status.md`.
 
 ## Integration sequence and release rule
 
