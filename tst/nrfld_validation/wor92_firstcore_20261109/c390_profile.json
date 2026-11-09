@@ -1,0 +1,16 @@
+{
+  "source": "/home/kosuke/simulation/test/rad_nr/wor92_xd_20261107/firstcore_integration_evidence/profiles/cfl030_flux_precision16_local.prim.00113.athdf",
+  "cycle": 390,
+  "time_code": 1927.8284912109375,
+  "time_years": 28899.467420128127,
+  "max_level": 9,
+  "meshblocks": 3424,
+  "rho_max_g_cm3": 1.6323357812500002e-13,
+  "rho_max_radius_au": 0.6342959500374307,
+  "rho_max_velocity_radial_km_s": -0.03400617533084103,
+  "temperature_at_rho_max_K": 19.699133902972996,
+  "temperature_max_K": 19.699133902972996,
+  "eos_cells_outside_table": 0,
+  "gas_mass_g": 2.273755381122603e+33,
+  "profile_csv": "/home/kosuke/simulation/test/rad_nr/wor92_xd_20261107/firstcore_integration_evidence/profiles/c390_profile.csv"
+}

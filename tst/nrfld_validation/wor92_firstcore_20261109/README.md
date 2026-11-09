@@ -48,4 +48,17 @@ XD 詳細ログ archive: `/work/mizutaniks/output/fld/collapse/wor92_xd_20261107
 
 全試験の最終履歴は ρmax=`1.22169e-14`、Tgas,max=`14.453` K、gas mass=`2.27373e33` g、Erad=`1.68443e42` erg、最大 level 9 で一致した（Jeans min は 192 rank の `35.3804` を除き `35.3806`）。cycle 280→320 の gas mass 相対変化は各 `+1.3194e-5`、opacity の out-of-domain/clamp/negative/zero/nonfinite は全て0。5 node の checkpoint byte hash は1 node と異なるが、rank 分割に伴う浮動小数点の演算順序差があり、上記の履歴と真残差で物理解の一致を確認した。M-test-a 5 node は1 node 64 rank 比3.8倍速い。
 
-長時間計算は先に M-large-a 1 node job **338117** を cycle 320 から開始し、cycle 330 の成功（ρmax=`1.74513e-14`、Jeans min=`34.3736`、opacity正常）後に P-large-a 予備 **337975** を取り消した。M-large-a 5 node job **338133** は job 338117 の cycle 330 checkpoint を hash 照合してコピーし、cycle 340、350 を正常完了。cycle 350 の検証済み checkpoint が1 node の cycle 340 を上回った時点で job 338117 を取り消し、5 node のみ継続中。スクリプトは `wor92_mlarge_5node_firstcore_l10_continuation.sbatch`、実行記録は XD の `long/job_338133/`。現在のジョブの完了理由と first-core 判定は後続の progress・密度構造評価で決める。
+長時間計算は先に M-large-a 1 node job **338117** を cycle 320 から開始し、cycle 330 の成功（ρmax=`1.74513e-14`、Jeans min=`34.3736`、opacity正常）後に P-large-a 予備 **337975** を取り消した。M-large-a 5 node job **338133** は job 338117 の cycle 330 checkpoint を hash 照合してコピーし、cycle 340、350 を正常完了。cycle 350 の検証済み checkpoint が1 node の cycle 340 を上回った時点で job 338117 を取り消した。job 338133 は cycle 530 で ρmax=`1.81906e-11`、Tgas,max=`208.132` K、Jeans min=`15.0764` となり、設計どおり `STOP_UNDERRESOLVED`（exit 0）。first-core 密度候補には未到達。スクリプトは `wor92_mlarge_5node_firstcore_l10_continuation.sbatch`、実行記録は XD の `long/job_338133/`。
+
+## AMR 解像度を増やした継続試験
+
+旧 `mesh/numlevel=10` の cycle 450→530 で Jeans min は27.94→15.08へ下がった。解像度不足を放置して密度到達だけを主張しないため、同一 binary・CFL 0.3・MG3・保存的面中心化のまま `mesh/numlevel=11` を試した。
+
+| job | 入力 checkpoint | 構成 | wall / step MaxRSS | 最終 Jeans min / ρmax | Newton / FGMRES / 最大真残差 | 結果 |
+|---|---|---|---|---|---|---|
+| 338135 | 338133 の cycle 450 | M-debug 1 node、64 rank、→460 | 2:06 / 31,464,408 K | 32.6842 / `2.17114e-12` | 12 / 20 solve、191 iter / `1.838e-8` | PASS、opacity異常0 |
+| 338136 | 338133 の cycle 480 | M-test-a 5 node、各64 rank、→490 | 0:52 / 18,119,644 K | 33.3963 / `5.85437e-12` | 12 / 20 solve、172 iter / `1.871e-8` | PASS、opacity異常0 |
+
+旧解像度での cycle 460 / 490 の Jeans min は25.4584 / 20.0715であり、追加レベルにより32.6842 / 33.3963へ回復した。物理状態は解像度変更により変わるので、旧解像度と bitwise 一致を要求しない。AMR11 の長時間 job **338144** は、旧解像度で Jeans min18.5565を保った cycle 500 restartから M-test-a 5 node で開始し、最初の cycle 510 を正常終了した。旧 checkpoint 起点の M-large-a 待機 job **338139** は、338144の成功を確認して重複回避のため取消。さらに解像度が必要な場合は、`select_safe_restart.py` が直前の成功済み segmentでJeans min≥20の restartを選ぶ依存 job **338147**（`mesh/numlevel=12`）を登録した。338144が先に first-core 密度候補へ到達した場合、338147は計算せず終了する。
+
+`analyze_core_profile.py` は Athena++ leaf MeshBlock のセル体積と Tomida EOS の P→e→T 双一次補間から密度・温度・流入速度の半径プロファイルを作る。cycle 390 の HDF5 ではρmax=`1.63233578e-13`、最大温度=`19.6991339` K、gas mass=`2.27375538e33` gとなり、`.hst` の最大温度`19.6991` Kとgas mass`2.27376e33` gを再現した。EOS table外セルは0。密度しきい値到達後はこの解析で中心構造とshock候補を評価する。
