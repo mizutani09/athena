@@ -91,6 +91,9 @@ measured lower total flux. At each 100-code-time restart, it updates
                 -5e5, +5e5] erg g^-1 K^-1`,
 
 with a cumulative bound of ±`3e7` from the original profile entropy.
+At the mean pressure of the `t=24000` bottom cell, an EOS-table inversion
+maps `+3e7` to roughly `+600 K` in an isolated (P,s) state; this sets a
+finite exploration range, not a prediction of the eventual 3D temperature.
 The numerical coefficient is a conservative integral-controller scale based
 on a *transient* lower-face response, not a measured steady upper-face gain.
 This separation is important because a fixed entropy step causes a large
@@ -104,6 +107,15 @@ last complete `t=24000` restart. It is configured to stop at `t=26000` for
 review. Its `state.json`, `index.html`, and `memory_monitor.csv` provide
 restart status and resource use. A subsequent thermal-time continuation is
 needed before claiming sustained `F_top≈F_sun`.
+
+The first controlled segment `t=24000–24100` completed in 10.17 minutes.
+Its upper/lower fluxes are `0.62896/0.64919 F_sun`; the 500-code-time
+rolling lower total is `0.64117 F_sun`, so the next bounded update is
+`+111,325 erg g^-1 K^-1`. All 1,412 Newton solves converged, there were no
+slow-multigrid warnings, mass drift was 0.0273%, and the lowest available
+memory was 18.12 GiB. The second segment started automatically. At this
+measured speed, the remaining 19 segments would finish around 20:55 JST on
+2026-11-09, subject to runtime variation and resource guards.
 
 To resume the prepared pilot from this worktree, pass exactly the recorded
 settings (the `--allow-binary-change` flag is required because the older
