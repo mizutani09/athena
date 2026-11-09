@@ -19,6 +19,14 @@ not an instruction to rescale the top cell artificially. The initial 1D
 profile specifies `T_top=4850.985 K`, but the relaxed 3D top cell is near
 4327 K.
 
+At `t=24000`, the measured top-face diffusion flux divided by
+`0.5 c ×` the top-cell mean radiation energy is `0.9971`; at `t≈24300` in
+the `+1e7` branch the same ratio is `0.9944`. The small departure is expected
+because the actual boundary law uses a face state, whereas these ratios use
+the adjacent cell mean. This checks that the low upper flux follows the low
+upper radiation energy; it does not establish why the surface energy settled
+there.
+
 Rempel's HD2 condition prescribes the entropy of bottom upflows while leaving
 downflow entropy symmetric; the prescribed value is chosen to obtain the
 desired radiative loss at the surface. See [Rempel (2014), Section 2.2](https://arxiv.org/pdf/1405.6814).
@@ -43,8 +51,28 @@ Over `t=24210–24310` it had `F_top=0.63778 F_sun`, `F_bottom=0.66099
 F_sun`, and a stored-energy trend of `+0.03698 F_sun`. The lower entropy
 contrast rose from `1.56e6` at the shared checkpoint to `5.04e6` at
 `t≈24100`, then fell to `1.96e6` by `t≈24300` as downflow entropy caught up.
-The same-time fixed-entropy baseline is needed before attributing late
-differences to the perturbation.
+The matched fixed-entropy baseline is complete. Both runs have zero fatal and
+slow-multigrid warnings; 4,279 and 4,358 Newton solves, respectively, all
+converged. The sampled energy-ledger residual magnitude is below
+`7e-5 F_sun` in each window, so the large temporary mismatch between upper
+and lower flux is accounted for as stored energy at this diagnostic accuracy.
+
+| Code-time window | Branch | Top / F_sun | Bottom / F_sun | Stored-energy trend / F_sun |
+| --- | --- | ---: | ---: | ---: |
+| 24010–24150 | fixed s_in | 0.62833 | 0.62098 | -0.01111 |
+| 24010–24150 | s_in +1e7 | 0.62107 | 4.26212 | +3.83622 |
+| 24150–24310 | fixed s_in | 0.62929 | 0.64441 | -0.00494 |
+| 24150–24310 | s_in +1e7 | 0.63667 | 0.74490 | +0.08903 |
+
+Over the later 160-code-time window, the perturbation raises the lower flux
+by `+0.10049 F_sun` and the upper by only `+0.00738 F_sun`; the stored-energy
+trend difference is `+0.09397 F_sun`. Thus it still increases energy input
+after the strongest initial transient, but has not supplied the missing
+`≈0.37 F_sun` or established a new equilibrium. The full thermal response
+cannot be inferred from this 310-code-time test. At `t≈24300`, the bottom
+cell's mass-flux-weighted entropy contrast is `1.96e6` in the perturbed run
+versus `2.26e6` in the baseline: downflow entropy has caught up enough that
+the interior contrast alone is not a reliable controller signal.
 
 The branch output is
 `/mnt/d/output/rad/wor74_entropy_range_20261109/`. The analysis script
@@ -70,7 +98,7 @@ initial input and then downflow entropy responds. The pilot will be assessed
 from lower/upper flux, stored-energy trend, mass drift, and solver status;
 reaching `F_bottom≈F_sun` for one segment is not a calibrated result.
 
-The pilot is prepared at
+The pilot started at 2026-11-09 17:31 JST at
 `/mnt/d/output/rad/wor74_bottom_flux_controller_20261109/`, forked from the
 last complete `t=24000` restart. It is configured to stop at `t=26000` for
 review. Its `state.json`, `index.html`, and `memory_monitor.csv` provide

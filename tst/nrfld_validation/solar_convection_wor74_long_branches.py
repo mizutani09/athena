@@ -148,7 +148,8 @@ def main() -> None:
     (args.output / "summary.json").write_text(
         json.dumps(summary, indent=2, ensure_ascii=False) + "\n")
 
-    plt.rcParams.update({"font.size": 15, "axes.labelsize": 17, "legend.fontsize": 13})
+    plt.rcParams.update({"font.size": 19, "axes.labelsize": 22,
+                         "legend.fontsize": 17})
     fig, axes = plt.subplots(2, 2, figsize=(16, 10))
     timeline = np.arange(24010, 24310.0001, 0.2)
     base = histories["baseline"]
@@ -173,12 +174,12 @@ def main() -> None:
         ax.set(xlabel="t − 24000 [code]", ylabel=ylabel)
         ax.grid(alpha=.3)
         ax.legend()
-    fig.suptitle("WOR-74: matched 96 km branch responses", fontsize=20)
+    fig.suptitle("WOR-74: matched 96 km branch responses", fontsize=24)
     fig.tight_layout()
-    fig.savefig(args.output / "branch_response.png", dpi=160)
+    fig.savefig(args.output / "branch_response.png", dpi=100)
     plt.close(fig)
 
-    fig, axes = plt.subplots(1, 3, figsize=(18, 5))
+    fig, axes = plt.subplots(1, 3, figsize=(18, 6))
     for name, case in summary["cases"].items():
         series = case["snapshots"]
         ts = [row["time_code"]-24000 for row in series]
@@ -192,8 +193,8 @@ def main() -> None:
         ax.set(xlabel="t − 24000 [code]", ylabel=ylabel)
         ax.grid(alpha=.3)
         ax.legend()
-    fig.tight_layout()
-    fig.savefig(args.output / "thermal_response.png", dpi=160)
+    fig.tight_layout(pad=1.5)
+    fig.savefig(args.output / "thermal_response.png", dpi=100)
     plt.close(fig)
 
     rows = []
@@ -217,6 +218,7 @@ def main() -> None:
                 f"<td>{snapshot['bottom_cell_entropy_contrast_cgs']/1e6:.3f}</td>"
                 f"<td>{snapshot['bottom_mean_temperature_K']:.0f}</td>"
                 f"<td>{snapshot['top_mean_radiation_energy_cgs']:.3f}</td></tr>")
+    late = summary["cases"]["splus_10e6"]["windows"][-1]
     page = f"""<!doctype html><html lang="ja"><meta charset="utf-8">
 <title>WOR-74: 96 km の長めの境界対照</title><style>
 body{{font:21px/1.55 system-ui,sans-serif;max-width:1300px;margin:2rem auto;padding:0 1rem;color:#172033}}
@@ -232,6 +234,12 @@ th:first-child,td:nth-child(2){{text-align:left}}img{{max-width:100%;height:auto
 同じMarshak係数0.5でF☉を出す境界面の目安は
 <strong>4.20 erg cm⁻³</strong>（放射温度約4855 K）です。
 セル中心値と境界面値は同一ではないため、この数値は較正の目安です。</p>
+<p class="note"><strong>判定：太陽流束は未達。</strong>
+後半160 code-timeの変更枝は基準枝より下端
+<strong>{late['delta_bottom_over_solar']:+.3f} F☉</strong>、上端
+<strong>{late['delta_top_over_solar']:+.3f} F☉</strong>、蓄熱率
+<strong>{late['delta_stored_trend_over_solar']:+.3f} F☉</strong>。
+下端の追加供給は持続していますが、主として箱内に蓄えられています。</p>
 <table><tr><th>時間窓</th><th>条件</th><th>上端 / F☉</th><th>下端 / F☉</th>
 <th>蓄熱 / F☉</th><th>上端差</th><th>下端差</th></tr>{''.join(rows)}</table>
 <img src="branch_response.png" alt="境界対照の流束時系列">
