@@ -1911,25 +1911,38 @@ void NRFLD::AddDifference(AthenaArray<Real> &u_rad,
         }
 #endif
         bool local_gas_solved = false;
-#if GENERAL_EOS && EOS_TABLE_ENABLED
+#if !GENERAL_EOS || EOS_TABLE_ENABLED
         // In the optically stiff limit a global radiation correction can move
         // Er by orders of magnitude.  A single linearized gas correction then
         // leaves a large LTE residual and can cease to be a descent direction.
-        // For a table EOS, eliminate the monotone local matter equation exactly
-        // at the newly applied Er.  The old gas state and the LTE state bracket
-        // the root; a pressure floor turns the solve into a lower-bound problem.
+        // Eliminate the monotone local matter equation at the newly applied Er.
+        // This also applies to the adiabatic ideal gas: its linearized gas
+        // correction can leave an O(1) residual in a stiff mixed-frame cell.
         if (exact_local_gas_solve_ && pfld->is_couple && !pfld->only_rad) {
           const Real rho = pmy_block_->phydro->w(IDN,k,j,i);
           const Real egas_old = pfld->u_gas(k,j,i);
           const Real c_sigma_p = pfld->c_ph*pfld->sigma_p(k,j,i);
           const Real current_egas = u_gas_(k,j,i);
-          const Real current_temperature = pmy_block_->peos->TempFromRhoEg(
-              rho, current_egas);
+          auto temperature_from_energy = [&](const Real egas) {
+#if GENERAL_EOS
+            return pmy_block_->peos->TempFromRhoEg(rho, egas);
+#else
+            return def_coeff_(NewtonRaphsonFLD::DCOUPLE,k,j,i)*egas;
+#endif
+          };
+          auto energy_from_temperature = [&](const Real temperature) {
+#if GENERAL_EOS
+            return pmy_block_->peos->EgasFromRhoT(rho, temperature);
+#else
+            return temperature/def_coeff_(NewtonRaphsonFLD::DCOUPLE,k,j,i);
+#endif
+          };
+          const Real current_temperature = temperature_from_energy(current_egas);
           const Real current_t2 = current_temperature*current_temperature;
           const Real current_equilibrium = pfld->a_r*current_t2*current_t2;
           const Real radiation_change = u_rad(k,j,i)-u_rad_before;
           auto gas_residual = [&](const Real egas) {
-            const Real temperature = pmy_block_->peos->TempFromRhoEg(rho, egas);
+            const Real temperature = temperature_from_energy(egas);
             const Real t2 = temperature*temperature;
             const Real equilibrium = pfld->a_r*t2*t2;
             if (mixed_active) {
@@ -1957,16 +1970,14 @@ void NRFLD::AddDifference(AthenaArray<Real> &u_rad,
                 total, -std::numeric_limits<Real>::infinity());
             const Real radiation_temperature = std::pow(
                 std::max(erad_old, TINY_NUMBER)/pfld->a_r, 0.25);
-            const Real egas_lte = pmy_block_->peos->EgasFromRhoT(
-                rho, radiation_temperature);
+            const Real egas_lte = energy_from_temperature(radiation_temperature);
             const Real bracket_upper = std::min(
                 upper_bound, std::max(egas_old, egas_lte));
             if (std::isfinite(egas_lte) && std::isfinite(bracket_upper)
                 && bracket_upper > egas_floor) {
               auto coupled_residual = [&](const Real egas) {
                 const Real erad = erad_old + (egas_old-egas);
-                const Real temperature = pmy_block_->peos->TempFromRhoEg(
-                    rho, egas);
+                const Real temperature = temperature_from_energy(egas);
                 const Real t2 = temperature*temperature;
                 return (egas-egas_old) + pmy_driver_->dt_*c_sigma_p
                     *ResolvableThermalDifference(pfld->a_r*t2*t2, erad);
@@ -2008,8 +2019,7 @@ void NRFLD::AddDifference(AthenaArray<Real> &u_rad,
             } else if (std::isfinite(f_floor)) {
               const Real radiation_temperature = std::pow(
                   std::max(u_rad(k,j,i), TINY_NUMBER)/pfld->a_r, 0.25);
-              const Real egas_lte = pmy_block_->peos->EgasFromRhoT(
-                  rho, radiation_temperature);
+              const Real egas_lte = energy_from_temperature(radiation_temperature);
               if (std::isfinite(egas_lte) && egas_lte > 0.0) {
                 Real lower = egas_floor;
                 Real upper = std::max({egas_floor, egas_old, egas_lte});
