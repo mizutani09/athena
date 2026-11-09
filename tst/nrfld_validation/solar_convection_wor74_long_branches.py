@@ -71,13 +71,16 @@ def window(h: dict[str, np.ndarray], start: float, end: float,
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     for key in CASES:
-        parser.add_argument(f"--{key.replace('_', '-')}-short", type=Path, required=True)
+        parser.add_argument(f"--{key.replace('_', '-')}-short", type=Path,
+                            required=key != "alpha_100")
     parser.add_argument("--long-root", type=Path, required=True)
     parser.add_argument("--header-from", type=Path, required=True)
     parser.add_argument("--input", type=Path, required=True)
     parser.add_argument("--eos-table", type=Path, required=True)
     parser.add_argument("--output", type=Path, required=True)
     args = parser.parse_args()
+    selected = {name: label for name, label in CASES.items()
+                if getattr(args, f"{name}_short") is not None}
     args.output.mkdir(parents=True, exist_ok=True)
     units = input_values(args.input)
     profile_units = units_from_input(args.input)
@@ -85,7 +88,7 @@ def main() -> None:
     histories = {}
     summary = {"scope": "Matched t=24000 restart; 310 code-time transient",
                "windows": WINDOWS, "cases": {}}
-    for name, label in CASES.items():
+    for name, label in selected.items():
         short = getattr(args, f"{name}_short")
         long = args.long_root / f"{name}_t24310"
         if name == "splus_10e6":
@@ -152,7 +155,7 @@ def main() -> None:
     base_top = np.interp(timeline, base["time"], total_top_flux(base))/FSUN
     base_bottom = np.interp(timeline, base["time"], total_bottom_flux(base))/FSUN
     colors = {"baseline": "#2563eb", "splus_10e6": "#dc2626", "alpha_100": "#16a34a"}
-    for name, label in CASES.items():
+    for name, label in selected.items():
         h = histories[name]
         top = np.interp(timeline, h["time"], total_top_flux(h))/FSUN
         bottom = np.interp(timeline, h["time"], total_bottom_flux(h))/FSUN
@@ -222,8 +225,8 @@ table{{border-collapse:collapse;width:100%}}th,td{{border-bottom:1px solid #cbd5
 th:first-child,td:nth-child(2){{text-align:left}}img{{max-width:100%;height:auto}}
 .note{{background:#eff6ff;border-left:5px solid #0284c7;padding:1rem}}
 </style><h1>WOR-74：96 km の境界対照</h1>
-<p class="note"><strong>同一 t=24000 restart</strong>から、流入エントロピーまたはMarshak係数を
-一つだけ変更。約310 code-time（鉛直横断約2.7回）の応答であり、
+<p class="note"><strong>同一 t=24000 restart</strong>から、流入エントロピーを
+変更。約310 code-time（鉛直横断約2.7回）の応答であり、
 全箱熱時間約2万 code-timeの定常応答ではありません。</p>
 <table><tr><th>時間窓</th><th>条件</th><th>上端 / F☉</th><th>下端 / F☉</th>
 <th>蓄熱 / F☉</th><th>上端差</th><th>下端差</th></tr>{''.join(rows)}</table>

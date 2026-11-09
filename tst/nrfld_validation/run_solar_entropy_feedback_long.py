@@ -141,6 +141,7 @@ def render(root: Path, state: dict) -> None:
             f"<td>{row['top_radiative_flux_over_solar']:.5f}</td>"
             f"<td>{row.get('rolling_top_flux_over_solar', row['top_radiative_flux_over_solar']):.5f}</td>"
             f"<td>{row['bottom_hydro_flux_over_solar']:.5f}</td>"
+            f"<td>{row.get('rolling_bottom_total_flux_over_solar', row['bottom_hydro_flux_over_solar']):.5f}</td>"
             f"<td>{row['entropy_cgs']:.7e}</td>"
             f"<td>{row['wall_seconds']/60:.1f}</td></tr>")
     lines = ["<!doctype html><html lang='en'><meta charset='utf-8'>",
@@ -159,7 +160,8 @@ def render(root: Path, state: dict) -> None:
              "No segment has completed yet.",
              f"Projected compute time remaining from last five segments: "
              f"{remaining_h:.1f} h.</p>" if remaining_h is not None else "</p>",
-             "<p>The slow controller is a transient experiment. Top-flux agreement "
+             f"<p><strong>Control signal: {html.escape(config.get('feedback_face', 'top'))} "
+             "total flux.</strong> The controller is a transient experiment. Top-flux agreement "
              "and thermal stationarity require long-window checks.</p>",
              "<p><a href='state.json'>State and controls</a> · "
              "<a href='memory_monitor.csv'>Memory monitor</a> · "
@@ -169,7 +171,8 @@ def render(root: Path, state: dict) -> None:
     if "control_switch" in state:
         switch = state["control_switch"]
         lines.append(f"<p><strong>Controller switched at t={switch['at_time_code']:.0f}:</strong> "
-                     f"{config['flux_average_code']:.0f}-code-time rolling top flux, "
+                     f"{config['flux_average_code']:.0f}-code-time rolling "
+                     f"{html.escape(config.get('feedback_face', 'top'))} flux, "
                      f"{config['segment_code']:.0f}-code-time updates, "
                      f"cumulative entropy limit ±{config['max_total_entropy_change_cgs']:.0f}. "
                      f"Source: {html.escape(state['forked_from'])}</p>")
@@ -196,7 +199,8 @@ def render(root: Path, state: dict) -> None:
     lines += ["<h2>Restart segments</h2>",
               "<table><thead><tr><th>Case</th><th>End t</th><th>Top / solar</th>"
               "<th>Rolling top / solar</th>"
-              "<th>Bottom / solar</th><th>Input entropy</th><th>Wall min</th>"
+              "<th>Bottom hydro / solar</th><th>Rolling bottom total / solar</th>"
+              "<th>Input entropy</th><th>Wall min</th>"
               "</tr></thead><tbody>", *table_rows, "</tbody></table></html>"]
     (root / "index.html").write_text("\n".join(lines) + "\n")
 
@@ -215,7 +219,10 @@ def main() -> None:
     parser.add_argument("--target-time", type=float, default=5000.0)
     parser.add_argument("--segment-code", type=float, default=100.0)
     parser.add_argument("--flux-average-code", type=float, default=100.0)
-    parser.add_argument("--tau-kh-code", type=float, default=2.0e4)
+    parser.add_argument("--tau-kh-code", type=float, default=2.0e4,
+                        help="Integral-controller response time in code units")
+    parser.add_argument("--feedback-face", choices=("top", "bottom"), default="top",
+                        help="Boundary flux used as the controller error signal")
     parser.add_argument("--response-fsun-per-1e6", type=float, default=0.322326259)
     parser.add_argument("--max-entropy-change", type=float, default=5.0e4)
     parser.add_argument("--max-total-entropy-change", type=float, default=1.0e6,
@@ -271,6 +278,7 @@ def main() -> None:
               "segment_code": args.segment_code,
               "flux_average_code": args.flux_average_code,
               "tau_kh_code": args.tau_kh_code,
+              "feedback_face": args.feedback_face,
               "response_fsun_per_1e6": args.response_fsun_per_1e6,
               "max_entropy_change_cgs": args.max_entropy_change,
               "max_total_entropy_change_cgs": args.max_total_entropy_change,
@@ -288,12 +296,18 @@ def main() -> None:
         if not source_state_path.is_file():
             parser.error(f"Missing source state: {source_state_path}")
         state = json.loads(source_state_path.read_text())
-        if state["status"] != "completed" or not state["completed"]:
-            parser.error("Source campaign must be complete")
+        stopped_between_segments = (state["status"] == "stopped"
+                                    and state.get("stop_reason") ==
+                                    "Stop signal received between segments"
+                                    and not state.get("active_case"))
+        if not (state["status"] == "completed" or stopped_between_segments) \
+                or not state["completed"]:
+            parser.error("Source campaign must end at a completed segment")
         old = state["config"]
         for key, value in config.items():
             if key in {"target_time_code", "flux_average_code", "tau_kh_code",
-                       "max_total_entropy_change_cgs"}:
+                       "feedback_face", "response_fsun_per_1e6",
+                       "max_entropy_change_cgs", "max_total_entropy_change_cgs"}:
                 continue
             if key == "binary_sha256" and args.allow_binary_change:
                 continue
@@ -334,7 +348,10 @@ def main() -> None:
         filtered = rolling_fluxes(root, state["completed"], header,
                                   last["end_time_code"], args.flux_average_code,
                                   input_values(custom_input))
-        proposed = (args.segment_code / args.tau_kh_code) * (1.0 - filtered["top_over_solar"])
+        controlled_flux = (filtered["bottom_total_over_solar"]
+                           if args.feedback_face == "bottom"
+                           else filtered["top_over_solar"])
+        proposed = (args.segment_code / args.tau_kh_code) * (1.0 - controlled_flux)
         proposed *= 1.0e6 / args.response_fsun_per_1e6
         next_entropy = float(np.clip(last["entropy_cgs"] + np.clip(
             proposed, -args.max_entropy_change, args.max_entropy_change),
@@ -343,6 +360,7 @@ def main() -> None:
         state["next_entropy_cgs"] = next_entropy
         state["control_switch"] = {
             "at_time_code": last["end_time_code"], "rolling_flux": filtered,
+            "feedback_face": args.feedback_face,
             "previous_next_entropy_cgs": last["next_entropy_cgs"],
             "next_entropy_cgs": next_entropy}
     elif args.resume:
@@ -360,7 +378,8 @@ def main() -> None:
             elif key == "max_total_entropy_change_cgs":
                 if value < old[key]:
                     parser.error("Cannot reduce an existing cumulative entropy limit")
-            elif value != old.get(key, 1.0e6 if key == "max_total_entropy_change_cgs" else None):
+            elif value != old.get(key, "top" if key == "feedback_face" else
+                                  1.0e6 if key == "max_total_entropy_change_cgs" else None):
                 parser.error(f"Resume config differs: {key}")
         if (args.target_time != old["target_time_code"] or
                 args.max_total_entropy_change != old["max_total_entropy_change_cgs"]):
@@ -541,7 +560,10 @@ def main() -> None:
                                       reference_header, end_time,
                                       args.flux_average_code,
                                       input_values(custom_input))
-            proposed = (args.segment_code/args.tau_kh_code) * (1.0-filtered["top_over_solar"])
+            controlled_flux = (filtered["bottom_total_over_solar"]
+                               if args.feedback_face == "bottom"
+                               else filtered["top_over_solar"])
+            proposed = (args.segment_code/args.tau_kh_code) * (1.0-controlled_flux)
             proposed *= 1.0e6/args.response_fsun_per_1e6
             next_entropy = float(np.clip(entropy + np.clip(
                 proposed, -args.max_entropy_change, args.max_entropy_change),
