@@ -129,6 +129,8 @@ def main() -> None:
     if eos.nvar < 5:
         parser.error("EOS table lacks specific entropy")
     input_path = campaign / "athinput.base.validated"
+    if not input_path.is_file():
+        input_path = campaign / "athinput.campaign"
     units = units_from_input(input_path)
     output = args.output_dir.resolve()
     output.mkdir(parents=True, exist_ok=True)

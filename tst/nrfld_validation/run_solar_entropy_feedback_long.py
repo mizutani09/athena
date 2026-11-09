@@ -169,6 +169,15 @@ def render(root: Path, state: dict) -> None:
              "<a href='memory_monitor.csv'>Memory monitor</a> · "
              "<a href='driver.log'>Driver log</a></p>"]
     if completed:
+        if config.get("feedback_face") == "bottom":
+            last_bottom = completed[-1].get("rolling_bottom_total_flux_over_solar")
+            if last_bottom is not None:
+                lines.append(f"<p><strong>Last 500-code-time lower total flux: "
+                             f"{last_bottom:.5f} F_sun.</strong></p>")
+        if (root / "diagnosis" / "index.html").is_file():
+            lines.append("<p><strong>Final diagnosis:</strong> "
+                         "<a href='diagnosis/index.html'>flux, energy, and "
+                         "entropy response</a></p>")
         lines.append("<img src='feedback_progress.png' alt='Flux and entropy history'>")
     if "control_switch" in state:
         switch = state["control_switch"]

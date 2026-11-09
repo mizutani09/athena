@@ -117,6 +117,48 @@ memory was 18.12 GiB. The second segment started automatically. At this
 measured speed, the remaining 19 segments would finish around 20:55 JST on
 2026-11-09, subject to runtime variation and resource guards.
 
+## Completed t=26000 pilot: 2026-11-09
+
+All 20 controlled segments completed at 20:51 JST. The full result is at
+`/mnt/d/output/rad/wor74_bottom_flux_controller_20261109/diagnosis/index.html`
+with numeric evidence in `summary.json`. The root `index.html` links to it.
+
+| Window [code] | Top / F_sun | Bottom / F_sun | Stored-energy trend / F_sun |
+| --- | ---: | ---: | ---: |
+| 23000–24000, before switch | 0.62969 | 0.63462 | +0.00776 |
+| 24000–25000 | 0.62759 | 0.68204 | +0.05960 |
+| 25000–26000 | 0.62575 | 0.68246 | +0.05498 |
+
+The measured lower supply rose `+0.04784 F_sun` while the upper flux fell
+`−0.00394 F_sun`; the storage trend rose `+0.04722 F_sun`. The sampled
+energy-ledger residual is below `7.3e-5 F_sun` in the 500-code windows.
+The controller increased the *applied* inflow entropy from
+`1.583570672e9` to `1.585586016e9 erg g^-1 K^-1` (`+2.0153e6`); the
+next unexecuted setting would have been `1.585684342e9`. The 500-code
+rolling lower flux was about `0.68 F_sun` throughout the final 1000 code
+times while entropy continued to rise by about `1e6`. This is a weak or
+delayed sustained gain, not evidence that the lower boundary has reached
+its target.
+
+Twenty-one 3D snapshots in each of `t=22000–24000` and `24000–26000`
+show bottom-cell mass-flux-weighted upflow/downflow entropies increased by
+`+1.159e6/+1.137e6`; their contrast barely changed (`2.000e6→2.022e6`).
+Bottom mean temperature rose `23.2 K`, while top mean temperature fell
+`6.2 K`. Both the upper flux and surface temperature are still far from
+their solar targets. The after-switch run had 28,611/28,611 converged
+Newton solves, no slow-MG warning, maximum mass drift `0.0306%`, and at
+least `17.59 GiB` available memory.
+
+Only `2000/20600≈0.097` whole-box thermal times have elapsed since the
+control change. The initial response is consistent with heat storage and
+the familiar rise of both upflow and downflow entropy. It does not prove
+the eventual steady-state gain of the lower-flux controller. Do not call
+this run solar-flux calibrated or extrapolate the initial `0.322 F_sun/1e6`
+step response as a steady gain. A longer continuation can test whether
+the `0.68 F_sun` lower-flux plateau moves as the interior warms; the
+windowed top, bottom, storage, and downflow-entropy diagnostics should be
+examined before raising the controller gain or entropy bound.
+
 To resume the prepared pilot from this worktree, pass exactly the recorded
 settings (the `--allow-binary-change` flag is required because the older
 reference manifest predates the diagnostic-only frozen executable):
