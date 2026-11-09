@@ -1,0 +1,19 @@
+{
+  "source": "/home/kosuke/simulation/test/rad_nr/wor92_xd_20261107/firstcore_integration_evidence/profiles/c670.athdf",
+  "cycle": 670,
+  "time_code": 1937.364013671875,
+  "axis_cells": 416,
+  "eos_cells_outside_table": 0,
+  "rho_max_on_axis_g_cm3": 4.098104900000001e-11,
+  "temperature_max_on_axis_K": 295.07996758322537,
+  "positive_negative_x_max_relative_rho_3_to_15_au": 0.0029324845649678064,
+  "positive_negative_x_max_relative_temperature_3_to_15_au": 0.0004129854999825677,
+  "steepest_positive_x_density_drop_3_to_15_au": {
+    "inner_au": 5.67626953125,
+    "outer_au": 6.2255859375,
+    "inner_over_outer_density": 2.885808485338016,
+    "inner_infall_km_s": 0.35027199241511825,
+    "outer_infall_km_s": 1.1979144696346067
+  },
+  "profile_csv": "/home/kosuke/simulation/test/rad_nr/wor92_xd_20261107/firstcore_integration_evidence/profiles/c670_axis.csv"
+}

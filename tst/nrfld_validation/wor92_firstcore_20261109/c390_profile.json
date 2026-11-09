@@ -12,5 +12,10 @@
   "temperature_max_K": 19.699133902972996,
   "eos_cells_outside_table": 0,
   "gas_mass_g": 2.273755381122603e+33,
+  "octant_density_relative_spread": {
+    "0_to_5_au": 0.00029511013993955746,
+    "5_to_10_au": 0.00028715011876857875,
+    "10_to_20_au": 0.00044905098878969974
+  },
   "profile_csv": "/home/kosuke/simulation/test/rad_nr/wor92_xd_20261107/firstcore_integration_evidence/profiles/c390_profile.csv"
 }

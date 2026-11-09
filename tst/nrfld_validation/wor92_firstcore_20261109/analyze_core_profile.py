@@ -117,6 +117,18 @@ def analyze(source, output, rho_unit, pressure_unit, length_unit, eos_table):
                              shell_mass[i], enclosed))
 
     imax = int(np.argmax(density))
+    octant = ((xx.ravel() >= 0).astype(np.int8)
+              + 2 * (y.ravel() >= 0).astype(np.int8)
+              + 4 * (z.ravel() >= 0).astype(np.int8))
+    octant_spread = {}
+    for low, high in ((0, 5), (5, 10), (10, 20)):
+        in_shell = (radius >= low) & (radius < high)
+        v = np.bincount(octant[in_shell], weights=volume[in_shell], minlength=8)
+        rv = np.bincount(octant[in_shell],
+                         weights=density[in_shell] * volume[in_shell], minlength=8)
+        means = np.divide(rv, v, out=np.full(8, np.nan), where=v > 0)
+        octant_spread["%s_to_%s_au" % (low, high)] = (
+            float((np.nanmax(means) - np.nanmin(means)) / np.nanmean(means)))
     result = {
         "source": str(source), "cycle": cycle, "time_code": time,
         "time_years": time * length_unit / velocity_unit / (365.25 * 86400),
@@ -130,6 +142,7 @@ def analyze(source, output, rho_unit, pressure_unit, length_unit, eos_table):
                               if temperature is not None else None),
         "eos_cells_outside_table": eos_outside,
         "gas_mass_g": float(np.sum(density * volume) * length_unit**3),
+        "octant_density_relative_spread": octant_spread,
         "profile_csv": str(output),
     }
     output.with_suffix(".json").write_text(json.dumps(result, indent=2) + "\n")
