@@ -1,0 +1,31 @@
+{
+  "job": 338425,
+  "test": "c930\u2192940 AMR VL2, 64 MPI ranks, repaired radiation face/source order",
+  "source_base_commit": "533ac4dca59b4901ba9a5c3d4e9435a25ca659fc",
+  "status": "PASS_C930_TO_940_WOR118_VL2",
+  "slurm_state": "COMPLETED 0:0",
+  "elapsed_seconds": 198,
+  "max_step_rss_kib": 35756144,
+  "n_steps": 10,
+  "newton_converged": 10,
+  "newton_other_statuses": [],
+  "fgmres_solves": 30,
+  "fgmres_iterations_total": 292,
+  "fgmres_max_true_relative_residual": 1.9829209214523573e-08,
+  "initial_gas_mass_g": 2.273781228894768e+33,
+  "final_gas_mass_g": 2.273781228894768e+33,
+  "gas_mass_relative_change": 0.0,
+  "history_sha256": "8f5ed6ec4026ce9294be2309d7a6fc329dabd3918edd737abd898ceaa912ba5e",
+  "archive_sha256": "2b33bc1871309ececdec99e486b2d96dd01bd391f480e2189660d3d240383b4b",
+  "provenance": [
+    "START=2026-11-09 16:02:59 JST",
+    "f4125c1dac57c3e53306cc9cd57fd6b88f3cbfbaf949e7d62748283a1750dede  /work/mizutaniks/output/fld/collapse/wor92_xd_20261107/long/job_338156/output/cfl030_flux_precision16_local.final.rst",
+    "908d5def56faf5e0993526f1c709b2593eec814a2a26ffd83d4a0133b6ac0810  /work/mizutaniks/output/fld/collapse/wor92_xd_20261107/source_wor118_production_trial/bin/athena",
+    "95d9fca3409705006947ea26da2f9abd3e36a4907a1c2335cfde805502f8cbb6  /work/mizutaniks/output/fld/collapse/wor92_xd_20261107/bundle/wor92_core_symmetry_cycle_output_gravity_20261107.in",
+    "742a3456923d4c7056c3705accbcc793af3e0c79408a2f597a0cd9271b13ba43  /work/mizutaniks/output/fld/collapse/wor92_xd_20261107/bundle/data/eos/protostellar_tomida2015_material.tab",
+    "6c42445452bca6aeca1253f31ab049b2ff107dea3601f946b4c61c93db022f94  /work/mizutaniks/output/fld/collapse/wor92_xd_20261107/bundle/data/opacity/protostellar_semenov2003_nrm_c_a.h5",
+    "ATHENA_NRFLD_CONSERVATIVE_DIFFERENCE_JV=0",
+    "ATHENA_NRFLD_CONSERVATIVE_PROTOTYPE=1"
+  ],
+  "input_script": "wor118_mdebug_vl2_c930to940.sbatch"
+}

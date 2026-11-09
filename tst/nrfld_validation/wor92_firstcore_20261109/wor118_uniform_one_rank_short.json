@@ -1,0 +1,20 @@
+{
+  "test": "N64 uniform shock tube, 1 MPI rank, tlim 0.005",
+  "source_base_commit": "533ac4dca59b4901ba9a5c3d4e9435a25ca659fc",
+  "binary_sha256": "623c9f87978e3f9c7107e85d77f324703d34d5a794771766c2dbd2ccb949784c",
+  "input_sha256": "1858a89f6db7eb6d9bf40284063b86747ba0808e78f8e3a6f752ee20607d5b9d",
+  "input_override": "time/tlim=0.005",
+  "log_sha256": "998b03712ab6b5bb4b4d62232480ac81e33baa9bd5b667a2c922853b6c97408e",
+  "mpi_ranks": 1,
+  "final_cycle": 55,
+  "final_time_code": 0.005,
+  "newton_converged": 55,
+  "newton_other_statuses": [],
+  "fgmres_solves": 200,
+  "fgmres_iterations_total": 200,
+  "fgmres_max_relative_residual": 6.255282051841578e-16,
+  "elapsed_wall_seconds": 95.2,
+  "max_rss_kib": 195036,
+  "status": "PASS",
+  "evidence_dir": "/home/kosuke/simulation/test/rad_nr/wor118_shock_tube_20261109/one_rank_uniform_short"
+}

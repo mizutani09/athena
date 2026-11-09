@@ -177,3 +177,20 @@ XD M-debug 64 rankの同一c930 restart対照では、ambient温度固定をOFF�
 同一c930 restart・64 MPI rank M-debugの1ステップ面監査job **338337** では、最終RK段階の全域質量flux差は`-2.59687e-11 code`、同一level面と周期境界は全軸0、粗細面も丸め程度。元の`+5242.866048 code`に対し実質的に解消。全faceを平均する広い変更job **338335** も`-1.83035e-11 code`だったが、採用候補はMeshBlock端だけの狭い修正である。c930→940の10ステップM-debug job **338338** はSlurm COMPLETED 0:0（3:14、step MaxRSS `35,756,948 KiB`）、10/10 Newton収束、30 FGMRES solve・292反復、最大true linear relative residual `1.958e-8`、opacity診断0。高精度historyのgas massはc930とc940でともに`2.273781228894768e33 g`、元設定では相対`+7.690570e-8`。独立の`cons/dens` HDF5体積積分では相対`-1.000814e-10`で、float32出力量子化の範囲。3536 blockのAMR配置は同じ。入力、binary、restart、表SHAはXDの各job `provenance.txt`、面監査は `c930_hydro_mass_faces_boundary_only_trial.json`、HDF監査は `c930_c940_boundary_only_conserved_mass.json`。
 
 同じc930 restartからc1010まで5ノード・320 rank M-test-aで続けたjob **338342** はSlurm COMPLETED 0:0（4:54、step MaxRSS `20,268,088 KiB`）。実行binary SHA `908d5def56faf5e0993526f1c709b2593eec814a2a26ffd83d4a0133b6ac0810`。80/80 Newton収束、240 FGMRES solve・2277反復、最大true linear relative residual `1.995988e-8`、最大Newton final_max `1.873906e-8`、opacity範囲逸脱0。c930→1010の高精度historyのgas massは`2.273781228894768e33`→`2.273781228894767e33 g`、相対`-3.33e-16`。最大密度`1.0081888964e-10 g/cm³`、Tmax`431.26325 K`、Jeans最小`36.4486 cells`、最終AMR3704 block、EOS表外セル0。正のx軸shockは元計算と同じ`7.507–7.874 au`で、HDF5最大温度差は相対`-7.90e-8`。修正版の最終質量は元計算より相対`-5.893e-7`で、元計算の質量増分を除く量に相当する。結果とSHAは `wor118_c930_c1010_repaired_run.json`、生成コードは `summarize_wor118_repaired_run.py`。元HST、HDF5、ログはローカルの `firstcore_integration_evidence/profiles/` と `job_338342_wor118_c930to1010.tar.gz` に保存。全経路c0からの再実行ではなく、検証対象は高密度c930→1010と同一設定の短い面監査である。
+
+### WOR-118の積分法・少数rank確認
+
+修正版production binary（SHA `908d5def...`）を使用したXD M-debug 64 rank・VL2のc930→940 job **338425** はCOMPLETED 0:0（3:18、step MaxRSS `35,756,144 KiB`）。10/10 Newton収束、30 FGMRES solve・292反復、最大true linear residual `1.982921e-8`。高精度historyのgas massはc930/c940とも`2.273781228894768e33 g`で、修正前VL2の相対増分`+7.389789e-8`が消えた。入力とログSHAを `wor118_c930_c940_vl2.json`、投入スクリプトを `wor118_mdebug_vl2_c930to940.sbatch` に記録。ローカル証拠archiveは `job_338425_wor118_vl2.tar.gz`、HSTは `profiles/c930_c940_wor118_vl2.hst`。
+
+修正版と同じソースを用いたuniform shock tube N64をローカル1 MPI rank・`time/tlim=0.005`で短時間実行。55/55 Newton収束、200 FGMRES solve/200反復、t=0.005へ正常終了、95.2秒、最大RSS 195,036 KiB。入力・binary・ログSHAは `wor118_uniform_one_rank_short.json`。短時間の実行可否を確認する試験であり、振動判定は2/4 rankのN64/N128をt=0.1まで完走した比較で行う。
+
+### 放射圧Riemann solverのshock tube回帰（2026-11-09）
+
+ユーザー指示に従い、Riemann solverの放射圧を有効にしたまま、元commit `533ac4dca59b4901ba9a5c3d4e9435a25ca659fc` の旧ソースと、今回の二ファイルのみ修正したソースを同一N64/N128入力でt=0.1まで実行。uniform N64は2 MPI rank、N128は4 MPI rank。両方の実験は検証スクリプト `tst/nrfld_validation/shock_tube_validation.py` で`passed`、N64は1331/1331、N128は2666/2666 Newton収束、relaxed acceptは0。独立したRad-EOS HLLC N4096参照解を同じキャッシュから使用。入力SHAは双方`1858a89f6db7eb6d9bf40284063b86747ba0808e78f8e3a6f752ee20607d5b9d`。修正版の二つのソースSHAはXD本計算と完全一致（`d9655adb...`/`2b1091aa...`）。旧版のソースSHAは元commitと一致。各binary、最終出力、メモリ、solver回数は `wor118_shock_tube_regression.json` 内のmanifestに記録した。
+
+| 解像度 | 密度L1旧→修正後 | 圧縮波x=0.60–0.88の密度全変動旧→修正後 | 有意な密度極値数 | 最大新旧差/参照解振幅（全5変数） |
+|---|---:|---:|---:|---:|
+| N64 | 0.100440→0.100413 | 1.882952→1.882937 | 1→1 | 0.0375% |
+| N128 | 0.061106→0.061074 | 1.895114→1.895115 | 1→1 | 0.0754% |
+
+温度と放射エネルギーの圧縮波周辺の有意極値数も両解像度で0→0。N128の密度全変動の増加は`1.57e-6`（正規化値）で、振動の新たな増加とは判定しない。N64ではradiation energyと全圧の参照L1がそれぞれ約0.10%/0.12%悪化し、他物理量とN128のL1は概ね改善。差はいずれも非常に小さく、修正前後の曲線は図でほぼ重なる。N4096との大きなL1差は両版に共通する数値拡散を含み、WOR-118の局所修正で解消されたとは主張しない。結果 `wor118_shock_tube_regression.json/png`、比較コード `compare_wor118_shock_tube.py`、完全ログ・動画等の外部証拠 `/home/kosuke/simulation/test/rad_nr/wor118_shock_tube_20261109/`。

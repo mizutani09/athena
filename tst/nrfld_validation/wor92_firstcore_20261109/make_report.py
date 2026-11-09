@@ -46,6 +46,8 @@ def render():
         (ROOT / "absorption_branch_comparison.png").read_bytes()).decode("ascii")
     firstcore_reference_chart = base64.b64encode(
         (ROOT / "firstcore_reference_comparison.png").read_bytes()).decode("ascii")
+    shock_chart = base64.b64encode(
+        (ROOT / "wor118_shock_tube_regression.png").read_bytes()).decode("ascii")
     eos_audit = read_json("firstcore_eos_audit.json")
     opacity_replay = read_json("opacity_replay_comparison.json")
     opacity_table = read_json("semenov_planck_absorption_trial.json")
@@ -65,6 +67,9 @@ def render():
     hydro_boundary_only = read_json("c930_hydro_mass_faces_boundary_only_trial.json")
     repaired_mass = read_json("c930_c940_boundary_only_conserved_mass.json")
     repaired_run = read_json("wor118_c930_c1010_repaired_run.json")
+    repaired_vl2 = read_json("wor118_c930_c940_vl2.json")
+    uniform_one_rank = read_json("wor118_uniform_one_rank_short.json")
+    shock_regression = read_json("wor118_shock_tube_regression.json")
     firstcore_reference = read_json("firstcore_reference_comparison.json")
     ambient_regions = hydro_ambient["stages"]["0.00616113437895963317"]
     ambient_by_region = {region: sum(value["net_code"] for name, value in ambient_regions.items()
@@ -95,6 +100,13 @@ def render():
     solver_true = max(job["fgmres_max_true_relative_residual"] for job in jobs)
     max_newton = max(job["newton_converged_max_final"] for job in jobs)
     shock = axes[1010]["steepest_positive_x_density_drop_3_to_15_au"]
+    shock_rows = "".join(tr(n[1:], f"{q['fields']['rho']['baseline_reference_relative_l1']:.6f}",
+                            f"{q['fields']['rho']['repaired_reference_relative_l1']:.6f}",
+                            f"{q['fields']['rho']['front_baseline_variation_over_range']:.6f}→"
+                            f"{q['fields']['rho']['front_repaired_variation_over_range']:.6f}",
+                            f"{q['fields']['rho']['front_baseline_significant_extrema']}→"
+                            f"{q['fields']['rho']['front_repaired_significant_extrema']}")
+                         for n, q in shock_regression["resolutions"].items())
     html = f'''<!doctype html>
 <html lang="ja"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
 <title>WOR-92 第一コア形成の解析 | 2026-11-09</title>
@@ -112,7 +124,7 @@ code{{font-size:.9em;overflow-wrap:anywhere}}.note{{background:#fff6e9;border-le
 .split{{display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:1rem}}footer{{max-width:1120px;margin:auto;padding:0 1.2rem 2rem;color:#536b74}}
 </style></head><body>
 <header><div>ATHENA++ / WOR-92 / XD2000</div><h1>Table EOS・opacityで第一コアの目標密度に到達</h1><p>2026-11-09 JST。Tomida系EOSとSemenov opacityを使ったCFL=0.3の3D AMR計算。採用した計算経路の到達点と、物理解釈上の限界を分けて示します。</p></header>
-<nav><a href="#result">到達点</a><a href="#structure">3D構造</a><a href="#solver">収束</a><a href="#conservation">保存量</a><a href="#opacity">opacity試験</a><a href="#eos">EOS監査</a><a href="#cost">計算量</a><a href="#comparison">基準計算</a><a href="#evidence">再現情報</a></nav>
+<nav><a href="#result">到達点</a><a href="#structure">3D構造</a><a href="#solver">収束</a><a href="#conservation">保存量</a><a href="#shock">shock tube</a><a href="#opacity">opacity試験</a><a href="#eos">EOS監査</a><a href="#cost">計算量</a><a href="#comparison">基準計算</a><a href="#evidence">再現情報</a></nav>
 <main>
 <section id="result"><h2>到達点</h2><div class="cards">
 <div class="card good"><strong>1.008×10⁻¹⁰ g/cm³</strong>cycle 1010で目標密度1×10⁻¹⁰ g/cm³を超え、正常終了。</div>
@@ -153,7 +165,12 @@ code{{font-size:.9em;overflow-wrap:anywhere}}.note{{background:#fff6e9;border-le
 {tr('境界面closureと放射source順序・job 338337',f'{hydro_boundary_only["stages"][0]["face_net_delta_code"]:.3e}','丸め程度')}
 </tbody></table></div><p>温度固定OFFの10ステップ試験job 338284でも質量相対増分は+7.705×10⁻⁸（元設定+7.691×10⁻⁸）。温度固定は質量を直接書き換えません。放射圧OFFは原因の切り分け用で、物理モデルの恒久設定には採用しません。</p>
 <p>原因は二つありました。(1) MeshBlock端のghost closureの傾きに必要な第3 ghost層が存在せず、同じ面のlimiterが両側で一致しないこと。(2) 放射境界交換の後に混合系sourceが実セルのE<sub>rad</sub>だけを変え、次のRK段階には古いghostが残ること。通常のimplicit mixed driftではsourceを放射境界交換より先に実行し、MeshBlock端だけλとa<sub>rad</sub>を隣接セル中心値から共通化しました。c930→931の同一level・周期境界の質量flux差は各軸で丸め程度。10ステップのjob 338338ではhistoryの全域gas massは15桁で不変、保存変数HDF5の体積積分差は{repaired_mass['relative_conserved_mass_change']:+.2e}（float32出力量子化を含む）。元設定の+7.691×10⁻⁸から改善しました。</p>
-<h3>修正版の第一コア到達試験</h3><p>同じc930 restartからc1010まで放射圧を有効にしたまま5ノード・320 rankで再実行したjob 338342は、Slurm COMPLETED 0:0（4:54）、80/80 Newton収束、FGMRES {repaired_run['fgmres_solves']} solve・{repaired_run['fgmres_iterations_total']}反復、最大true residual {repaired_run['fgmres_max_true_relative_residual']:.3e}でした。高精度historyのgas mass相対変化は{repaired_run['history_relative_gas_mass_change']:+.2e}。目標密度{repaired_run['final_density_max_g_cm3']:.3e} g/cm³に到達し、衝撃波位置{repaired_run['shock_inner_au']:.2f}–{repaired_run['shock_outer_au']:.2f} au、EOS表外セル0、最終AMRは{repaired_run['meshblocks']} blockでした。元計算と最大密度は同じHDF5出力桁、最大温度差は相対{repaired_run['hdf_temperature_max_relative_to_original']:+.2e}。元計算の質量増分だけを除去できました。使用binaryとログSHAは<a href="wor118_c930_c1010_repaired_run.json">集計JSON</a>に記録しています。<a href="https://linear.app/work-on-fld/issue/WOR-118/amr-collapseのhydro同一level面周期境界の質量flux不一致を解消する">WOR-118</a>にはshock tube回帰も記録します。</p></section>
+<h3>修正版の第一コア到達試験</h3><p>同じc930 restartからc1010まで放射圧を有効にしたまま5ノード・320 rankで再実行したjob 338342は、Slurm COMPLETED 0:0（4:54）、80/80 Newton収束、FGMRES {repaired_run['fgmres_solves']} solve・{repaired_run['fgmres_iterations_total']}反復、最大true residual {repaired_run['fgmres_max_true_relative_residual']:.3e}でした。高精度historyのgas mass相対変化は{repaired_run['history_relative_gas_mass_change']:+.2e}。目標密度{repaired_run['final_density_max_g_cm3']:.3e} g/cm³に到達し、衝撃波位置{repaired_run['shock_inner_au']:.2f}–{repaired_run['shock_outer_au']:.2f} au、EOS表外セル0、最終AMRは{repaired_run['meshblocks']} blockでした。元計算と最大密度は同じHDF5出力桁、最大温度差は相対{repaired_run['hdf_temperature_max_relative_to_original']:+.2e}。元計算の質量増分だけを除去できました。使用binaryとログSHAは<a href="wor118_c930_c1010_repaired_run.json">集計JSON</a>に記録しています。</p>
+<p>別積分法VL2のc930→940・64 rank（job 338425）も{repaired_vl2['newton_converged']}/10 Newton収束、質量相対変化{repaired_vl2['gas_mass_relative_change']:+.1e}。元VL2の+7.390×10⁻⁸の増分が消えました。1 rankのuniform shock tube短時間試験は{uniform_one_rank['newton_converged']}ステップすべて収束し、t={uniform_one_rank['final_time_code']}で正常終了。振動の最終比較は2/4 rankのN64/N128で実施します。</p></section>
+<section id="shock"><h2>放射圧を含むshock tubeの振動回帰</h2><p>Riemann solverの放射圧を有効にした同じ入力で、修正前後のFLD解をt=0.1まで実行しました。uniform N64は2 rank、N128は4 rankで、いずれもNewton全ステップ収束。独立の1D Rad-EOS HLLC N4096を参照し、圧縮波周辺x=0.60–0.88を拡大しています。</p>
+<figure><img src="data:image/png;base64,{shock_chart}" alt="N64とN128のshock tubeの密度、ガス温度、放射エネルギーを修正前後と独立参照解で比較" loading="lazy"><figcaption>旧版と修正版の曲線はほぼ重なる。参照解との幅の差は両方に共通するFLD数値拡散を含む。元図は<a href="wor118_shock_tube_regression.png">こちら</a>。</figcaption></figure>
+<div class="scroll"><table><thead><tr><th>解像度</th><th>密度L1・旧</th><th>密度L1・修正後</th><th>圧縮波周辺の正規化全変動</th><th>有意な極値数</th></tr></thead><tbody>{shock_rows}</tbody></table></div>
+<p>N64/N128の密度L1はそれぞれ0.100440→0.100413、0.061106→0.061074。波面周辺の密度極値数はどちらも1→1、温度・放射エネルギーは0→0。N128の密度全変動の変化は約1.6×10⁻⁶で、視認できる新たな振動はありません。5物理量の新旧最大点差は参照解の全振幅の0.076%以下。入力・binary・ソースSHA、残差、実行時間、メモリ、全物理量の誤差は<a href="wor118_shock_tube_regression.json">比較JSON</a>と各実験ディレクトリのsummaryに記録しました。</p></section>
 <section id="opacity"><h2>Planck吸収係数の感度</h2>
 <p>Semenov公開表のPlanck平均は消散として記述されます。公開単色データの吸収/輸送消散比から第一コア温度域だけに適用する<strong>診断用</strong>Planck吸収表を生成しました。ρ=10⁻¹⁰ g/cm³における試験表/元表の係数比は14 Kで{opacity_table['correction_near_14_200_350_431K_at_rho1e-10']['14']:.3f}、350 Kで{opacity_table['correction_near_14_200_350_431K_at_rho1e-10']['350']:.3f}、431 Kで{opacity_table['correction_near_14_200_350_431K_at_rho1e-10']['431']:.3f}。Rosseland平均は同一です。</p>
 <figure><img src="data:image/png;base64,{opacity_means_chart}" alt="第一コア共通範囲でのSemenov元表・吸収試験表・OptabのPlanck/Rosseland平均比較" loading="lazy"><figcaption>ρ=10⁻¹⁰ g/cm³、T=316–431 K。431 KのPlanck平均は元Semenov 5.91、診断表3.09、Optab 3.06 cm²/gで、後二者の比は{opacity_means['trial_planck_over_optab_at_431K']:.3f}。一方Rosseland平均はSemenov 5.01、Optab 4.15×10⁻⁸ cm²/gで、表の物理モデルは一致しない。</figcaption></figure>
@@ -192,6 +209,8 @@ code{{font-size:.9em;overflow-wrap:anywhere}}.note{{background:#fff6e9;border-le
 <li><a href="c930_hydro_mass_ambient.json">ambient/core別の面監査</a> / <a href="audit_hydro_mass_ambient.py">分類コード</a> / <a href="c930_hydro_mass_faces_sinkoff.json">温度固定OFF</a> / <a href="c930_hydro_mass_faces_no_radp.json">Riemann放射圧OFF</a> / <a href="c930_hydro_mass_faces_face_closure_trial.json">面limiter試験</a> / <a href="c930_hydro_mass_faces_rad_order_trial.json">タスク順序試験</a></li>
 <li><a href="c930_hydro_mass_faces_boundary_only_trial.json">採用候補の面監査</a> / <a href="c930_c940_boundary_only_conserved_mass.json">10ステップ保存変数</a> / <a href="wor118_mdebug_boundary_only_c930to940.sbatch">XD再現入力</a></li>
 <li><a href="wor118_c930_c1010_repaired_run.json">修正版c930→1010の反復・質量・最終量</a> / <a href="wor118_mtest_production_c930to1010.sbatch">XD再現入力</a> / <a href="summarize_wor118_repaired_run.py">集計コード</a></li>
+<li><a href="wor118_c930_c940_vl2.json">修正版VL2の10ステップ</a> / <a href="wor118_mdebug_vl2_c930to940.sbatch">XD再現入力</a> / <a href="wor118_uniform_one_rank_short.json">1 rank uniform短時間試験</a></li>
+<li><a href="wor118_shock_tube_regression.json">shock tube N64/N128新旧比較</a> / <a href="wor118_shock_tube_regression.png">圧縮波の拡大図</a> / <a href="compare_wor118_shock_tube.py">比較コード</a></li>
 <li><a href="wor118_rad_sync_diagnostic.txt">RK段階の放射ghost追跡</a> / <a href="wor118_mdebug_rad_sync_diag_c930to931.sbatch">XD再現入力</a></li>
 <li><a href="opacity_replay_comparison.json">Planck補正A/B</a> / <a href="semenov_planck_absorption_trial.json">診断表の生成記録</a> / <a href="firstcore_eos_audit.json">EOS独立監査</a></li>
 <li><a href="absorption_branch_comparison.json">c590→1010の吸収表感度</a> / <a href="semenov_planck_absorption_trial.h5">診断用HDF5表</a> / <a href="compare_absorption_branch.py">比較・作図コード</a></li>
