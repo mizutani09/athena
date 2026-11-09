@@ -8,6 +8,8 @@ Use `8e0ee6aa2261e5cb4f4b53ca94752c4caa549b80` (`codex/wor92-firstcore-integrati
 
 This choice minimizes rebasing of the in-progress collapse path. It does **not** certify the table-EOS first-core calculation or a paper source. The baseline remains under test. The alternative `codex/wor24-wor25-default-testc-20261107` is a validated Test C branch, but diverges at `ebf7634a` and lacks later WOR-92 changes.
 
+During Draft PR preparation, the moving WOR-92 branch advanced to `3518882f` and added `54657730`, which changes Newton line-search acceptance in `src/newton_raphson/Newton_Raphson_driver.cpp`. The measured tests below use the earlier fixed parent `8e0ee6aa`. PR #3 therefore targets the new fixed review base `codex/wor114-fixed-base-8e0ee6aa` at that SHA. The newer Newton policy requires separate review and reruns before adoption.
+
 ## Adoption and overlap
 
 | WOR / source | Relevant commit or branch | Change and existing evidence | Decision |

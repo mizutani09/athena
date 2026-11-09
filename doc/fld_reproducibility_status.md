@@ -2,6 +2,8 @@
 
 Candidate parent: `8e0ee6aa2261e5cb4f4b53ca94752c4caa549b80` (WOR-92 first-core branch). The integration branch adds the WOR-95 regression driver and historical artifacts plus the WOR-106 diagnostic time-tolerance option; it does not change `src/`. The PR head, not this document, is the exact candidate source SHA. No publication tag or final paper source has been declared.
 
+The moving WOR-92 branch advanced to `3518882f` during this work. Its new `54657730` Newton line-search change is absent from this source and these tests. Draft PR #3 uses the fixed review base `codex/wor114-fixed-base-8e0ee6aa`; results cannot be transferred to the moving branch without rerunning the numerical gates.
+
 ## Local tests, 2026-11-09
 
 Environment: g++ 15.2.0, Open MPI 5.0.10, HDF5 1.14.6, Python 3.14.4. Each build used an isolated source snapshot and `-O3`. The first three runs used source commit `e8968801`; the full convergence and table build used `5acf8573`. These commits have identical `src/` trees. Output/logs and manifests are held locally under `simulation/test/rad_nr/wor114/`, outside the public repository.

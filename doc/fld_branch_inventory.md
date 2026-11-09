@@ -87,6 +87,7 @@ Uncommitted files are excluded from the integration branch. This table records n
 
 - `mizutani09/athena#1`: open draft, PDF figure export, base `nr_mgrad_dev`; keep separate.
 - `mizutani09/athena#2`: merged to `codex/wor102-mach5-ab-20261106` at `84061d74`; the selected baseline contains its head `ebf7634a`, not the merge commit.
+- `mizutani09/athena#3`: new Draft WOR-114 integration review against fixed base `codex/wor114-fixed-base-8e0ee6aa` (`8e0ee6aa`). The moving WOR-92 branch advanced to `3518882f` after the initial inventory; its new `54657730` Newton change is not in the tested source.
 - `mizutani09/fld-paper#6` and `#9`: open draft manuscript PRs; `#9` is stacked on `#6` and neither is a code merge target.
 
 Historical test summaries are branch-specific and are indexed in the main integration manifest. This inventory is a graph/file survey; a branch name or Done issue does not certify the selected source.
