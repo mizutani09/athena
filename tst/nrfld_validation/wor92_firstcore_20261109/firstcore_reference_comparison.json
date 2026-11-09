@@ -1,0 +1,143 @@
+{
+  "snapshot_cycle": 1010,
+  "snapshot_time_kyr": 29.109536454968723,
+  "initial_uniform_density_g_cm3": 5.2515854158814074e-18,
+  "pressureless_uniform_sphere_tff_kyr": 29.047484513863097,
+  "snapshot_time_over_tff": 1.0021362242598326,
+  "analytic_envelope": {
+    "reference": "Gong and Ostriker 2009 Larson-Penston isothermal asymptote; not an exact RHD solution",
+    "sound_speed_km_s": 0.22024478924619637,
+    "window_au": [
+      20,
+      300
+    ],
+    "shells": 17,
+    "median_rho_over_LP": 1.2819175893824297,
+    "min_rho_over_LP": 1.0516170166598187,
+    "max_rho_over_LP": 1.3204118174552186,
+    "rms_log10_deviation_dex": 0.09883226163816075,
+    "fitted_density_power_law": -2.0686403668433604,
+    "T_range_K": [
+      14.0746411668042,
+      64.72605975509214
+    ]
+  },
+  "mayer_2025": {
+    "source": "https://arxiv.org/html/2510.12620#S5",
+    "figure": "Figure 7, approximate raster PDF read-off from prior Mayer5 audit",
+    "published_first_core_time_kyr": 29.09,
+    "published_shock_radius_au": [
+      6,
+      7
+    ],
+    "estimated_radial_points": [
+      {
+        "radius_au": 1.0,
+        "paper_rho_est_g_cm3": 9.006e-11,
+        "model_rho_g_cm3": 8.472969100279611e-11,
+        "density_ratio": 0.9408138019408852,
+        "paper_T_est_K": 858.7,
+        "model_T_K": 417.483853093234,
+        "temperature_ratio": 0.48618126597558403,
+        "paper_infall_est_km_s": 0.059,
+        "model_infall_km_s": 0.04697772780171135,
+        "infall_ratio": 0.7962326746052771
+      },
+      {
+        "radius_au": 3.0,
+        "paper_rho_est_g_cm3": 5.154e-11,
+        "model_rho_g_cm3": 2.879361454220613e-11,
+        "density_ratio": 0.5586653966279808,
+        "paper_T_est_K": 705.1,
+        "model_T_K": 371.7263510780015,
+        "temperature_ratio": 0.5271966403035052,
+        "paper_infall_est_km_s": 0.176,
+        "model_infall_km_s": 0.15594885097925082,
+        "infall_ratio": 0.8860730169275616
+      },
+      {
+        "radius_au": 5.0,
+        "paper_rho_est_g_cm3": 1.841e-11,
+        "model_rho_g_cm3": 9.282165780884866e-12,
+        "density_ratio": 0.5041915144424153,
+        "paper_T_est_K": 501.6,
+        "model_T_K": 297.21579628255506,
+        "temperature_ratio": 0.592535479032207,
+        "paper_infall_est_km_s": 0.341,
+        "model_infall_km_s": 0.28769480753589544,
+        "infall_ratio": 0.8436797874952945
+      },
+      {
+        "radius_au": 10.0,
+        "paper_rho_est_g_cm3": 7.055e-13,
+        "model_rho_g_cm3": 2.6668988731143204e-13,
+        "density_ratio": 0.3780154320502226,
+        "paper_T_est_K": 265.5,
+        "model_T_K": 150.46040080015064,
+        "temperature_ratio": 0.5667058410551813,
+        "paper_infall_est_km_s": 2.294,
+        "model_infall_km_s": 1.833562833442959,
+        "infall_ratio": 0.7992863266970178
+      },
+      {
+        "radius_au": 30.0,
+        "paper_rho_est_g_cm3": 6.579e-14,
+        "model_rho_g_cm3": 3.311955215338782e-14,
+        "density_ratio": 0.5034131654261714,
+        "paper_T_est_K": 112.9,
+        "model_T_K": 41.45288542231177,
+        "temperature_ratio": 0.3671646184438598,
+        "paper_infall_est_km_s": 1.9,
+        "model_infall_km_s": 1.3974964578615108,
+        "infall_ratio": 0.7355244515060584
+      },
+      {
+        "radius_au": 100.0,
+        "paper_rho_est_g_cm3": 5.722e-15,
+        "model_rho_g_cm3": 2.9126042069035475e-15,
+        "density_ratio": 0.5090185611505675,
+        "paper_T_est_K": 43.5,
+        "model_T_K": 15.928500064480213,
+        "temperature_ratio": 0.36617241527540717,
+        "paper_infall_est_km_s": 1.524,
+        "model_infall_km_s": 1.0656496350754932,
+        "infall_ratio": 0.6992451673723709
+      },
+      {
+        "radius_au": 300.0,
+        "paper_rho_est_g_cm3": 4.806e-16,
+        "model_rho_g_cm3": 2.6439431409074216e-16,
+        "density_ratio": 0.5501338204135293,
+        "paper_T_est_K": 19.4,
+        "model_T_K": 14.0696260540087,
+        "temperature_ratio": 0.7252384563922011,
+        "paper_infall_est_km_s": 1.224,
+        "model_infall_km_s": 0.837576391227535,
+        "infall_ratio": 0.6842944372773979
+      }
+    ],
+    "published_phase_temperature_300_to_400_K_at_rho_g_cm3": [
+      1e-12,
+      1e-11
+    ],
+    "model_shell_temperature_at_fixed_density_K": {
+      "1e-12": 183.69368195046582,
+      "1e-11": 303.0801610182634
+    },
+    "limitation": "AREPO constant EOS/opacity, approximate digitization; not a pointwise numerical acceptance test"
+  },
+  "commercon_2011": {
+    "source": "https://arxiv.org/html/1102.2921v1#S4.SS1",
+    "table": "Table 1, FLD at central rho=1e-10 g/cm3",
+    "published_first_core_radius_au": 8.1,
+    "published_first_core_mass_msun": 0.0233,
+    "published_central_temperature_K": 411,
+    "model_shock_radius_interval_au": [
+      7.50732421875,
+      7.87353515625
+    ],
+    "model_mass_within_7p8au_msun": 0.030352158196324714,
+    "model_peak_temperature_K": 431.26325446369225,
+    "limitation": "Different initial temperature, cloud radius, and boundary conditions; qualitative cross-code reference"
+  }
+}

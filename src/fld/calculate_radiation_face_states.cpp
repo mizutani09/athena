@@ -136,6 +136,17 @@ void FLD::CalculateRadiationFaceStates(const int order) {
           rad_face_l[X1DIR](n, k, j, i) = rad_statel_(n, i);
           rad_face_r[X1DIR](n, k, j, i) = rad_stater_(n, i);
         }
+        if (i == pmb->is || i == pmb->ie + 1) {
+          // A reconstructed closure in the neighboring ghost cell needs a
+          // third radiation ghost layer. Use the two adjacent cell centers
+          // instead, so both blocks construct the same second-order face value.
+          for (int n = RadFLD::LAMBDA; n <= RadFLD::ARAD; ++n) {
+            const Real face = 0.5*(rad_state_cc_(n, k, j, i-1)
+                                   + rad_state_cc_(n, k, j, i));
+            rad_face_l[X1DIR](n, k, j, i) = face;
+            rad_face_r[X1DIR](n, k, j, i) = face;
+          }
+        }
       }
     }
   }
@@ -153,6 +164,14 @@ void FLD::CalculateRadiationFaceStates(const int order) {
           for (int n = 0; n < RadFLD::NRAD_FACE_STATE; ++n) {
             rad_face_l[X2DIR](n, k, j, i) = rad_statel_(n, i);
             rad_face_r[X2DIR](n, k, j, i) = rad_stater_(n, i);
+          }
+          if (j == pmb->js || j == pmb->je + 1) {
+            for (int n = RadFLD::LAMBDA; n <= RadFLD::ARAD; ++n) {
+              const Real face = 0.5*(rad_state_cc_(n, k, j-1, i)
+                                     + rad_state_cc_(n, k, j, i));
+              rad_face_l[X2DIR](n, k, j, i) = face;
+              rad_face_r[X2DIR](n, k, j, i) = face;
+            }
           }
         }
         rad_statel_.SwapAthenaArray(rad_statelb_);
@@ -173,6 +192,14 @@ void FLD::CalculateRadiationFaceStates(const int order) {
           for (int n = 0; n < RadFLD::NRAD_FACE_STATE; ++n) {
             rad_face_l[X3DIR](n, k, j, i) = rad_statel_(n, i);
             rad_face_r[X3DIR](n, k, j, i) = rad_stater_(n, i);
+          }
+          if (k == pmb->ks || k == pmb->ke + 1) {
+            for (int n = RadFLD::LAMBDA; n <= RadFLD::ARAD; ++n) {
+              const Real face = 0.5*(rad_state_cc_(n, k-1, j, i)
+                                     + rad_state_cc_(n, k, j, i));
+              rad_face_l[X3DIR](n, k, j, i) = face;
+              rad_face_r[X3DIR](n, k, j, i) = face;
+            }
           }
         }
         rad_statel_.SwapAthenaArray(rad_statelb_);

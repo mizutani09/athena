@@ -1,0 +1,22 @@
+{
+  "before": {
+    "path": "/home/kosuke/simulation/test/rad_nr/wor92_xd_20261107/firstcore_integration_evidence/profiles/c930_cons_snapshot.athdf",
+    "sha256": "522cd961f5a8b33f7d99439a2d027a3fc9792b467e4e3542f59a842975af20aa",
+    "cycle": 930,
+    "blocks": 3536,
+    "minimum_code_density": 0.02324465848505497,
+    "gas_mass_g": 2.273781229032851e+33
+  },
+  "after": {
+    "path": "/home/kosuke/simulation/test/rad_nr/wor92_xd_20261107/firstcore_integration_evidence/profiles/c940_boundary_only_cons.athdf",
+    "sha256": "17d371dd7de90fd9b2235685b984761e07fce7f30abe8258aa518f695dc15d2b",
+    "cycle": 940,
+    "blocks": 3536,
+    "minimum_code_density": 0.023245809599757195,
+    "gas_mass_g": 2.273781228805288e+33
+  },
+  "same_amr_topology": true,
+  "relative_conserved_mass_change": -1.0008138762174212e-10,
+  "density_floor_code": 0.001,
+  "method": "cons/dens and face coordinates cast to float64 before cell-volume integration; HDF5 cell values are float32"
+}

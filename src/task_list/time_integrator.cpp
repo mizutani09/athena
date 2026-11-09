@@ -979,10 +979,18 @@ TimeIntegratorTaskList::TimeIntegratorTaskList(ParameterInput *pin, Mesh *pm) {
     }
 
     TaskID fldadv_ready = SETPHYSB_FLDADV;
-    if (pm->multilevel) {
-      fldadv_ready = PROLONG_FLDADV;
-      // fldadv_ready = SETPHYSB_FLDADV | PROLONG_FLDADV;
-    }
+#if NRMGFLD_ENABLED
+    // The usual mixed-frame source changes E_rad in SRC_TERM. Exchange its
+    // updated state before the next RK stage reconstructs radiation pressure.
+    // Explicit mixed drift reads radiation ghosts during SRC_TERM, so it
+    // retains the original exchange before the source.
+    const bool rad_source_before_boundary =
+        pin->GetOrAddBoolean("fld", "implicit_mixed_frame_drift", true);
+    if (rad_source_before_boundary) fldadv_ready = INT_FLDADV;
+    else if (pm->multilevel) fldadv_ready = PROLONG_FLDADV;
+#else
+    if (pm->multilevel) fldadv_ready = PROLONG_FLDADV;
+#endif
     if (NSCALARS > 0 && (NRMGFLD_ENABLED)) {
       AddTask(SRC_TERM,(INT_HYD|INT_SCLR|INT_CHM|fldadv_ready));
     } else if (NSCALARS > 0) {
@@ -1065,9 +1073,13 @@ TimeIntegratorTaskList::TimeIntegratorTaskList(ParameterInput *pin, Mesh *pm) {
       } else {
           AddTask(INT_FLDADV,CALC_FLDADVFLX);
       }
+#if NRMGFLD_ENABLED
+      AddTask(SEND_FLDADV,rad_source_before_boundary ? SRC_TERM : INT_FLDADV);
+#else
       AddTask(SEND_FLDADV,INT_FLDADV);
+#endif
       AddTask(RECV_FLDADV,NONE);
-      AddTask(SETB_FLDADV,RECV_FLDADV);
+      AddTask(SETB_FLDADV,(RECV_FLDADV|SEND_FLDADV));
       AddTask(SETPHYSB_FLDADV,SETB_FLDADV);
       if (pm->multilevel) {
         AddTask(PROLONG_FLDADV,SETPHYSB_FLDADV);

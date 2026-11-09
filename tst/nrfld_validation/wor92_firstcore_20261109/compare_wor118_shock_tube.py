@@ -1,0 +1,118 @@
+#!/usr/bin/env python3
+"""Compare the WOR-118 face fix with the same Rad-EOS shock-tube reference."""
+
+import argparse
+import json
+from pathlib import Path
+import sys
+
+import matplotlib
+matplotlib.use("Agg")
+import matplotlib.pyplot as plt
+import numpy as np
+
+HERE = Path(__file__).resolve().parent
+sys.path.insert(0, str(HERE.parent))
+import shock_tube_validation as shock  # noqa: E402
+
+
+def variation(values):
+    scale = np.ptp(values)
+    return float(np.sum(np.abs(np.diff(values))) / scale) if scale else 0.0
+
+
+def extrema(values):
+    slope = np.diff(values)
+    threshold = max(np.ptp(values) * 1e-3, np.finfo(float).eps)
+    signs = np.sign(slope[np.abs(slope) > threshold])
+    return int(np.sum(signs[1:] != signs[:-1]))
+
+
+def compare(baseline, repaired, output_json, output_png):
+    source = HERE.parents[2] / "inputs/radiation/athinput.nrfld_shock_tube"
+    physical = shock.shock_settings(source)
+    reference = shock.profile(baseline / "reference/cases/r4096", -1,
+                              "reference", physical)
+    fields = ("rho", "velocity", "temperature", "radiation_energy",
+              "total_pressure")
+    results = {}
+    fig, axes = plt.subplots(2, 3, figsize=(12.8, 7.2), sharex="col")
+    for row, n in enumerate((64, 128)):
+        base = shock.profile(baseline / f"fld/cases/n{n}", -1, "fld", physical)
+        trial = shock.profile(repaired / f"fld/cases/n{n}", -1, "fld", physical)
+        if not np.array_equal(base["x"], trial["x"]):
+            raise ValueError(f"N={n} grids differ")
+        if abs(base["time"] - trial["time"]) > 3e-7:
+            raise ValueError(f"N={n} final times differ")
+        ref = shock.coarsen(reference, n)
+        mask = (base["x"] >= 0.60) & (base["x"] <= 0.88)
+        field_results = {}
+        for field in fields:
+            b, t, r = (np.asarray(a[field]) for a in (base, trial, ref))
+            base_metric = shock.metrics(b, r)
+            trial_metric = shock.metrics(t, r)
+            scale = np.ptp(r)
+            field_results[field] = {
+                "baseline_reference_relative_l1": base_metric["relative_l1"],
+                "repaired_reference_relative_l1": trial_metric["relative_l1"],
+                "reference_l1_change_fraction": (trial_metric["relative_l1"] /
+                                                  base_metric["relative_l1"] - 1)
+                if base_metric["relative_l1"] else None,
+                "paired_max_difference_over_reference_range":
+                    float(np.max(np.abs(t-b))/scale) if scale else None,
+                "baseline_total_variation_over_range": variation(b),
+                "repaired_total_variation_over_range": variation(t),
+                "baseline_significant_extrema": extrema(b),
+                "repaired_significant_extrema": extrema(t),
+                "front_baseline_variation_over_range": variation(b[mask]),
+                "front_repaired_variation_over_range": variation(t[mask]),
+                "front_baseline_significant_extrema": extrema(b[mask]),
+                "front_repaired_significant_extrema": extrema(t[mask]),
+            }
+        results[f"n{n}"] = {
+            "baseline_cycles": base["cycles"], "repaired_cycles": trial["cycles"],
+            "final_time": trial["time"], "fields": field_results,
+        }
+        for col, field in enumerate(("rho", "temperature", "radiation_energy")):
+            ax = axes[row, col]
+            ax.plot(reference["x"], reference[field], color="#8a9ba5", lw=1.0,
+                    label="Rad-EOS N4096")
+            ax.plot(base["x"], base[field], "o-", color="#336b90", ms=2.5,
+                    label="before")
+            ax.plot(trial["x"], trial[field], "x--", color="#c55929", ms=3,
+                    label="WOR-118")
+            ax.set_xlim(float(base["x"][mask][0]), float(base["x"][mask][-1]))
+            if col == 0:
+                ax.set_ylabel(f"N={n}\nDensity [g cm$^{{-3}}$]")
+            if col == 1:
+                ax.set_ylabel("Gas temperature [K]")
+            if col == 2:
+                ax.set_ylabel("Radiation energy [erg cm$^{-3}$]")
+            if row == 1:
+                ax.set_xlabel("x")
+            ax.grid(alpha=0.25)
+    axes[0, 0].legend(fontsize=8)
+    fig.suptitle("Shock-tube regression near the compression front, t=0.1")
+    fig.tight_layout()
+    fig.savefig(output_png, dpi=160)
+    plt.close(fig)
+    output_json.write_text(json.dumps({
+        "baseline_run": str(baseline), "repaired_run": str(repaired),
+        "reference": "independent 1D Rad-EOS HLLC N4096",
+        "significant_extrema_threshold": "0.1% of each field range",
+        "resolutions": results,
+    }, indent=2) + "\n")
+
+
+def main():
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("baseline", type=Path)
+    parser.add_argument("repaired", type=Path)
+    parser.add_argument("output_json", type=Path)
+    parser.add_argument("output_png", type=Path)
+    args = parser.parse_args()
+    compare(args.baseline, args.repaired, args.output_json, args.output_png)
+
+
+if __name__ == "__main__":
+    main()

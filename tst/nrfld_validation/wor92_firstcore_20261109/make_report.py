@@ -44,6 +44,8 @@ def render():
         (ROOT / "firstcore_opacity_means.png").read_bytes()).decode("ascii")
     absorption_branch_chart = base64.b64encode(
         (ROOT / "absorption_branch_comparison.png").read_bytes()).decode("ascii")
+    firstcore_reference_chart = base64.b64encode(
+        (ROOT / "firstcore_reference_comparison.png").read_bytes()).decode("ascii")
     eos_audit = read_json("firstcore_eos_audit.json")
     opacity_replay = read_json("opacity_replay_comparison.json")
     opacity_table = read_json("semenov_planck_absorption_trial.json")
@@ -55,6 +57,19 @@ def render():
     hydro_faces = read_json("c930_hydro_mass_faces.json")
     hydro_controls = read_json("hydro_mass_controls.json")
     hydro_xorder1 = read_json("c930_hydro_mass_faces_xorder1.json")
+    hydro_ambient = read_json("c930_hydro_mass_ambient.json")
+    hydro_sinkoff = read_json("c930_hydro_mass_faces_sinkoff.json")
+    hydro_no_radp = read_json("c930_hydro_mass_faces_no_radp.json")
+    hydro_face_closure = read_json("c930_hydro_mass_faces_face_closure_trial.json")
+    hydro_rad_order = read_json("c930_hydro_mass_faces_rad_order_trial.json")
+    hydro_boundary_only = read_json("c930_hydro_mass_faces_boundary_only_trial.json")
+    repaired_mass = read_json("c930_c940_boundary_only_conserved_mass.json")
+    repaired_run = read_json("wor118_c930_c1010_repaired_run.json")
+    firstcore_reference = read_json("firstcore_reference_comparison.json")
+    ambient_regions = hydro_ambient["stages"]["0.00616113437895963317"]
+    ambient_by_region = {region: sum(value["net_code"] for name, value in ambient_regions.items()
+                                     if name.endswith(":" + region))
+                         for region in ("ambient", "mixed", "core")}
     faces = {cycle: read_json(f"c{cycle}_face_audit.json")[0]
              for cycle in (930, 1000)}
     stage_rows = "".join(tr(cycle,
@@ -127,7 +142,18 @@ code{{font-size:.9em;overflow-wrap:anywhere}}.note{{background:#fff6e9;border-le
 {tr('RK2・2次（元設定）','c940',f'{hydro_controls["controls"]["rk2_xorder2"]["relative_change_from_c930"]:+.3e}','参照')}
 {tr('VL2・2次','c940',f'{hydro_controls["controls"]["vl2_xorder2"]["relative_change_from_c930"]:+.3e}','積分法の変更だけでは改善しない')}
 {tr('RK2・1次','c931',f'{hydro_controls["controls"]["rk2_xorder1"]["relative_change_from_c930"]:+.3e}','外側同一level面の不一致が大きく減少')}
-</tbody></table></div><p>1次再構成ではRK2最終段階のhydro面flux合計が{hydro_xorder1['stages'][0]['block_net_delta_code']:.2f} code単位に下がる一方、高密度側の同一level面に残差が残ります。1次化は精度を落とすため本線に採用していません。診断用の別binaryのみで試しました。</p></section>
+</tbody></table></div><p>1次再構成ではRK2最終段階のhydro面flux合計が{hydro_xorder1['stages'][0]['block_net_delta_code']:.2f} code単位に下がる一方、高密度側の同一level面に残差が残ります。1次化は精度を落とすため本線に採用していません。診断用の別binaryのみで試しました。</p>
+<h3>WOR-118: ambient固定と放射圧の切り分け</h3><p>c930のトレーサーで、RK2最終段階の面に接するセルを分類しました。面flux差の符号付き和はambientのみ{ambient_by_region['ambient']:.3f} code（{100*ambient_by_region['ambient']/hydro_faces['stages'][0]['block_net_delta_code']:.1f}%）、coreのみ{ambient_by_region['core']:.3f} code（{100*ambient_by_region['core']/hydro_faces['stages'][0]['block_net_delta_code']:.1f}%）、混在{ambient_by_region['mixed']:.3f} code。周期境界だけでなく内部の同一level面にも差があり、物理的な境界流入ではありません。トレーサーはステップ開始時の分類であり、長期誤差の空間伝播を証明するものではありません。</p>
+<div class="scroll"><table><thead><tr><th>XD M-debug対照</th><th>c930→931最終RK段階の面flux差 [code]</th><th>判定</th></tr></thead><tbody>
+{tr('元設定・job 338248',f'{hydro_faces["stages"][0]["face_net_delta_code"]:.6f}','不保存')}
+{tr('ambient温度固定OFF・job 338285',f'{hydro_sinkoff["stages"][0]["face_net_delta_code"]:.6f}','同一')}
+{tr('Riemann放射圧OFF・job 338286',f'{hydro_no_radp["stages"][0]["face_net_delta_code"]:.3e}','丸め程度')}
+{tr('面limiter共通化・job 338310',f'{hydro_face_closure["stages"][0]["face_net_delta_code"]:.3f}','外側の大きな差を解消、中心に残差')}
+{tr('境界タスク順序のみ・job 338325',f'{hydro_rad_order["stages"][0]["face_net_delta_code"]:.6f}','効果なし、採用しない')}
+{tr('境界面closureと放射source順序・job 338337',f'{hydro_boundary_only["stages"][0]["face_net_delta_code"]:.3e}','丸め程度')}
+</tbody></table></div><p>温度固定OFFの10ステップ試験job 338284でも質量相対増分は+7.705×10⁻⁸（元設定+7.691×10⁻⁸）。温度固定は質量を直接書き換えません。放射圧OFFは原因の切り分け用で、物理モデルの恒久設定には採用しません。</p>
+<p>原因は二つありました。(1) MeshBlock端のghost closureの傾きに必要な第3 ghost層が存在せず、同じ面のlimiterが両側で一致しないこと。(2) 放射境界交換の後に混合系sourceが実セルのE<sub>rad</sub>だけを変え、次のRK段階には古いghostが残ること。通常のimplicit mixed driftではsourceを放射境界交換より先に実行し、MeshBlock端だけλとa<sub>rad</sub>を隣接セル中心値から共通化しました。c930→931の同一level・周期境界の質量flux差は各軸で丸め程度。10ステップのjob 338338ではhistoryの全域gas massは15桁で不変、保存変数HDF5の体積積分差は{repaired_mass['relative_conserved_mass_change']:+.2e}（float32出力量子化を含む）。元設定の+7.691×10⁻⁸から改善しました。</p>
+<h3>修正版の第一コア到達試験</h3><p>同じc930 restartからc1010まで放射圧を有効にしたまま5ノード・320 rankで再実行したjob 338342は、Slurm COMPLETED 0:0（4:54）、80/80 Newton収束、FGMRES {repaired_run['fgmres_solves']} solve・{repaired_run['fgmres_iterations_total']}反復、最大true residual {repaired_run['fgmres_max_true_relative_residual']:.3e}でした。高精度historyのgas mass相対変化は{repaired_run['history_relative_gas_mass_change']:+.2e}。目標密度{repaired_run['final_density_max_g_cm3']:.3e} g/cm³に到達し、衝撃波位置{repaired_run['shock_inner_au']:.2f}–{repaired_run['shock_outer_au']:.2f} au、EOS表外セル0、最終AMRは{repaired_run['meshblocks']} blockでした。元計算と最大密度は同じHDF5出力桁、最大温度差は相対{repaired_run['hdf_temperature_max_relative_to_original']:+.2e}。元計算の質量増分だけを除去できました。使用binaryとログSHAは<a href="wor118_c930_c1010_repaired_run.json">集計JSON</a>に記録しています。<a href="https://linear.app/work-on-fld/issue/WOR-118/amr-collapseのhydro同一level面周期境界の質量flux不一致を解消する">WOR-118</a>にはshock tube回帰も記録します。</p></section>
 <section id="opacity"><h2>Planck吸収係数の感度</h2>
 <p>Semenov公開表のPlanck平均は消散として記述されます。公開単色データの吸収/輸送消散比から第一コア温度域だけに適用する<strong>診断用</strong>Planck吸収表を生成しました。ρ=10⁻¹⁰ g/cm³における試験表/元表の係数比は14 Kで{opacity_table['correction_near_14_200_350_431K_at_rho1e-10']['14']:.3f}、350 Kで{opacity_table['correction_near_14_200_350_431K_at_rho1e-10']['350']:.3f}、431 Kで{opacity_table['correction_near_14_200_350_431K_at_rho1e-10']['431']:.3f}。Rosseland平均は同一です。</p>
 <figure><img src="data:image/png;base64,{opacity_means_chart}" alt="第一コア共通範囲でのSemenov元表・吸収試験表・OptabのPlanck/Rosseland平均比較" loading="lazy"><figcaption>ρ=10⁻¹⁰ g/cm³、T=316–431 K。431 KのPlanck平均は元Semenov 5.91、診断表3.09、Optab 3.06 cm²/gで、後二者の比は{opacity_means['trial_planck_over_optab_at_431K']:.3f}。一方Rosseland平均はSemenov 5.01、Optab 4.15×10⁻⁸ cm²/gで、表の物理モデルは一致しない。</figcaption></figure>
@@ -146,7 +172,15 @@ code{{font-size:.9em;overflow-wrap:anywhere}}.note{{background:#fff6e9;border-le
 <details><summary>採用したcheckpoint列の13ジョブを表示</summary><div class="scroll"><table><thead><tr><th>job</th><th>採用区間</th><th>ノード</th><th>実行時間 [分]</th><th>ノード時間</th><th>ジョブ結果</th></tr></thead><tbody>{cost_rows}</tbody></table></div><p class="small">job 338133はcycle 530まで進み、cycle 500から高解像度へ分岐。338144はcycle 588で失敗し、検証済みcycle 580から修正再開。両ジョブの実際の消費時間を含めます。</p></details></section>
 <section id="comparison"><h2>基準計算との比較と残件</h2><figure><img src="data:image/png;base64,{comparison_chart}" alt="従来基準とWOR-92の密度、温度、流入速度の正のx軸比較" loading="lazy"><figcaption>両計算ともρmax≈10⁻¹⁰ g/cm³の時点。元の正のx軸データを比較し、球殻平均と混同しない。</figcaption></figure><div class="scroll"><table><thead><tr><th>指標</th><th>理想気体・一定opacity基準</th><th>今回のtable EOS・Semenov</th></tr></thead><tbody>
 {tr('目標密度時刻','約29.1585 kyr','29.1095 kyr')}{tr('中心温度','約694.6 K','431.3 K')}{tr('衝撃波の位置','6.23–6.96 au','7.51–7.87 au')}
-</tbody></table></div><p><a href="https://arxiv.org/html/2510.12620#S5">Mayer et al. のSection 5</a>は非回転・非磁化の1 M☉球状雲で、ρmax&gt;10⁻¹⁰ g/cm³の時刻を約29.09 kyr、第一コア半径を6–7 auと報告しています。今回の到達時刻29.1095 kyrと衝撃波位置7.51–7.87 auは同じ規模です。ただし論文のSection 5は固定EOS・opacity、AREPOの移動メッシュであり、ここでの計算はtable EOS・Semenov表・Athena++ AMRです。独立した厳密一致試験とは解釈しません。</p><p class="note">EOS、opacity、AMR解像度（基準の衝撃波付近0.732 au、今回0.366 au）、計算経路が異なります。差を単一の物理要因に帰属しません。公開単色データで補正したPlanck吸収表のc590→1010全経路感度はppm以下の最終量差でした。厳密なhydro質量保存は<a href="https://linear.app/work-on-fld/issue/WOR-118/amr-collapseのhydro同一level面周期境界の質量flux不一致を解消する">WOR-118</a>で追跡します。高温ガスopacityと第二崩壊は今回の検証範囲外です。</p></section>
+</tbody></table></div><p><a href="https://arxiv.org/html/2510.12620#S5">Mayer et al. のSection 5</a>は非回転・非磁化の1 M☉球状雲で、ρmax&gt;10⁻¹⁰ g/cm³の時刻を約29.09 kyr、第一コア半径を6–7 auと報告しています。今回の到達時刻29.1095 kyrと衝撃波位置7.51–7.87 auは同じ規模です。ただし論文のSection 5は固定EOS・opacity、AREPOの移動メッシュであり、ここでの計算はtable EOS・Semenov表・Athena++ AMRです。独立した厳密一致試験とは解釈しません。</p>
+<h3>原著の半径プロファイルと解析的な極限</h3><figure><img src="data:image/png;base64,{firstcore_reference_chart}" alt="第一コアの球殻平均密度、温度、流入速度とMayer論文Figure 7の概読点、等温崩壊の解析漸近形" loading="lazy"><figcaption>実線は今回のc1010 3D球殻平均。丸印はMayer et al. Figure 7の図面からの概読値で数値表ではない。破線はLarson–Penston等温崩壊の外側漸近密度、点線はSIS。元図は<a href="firstcore_reference_comparison.png">こちら</a>。</figcaption></figure>
+<div class="scroll"><table><thead><tr><th>比較</th><th>文献・解析基準</th><th>今回</th><th>解釈</th></tr></thead><tbody>
+{tr('一様球の自由落下時間',f'{firstcore_reference["pressureless_uniform_sphere_tff_kyr"]:.3f} kyr',f'{firstcore_reference["snapshot_time_kyr"]:.3f} kyr','時刻比1.002。圧力なし一様球の尺度であり第一コアの厳密解ではない')}
+{tr('外層密度の傾き（20–300 au）','Larson–Penston: r⁻²',f'r^{firstcore_reference["analytic_envelope"]["fitted_density_power_law"]:.3f}','漸近形との振幅比中央値1.282、RMS 0.099 dex。20 auで約65 Kなので等温極限ではない')}
+{tr('第一コア半径','Mayer: 6–7 au / Commerçon FLD: 8.1 au','7.51–7.87 au','異なる初期条件・EOS・opacityの間で同程度')}
+{tr('中心温度','Commerçon FLD: 411 K',f'{firstcore_reference["commercon_2011"]["model_peak_temperature_K"]:.1f} K','Mayer概読の中心温度はより高い。論文間でも物理設定が違う')}
+{tr('第一コア質量','Commerçon FLD: 0.0233 M☉',f'{firstcore_reference["commercon_2011"]["model_mass_within_7p8au_msun"]:.4f} M☉ (r&lt;7.8 au)','質量定義・初期状態が異なり厳密一致は要求しない')}
+</tbody></table></div><p><a href="https://arxiv.org/abs/0904.3568">Gong &amp; Ostriker (2009)</a>のLarson–Penston外層漸近形ρ≈8.86 a²/(4πGr²)を14 Kの音速で評価しました。Mayerの概読点との半径別比較は<a href="firstcore_reference_comparison.json">JSON</a>に記録。1–100 auの温度は本計算の方が低く、表EOS・opacityと固定係数の違いを含むため一致したとは主張しません。<a href="https://arxiv.org/html/1102.2921v1#S4.SS1">Commerçon et al. (2011), Table 1</a>も10 K開始の別条件です。</p><p class="note">EOS、opacity、AMR解像度（基準の衝撃波付近0.732 au、今回0.366 au）、計算経路が異なります。差を単一の物理要因に帰属しません。公開単色データで補正したPlanck吸収表のc590→1010全経路感度はppm以下の最終量差でした。厳密なhydro質量保存は<a href="https://linear.app/work-on-fld/issue/WOR-118/amr-collapseのhydro同一level面周期境界の質量flux不一致を解消する">WOR-118</a>で追跡します。高温ガスopacityと第二崩壊は今回の検証範囲外です。</p></section>
 <section id="evidence"><h2>証拠・再現情報</h2><ul>
 <li><a href="README.md">全検証記録、入力・Git hash、制限</a> / <a href="runs.csv">ジョブ別の反復・残差・資源</a></li>
 <li><a href="c1010_profile.csv">最終3Dの球殻平均</a> / <a href="c1010_axis.csv">正負x軸</a> / <a href="adopted_path_cost.csv">採用経路のコスト</a></li>
@@ -155,11 +189,16 @@ code{{font-size:.9em;overflow-wrap:anywhere}}.note{{background:#fff6e9;border-le
 <li><a href="c930_c940_conserved_mass.json">保存変数の質量増分</a> / <a href="audit_conserved_mass.py">体積積分コード</a></li>
 <li><a href="c930_hydro_mass_flux.json">hydro質量flux合計</a> / <a href="c930_hydro_mass_faces.json">面別内訳</a> / <a href="audit_hydro_mass_faces.py">面監査コード</a></li>
 <li><a href="hydro_mass_controls.json">VL2・1次の対照試験</a> / <a href="c930_hydro_mass_faces_xorder1.json">1次の面別監査</a></li>
+<li><a href="c930_hydro_mass_ambient.json">ambient/core別の面監査</a> / <a href="audit_hydro_mass_ambient.py">分類コード</a> / <a href="c930_hydro_mass_faces_sinkoff.json">温度固定OFF</a> / <a href="c930_hydro_mass_faces_no_radp.json">Riemann放射圧OFF</a> / <a href="c930_hydro_mass_faces_face_closure_trial.json">面limiter試験</a> / <a href="c930_hydro_mass_faces_rad_order_trial.json">タスク順序試験</a></li>
+<li><a href="c930_hydro_mass_faces_boundary_only_trial.json">採用候補の面監査</a> / <a href="c930_c940_boundary_only_conserved_mass.json">10ステップ保存変数</a> / <a href="wor118_mdebug_boundary_only_c930to940.sbatch">XD再現入力</a></li>
+<li><a href="wor118_c930_c1010_repaired_run.json">修正版c930→1010の反復・質量・最終量</a> / <a href="wor118_mtest_production_c930to1010.sbatch">XD再現入力</a> / <a href="summarize_wor118_repaired_run.py">集計コード</a></li>
+<li><a href="wor118_rad_sync_diagnostic.txt">RK段階の放射ghost追跡</a> / <a href="wor118_mdebug_rad_sync_diag_c930to931.sbatch">XD再現入力</a></li>
 <li><a href="opacity_replay_comparison.json">Planck補正A/B</a> / <a href="semenov_planck_absorption_trial.json">診断表の生成記録</a> / <a href="firstcore_eos_audit.json">EOS独立監査</a></li>
 <li><a href="absorption_branch_comparison.json">c590→1010の吸収表感度</a> / <a href="semenov_planck_absorption_trial.h5">診断用HDF5表</a> / <a href="compare_absorption_branch.py">比較・作図コード</a></li>
 <li><a href="firstcore_opacity_means.json">Semenov・Optab共通範囲の表比較</a> / <a href="compare_firstcore_opacity_means.py">比較図コード</a></li>
 <li><a href="c1010_thermal_coupling.json">最終3Dのガス・放射温度差</a> / <a href="audit_thermal_coupling.py">温度差監査コード</a></li>
 <li><a href="reference_axis_comparison.json">基準軸との比較</a> / <a href="baseline_first_core_xline.csv">基準の元x軸CSV</a> / <a href="compare_reference_axis.py">比較図コード</a></li>
+<li><a href="firstcore_reference_comparison.json">Mayer・Commerçon・解析漸近形</a> / <a href="mayer_fig7_approx_read_off.csv">Mayer図面概読点</a> / <a href="compare_firstcore_references.py">比較図コード</a></li>
 <li><a href="analyze_core_profile.py">3D球殻解析</a> / <a href="analyze_axis_profile.py">軸解析</a> / <a href="plot_first_core_profiles.py">図の生成</a></li>
 </ul><p>最終HDF5のSHA-256: <code>bdd4c72640d16f1872725904c3a66bcd74e56577016f4593e114a3e91e25974f</code>。XD上の元データ: <code>/work/mizutaniks/output/fld/collapse/wor92_xd_20261107/long/job_338171/</code>。Gitブランチ: <code>codex/wor92-firstcore-integration-20261109</code>。このHTMLは図を埋め込んでおり単独で閲覧できます。</p></section>
 </main><footer>Generated from local CSV/JSON and PNG evidence. This is a fixed analysis snapshot, not a live job monitor.</footer></body></html>'''

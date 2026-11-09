@@ -1,0 +1,222 @@
+{
+  "job_dir": "job_338286_no_radp_faces",
+  "rank_logs": 64,
+  "stages": [
+    {
+      "weight": 0.006161134378959633,
+      "blocks": 3536,
+      "block_net_delta_code": 7.52973e-11,
+      "face_net_delta_code": 4.1421202e-11,
+      "face_minus_block_delta_code": -3.3876098e-11,
+      "faces": {
+        "x1:boundary": {
+          "count": 104,
+          "net_delta_code": 0.0,
+          "weighted_relative_mismatch": 1.0,
+          "max_relative_mismatch": 1.0,
+          "net_by_level_code": {}
+        },
+        "x1:coarse_fine": {
+          "count": 280,
+          "net_delta_code": 1.8618e-12,
+          "weighted_relative_mismatch": 4.57484459454166e-18,
+          "max_relative_mismatch": 2.4038540181548063e-17,
+          "net_by_level_code": {}
+        },
+        "x1:same": {
+          "count": 2784,
+          "net_delta_code": 2.201302e-12,
+          "weighted_relative_mismatch": 2.5708033238420288e-20,
+          "max_relative_mismatch": 2.3477670679857253e-17,
+          "net_by_level_code": {
+            "3": -7e-16,
+            "4": 2e-15,
+            "5": 2e-18,
+            "6": 0.0,
+            "7": 0.0,
+            "8": 0.0,
+            "9": 0.0,
+            "10": 0.0,
+            "11": 1e-13,
+            "12": 2.1e-12,
+            "13": 0.0
+          }
+        },
+        "x2:boundary": {
+          "count": 104,
+          "net_delta_code": 0.0,
+          "weighted_relative_mismatch": 1.0,
+          "max_relative_mismatch": 1.0,
+          "net_by_level_code": {}
+        },
+        "x2:coarse_fine": {
+          "count": 280,
+          "net_delta_code": 9.7958e-12,
+          "weighted_relative_mismatch": 4.091880534407738e-18,
+          "max_relative_mismatch": 2.556869335776163e-17,
+          "net_by_level_code": {}
+        },
+        "x2:same": {
+          "count": 2784,
+          "net_delta_code": 0.0,
+          "weighted_relative_mismatch": 0.0,
+          "max_relative_mismatch": 0.0,
+          "net_by_level_code": {
+            "3": 0.0,
+            "4": 0.0,
+            "5": 0.0,
+            "6": 0.0,
+            "7": 0.0,
+            "8": 0.0,
+            "9": 0.0,
+            "10": 0.0,
+            "11": 0.0,
+            "12": 0.0,
+            "13": 0.0
+          }
+        },
+        "x3:boundary": {
+          "count": 104,
+          "net_delta_code": 0.0,
+          "weighted_relative_mismatch": 1.0,
+          "max_relative_mismatch": 1.0,
+          "net_by_level_code": {}
+        },
+        "x3:coarse_fine": {
+          "count": 280,
+          "net_delta_code": 2.75623e-11,
+          "weighted_relative_mismatch": 3.7353280507281865e-18,
+          "max_relative_mismatch": 3.231375521810822e-17,
+          "net_by_level_code": {}
+        },
+        "x3:same": {
+          "count": 2784,
+          "net_delta_code": 0.0,
+          "weighted_relative_mismatch": 0.0,
+          "max_relative_mismatch": 0.0,
+          "net_by_level_code": {
+            "3": 0.0,
+            "4": 0.0,
+            "5": 0.0,
+            "6": 0.0,
+            "7": 0.0,
+            "8": 0.0,
+            "9": 0.0,
+            "10": 0.0,
+            "11": 0.0,
+            "12": 0.0,
+            "13": 0.0
+          }
+        }
+      }
+    },
+    {
+      "weight": 0.012322268757919266,
+      "blocks": 3536,
+      "block_net_delta_code": 1.513e-10,
+      "face_net_delta_code": 1.29283895e-10,
+      "face_minus_block_delta_code": -2.2016105e-11,
+      "faces": {
+        "x1:boundary": {
+          "count": 104,
+          "net_delta_code": 1.49e-16,
+          "weighted_relative_mismatch": 1.0,
+          "max_relative_mismatch": 1.0,
+          "net_by_level_code": {}
+        },
+        "x1:coarse_fine": {
+          "count": 280,
+          "net_delta_code": 6.70533e-11,
+          "weighted_relative_mismatch": 4.023914410307183e-18,
+          "max_relative_mismatch": 1.7293561281360847e-17,
+          "net_by_level_code": {}
+        },
+        "x1:same": {
+          "count": 2784,
+          "net_delta_code": 1.3746e-14,
+          "weighted_relative_mismatch": 2.3552680889236696e-20,
+          "max_relative_mismatch": 7.438925066933575e-16,
+          "net_by_level_code": {
+            "3": 1.3876e-14,
+            "4": 0.0,
+            "5": 1e-17,
+            "6": 0.0,
+            "7": 0.0,
+            "8": 0.0,
+            "9": 0.0,
+            "10": 0.0,
+            "11": 1.9996e-13,
+            "12": -2.001e-13,
+            "13": 0.0
+          }
+        },
+        "x2:boundary": {
+          "count": 104,
+          "net_delta_code": 0.0,
+          "weighted_relative_mismatch": 1.0,
+          "max_relative_mismatch": 1.0,
+          "net_by_level_code": {}
+        },
+        "x2:coarse_fine": {
+          "count": 280,
+          "net_delta_code": 2.72642e-11,
+          "weighted_relative_mismatch": 4.0894854656570805e-18,
+          "max_relative_mismatch": 2.3142540711267046e-17,
+          "net_by_level_code": {}
+        },
+        "x2:same": {
+          "count": 2784,
+          "net_delta_code": 0.0,
+          "weighted_relative_mismatch": 0.0,
+          "max_relative_mismatch": 0.0,
+          "net_by_level_code": {
+            "3": 0.0,
+            "4": 0.0,
+            "5": 0.0,
+            "6": 0.0,
+            "7": 0.0,
+            "8": 0.0,
+            "9": 0.0,
+            "10": 0.0,
+            "11": 0.0,
+            "12": 0.0,
+            "13": 0.0
+          }
+        },
+        "x3:boundary": {
+          "count": 104,
+          "net_delta_code": 0.0,
+          "weighted_relative_mismatch": 1.0,
+          "max_relative_mismatch": 1.0,
+          "net_by_level_code": {}
+        },
+        "x3:coarse_fine": {
+          "count": 280,
+          "net_delta_code": 3.49525e-11,
+          "weighted_relative_mismatch": 4.109186284453622e-18,
+          "max_relative_mismatch": 2.5597758757396713e-17,
+          "net_by_level_code": {}
+        },
+        "x3:same": {
+          "count": 2784,
+          "net_delta_code": 0.0,
+          "weighted_relative_mismatch": 0.0,
+          "max_relative_mismatch": 0.0,
+          "net_by_level_code": {
+            "3": 0.0,
+            "4": 0.0,
+            "5": 0.0,
+            "6": 0.0,
+            "7": 0.0,
+            "8": 0.0,
+            "9": 0.0,
+            "10": 0.0,
+            "11": 0.0,
+            "12": 0.0,
+            "13": 0.0
+          }
+        }
+      }
+    }
+  ]
+}
