@@ -245,6 +245,39 @@ void NewtonRaphson::ProlongateBoundary(Real dt) {
                 << " cycle=" << mb->pmy_mesh->ncycle
                 << " mode=" << positive_ghost_mode
                 << " count=" << clipped << std::endl;
+
+    // Same-level exchanges and corner interpolation can also leave a halo
+    // value a few ulps below zero even when every active radiation cell is
+    // positive.  Repair only this roundoff-sized halo undershoot; a negative
+    // active cell or a larger negative halo value still fails the NR-FLD
+    // physical-state check.
+    Real active_scale = 1.0;
+    for (int k=mb->ks; k<=mb->ke; ++k)
+      for (int j=mb->js; j<=mb->je; ++j)
+        for (int i=mb->is; i<=mb->ie; ++i)
+          active_scale = std::max(active_scale, std::abs(u_(k,j,i)));
+    const Real halo_roundoff = 64.0*std::numeric_limits<Real>::epsilon()
+        *active_scale;
+    int halo_clipped = 0;
+    Real most_negative = 0.0;
+    for (int k=std::max(0,mb->ks-1); k<=std::min(u_.GetDim3()-1,mb->ke+1); ++k)
+      for (int j=std::max(0,mb->js-1); j<=std::min(u_.GetDim2()-1,mb->je+1); ++j)
+        for (int i=std::max(0,mb->is-1); i<=std::min(u_.GetDim1()-1,mb->ie+1); ++i) {
+          if (k>=mb->ks && k<=mb->ke && j>=mb->js && j<=mb->je
+              && i>=mb->is && i<=mb->ie) continue;
+          const Real value = u_(k,j,i);
+          if (std::isfinite(value) && value<0.0 && value>=-halo_roundoff) {
+            most_negative = std::min(most_negative, value);
+            u_(k,j,i) = TINY_NUMBER;
+            ++halo_clipped;
+          }
+        }
+    if (halo_clipped > 0)
+      std::cout << "[WOR92_NR_HALO_ROUNDOFF] gid=" << mb->gid
+                << " cycle=" << mb->pmy_mesh->ncycle
+                << " count=" << halo_clipped
+                << " min=" << most_negative
+                << " tolerance=" << halo_roundoff << std::endl;
   }
 }
 

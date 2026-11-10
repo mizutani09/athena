@@ -67,7 +67,8 @@ bool guard_accepted_opacity_domain = false;
 UserOpacityTable *opacity_table = nullptr;
 Real radius_core_code, transition_width_code;
 Real gravity_code, jeans_number;
-Real background_temperature, background_tracer_threshold;
+Real background_temperature, background_radiation_temperature;
+Real background_tracer_threshold;
 Real target_cell_mass, mass_refine_factor, mass_derefine_factor;
 bool enable_rotation, enable_magnetic_field, uniform_equilibrium;
 bool fix_background_temperature, background_fix_radiation;
@@ -516,7 +517,10 @@ void Mesh::InitUserMeshData(ParameterInput *pin) {
   const Real background_pressure_ratio=pin->GetOrAddReal(
       "problem","background_pressure_ratio",ambient_factor);
   background_temperature=temperature_core*background_pressure_ratio/ambient_factor;
+  background_radiation_temperature=pin->GetOrAddReal(
+      "problem", "background_radiation_temperature", background_temperature);
   if (!(background_temperature > 0.0)
+      || !(background_radiation_temperature > 0.0)
       || background_tracer_threshold < 0.0 || background_tracer_threshold > 1.0) {
     std::stringstream msg;
     msg << "### FATAL ERROR in protostellar_core_fld: invalid background heat-sink "
@@ -671,6 +675,7 @@ void Mesh::InitUserMeshData(ParameterInput *pin) {
       << "refinement mode          = " << refinement_mode << "\n"
       << "target cell mass         = " << target_cell_mass/kMsun << " Msun\n"
       << "background temperature   = " << background_temperature << " K\n"
+      << "background radiation T   = " << background_radiation_temperature << " K\n"
       << "background heat sink     = " << fix_background_temperature << "\n"
       << "background radiation fix = " << background_fix_radiation << "\n"
       << "background sink timing    = "
@@ -717,6 +722,9 @@ void MeshBlock::ProblemGenerator(ParameterInput *pin) {
             : density_ambient+(density_core-density_ambient)*weight;
         const Real temperature=uniform_equilibrium ? temperature_core
             : background_temperature+(temperature_core-background_temperature)*weight;
+        const Real radiation_temperature=uniform_equilibrium ? temperature_core
+            : background_radiation_temperature
+                +(temperature_core-background_radiation_temperature)*weight;
         const Real rho=rho_phys/rho_unit;
         Real egas, pressure;
 #if EOS_TABLE_ENABLED
@@ -735,7 +743,7 @@ void MeshBlock::ProblemGenerator(ParameterInput *pin) {
         phydro->u(IM3,k,j,i)=0.0;
         phydro->u(IEN,k,j,i)=egas+0.5*rho*(SQR(vx)+SQR(vy))+0.5*SQR(b_code);
         prfld->u_gas(k,j,i)=egas;
-        prfld->u_rad(k,j,i)=kRadiationConst*std::pow(temperature,4)/egas_unit;
+        prfld->u_rad(k,j,i)=kRadiationConst*std::pow(radiation_temperature,4)/egas_unit;
 #if NSCALARS > 0
         pscalars->s(0,k,j,i)=rho*(1.0-weight);
 #endif
@@ -772,7 +780,8 @@ static void ApplyBackgroundHeatSink(MeshBlock *pmb) {
 #if !EOS_TABLE_ENABLED
   const Real gm1=pmb->peos->GetGamma()-1.0;
 #endif
-  const Real erad_target=kRadiationConst*std::pow(background_temperature,4)/egas_unit;
+  const Real erad_target=kRadiationConst
+      *std::pow(background_radiation_temperature,4)/egas_unit;
   pmb->pfield->CalculateCellCenteredField(pmb->pfield->b,pmb->pfield->bcc,
       pmb->pcoord,pmb->is,pmb->ie,pmb->js,pmb->je,pmb->ks,pmb->ke);
   for (int k=pmb->ks; k<=pmb->ke; ++k) {

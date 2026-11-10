@@ -645,6 +645,13 @@ int main(int argc, char *argv[]) {
         pmesh->my_blocks(b)->prfld->DumpStageDiagnostics("after_step");
 
     pmesh->UserWorkInLoop();
+    // The protostellar background sink can reset gas pressure and radiation
+    // after the implicit solve's boundary synchronization. Its accepted state
+    // must be shared before the next Godunov flux calculation.
+    if (NRMGFLD_ENABLED
+        && pinput->DoesParameterExist("problem", "background_sink_after_implicit")
+        && pinput->GetBoolean("problem", "background_sink_after_implicit"))
+      SynchronizeFLDBoundariesAfterNR(pmesh);
 
     pmesh->ncycle++;
     pmesh->time += pmesh->dt;
