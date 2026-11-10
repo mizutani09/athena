@@ -1,5 +1,7 @@
 # Single-binary Mayer §5 ideal-EOS collapse, 2026-11-10
 
+**Superseded before the long job started:** Job 339296 was cancelled while pending because the cited precursor study [Mayer et al. (2025), §3.1](https://arxiv.org/html/2410.07016#S3) specifies an ambient density 1/30 of the core and initial pressure equilibrium. The c0→10 preflight 339293 remains a valid control for the earlier background choice. The revised reference setup is in [this record](wor92_mayer5_reference_c0_20261110.md).
+
 ## Initial-condition audit
 
 The reference is [Mayer et al. (2025), §5.1](https://arxiv.org/html/2510.12620#S5). This run starts at cycle 0 with the same repaired ideal-EOS binary through every continuation. It uses the validated source at `582acd5999c1a5681ab1bc1d1af292676642ed40` and binary SHA-256 `56d379d96cea55cb50497ccc4a7ea9a10897784f82f8f48a6b9817671b62993d`. The binary's `NRFLD.cpp` and `protostellar_core_fld.cpp` hashes match the isolated worktree. The earlier path used the old binary through c1090 and is not the trajectory of this run.
