@@ -9,18 +9,22 @@ from pathlib import Path
 import h5py
 import numpy as np
 
-from analyze_core_profile import eos_temperature
+from analyze_core_profile import eos_temperature, ideal_temperature
 
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("hdf5", type=Path)
-    parser.add_argument("eos_table", type=Path)
+    parser.add_argument("eos_table", type=Path,
+                        help="Table path, or '-' when using --ideal-mu")
     parser.add_argument("output_csv", type=Path)
     parser.add_argument("--rho-unit", type=float, default=1e-18)
     parser.add_argument("--pressure-unit", type=float, default=1e-9)
     parser.add_argument("--length-unit", type=float, default=1.495978707e13)
+    parser.add_argument("--ideal-mu", type=float)
     args = parser.parse_args()
+    if (args.eos_table == Path("-")) != (args.ideal_mu is not None):
+        parser.error("Use a table path, or '-' together with --ideal-mu")
 
     with h5py.File(args.hdf5) as h:
         names = [x.decode() for x in h.attrs["VariableNames"]]
@@ -45,7 +49,11 @@ def main():
     pressure = data["press"][selection] * args.pressure_unit
     velocity = data["vel1"][selection] * np.sqrt(
         args.pressure_unit / args.rho_unit) / 1e5
-    temperature, outside = eos_temperature(args.eos_table, rho, pressure)
+    if args.ideal_mu is None:
+        temperature, outside = eos_temperature(args.eos_table, rho, pressure)
+    else:
+        temperature = ideal_temperature(rho, pressure, args.ideal_mu)
+        outside = None
     volume = np.broadcast_to(
         np.diff(xf[2], axis=1)[:, :, None, None]
         * np.diff(xf[1], axis=1)[:, None, :, None]

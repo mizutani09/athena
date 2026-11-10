@@ -1,0 +1,19 @@
+{
+  "source": "/home/kosuke/simulation/test/rad_nr/wor92_xd_20261107/firstcore_integration_evidence/ideal_mayer5_20261110/continue_job_338744/cfl030_flux_precision16_local.prim.00229.athdf",
+  "cycle": 1140,
+  "time_code": 1944.145263671875,
+  "axis_cells": 544,
+  "eos_cells_outside_table": null,
+  "rho_max_on_axis_g_cm3": 1.0143531200000002e-10,
+  "temperature_max_on_axis_K": 628.5182611992434,
+  "positive_negative_x_max_relative_rho_3_to_15_au": 0.03861869384488943,
+  "positive_negative_x_max_relative_temperature_3_to_15_au": 0.0006087520303045182,
+  "steepest_positive_x_density_drop_3_to_15_au": {
+    "inner_au": 6.77490234375,
+    "outer_au": 7.14111328125,
+    "inner_over_outer_density": 4.261365438624701,
+    "inner_infall_km_s": 1.4056188259421682,
+    "outer_infall_km_s": 2.420804400393296
+  },
+  "profile_csv": "tst/nrfld_validation/wor92_firstcore_20261109/wor118_ideal_final_axis.csv"
+}

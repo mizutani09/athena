@@ -1,5 +1,7 @@
 # WOR-92 first-core 継続検証（2026-11-09）
 
+**2026-11-10 理想気体・一定opacityのMayer §5比較:** 同じWOR-118修正ソースから理想気体版を別buildし、c0から第一コア密度まで計算した。元のjob 338718はc1095の局所gas Newton補正で停止したが、ideal EOSにも指定済みの局所gas直接解法を適用する最小修正`582acd59`で同restartの失敗を解消。継続job 338744はc1140、ρmax=`1.01440560e-10 g cm^-3`、衝撃波候補6.775–7.141 auまで到達した。**ただしc1095–1097の受理済みstepで8セルが圧力floorに達した**ため、全stepでJeans基準を満たす結果とは扱わない。CFL半減、混合系輸送OFF、Riemann輻射圧OFFの対照でもfloorを再現した。[独立HTML](wor118_ideal_mayer5_report.html)と[詳細実験記録](wor118_mayer5_matched_run_20261110.md)に物理比較・保存量・反復・制限をまとめた。専用ブランチは`codex/wor118-ideal-local-gas-20261110`。
+
 **2026-11-10更新:** WOR-118の保存性修正を含むソースで初期状態c0から再計算し、XD jobs 338469/338485/338486がすべて正常終了した。c1080（29.11046 kyr）の最大密度は`1.04414476e-10 g cm^-3`、降着衝撃波候補は7.507–7.874 au、gas mass相対変化は`-4.8394e-15`。現在の修正後全経路の結果は[独立HTML](wor118_full_c0_report.html)、[再現記録](wor118_c0_full_run_20261109.md)、[数値要約](wor118_full_c0_summary.json)、[物理比較](wor118_full_c0_physics.json)を参照。検証ソースcommitは`ff60f8f0`、この記録は別ブランチ`codex/wor118-radiation-face-consistency-20261109`。以下のc1010・質量漏れの記述は修正前経路の履歴である。
 
 **最新結果:** cycle1010でρmax=`1.00819e-10 g cm^-3`、Jeans最小36.45 cells、第一コア形成を3D密度・温度・速度構造から確認。採用したcycle47保存点以降の計算量は約5.07ノード時間。[単独で閲覧できるHTMLレポート](report.html)に3D構造・ソルバ収束・保存量・計算量をまとめた。最終詳細は[第一コア密度到達・最終解析](#第一コア密度到達最終解析2026-11-09-1251-jst)、元の密度・温度・流速図は[PNG](first_core_profiles.png)を参照。途中の「未到達」「継続中」は各時点の履歴である。

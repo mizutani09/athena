@@ -48,7 +48,13 @@ def eos_temperature(table_path, density, pressure):
     return 10.0**interpolate(3, ecoord, logrho), int((~domain).sum())
 
 
-def analyze(source, output, rho_unit, pressure_unit, length_unit, eos_table):
+def ideal_temperature(density, pressure, mean_molecular_weight):
+    gas_constant = 8.3144621e7  # erg K^-1 mol^-1; match protostellar_core_fld.cpp
+    return pressure * mean_molecular_weight / (density * gas_constant)
+
+
+def analyze(source, output, rho_unit, pressure_unit, length_unit, eos_table,
+            ideal_mu=None):
     with h5py.File(source) as h:
         names = [x.decode() for x in h.attrs["VariableNames"]]
         prim_names = names[: int(h.attrs["NumVariables"][0])]
@@ -71,8 +77,13 @@ def analyze(source, output, rho_unit, pressure_unit, length_unit, eos_table):
     density = var["rho"].ravel() * rho_unit
     pressure = var["press"].ravel() * pressure_unit
     erad = var["Er"].ravel() * pressure_unit
-    temperature, eos_outside = (eos_temperature(eos_table, density, pressure)
-                                if eos_table is not None else (None, None))
+    if eos_table is not None:
+        temperature, eos_outside = eos_temperature(eos_table, density, pressure)
+    elif ideal_mu is not None:
+        temperature = ideal_temperature(density, pressure, ideal_mu)
+        eos_outside = None
+    else:
+        temperature, eos_outside = None, None
     velocity_unit = np.sqrt(pressure_unit / rho_unit)
     vr = ((var["vel1"].ravel() * xx.ravel()
            + var["vel2"].ravel() * y.ravel()
@@ -157,10 +168,13 @@ def main():
     parser.add_argument("--pressure-unit", type=float, default=1e-9)
     parser.add_argument("--length-unit", type=float, default=1.495978707e13)
     parser.add_argument("--eos-table", type=Path)
+    parser.add_argument("--ideal-mu", type=float)
     args = parser.parse_args()
+    if args.eos_table is not None and args.ideal_mu is not None:
+        parser.error("Choose one temperature model: --eos-table or --ideal-mu")
     print(json.dumps(analyze(args.hdf5, args.output_csv, args.rho_unit,
                              args.pressure_unit, args.length_unit,
-                             args.eos_table), indent=2))
+                             args.eos_table, args.ideal_mu), indent=2))
 
 
 if __name__ == "__main__":

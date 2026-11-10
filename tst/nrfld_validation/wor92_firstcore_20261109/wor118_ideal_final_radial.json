@@ -1,0 +1,21 @@
+{
+  "source": "/home/kosuke/simulation/test/rad_nr/wor92_xd_20261107/firstcore_integration_evidence/ideal_mayer5_20261110/continue_job_338744/cfl030_flux_precision16_local.prim.00229.athdf",
+  "cycle": 1140,
+  "time_code": 1944.145263671875,
+  "time_years": 29144.066997469323,
+  "max_level": 11,
+  "meshblocks": 3536,
+  "rho_max_g_cm3": 1.0144056e-10,
+  "rho_max_radius_au": 0.15857398750935767,
+  "rho_max_velocity_radial_km_s": -0.009919895989342465,
+  "temperature_at_rho_max_K": 628.5294498072379,
+  "temperature_max_K": 628.5294498072379,
+  "eos_cells_outside_table": null,
+  "gas_mass_g": 2.272997886436839e+33,
+  "octant_density_relative_spread": {
+    "0_to_5_au": 0.0019050126881499426,
+    "5_to_10_au": 0.0035500091998347284,
+    "10_to_20_au": 0.0005451757607767853
+  },
+  "profile_csv": "tst/nrfld_validation/wor92_firstcore_20261109/wor118_ideal_final_radial.csv"
+}

@@ -1,0 +1,19 @@
+{
+  "source": "/home/kosuke/simulation/test/rad_nr/wor92_xd_20261107/firstcore_integration_evidence/c1060_wor118_table_matched_density.athdf",
+  "cycle": 1060,
+  "time_code": 1941.672119140625,
+  "axis_cells": 544,
+  "eos_cells_outside_table": 0,
+  "rho_max_on_axis_g_cm3": 9.469522000000001e-11,
+  "temperature_max_on_axis_K": 416.7713022834578,
+  "positive_negative_x_max_relative_rho_3_to_15_au": 0.01374703354614488,
+  "positive_negative_x_max_relative_temperature_3_to_15_au": 0.0005303212942850256,
+  "steepest_positive_x_density_drop_3_to_15_au": {
+    "inner_au": 7.50732421875,
+    "outer_au": 7.87353515625,
+    "inner_over_outer_density": 2.829287118912492,
+    "inner_infall_km_s": 0.37187665321869223,
+    "outer_infall_km_s": 1.3432919047076566
+  },
+  "profile_csv": "tst/nrfld_validation/wor92_firstcore_20261109/wor118_table_c1060_axis.csv"
+}
