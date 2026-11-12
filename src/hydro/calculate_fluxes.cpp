@@ -10,6 +10,7 @@
 
 // C++ headers
 #include <algorithm>   // min,max
+#include <cmath>       // isfinite
 
 // Athena++ headers
 #include "../athena.hpp"
@@ -28,6 +29,27 @@
 // OpenMP header
 #ifdef OPENMP_PARALLEL
 #include <omp.h>
+#endif
+
+#if NRMGFLD_ENABLED && !MAGNETIC_FIELDS_ENABLED
+namespace {
+void LimitFourthOrderPointState(AthenaArray<Real> &point,
+                               const AthenaArray<Real> &face_average,
+                               int k, int j, int i) {
+  const Real rho0 = face_average(IDN,k,j,i);
+  const Real p0 = face_average(IPR,k,j,i);
+  const Real rho = point(IDN,i);
+  const Real p = point(IPR,i);
+  // Component-wise floors can leave a near-vacuum point density beside a
+  // large point pressure.  The resulting HLLC contact speed can then drain
+  // radiation energy in one RK stage.  Keep the complete face-average state
+  // when transverse de-averaging crosses an unresolved density/pressure cliff.
+  if (std::isfinite(rho) && std::isfinite(p)
+      && rho >= 0.5*rho0 && rho <= 2.0*rho0
+      && p >= 0.5*p0 && p <= 2.0*p0) return;
+  for (int n = 0; n < NWAVE; ++n) point(n,i) = face_average(n,k,j,i);
+}
+}  // namespace
 #endif
 
 //----------------------------------------------------------------------------------------
@@ -139,6 +161,10 @@ void Hydro::CalculateFluxes(AthenaArray<Real> &w, FaceField &b,
         }
 #pragma omp simd
         for (int i=is; i<=ie+1; ++i) {
+#if NRMGFLD_ENABLED && !MAGNETIC_FIELDS_ENABLED
+          LimitFourthOrderPointState(wl_, wl3d_, k, j, i);
+          LimitFourthOrderPointState(wr_, wr3d_, k, j, i);
+#endif
           pmb->peos->ApplyPrimitiveFloors(wl_, k, j, i);
           pmb->peos->ApplyPrimitiveFloors(wr_, k, j, i);
         }
@@ -261,6 +287,10 @@ void Hydro::CalculateFluxes(AthenaArray<Real> &w, FaceField &b,
           }
 #pragma omp simd
           for (int i=is; i<=ie; ++i) {
+#if NRMGFLD_ENABLED && !MAGNETIC_FIELDS_ENABLED
+            LimitFourthOrderPointState(wl_, wl3d_, k, j, i);
+            LimitFourthOrderPointState(wr_, wr3d_, k, j, i);
+#endif
             pmb->peos->ApplyPrimitiveFloors(wl_, k, j, i);
             pmb->peos->ApplyPrimitiveFloors(wr_, k, j, i);
           }
@@ -378,6 +408,10 @@ void Hydro::CalculateFluxes(AthenaArray<Real> &w, FaceField &b,
           }
 #pragma omp simd
           for (int i=is; i<=ie; ++i) {
+#if NRMGFLD_ENABLED && !MAGNETIC_FIELDS_ENABLED
+            LimitFourthOrderPointState(wl_, wl3d_, k, j, i);
+            LimitFourthOrderPointState(wr_, wr3d_, k, j, i);
+#endif
             pmb->peos->ApplyPrimitiveFloors(wl_, k, j, i);
             pmb->peos->ApplyPrimitiveFloors(wr_, k, j, i);
           }
