@@ -11,6 +11,8 @@
       "radial_projected_face_initial_over_Lstar": 1.437805455182113,
       "radial_projected_face_final_over_Lstar": 3.4439325235584786,
       "surface_800_830_temperature_K": 7097.299632209524,
+      "surface_800_830_initial_temperature_K": 8107.919440170362,
+      "surface_800_830_fractional_cooling": 0.12464601004220177,
       "measured_boundary_faces_over_Lstar": {
         "Lrad_xm": 0.694901469584089,
         "Lrad_xp": 0.694901469584089,
@@ -31,6 +33,8 @@
       "radial_projected_face_initial_over_Lstar": 1.437805455182113,
       "radial_projected_face_final_over_Lstar": 4.579082717596513,
       "surface_800_830_temperature_K": 7119.627920006665,
+      "surface_800_830_initial_temperature_K": 8107.919440170362,
+      "surface_800_830_fractional_cooling": 0.12189212380024972,
       "measured_boundary_faces_over_Lstar": {
         "Lrad_xm": 0.6848244458071839,
         "Lrad_xp": 0.6848244458071839,
@@ -51,6 +55,8 @@
       "radial_projected_face_initial_over_Lstar": 1.437805455182113,
       "radial_projected_face_final_over_Lstar": 5.797964739397838,
       "surface_800_830_temperature_K": 7143.143883477111,
+      "surface_800_830_initial_temperature_K": 8107.919440170362,
+      "surface_800_830_fractional_cooling": 0.11899175415006091,
       "measured_boundary_faces_over_Lstar": {
         "Lrad_xm": 0.6740428567079403,
         "Lrad_xp": 0.6740428567079403,
@@ -71,6 +77,8 @@
       "radial_projected_face_initial_over_Lstar": 1.437805455182113,
       "radial_projected_face_final_over_Lstar": 21.593093791968975,
       "surface_800_830_temperature_K": 7409.3259469659015,
+      "surface_800_830_initial_temperature_K": 8107.919440170362,
+      "surface_800_830_fractional_cooling": 0.08616186906634848,
       "measured_boundary_faces_over_Lstar": {
         "Lrad_xm": 0.5309943504299153,
         "Lrad_xp": 0.5309943504299153,

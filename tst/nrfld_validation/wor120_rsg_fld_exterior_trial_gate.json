@@ -1,0 +1,71 @@
+{
+  "note": "Boundary luminosity inferred from gas+Er energy change and prescribed heating; gravity-work and printed history precision are small limits for this first step.",
+  "cases": {
+    "baseline64": {
+      "dt_code": 3.31876,
+      "alpha": 0.5,
+      "delta_gas_plus_radiation_code": -2420000.0,
+      "inferred_boundary_luminosity_over_Lstar": 4.1713616376343605,
+      "alpha_c_E_face_initial_over_Lstar": 1.754266158478448,
+      "alpha_c_E_face_final_over_Lstar": 4.198738721338998,
+      "radial_projected_face_initial_over_Lstar": 1.437805455182113,
+      "radial_projected_face_final_over_Lstar": 3.4439325235584786,
+      "surface_800_830_temperature_K": 7097.299632209524,
+      "surface_800_830_initial_temperature_K": 8107.919440170362,
+      "surface_800_830_fractional_cooling": 0.12464601004220177,
+      "measured_boundary_faces_over_Lstar": {
+        "Lrad_xm": 0.694901469584089,
+        "Lrad_xp": 0.694901469584089,
+        "Lrad_ym": 0.694901469584089,
+        "Lrad_yp": 0.694901469584089,
+        "Lrad_zm": 0.694901469584089,
+        "Lrad_zp": 0.694901469584089
+      },
+      "measured_boundary_total_over_Lstar": 4.169408817504534
+    },
+    "trial64": {
+      "dt_code": 3.31876,
+      "alpha": 0.5,
+      "delta_gas_plus_radiation_code": -2270000.0,
+      "inferred_boundary_luminosity_over_Lstar": 3.974789635301652,
+      "alpha_c_E_face_initial_over_Lstar": 0.5979403140842898,
+      "alpha_c_E_face_final_over_Lstar": 3.991011889568818,
+      "radial_projected_face_initial_over_Lstar": 0.49007491890248744,
+      "radial_projected_face_final_over_Lstar": 3.277071616688327,
+      "surface_800_830_temperature_K": 7197.305355964383,
+      "surface_800_830_initial_temperature_K": 8107.919440170362,
+      "surface_800_830_fractional_cooling": 0.11231168377110134,
+      "measured_boundary_faces_over_Lstar": {
+        "Lrad_xm": 0.6605343388611267,
+        "Lrad_xp": 0.6605343388611267,
+        "Lrad_ym": 0.6605343388611267,
+        "Lrad_yp": 0.6605343388611267,
+        "Lrad_zm": 0.6605343388611267,
+        "Lrad_zp": 0.6605343388611267
+      },
+      "measured_boundary_total_over_Lstar": 3.96320603316676
+    },
+    "trial128": {
+      "dt_code": 3.31641,
+      "alpha": 0.5,
+      "delta_gas_plus_radiation_code": -1160000.0,
+      "inferred_boundary_luminosity_over_Lstar": 2.5212339974361253,
+      "alpha_c_E_face_initial_over_Lstar": 0.5915285085963549,
+      "alpha_c_E_face_final_over_Lstar": 2.809796688086967,
+      "radial_projected_face_initial_over_Lstar": 0.4845663871774432,
+      "radial_projected_face_final_over_Lstar": 2.2854305204987813,
+      "surface_800_830_temperature_K": 6989.279654326198,
+      "surface_800_830_initial_temperature_K": 7333.604101517073,
+      "surface_800_830_fractional_cooling": 0.046951600117007386,
+      "measured_boundary_faces_over_Lstar": {
+        "Lrad_xm": 0.46666144766427897,
+        "Lrad_xp": 0.46666144766427897,
+        "Lrad_ym": 0.46666144766427897,
+        "Lrad_yp": 0.46666144766427897,
+        "Lrad_zm": 0.46666144766427897,
+        "Lrad_zp": 0.46666144766427897
+      },
+      "measured_boundary_total_over_Lstar": 2.799968685985674
+    }
+  }
+}

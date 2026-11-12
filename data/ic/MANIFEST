@@ -22,3 +22,17 @@ radiation_force = included consistently in gas HSE
 spherical_mass_msun = 2.9992386261223065
 resolved_interior_hse_max = 0.008484531916230248
 qualification = production asset validation PASS; 32^3 full-FLD CFL=0.3 100-cycle test PASS
+
+# WOR-55 gray-atmosphere profile and exploratory FLD exterior continuation
+filename = st35gm03n07_wor55_hse.dat
+generator = tools/rsg/make_gray_rsg_hse.py
+opacity = data/opacity/rsg_gray_opacity_wor55.h5
+sha256 = 671c8b714f3c9311ab2000fc1e351c3d09c9a8d8cce0470dda6a4aacb8e057d2
+qualification = initial mechanical HSE; exterior Er is not an FLD steady state
+
+filename = st35gm03n07_wor55_fld_exterior_trial.dat
+sidecar = st35gm03n07_wor55_fld_exterior_trial.dat.json
+generator = tools/rsg/make_fld_exterior_trial.py
+source = st35gm03n07_wor55_hse.dat
+sha256 = da338c5375c74871cc16ac2aab0b6e91b3c809f5e75ab8cf41ff4d2bdef984a5
+qualification = short-test trial only; 128^3 loses 4.7% of surface-shell temperature in 0.84 day

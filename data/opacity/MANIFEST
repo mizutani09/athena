@@ -22,3 +22,10 @@ resolution = 128 x 192 in log10(rho), log10(T)
 extension = median terminal log-log slopes; hot dilute Rosseland floor kappa_es=0.34 cm^2/g
 qualification = engineering continuation; all 100-cycle 32^3 RSG lookups remained in-domain
 production_blocker = source composition and license are not embedded; replace tails with microphysical recomputation before publication-quality runs
+
+# WOR-55 table used by the short RSG exterior trial
+filename = rsg_gray_opacity_wor55.h5
+sha256 = 00c517e858f33e85fb3fab26618600f43335c445b99ea01d3393549fc27eaefb
+domain = 128 x 192 log10(rho), log10(T) tabulation
+interpolation = piecewise linear in log10(rho) and log10(T); no extrapolation
+qualification = research snapshot for reproducible WOR-120 local diagnostics

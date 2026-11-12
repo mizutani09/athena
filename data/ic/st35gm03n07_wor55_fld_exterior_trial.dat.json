@@ -1,0 +1,64 @@
+{
+  "input": "data/ic/st35gm03n07_wor55_hse.dat",
+  "output": "data/ic/st35gm03n07_wor55_fld_exterior_trial.dat",
+  "start_Rsun": 820.0,
+  "end_Rsun": 850.0,
+  "unchanged_columns": [
+    0,
+    1,
+    2,
+    4,
+    5,
+    6,
+    7,
+    8,
+    9,
+    10
+  ],
+  "outer_820_1000_max_L_over_Lstar": 1.3666707628407402,
+  "outer_820_1000_min_L_over_Lstar": 0.6108084364752482,
+  "samples": {
+    "800": {
+      "radius_Rsun": 800.2605866166124,
+      "old_FLD_L_over_Lstar": 0.003479445655466309,
+      "trial_FLD_L_over_Lstar": 0.003479445655466309,
+      "radiation_to_gas_temperature": 1.0
+    },
+    "820": {
+      "radius_Rsun": 820.2671010745277,
+      "old_FLD_L_over_Lstar": 0.9922626484894479,
+      "trial_FLD_L_over_Lstar": 1.0028367576533601,
+      "radiation_to_gas_temperature": 0.9999456036652254
+    },
+    "830": {
+      "radius_Rsun": 830.0,
+      "old_FLD_L_over_Lstar": 0.9663783708611102,
+      "trial_FLD_L_over_Lstar": 1.130584779196559,
+      "radiation_to_gas_temperature": 0.9474148786261728
+    },
+    "840": {
+      "radius_Rsun": 839.7451181794561,
+      "old_FLD_L_over_Lstar": 1.110255936469606,
+      "trial_FLD_L_over_Lstar": 1.3222528307125658,
+      "radiation_to_gas_temperature": 0.8447468418541306
+    },
+    "850": {
+      "radius_Rsun": 849.6046547418243,
+      "old_FLD_L_over_Lstar": 1.881232341763226,
+      "trial_FLD_L_over_Lstar": 0.8356104093042415,
+      "radiation_to_gas_temperature": 0.7630071477427824
+    },
+    "900": {
+      "radius_Rsun": 899.790513861845,
+      "old_FLD_L_over_Lstar": 2.932130106392118,
+      "trial_FLD_L_over_Lstar": 0.9994000758483991,
+      "radiation_to_gas_temperature": 0.7640804276773561
+    },
+    "1000": {
+      "radius_Rsun": 1000.433942651234,
+      "old_FLD_L_over_Lstar": 2.933847789316328,
+      "trial_FLD_L_over_Lstar": 0.999999829725667,
+      "radiation_to_gas_temperature": 0.7640830873838977
+    }
+  }
+}

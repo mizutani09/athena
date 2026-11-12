@@ -50,8 +50,9 @@ def boundary_energy(path, alpha, velocity_unit):
                   *sum((face*radial_cosine).sum() for face in faces)))
 
 
-def surface_temperature(directory):
-    primitive = sorted(directory.glob('*.prim.*.athdf'))[-1]
+def surface_temperature(directory, first=False):
+    files = sorted(directory.glob('*.prim.*.athdf'))
+    primitive = files[0] if first else files[-1]
     output = Path(str(primitive).replace('.prim.', '.uov.'))
     with h5py.File(primitive) as f, h5py.File(output) as u:
         rho = np.asarray(f['prim'][0], dtype=float)
@@ -91,6 +92,8 @@ def main():
             output[0], alpha, args.velocity_unit)
         face_final, projected_final = boundary_energy(
             output[-1], alpha, args.velocity_unit)
+        initial_temperature = surface_temperature(directory, first=True)
+        final_temperature = surface_temperature(directory)
         result['cases'][label] = {
             'dt_code': dt, 'alpha': alpha,
             'delta_gas_plus_radiation_code': delta_total,
@@ -100,7 +103,10 @@ def main():
             'alpha_c_E_face_final_over_Lstar': face_final/lstar,
             'radial_projected_face_initial_over_Lstar': projected_initial/lstar,
             'radial_projected_face_final_over_Lstar': projected_final/lstar,
-            'surface_800_830_temperature_K': surface_temperature(directory)}
+            'surface_800_830_temperature_K': final_temperature,
+            'surface_800_830_initial_temperature_K': initial_temperature,
+            'surface_800_830_fractional_cooling':
+                1.0-final_temperature/initial_temperature}
         face_names = ('Lrad_xm', 'Lrad_xp', 'Lrad_ym', 'Lrad_yp',
                       'Lrad_zm', 'Lrad_zp')
         if all(name in data for name in face_names):
@@ -116,11 +122,12 @@ def main():
     labels = list(result['cases'])
     colors = ['#a84553', '#dc9849', '#618f9d', '#779266']
     fig, axes = plt.subplots(1, 2, figsize=(10, 4), constrained_layout=True)
-    for ax, key, ylabel in ((axes[0], 'inferred_boundary_luminosity_over_Lstar',
-                              'boundary-associated luminosity / Lstar'),
-                            (axes[1], 'surface_800_830_temperature_K',
-                              '800–830 Rsun gas temperature [K]')):
-        ax.bar(labels, [result['cases'][label][key] for label in labels],
+    for ax, key, ylabel, scale in (
+            (axes[0], 'inferred_boundary_luminosity_over_Lstar',
+             'boundary-associated luminosity / Lstar', 1.0),
+            (axes[1], 'surface_800_830_fractional_cooling',
+             '800–830 Rsun gas cooling [%]', 100.0)):
+        ax.bar(labels, [scale*result['cases'][label][key] for label in labels],
                color=colors[:len(labels)])
         ax.set_ylabel(ylabel)
         ax.grid(axis='y', alpha=0.25)
