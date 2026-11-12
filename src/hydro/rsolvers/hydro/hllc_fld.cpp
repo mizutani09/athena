@@ -125,12 +125,16 @@ void Hydro::RiemannSolver(const int k, const int j, const int il, const int iu,
     const Real ag=left?arl:arr;
     const Real fer=ag*erg*am;
     radflux(k,j,i)=pfld->mixed_frame_transport ? fer : 0.0;
-    pfld->rad_face_g[dir](k,j,i)=erg;
+    // Transport remains upwinded.  The force uses the symmetric face value;
+    // selecting the contact-upwind state for a stationary smooth profile
+    // shifts its gradient by one cell and prevents high-order convergence.
+    const Real face_er=0.5*(erl+err);
+    pfld->rad_face_g[dir](k,j,i)=face_er;
     if (coupled) {
       // Radiation pressure participated in the HLLC state construction, but
       // the returned gas momentum flux excludes it because the matching
       // -lambda grad(E_r) force is applied explicitly from Godunov faces.
-      fi[IVX]-=lambdag*erg;
+      fi[IVX]-=0.5*(prl+prr);
     }
     if (coupled) {
       fi[IEN]-=RadFLD::GasEnergyFluxCorrection(lambdag,erg,am);

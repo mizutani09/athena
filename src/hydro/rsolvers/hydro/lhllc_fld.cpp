@@ -213,9 +213,12 @@ void Hydro::RiemannSolver(const int k, const int j, const int il, const int iu,
     const Real ag = left ? arl : arr;
     const Real fer = ag*erg*am;
     radflux(k,j,i) = pfld->mixed_frame_transport ? fer : 0.0;
-    pfld->rad_face_g[dir](k,j,i) = erg;
+    // Keep transport upwinded, while the explicit force samples a symmetric
+    // radiation face value to avoid a one-cell gradient shift at zero flow.
+    const Real face_er = 0.5*(erl+err);
+    pfld->rad_face_g[dir](k,j,i) = face_er;
     if (coupled) {
-      flxi[IVX] -= lambdag*erg;
+      flxi[IVX] -= 0.5*(prl+prr);
     }
     if (coupled) {
       flxi[IEN] -= RadFLD::GasEnergyFluxCorrection(lambdag,erg,am);

@@ -55,6 +55,7 @@ Real opacity_mass_coeff_phys;
 Real rgas_over_mu_phys, total_pressure0_phys;
 bool force_lambda_one_third;
 bool static_equilibrium_2d;
+bool force_convergence_cell_average;
 int blocks_initialized_local;
 Real diag_t_min, diag_t_max;
 Real diag_rho_min, diag_rho_max;
@@ -71,6 +72,23 @@ Real TemperatureProfile(Real radius_phys) {
 
 Real RadiationEnergyPhysFromTemp(Real temperature) {
   return kRadiationConst * std::pow(temperature, 4);
+}
+
+Real RadiationEnergyCellAverage(Real x_phys, Real width_phys) {
+  // Eight-point Gauss-Legendre average of the analytic one-dimensional pulse.
+  // This is used only by the spatial force-convergence diagnostic.
+  constexpr Real node[4] = {0.1834346424956498, 0.5255324099163290,
+                            0.7966664774136267, 0.9602898564975363};
+  constexpr Real weight[4] = {0.3626837833783620, 0.3137066458778873,
+                              0.2223810344533745, 0.1012285362903763};
+  Real average = 0.0;
+  for (int q = 0; q < 4; ++q) {
+    const Real offset = 0.5*width_phys*node[q];
+    average += 0.5*weight[q]*(
+        RadiationEnergyPhysFromTemp(TemperatureProfile(x_phys-offset))
+        + RadiationEnergyPhysFromTemp(TemperatureProfile(x_phys+offset)));
+  }
+  return average;
 }
 
 Real GasPressurePhys(Real density, Real temperature) {
@@ -254,6 +272,13 @@ void Mesh::InitUserMeshData(ParameterInput *pin) {
   static_equilibrium_2d =
       pin->GetOrAddString("problem", "problem_type", "advecting_pulse_1d")
       == "static_equilibrium_2d";
+  force_convergence_cell_average = pin->GetOrAddBoolean(
+      "problem", "force_convergence_cell_average", false);
+  if (force_convergence_cell_average && static_equilibrium_2d) {
+    std::stringstream msg;
+    msg << "force_convergence_cell_average requires the one-dimensional pulse";
+    ATHENA_ERROR(msg);
+  }
   if (static_equilibrium_2d && mesh_size.nx2 <= 1) {
     std::stringstream msg;
     msg << "### FATAL ERROR in Mesh::InitUserMeshData" << std::endl
@@ -449,9 +474,17 @@ void MeshBlock::ProblemGenerator(ParameterInput *pin) {
         Real profile_coordinate = static_equilibrium_2d
             ? std::sqrt(SQR(x_phys) + SQR(y_phys)) : x_phys;
         Real temp_phys = TemperatureProfile(profile_coordinate);
+        Real erad_phys = force_convergence_cell_average
+            ? RadiationEnergyCellAverage(x_phys, pcoord->dx1f(i)*leng_unit)
+            : RadiationEnergyPhysFromTemp(temp_phys);
+        if (force_convergence_cell_average)
+          temp_phys = std::pow(erad_phys/kRadiationConst, 0.25);
         Real rho_phys = DensityFromPressureBalance(temp_phys);
-        Real erad_phys = RadiationEnergyPhysFromTemp(temp_phys);
         Real pgas_phys = GasPressurePhys(rho_phys, temp_phys);
+        if (force_convergence_cell_average) {
+          pgas_phys = total_pressure0_phys - erad_phys*ONE_3RD;
+          rho_phys = pgas_phys/(rgas_over_mu_phys*temp_phys);
+        }
         Real ptot_phys = pgas_phys + erad_phys * ONE_3RD;
 
         if (!(rho_phys > 0.0) || !(pgas_phys > 0.0) || !(erad_phys > 0.0)) {

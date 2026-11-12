@@ -2266,7 +2266,13 @@ void Mesh::CorrectMidpointInitialCondition() {
       pmb->pcr->cr_bvar.SendBoundaryBuffers();
     
     if (NRMGFLD_ENABLED) {
-      // pmb->prfld->u_rad_fldbvar.SendBoundaryBuffers();
+      // This variable's receive was started by StartReceivingSubset above.
+      // Complete the second initialization exchange before the first RK stage
+      // reuses its persistent MPI request.
+      pmb->prfld->u_rad_fldbvar.var_cc = &(pmb->prfld->u_rad);
+      if (pmb->pmy_mesh->multilevel)
+        pmb->prfld->u_rad_fldbvar.coarse_buf = &(pmb->prfld->coarse_u_rad);
+      pmb->prfld->u_rad_fldbvar.SendBoundaryBuffers();
       pmb->pnr->nrbvar.SendBoundaryBuffers();
     }
   }
@@ -2294,7 +2300,7 @@ void Mesh::CorrectMidpointInitialCondition() {
     if (CR_ENABLED)
       pmb->pcr->cr_bvar.ReceiveAndSetBoundariesWithWait();
     if (NRMGFLD_ENABLED) {
-      // pmb->prfld->u_rad_fldbvar.ReceiveAndSetBoundariesWithWait();
+      pmb->prfld->u_rad_fldbvar.ReceiveAndSetBoundariesWithWait();
       pmb->pnr->nrbvar.ReceiveAndSetBoundariesWithWait();
     }
 
