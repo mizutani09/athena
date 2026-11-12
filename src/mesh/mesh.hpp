@@ -396,7 +396,7 @@ class Mesh {
   void CalculateLoadBalance(double *clist, int *rlist, int *slist, int *nlist, int nb);
   void ResetLoadBalanceVariables();
 
-  void CorrectMidpointInitialCondition();
+  void CorrectMidpointInitialCondition(bool correct_fld_radiation);
   void ReserveMeshBlockPhysIDs();
 
   // Mesh::LoadBalancingAndAdaptiveMeshRefinement() helper functions:

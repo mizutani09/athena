@@ -46,6 +46,7 @@ Real drag_taper_start, drag_taper_end, grid_mass_tolerance;
 Real marshak_alpha;
 std::uint64_t perturb_seed;
 bool profile_initialization=false, marshak_boundary=false;
+bool core_quadrature_gravity=false;
 std::vector<Real> profile_r, profile_rho, profile_egas, profile_erad, profile_temp;
 UserOpacityTable *opacity_table=nullptr;
 
@@ -70,6 +71,38 @@ Real GravityMagnitude(Real r) {
   const Real s=std::pow(r/router,8);
   const Real a=std::pow(rcore,4)+std::pow(r,4)/std::sqrt(1.0+s);
   return gm*r*r*r/(std::pow(1.0+s,1.5)*std::pow(a,1.25));
+}
+// Fourth-order cell average of rho*g on a smooth uniform mesh. A linear
+// reconstruction of cell-average rho suffices because the omitted quadratic
+// part has zero cell mean and its correlation with g first enters at O(h^4).
+bool CellAverageGravityForce(MeshBlock *mb,const AthenaArray<Real> &w,
+                             int k,int j,int i,Real force[3]) {
+  const Real hx=mb->pcoord->dx1f(i),hy=mb->pcoord->dx2f(j);
+  const Real hz=mb->pcoord->dx3f(k);
+  const Real rho=w(IDN,k,j,i);
+  const Real grad[3]={
+    (w(IDN,k,j,i+1)-w(IDN,k,j,i-1))/(2.0*hx),
+    (w(IDN,k,j+1,i)-w(IDN,k,j-1,i))/(2.0*hy),
+    (w(IDN,k+1,j,i)-w(IDN,k-1,j,i))/(2.0*hz)};
+  if (!(rho>0.0) || !std::isfinite(rho)
+      || !std::isfinite(grad[0]) || !std::isfinite(grad[1])
+      || !std::isfinite(grad[2])) return false;
+  force[0]=force[1]=force[2]=0.0;
+  const Real gauss=1.0/(2.0*std::sqrt(3.0));
+  for (int iz=-1;iz<=1;iz+=2) for (int iy=-1;iy<=1;iy+=2)
+    for (int ix=-1;ix<=1;ix+=2) {
+      const Real offset[3]={ix*gauss*hx,iy*gauss*hy,iz*gauss*hz};
+      const Real node_rho=rho+grad[0]*offset[0]
+          +grad[1]*offset[1]+grad[2]*offset[2];
+      if (!(node_rho>0.0) || !std::isfinite(node_rho)) return false;
+      const Real node[3]={mb->pcoord->x1v(i)+offset[0],
+          mb->pcoord->x2v(j)+offset[1],mb->pcoord->x3v(k)+offset[2]};
+      const Real node_r=std::sqrt(SQR(node[0])+SQR(node[1])+SQR(node[2]));
+      const Real factor=(node_r>0.0) ? -GravityMagnitude(node_r)/node_r : 0.0;
+      for (int dir=0;dir<3;++dir) force[dir]+=0.125*node_rho*factor*node[dir];
+    }
+  return std::isfinite(force[0]) && std::isfinite(force[1])
+      && std::isfinite(force[2]);
 }
 Real Temperature(Real r) {
   const Real gas_constant=kRgas/mu/(velocity_unit*velocity_unit);
@@ -179,10 +212,23 @@ void GravityHeating(MeshBlock *mb,Real,Real dt,const AthenaArray<Real> &w,
     for (int i=mb->is;i<=mb->ie;++i) {
       const Real r=RadialPosition(mb->pcoord,k,j,i);
       const Real factor=(r>0.0) ? -GravityMagnitude(r)/r : 0.0;
-      const Real ax=factor*mb->pcoord->x1v(i),ay=factor*mb->pcoord->x2v(j);
-      const Real az=factor*mb->pcoord->x3v(k),d=w(IDN,k,j,i);
-      u(IM1,k,j,i)+=dt*d*ax; u(IM2,k,j,i)+=dt*d*ay; u(IM3,k,j,i)+=dt*d*az;
-      u(IEN,k,j,i)+=dt*(d*(ax*w(IVX,k,j,i)+ay*w(IVY,k,j,i)+az*w(IVZ,k,j,i))
+      const Real x=mb->pcoord->x1v(i),y=mb->pcoord->x2v(j);
+      const Real z=mb->pcoord->x3v(k),d=w(IDN,k,j,i);
+      Real force[3]={d*factor*x,d*factor*y,d*factor*z};
+      if (core_quadrature_gravity && r<1.5*rcore) {
+        Real averaged[3];
+        if (CellAverageGravityForce(mb,w,k,j,i,averaged)) {
+          const Real t=(r-rcore)/(0.5*rcore);
+          const Real blend=(r<=rcore) ? 1.0 : 1.0-3.0*SQR(t)+2.0*t*t*t;
+          force[0]+=blend*(averaged[0]-d*factor*x);
+          force[1]+=blend*(averaged[1]-d*factor*y);
+          force[2]+=blend*(averaged[2]-d*factor*z);
+        }
+      }
+      u(IM1,k,j,i)+=dt*force[0]; u(IM2,k,j,i)+=dt*force[1];
+      u(IM3,k,j,i)+=dt*force[2];
+      u(IEN,k,j,i)+=dt*(force[0]*w(IVX,k,j,i)+force[1]*w(IVY,k,j,i)
+                                  +force[2]*w(IVZ,k,j,i)
                                   +lum_code*CoreWeight(r)/heat_norm);
     }
 }
@@ -302,6 +348,11 @@ void Mesh::InitUserMeshData(ParameterInput *pin) {
   const Real gas_mass=Positive(pin,"problem","gas_mass_msun")*kMsun
                      /(rho_unit*std::pow(length_unit,3));
   rcore=Positive(pin,"problem","core_radius_fraction")*radius;
+  core_quadrature_gravity=pin->GetOrAddBoolean(
+      "problem","core_quadrature_gravity",false);
+  Require(!core_quadrature_gravity ||
+          (pin->GetInteger("time","xorder")==4 && NGHOST>=4),
+          "core_quadrature_gravity requires xorder=4 and at least four ghosts");
   router=Positive(pin,"problem","outer_flattening_fraction")*radius;
   rheat=Positive(pin,"problem","heating_radius_fraction")*radius;
   Require(rheat<=rcore && rcore<radius && router>radius,"require rheat<=rcore<R<router");

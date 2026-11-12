@@ -1859,8 +1859,16 @@ void Mesh::Initialize(int res_flag, ParameterInput *pin) {
       // perform fourth-order correction of midpoint initial condition:
       // (correct IC on all MeshBlocks or none; switch cannot be toggled independently)
       bool correct_ic = my_blocks(0)->precon->correct_ic;
+      const bool correct_fld_radiation = pin->GetOrAddBoolean(
+          "time", "correct_ic_fld_radiation", false);
+      if (correct_fld_radiation && (!correct_ic || !NRMGFLD_ENABLED)) {
+        std::stringstream msg;
+        msg << "time/correct_ic_fld_radiation requires time/correct_ic=true "
+            << "and an NR-FLD build";
+        ATHENA_ERROR(msg);
+      }
       if (correct_ic)
-        CorrectMidpointInitialCondition();
+        CorrectMidpointInitialCondition(correct_fld_radiation);
 
       // Initiate orbital advection
 #pragma omp for private(pmb)
@@ -2156,7 +2164,7 @@ void Mesh::SetBlockSizeAndBoundaries(LogicalLocation loc, RegionSize &block_size
 }
 
 
-void Mesh::CorrectMidpointInitialCondition() {
+void Mesh::CorrectMidpointInitialCondition(bool correct_fld_radiation) {
   MeshBlock *pmb;
   Hydro *ph;
   PassiveScalars *ps;
@@ -2172,7 +2180,7 @@ void Mesh::CorrectMidpointInitialCondition() {
         kl = pmb->ks, ku = pmb->ke;
 
     // Laplacian of cell-averaged conserved variables, scalar concentrations
-    AthenaArray<Real> delta_cons_, delta_s_;
+    AthenaArray<Real> delta_cons_, delta_s_, delta_rad_;
 
     // Allocate memory for 4D Laplacian
     int ncells4 = NHYDRO;
@@ -2217,6 +2225,39 @@ void Mesh::CorrectMidpointInitialCondition() {
         for (int j=jl; j<=ju; ++j) {
           for (int i=il; i<=iu; ++i) {
             ps->s(n,k,j,i) = ps->s(n,k,j,i) + C*delta_s_(n,k,j,i);
+          }
+        }
+      }
+    }
+    if (NRMGFLD_ENABLED && correct_fld_radiation) {
+      // For problem generators that supply point Er, convert it to a cell
+      // average before the second ghost exchange. High-order radiation face
+      // and force operators consume cell averages.
+      // Keep the point value at a steep edge if the truncated correction
+      // would violate positivity.
+      delta_rad_.NewAthenaArray(pmb->ncells3, pmb->ncells2, pmb->ncells1);
+      const AthenaArray<Real> &er = pmb->prfld->u_rad;
+      for (int k=kl; k<=ku; ++k) {
+        for (int j=jl; j<=ju; ++j) {
+          for (int i=il; i<=iu; ++i) {
+            Real lap = (er(k,j,i-1)-2.0*er(k,j,i)+er(k,j,i+1))
+                /SQR(pmb->pcoord->dx1f(i));
+            if (pmb->block_size.nx2 > 1)
+              lap += (er(k,j-1,i)-2.0*er(k,j,i)+er(k,j+1,i))
+                  /SQR(pmb->pcoord->dx2f(j));
+            if (pmb->block_size.nx3 > 1)
+              lap += (er(k-1,j,i)-2.0*er(k,j,i)+er(k+1,j,i))
+                  /SQR(pmb->pcoord->dx3f(k));
+            delta_rad_(k,j,i) = lap;
+          }
+        }
+      }
+      for (int k=kl; k<=ku; ++k) {
+        for (int j=jl; j<=ju; ++j) {
+          for (int i=il; i<=iu; ++i) {
+            const Real corrected = er(k,j,i)+C*delta_rad_(k,j,i);
+            if (std::isfinite(corrected) && corrected > 0.0)
+              pmb->prfld->u_rad(k,j,i) = corrected;
           }
         }
       }
