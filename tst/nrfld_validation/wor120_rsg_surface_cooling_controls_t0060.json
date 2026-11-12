@@ -1,0 +1,154 @@
+{
+  "profile": {
+    "radiative_luminosity_fraction": {
+      "750": 0.014330471885698042,
+      "800": 0.0035229324523522055,
+      "810": 0.01560741613416482,
+      "815": 0.26104667336839726,
+      "820": 1.0136295039204724,
+      "830": 1.0367189892997652
+    },
+    "transition_rsun": {
+      "0.1": 813.5917065917929,
+      "0.5": 815.8712212416536,
+      "0.9": 816.7899241894418
+    },
+    "transition_width_10_90_rsun": 3.1982175976488634,
+    "grid_width_64_rsun": 31.578125,
+    "local_cooling_time_near_816_days": 1.073111078924751
+  },
+  "cases": {
+    "full": {
+      "time_code": 60.12841033935547,
+      "0-166": {
+        "cells": 624,
+        "mass_weighted_temperature_K": 163840.41431365555,
+        "mass_weighted_radial_velocity_code": 0.00604645769870396
+      },
+      "650-750": {
+        "cells": 19456,
+        "mass_weighted_temperature_K": 26206.90066766903,
+        "mass_weighted_radial_velocity_code": 0.0041569203471347885
+      },
+      "750-800": {
+        "cells": 11936,
+        "mass_weighted_temperature_K": 11821.037871663348,
+        "mass_weighted_radial_velocity_code": 0.05605399389872474
+      },
+      "800-830": {
+        "cells": 8160,
+        "mass_weighted_temperature_K": 4866.491852756545,
+        "mass_weighted_radial_velocity_code": -0.08116332104767453
+      },
+      "750-830": {
+        "cells": 20096,
+        "mass_weighted_temperature_K": 8836.143284977672,
+        "mass_weighted_radial_velocity_code": -0.002839745458173367
+      },
+      "830-900": {
+        "cells": 20432,
+        "mass_weighted_temperature_K": 3447.021364433928,
+        "mass_weighted_radial_velocity_code": -0.0012287286762114947
+      }
+    },
+    "no-heat": {
+      "time_code": 60.12841033935547,
+      "0-166": {
+        "cells": 624,
+        "mass_weighted_temperature_K": 163590.65035943492,
+        "mass_weighted_radial_velocity_code": -0.003590972461601673
+      },
+      "650-750": {
+        "cells": 19456,
+        "mass_weighted_temperature_K": 26206.920371308588,
+        "mass_weighted_radial_velocity_code": 0.004157924015650829
+      },
+      "750-800": {
+        "cells": 11936,
+        "mass_weighted_temperature_K": 11822.839304739915,
+        "mass_weighted_radial_velocity_code": 0.0560602185008624
+      },
+      "800-830": {
+        "cells": 8160,
+        "mass_weighted_temperature_K": 4872.499289503435,
+        "mass_weighted_radial_velocity_code": -0.0811507511337888
+      },
+      "750-830": {
+        "cells": 20096,
+        "mass_weighted_temperature_K": 8839.376246288037,
+        "mass_weighted_radial_velocity_code": -0.002838174703202451
+      },
+      "830-900": {
+        "cells": 20432,
+        "mass_weighted_temperature_K": 3452.3474714556087,
+        "mass_weighted_radial_velocity_code": -0.0011814755494469562
+      }
+    },
+    "fixed-Er": {
+      "time_code": 60.12841033935547,
+      "0-166": {
+        "cells": 624,
+        "mass_weighted_temperature_K": 163711.24311018258,
+        "mass_weighted_radial_velocity_code": -0.000298294307553428
+      },
+      "650-750": {
+        "cells": 19456,
+        "mass_weighted_temperature_K": 26228.713521779944,
+        "mass_weighted_radial_velocity_code": -0.00187473759307743
+      },
+      "750-800": {
+        "cells": 11936,
+        "mass_weighted_temperature_K": 15746.5433587256,
+        "mass_weighted_radial_velocity_code": -0.0014679405682743753
+      },
+      "800-830": {
+        "cells": 8160,
+        "mass_weighted_temperature_K": 8123.1519981165375,
+        "mass_weighted_radial_velocity_code": 0.01020002734534967
+      },
+      "750-830": {
+        "cells": 20096,
+        "mass_weighted_temperature_K": 12405.024021210404,
+        "mass_weighted_radial_velocity_code": 0.003646415834092801
+      },
+      "830-900": {
+        "cells": 20432,
+        "mass_weighted_temperature_K": 4492.659265941408,
+        "mass_weighted_radial_velocity_code": 0.006712924185098911
+      }
+    },
+    "old-flags": {
+      "time_code": 60.12841033935547,
+      "0-166": {
+        "cells": 624,
+        "mass_weighted_temperature_K": 164039.05510581384,
+        "mass_weighted_radial_velocity_code": 0.005327508951014432
+      },
+      "650-750": {
+        "cells": 19456,
+        "mass_weighted_temperature_K": 26189.507908445335,
+        "mass_weighted_radial_velocity_code": 0.004298973762820897
+      },
+      "750-800": {
+        "cells": 11936,
+        "mass_weighted_temperature_K": 11790.41364858011,
+        "mass_weighted_radial_velocity_code": 0.05548367308404722
+      },
+      "800-830": {
+        "cells": 8160,
+        "mass_weighted_temperature_K": 4869.2969129846515,
+        "mass_weighted_radial_velocity_code": -0.08150672656130942
+      },
+      "750-830": {
+        "cells": 20096,
+        "mass_weighted_temperature_K": 8822.711053660218,
+        "mass_weighted_radial_velocity_code": -0.0032563800082173193
+      },
+      "830-900": {
+        "cells": 20432,
+        "mass_weighted_temperature_K": 3452.190888547426,
+        "mass_weighted_radial_velocity_code": -0.0015548693556265824
+      }
+    }
+  }
+}
