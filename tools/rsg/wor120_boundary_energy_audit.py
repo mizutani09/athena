@@ -101,6 +101,15 @@ def main():
             'radial_projected_face_initial_over_Lstar': projected_initial/lstar,
             'radial_projected_face_final_over_Lstar': projected_final/lstar,
             'surface_800_830_temperature_K': surface_temperature(directory)}
+        face_names = ('Lrad_xm', 'Lrad_xp', 'Lrad_ym', 'Lrad_yp',
+                      'Lrad_zm', 'Lrad_zp')
+        if all(name in data for name in face_names):
+            face_luminosities = {name: float(data[name][-1]/lstar)
+                                 for name in face_names}
+            result['cases'][label]['measured_boundary_faces_over_Lstar'] = (
+                face_luminosities)
+            result['cases'][label]['measured_boundary_total_over_Lstar'] = (
+                sum(face_luminosities.values()))
     args.json.parent.mkdir(parents=True, exist_ok=True)
     args.json.write_text(json.dumps(result, indent=2)+'\n')
 

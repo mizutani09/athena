@@ -287,6 +287,37 @@ void CorrectionBoundary(AthenaArray<Real> &u,int nv,int axis,bool inner,
     for (int j=lo[1];j<=hi[1];++j) for (int i=lo[0];i<=hi[0];++i) u(n,k,j,i)=0.0;
 }
 Real History(MeshBlock *mb,int out) {
+  if (out>=12) {
+    // Audit the actual Robin flux used by NRFLD on each Cartesian box face.
+    // The diffusion coefficient is lagged during the most recent Newton solve.
+    if (!marshak_boundary || mb->pmy_mesh->time<=0.0) return 0.0;
+    const int face=out-12,axis=face/2;
+    const bool inner=(face%2==0);
+    const RegionSize &block=mb->block_size;
+    const RegionSize &mesh=mb->pmy_mesh->mesh_size;
+    const bool physical=(axis==0 ? (inner ? block.x1min==mesh.x1min
+                                             : block.x1max==mesh.x1max)
+                         : axis==1 ? (inner ? block.x2min==mesh.x2min
+                                             : block.x2max==mesh.x2max)
+                                   : (inner ? block.x3min==mesh.x3min
+                                            : block.x3max==mesh.x3max));
+    if (!physical) return 0.0;
+    Real flux=0.0;
+    for (int k=mb->ks;k<=mb->ke;++k) for (int j=mb->js;j<=mb->je;++j)
+      for (int i=mb->is;i<=mb->ie;++i) {
+        if ((axis==0 && i!=(inner ? mb->is : mb->ie))
+            || (axis==1 && j!=(inner ? mb->js : mb->je))
+            || (axis==2 && k!=(inner ? mb->ks : mb->ke))) continue;
+        const Real dx=mb->pcoord->dx1f(i);
+        const Real dface=std::max(mb->prfld->marshak_dface_all(face,k,j,i),
+                                  TINY_NUMBER);
+        const Real acoef=marshak_alpha*mb->prfld->c_ph*0.5*dx;
+        const Real erad=mb->prfld->u_rad(k,j,i);
+        const Real eb=(dface*erad+acoef*boundary_er)/(dface+acoef);
+        flux+=marshak_alpha*mb->prfld->c_ph*(eb-boundary_er)*dx*dx;
+      }
+    return flux;
+  }
   if (out>=7) return mb->ruser_meshblock_data[0](out-7);
   Real sum=0.0;
   for (int k=mb->ks;k<=mb->ke;++k) for (int j=mb->js;j<=mb->je;++j)
@@ -493,11 +524,12 @@ void Mesh::InitUserMeshData(ParameterInput *pin) {
   }
   heat_norm=norm[1];
   EnrollUserExplicitSourceFunction(GravityHeating);
-  AllocateUserHistoryOutput(12);
-  const char *hist[12]={"Erad","Egas","Epotential","radial_momentum","mass_r2",
+  AllocateUserHistoryOutput(18);
+  const char *hist[18]={"Erad","Egas","Epotential","radial_momentum","mass_r2",
       "Lheat","Mach_max","Edrag_removed","Pdrag_x_removed","Pdrag_y_removed",
-      "Pdrag_z_removed","drag_power_removed"};
-  for (int q=0;q<12;++q) EnrollUserHistoryOutput(q,History,hist[q],
+      "Pdrag_z_removed","drag_power_removed","Lrad_xm","Lrad_xp",
+      "Lrad_ym","Lrad_yp","Lrad_zm","Lrad_zp"};
+  for (int q=0;q<18;++q) EnrollUserHistoryOutput(q,History,hist[q],
       q==6 ? UserHistoryOperation::max : UserHistoryOperation::sum);
   if (Globals::my_rank==0) std::cout << std::setprecision(16)
       << "STAR_IN_BOX mode=" << (profile_initialization ? "tabular-profile" : "commissioning-polytrope")
