@@ -132,3 +132,34 @@ The paired change lowers the baseline residual by about 33% at 64³ and 59% at 1
 A matched two-rank 64³ ten-cycle comparison to code time 33.0545 completed with all Newton solves converged. The mean core speed fell from 0.005398 to 0.004571 code units (15.3%), the mean outward core speed from 0.005314 to 0.004414 (16.9%), and the maximum Mach number from 0.53365 to 0.52269. Both final states retained positive density, gas pressure and `Er`, with no opacity-domain excursions. Some flow outside the core increased; the total radial momentum in the history rose from about 6.96e5 to 1.10e6 code units. These early results do not establish long-term RSG stability or a reduction in eventual mass loss. The new gravity term is a momentum-source quadrature; its work term still uses the cell-centre velocity, so the complete energy update is not claimed fourth-order.
 
 The clean branch pgen compiled in the RSG configuration and ran the supplied 64³ one-step input with the same core residual as the temporary dirty-source overlay. With paired options, the selected 4096 first-stage radiation-force rows were bitwise identical between one and two MPI ranks; the final single-precision primitive outputs differed by at most 4.73e-8 code units. This tests the new `Er` initialization ghost exchange and the force operator across MPI block boundaries.
+
+### Matched early-flow diagnosis and radial gravity extension
+
+Four matched 64³, two-MPI-rank runs reached code time `33.0545` in ten RK4 steps: baseline, corrected initial `Er` alone, corrected `Er` plus core-only gravity quadrature, and corrected `Er` plus quadrature through `2.5 Rcore` with a smooth return to the original source by `3 Rcore`. The last two radii are now configurable as `problem/gravity_quadrature_full_radius_rcore` and `problem/gravity_quadrature_taper_radius_rcore`; their defaults preserve the previous `1.0` and `1.5` setting. This experiment uses the same reconstructed current density and eight Gauss points, with both flags opt-in. The transition ends at `498 Rsun`, below the stellar surface at `830 Rsun`.
+
+For the corrected-`Er` initial state, the selected central block has the following gas + radiation + gravity force residuals. Each relative L1 is the sum of vector residual magnitudes divided by the sum of the magnitudes of the three contributing forces. The `mean ar` column is the equal-volume mean of radial residual force divided by cell density, in code acceleration units. The center source and extended source use identical gas and radiation diagnostics.
+
+| Radius [Rsun] | Cells | Center source relative L1 | Extended source relative L1 | Center mean ar | Extended mean ar |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| 0–166 | 78 | 7.719e-3 | 2.674e-3 | -1.149e-4 | -1.997e-5 |
+| 166–250 | 173 | 2.945e-3 | 9.305e-4 | -1.713e-4 | -4.781e-6 |
+| 250–415 | 930 | 7.761e-4 | 2.668e-4 | 2.744e-5 | 4.689e-6 |
+| 415–500 | 889 | 1.423e-3 | 8.688e-4 | 3.068e-5 | 1.982e-5 |
+| 500–830 | 2025 | 8.381e-4 | 8.381e-4 | 9.347e-6 | 9.347e-6 |
+
+Reproduce this table with `check_rsg_initial_force_balance.py --input /tmp/wor120_rsg_force_extended64.in --initial /tmp/wor120_rsg_force_extended64/rsg_force_extended64.prim.00000.athdf --log /tmp/wor120_rsg_force_extended64.log --gid 42 --quadrature-gravity --shells`. The first-stage log and HDF5 file are temporary local artifacts; the gate input is stored in `inputs/rsg/athinput.st35gm03n07_fld_wor55_64_extended_gate`. The force audit is an initial-source counterfactual, not a guarantee of a stationary solution: it excludes subsequent nonlinear evolution and HSE profile errors.
+
+At the common final time, the equal-volume mean radial velocities in the entire 64³ domain are:
+
+| Radius [Rsun] | Baseline | Corrected Er only | Er + core gravity | Er + extended gravity |
+| --- | ---: | ---: | ---: | ---: |
+| 166–250 | -0.001071 | -0.004995 | -0.001827 | -0.000726 |
+| 250–500 | 0.000363 | 0.000956 | 0.001007 | **0.000514** |
+| 500–830 | 0.001421 | 0.001597 | 0.001597 | 0.001596 |
+| 830–1010 | 0.031102 | 0.031780 | 0.031779 | 0.031781 |
+
+The inner-envelope excess flow is substantially reduced by extending gravity quadrature. Outside radius 500, the corrected-`Er` cases nearly coincide regardless of gravity-source radius, identifying the initial radiation correction as the cause of that early difference. The increased surface mean velocity is only about 2.2% of the already large baseline value at this time. The full-core mean speeds are `0.005409`, `0.003505`, `0.004588`, and `0.005048` code units in table order: extending gravity helps the inner envelope but partially sacrifices the paired core-speed reduction. In all four runs the total HDF5 density-sum change is about `-4.3e-7` relative, below the useful precision for comparing mass loss over this short interval. All ten nonlinear solves converged; the extended run reports zero opacity-domain excursions and retains positive density, gas pressure, and `Er` (minimum `Er=3.95e-6` code units). At `33.0545` code time, the model has evolved for only about `0.023 yr`, so no conclusion about the one-year axial flow or sustained mass loss follows.
+
+The extended source also completed a 128³, four-MPI-rank first step with the same Tomida EOS and WOR-55 opacity. The selected core-octant block's centre-to-extended relative L1 force residual fell from `1.5873e-3` to `2.1936e-4` inside `Rcore`, from `6.6340e-4` to `5.1227e-5` at radii 166–250, and from `1.2475e-4` to `6.2024e-5` at radii 250–415. The latter block has only one cell beyond radius 415, so it cannot assess the 415–500 shell. The nonlinear solve converged in three iterations, opacity-domain excursions were zero, and final density, gas pressure, and `Er` were positive. This confirms the initial-source improvement at finer resolution; it is not an evolved-flow comparison. Local input/log: `/tmp/wor120_rsg_force_extended128.in` and `/tmp/wor120_rsg_force_extended128.log`.
+
+The comparison data and plot are [`wor120_rsg_early_radial_flows_64.json`](wor120_rsg_early_radial_flows_64.json) and [radial-flow figure](../../doc/figures/wor120_rsg_early_radial_flows_64.png), produced by `tools/rsg/wor120_compare_early_flows.py`. The next useful gate is a longer single-run pilot with the extended source, followed by matched comparison at 128³ if its evolution warrants it. The gravity source's work term still uses cell-centre velocity; total-energy accuracy and full RSG spatial order remain open.

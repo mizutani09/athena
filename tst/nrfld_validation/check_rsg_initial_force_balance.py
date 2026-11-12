@@ -88,6 +88,8 @@ def main():
     parser.add_argument('--gid', type=int, required=True)
     parser.add_argument('--compare-log', type=Path)
     parser.add_argument('--quadrature-gravity', action='store_true')
+    parser.add_argument('--shells', action='store_true',
+                        help='report centre and blended-source residuals by radius')
     args = parser.parse_args()
 
     p = parameters(args.input)
@@ -139,23 +141,49 @@ def main():
               f'max_radius={r[peak]:.9f} '
               f'max_xyz={xyz[peak].tolist()}')
     if args.quadrature_gravity:
-        selected = r < core
+        full_radius = core * float(p.get('gravity_quadrature_full_radius_rcore', 1.0))
+        taper_radius = core * float(p.get('gravity_quadrature_taper_radius_rcore', 1.5))
+        if not (core <= full_radius < taper_radius < radius):
+            raise ValueError('gravity quadrature requires Rcore<=full<taper<Rstar')
+        selected = r < taper_radius
         averaged_gravity = quadrature_gravity(
             args.initial, xyz[selected], gm, core, outer)
+        blended_gravity = gravity.copy()
+        t = np.clip((r[selected]-full_radius)/(taper_radius-full_radius), 0, 1)
+        blend = 1-3*t*t+2*t*t*t
+        blended_gravity[selected] += blend[:, None]*(averaged_gravity-gravity[selected])
         for label, region in regions[2:]+regions[:1]:
-            inside = region[selected]
+            inside = region
             if not np.any(inside):
                 continue
-            residual = gas[selected][inside]+rad[selected][inside]
-            residual += averaged_gravity[inside]
-            quadrant_support = (np.linalg.norm(gas[selected][inside], axis=1)
-                                +np.linalg.norm(rad[selected][inside], axis=1)
-                                +np.linalg.norm(averaged_gravity[inside], axis=1))
+            residual = gas[inside]+rad[inside]+blended_gravity[inside]
+            quadrant_support = (np.linalg.norm(gas[inside], axis=1)
+                                +np.linalg.norm(rad[inside], axis=1)
+                                +np.linalg.norm(blended_gravity[inside], axis=1))
             print(f'{label}_quadrature_gravity: '
                   f'cells={inside.sum()} '
                   f'relative_L1='
                   f'{np.linalg.norm(residual,axis=1).sum()/quadrant_support.sum():.12e} '
                   f'max_abs={np.linalg.norm(residual,axis=1).max():.12e}')
+    if args.shells:
+        gravity_cases = {'centre': gravity}
+        if args.quadrature_gravity:
+            gravity_cases['blended'] = blended_gravity
+        for lo, hi in ((0, core), (core, 250), (250, 415),
+                       (415, 500), (500, radius)):
+            inside = (r >= lo) & (r < hi)
+            if not np.any(inside):
+                continue
+            for source, gravity_force in gravity_cases.items():
+                residual = gas[inside]+rad[inside]+gravity_force[inside]
+                support = (np.linalg.norm(gas[inside], axis=1)
+                           +np.linalg.norm(rad[inside], axis=1)
+                           +np.linalg.norm(gravity_force[inside], axis=1))
+                mean_ar = np.mean(np.sum(residual*xyz[inside]/r[inside, None],
+                                         axis=1)/rho[inside])
+                print(f'shell={lo:g}-{hi:g} source={source} cells={inside.sum()} '
+                      f'relative_L1={np.linalg.norm(residual,axis=1).sum()/support.sum():.12e} '
+                      f'mean_radial_acceleration={mean_ar:.12e}')
     if args.compare_log:
         other = force_rows(args.compare_log)
         if other.shape != rows.shape or not np.array_equal(other[:, :3], xyz):

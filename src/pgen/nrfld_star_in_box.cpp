@@ -43,6 +43,7 @@ Real gm, radius, rcore, router, rheat, drag_tau, gamma_gas, mu, tsurface;
 Real index_poly, perturb, rho_surface, heat_norm, lum_code, boundary_er, bc_scale;
 Real dfloor, pfloor, kp_const, kr_const;
 Real drag_taper_start, drag_taper_end, grid_mass_tolerance;
+Real gravity_quad_full_radius, gravity_quad_taper_radius;
 Real marshak_alpha;
 std::uint64_t perturb_seed;
 bool profile_initialization=false, marshak_boundary=false;
@@ -215,11 +216,13 @@ void GravityHeating(MeshBlock *mb,Real,Real dt,const AthenaArray<Real> &w,
       const Real x=mb->pcoord->x1v(i),y=mb->pcoord->x2v(j);
       const Real z=mb->pcoord->x3v(k),d=w(IDN,k,j,i);
       Real force[3]={d*factor*x,d*factor*y,d*factor*z};
-      if (core_quadrature_gravity && r<1.5*rcore) {
+      if (core_quadrature_gravity && r<gravity_quad_taper_radius) {
         Real averaged[3];
         if (CellAverageGravityForce(mb,w,k,j,i,averaged)) {
-          const Real t=(r-rcore)/(0.5*rcore);
-          const Real blend=(r<=rcore) ? 1.0 : 1.0-3.0*SQR(t)+2.0*t*t*t;
+          const Real t=(r-gravity_quad_full_radius)
+              /(gravity_quad_taper_radius-gravity_quad_full_radius);
+          const Real blend=(r<=gravity_quad_full_radius)
+              ? 1.0 : 1.0-3.0*SQR(t)+2.0*t*t*t;
           force[0]+=blend*(averaged[0]-d*factor*x);
           force[1]+=blend*(averaged[1]-d*factor*y);
           force[2]+=blend*(averaged[2]-d*factor*z);
@@ -353,6 +356,15 @@ void Mesh::InitUserMeshData(ParameterInput *pin) {
   Require(!core_quadrature_gravity ||
           (pin->GetInteger("time","xorder")==4 && NGHOST>=4),
           "core_quadrature_gravity requires xorder=4 and at least four ghosts");
+  gravity_quad_full_radius=rcore*pin->GetOrAddReal(
+      "problem","gravity_quadrature_full_radius_rcore",1.0);
+  gravity_quad_taper_radius=rcore*pin->GetOrAddReal(
+      "problem","gravity_quadrature_taper_radius_rcore",1.5);
+  Require(!core_quadrature_gravity ||
+          (gravity_quad_full_radius>=rcore
+           && gravity_quad_taper_radius>gravity_quad_full_radius
+           && gravity_quad_taper_radius<radius),
+          "gravity quadrature requires Rcore<=full<taper<Rstar");
   router=Positive(pin,"problem","outer_flattening_fraction")*radius;
   rheat=Positive(pin,"problem","heating_radius_fraction")*radius;
   Require(rheat<=rcore && rcore<radius && router>radius,"require rheat<=rcore<R<router");
