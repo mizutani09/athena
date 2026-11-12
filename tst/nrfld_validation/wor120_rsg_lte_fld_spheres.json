@@ -1,0 +1,231 @@
+{
+  "method": "Cell-centred FLD flux from saved Er, T, rho and centred Er gradients; radial dot product volume-integrated over one-cell-thick spherical shells and divided by shell width.  This is approximate, especially near the unresolved photosphere.",
+  "cases": {
+    "initial64": {
+      "dx_Rsun": 31.578125,
+      "opacity_table_clamped_cells": 0,
+      "shells": {
+        "500": {
+          "Lrad_over_Lstar": 0.02405192274985958,
+          "cells": 3144,
+          "median_radial_flux": 0.0016920104376312198
+        },
+        "700": {
+          "Lrad_over_Lstar": 0.014329730674690552,
+          "cells": 6264,
+          "median_radial_flux": 0.0005248807220114878
+        },
+        "750": {
+          "Lrad_over_Lstar": 0.0145489969150724,
+          "cells": 7160,
+          "median_radial_flux": 0.0004677188548327748
+        },
+        "800": {
+          "Lrad_over_Lstar": 0.009168434435999313,
+          "cells": 8240,
+          "median_radial_flux": 0.0001681237880693614
+        },
+        "830": {
+          "Lrad_over_Lstar": 1.0273232988494354,
+          "cells": 8496,
+          "median_radial_flux": 0.005583606909767741
+        },
+        "850": {
+          "Lrad_over_Lstar": 1.6373804108919046,
+          "cells": 8960,
+          "median_radial_flux": 0.030024824266912314
+        },
+        "900": {
+          "Lrad_over_Lstar": 0.9894872159847027,
+          "cells": 10112,
+          "median_radial_flux": 0.022563399001522894
+        }
+      }
+    },
+    "end64": {
+      "dx_Rsun": 31.578125,
+      "opacity_table_clamped_cells": 0,
+      "shells": {
+        "500": {
+          "Lrad_over_Lstar": 0.024141113420831063,
+          "cells": 3144,
+          "median_radial_flux": 0.0016987526335706174
+        },
+        "700": {
+          "Lrad_over_Lstar": 0.014466603099898754,
+          "cells": 6264,
+          "median_radial_flux": 0.0005298871777494455
+        },
+        "750": {
+          "Lrad_over_Lstar": 0.014778483554177112,
+          "cells": 7160,
+          "median_radial_flux": 0.0004728079287050167
+        },
+        "800": {
+          "Lrad_over_Lstar": 0.025155552557191454,
+          "cells": 8240,
+          "median_radial_flux": 0.0001650844102141372
+        },
+        "830": {
+          "Lrad_over_Lstar": 1.1680157435398855,
+          "cells": 8496,
+          "median_radial_flux": 0.015984638157664745
+        },
+        "850": {
+          "Lrad_over_Lstar": 6.0292531410438235,
+          "cells": 8960,
+          "median_radial_flux": 0.16766787660852633
+        },
+        "900": {
+          "Lrad_over_Lstar": 5.95817903684882,
+          "cells": 10112,
+          "median_radial_flux": 0.12770049407594025
+        }
+      }
+    },
+    "initial128": {
+      "dx_Rsun": 15.7890625,
+      "opacity_table_clamped_cells": 0,
+      "shells": {
+        "500": {
+          "Lrad_over_Lstar": 0.023783419261442888,
+          "cells": 12632,
+          "median_radial_flux": 0.0017242938168447698
+        },
+        "700": {
+          "Lrad_over_Lstar": 0.014237849724711748,
+          "cells": 24800,
+          "median_radial_flux": 0.0005308043973161632
+        },
+        "750": {
+          "Lrad_over_Lstar": 0.014024351042577488,
+          "cells": 28136,
+          "median_radial_flux": 0.0004591469321553047
+        },
+        "800": {
+          "Lrad_over_Lstar": 0.0044178085320442225,
+          "cells": 31592,
+          "median_radial_flux": 0.0001253253609277369
+        },
+        "830": {
+          "Lrad_over_Lstar": 2.225382595537675,
+          "cells": 34568,
+          "median_radial_flux": 0.060557011771455484
+        },
+        "850": {
+          "Lrad_over_Lstar": 1.0660834850817666,
+          "cells": 36144,
+          "median_radial_flux": 0.026619261920281308
+        },
+        "900": {
+          "Lrad_over_Lstar": 1.0060283837262607,
+          "cells": 41040,
+          "median_radial_flux": 0.022609157411160312
+        }
+      }
+    },
+    "end128": {
+      "dx_Rsun": 15.7890625,
+      "opacity_table_clamped_cells": 0,
+      "shells": {
+        "500": {
+          "Lrad_over_Lstar": 0.023822885618959476,
+          "cells": 12632,
+          "median_radial_flux": 0.0017278603535960187
+        },
+        "700": {
+          "Lrad_over_Lstar": 0.01426347488720017,
+          "cells": 24800,
+          "median_radial_flux": 0.0005317750567531089
+        },
+        "750": {
+          "Lrad_over_Lstar": 0.01404249656810557,
+          "cells": 28136,
+          "median_radial_flux": 0.0004605187592288581
+        },
+        "800": {
+          "Lrad_over_Lstar": 0.004576728879169505,
+          "cells": 31592,
+          "median_radial_flux": 0.00013040236526197613
+        },
+        "830": {
+          "Lrad_over_Lstar": 2.305164285002206,
+          "cells": 34568,
+          "median_radial_flux": 0.06081629921468011
+        },
+        "850": {
+          "Lrad_over_Lstar": 3.4095660525282265,
+          "cells": 36144,
+          "median_radial_flux": 0.08640650823990789
+        },
+        "900": {
+          "Lrad_over_Lstar": 3.2384262557838794,
+          "cells": 41040,
+          "median_radial_flux": 0.07143964733283653
+        }
+      }
+    }
+  },
+  "profile": {
+    "500": {
+      "radius_Rsun": 499.94785206192967,
+      "prescribed_L_over_Lstar": 0.024061260437543086,
+      "FLD_closure_L_over_Lstar": 0.024060127165825635,
+      "limiter_R": 1.494504457598702e-06
+    },
+    "750": {
+      "radius_Rsun": 749.9217739428944,
+      "prescribed_L_over_Lstar": 0.014122604311573125,
+      "FLD_closure_L_over_Lstar": 0.01412007380271945,
+      "limiter_R": 1.2536558313967698e-05
+    },
+    "800": {
+      "radius_Rsun": 799.7001306810952,
+      "prescribed_L_over_Lstar": 0.003616785198152973,
+      "FLD_closure_L_over_Lstar": 0.00361642701004887,
+      "limiter_R": 2.8903073104392766e-05
+    },
+    "810": {
+      "radius_Rsun": 810.521512580704,
+      "prescribed_L_over_Lstar": 0.01404881781329164,
+      "FLD_closure_L_over_Lstar": 0.013991879086513843,
+      "limiter_R": 0.0003318616345590857
+    },
+    "815": {
+      "radius_Rsun": 814.8500653405476,
+      "prescribed_L_over_Lstar": 0.14239051535030198,
+      "FLD_closure_L_over_Lstar": 0.14141330661776527,
+      "limiter_R": 0.007789647964619883
+    },
+    "820": {
+      "radius_Rsun": 820.260756290352,
+      "prescribed_L_over_Lstar": 1.044599605043418,
+      "FLD_closure_L_over_Lstar": 1.0467871958975095,
+      "limiter_R": 0.24189754420616782
+    },
+    "830": {
+      "radius_Rsun": 830.0,
+      "prescribed_L_over_Lstar": 1.1441286071636472,
+      "FLD_closure_L_over_Lstar": 0.9999999371392504,
+      "limiter_R": 1.1709228985372166
+    },
+    "850": {
+      "radius_Rsun": 849.6305485888493,
+      "prescribed_L_over_Lstar": 1.0,
+      "FLD_closure_L_over_Lstar": 1.0014097108860402,
+      "limiter_R": 13.199672073283551
+    },
+    "900": {
+      "radius_Rsun": 900.7622684057267,
+      "prescribed_L_over_Lstar": 1.0,
+      "FLD_closure_L_over_Lstar": 0.9999650013556501,
+      "limiter_R": 28575.534427763025
+    },
+    "1000": {
+      "radius_Rsun": 1000.6778946759957,
+      "prescribed_L_over_Lstar": 1.0,
+      "FLD_closure_L_over_Lstar": 0.9999999987896746,
+      "limiter_R": 826224006.697232
+    }
+  }
+}

@@ -36,3 +36,16 @@ generator = tools/rsg/make_fld_exterior_trial.py
 source = st35gm03n07_wor55_hse.dat
 sha256 = da338c5375c74871cc16ac2aab0b6e91b3c809f5e75ab8cf41ff4d2bdef984a5
 qualification = short-test trial only; 128^3 loses 4.7% of surface-shell temperature in 0.84 day
+
+# LTE/FLD exterior experiment with a re-shot gas interior
+filename = st35gm03n07_wor55_t3227p8_gray_base.dat
+sidecar = st35gm03n07_wor55_t3227p8_gray_base.dat.json
+generator = tools/rsg/make_gray_rsg_hse.py --effective-temperature 3227.8 --grid 64
+sha256 = 543185deeb165608e34c7b95381e2e52bb02ef09adc6bc3f638716a005cf22af
+
+filename = st35gm03n07_wor55_lte_fld_trial.dat
+sidecar = st35gm03n07_wor55_lte_fld_trial.dat.json
+generator = tools/rsg/make_lte_fld_exterior_trial.py --join-q 0.99 --join-end-rsun 900
+source = st35gm03n07_wor55_t3227p8_gray_base.dat
+sha256 = ac65bbc48d8e44df40923802363fa94d3e5466ac8a4f4ad3aaf63f9b0fd4b2c4
+qualification = 1D exterior FLD luminosity 0.988..1.023 Lstar; 128^3 still cools 4.0% in 0.84 day
