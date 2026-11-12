@@ -40,6 +40,7 @@ void FLD::EmitForceDiagnostic(const Real dt, const AthenaArray<Real> &prim,
   Real gas_at_max_residual = 0.0;
   Real rad_at_max_residual = 0.0;
   Real relative_at_max_residual = 0.0;
+  int high_order_fallbacks = 0;
   int max_i = pmb->is, max_j = pmb->js, max_k = pmb->ks;
   int force_i = pmb->is, force_j = pmb->js, force_k = pmb->ks;
 
@@ -48,8 +49,30 @@ void FLD::EmitForceDiagnostic(const Real dt, const AthenaArray<Real> &prim,
       for (int i = pmb->is; i <= pmb->ie; ++i) {
         const Real ex = (rad_face_g[X1DIR](k,j,i+1)
                          - rad_face_g[X1DIR](k,j,i))/pmb->pcoord->dx1f(i);
+        const Real ey = pmb->block_size.nx2 > 1
+            ? (rad_face_g[X2DIR](k,j+1,i)
+               - rad_face_g[X2DIR](k,j,i))/pmb->pcoord->dx2f(j) : 0.0;
+        const Real ez = pmb->block_size.nx3 > 1
+            ? (rad_face_g[X3DIR](k+1,j,i)
+               - rad_face_g[X3DIR](k,j,i))/pmb->pcoord->dx3f(k) : 0.0;
         const Real lambda = rad_state_cc_(RadFLD::LAMBDA,k,j,i);
         const Real rho = prim(IDN,k,j,i);
+        Real rad_force[3] = {-lambda*ex, -lambda*ey, -lambda*ez};
+        const bool force_cell = PressureCoupled()
+            && RadiationForceActiveAtDensity(rho, pmb->peos->GetDensityFloor());
+        if (fourth_order_force_ && force_cell) {
+          if (!FourthOrderRadiationForce(k,j,i,prim,rad_force)) {
+            ++high_order_fallbacks;
+            if (force_diagnostic_verbosity_ >= 3)
+              diagnostic << "FLD_FORCE_FALLBACK " << pmb->pcoord->x1v(i)
+                         << " " << pmb->pcoord->x2v(j) << " "
+                         << pmb->pcoord->x3v(k) << "\n";
+            rad_force[0] = -lambda*ex;
+            rad_force[1] = -lambda*ey;
+            rad_force[2] = -lambda*ez;
+          }
+        }
+        if (!force_cell) rad_force[0] = rad_force[1] = rad_force[2] = 0.0;
         const Real gas_flux_div_x =
             (pmb->phydro->flux[X1DIR](IM1,k,j,i+1)
              - pmb->phydro->flux[X1DIR](IM1,k,j,i))/pmb->pcoord->dx1f(i);
@@ -63,13 +86,13 @@ void FLD::EmitForceDiagnostic(const Real dt, const AthenaArray<Real> &prim,
             : 0.0;
         const Real a_gas_x =
             -(gas_flux_div_x + gas_flux_div_y + gas_flux_div_z)/rho;
-        const Real a_rad_x = -lambda*ex/rho;
+        const Real a_rad_x = rad_force[0]/rho;
         const Real residual_x = a_gas_x + a_rad_x;
         const Real relative = std::abs(residual_x)
             / std::max(std::abs(a_gas_x) + std::abs(a_rad_x), TINY_NUMBER);
         const Real v_flux_x = hydro_u(IM1,k,j,i)/hydro_u(IDN,k,j,i);
         const Real v_after_source_x =
-            (hydro_u(IM1,k,j,i) - dt*lambda*ex)/hydro_u(IDN,k,j,i);
+            (hydro_u(IM1,k,j,i) + dt*rad_force[0])/hydro_u(IDN,k,j,i);
         max_abs_gas = std::max(max_abs_gas, std::abs(a_gas_x));
         max_abs_rad = std::max(max_abs_rad, std::abs(a_rad_x));
         const Real force_sum = std::abs(a_gas_x) + std::abs(a_rad_x);
@@ -97,6 +120,28 @@ void FLD::EmitForceDiagnostic(const Real dt, const AthenaArray<Real> &prim,
                      << v_flux_x << " " << v_after_source_x << " "
                      << residual_x*dt << "\n";
         }
+        if (force_diagnostic_verbosity_ >= 3) {
+          const Real idx = 1.0/pmb->pcoord->dx1f(i);
+          const Real idy = 1.0/pmb->pcoord->dx2f(j);
+          const Real idz = 1.0/pmb->pcoord->dx3f(k);
+          const Real gas_force_y = -idx*(pmb->phydro->flux[X1DIR](IM2,k,j,i+1)
+                                        - pmb->phydro->flux[X1DIR](IM2,k,j,i))
+              - idy*(pmb->phydro->flux[X2DIR](IM2,k,j+1,i)
+                     - pmb->phydro->flux[X2DIR](IM2,k,j,i))
+              - idz*(pmb->phydro->flux[X3DIR](IM2,k+1,j,i)
+                     - pmb->phydro->flux[X3DIR](IM2,k,j,i));
+          const Real gas_force_z = -idx*(pmb->phydro->flux[X1DIR](IM3,k,j,i+1)
+                                        - pmb->phydro->flux[X1DIR](IM3,k,j,i))
+              - idy*(pmb->phydro->flux[X2DIR](IM3,k,j+1,i)
+                     - pmb->phydro->flux[X2DIR](IM3,k,j,i))
+              - idz*(pmb->phydro->flux[X3DIR](IM3,k+1,j,i)
+                     - pmb->phydro->flux[X3DIR](IM3,k,j,i));
+          diagnostic << "FLD_FORCE_VOLUME " << pmb->pcoord->x1v(i) << " "
+                     << pmb->pcoord->x2v(j) << " " << pmb->pcoord->x3v(k)
+                     << " " << rad_force[0] << " " << rad_force[1]
+                     << " " << rad_force[2] << " " << a_gas_x*rho
+                     << " " << gas_force_y << " " << gas_force_z << "\n";
+        }
       }
     }
   }
@@ -106,6 +151,7 @@ void FLD::EmitForceDiagnostic(const Real dt, const AthenaArray<Real> &prim,
              << " abs_gas=" << max_abs_gas << " abs_rad=" << max_abs_rad
              << " abs_residual=" << max_abs_residual
              << " max_relative=" << max_relative_residual
+             << " high_order_fallbacks=" << high_order_fallbacks
              << " max_force_sum=" << max_force_sum
              << " residual_at_max_force=" << residual_at_max_force
              << " relative_at_max_force=" << relative_at_max_force
@@ -173,9 +219,15 @@ void FLD::AddExplicitSourceTerms(const Real dt, const AthenaArray<Real> &prim,
         const bool force_cell = RadiationForceActiveAtDensity(
             prim(IDN,k,j,i), pmb->peos->GetDensityFloor());
         if (do_force && force_cell) {
-          hydro_u(IM1,k,j,i) -= dt*lambda*ex;
-          hydro_u(IM2,k,j,i) -= dt*lambda*ey;
-          hydro_u(IM3,k,j,i) -= dt*lambda*ez;
+          Real force[3] = {-lambda*ex, -lambda*ey, -lambda*ez};
+          if (fourth_order_force_ && !FourthOrderRadiationForce(k,j,i,prim,force)) {
+            force[0] = -lambda*ex;
+            force[1] = -lambda*ey;
+            force[2] = -lambda*ez;
+          }
+          hydro_u(IM1,k,j,i) += dt*force[0];
+          hydro_u(IM2,k,j,i) += dt*force[1];
+          hydro_u(IM3,k,j,i) += dt*force[2];
         }
 
         if (do_mixed) {

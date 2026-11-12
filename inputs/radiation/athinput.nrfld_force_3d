@@ -1,0 +1,124 @@
+<comment>
+problem = Smooth 3-D periodic radiation-force convergence
+configure = --prob=nrfld_advect_radiation_pulse --eos=adiabatic -nrmgfld -hdf5 -mpi --nghost=4
+reference = Compare FLD_FORCE_PROFILE with the analytic cell-average of -lambda(R) grad E_r
+
+<job>
+problem_id = nrfld_force_3d
+
+<output1>
+file_type = hst
+dcycle    = 10
+
+<output2>
+file_type = hdf5
+id        = prim_final
+variable  = prim
+dt        = 1888.84724652487
+
+<output3>
+file_type = hdf5
+id        = uov_final
+variable  = uov
+# Optional user-output snapshot; the force diagnostic is printed on the first RK stage.
+dt        = 18.8884724652487
+
+<time>
+cfl_number = 0.03
+nlim       = 1
+tlim       = 1e-8
+integrator = rk4
+xorder     = 4
+ncycle_out = 1
+
+<mesh>
+nx1    = 16
+x1min  = -512.0
+x1max  =  512.0
+ix1_bc = periodic
+ox1_bc = periodic
+
+nx2    = 16
+x2min  = -512.0
+x2max  = 512.0
+ix2_bc = periodic
+ox2_bc = periodic
+
+# The NR-FLD Newton-Raphson driver currently requires all three mesh
+# dimensions to be active. Four uniform, periodic z cells represent the
+# requested 2-D (z-invariant) problem, as in the Section 6.7 input.
+nx3    = 16
+x3min  = -512.0
+x3max  = 512.0
+ix3_bc = periodic
+ox3_bc = periodic
+
+<meshblock>
+nx1 = 8
+nx2 = 8
+nx3 = 8
+
+<hydro>
+gamma     = 1.66666666666667
+rho_unit  = 1.2
+egas_unit = 4.28129270484549e14
+leng_unit = 1.0
+mu        = 2.33
+
+<nrfld>
+mgmode          = MGI
+fas             = false
+smoother        = jacobi-double
+prolongation    = trilinear
+npresmooth      = 2
+npostsmooth     = 0
+omega           = 1.0
+niteration      = 10
+nr_niteration   = 100
+threshold       = 1.0e-8
+nr_threshold    = 1.0e-7
+show_defect     = false
+smoothing_only  = true
+coarse_correction_scale = 1.0
+nr_mg_coarse_retry_max = 4
+nr_mg_coarse_retry_factor = 0.5
+nr_mg_coarse_retry_min_scale = 0.0625
+nr_backtrack_max = 4
+nr_backtrack_factor = 0.5
+nr_min_step_scale = 0.05
+nr_use_mg_smoothing_fallback = true
+max_update_fraction = 0.2
+ix1_bc = periodic
+ox1_bc = periodic
+ix2_bc = periodic
+ox2_bc = periodic
+ix3_bc = periodic
+ox3_bc = periodic
+
+<fld>
+is_couple           = true
+only_rad            = false
+cut_diff            = false
+include_radiation_force = true
+force_diagnostic_verbosity = 3
+force_diagnostic_rank = 0
+force_diagnostic_gid = 7
+fixed_flux_limiter = false
+radiation_pressure_in_riemann = false
+fourth_order_radiation_force = true
+include_mixed_frame_terms      = true
+
+<problem>
+problem_type         = force_convergence_3d
+force_convergence_cell_average = false
+force_3d_amplitude = 0.5
+force_3d_density_amplitude = 0.0
+force_3d_pressure_balance = false
+T0                   = 1.0e7
+T1                   = 2.0e7
+rho0                 = 1.2
+w                    = 80.0
+mu                   = 2.33
+v0                   = 0.0
+opacity_mass_coeff   = 0.0025
+force_lambda_one_third = false

@@ -153,6 +153,20 @@ FLD::FLD(MeshBlock *pmb, ParameterInput *pin) :
       pin->GetOrAddBoolean("fld", "include_radiation_force", true);
   radiation_pressure_in_riemann = pin->GetOrAddBoolean(
       "fld", "radiation_pressure_in_riemann", true);
+  fourth_order_force_ = pin->GetOrAddBoolean(
+      "fld", "fourth_order_radiation_force", false);
+  if (fourth_order_force_
+      && (!include_radiation_force || !is_couple || only_rad
+          || radiation_pressure_in_riemann || pmb->precon->xorder != 4
+          || std::string(COORDINATE_SYSTEM) != "cartesian"
+          || !pmb->pmy_mesh->f2 || !pmb->pmy_mesh->f3
+          || pmb->pmy_mesh->multilevel || NGHOST < 4)) {
+    std::stringstream msg;
+    msg << "### FATAL ERROR in FLD::FLD: fourth_order_radiation_force "
+        << "requires coupled 3D Cartesian xorder=4, NGHOST>=4, one "
+        << "uniform level, and radiation_pressure_in_riemann=false.";
+    ATHENA_ERROR(msg);
+  }
   radiation_force_density_floor_factor_ = pin->GetOrAddReal(
       "fld", "radiation_force_density_floor_factor", 0.0);
   if (!std::isfinite(radiation_force_density_floor_factor_)
@@ -206,13 +220,15 @@ FLD::FLD(MeshBlock *pmb, ParameterInput *pin) :
       pin->GetOrAddInteger("fld", "force_diagnostic_rank", 0);
   force_diagnostic_gid_ =
       pin->GetOrAddInteger("fld", "force_diagnostic_gid", 0);
-  if (force_diagnostic_verbosity_ < 0 || force_diagnostic_verbosity_ > 2 ||
+  if (force_diagnostic_verbosity_ < 0 || force_diagnostic_verbosity_ > 3 ||
+      (force_diagnostic_verbosity_ == 3
+       && (!pmb->pmy_mesh->f2 || !pmb->pmy_mesh->f3)) ||
       force_diagnostic_rank_ < 0 || force_diagnostic_rank_ >= Globals::nranks ||
       force_diagnostic_gid_ < 0 || force_diagnostic_gid_ >= pmb->pmy_mesh->nbtotal) {
     std::stringstream msg;
     msg << "### FATAL ERROR in function [FLD::FLD]" << std::endl
         << "fld/force_diagnostic_verbosity must be 0 (off), 1 (summary), "
-        << "or 2 (profile), and the selected rank/gid must exist.";
+        << "2 (profile), or 3 (volume), and the selected rank/gid must exist.";
     ATHENA_ERROR(msg);
   }
   // FLD is constructed once per MeshBlock, while ParameterInput is shared by

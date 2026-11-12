@@ -305,6 +305,11 @@ class FLD {
   void AddFluxDivergence(const Real wght, AthenaArray<Real> &u_out);
   void AddExplicitSourceTerms(const Real dt, const AthenaArray<Real> &prim,
                               AthenaArray<Real> &hydro_u);
+  // Return the cell-averaged force density -<lambda grad(Er)> using only
+  // existing cell averages.  False requests the robust legacy face fallback.
+  bool FourthOrderRadiationForce(int k, int j, int i,
+                                 const AthenaArray<Real> &prim,
+                                 Real force[3]) const;
 
   // Opt-in, read-only diagnostics for a uniform Cartesian ideal-gas slab.
   void DumpStageDiagnostics(const char *phase, int stage = 0, Real subdt = 0.0);
@@ -345,6 +350,7 @@ class FLD {
                            const AthenaArray<Real> &hydro_u);
   bool opacity_contract_diagnostic_printed_{false};
   bool force_diagnostic_printed_{false};
+  bool fourth_order_force_{false};
   int force_diagnostic_verbosity_{0};
   int force_diagnostic_rank_{0};
   int force_diagnostic_gid_{0};

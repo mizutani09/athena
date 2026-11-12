@@ -55,7 +55,10 @@ Real opacity_mass_coeff_phys;
 Real rgas_over_mu_phys, total_pressure0_phys;
 bool force_lambda_one_third;
 bool static_equilibrium_2d;
+bool force_convergence_3d;
+bool force_3d_pressure_balance;
 bool force_convergence_cell_average;
+Real force_3d_amplitude, force_3d_density_amplitude, force_kx, force_ky, force_kz;
 int blocks_initialized_local;
 Real diag_t_min, diag_t_max;
 Real diag_rho_min, diag_rho_max;
@@ -269,11 +272,20 @@ void GlobalMax(Real &val) {
 }  // namespace
 
 void Mesh::InitUserMeshData(ParameterInput *pin) {
-  static_equilibrium_2d =
-      pin->GetOrAddString("problem", "problem_type", "advecting_pulse_1d")
-      == "static_equilibrium_2d";
+  const std::string problem_type = pin->GetOrAddString(
+      "problem", "problem_type", "advecting_pulse_1d");
+  static_equilibrium_2d = problem_type == "static_equilibrium_2d";
+  force_convergence_3d = problem_type == "force_convergence_3d";
+  force_3d_pressure_balance = pin->GetOrAddBoolean(
+      "problem", "force_3d_pressure_balance", false);
   force_convergence_cell_average = pin->GetOrAddBoolean(
       "problem", "force_convergence_cell_average", false);
+  if (force_convergence_3d && (mesh_size.nx2 <= 1 || mesh_size.nx3 <= 1
+      || force_convergence_cell_average)) {
+    std::stringstream msg;
+    msg << "force_convergence_3d requires three dimensions and its own exact cell averages";
+    ATHENA_ERROR(msg);
+  }
   if (force_convergence_cell_average && static_equilibrium_2d) {
     std::stringstream msg;
     msg << "force_convergence_cell_average requires the one-dimensional pulse";
@@ -372,6 +384,28 @@ void Mesh::InitUserMeshData(ParameterInput *pin) {
   if (leng_unit < 0.0) leng_unit = vel_unit * time_unit;
   t_unit = egas_unit / rho_unit * mu / kGasConstant;
 
+  force_3d_amplitude = pin->GetOrAddReal("problem", "force_3d_amplitude", 0.5);
+  force_3d_density_amplitude = pin->GetOrAddReal(
+      "problem", "force_3d_density_amplitude", 0.0);
+  if (force_convergence_3d && (!(force_3d_density_amplitude >= 0.0)
+                               || !(force_3d_density_amplitude < 1.0))) {
+    std::stringstream msg;
+    msg << "force_3d_density_amplitude must be in [0,1)";
+    ATHENA_ERROR(msg);
+  }
+  if (force_convergence_3d && !(force_3d_amplitude > 0.0
+                                && force_3d_amplitude < 1.0)) {
+    std::stringstream msg;
+    msg << "force_3d_amplitude must be between zero and one";
+    ATHENA_ERROR(msg);
+  }
+  if (force_convergence_3d) {
+    const Real two_pi = 2.0*std::acos(-1.0);
+    force_kx = two_pi/((mesh_size.x1max-mesh_size.x1min)*leng_unit);
+    force_ky = two_pi/((mesh_size.x2max-mesh_size.x2min)*leng_unit);
+    force_kz = two_pi/((mesh_size.x3max-mesh_size.x3min)*leng_unit);
+  }
+
   t0_phys = pin->GetOrAddReal("problem", "T0", 1.0e7);
   t1_phys = pin->GetOrAddReal("problem", "T1", 2.0e7);
   rho0_phys = pin->GetOrAddReal("problem", "rho0", 1.2);
@@ -468,6 +502,7 @@ void MeshBlock::ProblemGenerator(ParameterInput *pin) {
       for (int i = il; i <= iu; ++i) {
         Real x_phys = pcoord->x1v(i) * leng_unit;
         Real y_phys = pcoord->x2v(j) * leng_unit;
+        Real z_phys = pcoord->x3v(k) * leng_unit;
         // Section 6.8 replaces the Section 6.7 coordinate x by cylindrical
         // radius sqrt(x^2+y^2); the 1-D mode remains unchanged.
         Real profile_coordinate = static_equilibrium_2d
@@ -478,8 +513,33 @@ void MeshBlock::ProblemGenerator(ParameterInput *pin) {
             : RadiationEnergyPhysFromTemp(temp_phys);
         if (force_convergence_cell_average)
           temp_phys = std::pow(erad_phys/kRadiationConst, 0.25);
+        Real average_mode = 0.0;
+        if (force_convergence_3d) {
+          const Real hx = pcoord->dx1f(i)*leng_unit;
+          const Real hy = pcoord->dx2f(j)*leng_unit;
+          const Real hz = pcoord->dx3f(k)*leng_unit;
+          const auto sinc = [](Real v) { return std::sin(v)/v; };
+          const Real mode = std::cos(force_kx*x_phys)
+              *std::cos(force_ky*y_phys)*std::cos(force_kz*z_phys);
+          average_mode = mode
+              *sinc(0.5*force_kx*hx)
+              *sinc(0.5*force_ky*hy)
+              *sinc(0.5*force_kz*hz);
+          erad_phys = kRadiationConst*std::pow(t0_phys,4)
+              *(1.0 + force_3d_amplitude*average_mode);
+          temp_phys = std::pow(erad_phys/kRadiationConst, 0.25);
+        }
         Real rho_phys = DensityFromPressureBalance(temp_phys);
         Real pgas_phys = GasPressurePhys(rho_phys, temp_phys);
+        if (force_convergence_3d) {
+          if (force_3d_pressure_balance) {
+            pgas_phys = total_pressure0_phys - erad_phys*ONE_3RD;
+            rho_phys = pgas_phys/(rgas_over_mu_phys*temp_phys);
+          } else {
+            rho_phys = rho0_phys*(1.0 + force_3d_density_amplitude*average_mode);
+            pgas_phys = GasPressurePhys(rho_phys, temp_phys);
+          }
+        }
         if (force_convergence_cell_average) {
           pgas_phys = total_pressure0_phys - erad_phys*ONE_3RD;
           rho_phys = pgas_phys/(rgas_over_mu_phys*temp_phys);
