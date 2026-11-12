@@ -33,8 +33,6 @@ void Hydro::RiemannSolver(const int k, const int j, const int il, const int iu,
   const int ivz = IVX + (dir+2)%3;
   FLD *pfld = pmy_block->prfld;
   const bool pressure_enabled = pfld->RiemannPressureCoupled();
-  AthenaArray<Real> &radl = pfld->rad_face_l[dir];
-  AthenaArray<Real> &radr = pfld->rad_face_r[dir];
   AthenaArray<Real> &radflux = pfld->u_rad_flux[dir];
   Real wli[(NHYDRO)],wri[(NHYDRO)];
   Real flxi[(NHYDRO)],fl[(NHYDRO)],fr[(NHYDRO)];
@@ -72,12 +70,18 @@ void Hydro::RiemannSolver(const int k, const int j, const int il, const int iu,
 
     //--- Step 2.  Compute middle state estimates with PVRS (Toro 10.5.2)
 
-    const Real erl = std::max(radl(RadFLD::ERAD,k,j,i), TINY_NUMBER);
-    const Real err = std::max(radr(RadFLD::ERAD,k,j,i), TINY_NUMBER);
-    const Real laml = std::max(radl(RadFLD::LAMBDA,k,j,i), 0.0);
-    const Real lamr = std::max(radr(RadFLD::LAMBDA,k,j,i), 0.0);
-    const Real arl = std::max(radl(RadFLD::ARAD,k,j,i), 0.0);
-    const Real arr = std::max(radr(RadFLD::ARAD,k,j,i), 0.0);
+    const Real erl = std::max(pfld->RadiationFaceState(dir,true,RadFLD::ERAD,k,j,i),
+                              TINY_NUMBER);
+    const Real err = std::max(pfld->RadiationFaceState(dir,false,RadFLD::ERAD,k,j,i),
+                              TINY_NUMBER);
+    const Real laml = std::max(pfld->RadiationFaceState(dir,true,RadFLD::LAMBDA,k,j,i),
+                               0.0);
+    const Real lamr = std::max(pfld->RadiationFaceState(dir,false,RadFLD::LAMBDA,k,j,i),
+                               0.0);
+    const Real arl = std::max(pfld->RadiationFaceState(dir,true,RadFLD::ARAD,k,j,i),
+                              0.0);
+    const Real arr = std::max(pfld->RadiationFaceState(dir,false,RadFLD::ARAD,k,j,i),
+                              0.0);
     const Real prl = coupled ? laml*erl : 0.0;
     const Real prr = coupled ? lamr*err : 0.0;
     const Real ptl = wli[IPR] + prl;

@@ -57,6 +57,24 @@ namespace {
   Real r0, r_sigma;
   Real delta_ratio;
   int dir;
+  bool periodic_mode_3d = false;
+
+  Real PeriodicCellAverage(const Coordinates *pco, int i, int j, int k,
+                           Real time) {
+    const Mesh *mesh = pco->pmy_block->pmy_mesh;
+    const Real lx = mesh->mesh_size.x1max-mesh->mesh_size.x1min;
+    const Real ly = mesh->mesh_size.x2max-mesh->mesh_size.x2min;
+    const Real lz = mesh->mesh_size.x3max-mesh->mesh_size.x3min;
+    const Real pi = std::acos(-1.0);
+    const Real kx = 2.0*pi/lx, ky = 2.0*pi/ly, kz = 2.0*pi/lz;
+    const Real sx = std::sin(0.5*kx*pco->dx1f(i))/(0.5*kx*pco->dx1f(i));
+    const Real sy = std::sin(0.5*ky*pco->dx2f(j))/(0.5*ky*pco->dx2f(j));
+    const Real sz = std::sin(0.5*kz*pco->dx3f(k))/(0.5*kz*pco->dx3f(k));
+    return Er0*(1.0+delta_ratio*sx*sy*sz
+        *std::sin(kx*(pco->x1v(i)-mesh->mesh_size.x1min-4.0*v0*time/3.0))
+        *std::sin(ky*(pco->x2v(j)-mesh->mesh_size.x2min))
+        *std::sin(kz*(pco->x3v(k)-mesh->mesh_size.x3min)));
+  }
 
   Real CoordAt(const Coordinates *pco, int i, int j, int k) {
     if (dir == 1) return pco->x1v(i);
@@ -123,6 +141,13 @@ void Mesh::InitUserMeshData(ParameterInput *pin) {
     std::stringstream msg;
     msg << "### FATAL ERROR in function [Mesh::InitUserMeshData]" << std::endl;
     msg << "dir must be 1, 2, or 3.";
+    ATHENA_ERROR(msg);
+  }
+  periodic_mode_3d = pin->GetOrAddBoolean("problem", "periodic_mode_3d", false);
+  if (periodic_mode_3d && (dir != 1
+      || !pin->GetOrAddBoolean("fld", "fixed_flux_limiter", false))) {
+    std::stringstream msg;
+    msg << "periodic_mode_3d requires dir=1 and fixed_flux_limiter=true";
     ATHENA_ERROR(msg);
   }
 
@@ -235,7 +260,9 @@ void MeshBlock::ProblemGenerator(ParameterInput *pin) {
         // for FLD
         prfld->u_gas(k,j,i) = p0*igm1;
         Real r_sq = SQR(CoordAt(pcoord, i, j, k) - r0);
-        prfld->u_rad(k,j,i) = Er0*(1.0+delta_ratio*std::exp(-r_sq/r_sigma_sq));
+        prfld->u_rad(k,j,i) = periodic_mode_3d
+            ? PeriodicCellAverage(pcoord, i, j, k, 0.0)
+            : Er0*(1.0+delta_ratio*std::exp(-r_sq/r_sigma_sq));
       }
     }
   }
@@ -445,7 +472,10 @@ Real HistoryL1norm(MeshBlock *pmb, int iout) {
         Real x = ref_x - r0;
         Real r_sq = SQR(x);
         Real an;
-        if (r_sigma < 0.0) {
+        if (periodic_mode_3d) {
+          an = PeriodicCellAverage(pmb->pcoord, i, j, k,
+                                   pmb->pmy_mesh->time);
+        } else if (r_sigma < 0.0) {
           an = Er0;
         } else {
           an = Er0*(1.0+std::exp(-r_sq/r_sigma_sq));

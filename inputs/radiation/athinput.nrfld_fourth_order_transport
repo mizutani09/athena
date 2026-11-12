@@ -1,0 +1,86 @@
+<comment>
+problem = Smooth periodic three-dimensional radiation transport convergence test
+configure = --prob=nrfld_adv --eos=adiabatic -nrmgfld -hdf5 -mpi --nghost=4
+reference = With fixed limiter, the HLLC-FLD radiation flux advects at 4*v0/3
+
+<job>
+problem_id = nrfld_fourth_order_transport
+
+<output1>
+file_type = hst
+dcycle = 1
+
+<time>
+cfl_number = 0.2
+nlim = 100
+tlim = 0.05
+integrator = rk4
+xorder = 4
+
+<mesh>
+nx1 = 16
+x1min = 0.0
+x1max = 1.0
+ix1_bc = periodic
+ox1_bc = periodic
+nx2 = 16
+x2min = 0.0
+x2max = 1.0
+ix2_bc = periodic
+ox2_bc = periodic
+nx3 = 16
+x3min = 0.0
+x3max = 1.0
+ix3_bc = periodic
+ox3_bc = periodic
+
+<meshblock>
+nx1 = 8
+nx2 = 8
+nx3 = 8
+
+<hydro>
+gamma = 1.6666666666666667
+rho_unit = 1.0e-7
+egas_unit = 1.0e7
+time_unit = 400.0
+mu = 1.0
+
+<nrfld>
+mgmode = MGI
+fas = false
+smoother = jacobi-rb
+npresmooth = 2
+npostsmooth = 2
+omega = 1.0
+niteration = 10
+nr_niteration = 5
+threshold = 1.0e-8
+nr_threshold = 1.0e-8
+ix1_bc = periodic
+ox1_bc = periodic
+ix2_bc = periodic
+ox2_bc = periodic
+ix3_bc = periodic
+ox3_bc = periodic
+
+<fld>
+is_couple = false
+only_rad = true
+cut_diff = true
+include_radiation_force = false
+fixed_flux_limiter = true
+mixed_frame_transport = true
+include_mixed_frame_terms = false
+const_opacity = 0.4
+
+<problem>
+dir = 1
+periodic_mode_3d = true
+rho0 = 1.0
+p0 = 1.0
+v0 = 0.1
+Er0 = 1.0
+r0 = 0.5
+r_sigma = 0.1
+delta_ratio = 0.1

@@ -30,6 +30,7 @@
 #include "../globals.hpp"
 #include "../mesh/mesh.hpp"
 #include "../parameter_input.hpp"
+#include "../reconstruct/reconstruction.hpp"
 #include "../utils/buffer_utils.hpp"
 #include "fld.hpp"
 
@@ -320,6 +321,11 @@ FLD::FLD(MeshBlock *pmb, ParameterInput *pin) :
   rad_statel_.NewAthenaArray(RadFLD::NRAD_FACE_STATE, pmb->ncells1);
   rad_stater_.NewAthenaArray(RadFLD::NRAD_FACE_STATE, pmb->ncells1);
   rad_statelb_.NewAthenaArray(RadFLD::NRAD_FACE_STATE, pmb->ncells1);
+  if (pmb->precon->xorder == 4) {
+    rad_point_l_.NewAthenaArray(RadFLD::NRAD_FACE_STATE, pmb->ncells1);
+    rad_point_r_.NewAthenaArray(RadFLD::NRAD_FACE_STATE, pmb->ncells1);
+    rad_lap_line_.NewAthenaArray(pmb->ncells1);
+  }
   rad_face_l[X1DIR].NewAthenaArray(RadFLD::NRAD_FACE_STATE,
                                    pmb->ncells3, pmb->ncells2, pmb->ncells1+1);
   rad_face_r[X1DIR].NewAthenaArray(RadFLD::NRAD_FACE_STATE,
@@ -341,6 +347,16 @@ FLD::FLD(MeshBlock *pmb, ParameterInput *pin) :
                                      pmb->ncells3+1, pmb->ncells2, pmb->ncells1);
     rad_face_g[X3DIR].NewAthenaArray(pmb->ncells3+1, pmb->ncells2,
                                     pmb->ncells1);
+  }
+  if (pmb->precon->xorder == 4) {
+    for (int dir = X1DIR; dir <= X3DIR; ++dir) {
+      if ((dir == X2DIR && !pm->f2) || (dir == X3DIR && !pm->f3)) continue;
+      const int n1 = u_rad_flux[dir].GetDim1();
+      const int n2 = u_rad_flux[dir].GetDim2();
+      const int n3 = u_rad_flux[dir].GetDim3();
+      rad_flux_lap_[dir].NewAthenaArray(n3, n2, n1);
+      rad_g_lap_[dir].NewAthenaArray(n3, n2, n1);
+    }
   }
   x1face_area_.NewAthenaArray(pmb->ncells1+1);
   if (pm->f2) {

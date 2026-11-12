@@ -57,7 +57,94 @@ RadFLD::ClosureValues RequireClosure(const Real gradient, const Real opacity,
   }
   return closure;
 }
+
+Real TransverseLaplacian(const MeshBlock *pmb, const AthenaArray<Real> &face,
+                         int dir, int k, int j, int i) {
+  const Coordinates *coord = pmb->pcoord;
+  Real lap = 0.0;
+  if (dir != X1DIR) {
+    const Real h = coord->dx1f(i);
+    lap += (face(k,j,i-1) - 2.0*face(k,j,i) + face(k,j,i+1))/(h*h);
+  }
+  if (dir != X2DIR && pmb->pmy_mesh->f2) {
+    const Real h = coord->dx2f(j);
+    lap += (face(k,j-1,i) - 2.0*face(k,j,i) + face(k,j+1,i))/(h*h);
+  }
+  if (dir != X3DIR && pmb->pmy_mesh->f3) {
+    const Real h = coord->dx3f(k);
+    lap += (face(k-1,j,i) - 2.0*face(k,j,i) + face(k+1,j,i))/(h*h);
+  }
+  return lap;
+}
 }  // namespace
+
+void FLD::PrepareFourthOrderPointFaces(int dir, int k, int j, int il, int iu,
+                                       Real c) {
+  const AthenaArray<Real> &left = rad_face_l[dir];
+  const AthenaArray<Real> &right = rad_face_r[dir];
+  for (int n = 0; n < RadFLD::NRAD_FACE_STATE; ++n) {
+    if (dir == X1DIR) {
+      pmy_block->pcoord->LaplacianX1(left, rad_lap_line_, n, k, j, il, iu);
+    } else if (dir == X2DIR) {
+      pmy_block->pcoord->LaplacianX2(left, rad_lap_line_, n, k, j, il, iu);
+    } else {
+      pmy_block->pcoord->LaplacianX3(left, rad_lap_line_, n, k, j, il, iu);
+    }
+    for (int i = il; i <= iu; ++i)
+      rad_point_l_(n,i) = left(n,k,j,i) - c*rad_lap_line_(i);
+
+    if (dir == X1DIR) {
+      pmy_block->pcoord->LaplacianX1(right, rad_lap_line_, n, k, j, il, iu);
+    } else if (dir == X2DIR) {
+      pmy_block->pcoord->LaplacianX2(right, rad_lap_line_, n, k, j, il, iu);
+    } else {
+      pmy_block->pcoord->LaplacianX3(right, rad_lap_line_, n, k, j, il, iu);
+    }
+    for (int i = il; i <= iu; ++i)
+      rad_point_r_(n,i) = right(n,k,j,i) - c*rad_lap_line_(i);
+  }
+
+  // De-averaging is unrestricted only where it remains a physical closure.
+  // At a steep surface revert the complete state on that side together.
+  for (int i = il; i <= iu; ++i) {
+    for (int side = 0; side < 2; ++side) {
+      AthenaArray<Real> &point = side == 0 ? rad_point_l_ : rad_point_r_;
+      const AthenaArray<Real> &average = side == 0 ? left : right;
+      const Real er = point(RadFLD::ERAD,i);
+      const Real lambda = point(RadFLD::LAMBDA,i);
+      const Real ar = point(RadFLD::ARAD,i);
+      if (!(er > 0.0) || !std::isfinite(er) || !std::isfinite(lambda)
+          || lambda < 0.0 || lambda > 1.0/3.0 || !std::isfinite(ar)
+          || ar < 1.0 || ar > 4.0/3.0) {
+        for (int n = 0; n < RadFLD::NRAD_FACE_STATE; ++n)
+          point(n,i) = average(n,k,j,i);
+      }
+    }
+  }
+}
+
+void FLD::PrepareFourthOrderFaceLaplacian(int dir, int kl, int ku, int jl,
+                                          int ju, int il, int iu) {
+  for (int k = kl; k <= ku; ++k) {
+    for (int j = jl; j <= ju; ++j) {
+      for (int i = il; i <= iu; ++i) {
+        rad_flux_lap_[dir](k,j,i) = TransverseLaplacian(
+            pmy_block, u_rad_flux[dir], dir, k, j, i);
+        rad_g_lap_[dir](k,j,i) = TransverseLaplacian(
+            pmy_block, rad_face_g[dir], dir, k, j, i);
+      }
+    }
+  }
+}
+
+void FLD::CorrectFourthOrderFaceRow(int dir, int k, int j, int il, int iu,
+                                    Real c) {
+  for (int i = il; i <= iu; ++i) {
+    u_rad_flux[dir](k,j,i) += c*rad_flux_lap_[dir](k,j,i);
+    rad_face_g[dir](k,j,i) = std::max(
+        rad_face_g[dir](k,j,i) + c*rad_g_lap_[dir](k,j,i), TINY_NUMBER);
+  }
+}
 
 void FLD::CalculateRadiationFaceStates(const int order) {
   MeshBlock *pmb = pmy_block;
@@ -125,9 +212,16 @@ void FLD::CalculateRadiationFaceStates(const int order) {
     }
   }
 
+  // The fourth-order hydro flux needs one transverse guard face on either
+  // side to form its face Laplacian.  Its first Riemann sweep consumes the
+  // radiation states on those faces as well.
+  const int transverse = (order == 4) ? 1 : 0;
+
   // x1 faces
-  for (int k = pmb->ks; k <= pmb->ke; ++k) {
-    for (int j = pmb->js; j <= pmb->je; ++j) {
+  for (int k = pmb->ks - (pmb->pmy_mesh->f3 ? transverse : 0);
+       k <= pmb->ke + (pmb->pmy_mesh->f3 ? transverse : 0); ++k) {
+    for (int j = pmb->js - (pmb->pmy_mesh->f2 ? transverse : 0);
+         j <= pmb->je + (pmb->pmy_mesh->f2 ? transverse : 0); ++j) {
       ReconstructX1(pmb->precon, order, k, j, pmb->is - 1, pmb->ie + 1,
                     rad_state_cc_,
                     rad_statel_, rad_stater_);
@@ -142,14 +236,15 @@ void FLD::CalculateRadiationFaceStates(const int order) {
 
   // x2 faces
   if (pmb->pmy_mesh->f2) {
-    for (int k = pmb->ks; k <= pmb->ke; ++k) {
+    for (int k = pmb->ks - (pmb->pmy_mesh->f3 ? transverse : 0);
+         k <= pmb->ke + (pmb->pmy_mesh->f3 ? transverse : 0); ++k) {
       ReconstructX2(pmb->precon, order, k, pmb->js - 1,
                     pmb->is - 1, pmb->ie + 1,
                     rad_state_cc_, rad_statel_, rad_stater_);
       for (int j = pmb->js; j <= pmb->je + 1; ++j) {
         ReconstructX2(pmb->precon, order, k, j, pmb->is - 1, pmb->ie + 1,
                       rad_state_cc_, rad_statelb_, rad_stater_);
-        for (int i = pmb->is; i <= pmb->ie; ++i) {
+        for (int i = pmb->is - transverse; i <= pmb->ie + transverse; ++i) {
           for (int n = 0; n < RadFLD::NRAD_FACE_STATE; ++n) {
             rad_face_l[X2DIR](n, k, j, i) = rad_statel_(n, i);
             rad_face_r[X2DIR](n, k, j, i) = rad_stater_(n, i);
@@ -162,14 +257,15 @@ void FLD::CalculateRadiationFaceStates(const int order) {
 
   // x3 faces
   if (pmb->pmy_mesh->f3) {
-    for (int j = pmb->js; j <= pmb->je; ++j) {
+    for (int j = pmb->js - (pmb->pmy_mesh->f2 ? transverse : 0);
+         j <= pmb->je + (pmb->pmy_mesh->f2 ? transverse : 0); ++j) {
       ReconstructX3(pmb->precon, order, pmb->ks - 1, j,
                     pmb->is - 1, pmb->ie + 1,
                     rad_state_cc_, rad_statel_, rad_stater_);
       for (int k = pmb->ks; k <= pmb->ke + 1; ++k) {
         ReconstructX3(pmb->precon, order, k, j, pmb->is - 1, pmb->ie + 1,
                       rad_state_cc_, rad_statelb_, rad_stater_);
-        for (int i = pmb->is; i <= pmb->ie; ++i) {
+        for (int i = pmb->is - transverse; i <= pmb->ie + transverse; ++i) {
           for (int n = 0; n < RadFLD::NRAD_FACE_STATE; ++n) {
             rad_face_l[X3DIR](n, k, j, i) = rad_statel_(n, i);
             rad_face_r[X3DIR](n, k, j, i) = rad_stater_(n, i);

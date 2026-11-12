@@ -119,10 +119,14 @@ void Hydro::CalculateFluxes(AthenaArray<Real> &w, FaceField &b,
 
     // construct Laplacian from x1flux
     pmb->pcoord->LaplacianX1All(x1flux, laplacian_all_fc, 0, NHYDRO-1,
-                                kl, ku, jl, ju, is, ie+1);
+                                ks, ke, js, je, is, ie+1);
+#if NRMGFLD_ENABLED
+    pmb->prfld->PrepareFourthOrderFaceLaplacian(X1DIR, ks, ke, js, je,
+                                                is, ie+1);
+#endif
 
-    for (int k=kl; k<=ku; ++k) {
-      for (int j=jl; j<=ju; ++j) {
+    for (int k=ks; k<=ke; ++k) {
+      for (int j=js; j<=je; ++j) {
         // Compute Laplacian of primitive Riemann states on x1 faces
         for (int n=0; n<NWAVE; ++n) {
           pmb->pcoord->LaplacianX1(wl3d_, laplacian_l_fc_, n, k, j, is, ie+1);
@@ -142,11 +146,19 @@ void Hydro::CalculateFluxes(AthenaArray<Real> &w, FaceField &b,
         // Compute x1 interface fluxes from face-centered primitive variables
         // TODO(felker): check that e3x1,e2x1 arguments added in late 2017 work here
         pmb->pcoord->CenterWidth1(k, j, is, ie+1, dxw_);
+#if NRMGFLD_ENABLED
+        pmb->prfld->PrepareFourthOrderPointFaces(X1DIR, k, j, is, ie+1, C);
+        pmb->prfld->UseFourthOrderPointFaces(true);
+#endif
 #if !MAGNETIC_FIELDS_ENABLED  // Hydro:
         RiemannSolver(k, j, is, ie+1, IVX, wl_, wr_, flux_fc, dxw_);
 #else  // MHD:
         RiemannSolver(k, j, is, ie+1, IVX, b1, wl_, wr_, flux_fc, e3x1, e2x1,
                       w_x1f, dxw_);
+#endif
+#if NRMGFLD_ENABLED
+        pmb->prfld->UseFourthOrderPointFaces(false);
+        pmb->prfld->CorrectFourthOrderFaceRow(X1DIR, k, j, is, ie+1, C);
 #endif
         // Apply Laplacian of second-order accurate face-averaged flux on x1 faces
         for (int n=0; n<NHYDRO; ++n) {
@@ -228,41 +240,53 @@ void Hydro::CalculateFluxes(AthenaArray<Real> &w, FaceField &b,
 
       // construct Laplacian from x2flux
       pmb->pcoord->LaplacianX2All(x2flux, laplacian_all_fc, 0, NHYDRO-1,
-                                  kl, ku, js, je+1, il, iu);
+                                  ks, ke, js, je+1, is, ie);
+#if NRMGFLD_ENABLED
+      pmb->prfld->PrepareFourthOrderFaceLaplacian(X2DIR, ks, ke, js, je+1,
+                                                  is, ie);
+#endif
 
       // Approximate x2 face-centered primitive Riemann states
-      for (int k=kl; k<=ku; ++k) {
+      for (int k=ks; k<=ke; ++k) {
         for (int j=js; j<=je+1; ++j) {
           // Compute Laplacian of primitive Riemann states on x2 faces
           for (int n=0; n<NWAVE; ++n) {
-            pmb->pcoord->LaplacianX2(wl3d_, laplacian_l_fc_, n, k, j, il, iu);
-            pmb->pcoord->LaplacianX2(wr3d_, laplacian_r_fc_, n, k, j, il, iu);
+            pmb->pcoord->LaplacianX2(wl3d_, laplacian_l_fc_, n, k, j, is, ie);
+            pmb->pcoord->LaplacianX2(wr3d_, laplacian_r_fc_, n, k, j, is, ie);
 #pragma omp simd
-            for (int i=il; i<=iu; ++i) {
+            for (int i=is; i<=ie; ++i) {
               wl_(n,i) = wl3d_(n,k,j,i) - C*laplacian_l_fc_(i);
               wr_(n,i) = wr3d_(n,k,j,i) - C*laplacian_r_fc_(i);
             }
           }
 #pragma omp simd
-          for (int i=il; i<=iu; ++i) {
+          for (int i=is; i<=ie; ++i) {
             pmb->peos->ApplyPrimitiveFloors(wl_, k, j, i);
             pmb->peos->ApplyPrimitiveFloors(wr_, k, j, i);
           }
 
           // Compute x2 interface fluxes from face-centered primitive variables
           // TODO(felker): check that e1x2,e3x2 arguments added in late 2017 work here
-          pmb->pcoord->CenterWidth2(k, j, il, iu, dxw_);
+          pmb->pcoord->CenterWidth2(k, j, is, ie, dxw_);
+#if NRMGFLD_ENABLED
+          pmb->prfld->PrepareFourthOrderPointFaces(X2DIR, k, j, is, ie, C);
+          pmb->prfld->UseFourthOrderPointFaces(true);
+#endif
 #if !MAGNETIC_FIELDS_ENABLED  // Hydro:
-          RiemannSolver(k, j, il, iu, IVY, wl_, wr_, flux_fc, dxw_);
+          RiemannSolver(k, j, is, ie, IVY, wl_, wr_, flux_fc, dxw_);
 #else  // MHD:
-          RiemannSolver(k, j, il, iu, IVY, b2, wl_, wr_, flux_fc, e1x2, e3x2,
+          RiemannSolver(k, j, is, ie, IVY, b2, wl_, wr_, flux_fc, e1x2, e3x2,
                         w_x2f, dxw_);
+#endif
+#if NRMGFLD_ENABLED
+          pmb->prfld->UseFourthOrderPointFaces(false);
+          pmb->prfld->CorrectFourthOrderFaceRow(X2DIR, k, j, is, ie, C);
 #endif
 
           // Apply Laplacian of second-order accurate face-averaged flux on x1 faces
           for (int n=0; n<NHYDRO; ++n) {
 #pragma omp simd
-            for (int i=il; i<=iu; i++) {
+            for (int i=is; i<=ie; i++) {
               x2flux(n,k,j,i) = flux_fc(n,k,j,i) + C*laplacian_all_fc(n,k,j,i);
               if (n == IDN && NSCALARS > 0) {
                 pmb->pscalars->mass_flux_fc[X2DIR](k,j,i) = flux_fc(n,k,j,i);
@@ -333,40 +357,52 @@ void Hydro::CalculateFluxes(AthenaArray<Real> &w, FaceField &b,
 
       // construct Laplacian from x3flux
       pmb->pcoord->LaplacianX3All(x3flux, laplacian_all_fc, 0, NHYDRO-1,
-                                  ks, ke+1, jl, ju, il, iu);
+                                  ks, ke+1, js, je, is, ie);
+#if NRMGFLD_ENABLED
+      pmb->prfld->PrepareFourthOrderFaceLaplacian(X3DIR, ks, ke+1, js, je,
+                                                  is, ie);
+#endif
 
       // Approximate x3 face-centered primitive Riemann states
       for (int k=ks; k<=ke+1; ++k) {
-        for (int j=jl; j<=ju; ++j) {
+        for (int j=js; j<=je; ++j) {
           // Compute Laplacian of primitive Riemann states on x3 faces
           for (int n=0; n<NWAVE; ++n) {
-            pmb->pcoord->LaplacianX3(wl3d_, laplacian_l_fc_, n, k, j, il, iu);
-            pmb->pcoord->LaplacianX3(wr3d_, laplacian_r_fc_, n, k, j, il, iu);
+            pmb->pcoord->LaplacianX3(wl3d_, laplacian_l_fc_, n, k, j, is, ie);
+            pmb->pcoord->LaplacianX3(wr3d_, laplacian_r_fc_, n, k, j, is, ie);
 #pragma omp simd
-            for (int i=il; i<=iu; ++i) {
+            for (int i=is; i<=ie; ++i) {
               wl_(n,i) = wl3d_(n,k,j,i) - C*laplacian_l_fc_(i);
               wr_(n,i) = wr3d_(n,k,j,i) - C*laplacian_r_fc_(i);
             }
           }
 #pragma omp simd
-          for (int i=il; i<=iu; ++i) {
+          for (int i=is; i<=ie; ++i) {
             pmb->peos->ApplyPrimitiveFloors(wl_, k, j, i);
             pmb->peos->ApplyPrimitiveFloors(wr_, k, j, i);
           }
 
           // Compute x3 interface fluxes from face-centered primitive variables
           // TODO(felker): check that e2x3,e1x3 arguments added in late 2017 work here
-          pmb->pcoord->CenterWidth3(k, j, il, iu, dxw_);
+          pmb->pcoord->CenterWidth3(k, j, is, ie, dxw_);
+#if NRMGFLD_ENABLED
+          pmb->prfld->PrepareFourthOrderPointFaces(X3DIR, k, j, is, ie, C);
+          pmb->prfld->UseFourthOrderPointFaces(true);
+#endif
 #if !MAGNETIC_FIELDS_ENABLED  // Hydro:
-          RiemannSolver(k, j, il, iu, IVZ, wl_, wr_, flux_fc, dxw_);
+          RiemannSolver(k, j, is, ie, IVZ, wl_, wr_, flux_fc, dxw_);
 #else  // MHD:
-          RiemannSolver(k, j, il, iu, IVZ, b3, wl_, wr_, flux_fc, e2x3, e1x3,
+          RiemannSolver(k, j, is, ie, IVZ, b3, wl_, wr_, flux_fc, e2x3, e1x3,
                         w_x3f, dxw_);
+#endif
+#if NRMGFLD_ENABLED
+          pmb->prfld->UseFourthOrderPointFaces(false);
+          pmb->prfld->CorrectFourthOrderFaceRow(X3DIR, k, j, is, ie, C);
 #endif
           // Apply Laplacian of second-order accurate face-averaged flux on x3 faces
           for (int n=0; n<NHYDRO; ++n) {
 #pragma omp simd
-            for (int i=il; i<=iu; i++) {
+            for (int i=is; i<=ie; i++) {
               x3flux(n,k,j,i) = flux_fc(n,k,j,i) + C*laplacian_all_fc(n,k,j,i);
               if (n == IDN && NSCALARS > 0) {
                 pmb->pscalars->mass_flux_fc[X3DIR](k,j,i) = flux_fc(n,k,j,i);

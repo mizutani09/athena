@@ -75,6 +75,13 @@ void EquationOfState::ConservedToPrimitiveCellAverage(
       for (int j=jl; j<=ju; ++j) {
 #pragma omp simd
         for (int i=il; i<=iu; ++i) {
+          // De-averaging can produce a near-vacuum point value across an
+          // unresolved density cliff.  Dividing the reconstructed momentum
+          // by that value creates an enormous point velocity, even though the
+          // cell-averaged primitive state is well behaved.  Retain the
+          // second-order cell average in that cell; smooth cells keep the
+          // fourth-order conversion.
+          if (!(u_cc(IDN,k,j,i) >= 0.5*cons(IDN,k,j,i))) continue;
           // Compute fourth-order approximation to cell-averaged primitive variables
           prim(n,k,j,i) = w_cc(n,k,j,i) + C*laplacian_cc(n,k,j,i);
         }

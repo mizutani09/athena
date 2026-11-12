@@ -291,6 +291,16 @@ class FLD {
   CellCenteredBoundaryVariable u_rad_fldbvar;
   void CalculateFluxes(AthenaArray<Real> &u, const int order);
   void CalculateRadiationFaceStates(const int order);
+  void PrepareFourthOrderPointFaces(int dir, int k, int j, int il, int iu, Real c);
+  void PrepareFourthOrderFaceLaplacian(int dir, int kl, int ku, int jl, int ju,
+                                      int il, int iu);
+  void CorrectFourthOrderFaceRow(int dir, int k, int j, int il, int iu, Real c);
+  void UseFourthOrderPointFaces(bool active) { fourth_order_point_faces_ = active; }
+  Real RadiationFaceState(int dir, bool left, int n, int k, int j, int i) const {
+    if (fourth_order_point_faces_)
+      return left ? rad_point_l_(n,i) : rad_point_r_(n,i);
+    return left ? rad_face_l[dir](n,k,j,i) : rad_face_r[dir](n,k,j,i);
+  }
   Real RadiationSoundSpeedSquared(int k, int j, int i, int dir) const;
   void AddFluxDivergence(const Real wght, AthenaArray<Real> &u_out);
   void AddExplicitSourceTerms(const Real dt, const AthenaArray<Real> &prim,
@@ -320,6 +330,11 @@ class FLD {
   // scratch space used to compute fluxes
   // 2D scratch arrays
   AthenaArray<Real> rad_state_cc_, rad_statel_, rad_stater_, rad_statelb_;
+  // One line of point states for the second fourth-order Riemann sweep.  The
+  // face-average states remain intact for transverse derivatives.
+  AthenaArray<Real> rad_point_l_, rad_point_r_, rad_lap_line_;
+  AthenaArray<Real> rad_flux_lap_[3], rad_g_lap_[3];
+  bool fourth_order_point_faces_{false};
   // 1D scratch arrays
   AthenaArray<Real> x1face_area_, x2face_area_, x3face_area_;
   AthenaArray<Real> x2face_area_p1_, x3face_area_p1_;
