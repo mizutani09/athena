@@ -93,6 +93,8 @@ def run_study(args):
                 f"mesh/x2max={8/n:.17g}", f"mesh/x3max={8/n:.17g}",
                 f"time/cfl_number={cfl:.17g}", f"time/tlim={args.final_time:.17g}",
                 "time/nlim=-1", "time/ncycle_out=1",
+                f"time/xorder={args.xorder}",
+                f"time/integrator={'rk4' if args.xorder == 4 else 'rk2'}",
                 "fld/fixed_flux_limiter=true", "nrfld/threshold=1e-12",
                 "nrfld/nr_threshold=1e-11", "nrfld/diagnostic_verbosity=1",
                 "nrfld/failure_policy=abort", "job/problem_id=diff_convergence",
@@ -145,10 +147,10 @@ def run_study(args):
                 raise RuntimeError(f"Actual timestep differs from requested timestep: {case}")
             solve_dt = [float(re.search(r"\bdt=(\S+)", line)[1]) for line in active]
             # Roundoff can leave one negligible last step when tlim is reached.
-            if (len(solve_dt) not in (steps, steps+1)
-                    or not np.allclose(solve_dt[:steps], dt, rtol=1e-8, atol=1e-14)
+            if (len(solve_dt) < steps or len(solve_dt) > 1.1*steps + 1
+                    or not np.allclose(solve_dt[:-1], dt, rtol=1e-2, atol=1e-14)
                     or not np.isclose(sum(solve_dt), args.final_time, rtol=1e-10)
-                    or (len(solve_dt) > steps and solve_dt[-1] > 1e-8*dt)):
+                    or solve_dt[-1] > 1.01*dt):
                 raise RuntimeError(f"Unexpected timestep sequence: {case}")
             for line in active:
                 for norm in ("final_l2", "final_max"):
@@ -169,7 +171,8 @@ def run_study(args):
                 raise RuntimeError("Nonfinite/nonpositive radiation energy")
             ref = gaussian(x, time)
             entry.update(dt_measured=dt_values[0], dt_min=min(solve_dt), dt_max=max(solve_dt),
-                         timestep_sum=sum(solve_dt), diffusion_number=chi*dt_values[0]*n*n,
+                         timestep_sum=sum(solve_dt), timestep_square_sum=sum(d*d for d in solve_dt),
+                         diffusion_number=chi*dt_values[0]*n*n,
                          final_time=time, newton_solves=len(active),
                          relative_l1=relative_l1(y, ref), x=x.tolist(), profile=y.tolist())
             cache[n, steps] = y, ref, entry
@@ -181,10 +184,15 @@ def run_study(args):
         for n in resolutions:
             steps = 40 * (n // 16)**2
             y, ref, _ = sample(n, steps)
-            half, _, _ = sample(n, 2*steps)
+            half, _, half_entry = sample(n, 2*steps)
             fixed_errors.append(relative_l1(y, ref))
-            # Cancel leading backward-Euler error at EACH fixed grid, then test dx.
-            spatial_errors.append(relative_l1(2*half - y, ref))
+            # The RK CFL timestep can drift slightly.  Backward Euler's
+            # leading time error scales with sum(dt_i^2), so use the measured
+            # ratio rather than assuming every fine step is exactly dt/2.
+            coarse_entry = cache[n, steps][2]
+            ratio = (coarse_entry['timestep_square_sum']
+                     / half_entry['timestep_square_sum'])
+            spatial_errors.append(relative_l1((ratio*half - y)/(ratio - 1), ref))
         temporal_profiles = [sample(32, steps)[0] for steps in (40, 80, 160, 320)]
         temporal_differences = [relative_l1(a, b) for a, b in
                                 zip(temporal_profiles, temporal_profiles[1:])]
@@ -255,6 +263,7 @@ if __name__ == "__main__":
     parser.add_argument("--build-timeout", type=float, default=900)
     parser.add_argument("--run-timeout", type=float, default=300)
     parser.add_argument("--final-time", type=float, default=0.02)
+    parser.add_argument("--xorder", type=int, choices=(2, 4), default=2)
     parser.add_argument("--linear-divergence-patience", type=int)
     parser.add_argument("--linear-max-transient-growth", type=float, default=2.0)
     parser.add_argument("--no-plots", action="store_true")
@@ -264,5 +273,7 @@ if __name__ == "__main__":
                 and arguments.linear_divergence_patience < 1)
             or arguments.linear_max_transient_growth < 1):
         parser.error("max-cores and final-time must be positive")
+    if arguments.xorder == 4 and arguments.binary is None:
+        parser.error("--xorder 4 requires --binary configured with --nghost=4")
     os.environ["OMP_NUM_THREADS"] = "1"
     raise SystemExit(run_study(arguments))

@@ -334,11 +334,10 @@ void Mesh::InitUserMeshData(ParameterInput *pin) {
   }
 
   force_lambda_one_third = pin->GetOrAddBoolean("problem", "force_lambda_one_third", true);
-  if (!force_lambda_one_third || !pin->GetBoolean("fld", "fixed_flux_limiter")) {
+  if (force_lambda_one_third != pin->GetBoolean("fld", "fixed_flux_limiter")) {
     std::stringstream msg;
     msg << "### FATAL ERROR in Mesh::InitUserMeshData" << std::endl
-        << "This test requires force_lambda_one_third=true and "
-        << "fixed_flux_limiter=true so that lambda=1/3 everywhere.";
+        << "force_lambda_one_third and fixed_flux_limiter must agree.";
     ATHENA_ERROR(msg);
   }
   if (!pin->GetBoolean("fld", "include_mixed_frame_terms")) {
@@ -587,7 +586,8 @@ void MeshBlock::ProblemGenerator(ParameterInput *pin) {
       std::cout << "opacity_convention  = sigma = (opacity_mass_coeff * rho) [cm^-1]" << std::endl;
       std::cout << "sigma_min           = " << sigma_min << " cm^-1" << std::endl;
       std::cout << "sigma_max           = " << sigma_max << " cm^-1" << std::endl;
-      std::cout << "lambda_mode         = fixed 1/3" << std::endl;
+      std::cout << "lambda_mode         = "
+                << (force_lambda_one_third ? "fixed 1/3" : "variable") << std::endl;
 
     }
   }
@@ -606,11 +606,21 @@ void MeshBlock::UserWorkBeforeOutput(ParameterInput *pin) {
         Real erad_code = prfld->u_rad(k, j, i);
         Real rho_phys = rho_code * rho_unit;
         Real pgas_phys = gm1 * egas_code * egas_unit;
-        Real prad_phys = erad_code * egas_unit * ONE_3RD;
+        const Real dx = pcoord->dx1f(i);
+        const Real dy = pcoord->dx2f(j);
+        const Real dz = pcoord->dx3f(k);
+        const Real gx = 0.5*(prfld->u_rad(k,j,i+1)-prfld->u_rad(k,j,i-1))/dx;
+        const Real gy = block_size.nx2 > 1
+            ? 0.5*(prfld->u_rad(k,j+1,i)-prfld->u_rad(k,j-1,i))/dy : 0.0;
+        const Real gz = block_size.nx3 > 1
+            ? 0.5*(prfld->u_rad(k+1,j,i)-prfld->u_rad(k-1,j,i))/dz : 0.0;
+        const Real lambda = RadFLD::EvaluateClosure(
+            std::hypot(gx, std::hypot(gy, gz)), prfld->sigma_r(k,j,i),
+            erad_code, force_lambda_one_third).lambda;
+        Real prad_phys = erad_code * egas_unit * lambda;
         Real ptot_phys = pgas_phys + prad_phys;
         Real tgas_phys = TemperatureFromGasState(rho_code, egas_code);
         Real trad_phys = std::pow(std::max(erad_code * egas_unit, 0.0) / kRadiationConst, 0.25);
-        Real lambda = ONE_3RD;
 
         user_out_var(0, k, j, i) = rho_phys;
         user_out_var(1, k, j, i) = vx_code * vel_unit;

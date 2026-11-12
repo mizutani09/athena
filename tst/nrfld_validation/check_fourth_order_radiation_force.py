@@ -68,7 +68,24 @@ def measure(log, n, params):
     rho_code = ((p_total - erad_average/3.0)
                 / (rgas_cgs/mu * temperature_average) / rho_unit)
     force_density_numeric = a_rad * rho_code
-    force_density_exact = -(erad(x + 0.5*h) - erad(x - 0.5*h)) / (3.0*h*egas_unit)
+    if params['fld']['fixed_flux_limiter'].lower() == 'true':
+        force_density_exact = -(erad(x + 0.5*h) - erad(x - 0.5*h)) / (3.0*h*egas_unit)
+    else:
+        # Integrate -lambda(R) dE/dx over each cell.  The reference uses the
+        # analytic continuum gradient, not the code's centered differences.
+        kappa_mass = float(problem['opacity_mass_coeff'])
+        xp = x[None, :] + 0.5*h*nodes[:, None]
+        profile = np.exp(-0.5*(xp/width)**2)
+        temperature = t0 + (t1 - t0)*profile
+        dtemperature = -(t1 - t0)*xp/(width*width)*profile
+        energy = a_cgs*temperature**4
+        denergy = 4*a_cgs*temperature**3*dtemperature
+        density = ((p_total - energy/3.0)
+                   / (rgas_cgs/mu * temperature))
+        ratio = np.abs(denergy)/(kappa_mass*density*energy)
+        limiter = (2.0 + ratio)/(6.0 + 3.0*ratio + ratio*ratio)
+        force_density_exact = -0.5*np.sum(
+            weights[:, None]*limiter*denergy, axis=0)/egas_unit
     error = np.sum(np.abs(force_density_numeric - force_density_exact))
     norm = np.sum(np.abs(force_density_exact))
     return error / norm, len(x)
@@ -93,7 +110,8 @@ def main():
         for (n0, e0), (n1, e1) in zip(values, values[1:]):
             rate = np.log(e0/e1) / np.log(n1/n0)
             print(f'xorder={order} {n0}->{n1} observed_order={rate:.3f}')
-        if order == 4 and len(values) >= 2:
+        if (order == 4 and len(values) >= 2
+                and params['fld']['fixed_flux_limiter'].lower() == 'true'):
             (n0, e0), (n1, e1) = values[-2:]
             if np.log(e0/e1)/np.log(n1/n0) < 3.5:
                 raise SystemExit('Fourth-order force convergence gate failed')
