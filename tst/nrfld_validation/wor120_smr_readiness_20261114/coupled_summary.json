@@ -1,0 +1,85 @@
+{
+  "method": "one fixed-dt q=1 Test C step; periodic box; hydro/active=fixed; fld/is_couple=true; fld/only_rad=false; variable limiter; total energy = history tot-E + Er_volume",
+  "cases": {
+    "current_uniform": {
+      "source_branch": "current",
+      "grid": "uniform_fine",
+      "return_code": 0,
+      "newton_status": "converged",
+      "newton_iterations": 23,
+      "gas_energy_initial_final": [
+        9.374999999999998,
+        0.05205600257350945
+      ],
+      "radiation_energy_initial_final": [
+        0.06375221858238209,
+        9.38669621600888
+      ],
+      "total_energy_relative_change": 1.1291896205748968e-15,
+      "binary_sha256": "0cad855d787db2aa57567065055ec166a66a58c5cb47db8ae14745392f053c5f",
+      "input_sha256": "e25da58a4c36f985a97b467dee56d926ac02e2630f057e70ee67a32d9f41cea1",
+      "log_mode": []
+    },
+    "current_amr": {
+      "source_branch": "current",
+      "grid": "amr_aligned",
+      "return_code": 0,
+      "newton_status": "converged",
+      "newton_iterations": 23,
+      "gas_energy_initial_final": [
+        9.374999999999998,
+        0.052056001057439516
+      ],
+      "radiation_energy_initial_final": [
+        0.06375227291878965,
+        9.386695119916123
+      ],
+      "total_energy_relative_change": -1.220442270463651e-07,
+      "binary_sha256": "0cad855d787db2aa57567065055ec166a66a58c5cb47db8ae14745392f053c5f",
+      "input_sha256": "65aaede710a3325265f06fc52b4dac64b73db6c50c220fd756d4653148593d3f",
+      "log_mode": []
+    },
+    "conservative_uniform": {
+      "source_branch": "conservative",
+      "grid": "uniform_fine",
+      "return_code": 0,
+      "newton_status": "converged",
+      "newton_iterations": 23,
+      "gas_energy_initial_final": [
+        9.374999999999998,
+        0.05205600257350945
+      ],
+      "radiation_energy_initial_final": [
+        0.06375221858238209,
+        9.386696216008877
+      ],
+      "total_energy_relative_change": 7.527930803832645e-16,
+      "binary_sha256": "76971d09d4ea800d23af2c9e2e2345200cf758733ab4f1f5f73e755e6ed15459",
+      "input_sha256": "2b61fdb92114e4a4b2e96bc71a7ce077519180edb02652befe12d797e196f9c8",
+      "log_mode": [
+        "[NRFLD_INTERFACE_MODE] path=legacy selection=unvalidated_problem"
+      ]
+    },
+    "conservative_amr": {
+      "source_branch": "conservative",
+      "grid": "amr_aligned",
+      "return_code": 0,
+      "newton_status": "converged",
+      "newton_iterations": 23,
+      "gas_energy_initial_final": [
+        9.374999999999998,
+        0.05205600264852902
+      ],
+      "radiation_energy_initial_final": [
+        0.06375227291878965,
+        9.386696270270265
+      ],
+      "total_energy_relative_change": 7.527930760496334e-16,
+      "binary_sha256": "76971d09d4ea800d23af2c9e2e2345200cf758733ab4f1f5f73e755e6ed15459",
+      "input_sha256": "782e96936c95d1bc39ab7b604c3e1b45cf5c98374643667fea2ed52a0054cf4f",
+      "log_mode": [
+        "[NRFLD_INTERFACE_MODE] path=conservative selection=supported_default"
+      ]
+    }
+  }
+}
