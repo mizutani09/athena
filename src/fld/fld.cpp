@@ -213,13 +213,17 @@ FLD::FLD(MeshBlock *pmb, ParameterInput *pin) :
   const bool mach5_problem =
       std::string(PROBLEM_GENERATOR) == "nrfld_radiative_shock"
       && pin->GetOrAddString("problem", "problem_type", "") == "mach5";
+  const bool rsg_trial =
+      std::string(PROBLEM_GENERATOR) == "rsg_star_in_box"
+      && pmb->pmy_mesh->multilevel
+      && pin->GetOrAddBoolean("problem", "static_refinement_trial", false);
   // Enable the common-face operator by default only in the two AMR problem
   // families with analytic or same-checkpoint accuracy and conservation
   // checks. Other problem generators retain their existing route until
   // separately validated. An explicit legacy flag is the A/B escape hatch.
   NRFLDPrototype::ConfigureDefault(pmb->pmy_mesh->multilevel
-      && (test_c_problem || mach5_problem), test_c_problem, mach5_problem,
-      fixed_flux_limiter);
+      && (test_c_problem || mach5_problem || rsg_trial), test_c_problem,
+      mach5_problem, fixed_flux_limiter, rsg_trial);
   if (NRFLDPrototype::Legacy()
       && NRFLDPrototype::Flag("ATHENA_NRFLD_CONSERVATIVE_PROTOTYPE")) {
     std::stringstream msg;
@@ -242,8 +246,11 @@ FLD::FLD(MeshBlock *pmb, ParameterInput *pin) :
     const bool test_c = test_c_problem;
     const bool mach5 = mach5_problem && NRFLDPrototype::Mach5Trial();
     bool periodic = true;
+    bool all_user_boundaries = true;
     for (int face=0; face<6; ++face)
       periodic &= pmb->pmy_mesh->mesh_bcs[face] == BoundaryFlag::periodic;
+    for (int face=0; face<6; ++face)
+      all_user_boundaries &= pmb->pmy_mesh->mesh_bcs[face] == BoundaryFlag::user;
     const Real dx1 = (pmb->block_size.x1max-pmb->block_size.x1min)
         /pmb->block_size.nx1;
     const Real dx2 = (pmb->block_size.x2max-pmb->block_size.x2min)
@@ -259,7 +266,7 @@ FLD::FLD(MeshBlock *pmb, ParameterInput *pin) :
         && pmb->pmy_mesh->mesh_bcs[3] == BoundaryFlag::periodic
         && pmb->pmy_mesh->mesh_bcs[4] == BoundaryFlag::periodic
         && pmb->pmy_mesh->mesh_bcs[5] == BoundaryFlag::periodic;
-    if ((!test_c && !mach5)
+    if ((!test_c && !mach5 && !rsg_trial)
           || std::string(COORDINATE_SYSTEM) != "cartesian"
           || ((is_couple || !only_rad) && !NRFLDPrototype::CoupledTrial())
           || ((is_couple || !only_rad) && NRFLDPrototype::DifferenceJv())
@@ -274,11 +281,16 @@ FLD::FLD(MeshBlock *pmb, ParameterInput *pin) :
           || (test_c && (include_mixed_frame_terms || !periodic))
           || (mach5 && (!fixed_flux_limiter || !is_couple || only_rad
                         || !mach5_boundaries))
+          || (rsg_trial && (pmb->pmy_mesh->adaptive || !all_user_boundaries
+                            || !is_couple || only_rad || !include_radiation_force
+                            || radiation_pressure_in_riemann
+                            || include_mixed_frame_terms || fourth_order_force_
+                            || !pin->GetOrAddBoolean("fld", "use_opacity_table", false)))
           || (pmb->pmy_mesh->adaptive && !NRFLDPrototype::RegridTrial())) {
       std::stringstream msg;
       msg << "### FATAL ERROR in function [FLD::FLD]" << std::endl
-          << "Conservative NR-FLD requires either periodic "
-          << "Test C or validated Mach 5 on a Cartesian "
+          << "Conservative NR-FLD requires periodic Test C, validated Mach 5, "
+          << "or an explicitly opted-in static RSG trial on a Cartesian "
           << "cubic mesh with user x1 and periodic transverse boundaries. "
           << "Coupling requires assembled Jv, and variable limiters must "
           << "stay frozen within each solve. "
@@ -299,6 +311,7 @@ FLD::FLD(MeshBlock *pmb, ParameterInput *pin) :
                 << (NRFLDPrototype::Legacy() ? "explicit_legacy"
                     : NRFLDPrototype::Flag("ATHENA_NRFLD_CONSERVATIVE_PROTOTYPE")
                         ? "explicit_prototype"
+                    : rsg_trial ? "explicit_rsg_trial"
                     : NRFLDPrototype::DefaultEnabled() ? "supported_default"
                     : "unvalidated_problem") << std::endl;
       if (NRFLDPrototype::Enabled()) {

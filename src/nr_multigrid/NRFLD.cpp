@@ -942,6 +942,13 @@ void NRFLD::CalculateCoefficientsOnce(const AthenaArray<Real> &u_pre,
           msg << "### FATAL ERROR in NR-FLD radiation energy" << std::endl
               << "Er at (k,j,i)=(" << k << "," << j << "," << i << ") is "
               << u_pre(k,j,i)
+              << " gid=" << pmy_block_->gid
+              << " level=" << pmy_block_->loc.level
+              << " xyz=(" << pmy_block_->pcoord->x1v(i) << ","
+              << pmy_block_->pcoord->x2v(j) << ","
+              << pmy_block_->pcoord->x3v(k) << ")"
+              << " active=(" << is << ":" << ie << ","
+              << js << ":" << je << "," << ks << ":" << ke << ")"
               << "; radiation energy must be finite and non-negative.\n";
           ATHENA_ERROR(msg);
         }

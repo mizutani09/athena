@@ -45,6 +45,7 @@ Real dfloor, pfloor, kp_const, kr_const;
 Real drag_taper_start, drag_taper_end, grid_mass_tolerance;
 Real gravity_quad_full_radius, gravity_quad_taper_radius;
 Real marshak_alpha;
+Real short_test_max_dt=-1.0;
 std::uint64_t perturb_seed;
 bool profile_initialization=false, marshak_boundary=false;
 bool core_quadrature_gravity=false;
@@ -57,6 +58,7 @@ void Require(bool valid, const std::string &message) {
     ATHENA_ERROR(msg);
   }
 }
+Real ShortTestTimeStep(MeshBlock*) { return short_test_max_dt; }
 Real Positive(ParameterInput *pin, const char *block, const char *name) {
   const Real v=pin->GetReal(block,name);
   Require(std::isfinite(v) && v>0.0, std::string(block)+"/"+name+" must be positive");
@@ -367,8 +369,22 @@ FACE_CALLBACKS(OX3,2,false)
 #undef FACE_CALLBACKS
 
 void Mesh::InitUserMeshData(ParameterInput *pin) {
-  Require(std::string(COORDINATE_SYSTEM)=="cartesian" && f2 && f3 && !multilevel,
-          "use a uniform 3D Cartesian mesh; AMR/SMR normalization is not implemented");
+  const bool static_refinement_trial = pin->GetOrAddBoolean(
+      "problem", "static_refinement_trial", false);
+  short_test_max_dt=pin->GetOrAddReal("problem", "short_test_max_dt", -1.0);
+  Require(short_test_max_dt<0.0 || (std::isfinite(short_test_max_dt)
+          && short_test_max_dt>0.0),
+          "problem/short_test_max_dt must be positive when specified");
+  Require(std::string(COORDINATE_SYSTEM)=="cartesian" && f2 && f3,
+          "use a 3D Cartesian mesh");
+  Require(!multilevel || (static_refinement_trial && !adaptive
+          && pin->GetString("mesh", "refinement") == "static"
+          && pin->GetInteger("time", "xorder") == 2),
+          "multilevel RSG requires the opt-in static, xorder=2 trial");
+  Require(!multilevel || (!pin->GetOrAddBoolean("time", "correct_ic", false)
+          && !pin->GetOrAddBoolean("time", "correct_ic_fld_radiation", false)),
+          "second-order static refinement trial requires both initial cell-average "
+          "corrections off");
   rho_unit=Positive(pin,"hydro","rho_unit");
   energy_unit=Positive(pin,"hydro","egas_unit");
   length_unit=Positive(pin,"hydro","leng_unit");
@@ -399,6 +415,27 @@ void Mesh::InitUserMeshData(ParameterInput *pin) {
   router=Positive(pin,"problem","outer_flattening_fraction")*radius;
   rheat=Positive(pin,"problem","heating_radius_fraction")*radius;
   Require(rheat<=rcore && rcore<radius && router>radius,"require rheat<=rcore<R<router");
+  if (multilevel) {
+    Require(!core_quadrature_gravity,
+            "static refinement trial requires problem/core_quadrature_gravity=false");
+    int regions=0;
+    for (InputBlock *block=pin->pfirst_block; block!=nullptr; block=block->pnext) {
+      if (block->block_name.compare(0,10,"refinement") != 0) continue;
+      ++regions;
+      Real d2=0.0;
+      for (int axis=1;axis<=3;++axis) {
+        const std::string key="x"+std::to_string(axis);
+        const Real lo=pin->GetReal(block->block_name,key+"min");
+        const Real hi=pin->GetReal(block->block_name,key+"max");
+        const Real min_abs=(lo>0.0 ? lo : hi<0.0 ? -hi : 0.0);
+        d2+=SQR(min_abs);
+      }
+      Require(pin->GetInteger(block->block_name,"level")==1
+              && std::sqrt(d2)>rheat,
+              "trial refinement patches must be one level and outside heating sphere");
+    }
+    Require(regions>0,"static refinement trial needs a refinement region");
+  }
   tsurface=Positive(pin,"problem","surface_temperature");
   index_poly=Positive(pin,"problem","polytropic_index");
   bc_scale=Positive(pin,"problem","boundary_scale_height_factor");
@@ -524,6 +561,7 @@ void Mesh::InitUserMeshData(ParameterInput *pin) {
   }
   heat_norm=norm[1];
   EnrollUserExplicitSourceFunction(GravityHeating);
+  if (short_test_max_dt>0.0) EnrollUserTimeStepFunction(ShortTestTimeStep);
   AllocateUserHistoryOutput(18);
   const char *hist[18]={"Erad","Egas","Epotential","radial_momentum","mass_r2",
       "Lheat","Mach_max","Edrag_removed","Pdrag_x_removed","Pdrag_y_removed",
@@ -536,7 +574,8 @@ void Mesh::InitUserMeshData(ParameterInput *pin) {
       << ", fixed Freytag potential\n"
       << "STAR_IN_BOX rho_surface=" << rho_surface << " heat_norm=" << heat_norm
       << " gas_mass=" << gas_mass << " Lheat=" << lum_code
-      << " time_unit_s=" << time_unit << " core_cells=" << 2.0*rcore/dx[0] << '\n';
+      << " time_unit_s=" << time_unit << " core_cells=" << 2.0*rcore/dx[0]
+      << " static_refinement_trial=" << static_refinement_trial << '\n';
 }
 
 void MeshBlock::InitUserMeshBlockData(ParameterInput*) {

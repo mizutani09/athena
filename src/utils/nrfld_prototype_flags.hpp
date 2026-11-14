@@ -9,6 +9,7 @@ struct DefaultMode {
   bool enabled = false;
   bool test_c = false;
   bool mach5 = false;
+  bool rsg_trial = false;
   bool fixed_limiter = false;
 };
 
@@ -28,11 +29,12 @@ inline bool FlagOrDefault(const char *name, bool fallback) {
 }
 
 inline void ConfigureDefault(bool enabled, bool test_c, bool mach5,
-                             bool fixed_limiter) {
+                             bool fixed_limiter, bool rsg_trial = false) {
   DefaultMode &mode = Mode();
   mode.enabled = enabled;
   mode.test_c = test_c;
   mode.mach5 = mach5;
+  mode.rsg_trial = rsg_trial;
   mode.fixed_limiter = fixed_limiter;
 }
 
@@ -56,7 +58,8 @@ inline bool SharedCoeff() {
 
 inline bool TangentialReconstruction() {
   return Enabled() && FlagOrDefault(
-      "ATHENA_NRFLD_EXPERIMENTAL_TANGENTIAL_RECONSTRUCTION", DefaultEnabled());
+      "ATHENA_NRFLD_EXPERIMENTAL_TANGENTIAL_RECONSTRUCTION",
+      DefaultEnabled() && !Mode().rsg_trial);
 }
 
 inline bool SeriesResistance() {
