@@ -1,0 +1,1052 @@
+STAR_IN_BOX mode=tabular-profile, fixed Freytag potential
+STAR_IN_BOX rho_surface=0.1013465907003977 heat_norm=4379592.920911347 gas_mass=1771635148.126937 Lheat=229929.4660451123 time_unit_s=21999.96568179141 core_cells=42.0544285007422
+[LINEAR_MG_CONFIG] threshold=1.000000000000000e-01 max_vcycles=100 divergence_patience=1 max_transient_growth=2.000000000000000e+00 solver=fgmres coarse_operator=galerkin
+[LINEAR_FGMRES_CONFIG] restart=20 max_iterations=200 mg_vcycles=1 compact=1 reuse=1 batched_reductions=1
+### Warning in Reconstruction constructor
+The combination of general EOS and xorder > 2 has documented bugs in some cases.
+### Warning in Reconstruction constructor
+The combination of general EOS and xorder > 2 has documented bugs in some cases.
+### Warning in Reconstruction constructor
+The combination of general EOS and xorder > 2 has documented bugs in some cases.
+### Warning in Reconstruction constructor
+The combination of general EOS and xorder > 2 has documented bugs in some cases.
+### Warning in Reconstruction constructor
+The combination of general EOS and xorder > 2 has documented bugs in some cases.
+### Warning in Reconstruction constructor
+The combination of general EOS and xorder > 2 has documented bugs in some cases.
+### Warning in Reconstruction constructor
+The combination of general EOS and xorder > 2 has documented bugs in some cases.
+### Warning in Reconstruction constructor
+The combination of general EOS and xorder > 2 has documented bugs in some cases.
+### Warning in Reconstruction constructor
+The combination of general EOS and xorder > 2 has documented bugs in some cases.
+### Warning in Reconstruction constructor
+The combination of general EOS and xorder > 2 has documented bugs in some cases.
+### Warning in Reconstruction constructor
+The combination of general EOS and xorder > 2 has documented bugs in some cases.
+### Warning in Reconstruction constructor
+The combination of general EOS and xorder > 2 has documented bugs in some cases.
+### Warning in Reconstruction constructor
+The combination of general EOS and xorder > 2 has documented bugs in some cases.
+FLD_PRESSURE_COUPLING mode=source active=1 source_force=1 pressure_flux=0 mixed_frame_source=0 mixed_frame_transport=1 is_couple=1 only_rad=0 include_radiation_force=1 riemann_pressure=0
+### Warning in Reconstruction constructor
+The combination of general EOS and xorder > 2 has documented bugs in some cases.
+### Warning in Reconstruction constructor
+The combination of general EOS and xorder > 2 has documented bugs in some cases.
+### Warning in Reconstruction constructor
+The combination of general EOS and xorder > 2 has documented bugs in some cases.
+### Warning in Reconstruction constructor
+The combination of general EOS and xorder > 2 has documented bugs in some cases.
+### Warning in Reconstruction constructor
+The combination of general EOS and xorder > 2 has documented bugs in some cases.
+### Warning in Reconstruction constructor
+The combination of general EOS and xorder > 2 has documented bugs in some cases.
+### Warning in Reconstruction constructor
+The combination of general EOS and xorder > 2 has documented bugs in some cases.
+### Warning in Reconstruction constructor
+The combination of general EOS and xorder > 2 has documented bugs in some cases.
+### Warning in Reconstruction constructor
+The combination of general EOS and xorder > 2 has documented bugs in some cases.
+### Warning in Reconstruction constructor
+The combination of general EOS and xorder > 2 has documented bugs in some cases.
+### Warning in Reconstruction constructor
+The combination of general EOS and xorder > 2 has documented bugs in some cases.
+### Warning in Reconstruction constructor
+The combination of general EOS and xorder > 2 has documented bugs in some cases.
+### Warning in Reconstruction constructor
+The combination of general EOS and xorder > 2 has documented bugs in some cases.
+### Warning in Reconstruction constructor
+The combination of general EOS and xorder > 2 has documented bugs in some cases.
+### Warning in Reconstruction constructor
+The combination of general EOS and xorder > 2 has documented bugs in some cases.
+### Warning in Reconstruction constructor
+The combination of general EOS and xorder > 2 has documented bugs in some cases.
+### Warning in Reconstruction constructor
+The combination of general EOS and xorder > 2 has documented bugs in some cases.
+### Warning in Reconstruction constructor
+The combination of general EOS and xorder > 2 has documented bugs in some cases.
+### Warning in Reconstruction constructor
+The combination of general EOS and xorder > 2 has documented bugs in some cases.
+### Warning in Reconstruction constructor
+The combination of general EOS and xorder > 2 has documented bugs in some cases.
+### Warning in Reconstruction constructor
+The combination of general EOS and xorder > 2 has documented bugs in some cases.
+### Warning in Reconstruction constructor
+The combination of general EOS and xorder > 2 has documented bugs in some cases.
+### Warning in Reconstruction constructor
+The combination of general EOS and xorder > 2 has documented bugs in some cases.
+### Warning in Reconstruction constructor
+The combination of general EOS and xorder > 2 has documented bugs in some cases.
+### Warning in Reconstruction constructor
+The combination of general EOS and xorder > 2 has documented bugs in some cases.
+### Warning in Reconstruction constructor
+The combination of general EOS and xorder > 2 has documented bugs in some cases.
+### Warning in Reconstruction constructor
+The combination of general EOS and xorder > 2 has documented bugs in some cases.
+### Warning in Reconstruction constructor
+The combination of general EOS and xorder > 2 has documented bugs in some cases.
+### Warning in Reconstruction constructor
+The combination of general EOS and xorder > 2 has documented bugs in some cases.
+### Warning in Reconstruction constructor
+The combination of general EOS and xorder > 2 has documented bugs in some cases.
+### Warning in Reconstruction constructor
+The combination of general EOS and xorder > 2 has documented bugs in some cases.
+### Warning in Reconstruction constructor
+The combination of general EOS and xorder > 2 has documented bugs in some cases.
+### Warning in Reconstruction constructor
+The combination of general EOS and xorder > 2 has documented bugs in some cases.
+### Warning in Reconstruction constructor
+The combination of general EOS and xorder > 2 has documented bugs in some cases.
+### Warning in Reconstruction constructor
+The combination of general EOS and xorder > 2 has documented bugs in some cases.
+### Warning in Reconstruction constructor
+The combination of general EOS and xorder > 2 has documented bugs in some cases.
+### Warning in Reconstruction constructor
+The combination of general EOS and xorder > 2 has documented bugs in some cases.
+### Warning in Reconstruction constructor
+The combination of general EOS and xorder > 2 has documented bugs in some cases.
+### Warning in Reconstruction constructor
+The combination of general EOS and xorder > 2 has documented bugs in some cases.
+### Warning in Reconstruction constructor
+The combination of general EOS and xorder > 2 has documented bugs in some cases.
+### Warning in Reconstruction constructor
+The combination of general EOS and xorder > 2 has documented bugs in some cases.
+### Warning in Reconstruction constructor
+The combination of general EOS and xorder > 2 has documented bugs in some cases.
+### Warning in Reconstruction constructor
+The combination of general EOS and xorder > 2 has documented bugs in some cases.
+### Warning in Reconstruction constructor
+The combination of general EOS and xorder > 2 has documented bugs in some cases.
+### Warning in Reconstruction constructor
+The combination of general EOS and xorder > 2 has documented bugs in some cases.
+### Warning in Reconstruction constructor
+The combination of general EOS and xorder > 2 has documented bugs in some cases.
+### Warning in Reconstruction constructor
+The combination of general EOS and xorder > 2 has documented bugs in some cases.
+### Warning in Reconstruction constructor
+The combination of general EOS and xorder > 2 has documented bugs in some cases.
+### Warning in Reconstruction constructor
+The combination of general EOS and xorder > 2 has documented bugs in some cases.
+### Warning in Reconstruction constructor
+The combination of general EOS and xorder > 2 has documented bugs in some cases.
+### Warning in Reconstruction constructor
+The combination of general EOS and xorder > 2 has documented bugs in some cases.
+### Warning in Reconstruction constructor
+The combination of general EOS and xorder > 2 has documented bugs in some cases.
+### Warning in Reconstruction constructor
+The combination of general EOS and xorder > 2 has documented bugs in some cases.
+### Warning in Reconstruction constructor
+The combination of general EOS and xorder > 2 has documented bugs in some cases.
+### Warning in Reconstruction constructor
+The combination of general EOS and xorder > 2 has documented bugs in some cases.
+### Warning in Reconstruction constructor
+The combination of general EOS and xorder > 2 has documented bugs in some cases.
+### Warning in Reconstruction constructor
+The combination of general EOS and xorder > 2 has documented bugs in some cases.
+### Warning in Reconstruction constructor
+The combination of general EOS and xorder > 2 has documented bugs in some cases.
+### Warning in Reconstruction constructor
+The combination of general EOS and xorder > 2 has documented bugs in some cases.
+### Warning in Reconstruction constructor
+The combination of general EOS and xorder > 2 has documented bugs in some cases.
+### Warning in Reconstruction constructor
+The combination of general EOS and xorder > 2 has documented bugs in some cases.
+### Warning in Reconstruction constructor
+The combination of general EOS and xorder > 2 has documented bugs in some cases.
+### Warning in Reconstruction constructor
+The combination of general EOS and xorder > 2 has documented bugs in some cases.
+### Warning in Reconstruction constructor
+The combination of general EOS and xorder > 2 has documented bugs in some cases.
+### Warning in Reconstruction constructor
+The combination of general EOS and xorder > 2 has documented bugs in some cases.
+### Warning in Reconstruction constructor
+The combination of general EOS and xorder > 2 has documented bugs in some cases.
+### Warning in Reconstruction constructor
+The combination of general EOS and xorder > 2 has documented bugs in some cases.
+### Warning in Reconstruction constructor
+The combination of general EOS and xorder > 2 has documented bugs in some cases.
+### Warning in Reconstruction constructor
+The combination of general EOS and xorder > 2 has documented bugs in some cases.
+### Warning in Reconstruction constructor
+The combination of general EOS and xorder > 2 has documented bugs in some cases.
+### Warning in Reconstruction constructor
+The combination of general EOS and xorder > 2 has documented bugs in some cases.
+### Warning in Reconstruction constructor
+The combination of general EOS and xorder > 2 has documented bugs in some cases.
+### Warning in Reconstruction constructor
+The combination of general EOS and xorder > 2 has documented bugs in some cases.
+### Warning in Reconstruction constructor
+The combination of general EOS and xorder > 2 has documented bugs in some cases.
+### Warning in Reconstruction constructor
+The combination of general EOS and xorder > 2 has documented bugs in some cases.
+### Warning in Reconstruction constructor
+The combination of general EOS and xorder > 2 has documented bugs in some cases.
+### Warning in Reconstruction constructor
+The combination of general EOS and xorder > 2 has documented bugs in some cases.
+### Warning in Reconstruction constructor
+The combination of general EOS and xorder > 2 has documented bugs in some cases.
+### Warning in Reconstruction constructor
+The combination of general EOS and xorder > 2 has documented bugs in some cases.
+### Warning in Reconstruction constructor
+The combination of general EOS and xorder > 2 has documented bugs in some cases.
+### Warning in Reconstruction constructor
+The combination of general EOS and xorder > 2 has documented bugs in some cases.
+### Warning in Reconstruction constructor
+The combination of general EOS and xorder > 2 has documented bugs in some cases.
+### Warning in Reconstruction constructor
+The combination of general EOS and xorder > 2 has documented bugs in some cases.
+### Warning in Reconstruction constructor
+The combination of general EOS and xorder > 2 has documented bugs in some cases.
+### Warning in Reconstruction constructor
+The combination of general EOS and xorder > 2 has documented bugs in some cases.
+### Warning in Reconstruction constructor
+The combination of general EOS and xorder > 2 has documented bugs in some cases.
+### Warning in Reconstruction constructor
+The combination of general EOS and xorder > 2 has documented bugs in some cases.
+### Warning in Reconstruction constructor
+The combination of general EOS and xorder > 2 has documented bugs in some cases.
+### Warning in Reconstruction constructor
+The combination of general EOS and xorder > 2 has documented bugs in some cases.
+### Warning in Reconstruction constructor
+The combination of general EOS and xorder > 2 has documented bugs in some cases.
+### Warning in Reconstruction constructor
+The combination of general EOS and xorder > 2 has documented bugs in some cases.
+### Warning in Reconstruction constructor
+The combination of general EOS and xorder > 2 has documented bugs in some cases.
+### Warning in Reconstruction constructor
+The combination of general EOS and xorder > 2 has documented bugs in some cases.
+### Warning in Reconstruction constructor
+The combination of general EOS and xorder > 2 has documented bugs in some cases.
+### Warning in Reconstruction constructor
+The combination of general EOS and xorder > 2 has documented bugs in some cases.
+### Warning in Reconstruction constructor
+The combination of general EOS and xorder > 2 has documented bugs in some cases.
+### Warning in Reconstruction constructor
+The combination of general EOS and xorder > 2 has documented bugs in some cases.
+### Warning in Reconstruction constructor
+The combination of general EOS and xorder > 2 has documented bugs in some cases.
+### Warning in Reconstruction constructor
+The combination of general EOS and xorder > 2 has documented bugs in some cases.
+### Warning in Reconstruction constructor
+The combination of general EOS and xorder > 2 has documented bugs in some cases.
+### Warning in Reconstruction constructor
+The combination of general EOS and xorder > 2 has documented bugs in some cases.
+### Warning in Reconstruction constructor
+The combination of general EOS and xorder > 2 has documented bugs in some cases.
+### Warning in Reconstruction constructor
+The combination of general EOS and xorder > 2 has documented bugs in some cases.
+### Warning in Reconstruction constructor
+The combination of general EOS and xorder > 2 has documented bugs in some cases.
+### Warning in Reconstruction constructor
+The combination of general EOS and xorder > 2 has documented bugs in some cases.
+### Warning in Reconstruction constructor
+The combination of general EOS and xorder > 2 has documented bugs in some cases.
+### Warning in Reconstruction constructor
+The combination of general EOS and xorder > 2 has documented bugs in some cases.
+### Warning in Reconstruction constructor
+The combination of general EOS and xorder > 2 has documented bugs in some cases.
+### Warning in Reconstruction constructor
+The combination of general EOS and xorder > 2 has documented bugs in some cases.
+### Warning in Reconstruction constructor
+The combination of general EOS and xorder > 2 has documented bugs in some cases.
+### Warning in Reconstruction constructor
+The combination of general EOS and xorder > 2 has documented bugs in some cases.
+### Warning in Reconstruction constructor
+The combination of general EOS and xorder > 2 has documented bugs in some cases.
+### Warning in Reconstruction constructor
+The combination of general EOS and xorder > 2 has documented bugs in some cases.
+### Warning in Reconstruction constructor
+The combination of general EOS and xorder > 2 has documented bugs in some cases.
+### Warning in Reconstruction constructor
+The combination of general EOS and xorder > 2 has documented bugs in some cases.
+### Warning in Reconstruction constructor
+The combination of general EOS and xorder > 2 has documented bugs in some cases.
+### Warning in Reconstruction constructor
+The combination of general EOS and xorder > 2 has documented bugs in some cases.
+### Warning in Reconstruction constructor
+The combination of general EOS and xorder > 2 has documented bugs in some cases.
+### Warning in Reconstruction constructor
+The combination of general EOS and xorder > 2 has documented bugs in some cases.
+### Warning in Reconstruction constructor
+The combination of general EOS and xorder > 2 has documented bugs in some cases.
+### Warning in Reconstruction constructor
+The combination of general EOS and xorder > 2 has documented bugs in some cases.
+### Warning in Reconstruction constructor
+The combination of general EOS and xorder > 2 has documented bugs in some cases.
+### Warning in Reconstruction constructor
+The combination of general EOS and xorder > 2 has documented bugs in some cases.
+### Warning in Reconstruction constructor
+The combination of general EOS and xorder > 2 has documented bugs in some cases.
+### Warning in Reconstruction constructor
+The combination of general EOS and xorder > 2 has documented bugs in some cases.
+### Warning in Reconstruction constructor
+The combination of general EOS and xorder > 2 has documented bugs in some cases.
+### Warning in Reconstruction constructor
+The combination of general EOS and xorder > 2 has documented bugs in some cases.
+### Warning in Reconstruction constructor
+The combination of general EOS and xorder > 2 has documented bugs in some cases.
+### Warning in Reconstruction constructor
+The combination of general EOS and xorder > 2 has documented bugs in some cases.
+### Warning in Reconstruction constructor
+The combination of general EOS and xorder > 2 has documented bugs in some cases.
+### Warning in Reconstruction constructor
+The combination of general EOS and xorder > 2 has documented bugs in some cases.
+### Warning in Reconstruction constructor
+The combination of general EOS and xorder > 2 has documented bugs in some cases.
+### Warning in Reconstruction constructor
+The combination of general EOS and xorder > 2 has documented bugs in some cases.
+### Warning in Reconstruction constructor
+The combination of general EOS and xorder > 2 has documented bugs in some cases.
+### Warning in Reconstruction constructor
+The combination of general EOS and xorder > 2 has documented bugs in some cases.
+### Warning in Reconstruction constructor
+The combination of general EOS and xorder > 2 has documented bugs in some cases.
+### Warning in Reconstruction constructor
+The combination of general EOS and xorder > 2 has documented bugs in some cases.
+### Warning in Reconstruction constructor
+The combination of general EOS and xorder > 2 has documented bugs in some cases.
+### Warning in Reconstruction constructor
+The combination of general EOS and xorder > 2 has documented bugs in some cases.
+### Warning in Reconstruction constructor
+The combination of general EOS and xorder > 2 has documented bugs in some cases.
+### Warning in Reconstruction constructor
+The combination of general EOS and xorder > 2 has documented bugs in some cases.
+### Warning in Reconstruction constructor
+The combination of general EOS and xorder > 2 has documented bugs in some cases.
+### Warning in Reconstruction constructor
+The combination of general EOS and xorder > 2 has documented bugs in some cases.
+### Warning in Reconstruction constructor
+The combination of general EOS and xorder > 2 has documented bugs in some cases.
+### Warning in Reconstruction constructor
+The combination of general EOS and xorder > 2 has documented bugs in some cases.
+### Warning in Reconstruction constructor
+The combination of general EOS and xorder > 2 has documented bugs in some cases.
+### Warning in Reconstruction constructor
+The combination of general EOS and xorder > 2 has documented bugs in some cases.
+### Warning in Reconstruction constructor
+The combination of general EOS and xorder > 2 has documented bugs in some cases.
+### Warning in Reconstruction constructor
+The combination of general EOS and xorder > 2 has documented bugs in some cases.
+### Warning in Reconstruction constructor
+The combination of general EOS and xorder > 2 has documented bugs in some cases.
+### Warning in Reconstruction constructor
+The combination of general EOS and xorder > 2 has documented bugs in some cases.
+### Warning in Reconstruction constructor
+The combination of general EOS and xorder > 2 has documented bugs in some cases.
+### Warning in Reconstruction constructor
+The combination of general EOS and xorder > 2 has documented bugs in some cases.
+### Warning in Reconstruction constructor
+The combination of general EOS and xorder > 2 has documented bugs in some cases.
+### Warning in Reconstruction constructor
+The combination of general EOS and xorder > 2 has documented bugs in some cases.
+### Warning in Reconstruction constructor
+The combination of general EOS and xorder > 2 has documented bugs in some cases.
+### Warning in Reconstruction constructor
+The combination of general EOS and xorder > 2 has documented bugs in some cases.
+### Warning in Reconstruction constructor
+The combination of general EOS and xorder > 2 has documented bugs in some cases.
+### Warning in Reconstruction constructor
+The combination of general EOS and xorder > 2 has documented bugs in some cases.
+### Warning in Reconstruction constructor
+The combination of general EOS and xorder > 2 has documented bugs in some cases.
+### Warning in Reconstruction constructor
+The combination of general EOS and xorder > 2 has documented bugs in some cases.
+### Warning in Reconstruction constructor
+The combination of general EOS and xorder > 2 has documented bugs in some cases.
+### Warning in Reconstruction constructor
+The combination of general EOS and xorder > 2 has documented bugs in some cases.
+### Warning in Reconstruction constructor
+The combination of general EOS and xorder > 2 has documented bugs in some cases.
+### Warning in Reconstruction constructor
+The combination of general EOS and xorder > 2 has documented bugs in some cases.
+### Warning in Reconstruction constructor
+The combination of general EOS and xorder > 2 has documented bugs in some cases.
+### Warning in Reconstruction constructor
+The combination of general EOS and xorder > 2 has documented bugs in some cases.
+### Warning in Reconstruction constructor
+The combination of general EOS and xorder > 2 has documented bugs in some cases.
+### Warning in Reconstruction constructor
+The combination of general EOS and xorder > 2 has documented bugs in some cases.
+### Warning in Reconstruction constructor
+The combination of general EOS and xorder > 2 has documented bugs in some cases.
+### Warning in Reconstruction constructor
+The combination of general EOS and xorder > 2 has documented bugs in some cases.
+### Warning in Reconstruction constructor
+The combination of general EOS and xorder > 2 has documented bugs in some cases.
+### Warning in Reconstruction constructor
+The combination of general EOS and xorder > 2 has documented bugs in some cases.
+### Warning in Reconstruction constructor
+The combination of general EOS and xorder > 2 has documented bugs in some cases.
+### Warning in Reconstruction constructor
+The combination of general EOS and xorder > 2 has documented bugs in some cases.
+### Warning in Reconstruction constructor
+The combination of general EOS and xorder > 2 has documented bugs in some cases.
+### Warning in Reconstruction constructor
+The combination of general EOS and xorder > 2 has documented bugs in some cases.
+### Warning in Reconstruction constructor
+The combination of general EOS and xorder > 2 has documented bugs in some cases.
+### Warning in Reconstruction constructor
+The combination of general EOS and xorder > 2 has documented bugs in some cases.
+### Warning in Reconstruction constructor
+The combination of general EOS and xorder > 2 has documented bugs in some cases.
+### Warning in Reconstruction constructor
+The combination of general EOS and xorder > 2 has documented bugs in some cases.
+### Warning in Reconstruction constructor
+The combination of general EOS and xorder > 2 has documented bugs in some cases.
+### Warning in Reconstruction constructor
+The combination of general EOS and xorder > 2 has documented bugs in some cases.
+### Warning in Reconstruction constructor
+The combination of general EOS and xorder > 2 has documented bugs in some cases.
+### Warning in Reconstruction constructor
+The combination of general EOS and xorder > 2 has documented bugs in some cases.
+### Warning in Reconstruction constructor
+The combination of general EOS and xorder > 2 has documented bugs in some cases.
+### Warning in Reconstruction constructor
+The combination of general EOS and xorder > 2 has documented bugs in some cases.
+### Warning in Reconstruction constructor
+The combination of general EOS and xorder > 2 has documented bugs in some cases.
+### Warning in Reconstruction constructor
+The combination of general EOS and xorder > 2 has documented bugs in some cases.
+### Warning in Reconstruction constructor
+The combination of general EOS and xorder > 2 has documented bugs in some cases.
+### Warning in Reconstruction constructor
+The combination of general EOS and xorder > 2 has documented bugs in some cases.
+### Warning in Reconstruction constructor
+The combination of general EOS and xorder > 2 has documented bugs in some cases.
+### Warning in Reconstruction constructor
+The combination of general EOS and xorder > 2 has documented bugs in some cases.
+### Warning in Reconstruction constructor
+The combination of general EOS and xorder > 2 has documented bugs in some cases.
+### Warning in Reconstruction constructor
+The combination of general EOS and xorder > 2 has documented bugs in some cases.
+### Warning in Reconstruction constructor
+The combination of general EOS and xorder > 2 has documented bugs in some cases.
+### Warning in Reconstruction constructor
+The combination of general EOS and xorder > 2 has documented bugs in some cases.
+### Warning in Reconstruction constructor
+The combination of general EOS and xorder > 2 has documented bugs in some cases.
+### Warning in Reconstruction constructor
+The combination of general EOS and xorder > 2 has documented bugs in some cases.
+### Warning in Reconstruction constructor
+The combination of general EOS and xorder > 2 has documented bugs in some cases.
+### Warning in Reconstruction constructor
+The combination of general EOS and xorder > 2 has documented bugs in some cases.
+### Warning in Reconstruction constructor
+The combination of general EOS and xorder > 2 has documented bugs in some cases.
+### Warning in Reconstruction constructor
+The combination of general EOS and xorder > 2 has documented bugs in some cases.
+### Warning in Reconstruction constructor
+The combination of general EOS and xorder > 2 has documented bugs in some cases.
+### Warning in Reconstruction constructor
+The combination of general EOS and xorder > 2 has documented bugs in some cases.
+### Warning in Reconstruction constructor
+The combination of general EOS and xorder > 2 has documented bugs in some cases.
+### Warning in Reconstruction constructor
+The combination of general EOS and xorder > 2 has documented bugs in some cases.
+### Warning in Reconstruction constructor
+The combination of general EOS and xorder > 2 has documented bugs in some cases.
+### Warning in Reconstruction constructor
+The combination of general EOS and xorder > 2 has documented bugs in some cases.
+### Warning in Reconstruction constructor
+The combination of general EOS and xorder > 2 has documented bugs in some cases.
+### Warning in Reconstruction constructor
+The combination of general EOS and xorder > 2 has documented bugs in some cases.
+### Warning in Reconstruction constructor
+The combination of general EOS and xorder > 2 has documented bugs in some cases.
+### Warning in Reconstruction constructor
+The combination of general EOS and xorder > 2 has documented bugs in some cases.
+### Warning in Reconstruction constructor
+The combination of general EOS and xorder > 2 has documented bugs in some cases.
+### Warning in Reconstruction constructor
+The combination of general EOS and xorder > 2 has documented bugs in some cases.
+### Warning in Reconstruction constructor
+The combination of general EOS and xorder > 2 has documented bugs in some cases.
+### Warning in Reconstruction constructor
+The combination of general EOS and xorder > 2 has documented bugs in some cases.
+### Warning in Reconstruction constructor
+The combination of general EOS and xorder > 2 has documented bugs in some cases.
+### Warning in Reconstruction constructor
+The combination of general EOS and xorder > 2 has documented bugs in some cases.
+### Warning in Reconstruction constructor
+The combination of general EOS and xorder > 2 has documented bugs in some cases.
+### Warning in Reconstruction constructor
+The combination of general EOS and xorder > 2 has documented bugs in some cases.
+### Warning in Reconstruction constructor
+The combination of general EOS and xorder > 2 has documented bugs in some cases.
+### Warning in Reconstruction constructor
+The combination of general EOS and xorder > 2 has documented bugs in some cases.
+### Warning in Reconstruction constructor
+The combination of general EOS and xorder > 2 has documented bugs in some cases.
+### Warning in Reconstruction constructor
+The combination of general EOS and xorder > 2 has documented bugs in some cases.
+### Warning in Reconstruction constructor
+The combination of general EOS and xorder > 2 has documented bugs in some cases.
+### Warning in Reconstruction constructor
+The combination of general EOS and xorder > 2 has documented bugs in some cases.
+### Warning in Reconstruction constructor
+The combination of general EOS and xorder > 2 has documented bugs in some cases.
+### Warning in Reconstruction constructor
+The combination of general EOS and xorder > 2 has documented bugs in some cases.
+### Warning in Reconstruction constructor
+The combination of general EOS and xorder > 2 has documented bugs in some cases.
+### Warning in Reconstruction constructor
+The combination of general EOS and xorder > 2 has documented bugs in some cases.
+### Warning in Reconstruction constructor
+The combination of general EOS and xorder > 2 has documented bugs in some cases.
+### Warning in Reconstruction constructor
+The combination of general EOS and xorder > 2 has documented bugs in some cases.
+### Warning in Reconstruction constructor
+The combination of general EOS and xorder > 2 has documented bugs in some cases.
+### Warning in Reconstruction constructor
+The combination of general EOS and xorder > 2 has documented bugs in some cases.
+### Warning in Reconstruction constructor
+The combination of general EOS and xorder > 2 has documented bugs in some cases.
+### Warning in Reconstruction constructor
+The combination of general EOS and xorder > 2 has documented bugs in some cases.
+### Warning in Reconstruction constructor
+The combination of general EOS and xorder > 2 has documented bugs in some cases.
+### Warning in Reconstruction constructor
+The combination of general EOS and xorder > 2 has documented bugs in some cases.
+### Warning in Reconstruction constructor
+The combination of general EOS and xorder > 2 has documented bugs in some cases.
+### Warning in Reconstruction constructor
+The combination of general EOS and xorder > 2 has documented bugs in some cases.
+### Warning in Reconstruction constructor
+The combination of general EOS and xorder > 2 has documented bugs in some cases.
+### Warning in Reconstruction constructor
+The combination of general EOS and xorder > 2 has documented bugs in some cases.
+### Warning in Reconstruction constructor
+The combination of general EOS and xorder > 2 has documented bugs in some cases.
+### Warning in Reconstruction constructor
+The combination of general EOS and xorder > 2 has documented bugs in some cases.
+### Warning in Reconstruction constructor
+The combination of general EOS and xorder > 2 has documented bugs in some cases.
+### Warning in Reconstruction constructor
+The combination of general EOS and xorder > 2 has documented bugs in some cases.
+### Warning in Reconstruction constructor
+The combination of general EOS and xorder > 2 has documented bugs in some cases.
+### Warning in Reconstruction constructor
+The combination of general EOS and xorder > 2 has documented bugs in some cases.
+### Warning in Reconstruction constructor
+The combination of general EOS and xorder > 2 has documented bugs in some cases.
+### Warning in Reconstruction constructor
+The combination of general EOS and xorder > 2 has documented bugs in some cases.
+### Warning in Reconstruction constructor
+The combination of general EOS and xorder > 2 has documented bugs in some cases.
+### Warning in Reconstruction constructor
+The combination of general EOS and xorder > 2 has documented bugs in some cases.
+### Warning in Reconstruction constructor
+The combination of general EOS and xorder > 2 has documented bugs in some cases.
+### Warning in Reconstruction constructor
+The combination of general EOS and xorder > 2 has documented bugs in some cases.
+### Warning in Reconstruction constructor
+The combination of general EOS and xorder > 2 has documented bugs in some cases.
+### Warning in Reconstruction constructor
+The combination of general EOS and xorder > 2 has documented bugs in some cases.
+### Warning in Reconstruction constructor
+The combination of general EOS and xorder > 2 has documented bugs in some cases.
+### Warning in Reconstruction constructor
+The combination of general EOS and xorder > 2 has documented bugs in some cases.
+### Warning in Reconstruction constructor
+The combination of general EOS and xorder > 2 has documented bugs in some cases.
+### Warning in Reconstruction constructor
+The combination of general EOS and xorder > 2 has documented bugs in some cases.
+### Warning in Reconstruction constructor
+The combination of general EOS and xorder > 2 has documented bugs in some cases.
+### Warning in Reconstruction constructor
+The combination of general EOS and xorder > 2 has documented bugs in some cases.
+### Warning in Reconstruction constructor
+The combination of general EOS and xorder > 2 has documented bugs in some cases.
+### Warning in Reconstruction constructor
+The combination of general EOS and xorder > 2 has documented bugs in some cases.
+### Warning in Reconstruction constructor
+The combination of general EOS and xorder > 2 has documented bugs in some cases.
+### Warning in Reconstruction constructor
+The combination of general EOS and xorder > 2 has documented bugs in some cases.
+### Warning in Reconstruction constructor
+The combination of general EOS and xorder > 2 has documented bugs in some cases.
+### Warning in Reconstruction constructor
+The combination of general EOS and xorder > 2 has documented bugs in some cases.
+### Warning in Reconstruction constructor
+The combination of general EOS and xorder > 2 has documented bugs in some cases.
+### Warning in Reconstruction constructor
+The combination of general EOS and xorder > 2 has documented bugs in some cases.
+### Warning in Reconstruction constructor
+The combination of general EOS and xorder > 2 has documented bugs in some cases.
+### Warning in Reconstruction constructor
+The combination of general EOS and xorder > 2 has documented bugs in some cases.
+### Warning in Reconstruction constructor
+The combination of general EOS and xorder > 2 has documented bugs in some cases.
+### Warning in Reconstruction constructor
+The combination of general EOS and xorder > 2 has documented bugs in some cases.
+### Warning in Reconstruction constructor
+The combination of general EOS and xorder > 2 has documented bugs in some cases.
+### Warning in Reconstruction constructor
+The combination of general EOS and xorder > 2 has documented bugs in some cases.
+### Warning in Reconstruction constructor
+The combination of general EOS and xorder > 2 has documented bugs in some cases.
+### Warning in Reconstruction constructor
+The combination of general EOS and xorder > 2 has documented bugs in some cases.
+### Warning in Reconstruction constructor
+The combination of general EOS and xorder > 2 has documented bugs in some cases.
+### Warning in Reconstruction constructor
+The combination of general EOS and xorder > 2 has documented bugs in some cases.
+### Warning in Reconstruction constructor
+The combination of general EOS and xorder > 2 has documented bugs in some cases.
+### Warning in Reconstruction constructor
+The combination of general EOS and xorder > 2 has documented bugs in some cases.
+### Warning in Reconstruction constructor
+The combination of general EOS and xorder > 2 has documented bugs in some cases.
+### Warning in Reconstruction constructor
+The combination of general EOS and xorder > 2 has documented bugs in some cases.
+### Warning in Reconstruction constructor
+The combination of general EOS and xorder > 2 has documented bugs in some cases.
+### Warning in Reconstruction constructor
+The combination of general EOS and xorder > 2 has documented bugs in some cases.
+### Warning in Reconstruction constructor
+The combination of general EOS and xorder > 2 has documented bugs in some cases.
+### Warning in Reconstruction constructor
+The combination of general EOS and xorder > 2 has documented bugs in some cases.
+### Warning in Reconstruction constructor
+The combination of general EOS and xorder > 2 has documented bugs in some cases.
+### Warning in Reconstruction constructor
+The combination of general EOS and xorder > 2 has documented bugs in some cases.
+### Warning in Reconstruction constructor
+The combination of general EOS and xorder > 2 has documented bugs in some cases.
+### Warning in Reconstruction constructor
+The combination of general EOS and xorder > 2 has documented bugs in some cases.
+### Warning in Reconstruction constructor
+The combination of general EOS and xorder > 2 has documented bugs in some cases.
+### Warning in Reconstruction constructor
+The combination of general EOS and xorder > 2 has documented bugs in some cases.
+### Warning in Reconstruction constructor
+The combination of general EOS and xorder > 2 has documented bugs in some cases.
+### Warning in Reconstruction constructor
+The combination of general EOS and xorder > 2 has documented bugs in some cases.
+### Warning in Reconstruction constructor
+The combination of general EOS and xorder > 2 has documented bugs in some cases.
+### Warning in Reconstruction constructor
+The combination of general EOS and xorder > 2 has documented bugs in some cases.
+### Warning in Reconstruction constructor
+The combination of general EOS and xorder > 2 has documented bugs in some cases.
+### Warning in Reconstruction constructor
+The combination of general EOS and xorder > 2 has documented bugs in some cases.
+### Warning in Reconstruction constructor
+The combination of general EOS and xorder > 2 has documented bugs in some cases.
+### Warning in Reconstruction constructor
+The combination of general EOS and xorder > 2 has documented bugs in some cases.
+### Warning in Reconstruction constructor
+The combination of general EOS and xorder > 2 has documented bugs in some cases.
+### Warning in Reconstruction constructor
+The combination of general EOS and xorder > 2 has documented bugs in some cases.
+### Warning in Reconstruction constructor
+The combination of general EOS and xorder > 2 has documented bugs in some cases.
+### Warning in Reconstruction constructor
+The combination of general EOS and xorder > 2 has documented bugs in some cases.
+### Warning in Reconstruction constructor
+The combination of general EOS and xorder > 2 has documented bugs in some cases.
+### Warning in Reconstruction constructor
+The combination of general EOS and xorder > 2 has documented bugs in some cases.
+### Warning in Reconstruction constructor
+The combination of general EOS and xorder > 2 has documented bugs in some cases.
+### Warning in Reconstruction constructor
+The combination of general EOS and xorder > 2 has documented bugs in some cases.
+### Warning in Reconstruction constructor
+The combination of general EOS and xorder > 2 has documented bugs in some cases.
+### Warning in Reconstruction constructor
+The combination of general EOS and xorder > 2 has documented bugs in some cases.
+### Warning in Reconstruction constructor
+The combination of general EOS and xorder > 2 has documented bugs in some cases.
+### Warning in Reconstruction constructor
+The combination of general EOS and xorder > 2 has documented bugs in some cases.
+### Warning in Reconstruction constructor
+The combination of general EOS and xorder > 2 has documented bugs in some cases.
+### Warning in Reconstruction constructor
+The combination of general EOS and xorder > 2 has documented bugs in some cases.
+### Warning in Reconstruction constructor
+The combination of general EOS and xorder > 2 has documented bugs in some cases.
+### Warning in Reconstruction constructor
+The combination of general EOS and xorder > 2 has documented bugs in some cases.
+### Warning in Reconstruction constructor
+The combination of general EOS and xorder > 2 has documented bugs in some cases.
+### Warning in Reconstruction constructor
+The combination of general EOS and xorder > 2 has documented bugs in some cases.
+### Warning in Reconstruction constructor
+The combination of general EOS and xorder > 2 has documented bugs in some cases.
+### Warning in Reconstruction constructor
+The combination of general EOS and xorder > 2 has documented bugs in some cases.
+### Warning in Reconstruction constructor
+The combination of general EOS and xorder > 2 has documented bugs in some cases.
+### Warning in Reconstruction constructor
+The combination of general EOS and xorder > 2 has documented bugs in some cases.
+### Warning in Reconstruction constructor
+The combination of general EOS and xorder > 2 has documented bugs in some cases.
+### Warning in Reconstruction constructor
+The combination of general EOS and xorder > 2 has documented bugs in some cases.
+### Warning in Reconstruction constructor
+The combination of general EOS and xorder > 2 has documented bugs in some cases.
+### Warning in Reconstruction constructor
+The combination of general EOS and xorder > 2 has documented bugs in some cases.
+### Warning in Reconstruction constructor
+The combination of general EOS and xorder > 2 has documented bugs in some cases.
+### Warning in Reconstruction constructor
+The combination of general EOS and xorder > 2 has documented bugs in some cases.
+### Warning in Reconstruction constructor
+The combination of general EOS and xorder > 2 has documented bugs in some cases.
+### Warning in Reconstruction constructor
+The combination of general EOS and xorder > 2 has documented bugs in some cases.
+### Warning in Reconstruction constructor
+The combination of general EOS and xorder > 2 has documented bugs in some cases.
+### Warning in Reconstruction constructor
+The combination of general EOS and xorder > 2 has documented bugs in some cases.
+### Warning in Reconstruction constructor
+The combination of general EOS and xorder > 2 has documented bugs in some cases.
+### Warning in Reconstruction constructor
+The combination of general EOS and xorder > 2 has documented bugs in some cases.
+### Warning in Reconstruction constructor
+The combination of general EOS and xorder > 2 has documented bugs in some cases.
+### Warning in Reconstruction constructor
+The combination of general EOS and xorder > 2 has documented bugs in some cases.
+### Warning in Reconstruction constructor
+The combination of general EOS and xorder > 2 has documented bugs in some cases.
+### Warning in Reconstruction constructor
+The combination of general EOS and xorder > 2 has documented bugs in some cases.
+### Warning in Reconstruction constructor
+The combination of general EOS and xorder > 2 has documented bugs in some cases.
+### Warning in Reconstruction constructor
+The combination of general EOS and xorder > 2 has documented bugs in some cases.
+### Warning in Reconstruction constructor
+The combination of general EOS and xorder > 2 has documented bugs in some cases.
+### Warning in Reconstruction constructor
+The combination of general EOS and xorder > 2 has documented bugs in some cases.
+### Warning in Reconstruction constructor
+The combination of general EOS and xorder > 2 has documented bugs in some cases.
+### Warning in Reconstruction constructor
+The combination of general EOS and xorder > 2 has documented bugs in some cases.
+### Warning in Reconstruction constructor
+The combination of general EOS and xorder > 2 has documented bugs in some cases.
+### Warning in Reconstruction constructor
+The combination of general EOS and xorder > 2 has documented bugs in some cases.
+### Warning in Reconstruction constructor
+The combination of general EOS and xorder > 2 has documented bugs in some cases.
+### Warning in Reconstruction constructor
+The combination of general EOS and xorder > 2 has documented bugs in some cases.
+### Warning in Reconstruction constructor
+The combination of general EOS and xorder > 2 has documented bugs in some cases.
+### Warning in Reconstruction constructor
+The combination of general EOS and xorder > 2 has documented bugs in some cases.
+### Warning in Reconstruction constructor
+The combination of general EOS and xorder > 2 has documented bugs in some cases.
+### Warning in Reconstruction constructor
+The combination of general EOS and xorder > 2 has documented bugs in some cases.
+### Warning in Reconstruction constructor
+The combination of general EOS and xorder > 2 has documented bugs in some cases.
+### Warning in Reconstruction constructor
+The combination of general EOS and xorder > 2 has documented bugs in some cases.
+### Warning in Reconstruction constructor
+The combination of general EOS and xorder > 2 has documented bugs in some cases.
+### Warning in Reconstruction constructor
+The combination of general EOS and xorder > 2 has documented bugs in some cases.
+### Warning in Reconstruction constructor
+The combination of general EOS and xorder > 2 has documented bugs in some cases.
+### Warning in Reconstruction constructor
+The combination of general EOS and xorder > 2 has documented bugs in some cases.
+### Warning in Reconstruction constructor
+The combination of general EOS and xorder > 2 has documented bugs in some cases.
+### Warning in Reconstruction constructor
+The combination of general EOS and xorder > 2 has documented bugs in some cases.
+### Warning in Reconstruction constructor
+The combination of general EOS and xorder > 2 has documented bugs in some cases.
+### Warning in Reconstruction constructor
+The combination of general EOS and xorder > 2 has documented bugs in some cases.
+### Warning in Reconstruction constructor
+The combination of general EOS and xorder > 2 has documented bugs in some cases.
+### Warning in Reconstruction constructor
+The combination of general EOS and xorder > 2 has documented bugs in some cases.
+### Warning in Reconstruction constructor
+The combination of general EOS and xorder > 2 has documented bugs in some cases.
+### Warning in Reconstruction constructor
+The combination of general EOS and xorder > 2 has documented bugs in some cases.
+### Warning in Reconstruction constructor
+The combination of general EOS and xorder > 2 has documented bugs in some cases.
+### Warning in Reconstruction constructor
+The combination of general EOS and xorder > 2 has documented bugs in some cases.
+### Warning in Reconstruction constructor
+The combination of general EOS and xorder > 2 has documented bugs in some cases.
+### Warning in Reconstruction constructor
+The combination of general EOS and xorder > 2 has documented bugs in some cases.
+### Warning in Reconstruction constructor
+The combination of general EOS and xorder > 2 has documented bugs in some cases.
+### Warning in Reconstruction constructor
+The combination of general EOS and xorder > 2 has documented bugs in some cases.
+### Warning in Reconstruction constructor
+The combination of general EOS and xorder > 2 has documented bugs in some cases.
+### Warning in Reconstruction constructor
+The combination of general EOS and xorder > 2 has documented bugs in some cases.
+### Warning in Reconstruction constructor
+The combination of general EOS and xorder > 2 has documented bugs in some cases.
+### Warning in Reconstruction constructor
+The combination of general EOS and xorder > 2 has documented bugs in some cases.
+### Warning in Reconstruction constructor
+The combination of general EOS and xorder > 2 has documented bugs in some cases.
+### Warning in Reconstruction constructor
+The combination of general EOS and xorder > 2 has documented bugs in some cases.
+### Warning in Reconstruction constructor
+The combination of general EOS and xorder > 2 has documented bugs in some cases.
+### Warning in Reconstruction constructor
+The combination of general EOS and xorder > 2 has documented bugs in some cases.
+### Warning in Reconstruction constructor
+The combination of general EOS and xorder > 2 has documented bugs in some cases.
+### Warning in Reconstruction constructor
+The combination of general EOS and xorder > 2 has documented bugs in some cases.
+### Warning in Reconstruction constructor
+The combination of general EOS and xorder > 2 has documented bugs in some cases.
+### Warning in Reconstruction constructor
+The combination of general EOS and xorder > 2 has documented bugs in some cases.
+### Warning in Reconstruction constructor
+The combination of general EOS and xorder > 2 has documented bugs in some cases.
+### Warning in Reconstruction constructor
+The combination of general EOS and xorder > 2 has documented bugs in some cases.
+### Warning in Reconstruction constructor
+The combination of general EOS and xorder > 2 has documented bugs in some cases.
+### Warning in Reconstruction constructor
+The combination of general EOS and xorder > 2 has documented bugs in some cases.
+### Warning in Reconstruction constructor
+The combination of general EOS and xorder > 2 has documented bugs in some cases.
+### Warning in Reconstruction constructor
+The combination of general EOS and xorder > 2 has documented bugs in some cases.
+### Warning in Reconstruction constructor
+The combination of general EOS and xorder > 2 has documented bugs in some cases.
+### Warning in Reconstruction constructor
+The combination of general EOS and xorder > 2 has documented bugs in some cases.
+### Warning in Reconstruction constructor
+The combination of general EOS and xorder > 2 has documented bugs in some cases.
+### Warning in Reconstruction constructor
+The combination of general EOS and xorder > 2 has documented bugs in some cases.
+### Warning in Reconstruction constructor
+The combination of general EOS and xorder > 2 has documented bugs in some cases.
+### Warning in Reconstruction constructor
+The combination of general EOS and xorder > 2 has documented bugs in some cases.
+### Warning in Reconstruction constructor
+The combination of general EOS and xorder > 2 has documented bugs in some cases.
+### Warning in Reconstruction constructor
+The combination of general EOS and xorder > 2 has documented bugs in some cases.
+### Warning in Reconstruction constructor
+The combination of general EOS and xorder > 2 has documented bugs in some cases.
+### Warning in Reconstruction constructor
+The combination of general EOS and xorder > 2 has documented bugs in some cases.
+### Warning in Reconstruction constructor
+The combination of general EOS and xorder > 2 has documented bugs in some cases.
+### Warning in Reconstruction constructor
+The combination of general EOS and xorder > 2 has documented bugs in some cases.
+### Warning in Reconstruction constructor
+The combination of general EOS and xorder > 2 has documented bugs in some cases.
+### Warning in Reconstruction constructor
+The combination of general EOS and xorder > 2 has documented bugs in some cases.
+### Warning in Reconstruction constructor
+The combination of general EOS and xorder > 2 has documented bugs in some cases.
+### Warning in Reconstruction constructor
+The combination of general EOS and xorder > 2 has documented bugs in some cases.
+### Warning in Reconstruction constructor
+The combination of general EOS and xorder > 2 has documented bugs in some cases.
+### Warning in Reconstruction constructor
+The combination of general EOS and xorder > 2 has documented bugs in some cases.
+### Warning in Reconstruction constructor
+The combination of general EOS and xorder > 2 has documented bugs in some cases.
+### Warning in Reconstruction constructor
+The combination of general EOS and xorder > 2 has documented bugs in some cases.
+### Warning in Reconstruction constructor
+The combination of general EOS and xorder > 2 has documented bugs in some cases.
+### Warning in Reconstruction constructor
+The combination of general EOS and xorder > 2 has documented bugs in some cases.
+### Warning in Reconstruction constructor
+The combination of general EOS and xorder > 2 has documented bugs in some cases.
+### Warning in Reconstruction constructor
+The combination of general EOS and xorder > 2 has documented bugs in some cases.
+### Warning in Reconstruction constructor
+The combination of general EOS and xorder > 2 has documented bugs in some cases.
+### Warning in Reconstruction constructor
+The combination of general EOS and xorder > 2 has documented bugs in some cases.
+### Warning in Reconstruction constructor
+The combination of general EOS and xorder > 2 has documented bugs in some cases.
+### Warning in Reconstruction constructor
+The combination of general EOS and xorder > 2 has documented bugs in some cases.
+### Warning in Reconstruction constructor
+The combination of general EOS and xorder > 2 has documented bugs in some cases.
+### Warning in Reconstruction constructor
+The combination of general EOS and xorder > 2 has documented bugs in some cases.
+### Warning in Reconstruction constructor
+The combination of general EOS and xorder > 2 has documented bugs in some cases.
+### Warning in Reconstruction constructor
+The combination of general EOS and xorder > 2 has documented bugs in some cases.
+### Warning in Reconstruction constructor
+The combination of general EOS and xorder > 2 has documented bugs in some cases.
+### Warning in Reconstruction constructor
+The combination of general EOS and xorder > 2 has documented bugs in some cases.
+### Warning in Reconstruction constructor
+The combination of general EOS and xorder > 2 has documented bugs in some cases.
+### Warning in Reconstruction constructor
+The combination of general EOS and xorder > 2 has documented bugs in some cases.
+### Warning in Reconstruction constructor
+The combination of general EOS and xorder > 2 has documented bugs in some cases.
+### Warning in Reconstruction constructor
+The combination of general EOS and xorder > 2 has documented bugs in some cases.
+### Warning in Reconstruction constructor
+The combination of general EOS and xorder > 2 has documented bugs in some cases.
+### Warning in Reconstruction constructor
+The combination of general EOS and xorder > 2 has documented bugs in some cases.
+### Warning in Reconstruction constructor
+The combination of general EOS and xorder > 2 has documented bugs in some cases.
+### Warning in Reconstruction constructor
+The combination of general EOS and xorder > 2 has documented bugs in some cases.
+### Warning in Reconstruction constructor
+The combination of general EOS and xorder > 2 has documented bugs in some cases.
+### Warning in Reconstruction constructor
+The combination of general EOS and xorder > 2 has documented bugs in some cases.
+### Warning in Reconstruction constructor
+The combination of general EOS and xorder > 2 has documented bugs in some cases.
+### Warning in Reconstruction constructor
+The combination of general EOS and xorder > 2 has documented bugs in some cases.
+### Warning in Reconstruction constructor
+The combination of general EOS and xorder > 2 has documented bugs in some cases.
+### Warning in Reconstruction constructor
+The combination of general EOS and xorder > 2 has documented bugs in some cases.
+### Warning in Reconstruction constructor
+The combination of general EOS and xorder > 2 has documented bugs in some cases.
+### Warning in Reconstruction constructor
+The combination of general EOS and xorder > 2 has documented bugs in some cases.
+### Warning in Reconstruction constructor
+The combination of general EOS and xorder > 2 has documented bugs in some cases.
+### Warning in Reconstruction constructor
+The combination of general EOS and xorder > 2 has documented bugs in some cases.
+### Warning in Reconstruction constructor
+The combination of general EOS and xorder > 2 has documented bugs in some cases.
+### Warning in Reconstruction constructor
+The combination of general EOS and xorder > 2 has documented bugs in some cases.
+### Warning in Reconstruction constructor
+The combination of general EOS and xorder > 2 has documented bugs in some cases.
+### Warning in Reconstruction constructor
+The combination of general EOS and xorder > 2 has documented bugs in some cases.
+### Warning in Reconstruction constructor
+The combination of general EOS and xorder > 2 has documented bugs in some cases.
+### Warning in Reconstruction constructor
+The combination of general EOS and xorder > 2 has documented bugs in some cases.
+### Warning in Reconstruction constructor
+The combination of general EOS and xorder > 2 has documented bugs in some cases.
+### Warning in Reconstruction constructor
+The combination of general EOS and xorder > 2 has documented bugs in some cases.
+### Warning in Reconstruction constructor
+The combination of general EOS and xorder > 2 has documented bugs in some cases.
+### Warning in Reconstruction constructor
+The combination of general EOS and xorder > 2 has documented bugs in some cases.
+### Warning in Reconstruction constructor
+The combination of general EOS and xorder > 2 has documented bugs in some cases.
+### Warning in Reconstruction constructor
+The combination of general EOS and xorder > 2 has documented bugs in some cases.
+### Warning in Reconstruction constructor
+The combination of general EOS and xorder > 2 has documented bugs in some cases.
+### Warning in Reconstruction constructor
+The combination of general EOS and xorder > 2 has documented bugs in some cases.
+### Warning in Reconstruction constructor
+The combination of general EOS and xorder > 2 has documented bugs in some cases.
+### Warning in Reconstruction constructor
+The combination of general EOS and xorder > 2 has documented bugs in some cases.
+### Warning in Reconstruction constructor
+The combination of general EOS and xorder > 2 has documented bugs in some cases.
+### Warning in Reconstruction constructor
+The combination of general EOS and xorder > 2 has documented bugs in some cases.
+### Warning in Reconstruction constructor
+The combination of general EOS and xorder > 2 has documented bugs in some cases.
+### Warning in Reconstruction constructor
+The combination of general EOS and xorder > 2 has documented bugs in some cases.
+### Warning in Reconstruction constructor
+The combination of general EOS and xorder > 2 has documented bugs in some cases.
+### Warning in Reconstruction constructor
+The combination of general EOS and xorder > 2 has documented bugs in some cases.
+### Warning in Reconstruction constructor
+The combination of general EOS and xorder > 2 has documented bugs in some cases.
+### Warning in Reconstruction constructor
+The combination of general EOS and xorder > 2 has documented bugs in some cases.
+### Warning in Reconstruction constructor
+The combination of general EOS and xorder > 2 has documented bugs in some cases.
+### Warning in Reconstruction constructor
+The combination of general EOS and xorder > 2 has documented bugs in some cases.
+### Warning in Reconstruction constructor
+The combination of general EOS and xorder > 2 has documented bugs in some cases.
+### Warning in Reconstruction constructor
+The combination of general EOS and xorder > 2 has documented bugs in some cases.
+### Warning in Reconstruction constructor
+The combination of general EOS and xorder > 2 has documented bugs in some cases.
+### Warning in Reconstruction constructor
+The combination of general EOS and xorder > 2 has documented bugs in some cases.
+### Warning in Reconstruction constructor
+The combination of general EOS and xorder > 2 has documented bugs in some cases.
+### Warning in Reconstruction constructor
+The combination of general EOS and xorder > 2 has documented bugs in some cases.
+### Warning in Reconstruction constructor
+The combination of general EOS and xorder > 2 has documented bugs in some cases.
+### Warning in Reconstruction constructor
+The combination of general EOS and xorder > 2 has documented bugs in some cases.
+### Warning in Reconstruction constructor
+The combination of general EOS and xorder > 2 has documented bugs in some cases.
+### Warning in Reconstruction constructor
+The combination of general EOS and xorder > 2 has documented bugs in some cases.
+### Warning in Reconstruction constructor
+The combination of general EOS and xorder > 2 has documented bugs in some cases.
+### Warning in Reconstruction constructor
+The combination of general EOS and xorder > 2 has documented bugs in some cases.
+### Warning in Reconstruction constructor
+The combination of general EOS and xorder > 2 has documented bugs in some cases.
+### Warning in Reconstruction constructor
+The combination of general EOS and xorder > 2 has documented bugs in some cases.
+### Warning in Reconstruction constructor
+The combination of general EOS and xorder > 2 has documented bugs in some cases.
+### Warning in Reconstruction constructor
+The combination of general EOS and xorder > 2 has documented bugs in some cases.
+### Warning in Reconstruction constructor
+The combination of general EOS and xorder > 2 has documented bugs in some cases.
+### Warning in Reconstruction constructor
+The combination of general EOS and xorder > 2 has documented bugs in some cases.
+### Warning in Reconstruction constructor
+The combination of general EOS and xorder > 2 has documented bugs in some cases.
+### Warning in Reconstruction constructor
+The combination of general EOS and xorder > 2 has documented bugs in some cases.
+### Warning in Reconstruction constructor
+The combination of general EOS and xorder > 2 has documented bugs in some cases.
+### Warning in Reconstruction constructor
+The combination of general EOS and xorder > 2 has documented bugs in some cases.
+### Warning in Reconstruction constructor
+The combination of general EOS and xorder > 2 has documented bugs in some cases.
+### Warning in Reconstruction constructor
+The combination of general EOS and xorder > 2 has documented bugs in some cases.
+### Warning in Reconstruction constructor
+The combination of general EOS and xorder > 2 has documented bugs in some cases.
+### Warning in Reconstruction constructor
+The combination of general EOS and xorder > 2 has documented bugs in some cases.
+### Warning in Reconstruction constructor
+The combination of general EOS and xorder > 2 has documented bugs in some cases.
+### Warning in Reconstruction constructor
+The combination of general EOS and xorder > 2 has documented bugs in some cases.
+[NR] status=converged iterations=0 initial_l2=0.000000000000000e+00 initial_max=0.000000000000000e+00 initial_gas_l2=0.000000000000000e+00 initial_gas_max=0.000000000000000e+00 initial_radiation_l2=0.000000000000000e+00 initial_radiation_max=0.000000000000000e+00 initial_total_energy_l2=0.000000000000000e+00 initial_total_energy_max=0.000000000000000e+00 final_l2=0.000000000000000e+00 final_max=0.000000000000000e+00 final_gas_l2=0.000000000000000e+00 final_gas_max=0.000000000000000e+00 final_radiation_l2=0.000000000000000e+00 final_radiation_max=0.000000000000000e+00 final_total_energy_l2=0.000000000000000e+00 final_total_energy_max=0.000000000000000e+00 cycle=21 time=1.755700000000000e+00 stage=1 dt=0.000000000000000e+00
+
+Setup complete, entering main loop...
+
+cycle=21 time=1.7557000000000000e+00 dt=1.9642469276102081e-04
+dt_hyperbolic=1.9642469276102081e-04 ratio=1.000e+00
+dt_parabolic=5.3930794045869465e+307 ratio=0.000e+00
+[LINEAR_FGMRES] iterations=7 relative_residual=6.2949025396850635e-05 target=1.0000000000000000e-04 restart=20 mg_vcycles=1 compact=1 reuse=1 batched_reductions=1 reduction_calls=24 basis_bytes=85983232 workspace_bytes=94371840 workspace_rebuilt=1 workspace_rebuilds=1 breakdown=0
+[LINEAR_FGMRES] iterations=26 relative_residual=7.9545931987791668e-05 target=1.0000000000000000e-04 restart=20 mg_vcycles=1 compact=1 reuse=1 batched_reductions=1 reduction_calls=82 basis_bytes=85983232 workspace_bytes=94371840 workspace_rebuilt=0 workspace_rebuilds=1 breakdown=0
+[LINEAR_FGMRES] iterations=38 relative_residual=8.2067835340081448e-05 target=1.0000000000000000e-04 restart=20 mg_vcycles=1 compact=1 reuse=1 batched_reductions=1 reduction_calls=118 basis_bytes=85983232 workspace_bytes=94371840 workspace_rebuilt=0 workspace_rebuilds=1 breakdown=0
+[NR] status=converged iterations=3 initial_l2=3.7646322327055254e-03 initial_max=4.2336272351720904e-02 initial_gas_l2=3.7646312790727771e-03 initial_gas_max=4.2336272351720904e-02 initial_radiation_l2=0.0000000000000000e+00 initial_radiation_max=0.0000000000000000e+00 initial_total_energy_l2=2.6795806120775405e-06 initial_total_energy_max=3.4570393601238539e-05 final_l2=3.8205039526290743e-15 final_max=3.9522361658373674e-13 final_gas_l2=1.6608400026089044e-15 final_gas_max=1.3919210341745756e-14 final_radiation_l2=0.0000000000000000e+00 final_radiation_max=0.0000000000000000e+00 final_total_energy_l2=3.4406192666129796e-15 final_total_energy_max=3.9522361658373674e-13 cycle=21 time=1.7557000000000000e+00 stage=0 dt=1.9642469276102081e-04
+cycle=22 time=1.7558964246927611e+00 dt=1.9642376766245207e-04
+dt_hyperbolic=1.9642376766245207e-04 ratio=1.000e+00
+dt_parabolic=5.3930794045869465e+307 ratio=0.000e+00
+FLD_OPACITY_DIAGNOSTICS out_of_domain=0 clamped=0 negative_results=0 zero_results=0 nonfinite_results=0
+
+Terminating on cycle limit
+time=1.7558964246927611e+00 cycle=22
+tlim=2.0000000000000000e+00 nlim=22
+
+zone-cycles = 16777216
+cpu time used  = 2.1816782999999997e+01
+zone-cycles/cpu_second = 7.6900503616871475e+05

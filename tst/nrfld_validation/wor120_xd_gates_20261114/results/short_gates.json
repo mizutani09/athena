@@ -1,0 +1,426 @@
+{
+  "time_unit_day": 0.2546292324281414,
+  "cases": {
+    "lte64_0p84d": {
+      "directory": "/work/mizutaniks/wor120/smoke64",
+      "history": {
+        "time_day": [
+          0.0,
+          0.8443632661933383,
+          0.8443632661933383
+        ],
+        "boundary_luminosity_over_Lstar": [
+          0.0,
+          4.452748457132419,
+          4.452748457132419
+        ],
+        "Mach_max": [
+          0.000170104,
+          0.184561,
+          0.184561
+        ],
+        "relative_mass_change": -5.622146760475566e-06
+      },
+      "snapshots": [
+        {
+          "time_code": 0.0,
+          "time_day": 0.0,
+          "shells": {
+            "0-166": {
+              "cells": 624,
+              "temperature_K": 163499.02835092225,
+              "radial_velocity_code": 3.340086312586578e-24
+            },
+            "750-800": {
+              "cells": 11936,
+              "temperature_K": 15233.23993139623,
+              "radial_velocity_code": 3.8559868707365264e-24
+            },
+            "800-830": {
+              "cells": 8160,
+              "temperature_K": 8156.5412338238,
+              "radial_velocity_code": -9.713240095485527e-24
+            },
+            "830-900": {
+              "cells": 20432,
+              "temperature_K": 5057.535002912731,
+              "radial_velocity_code": -1.825068132010363e-25
+            }
+          },
+          "largest_signal_proxy_cell": {
+            "radius_Rsun": 27.347457885742188,
+            "density_code": 7.170064449310303,
+            "pressure_code": 16.57935333251953,
+            "temperature_K": 174090.921875,
+            "speed_code": 0.0,
+            "sqrt_gammaP_over_rho_code": 1.9631190555780647,
+            "speed_plus_sqrt_gammaP_over_rho_code": 1.9631190555780647
+          }
+        },
+        {
+          "time_code": 3.316049337387085,
+          "time_day": 0.8443630974727203,
+          "shells": {
+            "0-166": {
+              "cells": 624,
+              "temperature_K": 163510.80372791874,
+              "radial_velocity_code": 0.0001297267991321402
+            },
+            "750-800": {
+              "cells": 11936,
+              "temperature_K": 15271.748681606114,
+              "radial_velocity_code": 0.00031107445943555134
+            },
+            "800-830": {
+              "cells": 8160,
+              "temperature_K": 7306.352902905129,
+              "radial_velocity_code": -0.0005561497403323552
+            },
+            "830-900": {
+              "cells": 20432,
+              "temperature_K": 5504.442377762735,
+              "radial_velocity_code": 0.0033397716447174713
+            }
+          },
+          "largest_signal_proxy_cell": {
+            "radius_Rsun": 27.347457885742188,
+            "density_code": 7.170497894287109,
+            "pressure_code": 16.589433670043945,
+            "temperature_K": 174186.234375,
+            "speed_code": 0.0006676145790759097,
+            "sqrt_gammaP_over_rho_code": 1.963656405840261,
+            "speed_plus_sqrt_gammaP_over_rho_code": 1.9643240204193368
+          }
+        }
+      ],
+      "surface_cooling_fraction": 0.10423392790476971
+    },
+    "lte128_5d": {
+      "directory": "/work/mizutaniks/wor120/lte128_open5d",
+      "history": {
+        "time_day": [
+          0.0,
+          0.4220581379189415,
+          0.8437699800817807,
+          1.2653264984128387,
+          1.6867327854967642,
+          2.107983748748908,
+          2.5290844807539203,
+          2.950032435219475,
+          3.370832704730222,
+          3.791480196701511,
+          4.2119749111333435,
+          4.6322913851024765,
+          5.0524805444553955,
+          5.092584648562828
+        ],
+        "boundary_luminosity_over_Lstar": [
+          0.0,
+          2.123424187466566,
+          2.625810576308339,
+          2.0607726733034983,
+          2.1155774173766684,
+          1.9201414349647066,
+          1.8630846913612464,
+          1.7389715955795049,
+          1.6771342457889173,
+          1.606101013791214,
+          1.543671307229623,
+          1.4973500515376486,
+          1.4473859321790639,
+          1.4520308443041112
+        ],
+        "Mach_max": [
+          0.000172303,
+          0.0314674,
+          0.0597111,
+          0.0868456,
+          0.115099,
+          0.133834,
+          0.15524,
+          0.167044,
+          0.179213,
+          0.197488,
+          0.207276,
+          0.223726,
+          0.231201,
+          0.23139
+        ],
+        "relative_mass_change": 0.0
+      },
+      "snapshots": [
+        {
+          "time_code": 0.0,
+          "time_day": 0.0,
+          "shells": {
+            "0-166": {
+              "cells": 4776,
+              "temperature_K": 164097.00591230992,
+              "radial_velocity_code": 1.735028499154768e-24
+            },
+            "750-800": {
+              "cells": 96520,
+              "temperature_K": 15598.478365180494,
+              "radial_velocity_code": -1.5445245103253463e-23
+            },
+            "800-830": {
+              "cells": 63656,
+              "temperature_K": 7364.917570605031,
+              "radial_velocity_code": 1.7792395756671533e-24
+            },
+            "830-900": {
+              "cells": 167664,
+              "temperature_K": 3011.7114110002276,
+              "radial_velocity_code": 1.557737548279408e-26
+            }
+          },
+          "largest_signal_proxy_cell": {
+            "radius_Rsun": 13.673728942871094,
+            "density_code": 7.173544406890869,
+            "pressure_code": 16.592771530151367,
+            "temperature_K": 174147.296875,
+            "speed_code": 0.0,
+            "sqrt_gammaP_over_rho_code": 1.9634368875317343,
+            "speed_plus_sqrt_gammaP_over_rho_code": 1.9634368875317343
+          }
+        },
+        {
+          "time_code": 20.0,
+          "time_day": 5.092584648562828,
+          "shells": {
+            "0-166": {
+              "cells": 4776,
+              "temperature_K": 164170.68601136876,
+              "radial_velocity_code": 0.002756138996156024
+            },
+            "750-800": {
+              "cells": 96520,
+              "temperature_K": 15529.490116626364,
+              "radial_velocity_code": 0.0060575977530036886
+            },
+            "800-830": {
+              "cells": 63656,
+              "temperature_K": 5961.886768847266,
+              "radial_velocity_code": -0.007635466396311133
+            },
+            "830-900": {
+              "cells": 167664,
+              "temperature_K": 3381.568040023075,
+              "radial_velocity_code": 0.012481603801864522
+            }
+          },
+          "largest_signal_proxy_cell": {
+            "radius_Rsun": 41.02118682861328,
+            "density_code": 7.152658462524414,
+            "pressure_code": 16.569210052490234,
+            "temperature_K": 174407.796875,
+            "speed_code": 0.003600034865349229,
+            "sqrt_gammaP_over_rho_code": 1.9649048860137381,
+            "speed_plus_sqrt_gammaP_over_rho_code": 1.9685049208790875
+          }
+        }
+      ],
+      "surface_cooling_fraction": 0.19050190152264068
+    },
+    "lte256_0p84d": {
+      "directory": "/work/mizutaniks/wor120/lte256_open1d",
+      "history": {
+        "time_day": [
+          0.0,
+          0.21102626803791405,
+          0.4219664713952674,
+          0.6328656794461998,
+          0.843726693112268,
+          0.8450533114132186
+        ],
+        "boundary_luminosity_over_Lstar": [
+          0.0,
+          1.0441110081807863,
+          1.250125908432603,
+          1.2307477525670967,
+          1.1848127030518116,
+          1.2023381130696869
+        ],
+        "Mach_max": [
+          0.000173012,
+          0.00363255,
+          0.0098311,
+          0.0133064,
+          0.0167227,
+          0.0167456
+        ],
+        "relative_mass_change": 0.0
+      },
+      "snapshots": [
+        {
+          "time_code": 0.0,
+          "time_day": 0.0,
+          "shells": {
+            "0-166": {
+              "cells": 39024,
+              "temperature_K": 163915.83252247164,
+              "radial_velocity_code": 0.0
+            },
+            "750-800": {
+              "cells": 767288,
+              "temperature_K": 15708.179723816984,
+              "radial_velocity_code": -3.317962064933686e-23
+            },
+            "800-830": {
+              "cells": 508240,
+              "temperature_K": 6921.061843552951,
+              "radial_velocity_code": 9.463730637134902e-25
+            },
+            "830-900": {
+              "cells": 1338664,
+              "temperature_K": 2905.4380378539995,
+              "radial_velocity_code": -5.847855109986661e-26
+            }
+          },
+          "largest_signal_proxy_cell": {
+            "radius_Rsun": 6.836864471435547,
+            "density_code": 7.173786163330078,
+            "pressure_code": 16.593650817871094,
+            "temperature_K": 174150.65625,
+            "speed_code": 0.0,
+            "sqrt_gammaP_over_rho_code": 1.9634558252318444,
+            "speed_plus_sqrt_gammaP_over_rho_code": 1.9634558252318444
+          }
+        },
+        {
+          "time_code": 3.3187639713287354,
+          "time_day": 0.8450543226296061,
+          "shells": {
+            "0-166": {
+              "cells": 39024,
+              "temperature_K": 163927.90230430508,
+              "radial_velocity_code": 0.00010445974630303227
+            },
+            "750-800": {
+              "cells": 767288,
+              "temperature_K": 15714.718747504226,
+              "radial_velocity_code": -2.119997311485634e-06
+            },
+            "800-830": {
+              "cells": 508240,
+              "temperature_K": 6635.212010724947,
+              "radial_velocity_code": -6.73224459393521e-05
+            },
+            "830-900": {
+              "cells": 1338664,
+              "temperature_K": 3002.8517568134353,
+              "radial_velocity_code": 0.0006328521102654223
+            }
+          },
+          "largest_signal_proxy_cell": {
+            "radius_Rsun": 13.091598510742188,
+            "density_code": 7.1736040115356445,
+            "pressure_code": 16.602405548095703,
+            "temperature_K": 174246.953125,
+            "speed_code": 4.2561167530137544e-05,
+            "sqrt_gammaP_over_rho_code": 1.9639986462519106,
+            "speed_plus_sqrt_gammaP_over_rho_code": 1.9640412074194407
+          }
+        }
+      ],
+      "surface_cooling_fraction": 0.04130144178588391
+    },
+    "lte256_closed_stall": {
+      "directory": "/work/mizutaniks/wor120/closed_analysis",
+      "history": {
+        "time_day": [
+          0.0,
+          0.21102626803791405,
+          0.4219664713952674,
+          0.44705254337408784
+        ],
+        "boundary_luminosity_over_Lstar": [
+          0.0,
+          1.5965345824145714e-07,
+          3.1553827485876077e-07,
+          3.3052203071382905e-07
+        ],
+        "Mach_max": [
+          0.000173012,
+          0.00282126,
+          0.0399511,
+          2.0718
+        ],
+        "relative_mass_change": 0.0
+      },
+      "snapshots": [
+        {
+          "time_code": 0.0,
+          "time_day": 0.0,
+          "shells": {
+            "0-166": {
+              "cells": 39024,
+              "temperature_K": 163915.83252247164,
+              "radial_velocity_code": 0.0
+            },
+            "750-800": {
+              "cells": 767288,
+              "temperature_K": 15708.179723816984,
+              "radial_velocity_code": -3.317962064933686e-23
+            },
+            "800-830": {
+              "cells": 508240,
+              "temperature_K": 6921.061843552951,
+              "radial_velocity_code": 9.463730637134902e-25
+            },
+            "830-900": {
+              "cells": 1338664,
+              "temperature_K": 2905.4380378539995,
+              "radial_velocity_code": -5.847855109986661e-26
+            }
+          },
+          "largest_signal_proxy_cell": {
+            "radius_Rsun": 6.836864471435547,
+            "density_code": 7.173786163330078,
+            "pressure_code": 16.593650817871094,
+            "temperature_K": 174150.65625,
+            "speed_code": 0.0,
+            "sqrt_gammaP_over_rho_code": 1.9634558252318444,
+            "speed_plus_sqrt_gammaP_over_rho_code": 1.9634558252318444
+          }
+        },
+        {
+          "time_code": 1.7556999921798706,
+          "time_day": 0.4470525413828543,
+          "shells": {
+            "0-166": {
+              "cells": 39024,
+              "temperature_K": 163908.37022856917,
+              "radial_velocity_code": 3.459697612688376e-05
+            },
+            "750-800": {
+              "cells": 767288,
+              "temperature_K": 15686.949789387225,
+              "radial_velocity_code": 2.845450667718885e-06
+            },
+            "800-830": {
+              "cells": 508240,
+              "temperature_K": 7195.174532613631,
+              "radial_velocity_code": -9.71444802536192e-05
+            },
+            "830-900": {
+              "cells": 1338664,
+              "temperature_K": 4624.996287670357,
+              "radial_velocity_code": 0.0007105819758548748
+            }
+          },
+          "largest_signal_proxy_cell": {
+            "radius_Rsun": 6.836864471435547,
+            "density_code": 7.17376708984375,
+            "pressure_code": 16.598594665527344,
+            "temperature_K": 174203.0,
+            "speed_code": 2.294601533091761e-06,
+            "sqrt_gammaP_over_rho_code": 1.9637509062254657,
+            "speed_plus_sqrt_gammaP_over_rho_code": 1.9637532008269987
+          }
+        }
+      ],
+      "surface_cooling_fraction": -0.039605582966437236
+    }
+  }
+}
