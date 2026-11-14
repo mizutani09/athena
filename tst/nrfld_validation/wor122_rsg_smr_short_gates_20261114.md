@@ -111,6 +111,17 @@ short-run diagnostics, not evidence that the fourth-order option is a
 physical improvement. The unclamped saved snapshots do not exclude
 intermediate reconstructed or solver states outside the table.
 
+Changing the opacity policy to `error` locates the first excursions at
+active cells in the dilute box exterior, for example
+`(x,y,z)=(-457.9,-994.7,15.8) Rsun`, `rho=1.23×10⁻¹³` code units and
+`T=247 K`. The table minimum is 316 K. Thus the 384 clamps are low-T
+states before the first accepted step, not evidence that the table is too
+narrow at the stellar photosphere. Increasing `hydro/pfloor` tenfold is
+not a valid quick fix: the unchanged initial profile is then materially
+below the requested pressure floor and the problem generator correctly
+rejects it. A bounded fourth-order primitive/energy reconstruction or a
+consistent exterior profile is needed before using this option.
+
 ## Status and next gates
 
 Conservative static refinement now passes local short numerical gates, but
