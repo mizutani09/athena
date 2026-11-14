@@ -1,0 +1,16 @@
+{
+  "base": "tst/nrfld_validation/wor120_xd_gates_20261114/gray_width0p3.dat",
+  "output": "tst/nrfld_validation/wor120_xd_gates_20261114/lte_width0p3.dat",
+  "surface_temperature_K": 3227.7999999999993,
+  "q_surface": 0.341139723939514,
+  "join_q": 0.99,
+  "join_radius_Rsun": 860.1808643472419,
+  "join_end_Rsun": 900.0,
+  "min_rho_g_cm3": 1e-21,
+  "FLD_L_over_Lstar_830_1000_range": [
+    0.9883718356999505,
+    1.0228087364937322
+  ],
+  "max_abs_unfloored_outer_HSE_residual": 0.012801551265826628,
+  "max_abs_outer_HSE_residual": 0.9907594682590335
+}
