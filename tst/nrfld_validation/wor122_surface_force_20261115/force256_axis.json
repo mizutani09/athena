@@ -1,0 +1,198 @@
+{
+  "gid": 3656,
+  "time_code": 0.0,
+  "shells": {
+    "750-800": {
+      "cells": 1147,
+      "mass_fraction_of_selected_block": 0.44093406847054134,
+      "residual_over_force_l1": 0.002620155588205895,
+      "mass_weighted_rms_abs_acceleration_over_g": 0.0072785042379883294,
+      "mass_weighted_rms_radial_acceleration_over_g": 0.006818198658606408,
+      "mass_weighted_rms_tangential_acceleration_over_g": 0.0025473105413733616,
+      "mass_weighted_mean_radial_acceleration_over_g": {
+        "gas": 0.8722296858040473,
+        "radiation": 0.12403053175099285,
+        "gravity": -1.0,
+        "residual": -0.0037397824449600567
+      },
+      "continuum_mean_radial_acceleration_over_g": {
+        "gas": 0.8759812944126264,
+        "radiation": 0.12412174250865535,
+        "residual": 0.00010303692128177389
+      },
+      "profile_mass_weighted_mean_abs_hse_relative": 0.00010237081415711528,
+      "peak_abs_acceleration_over_g": 0.01931752212325471,
+      "peak_xyz_rsun": [
+        793.400390625,
+        43.419921875,
+        51.314453125
+      ],
+      "peak_r_rsun": 796.2428288901895,
+      "observed_first_step_radial_acceleration_over_g": {
+        "mass_weighted_mean": -0.003842912490393794,
+        "mass_weighted_rms": 0.006722483220351098,
+        "mass_weighted_rms_tangential": 0.002306910326541945
+      }
+    },
+    "800-813": {
+      "cells": 438,
+      "mass_fraction_of_selected_block": 0.21314568260344616,
+      "residual_over_force_l1": 0.006525062840317775,
+      "mass_weighted_rms_abs_acceleration_over_g": 0.015619757454714207,
+      "mass_weighted_rms_radial_acceleration_over_g": 0.015394502254833227,
+      "mass_weighted_rms_tangential_acceleration_over_g": 0.0026431275546281775,
+      "mass_weighted_mean_radial_acceleration_over_g": {
+        "gas": 0.9668719448742336,
+        "radiation": 0.04097454832506237,
+        "gravity": -1.0,
+        "residual": 0.007846493199295715
+      },
+      "continuum_mean_radial_acceleration_over_g": {
+        "gas": 0.9593730397254208,
+        "radiation": 0.04075715210655313,
+        "residual": 0.0001301918319738249
+      },
+      "profile_mass_weighted_mean_abs_hse_relative": 0.0011623801617513022,
+      "peak_abs_acceleration_over_g": 0.02966004212066971,
+      "peak_xyz_rsun": [
+        801.294921875,
+        19.736328125,
+        67.103515625
+      ],
+      "peak_r_rsun": 804.3419398985451,
+      "observed_first_step_radial_acceleration_over_g": {
+        "mass_weighted_mean": 0.007882951220340984,
+        "mass_weighted_rms": 0.015426119298190759,
+        "mass_weighted_rms_tangential": 0.0026396720295717288
+      }
+    },
+    "813-817": {
+      "cells": 105,
+      "mass_fraction_of_selected_block": 0.06517801140161267,
+      "residual_over_force_l1": 0.009009181660080459,
+      "mass_weighted_rms_abs_acceleration_over_g": 0.01881151946487235,
+      "mass_weighted_rms_radial_acceleration_over_g": 0.01834506833386784,
+      "mass_weighted_rms_tangential_acceleration_over_g": 0.004163139728977492,
+      "mass_weighted_mean_radial_acceleration_over_g": {
+        "gas": 1.0017478898126537,
+        "radiation": 0.015940237985334543,
+        "gravity": -0.9999999999999999,
+        "residual": 0.01768812779798826
+      },
+      "continuum_mean_radial_acceleration_over_g": {
+        "gas": 0.9803354891741367,
+        "radiation": 0.019191473923147614,
+        "residual": -0.00047303690271571774
+      },
+      "profile_mass_weighted_mean_abs_hse_relative": 0.0005442443928061125,
+      "peak_abs_acceleration_over_g": 0.02461124002627103,
+      "peak_xyz_rsun": [
+        809.189453125,
+        90.787109375,
+        35.525390625
+      ],
+      "peak_r_rsun": 815.0410564238243,
+      "observed_first_step_radial_acceleration_over_g": {
+        "mass_weighted_mean": 0.01759959817236903,
+        "mass_weighted_rms": 0.018254942637255096,
+        "mass_weighted_rms_tangential": 0.004158805025319534
+      }
+    },
+    "817-830": {
+      "cells": 445,
+      "mass_fraction_of_selected_block": 0.21420073935946318,
+      "residual_over_force_l1": 0.0056971629589031535,
+      "mass_weighted_rms_abs_acceleration_over_g": 0.013979144135464057,
+      "mass_weighted_rms_radial_acceleration_over_g": 0.013756503384787046,
+      "mass_weighted_rms_tangential_acceleration_over_g": 0.002484971908175554,
+      "mass_weighted_mean_radial_acceleration_over_g": {
+        "gas": 1.002545384007017,
+        "radiation": 0.003966695771224181,
+        "gravity": -1.0,
+        "residual": 0.0065120797782411465
+      },
+      "continuum_mean_radial_acceleration_over_g": {
+        "gas": 0.9945531356466939,
+        "radiation": 0.0041807113613344,
+        "residual": -0.0012661529919717474
+      },
+      "profile_mass_weighted_mean_abs_hse_relative": 0.0014295497159859689,
+      "peak_abs_acceleration_over_g": 0.026784944303803328,
+      "peak_xyz_rsun": [
+        809.189453125,
+        114.470703125,
+        98.681640625
+      ],
+      "peak_r_rsun": 823.1823486440353,
+      "observed_first_step_radial_acceleration_over_g": {
+        "mass_weighted_mean": 0.0064806178314887435,
+        "mass_weighted_rms": 0.013719912671532733,
+        "mass_weighted_rms_tangential": 0.0024860801352855114
+      }
+    },
+    "830-850": {
+      "cells": 649,
+      "mass_fraction_of_selected_block": 0.06316948651064298,
+      "residual_over_force_l1": 0.025885190990873313,
+      "mass_weighted_rms_abs_acceleration_over_g": 0.05591448070842419,
+      "mass_weighted_rms_radial_acceleration_over_g": 0.055469341864876384,
+      "mass_weighted_rms_tangential_acceleration_over_g": 0.007041396592311255,
+      "mass_weighted_mean_radial_acceleration_over_g": {
+        "gas": 0.9490654302556217,
+        "radiation": 0.00045213073000229556,
+        "gravity": -1.0000000000000002,
+        "residual": -0.0504824390143759
+      },
+      "continuum_mean_radial_acceleration_over_g": {
+        "gas": 1.0056798007245122,
+        "radiation": 0.0006050891957433093,
+        "residual": 0.006284889920255443
+      },
+      "profile_mass_weighted_mean_abs_hse_relative": 0.006281516013364511,
+      "peak_abs_acceleration_over_g": 0.10497878184639202,
+      "peak_xyz_rsun": [
+        848.662109375,
+        43.419921875,
+        3.947265625
+      ],
+      "peak_r_rsun": 849.7812932810241,
+      "observed_first_step_radial_acceleration_over_g": {
+        "mass_weighted_mean": -0.05043414042818547,
+        "mass_weighted_rms": 0.055434970407945136,
+        "mass_weighted_rms_tangential": 0.007071565627526652
+      }
+    },
+    "850-880": {
+      "cells": 967,
+      "mass_fraction_of_selected_block": 0.003343614091356289,
+      "residual_over_force_l1": 0.05790650914606227,
+      "mass_weighted_rms_abs_acceleration_over_g": 0.1096749456513802,
+      "mass_weighted_rms_radial_acceleration_over_g": 0.10889092606184211,
+      "mass_weighted_rms_tangential_acceleration_over_g": 0.013090451673935183,
+      "mass_weighted_mean_radial_acceleration_over_g": {
+        "gas": 0.891099683669805,
+        "radiation": 0.00010016102549458013,
+        "gravity": -1.0,
+        "residual": -0.10880015530470033
+      },
+      "continuum_mean_radial_acceleration_over_g": {
+        "gas": 1.012418886670642,
+        "radiation": 0.00013171190620534068,
+        "residual": 0.012550598576847483
+      },
+      "profile_mass_weighted_mean_abs_hse_relative": 0.012548946484679949,
+      "peak_abs_acceleration_over_g": 0.1170132179361923,
+      "peak_xyz_rsun": [
+        856.556640625,
+        74.998046875,
+        3.947265625
+      ],
+      "peak_r_rsun": 859.8427568688152,
+      "observed_first_step_radial_acceleration_over_g": {
+        "mass_weighted_mean": -0.10879050041103269,
+        "mass_weighted_rms": 0.10888124918991365,
+        "mass_weighted_rms_tangential": 0.013132656031362936
+      }
+    }
+  }
+}
