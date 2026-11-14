@@ -357,13 +357,53 @@ FLD step and was also OOM-killed. The uniform 256³ 64-rank day run used
 the peak memory requirement. Both failures are resource failures, not
 evidence of a physical instability. M-debug permits only one node and
 caps memory at 115 GiB per node. A 64-rank, two-node, 70-GB-per-node
-M-test-a job **339979** is queued for the six-hour comparison. A previous
-two-node attempt **339977** was canceled while waiting; it did no work.
-After the one-node OOM retries, **339979** is the only pending WOR-122 job.
-Its M-test-a start estimate should be checked again before relying on it.
-If it passes Newton/opacity/Er and face-flux balance, compare its six-hour
-surface Mach and luminosity with uniform 256³ before deciding whether a
-one-day patch continuation is worth the two-node cost. If it does not
-improve the local surface response, the next physical-model work should
-target an initial 3-D radiation/pressure balance and transport through
-the thin 815–817 Rsun layer rather than more core-only damping.
+M-test-a job **339979** completed the six-hour comparison in 4m11s.
+The job used 130.85 GB across the two nodes. A previous two-node attempt
+**339977** was canceled while waiting; it did no work. A temporary
+M-large-a queue comparison **339980** was likewise canceled before running.
+
+### 256³ one-patch six-hour result
+
+Job **339979** passed all short numerical checks: all Newton solves
+converged, opacity out-of-domain/clamped counts were zero, and final saved
+Er remained positive. The source 0.1-code-time time-step cap yielded ten
+physical steps and one floating-point endpoint step of about 10⁻¹⁶.
+The initial total mass differs from uniform 256³ by only 5.13×10⁻⁷
+relative.
+
+| Six-hour measure | Uniform 256³ | One-patch 256³ |
+| --- | ---: | ---: |
+| Boundary Lrad/Lheat | 1.084022 | 1.079491 |
+| History maximum Mach | 0.00429681 | 0.00495567 |
+| Core r<166 Rsun mass-weighted rms speed [code] | 0.000179277 | 0.000179277 |
+| Surface 800–860 Rsun maximum ideal-gas Mach proxy | 0.001999 | 0.004255 |
+| Relative mass change from each initial state | −7.12×10⁻⁹ | −7.20×10⁻⁹ |
+| Minimum saved Er [code] | 1.916×10⁻⁶ | 1.900×10⁻⁶ |
+| Integrated energy-budget residual [code] | −175.889 | −176.328 |
+
+The patch lowers global boundary luminosity by 0.42% but increases the
+maximum history Mach by 15.3%. In the matched 800–860 Rsun shell inside
+the patch's spatial bounds, mass-weighted rms speed rises from 0.0001954
+to 0.0003058 (56.5%). The mass-weighted gas temperature there changes
+from 6316 to 6247 K on the uniform mesh, versus 6322 to 6171 K on the
+patch mesh. The extra cooling is local and not captured by the small
+change in the six-face global luminosity. The largest fine-cell Mach
+proxy is at `(507.2,-487.5,-408.5) Rsun`, 1.97 Rsun from the inner
+patch boundary. Cells more than 40 Rsun from any patch boundary still
+reach a Mach proxy of 0.00348, versus at most 0.00199 in the uniform
+surface shell. The local velocity increase is therefore not confined
+to the single interface-adjacent hotspot; it may reflect a more resolved
+cooling layer, although an interface contribution remains possible.
+
+The energy-budget residual difference is 0.440 code energy units, only
+1.9×10⁻⁶ of the heat added over this six-hour interval, so no large
+coarse/fine conservation defect appears in the integral. This pilot does
+not show a stability benefit sufficient to justify a one-day two-node
+patch extension yet. The next work should address the mapped surface's
+discrete radiation/pressure balance and the initially absent convective
+transport before starting a longer RSG run.
+
+The focused history figure is
+`doc/figures/wor122_rsg_patch256_t1_20261115.png`; the script and raw
+history are `wor122_plot_patch256_gate.py` and
+`wor122_xd_20261115/onepatch256.hst`.
