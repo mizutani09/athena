@@ -28,18 +28,18 @@ def main():
     args = parser.parse_args()
     d = args.data_dir
     cases = [
-        ("uniform64.hst", "64³ uniform", "#6b7280", "-"),
-        ("uniform128.hst", "128³ uniform", "#2563eb", "-"),
-        ("onepatch128_t1.hst", "128³ one-patch", "#f97316", "--"),
-        ("uniform256.hst", "256³ uniform", "#059669", "-"),
+        (("uniform64.hst",), "64³ uniform", "#6b7280", "-"),
+        (("uniform128.hst", "uniform128_day2.hst"), "128³ uniform", "#2563eb", "-"),
+        (("onepatch128_t1.hst", "onepatch128_day1.hst"),
+         "128³ one-patch", "#f97316", "--"),
+        (("uniform256.hst", "uniform256_day2.hst", "uniform256_day2_tail.hst"),
+         "256³ uniform", "#059669", "-"),
+        (("uniform128_strongdrag.hst",), "128³ strong core drag", "#a855f7", ":"),
     ]
     fig, (ax_l, ax_m) = plt.subplots(2, 1, figsize=(8.2, 6.4), sharex=True,
                                      gridspec_kw={"height_ratios": [1.15, 1]})
-    for filename, label, color, style in cases:
-        if filename == "onepatch128_t1.hst":
-            h = read(d / filename, d / "onepatch128_day1.hst")
-        else:
-            h = read(d / filename)
+    for filenames, label, color, style in cases:
+        h = read(*(d / filename for filename in filenames))
         day = h[:, 0] * SECONDS_PER_CODE_TIME / 86400.0
         valid = (day > 0.0) & (h[:, 15] > 0.0)
         luminosity = np.sum(h[:, 22:28], axis=1) / np.maximum(h[:, 15], 1.0e-300)
@@ -50,13 +50,13 @@ def main():
     ax_l.set_ylabel(r"boundary $L_{\rm rad}/L_{\rm heat}$")
     ax_m.set_ylabel("maximum Mach")
     ax_m.set_xlabel("time [day]")
-    ax_l.legend(ncol=2, fontsize=9, frameon=False)
+    ax_l.legend(ncol=2, fontsize=8.5, frameon=False)
     ax_l.set_ylim(bottom=0.0)
     ax_m.set_ylim(bottom=0.0)
-    ax_m.set_xlim(0.0, 1.0)
+    ax_m.set_xlim(0.0, 2.0)
     for ax in (ax_l, ax_m):
         ax.grid(alpha=0.22)
-    fig.suptitle("RSG short gates: second-order LTE/FLD", fontsize=12)
+    fig.suptitle("RSG two-day gates: second-order LTE/FLD", fontsize=12)
     fig.text(0.5, 0.012,
              "The global Mach maximum can lie in dilute exterior gas; inspect radial location separately.",
              ha="center", fontsize=8, color="#4b5563")
