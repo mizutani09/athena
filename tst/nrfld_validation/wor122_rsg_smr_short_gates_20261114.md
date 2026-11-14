@@ -139,3 +139,115 @@ mass/energy/Mach evolution. No XD job was submitted during this gate.
 
 Raw local outputs: `/home/kosuke/simulation/test/wor122_rsg_smr`.
 The AMR-aware summary script is `wor122_rsg_smr_diagnostics.py`.
+
+## XD2000 short gate (2026-11-15)
+
+The exact source snapshot `6f2f819e` was placed under `$WORK/wor122/athena`
+after SHA-256 verification. Job **339963** built it on M-debug and finished
+64³ and 128³ one-step SMR cases; both converged with zero opacity clamps.
+The 128³ root has 512 blocks, eight of which are replaced by 64 fine blocks,
+for 568 leaf blocks. Its fine cell width is 7.89 Rsun, still wider than the
+3.35 Rsun continuum radiative transition.
+
+Job **339964** compared uniform and one-patch 128³ meshes to code time 1
+with a 0.1-code-time step cap. Both completed in 2m14s, with all Newton
+steps converged, zero opacity clamps, positive saved Er, and relative mass
+changes below 2.5×10⁻⁹. The first and last measurements are:
+
+| Gate | Uniform 128³ | One-patch 128³ |
+| --- | ---: | ---: |
+| time 0.1: Lrad/Lheat | 0.79057 | 0.78997 |
+| time 0.1: maximum Mach | 0.0004564 | 0.0005150 |
+| time 1.0: Lrad/Lheat | 1.72875 | 1.70475 |
+| time 1.0: maximum Mach | 0.0043525 | 0.0056269 |
+| time 1.0: integrated energy-budget residual | −360.949 | −361.315 |
+| time 1.0: minimum saved Er | 3.05×10⁻⁶ | 2.96×10⁻⁶ |
+
+The energy residual difference is 0.366 code energy units, or 1.6×10⁻⁶
+of heat injected over the interval. The patch reduces total boundary
+luminosity by about 1.4% at time 1, but the peak Mach is about 29% larger.
+An ideal-gas sound-speed proxy places the patch's peak near
+`(833,−4,−4) Rsun` on a fine cell next to the patch corner. The maximum
+saved speed itself is identical between the two meshes to HDF precision,
+so the Mach difference is local and does not establish a global instability.
+
+In the first 0.1-code-time velocity increment, core-axis rms acceleration
+fell from 0.00216 at 64³ to 0.000808 at 128³. The diagonal-sector value
+fell from 0.000642 to 0.000107. These are absolute improvements with
+resolution; the axis/diagonal ratio is not yet converged. The sectors have
+different radial samples, so these numbers are diagnostic only.
+
+Job **339965** extended the 128³ patch from code time 1 to 3.9273
+(about one day), and job **339968** ran the matched uniform 128³ control
+from time 0 to the same endpoint. Both converged throughout, retained
+positive saved Er and zero opacity clamps, and finished normally.
+
+| One-day gate | Uniform 128³ | One-patch 128³ |
+| --- | ---: | ---: |
+| Maximum Mach | 0.021792 | 0.023492 |
+| Boundary Lrad/Lheat | 1.56966 | 1.54710 |
+| Relative mass change from time 0 | −2.39×10⁻⁹ | −2.47×10⁻⁹ |
+| Minimum saved Er | 3.02×10⁻⁶ | 2.97×10⁻⁶ |
+| Integrated energy-budget residual | −5248.88 | −5288.93 |
+
+The residual difference is 40.1 code energy units, or 4.4×10⁻⁵ of the
+heat injected over a day. This is a comparison of the complete joined
+SMR history and the uniform control, including slightly different output
+times after the SMR restart. The patch lowers luminosity by 1.4% and raises
+peak Mach by 7.8%; it is a viable *numerical* short pilot but not a
+demonstrated physical stability improvement. The local maximum Mach proxy
+is at a fine cell near a patch corner, while the uniform maximum is in
+the surface layer at a comparable radius.
+In the patch run, the 800–830 Rsun shell's mass-weighted gas temperature
+falls from 6736 to 6496 K while the core mean changes from 164153 to
+164164 K. The early thermal response is concentrated near the surface.
+
+At the first 0.1-code-time step, the core-axis mass-weighted acceleration
+magnitude divided by local gravity is 12.5% on 64³ and 4.1% on 128³.
+The diagonal-sector values are 5.8% and 1.3%. This includes the velocity
+seed, drag, and radiation update as well as the mechanical force imbalance;
+it is not an isolated gravity truncation error. Resolution reduces the
+absolute acceleration, but the axial preference remains.
+
+The time-1 final restart retained a near-zero last step caused by a
+floating-point endpoint; Athena doubled this tiny step repeatedly for
+roughly 50 wasteful cycles before reaching 0.1 again. Future restarts
+should stop at a noncommensurate time or a cycle limit to avoid this delay.
+The one-day patch run took 5m57s including that overhead. Job **339969**
+ran the next uniform 256³ short gate to code time 1 on M-debug (32 ranks,
+4m48s). It finished normally with all Newton steps converged, zero opacity
+clamps, positive saved Er, and relative mass change −7.12×10⁻⁹.
+
+| Six-hour uniform resolution gate | 64³ | 128³ | 256³ |
+| --- | ---: | ---: | ---: |
+| Boundary Lrad/Lheat | 3.627 | 1.729 | 1.084 |
+| Global maximum Mach | 0.03335 | 0.004352 | 0.004297 |
+| Core mass-weighted rms speed [code] | 0.001652 | 0.000544 | 0.000179 |
+| Surface 800–860 Rsun maximum ideal-gas Mach proxy | 0.0325 | 0.00429 | 0.00200 |
+
+The 256³ global Mach maximum occurs in density-floor exterior gas near
+`(-620,-636,-651) Rsun`, outside the star. Thus its similar global maximum
+to 128³ hides a factor-three reduction in core speed and a factor-two
+reduction in the surface Mach proxy. The proxy uses `sqrt((5/3)P/rho)` and
+is not the tabular-EOS Mach used by the history output. The 256³ cell width
+is 7.89 Rsun, still larger than the 3.35 Rsun radiative transition.
+Job **339970** extended the uniform 256³ configuration to one day on
+M-debug (64 ranks, 11m12s). It completed normally: every Newton solve
+converged, the opacity lookup had zero out-of-domain and clamped entries,
+and the saved radiation energy was positive everywhere (minimum
+1.884×10⁻⁶). At code time 3.9273, boundary Lrad/Lheat was 0.96623,
+global maximum Mach 0.017208, and relative mass change −7.12×10⁻⁹.
+The integrated energy-budget residual from the history was −1547.75 code
+energy units. The luminosity ratio declined monotonically from 1.002 at
+code time 3.0 to 0.966 at one day, so a near-unity instantaneous value
+does not establish thermal equilibrium. The global Mach maximum remained
+at radius 1101 Rsun in density-floor exterior gas, while the
+800–860 Rsun surface maximum ideal-gas Mach proxy was 0.01458. Core
+(r<200 Rsun) mass-weighted rms speed rose from 0.000179 at 0.25 day to
+0.000444 at one day. These trends require a longer gate before claiming
+stable evolution. Job **339971** continues the same state to two days
+in M-debug.
+
+The matched 64³/128³/256³ history comparison is generated by
+`wor122_plot_resolution_gates.py` and saved as
+`doc/figures/wor122_rsg_resolution_20261115.png`.
