@@ -26,8 +26,12 @@
 #include "../../globals.hpp"
 #include "../../hydro/hydro.hpp"
 #include "../../mesh/mesh.hpp"
+#include "../../newton_raphson/Newton_Raphson.hpp"
+#include "../../nr_multigrid/NRFLD.hpp"
 #include "../../parameter_input.hpp"
 #include "../../utils/buffer_utils.hpp"
+#include "../../utils/nrfld_face_reconstruction.hpp"
+#include "../../utils/nrfld_prototype_flags.hpp"
 #include "../bvals.hpp"
 #include "bvals_cc.hpp"
 
@@ -360,6 +364,107 @@ int CellCenteredBoundaryVariable::LoadBoundaryBufferToCoarser(Real *buf,
 
   int p = 0;
   pmr->RestrictCellCenteredValues(var, coarse_var, nl_, nu_, si, ei, sj, ej, sk, ek);
+  const bool interface_data = pmb->pnr != nullptr
+      && var_cc == &pmb->pnr->interface_moments_;
+  const bool weighted_delta = pmb->pnr != nullptr
+      && var_cc == &pmb->pnr->delta_u_
+      && NRFLDPrototype::SharedCoeff();
+  const bool tangential_delta=weighted_delta
+      && NRFLDPrototype::TangentialReconstruction();
+  auto effective_delta=[&](int n,int face,int k,int j,int i) {
+    const Real correction=tangential_delta
+        ? NRFLDFaceReconstruction::TangentialOffset(var,n,pmb,face,k,j,i)
+        : 0.0;
+    return var(n,k,j,i)-correction;
+  };
+  if (NRFLDPrototype::Enabled()
+      && pmb->pnr != nullptr
+      && (var_cc == &pmb->pnr->u_ || var_cc == &pmb->pnr->delta_u_
+          || interface_data)
+      && nb.ni.type == NeighborConnect::face) {
+    // The coarse face needs the four fine cells touching that face.  Generic
+    // volume restriction averages two layers in the normal direction, which
+    // cannot represent the symmetric center-to-center interface flux.
+    if (nb.ni.ox1 != 0) {
+      const int ci = nb.ni.ox1 < 0 ? pmb->cis : pmb->cie;
+      const int fi = nb.ni.ox1 < 0 ? pmb->is : pmb->ie;
+      const int face = nb.ni.ox1 < 0 ? 0 : 1;
+      for (int k=pmb->cks; k<=pmb->cke; ++k)
+        for (int j=pmb->cjs; j<=pmb->cje; ++j) {
+          const int fk=pmb->ks+2*(k-pmb->cks);
+          const int fj=pmb->js+2*(j-pmb->cjs);
+          const AthenaArray<Real> &d = pmb->pnr->derivetive_;
+          const int component=NewtonRaphsonFLD::dFr_dEr_xm+face;
+          const Real w0 = weighted_delta ? d(component,fk,fj,fi) : 1.0;
+          const Real w1 = weighted_delta ? d(component,fk,fj+1,fi) : 1.0;
+          const Real w2 = weighted_delta ? d(component,fk+1,fj,fi) : 1.0;
+          const Real w3 = weighted_delta ? d(component,fk+1,fj+1,fi) : 1.0;
+          const Real sum = w0+w1+w2+w3;
+          for (int n=nl_; n<=nu_; ++n)
+            coarse_var(n,k,j,ci) = sum > 0.0
+                ? (w0*effective_delta(n,face,fk,fj,fi)
+                   +w1*effective_delta(n,face,fk,fj+1,fi)
+                   +w2*effective_delta(n,face,fk+1,fj,fi)
+                   +w3*effective_delta(n,face,fk+1,fj+1,fi))/sum
+                : 0.25*(effective_delta(n,face,fk,fj,fi)
+                        +effective_delta(n,face,fk,fj+1,fi)
+                        +effective_delta(n,face,fk+1,fj,fi)
+                        +effective_delta(n,face,fk+1,fj+1,fi));
+        }
+    } else if (nb.ni.ox2 != 0) {
+      const int cj = nb.ni.ox2 < 0 ? pmb->cjs : pmb->cje;
+      const int fj = nb.ni.ox2 < 0 ? pmb->js : pmb->je;
+      const int face = nb.ni.ox2 < 0 ? 2 : 3;
+      for (int k=pmb->cks; k<=pmb->cke; ++k)
+        for (int i=pmb->cis; i<=pmb->cie; ++i) {
+          const int fk=pmb->ks+2*(k-pmb->cks);
+          const int fi=pmb->is+2*(i-pmb->cis);
+          const AthenaArray<Real> &d = pmb->pnr->derivetive_;
+          const int component=NewtonRaphsonFLD::dFr_dEr_xm+face;
+          const Real w0 = weighted_delta ? d(component,fk,fj,fi) : 1.0;
+          const Real w1 = weighted_delta ? d(component,fk,fj,fi+1) : 1.0;
+          const Real w2 = weighted_delta ? d(component,fk+1,fj,fi) : 1.0;
+          const Real w3 = weighted_delta ? d(component,fk+1,fj,fi+1) : 1.0;
+          const Real sum = w0+w1+w2+w3;
+          for (int n=nl_; n<=nu_; ++n)
+            coarse_var(n,k,cj,i) = sum > 0.0
+                ? (w0*effective_delta(n,face,fk,fj,fi)
+                   +w1*effective_delta(n,face,fk,fj,fi+1)
+                   +w2*effective_delta(n,face,fk+1,fj,fi)
+                   +w3*effective_delta(n,face,fk+1,fj,fi+1))/sum
+                : 0.25*(effective_delta(n,face,fk,fj,fi)
+                        +effective_delta(n,face,fk,fj,fi+1)
+                        +effective_delta(n,face,fk+1,fj,fi)
+                        +effective_delta(n,face,fk+1,fj,fi+1));
+        }
+    } else if (nb.ni.ox3 != 0) {
+      const int ck = nb.ni.ox3 < 0 ? pmb->cks : pmb->cke;
+      const int fk = nb.ni.ox3 < 0 ? pmb->ks : pmb->ke;
+      const int face = nb.ni.ox3 < 0 ? 4 : 5;
+      for (int j=pmb->cjs; j<=pmb->cje; ++j)
+        for (int i=pmb->cis; i<=pmb->cie; ++i) {
+          const int fj=pmb->js+2*(j-pmb->cjs);
+          const int fi=pmb->is+2*(i-pmb->cis);
+          const AthenaArray<Real> &d = pmb->pnr->derivetive_;
+          const int component=NewtonRaphsonFLD::dFr_dEr_xm+face;
+          const Real w0 = weighted_delta ? d(component,fk,fj,fi) : 1.0;
+          const Real w1 = weighted_delta ? d(component,fk,fj,fi+1) : 1.0;
+          const Real w2 = weighted_delta ? d(component,fk,fj+1,fi) : 1.0;
+          const Real w3 = weighted_delta ? d(component,fk,fj+1,fi+1) : 1.0;
+          const Real sum = w0+w1+w2+w3;
+          for (int n=nl_; n<=nu_; ++n)
+            coarse_var(n,ck,j,i) = sum > 0.0
+                ? (w0*effective_delta(n,face,fk,fj,fi)
+                   +w1*effective_delta(n,face,fk,fj,fi+1)
+                   +w2*effective_delta(n,face,fk,fj+1,fi)
+                   +w3*effective_delta(n,face,fk,fj+1,fi+1))/sum
+                : 0.25*(effective_delta(n,face,fk,fj,fi)
+                        +effective_delta(n,face,fk,fj,fi+1)
+                        +effective_delta(n,face,fk,fj+1,fi)
+                        +effective_delta(n,face,fk,fj+1,fi+1));
+        }
+    }
+  }
   BufferUtility::PackData(coarse_var, buf, nl_, nu_, si, ei, sj, ej, sk, ek, p);
   return p;
 }

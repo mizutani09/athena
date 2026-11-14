@@ -17,7 +17,7 @@ variable    = uov
 dt          = 2.0e-9
 x2_slice    = 0.0
 x3_slice    = 0.0
-# ghost_zones = true
+ghost_zones = false
 
 <output3>
 file_type   = hdf5
@@ -26,7 +26,7 @@ variable    = uov
 dt          = 1.0e-10
 x2_slice    = 0.0
 x3_slice    = 0.0
-# ghost_zones = true
+ghost_zones = false
 
 <time>
 cfl_number = 0.3
@@ -70,7 +70,7 @@ mu              = 1.0
 
 <nrfld>
 mgmode          = FMG
-fas             = false　
+fas             = false
 smoother        = jacobi-rb
 npresmooth      = 2
 npostsmooth     = 2

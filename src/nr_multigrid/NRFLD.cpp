@@ -13,6 +13,7 @@
 #include <cmath>
 #include <cstdlib>
 #include <cstring>    // memset, memcpy
+#include <iomanip>
 #include <iostream>
 #include <limits>
 #include <sstream>    // stringstream
@@ -27,6 +28,8 @@
 #include "../linear_solver/linear_solver.hpp"
 #include "../mesh/mesh.hpp"
 #include "../parameter_input.hpp"
+#include "../utils/nrfld_face_reconstruction.hpp"
+#include "../utils/nrfld_prototype_flags.hpp"
 #include "NRFLD.hpp"
 
 
@@ -79,6 +82,10 @@ enum DriftFace { XMinus, XPlus, YMinus, YPlus, ZMinus, ZPlus };
 inline bool MarshakFaceActive(const MeshBlock *pmb, const FLD *fld,
                               const int face, const int k, const int j,
                               const int i) {
+  // cut_diff removes the entire diffusion operator, including its physical
+  // boundary flux.  Keeping a Marshak face here changes the supposedly local
+  // exchange problem and defeats its total-energy cancellation.
+  if (fld->cut_diff) return false;
   const bool enabled = fld->marshak_face_boundary[face]
       || (face == ZPlus && fld->marshak_top_boundary);
   if (!enabled) return false;
@@ -354,6 +361,257 @@ NRFLDDriver::~NRFLDDriver() {
     if (trace_dtor) std::cout << "[DTOR] NRFLDDriver delete plmgd_" << std::endl;
     delete plmgd_;
   }
+}
+
+void NRFLDDriver::SyncInterfaceFaceMoments() {
+  if (!NRFLDPrototype::SharedCoeff()) return;
+  // CASTRO accumulates fine radiation face fluxes in a flux register and
+  // refluxes their difference from the coarse flux during an implicit
+  // update.  Athena++ advances all AMR levels at one time here, so the
+  // composite residual can use that fine-face flux immediately: each fine
+  // face sends D and D*Er, and restriction averages the four subfaces.
+  // The coarse row then evaluates the same area-integrated flux with the
+  // opposite sign.  This exchange also works across MPI ranks.
+  for (NewtonRaphson *base : vnr_) {
+    NRFLD *nr = static_cast<NRFLD*>(base);
+    MeshBlock *mb = nr->pmy_block_;
+    AthenaArray<Real> &moment = nr->interface_moments_;
+    const int level=mb->loc.level;
+    const bool coarser[6]={
+        mb->pbval->nblevel[1][1][0]<level,mb->pbval->nblevel[1][1][2]<level,
+        mb->pbval->nblevel[1][0][1]<level,mb->pbval->nblevel[1][2][1]<level,
+        mb->pbval->nblevel[0][1][1]<level,mb->pbval->nblevel[2][1][1]<level};
+    for (int k=mb->ks; k<=mb->ke; ++k)
+      for (int j=mb->js; j<=mb->je; ++j)
+        for (int i=mb->is; i<=mb->ie; ++i)
+          for (int face=0; face<6; ++face) {
+            const Real d = nr->derivetive_(
+                NewtonRaphsonFLD::dFr_dEr_xm+face,k,j,i);
+            const bool at_face=(face<2 ? (face==0 ? i==mb->is : i==mb->ie)
+                : face<4 ? (face==2 ? j==mb->js : j==mb->je)
+                : (face==4 ? k==mb->ks : k==mb->ke));
+            const Real correction=(NRFLDPrototype::TangentialReconstruction()
+                                   && coarser[face] && at_face)
+                ? NRFLDFaceReconstruction::TangentialOffset(
+                    nr->u_,0,mb,face,k,j,i) : 0.0;
+            moment(2*face,k,j,i) = d;
+            moment(2*face+1,k,j,i) = d*(nr->u_(k,j,i)-correction);
+          }
+    nr->interface_bvar_->StartReceiving(BoundaryCommSubset::all);
+  }
+  for (NewtonRaphson *base : vnr_)
+    static_cast<NRFLD*>(base)->interface_bvar_->SendBoundaryBuffers();
+  bool complete = false;
+  while (!complete) {
+    complete = true;
+    for (NewtonRaphson *base : vnr_)
+      complete &= static_cast<NRFLD*>(base)->interface_bvar_->ReceiveBoundaryBuffers();
+  }
+  for (NewtonRaphson *base : vnr_) {
+    NRFLD *nr = static_cast<NRFLD*>(base);
+    nr->interface_bvar_->SetBoundaries();
+    nr->interface_bvar_->ClearBoundary(BoundaryCommSubset::all);
+  }
+  for (NewtonRaphson *base : vnr_) {
+    NRFLD *nr = static_cast<NRFLD*>(base);
+    MeshBlock *mb = nr->pmy_block_;
+    const int level = mb->loc.level;
+    const int neighbor_level[6] = {
+        mb->pbval->nblevel[1][1][0], mb->pbval->nblevel[1][1][2],
+        mb->pbval->nblevel[1][0][1], mb->pbval->nblevel[1][2][1],
+        mb->pbval->nblevel[0][1][1], mb->pbval->nblevel[2][1][1]};
+    const bool finer[6] = {
+        neighbor_level[0] > level, neighbor_level[1] > level,
+        neighbor_level[2] > level, neighbor_level[3] > level,
+        neighbor_level[4] > level, neighbor_level[5] > level};
+    for (int k=mb->ks; k<=mb->ke; ++k)
+      for (int j=mb->js; j<=mb->je; ++j)
+        for (int i=mb->is; i<=mb->ie; ++i) {
+          const bool at_face[6] = {i==mb->is,i==mb->ie,j==mb->js,j==mb->je,
+                                   k==mb->ks,k==mb->ke};
+          const int ghost_i[6] = {i-1,i+1,i,i,i,i};
+          const int ghost_j[6] = {j,j,j-1,j+1,j,j};
+          const int ghost_k[6] = {k,k,k,k,k-1,k+1};
+          for (int face=0; face<6; ++face) {
+            if (!at_face[face]) continue;
+            const int gi=ghost_i[face], gj=ghost_j[face], gk=ghost_k[face];
+            const int opposite = face^1;
+            // Across a same-level block boundary, two independently formed
+            // variable-limiter closures can differ near a coarse/fine edge.
+            // The positive-side cell owns the common D; the negative-side
+            // block copies it from the exchanged first ghost layer. This
+            // reuses the existing moments communication and also works for
+            // periodic block neighbours.
+            if (face % 2 == 0 && neighbor_level[face] == level) {
+              const Real d = nr->interface_moments_(2*opposite,gk,gj,gi);
+              if (!(d > 0.0) || !std::isfinite(d)) {
+                std::stringstream msg;
+                msg << "Missing same-level FLD face coefficient at gid="
+                    << mb->gid << " face=" << face << " cell=(" << k << ","
+                    << j << "," << i << ") D=" << d;
+                ATHENA_ERROR(msg);
+              }
+              nr->derivetive_(NewtonRaphsonFLD::dFr_dEr_xm+face,k,j,i) = d;
+            }
+            if (!finer[face]) continue;
+            const Real dbar = nr->interface_moments_(2*opposite,gk,gj,gi);
+            const Real debar = nr->interface_moments_(2*opposite+1,gk,gj,gi);
+            if (!(dbar > 0.0) || !std::isfinite(dbar)
+                || !std::isfinite(debar)) {
+              std::stringstream msg;
+              msg << "Missing coarse/fine FLD face moments at gid=" << mb->gid
+                  << " face=" << face << " cell=(" << k << "," << j << ","
+                  << i << ") D=" << dbar << " DE=" << debar;
+              ATHENA_ERROR(msg);
+            }
+            nr->u_(gk,gj,gi) = debar/dbar;
+            nr->derivetive_(NewtonRaphsonFLD::dFr_dEr_xm+face,k,j,i)
+                = (4.0/3.0)*dbar;
+          }
+        }
+  }
+}
+
+void NRFLDDriver::RunCommittedDiagnostic() {
+  if (vnr_.empty() || dt_ <= 0.0) return;
+  FLD *first = static_cast<NRFLD*>(vnr_.front())->pmy_block_->prfld;
+  if (std::getenv("ATHENA_NRFLD_ENERGY_LEDGER") != nullptr
+      && ((first->is_couple && !first->only_rad && !first->fixed_u_rad)
+          || first->only_rad)) {
+    const bool interface_ledger =
+        (std::getenv("ATHENA_NRFLD_INTERFACE_LEDGER") != nullptr);
+    long double gas_delta = 0.0L, radiation_delta = 0.0L;
+    long double diffusion_delta = 0.0L, boundary_delta = 0.0L;
+    long double absolute_scale = 0.0L, absolute_balance = 0.0L;
+    for (auto base : vnr_) {
+      NRFLD *nr = static_cast<NRFLD*>(base);
+      MeshBlock *mb = nr->pmy_block_;
+      FLD *fld = mb->prfld;
+      const Real dx = mb->pcoord->dx1f(mb->is);
+      const Real idx2 = 1.0/SQR(dx);
+      long double block_face_delta[6] = {};
+      for (int k=mb->ks; k<=mb->ke; ++k)
+        for (int j=mb->js; j<=mb->je; ++j)
+          for (int i=mb->is; i<=mb->ie; ++i) {
+            const Real center = nr->u_(k,j,i);
+            const Real face_coeff[6] = {
+              -nr->coeff_(linearSolver::DXMF,k,j,i),
+              -nr->coeff_(linearSolver::DXPF,k,j,i),
+              -nr->coeff_(linearSolver::DYMF,k,j,i),
+              -nr->coeff_(linearSolver::DYPF,k,j,i),
+              -nr->coeff_(linearSolver::DZMF,k,j,i),
+              -nr->coeff_(linearSolver::DZPF,k,j,i)};
+            const Real neighbor[6] = {nr->u_(k,j,i-1),nr->u_(k,j,i+1),
+              nr->u_(k,j-1,i),nr->u_(k,j+1,i),nr->u_(k-1,j,i),nr->u_(k+1,j,i)};
+            const Real volume = mb->pcoord->GetCellVolume(k,j,i);
+            Real face_sum = 0.0, boundary_sum = 0.0;
+            for (int face=0; face<6; ++face) {
+              Real face_term;
+              if (MarshakFaceActive(mb,fld,face,k,j,i)) {
+                face_term = -MarshakFlux(
+                    fld,face,k,j,i,center,dx,nullptr)*dx;
+                boundary_sum += face_term;
+              } else {
+                face_term = face_coeff[face]*(neighbor[face]-center);
+              }
+              face_sum += face_term;
+              if (interface_ledger &&
+                  ((face == XMinus && i == mb->is)
+                   || (face == XPlus && i == mb->ie)
+                   || (face == YMinus && j == mb->js)
+                   || (face == YPlus && j == mb->je)
+                   || (face == ZMinus && k == mb->ks)
+                   || (face == ZPlus && k == mb->ke)))
+                block_face_delta[face] +=
+                    static_cast<long double>(dt_*face_term*idx2)*volume;
+            }
+            const Real dg = first->only_rad ? 0.0
+                : nr->u_gas_(k,j,i)-fld->u_gas(k,j,i);
+            const Real dr = center-nr->uold_(k,j,i);
+            const Real dd = dt_*face_sum*idx2;
+            const Real residual = (dg+dr)-dd;
+            gas_delta += static_cast<long double>(dg)*volume;
+            radiation_delta += static_cast<long double>(dr)*volume;
+            diffusion_delta += static_cast<long double>(dd)*volume;
+            boundary_delta += static_cast<long double>(dt_*boundary_sum*idx2)*volume;
+            absolute_balance += static_cast<long double>(std::abs(residual))*volume;
+            absolute_scale += (static_cast<long double>(std::abs(dg))
+                + std::abs(dr) + std::abs(dd)
+                + std::abs(nr->u_gas_(k,j,i)) + std::abs(center))*volume;
+          }
+      if (interface_ledger) {
+        const RegionSize &b = mb->block_size;
+        std::ostringstream line;
+        line << std::scientific << std::setprecision(17)
+             << "[NR_INTERFACE_LEDGER] rank=" << Globals::my_rank
+             << " cycle=" << pmy_mesh_->ncycle << " stage=" << stage_
+             << " dt=" << dt_ << " gid=" << mb->gid
+             << " level=" << mb->loc.level
+             << " x1min=" << b.x1min << " x1max=" << b.x1max
+             << " x2min=" << b.x2min << " x2max=" << b.x2max
+             << " x3min=" << b.x3min << " x3max=" << b.x3max
+             << " xminus_delta=" << block_face_delta[XMinus]
+             << " xplus_delta=" << block_face_delta[XPlus]
+             << " yminus_delta=" << block_face_delta[YMinus]
+             << " yplus_delta=" << block_face_delta[YPlus]
+             << " zminus_delta=" << block_face_delta[ZMinus]
+             << " zplus_delta=" << block_face_delta[ZPlus];
+        std::cout << line.str() << std::endl;
+      }
+    }
+    const long double balance = gas_delta+radiation_delta-diffusion_delta;
+    const long double scale = std::max(absolute_scale, 1.0e-30L);
+    const auto flags = std::cout.flags();
+    const auto precision = std::cout.precision();
+    std::cout << std::scientific << std::setprecision(16)
+              << "[NR_ENERGY_LEDGER] rank=" << Globals::my_rank
+              << " cycle=" << pmy_mesh_->ncycle << " stage=" << stage_
+              << " dt=" << dt_ << " gas_delta=" << gas_delta
+              << " radiation_delta=" << radiation_delta
+              << " diffusion_delta=" << diffusion_delta
+              << " marshak_delta=" << boundary_delta
+              << " interior_delta=" << diffusion_delta-boundary_delta
+              << " balance=" << balance
+              << " relative_balance=" << std::abs(balance)/scale
+              << " absolute_relative_balance=" << absolute_balance/scale
+              << std::endl;
+    std::cout.flags(flags);
+    std::cout.precision(precision);
+  }
+  if (!first->MixedFrameCoupled()
+      || mixed_frame_ledger_count_ >= first->mixed_frame_ledger_limit) return;
+  ++mixed_frame_ledger_count_;
+  Real q_gas_volume = 0.0;
+  Real q_abs_volume = 0.0;
+  for (auto base : vnr_) {
+    NRFLD *nr = static_cast<NRFLD*>(base);
+    MeshBlock *mb = nr->pmy_block_;
+    if (!mb->prfld->implicit_mixed_frame_drift) continue;
+    const Real half_idx = 0.5/mb->pcoord->dx1f(mb->is);
+    for (int k = mb->ks; k <= mb->ke; ++k)
+      for (int j = mb->js; j <= mb->je; ++j)
+        for (int i = mb->is; i <= mb->ie; ++i) {
+          const Real contribution = dt_*MixedDriftTerm(
+              nr->mixed_drift_, nr->u_, k,j,i,half_idx)
+              *mb->pcoord->GetCellVolume(k,j,i);
+          q_gas_volume += contribution;
+          q_abs_volume += std::abs(contribution);
+        }
+  }
+  const auto flags = std::cout.flags();
+  const auto precision = std::cout.precision();
+  std::cout << std::scientific << std::setprecision(16)
+            << "[MIXED_IMPLICIT_LEDGER] rank=" << Globals::my_rank
+            << " cycle=" << pmy_mesh_->ncycle << " time=" << pmy_mesh_->time
+            << " stage=" << stage_ << " dt=" << dt_
+            << " implicit_q=" << first->implicit_mixed_frame_drift
+            << " q_gas_volume=" << q_gas_volume
+            << " q_abs_volume=" << q_abs_volume
+            << " q_radiation_volume=" << -q_gas_volume
+            << " pair_balance_volume=" << q_gas_volume-q_gas_volume
+            << std::endl;
+  std::cout.flags(flags);
+  std::cout.precision(precision);
 }
 
 NRFLD::NRFLD(MeshBlock *pmb, ParameterInput *pin) :
@@ -638,7 +896,38 @@ void NRFLD::CalculateCoefficientsOnce(const AthenaArray<Real> &u_pre,
   Real idx = 1.0/dx;
   Real idy = 1.0/dy;
   Real idz = 1.0/dz;
-  const bool mixed_active = pfld->MixedFrameCoupled();
+  const int level = pmy_block_->loc.level;
+  const bool coarser[6] = {
+      pmy_block_->pbval->nblevel[1][1][0] < level,
+      pmy_block_->pbval->nblevel[1][1][2] < level,
+      pmy_block_->pbval->nblevel[1][0][1] < level,
+      pmy_block_->pbval->nblevel[1][2][1] < level,
+      pmy_block_->pbval->nblevel[0][1][1] < level,
+      pmy_block_->pbval->nblevel[2][1][1] < level};
+  auto face_opacity = [&](int face, int k, int j, int i,
+                          Real own, Real other, Real inverse_width) {
+    const bool at_boundary = face < 2 ? (face == 0 ? i == is : i == ie)
+        : face < 4 ? (face == 2 ? j == js : j == je)
+        : (face == 4 ? k == ks : k == ke);
+    if (NRFLDPrototype::SeriesResistance()) {
+      // Experimental diffusion resistance, derived for a fixed limiter.
+      // With a variable limiter this is an exploratory effective opacity.
+      // At equal-width
+      // faces, each center contributes half a cell: sigma_face is their
+      // arithmetic mean.  At a coarse/fine face the coarse center is h
+      // from the face and the fine center is h/2 away.  The two-point fine
+      // ghost uses (Ef+2Ec)/3, so its effective opacity is
+      // (2 sigma_c + sigma_f)/3 and reproduces
+      // F = -c (Ef-Ec) / [3 h (sigma_c + sigma_f/2)].
+      // The shared-face exchange keeps the same flux on both residual sides.
+      return coarser[face] && at_boundary
+          ? (2.0/3.0)*other + (1.0/3.0)*own
+          : 0.5*own + 0.5*other;
+    }
+    return RadFLD::FaceOpacity(own, other, inverse_width);
+  };
+  const bool mixed_active = pfld->MixedFrameCoupled()
+      && pfld->implicit_mixed_frame_drift;
   const int check_il = std::max(0, is-1);
   const int check_iu = std::min(u_pre.GetDim1()-1, ie+1);
   const int check_jl = std::max(0, js-1);
@@ -689,7 +978,7 @@ void NRFLD::CalculateCoefficientsOnce(const AthenaArray<Real> &u_pre,
         // needs a separate stencil evaluation.
         if (i == is) {
           // for i-1/2 face
-          sigma_rface = RadFLD::FaceOpacity(sigma_r(k,j,i), sigma_r(k,j,i-1), idx);
+          sigma_rface = face_opacity(0,k,j,i,sigma_r(k,j,i),sigma_r(k,j,i-1),idx);
           gx = (u_pre(k,j,i-1) - u_pre(k,j,i))*idx;
           gy = 0.25*idy*((u_pre(k,j+1,i-1) - u_pre(k,j-1,i-1)) + (u_pre(k,j+1,i) - u_pre(k,j-1,i)));
           gz = 0.25*idz*((u_pre(k+1,j,i-1) - u_pre(k-1,j,i-1)) + (u_pre(k+1,j,i) - u_pre(k-1,j,i)));
@@ -710,7 +999,7 @@ void NRFLD::CalculateCoefficientsOnce(const AthenaArray<Real> &u_pre,
         }
 
          // for i+1/2 face
-        sigma_rface = RadFLD::FaceOpacity(sigma_r(k,j,i), sigma_r(k,j,i+1), idx);
+        sigma_rface = face_opacity(1,k,j,i,sigma_r(k,j,i),sigma_r(k,j,i+1),idx);
         gx = (u_pre(k,j,i+1) - u_pre(k,j,i))*idx;
         gy = 0.25*idy*((u_pre(k,j+1,i+1) - u_pre(k,j-1,i+1)) + (u_pre(k,j+1,i) - u_pre(k,j-1,i)));
         gz = 0.25*idz*((u_pre(k+1,j,i+1) - u_pre(k-1,j,i+1)) + (u_pre(k+1,j,i) - u_pre(k-1,j,i)));
@@ -727,7 +1016,7 @@ void NRFLD::CalculateCoefficientsOnce(const AthenaArray<Real> &u_pre,
 
         if (j == js) {
           // for j-1/2 face
-          sigma_rface = RadFLD::FaceOpacity(sigma_r(k,j,i), sigma_r(k,j-1,i), idx);
+          sigma_rface = face_opacity(2,k,j,i,sigma_r(k,j,i),sigma_r(k,j-1,i),idx);
           gx = 0.25*idx*((u_pre(k,j-1,i+1) - u_pre(k,j-1,i-1)) + (u_pre(k,j,i+1) - u_pre(k,j,i-1)));
           gy = (u_pre(k,j-1,i) - u_pre(k,j,i))*idy;
           gz = 0.25*idz*((u_pre(k+1,j-1,i) - u_pre(k-1,j-1,i)) + (u_pre(k+1,j,i) - u_pre(k-1,j,i)));
@@ -749,7 +1038,7 @@ void NRFLD::CalculateCoefficientsOnce(const AthenaArray<Real> &u_pre,
         }
 
         // for j+1/2 face
-        sigma_rface = RadFLD::FaceOpacity(sigma_r(k,j,i), sigma_r(k,j+1,i), idx);
+        sigma_rface = face_opacity(3,k,j,i,sigma_r(k,j,i),sigma_r(k,j+1,i),idx);
         gx = 0.25*idx*((u_pre(k,j+1,i+1) - u_pre(k,j+1,i-1)) + (u_pre(k,j,i+1) - u_pre(k,j,i-1)));
         gy = (u_pre(k,j+1,i) - u_pre(k,j,i))*idy;
         gz = 0.25*idz*((u_pre(k+1,j+1,i) - u_pre(k-1,j+1,i)) + (u_pre(k+1,j,i) - u_pre(k-1,j,i)));
@@ -767,7 +1056,7 @@ void NRFLD::CalculateCoefficientsOnce(const AthenaArray<Real> &u_pre,
 
         if (k == ks) {
           // for k-1/2 face
-          sigma_rface = RadFLD::FaceOpacity(sigma_r(k,j,i), sigma_r(k-1,j,i), idx);
+          sigma_rface = face_opacity(4,k,j,i,sigma_r(k,j,i),sigma_r(k-1,j,i),idx);
           gx = 0.25*idx*((u_pre(k-1,j,i+1) - u_pre(k-1,j,i-1)) + (u_pre(k,j,i+1) - u_pre(k,j,i-1)));
           gy = 0.25*idy*((u_pre(k-1,j+1,i) - u_pre(k-1,j-1,i)) + (u_pre(k,j+1,i) - u_pre(k,j-1,i)));
           gz = (u_pre(k-1,j,i) - u_pre(k,j,i))*idz;
@@ -789,7 +1078,7 @@ void NRFLD::CalculateCoefficientsOnce(const AthenaArray<Real> &u_pre,
         }
 
         // for k+1/2 face
-        sigma_rface = RadFLD::FaceOpacity(sigma_r(k,j,i), sigma_r(k+1,j,i), idx);
+        sigma_rface = face_opacity(5,k,j,i,sigma_r(k,j,i),sigma_r(k+1,j,i),idx);
         gx = 0.25*idx*((u_pre(k+1,j,i+1) - u_pre(k+1,j,i-1)) + (u_pre(k,j,i+1) - u_pre(k,j,i-1)));
         gy = 0.25*idy*((u_pre(k+1,j+1,i) - u_pre(k+1,j-1,i)) + (u_pre(k,j+1,i) - u_pre(k,j-1,i)));
         gz = (u_pre(k+1,j,i) - u_pre(k,j,i))*idz;
@@ -838,6 +1127,29 @@ void NRFLD::CalculateCoefficientsOnce(const AthenaArray<Real> &u_pre,
         }
       }
     }
+  }
+  // Experimental constant-D coarse/fine two-point transmissibility.  For
+  // d_c=2*d_f the center distance is 3*d_c/4, so a coarse face represented
+  // by a ghost value at d_c needs a 4/3 coefficient.  The fine ghost is set
+  // to the corresponding center-to-center linear value in bvals_refine.cpp.
+  if (NRFLDPrototype::Enabled() && !pfld->cut_diff) {
+    MeshBlock *mb = pmy_block_;
+    const int level = mb->loc.level;
+    const bool finer[6] = {
+      mb->pbval->nblevel[1][1][0] > level,
+      mb->pbval->nblevel[1][1][2] > level,
+      mb->pbval->nblevel[1][0][1] > level,
+      mb->pbval->nblevel[1][2][1] > level,
+      mb->pbval->nblevel[0][1][1] > level,
+      mb->pbval->nblevel[2][1][1] > level};
+    for (int k=ks; k<=ke; ++k)
+      for (int j=js; j<=je; ++j)
+        for (int i=is; i<=ie; ++i) {
+          const bool at_face[6] = {i==is,i==ie,j==js,j==je,k==ks,k==ke};
+          for (int face=0; face<6; ++face)
+            if (finer[face] && at_face[face])
+              derivetive(NewtonRaphsonFLD::dFr_dEr_xm+face,k,j,i) *= 4.0/3.0;
+        }
   }
 }
 
@@ -998,11 +1310,13 @@ void NRFLD::CalculateCoefficients(const AthenaArray<Real> &u_rad_old,
           // algebraically identical forms
           //
           //   1 - (dFg/dEr)/(dFg/deg)
-          //   -(Fr + Fg) + Fg/(dFg/deg)
+          //   -Ftotal + Fg/(dFg/deg)
           //
           // for the local diagonal and reduced right-hand side.  These also
           // preserve the exact cancellation of equal-and-opposite exchange
-          // residuals without subtracting two O(C) quantities.
+          // residuals without adding two O(C) terms.  Form Ftotal directly:
+          // separately rounded Fg and Fr lose the small total when exchange
+          // is stiff (WOR-26).
           const Real inv_dFg_deg =
               1.0/derivetive(NewtonRaphsonFLD::dFg_deg,k,j,i);
           // The face drift has a center contribution when its two face
@@ -1030,14 +1344,111 @@ void NRFLD::CalculateCoefficients(const AthenaArray<Real> &u_rad_old,
           coeff(linearSolver::DYPS,k,j,i) =  drift_fac*mixed_drift_(YPlus,k,j,i);
           coeff(linearSolver::DZMS,k,j,i) = -drift_fac*mixed_drift_(ZMinus,k,j,i);
           coeff(linearSolver::DZPS,k,j,i) =  drift_fac*mixed_drift_(ZPlus,k,j,i);
-          src(k,j,i) =
-              -(derivetive(NewtonRaphsonFLD::Fr,k,j,i)
-                + derivetive(NewtonRaphsonFLD::Fg,k,j,i))
+          const Real total_residual =
+              (u_gas_new(k,j,i) - u_gas_old(k,j,i))
+              + (u_rad_new(k,j,i) - u_rad_old(k,j,i)) - dt*diff_term;
+          src(k,j,i) = -total_residual
               + derivetive(NewtonRaphsonFLD::Fg,k,j,i)*inv_dFg_deg;
         }
 
       }
     }
+  }
+  // Opt-in audit of cancellation in the coupled Schur right-hand side.  The
+  // direct total omits the equal-and-opposite thermal and mixed-frame terms.
+  // Keep this separate from the vectorized production loop.
+  if (std::getenv("ATHENA_NRFLD_SCHUR_AUDIT") != nullptr &&
+      !pfld->only_rad && !pfld->fixed_u_rad) {
+    Real worst_ratio = -1.0, worst_abs = 0.0, worst_scale = 0.0;
+    Real worst_total_scale = 0.0, max_total_ratio = 0.0;
+    int total_i = is, total_j = js, total_k = ks;
+    Real worst_naive = 0.0, worst_direct = 0.0, worst_exchange = 0.0;
+    Real worst_rhs = 0.0, worst_rhs_direct = 0.0, worst_rhs_legacy = 0.0;
+    int worst_i = is, worst_j = js, worst_k = ks;
+    for (int k=ks; k<=ke; ++k) {
+      for (int j=js; j<=je; ++j) {
+        for (int i=is; i<=ie; ++i) {
+          const Real center = u_rad_new(k,j,i);
+          const Real face_coeff[6] = {
+            derivetive(NewtonRaphsonFLD::dFr_dEr_xm,k,j,i),
+            derivetive(NewtonRaphsonFLD::dFr_dEr_xp,k,j,i),
+            derivetive(NewtonRaphsonFLD::dFr_dEr_ym,k,j,i),
+            derivetive(NewtonRaphsonFLD::dFr_dEr_yp,k,j,i),
+            derivetive(NewtonRaphsonFLD::dFr_dEr_zm,k,j,i),
+            derivetive(NewtonRaphsonFLD::dFr_dEr_zp,k,j,i)};
+          const Real neighbor[6] = {u_rad_new(k,j,i-1), u_rad_new(k,j,i+1),
+            u_rad_new(k,j-1,i), u_rad_new(k,j+1,i),
+            u_rad_new(k-1,j,i), u_rad_new(k+1,j,i)};
+          Real diff_term = 0.0;
+          Real diff_abs_term = 0.0;
+          for (int face=0; face<6; ++face) {
+            Real face_term;
+            if (MarshakFaceActive(pmy_block_, pfld, face,k,j,i)) {
+              face_term = -MarshakFlux(pfld, face,k,j,i,center,dx,nullptr)*dx;
+            } else {
+              face_term = face_coeff[face]*(neighbor[face] - center);
+            }
+            diff_term += face_term;
+            diff_abs_term += std::abs(face_term);
+          }
+          diff_term *= idx2;
+          diff_abs_term *= idx2;
+          const Real gas_delta = u_gas_new(k,j,i) - u_gas_old(k,j,i);
+          const Real rad_delta = center - u_rad_old(k,j,i);
+          const Real direct = (gas_delta + rad_delta) - dt*diff_term;
+          const Real fg = derivetive(NewtonRaphsonFLD::Fg,k,j,i);
+          const Real fr = derivetive(NewtonRaphsonFLD::Fr,k,j,i);
+          const Real naive = fg + fr;
+          const Real abs_delta = std::abs(naive - direct);
+          const Real scale = std::max({std::abs(gas_delta), std::abs(rad_delta),
+              std::abs(dt*diff_term), std::abs(u_gas_old(k,j,i)),
+              std::abs(u_rad_old(k,j,i)), Real(1.e-30)});
+          const Real ratio = abs_delta/scale;
+          const Real diffusion_scale = backward_error_convergence_
+              ? diff_abs_term : std::abs(diff_term);
+          Real total_scale = std::abs(gas_delta) + std::abs(rad_delta)
+              + dt*diffusion_scale;
+          total_scale = std::max(total_scale,
+              std::max(std::abs(u_gas_new(k,j,i) + center),
+                       std::abs(u_gas_old(k,j,i) + u_rad_old(k,j,i))));
+          total_scale = std::max(total_scale, Real(1.e-30));
+          const Real total_ratio = abs_delta/total_scale;
+          if (total_ratio > max_total_ratio) {
+            max_total_ratio = total_ratio;
+            total_i = i; total_j = j; total_k = k;
+          }
+          if (ratio > worst_ratio) {
+            worst_ratio = ratio;
+            worst_abs = abs_delta;
+            worst_scale = scale;
+            worst_total_scale = total_scale;
+            worst_naive = naive;
+            worst_direct = direct;
+            worst_exchange = std::max(std::abs(fg), std::abs(fr));
+            const Real gas_schur = fg/derivetive(NewtonRaphsonFLD::dFg_deg,k,j,i);
+            worst_rhs = src(k,j,i);
+            worst_rhs_direct = -direct + gas_schur;
+            worst_rhs_legacy = -naive + gas_schur;
+            worst_i = i; worst_j = j; worst_k = k;
+          }
+        }
+      }
+    }
+    std::cout << std::setprecision(17)
+              << "[NR_SCHUR_AUDIT] cycle=" << pmy_block_->pmy_mesh->ncycle
+              << " gid=" << pmy_block_->gid << " dt=" << dt
+              << " i=" << worst_i << " j=" << worst_j << " k=" << worst_k
+              << " naive=" << worst_naive << " direct=" << worst_direct
+              << " abs_delta=" << worst_abs << " energy_scale=" << worst_scale
+              << " relative_delta=" << worst_ratio
+              << " total_scale=" << worst_total_scale
+              << " relative_total_delta=" << worst_abs/worst_total_scale
+              << " max_relative_total_delta=" << max_total_ratio
+              << " total_i=" << total_i << " total_j=" << total_j
+              << " total_k=" << total_k
+              << " exchange_residual=" << worst_exchange
+              << " rhs=" << worst_rhs << " rhs_direct=" << worst_rhs_direct
+              << " rhs_legacy=" << worst_rhs_legacy << std::endl;
   }
   fixed_linear_coefficients_initialized_ = true;
 }
@@ -1304,7 +1715,8 @@ void NRFLD::AddDifference(AthenaArray<Real> &u_rad,
   int ke = pmy_block_->ke;
   FLD *pfld = pmy_block_->prfld;
   const Real step_scale = pmy_driver_->step_scale_;
-  const bool mixed_active = pfld->MixedFrameCoupled();
+  const bool mixed_active = pfld->MixedFrameCoupled()
+      && pfld->implicit_mixed_frame_drift;
 
   if (pmy_driver_->diagnostic_verbosity_ >= 2) {
     for (int k = 0; k < delta_u.GetDim3(); ++k)
@@ -1400,31 +1812,88 @@ void NRFLD::AddDifference(AthenaArray<Real> &u_rad,
                 *ResolvableThermalDifference(
                     pfld->a_r*t2*t2, u_rad(k,j,i));
           };
-          const Real f_floor = gas_residual(egas_floor);
-          if (std::isfinite(f_floor) && f_floor >= 0.0) {
-            u_gas_(k,j,i) = egas_floor;
-            local_gas_solved = true;
-          } else if (std::isfinite(f_floor)) {
+          // With diffusion disabled, the second local equation is exactly
+          // egas + Er = egas_old + Er_old.  Solve that one-dimensional system
+          // directly instead of recovering Er by subtracting two large gas
+          // energies.  The latter loses the small radiation state before the
+          // stiff exchange coefficient magnifies its rounding error.
+          if (pfld->cut_diff && !pfld->fixed_u_rad) {
+            const Real erad_old = uold_(k,j,i);
+            const Real total = egas_old + erad_old;
+            const Real upper_bound = std::nextafter(
+                total, -std::numeric_limits<Real>::infinity());
             const Real radiation_temperature = std::pow(
-                std::max(u_rad(k,j,i), TINY_NUMBER)/pfld->a_r, 0.25);
+                std::max(erad_old, TINY_NUMBER)/pfld->a_r, 0.25);
             const Real egas_lte = pmy_block_->peos->EgasFromRhoT(
                 rho, radiation_temperature);
-            if (std::isfinite(egas_lte) && egas_lte > 0.0) {
-              Real lower = egas_floor;
-              Real upper = std::max({egas_floor, egas_old, egas_lte});
-              Real f_upper = gas_residual(upper);
-              if (std::isfinite(f_upper) && f_upper >= 0.0) {
-                for (int iteration=0; iteration<64; ++iteration) {
-                  const Real middle = 0.5*(lower+upper);
-                  const Real f_middle = gas_residual(middle);
-                  if (!std::isfinite(f_middle)) break;
-                  if (f_middle < 0.0) lower = middle;
-                  else upper = middle;
-                  if (upper-lower <= 8.0*std::numeric_limits<Real>::epsilon()
-                      *std::max(upper, egas_floor)) break;
+            const Real bracket_upper = std::min(
+                upper_bound, std::max(egas_old, egas_lte));
+            if (std::isfinite(egas_lte) && std::isfinite(bracket_upper)
+                && bracket_upper > egas_floor) {
+              auto coupled_residual = [&](const Real egas) {
+                const Real erad = erad_old + (egas_old-egas);
+                const Real temperature = pmy_block_->peos->TempFromRhoEg(
+                    rho, egas);
+                const Real t2 = temperature*temperature;
+                return (egas-egas_old) + pmy_driver_->dt_*c_sigma_p
+                    *ResolvableThermalDifference(pfld->a_r*t2*t2, erad);
+              };
+              const Real f_lower = coupled_residual(egas_floor);
+              const Real f_upper = coupled_residual(bracket_upper);
+              if (std::isfinite(f_lower) && std::isfinite(f_upper)
+                  && f_upper >= 0.0) {
+                Real lower = egas_floor;
+                Real upper = bracket_upper;
+                if (f_lower >= 0.0) {
+                  upper = lower;
+                } else {
+                  for (int iteration=0; iteration<64; ++iteration) {
+                    const Real middle = 0.5*(lower+upper);
+                    if (middle == lower || middle == upper) break;
+                    const Real f_middle = coupled_residual(middle);
+                    if (!std::isfinite(f_middle)) break;
+                    if (f_middle < 0.0) lower = middle;
+                    else upper = middle;
+                  }
                 }
-                u_gas_(k,j,i) = 0.5*(lower+upper);
-                local_gas_solved = true;
+                const Real egas = 0.5*(lower+upper);
+                const Real erad = erad_old + (egas_old-egas);
+                if (std::isfinite(erad) && erad > TINY_NUMBER) {
+                  u_gas_(k,j,i) = egas;
+                  u_rad(k,j,i) = erad;
+                  last_delta_rad_(1,k,j,i) = erad-u_rad_before;
+                  local_gas_solved = true;
+                }
+              }
+            }
+          }
+          if (!local_gas_solved) {
+            const Real f_floor = gas_residual(egas_floor);
+            if (std::isfinite(f_floor) && f_floor >= 0.0) {
+              u_gas_(k,j,i) = egas_floor;
+              local_gas_solved = true;
+            } else if (std::isfinite(f_floor)) {
+              const Real radiation_temperature = std::pow(
+                  std::max(u_rad(k,j,i), TINY_NUMBER)/pfld->a_r, 0.25);
+              const Real egas_lte = pmy_block_->peos->EgasFromRhoT(
+                  rho, radiation_temperature);
+              if (std::isfinite(egas_lte) && egas_lte > 0.0) {
+                Real lower = egas_floor;
+                Real upper = std::max({egas_floor, egas_old, egas_lte});
+                Real f_upper = gas_residual(upper);
+                if (std::isfinite(f_upper) && f_upper >= 0.0) {
+                  for (int iteration=0; iteration<64; ++iteration) {
+                    const Real middle = 0.5*(lower+upper);
+                    const Real f_middle = gas_residual(middle);
+                    if (!std::isfinite(f_middle)) break;
+                    if (f_middle < 0.0) lower = middle;
+                    else upper = middle;
+                    if (upper-lower <= 8.0*std::numeric_limits<Real>::epsilon()
+                        *std::max(upper, egas_floor)) break;
+                  }
+                  u_gas_(k,j,i) = 0.5*(lower+upper);
+                  local_gas_solved = true;
+                }
               }
             }
           }
@@ -1560,6 +2029,9 @@ void NRFLD::PrintFailurePhysicsDebug(Real gas_max) {
 
 void NRFLD::PrintCellPhysicsDebug(int k, int j, int i) {
   FLD *pfld = pmy_block_->prfld;
+  const int is = pmy_block_->is, ie = pmy_block_->ie;
+  const int js = pmy_block_->js, je = pmy_block_->je;
+  const int ks = pmy_block_->ks, ke = pmy_block_->ke;
   const AthenaArray<Real> &u_pre = u_;
   const AthenaArray<Real> &sigma_r = pfld->sigma_r;
   const AthenaArray<Real> &coeff = coeff_;
@@ -1571,6 +2043,25 @@ void NRFLD::PrintCellPhysicsDebug(int k, int j, int i) {
   const Real idy = 1.0/dy;
   const Real idz = 1.0/dz;
   const Real fac = pmy_driver_->dt_/SQR(dx);
+  const int level = pmy_block_->loc.level;
+  const bool coarser[6] = {
+      pmy_block_->pbval->nblevel[1][1][0] < level,
+      pmy_block_->pbval->nblevel[1][1][2] < level,
+      pmy_block_->pbval->nblevel[1][0][1] < level,
+      pmy_block_->pbval->nblevel[1][2][1] < level,
+      pmy_block_->pbval->nblevel[0][1][1] < level,
+      pmy_block_->pbval->nblevel[2][1][1] < level};
+  auto debug_face_opacity = [&](int face, Real own, Real other, Real inverse_width) {
+    if (!NRFLDPrototype::SeriesResistance()) {
+      return RadFLD::FaceOpacity(own, other, inverse_width);
+    }
+    const bool at_boundary = face < 2 ? (face == 0 ? i == is : i == ie)
+        : face < 4 ? (face == 2 ? j == js : j == je)
+        : (face == 4 ? k == ks : k == ke);
+    return coarser[face] && at_boundary
+        ? (2.0/3.0)*other + (1.0/3.0)*own
+        : 0.5*own + 0.5*other;
+  };
 
   auto print_face = [&](const char *label, Real sigma_face, Real gx, Real gy, Real gz,
                         Real e_face, Real coeff_face) {
@@ -1596,7 +2087,7 @@ void NRFLD::PrintCellPhysicsDebug(int k, int j, int i) {
               << std::endl;
   };
 
-  Real sigma_face = RadFLD::FaceOpacity(sigma_r(k,j,i), sigma_r(k,j,i-1), idx);
+  Real sigma_face = debug_face_opacity(0,sigma_r(k,j,i),sigma_r(k,j,i-1),idx);
   Real gx = (u_pre(k,j,i-1) - u_pre(k,j,i))*idx;
   Real gy = 0.25*idy*((u_pre(k,j+1,i-1) - u_pre(k,j-1,i-1)) + (u_pre(k,j+1,i) - u_pre(k,j-1,i)));
   Real gz = 0.25*idz*((u_pre(k+1,j,i-1) - u_pre(k-1,j,i-1)) + (u_pre(k+1,j,i) - u_pre(k-1,j,i)));
@@ -1604,7 +2095,7 @@ void NRFLD::PrintCellPhysicsDebug(int k, int j, int i) {
   print_face("face_xm", sigma_face, gx, gy, gz, e_face,
              derivetive_(NewtonRaphsonFLD::dFr_dEr_xm, k, j, i));
 
-  sigma_face = RadFLD::FaceOpacity(sigma_r(k,j,i), sigma_r(k,j,i+1), idx);
+  sigma_face = debug_face_opacity(1,sigma_r(k,j,i),sigma_r(k,j,i+1),idx);
   gx = (u_pre(k,j,i+1) - u_pre(k,j,i))*idx;
   gy = 0.25*idy*((u_pre(k,j+1,i+1) - u_pre(k,j-1,i+1)) + (u_pre(k,j+1,i) - u_pre(k,j-1,i)));
   gz = 0.25*idz*((u_pre(k+1,j,i+1) - u_pre(k-1,j,i+1)) + (u_pre(k+1,j,i) - u_pre(k-1,j,i)));
@@ -1612,7 +2103,7 @@ void NRFLD::PrintCellPhysicsDebug(int k, int j, int i) {
   print_face("face_xp", sigma_face, gx, gy, gz, e_face,
              derivetive_(NewtonRaphsonFLD::dFr_dEr_xp, k, j, i));
 
-  sigma_face = RadFLD::FaceOpacity(sigma_r(k,j,i), sigma_r(k,j-1,i), idx);
+  sigma_face = debug_face_opacity(2,sigma_r(k,j,i),sigma_r(k,j-1,i),idx);
   gx = 0.25*idx*((u_pre(k,j-1,i+1) - u_pre(k,j-1,i-1)) + (u_pre(k,j,i+1) - u_pre(k,j,i-1)));
   gy = (u_pre(k,j-1,i) - u_pre(k,j,i))*idy;
   gz = 0.25*idz*((u_pre(k+1,j-1,i) - u_pre(k-1,j-1,i)) + (u_pre(k+1,j,i) - u_pre(k-1,j,i)));
@@ -1620,7 +2111,7 @@ void NRFLD::PrintCellPhysicsDebug(int k, int j, int i) {
   print_face("face_ym", sigma_face, gx, gy, gz, e_face,
              derivetive_(NewtonRaphsonFLD::dFr_dEr_ym, k, j, i));
 
-  sigma_face = RadFLD::FaceOpacity(sigma_r(k,j,i), sigma_r(k,j+1,i), idx);
+  sigma_face = debug_face_opacity(3,sigma_r(k,j,i),sigma_r(k,j+1,i),idx);
   gx = 0.25*idx*((u_pre(k,j+1,i+1) - u_pre(k,j+1,i-1)) + (u_pre(k,j,i+1) - u_pre(k,j,i-1)));
   gy = (u_pre(k,j+1,i) - u_pre(k,j,i))*idy;
   gz = 0.25*idz*((u_pre(k+1,j+1,i) - u_pre(k-1,j+1,i)) + (u_pre(k+1,j,i) - u_pre(k-1,j,i)));
@@ -1628,7 +2119,7 @@ void NRFLD::PrintCellPhysicsDebug(int k, int j, int i) {
   print_face("face_yp", sigma_face, gx, gy, gz, e_face,
              derivetive_(NewtonRaphsonFLD::dFr_dEr_yp, k, j, i));
 
-  sigma_face = RadFLD::FaceOpacity(sigma_r(k,j,i), sigma_r(k-1,j,i), idx);
+  sigma_face = debug_face_opacity(4,sigma_r(k,j,i),sigma_r(k-1,j,i),idx);
   gx = 0.25*idx*((u_pre(k-1,j,i+1) - u_pre(k-1,j,i-1)) + (u_pre(k,j,i+1) - u_pre(k,j,i-1)));
   gy = 0.25*idy*((u_pre(k-1,j+1,i) - u_pre(k-1,j-1,i)) + (u_pre(k,j+1,i) - u_pre(k,j-1,i)));
   gz = (u_pre(k-1,j,i) - u_pre(k,j,i))*idz;
@@ -1636,7 +2127,7 @@ void NRFLD::PrintCellPhysicsDebug(int k, int j, int i) {
   print_face("face_zm", sigma_face, gx, gy, gz, e_face,
              derivetive_(NewtonRaphsonFLD::dFr_dEr_zm, k, j, i));
 
-  sigma_face = RadFLD::FaceOpacity(sigma_r(k,j,i), sigma_r(k+1,j,i), idx);
+  sigma_face = debug_face_opacity(5,sigma_r(k,j,i),sigma_r(k+1,j,i),idx);
   gx = 0.25*idx*((u_pre(k+1,j,i+1) - u_pre(k+1,j,i-1)) + (u_pre(k,j,i+1) - u_pre(k,j,i-1)));
   gy = 0.25*idy*((u_pre(k+1,j+1,i) - u_pre(k+1,j-1,i)) + (u_pre(k,j+1,i) - u_pre(k,j-1,i)));
   gz = (u_pre(k+1,j,i) - u_pre(k,j,i))*idz;

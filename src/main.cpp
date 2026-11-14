@@ -65,11 +65,34 @@
 
 namespace {
 
-// The implicit NR-FLD solve changes active-cell gas pressure after the previous
-// hydro stage has filled its ghost zones. Refresh primitive hydro boundaries
-// before the next hydro flux calculation, including remote and periodic blocks.
-void SynchronizeHydroPrimitivesAfterNR(Mesh *pmesh) {
+// The implicit NR-FLD solve changes gas pressure and radiation energy after
+// the hydro stage. Refresh their AMR and same-level boundaries before the
+// next explicit flux calculation, including remote and periodic blocks.
+void SynchronizeFLDBoundariesAfterNR(Mesh *pmesh) {
   const BoundaryCommSubset phase = BoundaryCommSubset::newton_raphson;
+  // AMR prolongation below converts the coarse conserved buffer to
+  // primitives. The implicit gas update has changed active conserved cells,
+  // so refresh that buffer before prolongating the primitive ghosts.
+  if (pmesh->multilevel) {
+    for (int b = 0; b < pmesh->nblocal; ++b) {
+      MeshBlock *pmb = pmesh->my_blocks(b);
+      pmb->phydro->hbvar.SwapHydroQuantity(pmb->phydro->u,
+                                           HydroBoundaryQuantity::cons);
+      pmb->phydro->hbvar.StartReceiving(phase);
+      pmb->prfld->u_rad_fldbvar.StartReceiving(phase);
+    }
+    for (int b = 0; b < pmesh->nblocal; ++b) {
+      pmesh->my_blocks(b)->phydro->hbvar.SendBoundaryBuffers();
+      pmesh->my_blocks(b)->prfld->u_rad_fldbvar.SendBoundaryBuffers();
+    }
+    for (int b = 0; b < pmesh->nblocal; ++b) {
+      MeshBlock *pmb = pmesh->my_blocks(b);
+      pmb->phydro->hbvar.ReceiveAndSetBoundariesWithWait();
+      pmb->prfld->u_rad_fldbvar.ReceiveAndSetBoundariesWithWait();
+      pmb->phydro->hbvar.ClearBoundary(phase);
+      pmb->prfld->u_rad_fldbvar.ClearBoundary(phase);
+    }
+  }
   for (int b = 0; b < pmesh->nblocal; ++b) {
     MeshBlock *pmb = pmesh->my_blocks(b);
     pmb->phydro->hbvar.SwapHydroQuantity(pmb->phydro->w,
@@ -84,9 +107,9 @@ void SynchronizeHydroPrimitivesAfterNR(Mesh *pmesh) {
     MeshBlock *pmb = pmesh->my_blocks(b);
     if (pmesh->multilevel)
       pmb->pbval->ProlongateBoundaries(pmesh->time, pmesh->dt,
-                                       {&pmb->phydro->hbvar});
+          {&pmb->phydro->hbvar, &pmb->prfld->u_rad_fldbvar});
     pmb->pbval->ApplyPhysicalBoundaries(pmesh->time, pmesh->dt,
-                                        {&pmb->phydro->hbvar});
+        {&pmb->phydro->hbvar, &pmb->prfld->u_rad_fldbvar});
     pmb->phydro->hbvar.ClearBoundary(phase);
   }
 }
@@ -428,6 +451,13 @@ int main(int argc, char *argv[]) {
   try {
 #endif
     pmesh->Initialize(res_flag, pinput);
+    if (res_flag == 1 && NRMGFLD_ENABLED) {
+      // The preceding initialization reconstructs AMR hydro ghosts from
+      // conserved variables. At the end of an NR-FLD step, the next hydro
+      // stage instead uses primitives prolongated from neighboring blocks.
+      // Restore that same boundary representation after a checkpoint load.
+      SynchronizeFLDBoundariesAfterNR(pmesh);
+    }
 #ifdef ENABLE_EXCEPTIONS
   }
   catch(std::bad_alloc& ba) {
@@ -598,7 +628,7 @@ int main(int argc, char *argv[]) {
       performance.Mark(PerformanceTimer::fld_sync);
       performance.Newton(nr_result.iterations, nr_result.final_norm,
           nr_result.final_max_norm, NewtonSolveReasonName(nr_result.reason));
-      SynchronizeHydroPrimitivesAfterNR(pmesh);
+      SynchronizeFLDBoundariesAfterNR(pmesh);
       performance.Mark(PerformanceTimer::fld_finish);
       // Keep stored opacities consistent with the committed end-of-step
       // gas/radiation state, including for diagnostics and user callbacks.

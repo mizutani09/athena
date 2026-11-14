@@ -11,6 +11,7 @@
 // C++ headers
 #include <algorithm>
 #include <cmath>
+#include <cstdlib>
 #include <cstring>    // memset, memcpy
 #include <iostream>
 #include <sstream>    // stringstream
@@ -23,6 +24,7 @@
 #include "../coordinates/coordinates.hpp"
 #include "../mesh/mesh.hpp"
 #include "../parameter_input.hpp"
+#include "../utils/nrfld_prototype_flags.hpp"
 #include "Newton_Raphson.hpp"
 
 //----------------------------------------------------------------------------------------
@@ -122,6 +124,19 @@ NewtonRaphson::NewtonRaphson(NewtonRaphsonDriver *pmd, MeshBlock *pmb, int nghos
   delta_bvar.bvar_index = pmb->pbval->bvars.size();
   pmb->pbval->bvars.push_back(&delta_bvar); // this is needed for BoundaryVariable::CopyVariableBufferSameProcess in bvals_var.cpp
   pmb->pbval->pdeltabvar = &delta_bvar;
+  if (NRFLDPrototype::SharedCoeff()) {
+    interface_moments_.NewAthenaArray(12, pmb->ncells3, pmb->ncells2,
+                                    pmb->ncells1);
+    if (pm->multilevel)
+      coarse_interface_moments_.NewAthenaArray(12, pmb->ncc3, pmb->ncc2,
+                                             pmb->ncc1);
+    interface_moments_.ZeroClear();
+    interface_bvar_.reset(new CellCenteredBoundaryVariable(
+        pmb, &interface_moments_, &coarse_interface_moments_, empty_flux,
+        1, false));
+    interface_bvar_->bvar_index = pmb->pbval->bvars.size();
+    pmb->pbval->bvars.push_back(interface_bvar_.get());
+  }
 }
 
 
@@ -183,6 +198,10 @@ void NewtonRaphson::ProlongateBoundary(Real dt) {
 
 void NewtonRaphson::ClearBoundary() {
   nrbvar.ClearBoundary(BoundaryCommSubset::all);
+}
+
+void NewtonRaphson::SetupInterfaceBoundaryMPI() {
+  if (interface_bvar_ != nullptr) interface_bvar_->SetupPersistentMPI();
 }
 
 void NewtonRaphson::CalculateCoefficientsTask(Real dt) {

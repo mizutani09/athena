@@ -1,0 +1,93 @@
+<comment>
+problem = Periodic coupled gas-radiation closed-box conservation
+configure = --prob=nrfld_advect_radiation_pulse -nrmgfld -hdf5 -mpi
+
+<job>
+problem_id = nrfld_closed_box
+
+<output1>
+file_type = hst
+dcycle = 1
+data_format = %.16e
+
+<output2>
+file_type = hdf5
+id = fields
+variable = uov
+dcycle = 1
+
+<time>
+cfl_number = 0.2
+nlim = 12
+tlim = 0.1
+integrator = rk2
+xorder = 2
+ncycle_out = 1
+
+<mesh>
+nx1 = 8
+x1min = -1.0
+x1max = 1.0
+ix1_bc = periodic
+ox1_bc = periodic
+nx2 = 8
+x2min = -1.0
+x2max = 1.0
+ix2_bc = periodic
+ox2_bc = periodic
+nx3 = 8
+x3min = -1.0
+x3max = 1.0
+ix3_bc = periodic
+ox3_bc = periodic
+
+<meshblock>
+nx1 = 8
+nx2 = 8
+nx3 = 8
+
+<hydro>
+gamma = 1.66666666666667
+rho_unit = 1.2
+egas_unit = 4.28129270484549e14
+leng_unit = 1.0
+mu = 2.33
+
+<nrfld>
+mgmode = MGI
+fas = false
+smoother = jacobi-rb
+npresmooth = 2
+npostsmooth = 2
+omega = 1.0
+threshold = 1e-10
+nr_threshold = 1e-8
+linear_solver = fgmres
+fgmres_threshold = 1e-8
+fgmres_restart = 20
+fgmres_max_iterations = 100
+ix1_bc = periodic
+ox1_bc = periodic
+ix2_bc = periodic
+ox2_bc = periodic
+ix3_bc = periodic
+ox3_bc = periodic
+
+<fld>
+is_couple = true
+only_rad = false
+cut_diff = false
+include_radiation_force = true
+fixed_flux_limiter = true
+include_mixed_frame_terms = true
+
+<problem>
+problem_type = closed_box
+T0 = 1.0e7
+T1 = 1.2e7
+rho0 = 1.2
+w = 0.25
+v0 = 0.0
+opacity_mass_coeff = 100.0
+initial_erad_temperature_factor = 1.1
+force_lambda_one_third = true

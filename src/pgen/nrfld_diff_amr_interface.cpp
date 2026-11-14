@@ -41,6 +41,26 @@ Real erad_background;
 Real erad_amplitude;
 Real pulse_center;
 Real pulse_width;
+int profile_axis;
+Real transverse_amplitude;
+int test_regrid_cycle;
+bool exact_cosine_mode;
+int cosine_wavenumber;
+bool layered_eigen_mode;
+Real eigen_outer_wave;
+Real eigen_inner_amplitude;
+
+int ControlledRefinement(MeshBlock *pmb) {
+  // Deterministic topology change for restart/rank-invariance regression.
+  // The pulse region is refined initially, then every fine block is removed.
+  if (test_regrid_cycle < 0) return 0;
+  if (pmb->pmy_mesh->ncycle >= test_regrid_cycle) return -1;
+  const Real lower = profile_axis == 1 ? pmb->block_size.x1min
+      : profile_axis == 2 ? pmb->block_size.x2min : pmb->block_size.x3min;
+  const Real upper = profile_axis == 1 ? pmb->block_size.x1max
+      : profile_axis == 2 ? pmb->block_size.x2max : pmb->block_size.x3max;
+  return (upper > slab_left && lower < slab_right) ? 1 : -1;
+}
 
 // A periodic dense slab gives two interfaces without introducing a second
 // discontinuity at the periodic domain boundary.  width=0 requests a sharp
@@ -96,15 +116,44 @@ void Mesh::InitUserMeshData(ParameterInput *pin) {
   erad_amplitude = pin->GetOrAddReal("problem", "erad_amplitude", 0.1);
   pulse_center = pin->GetOrAddReal("problem", "pulse_center", slab_left);
   pulse_width = pin->GetOrAddReal("problem", "pulse_width", 0.08);
+  profile_axis = pin->GetOrAddInteger("problem", "profile_axis", 1);
+  transverse_amplitude = pin->GetOrAddReal("problem", "transverse_amplitude", 0.0);
+  exact_cosine_mode = pin->GetOrAddBoolean("problem", "exact_cosine_mode", false);
+  cosine_wavenumber = pin->GetOrAddInteger("problem", "cosine_wavenumber", 1);
+  layered_eigen_mode = pin->GetOrAddBoolean("problem", "layered_eigen_mode", false);
+  eigen_outer_wave = pin->GetOrAddReal("problem", "eigen_outer_wave", 1.0);
+  eigen_inner_amplitude = pin->GetOrAddReal("problem", "eigen_inner_amplitude", -1.0);
+  test_regrid_cycle = pin->GetOrAddInteger("problem", "test_regrid_cycle", -1);
+  if (adaptive && test_regrid_cycle >= 0) {
+    EnrollUserRefinementCondition(ControlledRefinement);
+  }
 
   if (!(density_low > 0.0) || !(density_high > 0.0)
       || !(slab_left < slab_right) || interface_width < 0.0
       || !(erad_background > 0.0) || erad_amplitude < 0.0
-      || !(pulse_width > 0.0)) {
+      || !(pulse_width > 0.0) || profile_axis < 1 || profile_axis > 3
+      || std::abs(transverse_amplitude) >= erad_background
+      || cosine_wavenumber < 1
+      || (exact_cosine_mode && layered_eigen_mode)
+      || (exact_cosine_mode && (profile_axis != 1
+          || density_low != density_high || transverse_amplitude != 0.0))
+      || (layered_eigen_mode && (profile_axis != 1 || interface_width != 0.0
+          || !(slab_left > 0.0 && slab_left < 0.5)
+          || std::abs(slab_left+slab_right-1.0) > 1.0e-12
+          || std::abs(slab_left*mesh_size.nx1
+                      -std::round(slab_left*mesh_size.nx1)) > 1.0e-12
+          || mesh_size.x1min != 0.0 || mesh_size.x1max != 1.0
+          || transverse_amplitude != 0.0 || !(eigen_outer_wave > 0.0)))) {
     std::stringstream msg;
     msg << "### FATAL ERROR in nrfld_diff_amr_interface\n"
         << "Require positive densities/background/pulse_width, non-negative "
-        << "interface_width/amplitude, and slab_left < slab_right.";
+        << "interface_width/amplitude, slab_left < slab_right, and "
+        << "profile_axis in [1,3], and |transverse_amplitude| < background. "
+        << "exact_cosine_mode additionally requires x1, uniform density, "
+        << "zero transverse amplitude, and positive cosine_wavenumber. "
+        << "layered_eigen_mode requires x1 in [0,1], a sharp slab "
+        << "symmetric about x1=0.5 and aligned with root cell faces, "
+        << "zero transverse amplitude, and positive eigen_outer_wave.";
     ATHENA_ERROR(msg);
   }
 
@@ -118,6 +167,8 @@ void Mesh::InitUserMeshData(ParameterInput *pin) {
               << " slab_left=" << slab_left
               << " slab_right=" << slab_right
               << " interface_width=" << interface_width
+              << " profile_axis=" << profile_axis
+              << " transverse_amplitude=" << transverse_amplitude
               << " pulse_center=" << pulse_center
               << " pulse_width=" << pulse_width << std::endl;
   }
@@ -145,14 +196,56 @@ void MeshBlock::ProblemGenerator(ParameterInput *pin) {
   for (int k = kl; k <= ku; ++k) {
     for (int j = jl; j <= ju; ++j) {
       for (int i = il; i <= iu; ++i) {
-        const Real rho = DensityProfile(pcoord->x1v(i));
+        const Real position = profile_axis == 1 ? pcoord->x1v(i)
+            : profile_axis == 2 ? pcoord->x2v(j) : pcoord->x3v(k);
+        const Real rho = DensityProfile(position);
         phydro->u(IDN,k,j,i) = rho;
         phydro->u(IM1,k,j,i) = 0.0;
         phydro->u(IM2,k,j,i) = 0.0;
         phydro->u(IM3,k,j,i) = 0.0;
         if (NON_BAROTROPIC_EOS) phydro->u(IEN,k,j,i) = gas_energy;
         prfld->u_gas(k,j,i) = gas_energy;
-        prfld->u_rad(k,j,i) = RadiationProfile(pcoord->x1v(i));
+        const int transverse_axis = profile_axis == 3 ? 1 : profile_axis+1;
+        const Real transverse_position = transverse_axis == 1 ? pcoord->x1v(i)
+            : transverse_axis == 2 ? pcoord->x2v(j) : pcoord->x3v(k);
+        const RegionSize &domain = pmy_mesh->mesh_size;
+        const Real transverse_min = transverse_axis == 1 ? domain.x1min
+            : transverse_axis == 2 ? domain.x2min : domain.x3min;
+        const Real transverse_max = transverse_axis == 1 ? domain.x1max
+            : transverse_axis == 2 ? domain.x2max : domain.x3max;
+        const Real transverse_phase = 2.0*PI*(transverse_position-transverse_min)
+            /(transverse_max-transverse_min);
+        if (layered_eigen_mode) {
+          // Exact cell average of a two-material diffusion eigenfunction.
+          // The driver supplies a wave number satisfying continuity of Er
+          // and D*dEr/dx at both material interfaces.
+          const Real x = position-std::floor(position);
+          const Real half_width = 0.5*pcoord->dx1f(i);
+          const Real ratio = density_high/density_low;
+          const Real inner_wave = eigen_outer_wave*std::sqrt(ratio);
+          const bool inner = x >= slab_left && x < slab_right;
+          const Real wave = inner ? inner_wave : eigen_outer_wave;
+          const Real amplitude = inner ? eigen_inner_amplitude : 1.0;
+          const Real distance = inner ? x-0.5 : (x < slab_left ? x : 1.0-x);
+          const Real argument = wave*half_width;
+          prfld->u_rad(k,j,i) = erad_background
+              + erad_amplitude*amplitude*(std::sin(argument)/argument)
+                  *std::cos(wave*distance);
+        } else if (exact_cosine_mode) {
+          // Cell average of a periodic diffusion eigenmode.  With uniform
+          // opacity and lambda=1/3, the backward-Euler continuum solution
+          // is known exactly for the same cell average at every later time.
+          const Real length = domain.x1max-domain.x1min;
+          const Real wave = 2.0*PI*cosine_wavenumber/length;
+          const Real half_width = 0.5*pcoord->dx1f(i);
+          const Real average = std::sin(wave*half_width)/(wave*half_width);
+          prfld->u_rad(k,j,i) = erad_background
+              + erad_amplitude*average
+                  *std::cos(wave*(pcoord->x1v(i)-domain.x1min));
+        } else {
+          prfld->u_rad(k,j,i) = RadiationProfile(position)
+              + transverse_amplitude*std::cos(transverse_phase);
+        }
       }
     }
   }

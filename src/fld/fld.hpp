@@ -190,9 +190,10 @@ namespace RadFLD {
       return InvalidClosureValue();
     }
 
-    // Preserve the Howell-Greenough cap, but avoid both 0/0 and overflow in
-    // the arithmetic/harmonic means.  For zero opacity on both sides the
-    // harmonic mean is explicitly zero.
+    // This is CASTRO's kavg(opt=2) face-opacity rule from the gray FLD
+    // implementation: arithmetic in the thin limit, harmonic in the thick
+    // limit, with the Howell-Greenough cap at a thick/thin transition.
+    // Avoid both 0/0 and overflow; a zero/zero harmonic mean is zero.
     const Real arithmetic = 0.5*left + 0.5*right;
     const Real larger = std::max(left, right);
     const Real smaller = std::min(left, right);
@@ -254,6 +255,13 @@ class FLD {
   // O(v/c) mixed-frame energy exchange: -lambda*v.grad(Er) is explicit;
   // q*v.grad(Er) is included in the implicit gas/radiation solve.
   bool include_mixed_frame_terms;
+  // Experimental placement of q*v.grad(Er): true in the Newton solve,
+  // false in the explicit stage with equal/opposite gas-radiation exchange.
+  bool implicit_mixed_frame_drift;
+  // Log the first N source/implicit updates per block for term-by-term energy
+  // accounting.  Disabled in production unless requested in the input.
+  int mixed_frame_ledger_limit;
+  int mixed_frame_ledger_count;
   // Radiation-energy transport and mixed-frame work are separate switches.
   // Both are resolved once at startup; the legacy environment variable only
   // overrides the transport switch when the input omits it.

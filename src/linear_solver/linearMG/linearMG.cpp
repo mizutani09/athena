@@ -11,6 +11,9 @@
 // C++ headers
 #include <algorithm>
 #include <cmath>
+#include <cstdint>
+#include <cstdlib>
+#include <cstring>
 #include <iostream>
 #include <limits>
 #include <sstream>    // sstream
@@ -29,6 +32,7 @@
 #include "../../mesh/mesh.hpp"
 #include "../../parameter_input.hpp"
 #include "../../task_list/linmg_task_list.hpp"
+#include "../../utils/nrfld_prototype_flags.hpp"
 #include "linearMG.hpp"
 
 #ifdef MPI_PARALLEL
@@ -245,9 +249,9 @@ linearMGDriver::linearMGDriver(Mesh *pm, ParameterInput *pin, NewtonRaphsonDrive
       "nrfld", "coefficient_diagnostics", false);
   handoff_diagnostics_ = pin->GetOrAddBoolean("nrfld", "handoff_diagnostics", false);
   handoff_diagnostic_limit_ = pin->GetOrAddInteger("nrfld", "handoff_diagnostic_limit", 4);
-  if (handoff_diagnostic_limit_ < 0 || (handoff_diagnostics_ && Globals::nranks != 1)) {
+  if (handoff_diagnostic_limit_ < 0) {
     std::stringstream msg;
-    msg << "handoff_diagnostics requires one MPI rank and a non-negative limit.";
+    msg << "handoff_diagnostic_limit must be non-negative.";
     ATHENA_ERROR(msg);
   }
   coefficient_diagnostic_limit_ = pin->GetOrAddInteger(
@@ -270,6 +274,9 @@ linearMGDriver::linearMGDriver(Mesh *pm, ParameterInput *pin, NewtonRaphsonDrive
   }
   std::string smoother = pin->GetOrAddString("nrfld", "smoother", "jacobi-rb");
   symmetric_rb_ = pin->GetOrAddBoolean("nrfld", "symmetric_rb_sweeps", false);
+  // Smooth() applies coffset_ itself. Opt in while comparing octet/root and
+  // MeshBlock color policies; retain the historical default until validated.
+  consistent_rb_colors_ = pin->GetOrAddBoolean("nrfld", "consistent_rb_colors", false);
   if (smoother == "jacobi-rb") {
     fsmoother_ = 1;
     redblack_ = true;
@@ -697,6 +704,14 @@ void linearMGDriver::SynchronizeCorrectionBoundaries(int stage) {
 //! \brief Report coefficient contrast and coarse-operator consistency by MG level.
 
 void linearMGDriver::PrintCoefficientDiagnostics() {
+  auto fingerprint_value = [](Real value, std::uint64_t address) {
+    std::uint64_t bits = 0;
+    std::memcpy(&bits, &value, sizeof(Real));
+    std::uint64_t h = bits ^ address;
+    h ^= h >> 30; h *= UINT64_C(0xbf58476d1ce4e5b9);
+    h ^= h >> 27; h *= UINT64_C(0x94d049bb133111eb);
+    return h ^ (h >> 31);
+  };
   auto report_level = [&](const char *kind, int lev, bool root_grid) {
     Real vmin[9] = {std::numeric_limits<Real>::max(),
                     std::numeric_limits<Real>::max(),
@@ -710,6 +725,7 @@ void linearMGDriver::PrintCoefficientDiagnostics() {
     Real vmax[11] = {0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
                      0.0, 0.0, 0.0, 0.0, 0.0};
     Real sums[4] = {0.0, 0.0, 0.0, 0.0};
+    std::uint64_t hashes[2] = {0, 0};
     long long invalid_rows[2] = {0, 0};
     int nx = 0, ny = 0, nz = 0;
     if (!root_grid) {
@@ -735,11 +751,27 @@ void linearMGDriver::PrintCoefficientDiagnostics() {
               const Real value = c(n,k,j,i);
               sums[0] += std::abs(value);
               sums[1] += value*value;
+              const std::uint64_t address =
+                  (static_cast<std::uint64_t>(root_grid ? 0 : pmg->pmy_block_->gid)
+                   << 40) ^ (static_cast<std::uint64_t>(lev) << 32)
+                  ^ (static_cast<std::uint64_t>(k) << 24)
+                  ^ (static_cast<std::uint64_t>(j) << 16)
+                  ^ (static_cast<std::uint64_t>(i) << 8)
+                  ^ static_cast<std::uint64_t>(n);
+              hashes[0] += fingerprint_value(value, address);
             }
             for (int n = 0; n < 7; ++n) {
               const Real value = a(n,k,j,i);
               sums[2] += std::abs(value);
               sums[3] += value*value;
+              const std::uint64_t address =
+                  (static_cast<std::uint64_t>(root_grid ? 0 : pmg->pmy_block_->gid)
+                   << 40) ^ (static_cast<std::uint64_t>(lev) << 32)
+                  ^ (static_cast<std::uint64_t>(k) << 24)
+                  ^ (static_cast<std::uint64_t>(j) << 16)
+                  ^ (static_cast<std::uint64_t>(i) << 8)
+                  ^ static_cast<std::uint64_t>(n);
+              hashes[1] += fingerprint_value(value, address);
             }
             const Real dccs = c(linearSolver::DCCS,k,j,i);
             const Real diag = a(linearSolver::CCC,k,j,i);
@@ -825,6 +857,8 @@ void linearMGDriver::PrintCoefficientDiagnostics() {
     MPI_Allreduce(MPI_IN_PLACE, vmin, 9, MPI_ATHENA_REAL, MPI_MIN, MPI_COMM_WORLD);
     MPI_Allreduce(MPI_IN_PLACE, vmax, 11, MPI_ATHENA_REAL, MPI_MAX, MPI_COMM_WORLD);
     MPI_Allreduce(MPI_IN_PLACE, sums, 4, MPI_ATHENA_REAL, MPI_SUM, MPI_COMM_WORLD);
+    MPI_Allreduce(MPI_IN_PLACE, hashes, 2, MPI_UNSIGNED_LONG_LONG, MPI_SUM,
+                  MPI_COMM_WORLD);
     MPI_Allreduce(MPI_IN_PLACE, invalid_rows, 2, MPI_LONG_LONG, MPI_SUM,
                   MPI_COMM_WORLD);
 #endif
@@ -854,7 +888,9 @@ void linearMGDriver::PrintCoefficientDiagnostics() {
                 << " coeff_l1=" << sums[0]
                 << " coeff_l2=" << std::sqrt(sums[1])
                 << " matrix_l1=" << sums[2]
-                << " matrix_l2=" << std::sqrt(sums[3]) << std::endl;
+                << " matrix_l2=" << std::sqrt(sums[3])
+                << " coeff_hash=" << hashes[0]
+                << " matrix_hash=" << hashes[1] << std::endl;
     }
   };
 
@@ -863,6 +899,72 @@ void linearMGDriver::PrintCoefficientDiagnostics() {
   linearMG *root = static_cast<linearMG*>(mgroot_);
   for (int lev = root->nlevel_ - 1; lev >= 0; --lev)
     report_level("root", lev, true);
+  // AMR octets sit between MeshBlock and root levels.  Include their active
+  // cells so a cache comparison also detects stale restricted coefficients
+  // or matrices at a refinement boundary.
+  for (int lev = nreflevel_ - 1; lev >= 0; --lev) {
+    std::uint64_t hashes[2] = {0, 0};
+    long long octet_count = noctets_[lev];
+    Real row_error_max = 0.0;
+    for (int o = 0; o < noctets_[lev]; ++o) {
+      const MGOctet &oct = octets_[lev][o];
+      const std::uint64_t location =
+          (static_cast<std::uint64_t>(oct.loc.lx1) << 42)
+          ^ (static_cast<std::uint64_t>(oct.loc.lx2) << 21)
+          ^ static_cast<std::uint64_t>(oct.loc.lx3);
+      for (int k = os_; k <= oe_; ++k) {
+        for (int j = os_; j <= oe_; ++j) {
+          for (int i = os_; i <= oe_; ++i) {
+            const std::uint64_t cell = location
+                ^ (static_cast<std::uint64_t>(lev) << 56)
+                ^ (static_cast<std::uint64_t>(k) << 12)
+                ^ (static_cast<std::uint64_t>(j) << 8)
+                ^ (static_cast<std::uint64_t>(i) << 4);
+            for (int n = 0; n < ncoeff_; ++n)
+              hashes[0] += fingerprint_value(oct.coeff(n,k,j,i),
+                                              cell ^ static_cast<std::uint64_t>(n));
+            for (int n = 0; n < 7; ++n)
+              hashes[1] += fingerprint_value(oct.matrix(n,k,j,i),
+                                              cell ^ static_cast<std::uint64_t>(n));
+            const Real diag = oct.matrix(linearSolver::CCC,k,j,i);
+            const Real actual = diag
+                + oct.matrix(linearSolver::CCM,k,j,i)
+                + oct.matrix(linearSolver::CCP,k,j,i)
+                + oct.matrix(linearSolver::CMC,k,j,i)
+                + oct.matrix(linearSolver::CPC,k,j,i)
+                + oct.matrix(linearSolver::MCC,k,j,i)
+                + oct.matrix(linearSolver::PCC,k,j,i);
+            const Real expected = oct.coeff(linearSolver::DCCS,k,j,i)
+                + oct.coeff(linearSolver::DXMS,k,j,i)
+                + oct.coeff(linearSolver::DXPS,k,j,i)
+                + oct.coeff(linearSolver::DYMS,k,j,i)
+                + oct.coeff(linearSolver::DYPS,k,j,i)
+                + oct.coeff(linearSolver::DZMS,k,j,i)
+                + oct.coeff(linearSolver::DZPS,k,j,i);
+            row_error_max = std::max(row_error_max,
+                std::abs(actual - expected)
+                / std::max(std::abs(diag), TINY_NUMBER));
+          }
+        }
+      }
+    }
+#ifdef MPI_PARALLEL
+    MPI_Allreduce(MPI_IN_PLACE, hashes, 2, MPI_UNSIGNED_LONG_LONG, MPI_SUM,
+                  MPI_COMM_WORLD);
+    MPI_Allreduce(MPI_IN_PLACE, &octet_count, 1, MPI_LONG_LONG, MPI_SUM,
+                  MPI_COMM_WORLD);
+    MPI_Allreduce(MPI_IN_PLACE, &row_error_max, 1, MPI_ATHENA_REAL, MPI_MAX,
+                  MPI_COMM_WORLD);
+#endif
+    if (Globals::my_rank == 0) {
+      std::cout << "[NRFLD octet fingerprint] solve="
+                << coefficient_diagnostic_count_ << " level=" << lev
+                << " octets=" << octet_count
+                << " coeff_hash=" << hashes[0]
+                << " matrix_hash=" << hashes[1]
+                << " row_error_max=" << row_error_max << std::endl;
+    }
+  }
 }
 
 
@@ -1293,6 +1395,47 @@ void linearMGDriver::SolveFGMRES(int stage) {
   };
   auto apply_operator = [&](const BlockVector &x, BlockVector &y) {
     load_delta(x);
+    if (NRFLDPrototype::Enabled() && NRFLDPrototype::DifferenceJv()) {
+      // A secant of the frozen-coefficient radiation residual.  The Newton
+      // state and Krylov direction already have identical coarse/fine ghost
+      // operators, so this includes the shared interface flux in Jv.  Keep
+      // the subtraction in long double to resolve small Krylov directions.
+      constexpr long double h = 1.0e-4L;
+      for (std::size_t b = 0; b < y.size(); ++b) {
+        linearMG *pmg = static_cast<linearMG*>(vmg_[b]);
+        MeshBlock *pmb = pmg->pmy_block_;
+        const AthenaArray<Real> &u = pmg->pnr_->u_;
+        const AthenaArray<Real> &uold = pmg->pnr_->uold_;
+        const AthenaArray<Real> &delta = pmg->pnr_->delta_u_;
+        const AthenaArray<Real> &coeff = pmg->pnr_->coeff_;
+        const long double fac = static_cast<long double>(dt_)
+            /SQR(static_cast<long double>(pmb->pcoord->dx1f(pmb->is)));
+        y[b].ZeroClear();
+        for (int k = pmb->ks; k <= pmb->ke; ++k)
+          for (int j = pmb->js; j <= pmb->je; ++j)
+            for (int i = pmb->is; i <= pmb->ie; ++i) {
+              const long double center = u(k,j,i);
+              const long double direction = delta(k,j,i);
+              const long double old = uold(k,j,i);
+              const long double neighbor[6] = {
+                  u(k,j,i-1),u(k,j,i+1),u(k,j-1,i),u(k,j+1,i),
+                  u(k-1,j,i),u(k+1,j,i)};
+              const long double neighbor_direction[6] = {
+                  delta(k,j,i-1),delta(k,j,i+1),delta(k,j-1,i),
+                  delta(k,j+1,i),delta(k-1,j,i),delta(k+1,j,i)};
+              long double base = center-old;
+              long double trial = center+h*direction-old;
+              for (int face = 0; face < 6; ++face) {
+                const long double d = -coeff(linearSolver::DXMF+face,k,j,i);
+                base -= fac*d*(neighbor[face]-center);
+                trial -= fac*d*((neighbor[face]+h*neighbor_direction[face])
+                                -(center+h*direction));
+              }
+              at(y,b,k,j,i) = static_cast<Real>((trial-base)/h);
+            }
+      }
+      return;
+    }
     for (std::size_t b = 0; b < y.size(); ++b) {
       linearMG *pmg = static_cast<linearMG*>(vmg_[b]);
       MeshBlock *pmb = pmg->pmy_block_;
@@ -1376,6 +1519,11 @@ void linearMGDriver::SolveFGMRES(int stage) {
   int preconditioner_calls = 0;
   auto apply_preconditioner = [&](const BlockVector &rhs, BlockVector &z) {
     current_level_ = fmglevel_ = ntotallevel_ - 1;
+    // The initial residual/operator setup can leave the root MG object at its
+    // coarsest level.  A V-cycle starts from the finest root level; otherwise
+    // RestrictBlock() decrements it below zero and the coarse boundary update
+    // dereferences an unallocated AthenaArray.
+    mgroot_->current_level_ = nrootlevel_ - 1;
     for (std::size_t b = 0; b < rhs.size(); ++b) {
       linearMG *pmg = static_cast<linearMG*>(vmg_[b]);
       pmg->current_level_ = pmg->nlevel_ - 1;

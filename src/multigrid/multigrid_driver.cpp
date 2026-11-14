@@ -47,7 +47,8 @@ MultigridDriver::MultigridDriver(Mesh *pm, MGBoundaryFunc *MGBoundary,
     maxreflevel_(pm->multilevel?pm->max_level-pm->root_level:0),
     nrbx1_(pm->nrbx1), nrbx2_(pm->nrbx2), nrbx3_(pm->nrbx3), srcmask_(MGSourceMask),
     coeffmask_(MGCoeffMask), pmy_mesh_(pm), fsubtract_average_(false),
-    ffas_(pm->multilevel), redblack_(true), symmetric_rb_(false), needinit_(true),
+    ffas_(pm->multilevel), redblack_(true), symmetric_rb_(false),
+    consistent_rb_colors_(false), needinit_(true),
     fshowdef_(false),
     smoothing_only_(false), stage_diagnostics_(false), stage_diagnostics_active_(false),
     residual_minimizing_prolongation_(false),
@@ -1019,7 +1020,7 @@ void MultigridDriver::OneStepToFiner(int nsmooth) {
     ProlongateAndCorrectOctets();
     current_level_++;
     for (int n = 0; n < nsmooth; ++n) {
-      const int first_color = symmetric_rb_ ? 0 : coffset_;
+      const int first_color = (symmetric_rb_ || consistent_rb_colors_) ? 0 : coffset_;
       SetBoundariesOctets(false, false, false);
       SmoothOctets(first_color);
       if (redblack_) {
@@ -1032,7 +1033,7 @@ void MultigridDriver::OneStepToFiner(int nsmooth) {
     mgroot_->ProlongateAndCorrectBlock();
     current_level_++;
     for (int n = 0; n < nsmooth; ++n) {
-      const int first_color = symmetric_rb_ ? 0 : coffset_;
+      const int first_color = (symmetric_rb_ || consistent_rb_colors_) ? 0 : coffset_;
       mgroot_->pmgbval->ApplyPhysicalBoundaries(0, false);
       mgroot_->SmoothBlock(first_color);
       if (redblack_) {
@@ -1087,7 +1088,7 @@ void MultigridDriver::OneStepToCoarser(int nsmooth) {
       CalculateFASRHSOctets();
     }
     for (int n=0; n<nsmooth; ++n) {
-      const int first_color = symmetric_rb_ ? 0 : coffset_;
+      const int first_color = (symmetric_rb_ || consistent_rb_colors_) ? 0 : coffset_;
       SmoothOctets(first_color);
       SetBoundariesOctets(false, false, false);
       if (redblack_) {
@@ -1107,7 +1108,7 @@ void MultigridDriver::OneStepToCoarser(int nsmooth) {
       mgroot_->CalculateFASRHSBlock();
     }
     for (int n = 0; n < nsmooth; ++n) {
-      const int first_color = symmetric_rb_ ? 0 : coffset_;
+      const int first_color = (symmetric_rb_ || consistent_rb_colors_) ? 0 : coffset_;
       mgroot_->SmoothBlock(first_color);
       mgroot_->pmgbval->ApplyPhysicalBoundaries(0, false);
       if (redblack_) {
@@ -1624,10 +1625,10 @@ void MultigridDriver::SolveCoarsestGrid() {
       mgroot_->CalculateFASRHSBlock();
     }
     for (int i = 0; i < ni; ++i) { // iterate ni times
-      mgroot_->SmoothBlock(coffset_);
+      mgroot_->SmoothBlock(consistent_rb_colors_ ? 0 : coffset_);
       mgroot_->pmgbval->ApplyPhysicalBoundaries(0, false);
       if (redblack_) {
-        mgroot_->SmoothBlock(1-coffset_);
+        mgroot_->SmoothBlock(consistent_rb_colors_ ? 1 : 1-coffset_);
         mgroot_->pmgbval->ApplyPhysicalBoundaries(0, false);
       }
     }

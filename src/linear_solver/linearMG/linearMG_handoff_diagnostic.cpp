@@ -4,10 +4,15 @@
 #include <cmath>
 #include <iomanip>
 #include <limits>
+#include "../../globals.hpp"
 #include "linearMG.hpp"
 #include "../linear_solver.hpp"
 #include "../../coordinates/coordinates.hpp"
 #include "../../newton_raphson/Newton_Raphson.hpp"
+
+#ifdef MPI_PARALLEL
+#include <mpi.h>
+#endif
 
 void linearMGDriver::PrintHandoffDiagnostic(const char *stage, bool native) {
   const int di[6]={-1,1,0,0,0,0}, dj[6]={0,0,-1,1,0,0}, dk[6]={0,0,0,0,-1,1};
@@ -87,7 +92,35 @@ void linearMGDriver::PrintHandoffDiagnostic(const char *stage, bool native) {
   std::cout << std::scientific << std::setprecision(16);
   const char *regions[4]={"interior","same_level_face","coarse_fine_face","all"};
   for (int region=0;region<4;++region) {
-    const Sum &s=sums[region]; if (!s.cells) continue;
+    Sum &s=sums[region];
+#ifdef MPI_PARALLEL
+    long double totals[8]={s.r2,s.b2,s.double_r2,s.native_r2,s.roundoff2,
+                           s.delta_integral,s.rhs_integral,s.volume};
+    MPI_Allreduce(MPI_IN_PLACE,totals,8,MPI_LONG_DOUBLE,MPI_SUM,MPI_COMM_WORLD);
+    s.r2=totals[0]; s.b2=totals[1]; s.double_r2=totals[2]; s.native_r2=totals[3];
+    s.roundoff2=totals[4]; s.delta_integral=totals[5];
+    s.rhs_integral=totals[6]; s.volume=totals[7];
+    const std::int64_t local_cells=s.cells;
+    std::int64_t counts[2]={s.cells,s.nonpositive};
+    MPI_Allreduce(MPI_IN_PLACE,counts,2,MPI_LONG_LONG,MPI_SUM,MPI_COMM_WORLD);
+    s.cells=counts[0]; s.nonpositive=counts[1];
+    const Real local_max=s.maximum;
+    Real minima[2]={s.delta_min,s.updated_min}, maxima[2]={s.delta_max,s.maximum};
+    MPI_Allreduce(MPI_IN_PLACE,minima,2,MPI_ATHENA_REAL,MPI_MIN,MPI_COMM_WORLD);
+    MPI_Allreduce(MPI_IN_PLACE,maxima,2,MPI_ATHENA_REAL,MPI_MAX,MPI_COMM_WORLD);
+    s.delta_min=minima[0]; s.updated_min=minima[1];
+    s.delta_max=maxima[0]; s.maximum=maxima[1];
+    int owner=(local_cells>0 && local_max==s.maximum) ? Globals::my_rank
+                                                     : Globals::nranks;
+    MPI_Allreduce(MPI_IN_PLACE,&owner,1,MPI_INT,MPI_MIN,MPI_COMM_WORLD);
+    if (s.cells>0) {
+      Real xyz[3]={s.x,s.y,s.z}; int ids[2]={s.gid,s.level};
+      MPI_Bcast(xyz,3,MPI_ATHENA_REAL,owner,MPI_COMM_WORLD);
+      MPI_Bcast(ids,2,MPI_INT,owner,MPI_COMM_WORLD);
+      s.x=xyz[0]; s.y=xyz[1]; s.z=xyz[2]; s.gid=ids[0]; s.level=ids[1];
+    }
+#endif
+    if (!s.cells || Globals::my_rank!=0) continue;
     const auto denom=std::max(s.b2,1.e-300L);
     std::cout << "[NRFLD handoff] solve=" << handoff_diagnostic_count_
               << " stage=" << stage << " region=" << regions[region] << " cells=" << s.cells

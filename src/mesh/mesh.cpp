@@ -1699,6 +1699,7 @@ void Mesh::Initialize(int res_flag, ParameterInput *pin) {
       if (NRMGFLD_ENABLED) {
         pmb->pnr->nrbvar.SetupPersistentMPI();
         pmb->pnr->delta_bvar.SetupPersistentMPI();
+        pmb->pnr->SetupInterfaceBoundaryMPI();
       }
     }
 
@@ -2059,7 +2060,13 @@ void Mesh::Initialize(int res_flag, ParameterInput *pin) {
     my_blocks(i)->phydro->NewBlockTimeStep();
   }
 
+  // A restart file stores the timestep already chosen for its next cycle.
+  // Re-evaluate limits in case the input changed, but do not apply the
+  // normal factor-of-two growth to that saved next-step value a second time.
+  const Real restart_dt = dt;
   NewTimeStep();
+  if (res_flag != 0 && fluid_setup != FluidFormulation::fixed)
+    dt = std::min(dt, restart_dt);
   return;
 }
 

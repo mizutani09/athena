@@ -19,7 +19,7 @@
 //!
 //! Required parameters that must be specified in an <output[n]> block are:
 //!   - variable     = cons,prim,D,d,E,e,m,m1,m2,m3,v,v1=vx,v2=vy,v3=vz,p,
-//!                    bcc,bcc1,bcc2,bcc3,b,b1,b2,b3,phi,uov
+//!                    bcc,bcc1,bcc2,bcc3,b,b1,b2,b3,phi,uov,Er (with NR-FLD)
 //!   - file_type    = rst,tab,vtk,hst,hdf5
 //!   - dt           = problem time between outputs
 //!
@@ -95,6 +95,7 @@
 #include "../cr/cr.hpp"
 #include "../crdiffusion/crdiffusion.hpp"
 #include "../field/field.hpp"
+#include "../fld/fld.hpp"
 #include "../gravity/gravity.hpp"
 #include "../hydro/hydro.hpp"
 #include "../mesh/mesh.hpp"
@@ -710,6 +711,23 @@ void OutputType::LoadOutputData(MeshBlock *pmb) {
       }
     }
   }
+  // NR-FLD evolves one cell-centred lab-frame radiation energy density.
+  // It is a separate radiation implementation from NRRadiation below.
+  // AthenaArray gives the 3D FLD field a singleton fourth dimension, so the
+  // usual shallow slice presents it as data(0,k,j,i) to every output writer.
+  if (NRMGFLD_ENABLED &&
+      (ContainVariable(output_params.variable, "Er") ||
+       ContainVariable(output_params.variable, "prim") ||
+       ContainVariable(output_params.variable, "cons"))) {
+    AthenaArray<Real> &erad = pmb->prfld->u_rad;
+    pod = new OutputData;
+    pod->type = "SCALARS";
+    pod->name = "Er";
+    pod->data.InitWithShallowSlice(erad, 4, 0, 1);
+    AppendOutputDataNode(pod);
+    num_vars_++;
+  }
+
   // The following radiation/cosmic ray/thermal conduction are all
   // cell centered variable
   if (NR_RADIATION_ENABLED || IM_RADIATION_ENABLED) {

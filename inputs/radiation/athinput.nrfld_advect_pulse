@@ -7,7 +7,8 @@ configure  = --prob=nrfld_advect_radiation_pulse --eos=adiabatic -nrmgfld -hdf5 
 # Static run:  problem/v0=0.0
 # Moving run:  problem/v0=1.0e6
 # High-resolution comparison: override mesh/nx1=4096 and use a separate output directory.
-# Athena++ time is in code units. Here 4.8e-5 s = 906.75278 code time units.
+# Athena++ time is in code units. Here 906.75278 code units correspond to
+# 4.80056e-5 s with the units below; the nominal benchmark time is 4.8e-5 s.
 # The transverse 4 x 4 cells are required by the NR-FLD meshblock implementation.
 
 <job>

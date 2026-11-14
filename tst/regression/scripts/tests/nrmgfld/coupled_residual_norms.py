@@ -40,9 +40,12 @@ def _run_case(name, kwargs, extra, ranks):
         'time/nlim=2', 'job/problem_id=residual_' + name,
     ])
     command.extend(extra)
+    environment = dict(os.environ)
+    if name == 'coupled':
+        environment['ATHENA_NRFLD_SCHUR_AUDIT'] = '1'
     with open('bin/coupled_residual_norms_' + name + '.log', 'w') as log_file:
         subprocess.check_call(command, cwd='bin', stdout=log_file,
-                              stderr=subprocess.STDOUT)
+                              stderr=subprocess.STDOUT, env=environment)
 
 
 def _summaries(name):
@@ -62,6 +65,17 @@ def _summaries(name):
 
 
 def analyze():
+    # The coupled RHS must use the directly evaluated total-energy residual.
+    # The opt-in audit computes both independent forms at each active cell.
+    with open('bin/coupled_residual_norms_coupled.log') as log_file:
+        audit = [dict(re.findall(r'(\w+)=([^\s]+)', line))
+                 for line in log_file if line.startswith('[NR_SCHUR_AUDIT]')]
+    physical = [row for row in audit if float(row['dt']) > 0.0]
+    if not physical or any(
+            abs(float(row['rhs']) - float(row['rhs_direct'])) >
+            1e-14 * max(1.0, abs(float(row['rhs_direct'])))
+            for row in physical):
+        return False
     active = {'coupled': ('gas', 'total_energy'),
               'only_rad': ('radiation',), 'fixed_u_rad': ('gas',)}
     channels = ('gas', 'radiation', 'total_energy')

@@ -32,6 +32,7 @@
 #include "../parameter_input.hpp"
 #include "../reconstruct/reconstruction.hpp"
 #include "../utils/buffer_utils.hpp"
+#include "../utils/nrfld_prototype_flags.hpp"
 #include "fld.hpp"
 
 namespace {
@@ -127,7 +128,9 @@ FLD::FLD(MeshBlock *pmb, ParameterInput *pin) :
     is_couple(), only_rad(), cut_diff(), include_radiation_force(),
     radiation_pressure_in_riemann(true),
     fixed_flux_limiter(),
-    fixed_u_rad(), include_mixed_frame_terms(), mixed_frame_transport(true),
+    fixed_u_rad(), include_mixed_frame_terms(), implicit_mixed_frame_drift(true),
+    mixed_frame_ledger_limit(0), mixed_frame_ledger_count(0),
+    mixed_frame_transport(true),
     hydro_top_outflow_diode(false),
     marshak_top_boundary(), marshak_top_alpha(0.5), marshak_top_erad_ext(0.0)
     {
@@ -205,6 +208,129 @@ FLD::FLD(MeshBlock *pmb, ParameterInput *pin) :
   fixed_u_rad = pin->GetOrAddBoolean("fld", "fixed_u_rad", false);
   include_mixed_frame_terms =
       pin->GetOrAddBoolean("fld", "include_mixed_frame_terms", true);
+  const bool test_c_problem =
+      std::string(PROBLEM_GENERATOR) == "nrfld_diff_amr_interface";
+  const bool mach5_problem =
+      std::string(PROBLEM_GENERATOR) == "nrfld_radiative_shock"
+      && pin->GetOrAddString("problem", "problem_type", "") == "mach5";
+  // Enable the common-face operator by default only in the two AMR problem
+  // families with analytic or same-checkpoint accuracy and conservation
+  // checks. Other problem generators retain their existing route until
+  // separately validated. An explicit legacy flag is the A/B escape hatch.
+  NRFLDPrototype::ConfigureDefault(pmb->pmy_mesh->multilevel
+      && (test_c_problem || mach5_problem), test_c_problem, mach5_problem,
+      fixed_flux_limiter);
+  if (NRFLDPrototype::Legacy()
+      && NRFLDPrototype::Flag("ATHENA_NRFLD_CONSERVATIVE_PROTOTYPE")) {
+    std::stringstream msg;
+    msg << "### FATAL ERROR in function [FLD::FLD]" << std::endl
+        << "ATHENA_NRFLD_LEGACY_INTERFACE and "
+        << "ATHENA_NRFLD_CONSERVATIVE_PROTOTYPE cannot both be 1.";
+    ATHENA_ERROR(msg);
+  }
+  if (pmb->pmy_mesh->multilevel && !NRFLDPrototype::Enabled()
+      && !NRFLDPrototype::Legacy()) {
+    std::stringstream msg;
+    msg << "### FATAL ERROR in function [FLD::FLD]" << std::endl
+        << "AMR NR-FLD has no validated conservative default for this "
+        << "problem. Set ATHENA_NRFLD_LEGACY_INTERFACE=1 to explicitly "
+        << "run the older nonconservative interface operator.";
+    ATHENA_ERROR(msg);
+  }
+  if (NRFLDPrototype::Enabled()) {
+    const bool variable_trial = NRFLDPrototype::VariableLimiterTrial();
+    const bool test_c = test_c_problem;
+    const bool mach5 = mach5_problem && NRFLDPrototype::Mach5Trial();
+    bool periodic = true;
+    for (int face=0; face<6; ++face)
+      periodic &= pmb->pmy_mesh->mesh_bcs[face] == BoundaryFlag::periodic;
+    const Real dx1 = (pmb->block_size.x1max-pmb->block_size.x1min)
+        /pmb->block_size.nx1;
+    const Real dx2 = (pmb->block_size.x2max-pmb->block_size.x2min)
+        /pmb->block_size.nx2;
+    const Real dx3 = (pmb->block_size.x3max-pmb->block_size.x3min)
+        /pmb->block_size.nx3;
+    const bool cubic = std::abs(dx2/dx1-1.0) < 1.0e-12
+        && std::abs(dx3/dx1-1.0) < 1.0e-12;
+    const bool mach5_boundaries =
+        pmb->pmy_mesh->mesh_bcs[0] == BoundaryFlag::user
+        && pmb->pmy_mesh->mesh_bcs[1] == BoundaryFlag::user
+        && pmb->pmy_mesh->mesh_bcs[2] == BoundaryFlag::periodic
+        && pmb->pmy_mesh->mesh_bcs[3] == BoundaryFlag::periodic
+        && pmb->pmy_mesh->mesh_bcs[4] == BoundaryFlag::periodic
+        && pmb->pmy_mesh->mesh_bcs[5] == BoundaryFlag::periodic;
+    if ((!test_c && !mach5)
+          || std::string(COORDINATE_SYSTEM) != "cartesian"
+          || ((is_couple || !only_rad) && !NRFLDPrototype::CoupledTrial())
+          || ((is_couple || !only_rad) && NRFLDPrototype::DifferenceJv())
+          || (NRFLDPrototype::TangentialReconstruction()
+              && !NRFLDPrototype::SharedCoeff())
+          || (NRFLDPrototype::SeriesResistance()
+              && (!test_c || !NRFLDPrototype::SharedCoeff()
+                  || (!fixed_flux_limiter && (is_couple || !only_rad))))
+          || cut_diff
+          || (!fixed_flux_limiter && !variable_trial)
+          || fixed_u_rad || !cubic
+          || (test_c && (include_mixed_frame_terms || !periodic))
+          || (mach5 && (!fixed_flux_limiter || !is_couple || only_rad
+                        || !mach5_boundaries))
+          || (pmb->pmy_mesh->adaptive && !NRFLDPrototype::RegridTrial())) {
+      std::stringstream msg;
+      msg << "### FATAL ERROR in function [FLD::FLD]" << std::endl
+          << "Conservative NR-FLD requires either periodic "
+          << "Test C or validated Mach 5 on a Cartesian "
+          << "cubic mesh with user x1 and periodic transverse boundaries. "
+          << "Coupling requires assembled Jv, and variable limiters must "
+          << "stay frozen within each solve. "
+          << "Tangential reconstruction requires shared coefficients. "
+          << "Series resistance requires Test C with shared coefficients, "
+          << "and a fixed limiter when gas is coupled. "
+          << "Adaptive regrid requires ATHENA_NRFLD_EXPERIMENTAL_REGRID=1.";
+      ATHENA_ERROR(msg);
+    }
+  }
+  if (Globals::my_rank == 0) {
+    static bool reported_interface_mode = false;
+    if (!reported_interface_mode) {
+      reported_interface_mode = true;
+      std::cout << "[NRFLD_INTERFACE_MODE] path="
+                << (NRFLDPrototype::Enabled() ? "conservative" : "legacy")
+                << " selection="
+                << (NRFLDPrototype::Legacy() ? "explicit_legacy"
+                    : NRFLDPrototype::Flag("ATHENA_NRFLD_CONSERVATIVE_PROTOTYPE")
+                        ? "explicit_prototype"
+                    : NRFLDPrototype::DefaultEnabled() ? "supported_default"
+                    : "unvalidated_problem") << std::endl;
+      if (NRFLDPrototype::Enabled()) {
+        std::cout << "[NRFLD_CONSERVATIVE_CONFIG] shared_coeff="
+                  << NRFLDPrototype::SharedCoeff()
+                  << " difference_jv=" << NRFLDPrototype::DifferenceJv()
+                  << " variable_limiter_trial="
+                  << NRFLDPrototype::VariableLimiterTrial()
+                  << " coupled_trial=" << NRFLDPrototype::CoupledTrial()
+                  << " tangential_reconstruction="
+                  << NRFLDPrototype::TangentialReconstruction()
+                  << " series_resistance=" << NRFLDPrototype::SeriesResistance()
+                  << " mach5_trial=" << NRFLDPrototype::Mach5Trial()
+                  << std::endl;
+      }
+    }
+  }
+  implicit_mixed_frame_drift =
+      pin->GetOrAddBoolean("fld", "implicit_mixed_frame_drift", true);
+  mixed_frame_ledger_limit = pin->GetOrAddInteger("fld", "mixed_frame_ledger_limit", 0);
+  if (mixed_frame_ledger_limit < 0) {
+    std::stringstream msg;
+    msg << "### FATAL ERROR in function [FLD::FLD]" << std::endl
+        << "fld/mixed_frame_ledger_limit must be non-negative.";
+    ATHENA_ERROR(msg);
+  }
+  if (!implicit_mixed_frame_drift && !fixed_flux_limiter) {
+    std::stringstream msg;
+    msg << "### FATAL ERROR in function [FLD::FLD]" << std::endl
+        << "Explicit q*v.grad(Er) comparison requires fixed_flux_limiter=true.";
+    ATHENA_ERROR(msg);
+  }
   const EnvironmentFlag force_diagnostics =
       ReadEnvironmentFlag("ATHENA_FLD_FORCE_DIAGNOSTICS");
   if (!force_diagnostics.valid) {
@@ -294,6 +420,8 @@ FLD::FLD(MeshBlock *pmb, ParameterInput *pin) :
               << " pressure_flux=0"
               << " mixed_frame_source="
               << MixedFrameCoupled()
+              << " implicit_mixed_frame_drift=" << implicit_mixed_frame_drift
+              << " mixed_frame_ledger_limit=" << mixed_frame_ledger_limit
               << " mixed_frame_transport=" << mixed_frame_transport
               << " is_couple=" << is_couple << " only_rad=" << only_rad
               << " include_radiation_force=" << include_radiation_force

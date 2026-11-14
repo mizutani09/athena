@@ -108,7 +108,8 @@ fixed_flux_limiter  = true
 rho0        = 1.0
 kappa       = 1.0
 beta        = 0.1
+delta_tau   = 3.0e-4  # beta*c*kappa*dt; 1000 steps reach tau=0.3
 Finc        = 1e7
-Tgas0       = 0.1
+Tgas0       = 1.0  # v0 = 5.67e-12; 0.1 K stalls the first Newton line search
 egas_floor  = 1e-42
 erad_floor  = 1e-50

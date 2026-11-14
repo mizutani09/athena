@@ -6,10 +6,16 @@
 #include <sstream>
 #include <vector>
 
+#ifdef MPI_PARALLEL
+#include <mpi.h>
+#endif
+
 #include "NRFLD.hpp"
 #include "../coordinates/coordinates.hpp"
+#include "../globals.hpp"
 #include "../linear_solver/linear_solver.hpp"
 #include "../task_list/nr_task_list.hpp"
+#include "../utils/nrfld_prototype_flags.hpp"
 
 namespace {
 constexpr int di[6]={-1,1,0,0,0,0};
@@ -68,11 +74,6 @@ void NRFLDDriver::RunDirectionDiagnostic() {
 }
 
 void NRFLDDriver::CheckGlobalJacobian(bool actual_direction) {
-  if (nranks_!=1) {
-    std::stringstream msg;
-    msg << "global_jacobian_check currently requires one MPI rank (Test C).";
-    ATHENA_ERROR(msg);
-  }
   for (auto base:vnr_) {
     NRFLD *nr=static_cast<NRFLD*>(base);
     FLD *fld=nr->pmy_block_->prfld;
@@ -88,7 +89,8 @@ void NRFLDDriver::CheckGlobalJacobian(bool actual_direction) {
 
   struct Saved {
     NRFLD *nr;
-    AthenaArray<Real> u, delta, coarse_u, coarse_delta, coeff, deriv, defcoeff,
+    AthenaArray<Real> u, delta, coarse_u, coarse_delta, moments,
+                      coarse_moments, coeff, deriv, defcoeff,
                       src, mixed, marshak, baseline, direction, tangent;
     bool initialized;
   };
@@ -100,6 +102,10 @@ void NRFLDDriver::CheckGlobalJacobian(bool actual_direction) {
     Snapshot(s.u,nr->u_); Snapshot(s.delta,nr->delta_u_); Snapshot(s.coeff,nr->coeff_);
     Snapshot(s.coarse_u,nr->NewtonRaphson::coarse_u_);
     Snapshot(s.coarse_delta,nr->coarse_delta_u_);
+    if (NRFLDPrototype::SharedCoeff()) {
+      Snapshot(s.moments,nr->interface_moments_);
+      Snapshot(s.coarse_moments,nr->coarse_interface_moments_);
+    }
     Snapshot(s.deriv,nr->derivetive_); Snapshot(s.defcoeff,nr->def_coeff_);
     Snapshot(s.src,nr->src_); Snapshot(s.mixed,nr->mixed_drift_);
     Snapshot(s.marshak,nr->pmy_block_->prfld->marshak_dface);
@@ -111,6 +117,10 @@ void NRFLDDriver::CheckGlobalJacobian(bool actual_direction) {
       nr->u_=s.u; nr->delta_u_=s.delta; nr->coeff_=s.coeff;
       nr->NewtonRaphson::coarse_u_=s.coarse_u;
       nr->coarse_delta_u_=s.coarse_delta;
+      if (NRFLDPrototype::SharedCoeff()) {
+        nr->interface_moments_=s.moments;
+        nr->coarse_interface_moments_=s.coarse_moments;
+      }
       nr->derivetive_=s.deriv; nr->def_coeff_=s.defcoeff; nr->src_=s.src;
       nr->mixed_drift_=s.mixed; nr->pmy_block_->prfld->marshak_dface=s.marshak;
       nr->fixed_linear_coefficients_initialized_=s.initialized;
@@ -118,6 +128,7 @@ void NRFLDDriver::CheckGlobalJacobian(bool actual_direction) {
   };
   NewtonRaphsonTaskList boundary(this,NewtonRaphsonTaskList::Mode::boundary);
   boundary.DoTaskListOneStage(stage_);
+  if (NRFLDPrototype::SharedCoeff()) SyncInterfaceFaceMoments();
   Real baseline_ghost_change=0.0, amplitude=0.0;
   for (Saved &s:saved) {
     NRFLD *nr=s.nr; MeshBlock *mb=nr->pmy_block_;
@@ -142,12 +153,18 @@ void NRFLDDriver::CheckGlobalJacobian(bool actual_direction) {
                              std::max(std::abs(s.baseline(k,j,i)),TINY_NUMBER));
         }
   }
+#ifdef MPI_PARALLEL
+  MPI_Allreduce(MPI_IN_PLACE,&baseline_ghost_change,1,MPI_ATHENA_REAL,MPI_MAX,
+                MPI_COMM_WORLD);
+  MPI_Allreduce(MPI_IN_PLACE,&amplitude,1,MPI_ATHENA_REAL,MPI_MAX,MPI_COMM_WORLD);
+#endif
   // Normalize the actual MG direction to avoid positivity clipping. Preserve
   // its shape and sign; epsilon is relative to the energy, not to raw delta.
   if (actual_direction && amplitude==0.0) {
     restore();
-    std::cout << "[NRFLD Jv skipped] direction=newton iteration=" << global_jv_solve_
-              << " reason=zero_direction" << std::endl;
+    if (Globals::my_rank==0)
+      std::cout << "[NRFLD Jv skipped] direction=newton iteration=" << global_jv_solve_
+                << " reason=zero_direction" << std::endl;
     return;
   }
   amplitude=std::max(amplitude,static_cast<Real>(1.e-30));
@@ -163,7 +180,7 @@ void NRFLDDriver::CheckGlobalJacobian(bool actual_direction) {
 
   const auto flags=std::cout.flags(); const auto precision=std::cout.precision();
   std::cout << std::scientific << std::setprecision(16);
-  std::cout << "[NRFLD Jv setup] direction=" << (actual_direction ? "newton" : "smooth")
+  if (Globals::my_rank==0) std::cout << "[NRFLD Jv setup] direction=" << (actual_direction ? "newton" : "smooth")
             << " iteration=" << (actual_direction ? global_jv_solve_ : -1)
             << " baseline_ghost_change=" << baseline_ghost_change
             << " direction_scale=" << amplitude << " coefficient_policy=lagged_per_step"
@@ -176,9 +193,16 @@ void NRFLDDriver::CheckGlobalJacobian(bool actual_direction) {
     for (std::size_t b=0;b<saved.size();++b) {
       Saved &s=saved[b]; NRFLD *nr=s.nr;
       nr->u_=s.baseline;
+      nr->derivetive_=s.deriv;
       if (mode) {
         nr->CalculateCoefficientsOnce(nr->u_,nr->pmy_block_->phydro->w,
                                        nr->def_coeff_,nr->derivetive_);
+      }
+    }
+    if (NRFLDPrototype::SharedCoeff()) SyncInterfaceFaceMoments();
+    for (std::size_t b=0;b<saved.size();++b) {
+      Saved &s=saved[b]; NRFLD *nr=s.nr;
+      if (mode) {
         nr->fixed_linear_coefficients_initialized_=false;
         nr->CalculateCoefficientsTask(dt_);
         Snapshot(base_coeff[b],nr->coeff_);
@@ -195,14 +219,23 @@ void NRFLDDriver::CheckGlobalJacobian(bool actual_direction) {
               nr->u_(k,j,i)+=h*s.direction(k,j,i);
       }
       boundary.DoTaskListOneStage(stage_);
+      for (Saved &s:saved) {
+        NRFLD *nr=s.nr;
+        if (!mode) nr->derivetive_=s.deriv;
+        if (mode)
+          nr->CalculateCoefficientsOnce(nr->u_,nr->pmy_block_->phydro->w,
+                                         nr->def_coeff_,nr->derivetive_);
+      }
+      if (NRFLDPrototype::SharedCoeff()) SyncInterfaceFaceMoments();
+      if (mode)
+        for (Saved &s:saved) {
+          s.nr->fixed_linear_coefficients_initialized_=false;
+          s.nr->CalculateCoefficientsTask(dt_);
+        }
       std::array<Sums,4> sums;
       for (std::size_t b=0;b<saved.size();++b) {
         Saved &s=saved[b]; NRFLD *nr=s.nr; MeshBlock *mb=nr->pmy_block_;
-        if (mode) {
-          nr->CalculateCoefficientsOnce(nr->u_,mb->phydro->w,nr->def_coeff_,nr->derivetive_);
-          nr->fixed_linear_coefficients_initialized_=false;
-          nr->CalculateCoefficientsTask(dt_);
-        } else nr->coeff_=base_coeff[b];
+        if (!mode) nr->coeff_=base_coeff[b];
         for (int k=0;k<nr->u_.GetDim3();++k)
           for (int j=0;j<nr->u_.GetDim2();++j)
             for (int i=0;i<nr->u_.GetDim1();++i)
@@ -242,7 +275,28 @@ void NRFLDDriver::CheckGlobalJacobian(bool actual_direction) {
       }
       const char *regions[4]={"interior","same_level_face","coarse_fine_face","all"};
       for (int region=0;region<4;++region) {
-        const Sums &a=sums[region]; if (!a.cells) continue;
+        Sums &a=sums[region];
+#ifdef MPI_PARALLEL
+        long double totals[6]={a.error,a.fd,a.av,a.tangent_error,
+                               a.ghost_error,a.ghost_ref};
+        MPI_Allreduce(MPI_IN_PLACE,totals,6,MPI_LONG_DOUBLE,MPI_SUM,MPI_COMM_WORLD);
+        a.error=totals[0]; a.fd=totals[1]; a.av=totals[2];
+        a.tangent_error=totals[3]; a.ghost_error=totals[4]; a.ghost_ref=totals[5];
+        const std::int64_t local_cells=a.cells;
+        MPI_Allreduce(MPI_IN_PLACE,&a.cells,1,MPI_LONG_LONG,MPI_SUM,MPI_COMM_WORLD);
+        const Real local_max=a.max_error;
+        MPI_Allreduce(MPI_IN_PLACE,&a.max_error,1,MPI_ATHENA_REAL,MPI_MAX,
+                      MPI_COMM_WORLD);
+        int owner=(local_max==a.max_error && local_cells>0) ? Globals::my_rank : nranks_;
+        MPI_Allreduce(MPI_IN_PLACE,&owner,1,MPI_INT,MPI_MIN,MPI_COMM_WORLD);
+        if (a.cells>0) {
+          Real xyz[3]={a.x,a.y,a.z}; int ids[2]={a.gid,a.level};
+          MPI_Bcast(xyz,3,MPI_ATHENA_REAL,owner,MPI_COMM_WORLD);
+          MPI_Bcast(ids,2,MPI_INT,owner,MPI_COMM_WORLD);
+          a.x=xyz[0]; a.y=xyz[1]; a.z=xyz[2]; a.gid=ids[0]; a.level=ids[1];
+        }
+#endif
+        if (!a.cells || Globals::my_rank!=0) continue;
         const long double ref=std::max({a.fd,a.av,1.e-300L});
         std::cout << "[NRFLD global Jv] direction=" << (actual_direction ? "newton" : "smooth")
                   << " iteration=" << (actual_direction ? global_jv_solve_ : -1)
