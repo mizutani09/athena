@@ -41,7 +41,7 @@ def main():
             mach = np.sqrt(speed2 / ((5.0 / 3.0) * pressure / rho))
             radial_velocity = (state[2] * xx + state[3] * yy
                                + state[4] * zz) / safe_radius
-            core = radius < 200.0
+            core = radius < 166.0
             shell = (radius >= 800.0) & (radius <= 860.0)
             core_mass += mass[core].sum()
             core_v2 += (mass[core] * speed2[core]).sum()
@@ -70,6 +70,7 @@ def main():
 
         result = {
             "time": float(prim.attrs["Time"]),
+            "core_radius_rsun": 166.0,
             "min_er": min_er,
             "core_rms_speed": float(np.sqrt(core_v2 / core_mass)),
             "surface_mean_temperature": shell_temp / shell_mass,

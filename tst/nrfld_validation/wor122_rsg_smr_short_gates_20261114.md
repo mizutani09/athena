@@ -222,7 +222,7 @@ clamps, positive saved Er, and relative mass change −7.12×10⁻⁹.
 | --- | ---: | ---: | ---: |
 | Boundary Lrad/Lheat | 3.627 | 1.729 | 1.084 |
 | Global maximum Mach | 0.03335 | 0.004352 | 0.004297 |
-| Core mass-weighted rms speed [code] | 0.001652 | 0.000544 | 0.000179 |
+| Core r<166 Rsun mass-weighted rms speed [code] | 0.001652 | 0.000544 | 0.000179 |
 | Surface 800–860 Rsun maximum ideal-gas Mach proxy | 0.0325 | 0.00429 | 0.00200 |
 
 The 256³ global Mach maximum occurs in density-floor exterior gas near
@@ -255,8 +255,8 @@ code time 3.0 to 0.966 at one day, so a near-unity instantaneous value
 does not establish thermal equilibrium. The global Mach maximum remained
 at radius 1101 Rsun in density-floor exterior gas, while the
 800–860 Rsun surface maximum ideal-gas Mach proxy was 0.01458. Core
-(r<200 Rsun) mass-weighted rms speed rose from 0.000179 at 0.25 day to
-0.000444 at one day. These trends require a longer gate before claiming
+(r<166 Rsun) mass-weighted rms speed rose from 0.000179 at 0.25 day to
+0.000466 at one day. These trends require a longer gate before claiming
 stable evolution. Job **339971** continues the same state to two days
 in M-debug.
 
@@ -290,7 +290,7 @@ converged and zero opacity excursions. Its final saved Er minimum was
 | --- | ---: | ---: |
 | Boundary Lrad/Lheat | 0.9662 | 0.86895 |
 | History maximum Mach (tabular EOS) | 0.01721 | 0.04500 |
-| Core r<200 Rsun mass-weighted rms speed [code] | 0.000444 | 0.000670 |
+| Core r<166 Rsun mass-weighted rms speed [code] | 0.000466 | 0.000763 |
 | Surface 800–860 Rsun maximum ideal-gas Mach proxy | 0.01458 | 0.03699 |
 | Surface mass-weighted gas temperature [K] | 5944 | 5733 |
 | Minimum saved Er [code] | 1.884×10⁻⁶ | 1.691×10⁻⁶ |
@@ -312,7 +312,7 @@ days. Its radial weight vanishes at the artificial core boundary.
 
 | Two-day 128³ measure | Standard drag | Strong core drag |
 | --- | ---: | ---: |
-| Core r<200 Rsun mass-weighted rms speed [code] | 0.002511 | 0.001980 |
+| Core r<166 Rsun mass-weighted rms speed [code] | 0.002543 | 0.001591 |
 | Cumulative removed kinetic energy [code] | 2.009 | 209.149 |
 | Boundary Lrad/Lheat | 1.408244 | 1.408161 |
 | History maximum Mach | 0.0413261 | 0.0413245 |
@@ -320,7 +320,7 @@ days. Its radial weight vanishes at the artificial core boundary.
 | Surface mass-weighted gas temperature [K] | 5868.315 | 5868.285 |
 
 The stronger drag removes about 104 times more kinetic energy and reduces
-the core rms speed by about 21%, but the surface luminosity and Mach differ
+the core rms speed by about 37%, but the surface luminosity and Mach differ
 by less than 0.006% and 0.004%, respectively. At matched times through
 0.84 day these history diagnostics agree to roundoff. Thus the first two
 days' surface cooling and acceleration are not primarily caused by
@@ -328,7 +328,42 @@ unrestrained motion in the damped inner 166 Rsun. This does **not** rule
 out a center-driven disturbance on longer propagation times or in other
 setups. The 256³ and 128³ boundary luminosities still differ strongly at
 two days, consistent with an unresolved surface radiation layer.
+The existing 1-D profile audit in
+`wor120_rsg_surface_cooling_controls_t0060.json` places the 10–90%
+radiative-luminosity transition between about 813.6 and 816.8 Rsun and
+estimates a local cooling time near 816 Rsun of about 1.07 days. The
+initial radiative luminosity is only about 0.014 Lstar at 750 Rsun, so
+the mapped static model has no already developed convective transport
+carrying the remaining flux. Initial surface cooling can therefore be
+a physical startup transient as convection develops; the strong
+resolution dependence and missing discrete equilibrium prevent a firm
+physical interpretation from these two days alone.
 
 `wor122_plot_resolution_gates.py` also generates the two-day comparison
 `doc/figures/wor122_rsg_resolution_2day_20261115.png` from the committed
 history files.
+
+### 256³ one-patch resource gate
+
+The next local-surface-resolution test uses the same positive-x/negative-y/
+negative-z patch on a 256³ root. Its 512 fine blocks replace 64 root
+blocks, giving 4544 leaf blocks. The fine width is 3.95 Rsun, close to
+but still larger than the 3.35 Rsun continuum luminosity transition.
+Job **339976** with 64 ranks and a 110 GB single-node request reached
+113.50 GB during setup and was OOM-killed before the first cycle. Job
+**339978** with 16 ranks and 115 GB reached 118.93 GB during the first
+FLD step and was also OOM-killed. The uniform 256³ 64-rank day run used
+91.78 GB, so the patch and its multilevel solver data materially raise
+the peak memory requirement. Both failures are resource failures, not
+evidence of a physical instability. M-debug permits only one node and
+caps memory at 115 GiB per node. A 64-rank, two-node, 70-GB-per-node
+M-test-a job **339979** is queued for the six-hour comparison. A previous
+two-node attempt **339977** was canceled while waiting; it did no work.
+After the one-node OOM retries, **339979** is the only pending WOR-122 job.
+Its M-test-a start estimate should be checked again before relying on it.
+If it passes Newton/opacity/Er and face-flux balance, compare its six-hour
+surface Mach and luminosity with uniform 256³ before deciding whether a
+one-day patch continuation is worth the two-node cost. If it does not
+improve the local surface response, the next physical-model work should
+target an initial 3-D radiation/pressure balance and transport through
+the thin 815–817 Rsun layer rather than more core-only damping.
