@@ -77,7 +77,8 @@ python3 tst/nrfld_validation/run_suite.py --case couple_high --max-cores 2 \
 
 The [compact JSON](summary.json) contains binary/input/HST SHA-256,
 iterations, residuals, mass, runtime, memory, and each PASS/FAIL decision.
-Publication-wide source selection and solar/other solver regressions still
-belong to WOR-114. WOR-95 remains open until that final integrated source
-is fixed and compared with this exact-run source; no additional long
-collapse is implied by that gate.
+This completes the short WOR-95 regression on the verified collapse-run
+source and the byte-identical solver source in the WOR-114 successor candidate.
+Publication-wide source selection and solar/other solver regressions remain
+in WOR-114. If its selected source changes, WOR-114 must rerun or explicitly
+requalify the affected short gates; no additional long collapse is implied.
