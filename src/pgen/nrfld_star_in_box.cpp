@@ -47,7 +47,8 @@ Real gravity_quad_full_radius, gravity_quad_taper_radius;
 Real marshak_alpha;
 Real short_test_max_dt=-1.0;
 std::uint64_t perturb_seed;
-bool profile_initialization=false, marshak_boundary=false;
+bool profile_initialization=false, profile_cell_average_trial=false;
+bool marshak_boundary=false;
 bool core_quadrature_gravity=false;
 std::vector<Real> profile_r, profile_rho, profile_egas, profile_erad, profile_temp;
 UserOpacityTable *opacity_table=nullptr;
@@ -158,6 +159,30 @@ Real InterpolateProfile(const std::vector<Real> &values, Real r) {
 Real InitialDensity(Real r) {
   return profile_initialization ? InterpolateProfile(profile_rho,r)
                                 : rho_surface*DensityShape(r);
+}
+struct ProfileCellAverage { Real rho, egas, erad; };
+ProfileCellAverage AverageProfileInCell(Coordinates *c, int k, int j, int i) {
+  // Positive tensor-product Gauss quadrature of the imported *conservative*
+  // fields.  The imported profile is much steeper than the Cartesian cells
+  // near the radiative transition; point sampling is not a cell average.
+  constexpr Real nodes[4]={-0.8611363115940526,-0.3399810435848563,
+                            0.3399810435848563, 0.8611363115940526};
+  constexpr Real weights[4]={0.1739274225687269,0.3260725774312731,
+                             0.3260725774312731,0.1739274225687269};
+  const Real half_width[3]={0.5*c->dx1f(i),0.5*c->dx2f(j),0.5*c->dx3f(k)};
+  const Real center[3]={c->x1v(i),c->x2v(j),c->x3v(k)};
+  ProfileCellAverage average{0.0,0.0,0.0};
+  for (int iz=0;iz<4;++iz) for (int iy=0;iy<4;++iy) for (int ix=0;ix<4;++ix) {
+    const Real x=center[0]+nodes[ix]*half_width[0];
+    const Real y=center[1]+nodes[iy]*half_width[1];
+    const Real z=center[2]+nodes[iz]*half_width[2];
+    const Real r=std::sqrt(x*x+y*y+z*z);
+    const Real w=weights[ix]*weights[iy]*weights[iz];
+    average.rho+=w*InterpolateProfile(profile_rho,r);
+    average.egas+=w*InterpolateProfile(profile_egas,r);
+    average.erad+=w*InterpolateProfile(profile_erad,r);
+  }
+  return average;
 }
 Real Kinetic(const AthenaArray<Real> &u,int k,int j,int i) {
   return 0.5*(SQR(u(IM1,k,j,i))+SQR(u(IM2,k,j,i))+SQR(u(IM3,k,j,i)))
@@ -292,7 +317,11 @@ Real History(MeshBlock *mb,int out) {
   if (out>=12) {
     // Audit the actual Robin flux used by NRFLD on each Cartesian box face.
     // The diffusion coefficient is lagged during the most recent Newton solve.
-    if (!marshak_boundary || mb->pmy_mesh->time<=0.0) return 0.0;
+    // The implicit operator removes both interior diffusion and its Marshak
+    // boundary flux when cut_diff is set.  Do not report a formal Robin flux
+    // that was never applied to the radiation energy equation.
+    if (!marshak_boundary || mb->prfld->cut_diff
+        || mb->pmy_mesh->time<=0.0) return 0.0;
     const int face=out-12,axis=face/2;
     const bool inner=(face%2==0);
     const RegionSize &block=mb->block_size;
@@ -491,6 +520,15 @@ void Mesh::InitUserMeshData(ParameterInput *pin) {
 
   const std::string profile_file=pin->GetOrAddString("problem","hse_model_file","");
   profile_initialization=!profile_file.empty();
+  // Reproducible WOR-122 control only.  It did not pass the surface-force or
+  // luminosity gates and must stay disabled in production inputs.
+  profile_cell_average_trial=pin->GetOrAddBoolean(
+      "problem", "profile_cell_average_trial", false);
+  Require(!profile_cell_average_trial || (profile_initialization && !multilevel
+          && !pin->GetOrAddBoolean("time", "correct_ic", false)
+          && !pin->GetOrAddBoolean("time", "correct_ic_fld_radiation", false)),
+          "profile cell-average trial requires a uniform imported profile "
+          "and both generic initial corrections off");
   if (profile_initialization) {
     LoadHseProfile(profile_file);
     rho_surface=InterpolateProfile(profile_rho,radius);
@@ -575,7 +613,8 @@ void Mesh::InitUserMeshData(ParameterInput *pin) {
       << "STAR_IN_BOX rho_surface=" << rho_surface << " heat_norm=" << heat_norm
       << " gas_mass=" << gas_mass << " Lheat=" << lum_code
       << " time_unit_s=" << time_unit << " core_cells=" << 2.0*rcore/dx[0]
-      << " static_refinement_trial=" << static_refinement_trial << '\n';
+      << " static_refinement_trial=" << static_refinement_trial
+      << " profile_cell_average_trial=" << profile_cell_average_trial << '\n';
 }
 
 void MeshBlock::InitUserMeshBlockData(ParameterInput*) {
@@ -595,7 +634,9 @@ void MeshBlock::InitUserMeshBlockData(ParameterInput*) {
 void MeshBlock::ProblemGenerator(ParameterInput*) {
   for (int k=ks;k<=ke;++k) for (int j=js;j<=je;++j) for (int i=is;i<=ie;++i) {
     const Real r=RadialPosition(pcoord,k,j,i);
-    const Real d_profile=InitialDensity(r);
+    const ProfileCellAverage averaged=profile_cell_average_trial
+        ? AverageProfileInCell(pcoord,k,j,i) : ProfileCellAverage{0.0,0.0,0.0};
+    const Real d_profile=profile_cell_average_trial ? averaged.rho : InitialDensity(r);
     const Real floor_tolerance=64.0*std::numeric_limits<Real>::epsilon();
     if (!std::isfinite(d_profile)
         || d_profile < dfloor*(1.0-floor_tolerance)) {
@@ -612,7 +653,8 @@ void MeshBlock::ProblemGenerator(ParameterInput*) {
     // density back to the exact numerical bound.
     const Real d=std::max(d_profile,dfloor);
     const Real eg_profile=profile_initialization
-        ? InterpolateProfile(profile_egas,r) : -1.0;
+        ? (profile_cell_average_trial ? averaged.egas
+                                      : InterpolateProfile(profile_egas,r)) : -1.0;
     const Real eg=profile_initialization ? eg_profile*d/d_profile : -1.0;
     const Real t=profile_initialization ? InterpolateProfile(profile_temp,r) : Temperature(r);
 #if GENERAL_EOS
@@ -651,7 +693,9 @@ void MeshBlock::ProblemGenerator(ParameterInput*) {
 #endif
     phydro->u(IEN,k,j,i)=eint+0.5*d*(vx*vx+vy*vy+vz*vz);
     prfld->u_gas(k,j,i)=eint;
-    prfld->u_rad(k,j,i)=profile_initialization ? InterpolateProfile(profile_erad,r)
+    prfld->u_rad(k,j,i)=profile_initialization
+        ? (profile_cell_average_trial ? averaged.erad
+                                      : InterpolateProfile(profile_erad,r))
         : kAr*std::pow(t,4)/energy_unit*((r>radius) ? SQR(radius/r) : 1.0);
   }
 }

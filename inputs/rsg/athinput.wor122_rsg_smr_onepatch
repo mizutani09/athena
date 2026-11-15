@@ -142,6 +142,8 @@ linearMG_ox3_bc = user
 
 <problem>
 static_refinement_trial = true
+# Diagnostic only: WOR-122 time-1 gate increased luminosity and surface force.
+profile_cell_average_trial = false
 short_test_max_dt = -1.0
 model_name = st35gm03n07_tomida_material_gray_fld
 hse_model_file = data/ic/st35gm03n07_wor55_lte_fld_trial.dat
