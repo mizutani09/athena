@@ -183,7 +183,9 @@ def main():
                             "rho_model_over_paper": rho_model / float(rho_paper),
                             "temperature_model_over_paper": temp_model / float(temp_paper),
                             "infall_model_over_paper": infall_model / -float(vr_paper)})
-    if radial_stats["time_code"] > rows[-1, 0] + 1e-6:
+    # Athena HDF5 stores Time as float32 here; compare within its spacing.
+    time_roundoff = max(1e-6, 2 * float(np.spacing(np.float32(rows[-1, 0]))))
+    if radial_stats["time_code"] > rows[-1, 0] + time_roundoff:
         raise ValueError("3D snapshot is newer than HST history")
     out = args.output_html
     out.parent.mkdir(parents=True, exist_ok=True)
@@ -238,8 +240,19 @@ def main():
             f"<tr><th>FGMRES</th><td>{solver_metrics['fgmres_solves']} solves / {solver_metrics['fgmres_iterations']} iterations、最大true相対残差{solver_metrics['fgmres_true_relative_max']:.3e}</td></tr>"
             f"<tr><th>実行時間・最大RSS</th><td>{solver_metrics['elapsed_seconds']/60:.1f} min・{solver_metrics['maxrss_kib']/1024/1024:.2f} GiB</td></tr>"
             "</table>")
-    continuation_note = (f"<p>cycle 1415 から磁場ゼロのAMR保存変数補間へ圧力正値制限を適用した。"
-                         f"継続バイナリ SHA-256 {html.escape(args.continuation_binary_sha)}。</p>"
+    continuation_note = (f"""<section><h2>cycle 1416 のAMR細分化と修正</h2>
+<p>元の計算では降着衝撃波に接する新規level-11の2セルで圧力が
+1e-19 dyn/cm²の下限へ落ちた。細分化を1 stepだけ抑えた対照では再現しなかった。
+同一修正バイナリの補間制限OFFでも再現し、ONではc1420まで圧力下限セル0。
+保存変数の8子セルを共通係数で制限し、粗格子の親平均を保ちながら
+内部エネルギー由来の圧力を正にした。磁場ゼロのideal EOS条件に限って有効化。</p>
+<table><tr><th>条件</th><th>c1416 最小圧力</th><th>Jeans最小値</th></tr>
+<tr><td>元の演算・制限OFF</td><td>1.00e-19 dyn/cm²</td><td>1.49e-6 cells</td></tr>
+<tr><td>細分化なし対照</td><td>5.22e-10 dyn/cm²</td><td>31.99 cells</td></tr>
+<tr><td>正値制限ON</td><td>5.22e-10 dyn/cm²</td><td>32.04 cells</td></tr></table>
+<p class="small">修正ソースcommit 9d007f26、継続バイナリ SHA-256
+{html.escape(args.continuation_binary_sha)}。修正前に失敗したc1416行は
+有効経路の履歴に含めない。</p></section>"""
                          if args.continuation_binary_sha else "")
     run_title = ("WOR-92: Mayer §5 ideal EOS・一定opacityのc0からの修正継続計算"
                  if args.continuation_binary_sha else
@@ -254,7 +267,7 @@ def main():
 <title>{html.escape(run_title)}</title>
 <style>body{{font:16px/1.65 system-ui,sans-serif;max-width:1020px;margin:auto;padding:1.3rem;color:#263743;background:#f3f7f9}}section,figure{{background:white;border:1px solid #dbe5e8;border-radius:9px;padding:1rem;margin:1rem 0}}img{{max-width:100%}}table{{border-collapse:collapse;width:100%}}th,td{{text-align:left;border-bottom:1px solid #dbe5e8;padding:.4rem}}a{{color:#14638b}}.small{{font-size:.9rem;color:#526673}}</style></head><body>
 <h1>{html.escape(run_title)}</h1>
-<p>検証状態: <strong>{status}</strong>。初期一様球1 M☉・3000 au・14 K、γ=5/3、μ=2.381、κP=κR=1 cm²/g。Athena++のCartesian Jeans AMR計算を、Mayer et al. (2025) §5のAREPO計算と比較する。背景ガスは密度1/30・圧力平衡による420 K、背景放射は14 Kという明示的仮定。</p>
+<p>数値ゲート: <strong>{status}</strong>。初期一様球1 M☉・3000 au・14 K、γ=5/3、μ=2.381、κP=κR=1 cm²/g。Athena++のCartesian Jeans AMR計算を、Mayer et al. (2025) §5のAREPO計算と比較する。背景ガスは密度1/30・圧力平衡による420 K、背景放射は14 Kという明示的仮定。</p>
 <section><h2>履歴と保存検査</h2><table>
 <tr><th>最終履歴時刻</th><td>{final_time:.5f} kyr</td></tr>
 <tr><th>最大密度</th><td>{rho_max:.6e} g/cm³</td></tr>
@@ -277,7 +290,7 @@ def main():
 <figure><img src="data:image/png;base64,{image_data(profile_png)}" alt="半径方向プロファイルとMayer論文概読値"><figcaption>青: 当計算の最新体積重み球殻平均。淡青: 先行cycle。紫丸: Mayer Figure 7のラスター図からの概読値。概読点は公開数値表でなく、厳密なacceptance gateには使わない。</figcaption></figure>
 <section><h2>Mayer Figure 7 概読点との比</h2><table><tr><th>半径 [au]</th><th>密度比</th><th>温度比</th><th>流入速度比</th></tr>{comparison_rows}</table><p class="small">いずれも当計算/Mayer概読値。ラスター図からの概読値と球殻平均の比較であり、精密な収束判定ではない。</p></section>
 <figure><img src="data:image/png;base64,{image_data(shock_png)}" alt="正のx軸の衝撃波構造"><figcaption>3D出力の正のx軸に沿った密度と流入速度。</figcaption></figure>
-<section><h2>比較の限界と再現情報</h2><p>Mayerの基準時刻は約29.09 kyr、第一コア半径は6–7 au。当計算にはCartesian Jeans AMRとAREPO質量精緻化の差があり、背景放射14 Kの初期値は論文に明記されていない。時刻や半径の差をソルバの単一原因へ帰属しない。</p>
+<section><h2>比較の限界と再現情報</h2><p>Mayerの基準時刻は約29.09 kyr、第一コア半径は6–7 au。当計算の密度閾値時刻は{final_time:.2f} kyrで約{final_time/MAYER_KYR:.3f}倍遅い。衝撃波半径の近さだけで物理解の一致とは判定しない。当計算にはCartesian Jeans AMRとAREPO質量精緻化の差があり、背景放射14 Kの初期値は論文に明記されていない。時刻や半径の差をソルバの単一原因へ帰属しない。</p>
 <p class="small">Source base commit {html.escape(SOURCE_BASE_COMMIT)}<br>Binary SHA-256 {html.escape(SOURCE_BINARY_SHA)}<br>Input SHA-256 {html.escape(SOURCE_INPUT_SHA)}<br>References: <a href="https://arxiv.org/html/2510.12620#S5">Mayer et al. 2025 §5</a>; <a href="https://arxiv.org/html/2410.07016#S3">precursor §3.1</a>.</p></section>
 </body></html>"""
     out.write_text(document)

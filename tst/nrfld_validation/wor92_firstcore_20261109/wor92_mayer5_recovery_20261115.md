@@ -229,3 +229,53 @@ Its c1430 and c1440 checkpoints passed the full-row pressure, Jeans and
 mass gates. At c1440: rho_max `8.30935e-11 g/cm³`, Pmin
 `5.20741e-10 dyn/cm²`, Jeans min `40.7285`, and the original gas mass.
 The monitored density threshold remains to be checked.
+
+## Final guarded continuation and physical result
+
+Job 340334 completed successfully on `cna053` with Slurm `COMPLETED 0:0`
+in 28:47 (1727 s), using one M-large-a node and 120 MPI ranks. All
+14 ten-cycle segments exited 0. The final cycle was 1560 at code time
+`2459.5802394519724`, physical time `36.87079 kyr`, with
+`rho_max=1.000879401423554e-10 g/cm³`. The final HST row has
+`Pmin=5.127027032841770e-10 dyn/cm²`, Jeans min `40.6429744` cells,
+`Tgas,max=545.261345 K`, and gas mass `2.936555728050223e33 g`.
+The final restart SHA-256 is
+`10fb044ac5f0ae4101640d440e13a5aef8b28841c4844131cca1b145fc29eba4`.
+The final c1560 primitive HDF5 SHA-256 is
+`7257c299d3f7e91e9209d86d6b5a36129c184a80dd239b03dea71dbab7db0c53`.
+An independent full-volume scan of that HDF5 found **zero** pressure-floor
+cells. The restart and all earlier checkpoints remain on XD; local
+analysis copies are in the `ideal_mayer5_postsync_c0_20261110` evidence
+directory.
+
+The validated c0→c1560 history deliberately excludes the failed original
+c1416 row and joins the good c1415 checkpoint to the fixed-binary
+c1416→c1420 replay and c1421→c1560 continuation. It contains 1527 unique
+saved times and 157 identical duplicate rows. Across this path the maximum
+gas-mass relative drift is `7.8522e-15`, the minimum pressure
+`1.69137e-10 dyn/cm²`, and the minimum Jeans resolution `31.7129` cells.
+All three gates pass. The final job logged 156/156 converged Newton solves,
+420 FGMRES solves with 6418 iterations, maximum FGMRES true relative
+residual `1.98614e-8`, no fatal lines, and maximum Slurm step RSS
+`45,854,652 KiB` (about 43.7 GiB). These solver totals apply to the
+final c1420→c1560 job; earlier jobs have separate provenance.
+
+The independent c1560 leaf-cell profile gives central maximum-density
+temperature `545.26 K` and radial velocity `-0.00772 km/s`. The strongest
+positive-x density drop from 3–15 au lies at `6.775–7.141 au`, density
+ratio `7.586`, with inner/outer infall speeds `0.488/2.169 km/s` and
+about `0.02993 M☉` inside the shock midpoint. Positive/negative x-axis
+density asymmetry over 3–15 au is `0.192%`. These support a first-core
+structure rather than a lone density spike. The numerical gates and density
+threshold pass, but this trajectory reaches the threshold at `36.87 kyr`,
+about `1.267` times Mayer's reported `29.09 kyr`; the shock radius is
+close to Mayer's 6–7 au while the profile read-off ratios differ by radius.
+The initial ambient and spatial refinement differ, so the timing gap is
+not assigned to a single solver defect.
+
+The standalone local HTML report at
+`/home/kosuke/simulation/test/rad_nr/wor92_xd_20261107/firstcore_integration_evidence/ideal_mayer5_postsync_c0_20261110/mayer5_validated_report.html`
+contains the history, radial profiles, shock structure, A/B correction,
+Mayer approximate read-off, and solver audit. The report's `PASS` means
+the numerical mass/pressure/Jeans/density/solver gates passed; it does not
+assert precision agreement with Mayer's physical trajectory.
