@@ -42,6 +42,7 @@ record the raw-output location, hashes, commands, and pass/fail rules:
 | Closed periodic box, WOR-64 | Five local cases PASS on this exact candidate commit `01256e87`: Newton targets 1e-6/1e-8/1e-10 at CFL 0.2 plus CFL 0.1/0.4 at target 1e-8. All reached code time 1; all Newton/FGMRES calls converged, maximum mass and total-energy relative drift across cases were 8.66e-15 and 8.77e-15. |
 | Optically thin streaming, WOR-59 | Four 2-rank cases PASS through 2 ns: all Newton and FGMRES calls converged, requested dt held except for the final shortened step, and final HDF5 snapshots agree. The thin, fine-step case has front-center lag −2.870916 cm and 10–90% width 9.258959 cm, matching the older WOR-59 128-cell values to the quoted 0.001 cm. |
 | Coupled AMR restart, WOR-106 | Six direct/checkpoint pairs PASS on this candidate source: legacy/shared-face, static/adaptive, 4→4 and adaptive 1→4 ranks. All final times and topologies agree exactly, even with 0 allowed ULP; largest active-field difference is 1.137e-13 against 1e-10. All recorded Newton/FGMRES calls converge. |
+| Mixed-frame fast matrix | 11/11 local runs and report PASS on clean commit `3f4e29e4`: Mach 2/5 at N=64, static/moving pulse at N=32, periodic box, and local Jv in both implicit/explicit modes. All solver calls strictly converge without relaxed acceptance. This fast matrix measures a low-resolution sanity gate, not the publication accuracy of either shock. |
 
 The closed-box raw run is under
 `/home/kosuke/simulation/test/rad_nr/wor114_collapse_candidate_20261116/closed_box/`.
@@ -94,6 +95,37 @@ To reproduce the AMR restart cases, build an isolated copy of this source with
 `python3 tst/nrfld_validation/wor106_coupled_amr_restart.py --binary
 /path/to/build/bin/athena --input inputs/radiation/athinput.nrfld_diff_amr_interface
 --output /path/to/new/output --time-ulps 0` from the repository root.
+
+The mixed-frame fast matrix is under
+`/home/kosuke/simulation/test/rad_nr/wor114_collapse_candidate_20261116/mixed_frame_fast/`.
+Its standalone `index.html`, summary JSON, input/log/HDF5, resource files,
+and two isolated build logs retain the exact evidence. A
+[compact result JSON](../tst/nrfld_validation/wor114_candidate_20261116/mixed_fast_summary.json)
+is versioned with this branch. Mach 2 raw L1 errors
+relative to the bundled semi-analytic profile are 0.629/0.629% in density
+(implicit/explicit), 0.696/0.696% in gas temperature, and 0.278/0.278% in
+radiation temperature. Mach 5 raw L1 is about 7.22% density, 6.55–6.56% gas
+temperature and 6.50–6.52% radiation temperature; after aligning the
+density jump for shape comparison, the corresponding density L1 is about
+1.37–1.38%. The raw offset is retained, not hidden by that alignment.
+
+The moving-pulse case has 1,778 strict-converged cycles per mode. Relative L1
+to the shifted static pulse is 0.003765/0.003761 for density and
+0.018004/0.018006 for radiation energy (implicit/explicit); these are
+finite-resolution differences, not zero. The periodic-box total-energy drift
+is `−7.87e-15` with implicit drift and `−6.36e-8` with explicit drift;
+mass drift is `−7.40e-16`/`−2.27e-8`. The local fixed-coefficient gas and
+radiation Jv finite-difference relative errors fall by approximately 10×
+when epsilon falls from `1e-4` to `1e-5` to `1e-6`; both modes pass. This
+Jv check does not substitute for a global coarse/fine boundary Jv test.
+
+The fast matrix used 2 MPI ranks for shock/pulse and 1 rank for box/Jv.
+Its shock and pulse binary SHA-256 values are
+`2e6cd07967310c06678cf07dd5872a2fb2d7fdff73cade4e0adaf823d0b301c0`
+and `286740f1d31a3bcea7a5ee243c66df33fe840a603edc060cc4c601d2a7b6c0aa`.
+The numerical claims above are bounded by N=64/32, the bundled reference
+profiles, and the exact input hashes in the summary; high-resolution Mach 5
+temperature-spike qualification remains separate.
 
 The old Draft PR #3's 2026-11-09 table AMR guard and one-step uniform result
 belong to its earlier `8e0ee6aa` source and are historical. The final paper
