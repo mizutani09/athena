@@ -97,3 +97,46 @@ and keeps the ten-cycle mass/pressure/Jeans/first-core gates. The per-segment
 time guard was reduced from 1800 to 900 s after a 6-cycle replay completed
 in 82 s. This is a watchdog adjustment, not a numerical correction. The
 first-core density gate has not been met yet.
+
+An additional M-test-a replay, job 340293, pinned the same c1190 restart and
+120 ranks to the original `cna105`. It also reached c1196, exit 0, in 80 s.
+The c1191–1196 HST records agree exactly with job 340278 in all 273 numeric
+fields. Slurm step MaxRSS was 38,635,204 K. Thus the c1195 hang is not
+deterministically reproduced even on the same node. Both replays support
+continuation from a validated checkpoint; neither proves whether the original
+stall came from MPI progress, I/O, node load, or another intermittent cause.
+
+## Intermediate 3D physical audit
+
+The c1240 primitive HDF5 from job 340281 was copied to the local evidence
+directory as `profiles/c1240.athdf`, SHA-256
+`573ecd98c95ef58d52fe75b9c032657aef093c728e657edfc4735cd6b871a61e`.
+Independent leaf-cell reduction gives maximum density
+`4.9164e-11 g/cm³`, gas temperature at that cell `396.34 K`, and radial
+velocity `-0.00674 km/s`. On the positive x-axis, the strongest density
+drop from 3–15 au is at `7.5073–7.8735 au`, with inner/outer density
+ratio `6.007` and inflow speeds `0.427/1.768 km/s`. The x-axis positive/
+negative density difference over 3–15 au is at most `0.140%`. Mass inside
+approximately 7.7 au is `0.0242 M☉`. These are strong signs of a supported
+first-core structure and an accretion shock, but the prescribed
+rho_max≥1e-10 benchmark has not yet been reached. Physical time is
+`36.8273 kyr`, or `1.268` times the pressureless uniform-sphere free-fall
+time; the comparison with Mayer's roughly 29.09 kyr result requires explicit
+discussion of solver and discretization differences rather than an assertion
+of agreement.
+
+The full c0→c1196 HST records from jobs 339330, 339331, 340115, 340116,
+and 340278 contain 1321 saved 39-column rows at 1197 unique times. All
+124 duplicate-time rows agree exactly, including across the five-node to
+one-node restart. No accepted row violates mass drift `1e-8`, pressure
+`1e-18 dyn/cm²`, or Jeans `16 cells`. The maximum relative mass change is
+`7.8522e-15`, minimum pressure `1.69137e-10 dyn/cm²`, and minimum Jeans
+resolution `31.7129 cells`. At Mayer's reported 29.09 kyr benchmark time,
+this trajectory has rho_max only about `3.49e-16 g/cm³`, so the onset timing
+is substantially later. The earlier ideal-EOS path reaching near 29.14 kyr
+used ambient density/pressure ratios `0.01/0.01` and a pre-implicit sink,
+whereas this path uses `1/30` density, pressure equilibrium, and a
+post-implicit sink; those paths do not isolate a single cause of the timing
+difference. The initial c0 maximum cell mass here is `7.2855e-6 M☉`, about
+22 times Mayer's AREPO target `3.33e-7 M☉`, another material resolution
+difference.
