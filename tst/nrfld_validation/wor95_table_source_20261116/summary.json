@@ -1,0 +1,176 @@
+{
+  "source_commit": "ff60f8f07842acb00e7753932bcfe30867e3a66e",
+  "source_tree_sha256": "07f023b3399effde56eede6bb963a027405194f528e044f9bc836dc11812d668",
+  "diffusion_binary_sha256": "02f43dbc14a93114e83af81d88e45032ef7324bcf9a07bb8e9a7c47d9b2b7dae",
+  "diffusion": {
+    "fgmres": {
+      "status": "passed",
+      "samples": 8,
+      "newton_solves": 2641,
+      "fgmres_solves": 5280,
+      "fgmres_max_iterations": 6,
+      "fgmres_max_true_relative_residual": 9.985115515795923e-11,
+      "spatial_orders": [
+        1.9851194225560038,
+        2.004796817667511
+      ],
+      "temporal_orders": [
+        0.9890225942202692,
+        0.9945408559819026
+      ],
+      "fixed_diffusion_number_orders": [
+        1.9701555425130686,
+        2.0007002713572364
+      ],
+      "run_seconds": 216.0888730829829,
+      "input_sha256": [
+        "576190a1bb89c50573b9a3ce4f0cfaef6b23960086bdce94d71d5537b3b476b1",
+        "ddab54cff2ae7a44369ef6417a7a924f9f62dfc983f619a898ee1ffdcf29e239",
+        "d3060e22d0fe309a58d0a775774f20746b14195eaa2180dd7772c764576432e3",
+        "ff6320618780c22d97cb890f94ca16ab375580b5773383965d83804cc9dce5a2",
+        "e9393863c14f0e5ce8fba9b69646a0524b9c7e33ec7929f863ec6dd048eb12b1",
+        "1e4f877f708279a7527571de22093fee071ab83fdc85d71a1a594e4481efb909",
+        "965af18c32f96788cd2485513b536e56743815bf1d80424bf4f2e27dd1ec5314",
+        "c7126289c97c71e6d5e534340b05508d55cfac934cdf8762ce080461641672b9"
+      ]
+    },
+    "mg": {
+      "status": "passed",
+      "samples": 8,
+      "newton_solves": 2641,
+      "fgmres_solves": 0,
+      "fgmres_max_iterations": 0,
+      "fgmres_max_true_relative_residual": 0,
+      "spatial_orders": [
+        1.9851194225560038,
+        2.004796817667511
+      ],
+      "temporal_orders": [
+        0.9890225942202692,
+        0.9945408559819026
+      ],
+      "fixed_diffusion_number_orders": [
+        1.9701555425130686,
+        2.0007002713572364
+      ],
+      "run_seconds": 200.79346454799088,
+      "input_sha256": [
+        "0008881583b45f365533c19e1b680d8cf1d44d10b11ed2e1b82c88e88a2d7d71",
+        "eaa78335ac7da017f486d463a7d8b923803b8d6166d98375afeee93d3df1c66d",
+        "670d39885fc0fe4a833694cf9a2af6197d980702c2a41ee21e461cb36728f52d",
+        "1cd3cf36cee82152cfa807afd2541fb2f83e704c39733d1e874335a97990ed20",
+        "f61e914673b34e68d2e40c175f184fba018c814752e8378281a5c558107ba68d",
+        "e382db2a55a032d02dd8b2cb2c0a4b86902a1123a5f9186fbbccd7714cabc40b",
+        "f44fc1a31912491b7b3781c9a62892876ace3daa1ff64d19dfa116ab5e2bd0c9",
+        "d756af0753121e66e011d803160a4e6f731c58e4a8cf8ea8f6ce712b0fc29294"
+      ]
+    },
+    "fgmres_vs_mg_profiles_identical": true
+  },
+  "jeans_binary_sha256": "1ecd161663e869c840d7dd740f27898c78981bf8ed1c8dbc856978faea9d1c85",
+  "jeans_base_input_sha256": "add6631141d1d44c53a6941861366538f40e42b6c6d8f62e280e828c9257eb58",
+  "jeans": [
+    {
+      "N_J": 4,
+      "meshblocks": 8,
+      "created_meshblocks": 0,
+      "initial_level": 1.0,
+      "final_level": 1.0,
+      "initial_jeans_cells": 15.233368639078908,
+      "final_jeans_cells": 15.23253991922596,
+      "solve_dt_code": 4.144635899727114,
+      "newton_converged": 1,
+      "fgmres_solves": 2,
+      "fgmres_max_iterations": 9,
+      "fgmres_max_true_relative_residual": 1.0480070910034193e-08,
+      "mass_relative_change": 4.1522341120980855e-14,
+      "background_temperature_error_max": 9.824381960665818e-05,
+      "elapsed_seconds": 7.521050447001471,
+      "maxrss_kib": 122260,
+      "input_sha256": "ef7cba8e3831b7af4bc4b40cf50db3cce4fe18e777d39dbbc3927a3ab232b0fa",
+      "history_sha256": "11910851cdf5db625bb5ba19d762c7237d756d69c3a1d4b648262d42c75bc1c4"
+    },
+    {
+      "N_J": 32,
+      "meshblocks": 64,
+      "created_meshblocks": 56,
+      "initial_level": 2.0,
+      "final_level": 2.0,
+      "initial_jeans_cells": 30.466737278157815,
+      "final_jeans_cells": 30.466152199328945,
+      "solve_dt_code": 2.072317949863557,
+      "newton_converged": 1,
+      "fgmres_solves": 2,
+      "fgmres_max_iterations": 10,
+      "fgmres_max_true_relative_residual": 7.64517979727606e-09,
+      "mass_relative_change": -4.5075054799781356e-14,
+      "background_temperature_error_max": 3.585076012135868e-05,
+      "elapsed_seconds": 51.74477281000145,
+      "maxrss_kib": 746652,
+      "input_sha256": "46c8572dc0e21883003ee8f13f17423f87e332d2506001fc2acc06b14a77a54a",
+      "history_sha256": "535e4203e30599ee44dd49628f5f48819e6014431f9f065d98982b663eb02372"
+    }
+  ],
+  "preflight_failures": [
+    {
+      "case": "jeans without conservative prototype flags",
+      "result": "supported-configuration guard reported FATAL; MPI exit code was zero, rejected by missing HST",
+      "runtime_seconds": 0.45
+    },
+    {
+      "case": "jeans CFL=0.3, NR target 1e-8",
+      "result": "Newton stagnation after 8 iterations, final_max 1.322e-7; this differs from the WOR-95 reference CFL=0.02 and was not used for regression"
+    }
+  ],
+  "jeans_passed": true,
+  "coupling_fixed_radiation_bath": {
+    "low": {
+      "status": "passed",
+      "mpi_ranks": 1,
+      "newton_converged_steps": 20,
+      "fgmres_calls": 20,
+      "fgmres_max_iterations": 0,
+      "fgmres_max_reported_relative_residual": 0.0,
+      "max_log_gas_energy_error": 4.992925987323815e-06,
+      "gas_energy_error_limit": 0.005,
+      "max_relative_radiation_drift": 0.0,
+      "binary_sha256": "d0488bcf738645343374af664014f681328698aa03e30a46edacd017033f955b",
+      "base_input_sha256": "62e801a6d586f3a58385dd69daf9fdab9e5e131b3ca47ef557dde1bf8e1c427b",
+      "effective_overrides": [
+        "time/nlim=20",
+        "time/ncycle_out=20",
+        "job/problem_id=nrfld_couple_low_validation",
+        "problem/eg_0=1e2",
+        "nrfld/linear_solver=fgmres"
+      ],
+      "solver_run_seconds": 0.46584162399813067,
+      "maxrss_kib": 26380,
+      "passed": true
+    },
+    "high": {
+      "status": "passed",
+      "mpi_ranks": 1,
+      "newton_converged_steps": 1800,
+      "fgmres_calls": 3600,
+      "fgmres_max_iterations": 0,
+      "fgmres_max_reported_relative_residual": 0.0,
+      "max_log_gas_energy_error": 0.0022022356174709046,
+      "gas_energy_error_limit": 0.005,
+      "max_relative_radiation_drift": 0.0,
+      "binary_sha256": "d0488bcf738645343374af664014f681328698aa03e30a46edacd017033f955b",
+      "base_input_sha256": "62e801a6d586f3a58385dd69daf9fdab9e5e131b3ca47ef557dde1bf8e1c427b",
+      "effective_overrides": [
+        "time/nlim=1800",
+        "time/ncycle_out=1800",
+        "job/problem_id=nrfld_couple_high_validation",
+        "problem/eg_0=1e10",
+        "problem/dt0=1.0000000000000001e-17",
+        "problem/dt_growth=1.01",
+        "nrfld/linear_solver=fgmres"
+      ],
+      "solver_run_seconds": 1.1733099350021803,
+      "maxrss_kib": 26420,
+      "passed": true
+    }
+  }
+}

@@ -103,6 +103,10 @@ def run_study(args):
                 "output4/dt=-1", "output4/dcycle=0",
                 "output5/dt=-1", "output5/dcycle=0",
             ]
+            if args.linear_solver == "fgmres":
+                overrides.extend(("nrfld/linear_solver=fgmres",
+                                  "nrfld/fgmres_threshold=1e-10",
+                                  "nrfld/fgmres_max_iterations=300"))
             if args.linear_divergence_patience is not None:
                 overrides.extend([
                     "nrfld/linear_divergence_patience="
@@ -155,6 +159,20 @@ def run_study(args):
                     value = float(re.search(rf"\b{norm}=(\S+)", line)[1])
                     if not np.isfinite(value) or value > 1e-11:
                         raise RuntimeError(f"Newton tolerance not met: {case}")
+            linear = [line for line in text.splitlines()
+                      if line.startswith("[LINEAR_FGMRES] ")]
+            linear_stats = []
+            if args.linear_solver == "fgmres":
+                if not linear:
+                    raise RuntimeError(f"Missing FGMRES diagnostics: {case}")
+                for line in linear:
+                    fields = dict(re.findall(r"(\w+)=(\S+)", line))
+                    residual, target = (float(fields[key]) for key in
+                                        ("relative_residual", "target"))
+                    if (not np.isfinite(residual) or residual > target
+                            or fields["breakdown"] != "0"):
+                        raise RuntimeError(f"FGMRES did not converge: {case}: {line}")
+                    linear_stats.append((int(fields["iterations"]), residual))
             data = read_athdf(latest_athdf(output, "uov_x_slice"))
             x = np.asarray(data["x1v"])
             y = np.asarray(data["E_rad"], dtype=float).reshape(-1, n).mean(axis=0) / 1e7
@@ -171,6 +189,11 @@ def run_study(args):
             entry.update(dt_measured=dt_values[0], dt_min=min(solve_dt), dt_max=max(solve_dt),
                          timestep_sum=sum(solve_dt), diffusion_number=chi*dt_values[0]*n*n,
                          final_time=time, newton_solves=len(active),
+                         fgmres_solves=len(linear_stats),
+                         fgmres_max_iterations=max((x[0] for x in linear_stats),
+                                                   default=None),
+                         fgmres_max_relative_residual=max((x[1] for x in linear_stats),
+                                                          default=None),
                          relative_l1=relative_l1(y, ref), x=x.tolist(), profile=y.tolist())
             cache[n, steps] = y, ref, entry
             write_manifest(manifest_path, manifest)
@@ -250,6 +273,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--max-cores", type=int, default=2)
     parser.add_argument("--binary", type=Path, help="Reuse a verified nrfld_diff MPI binary")
+    parser.add_argument("--linear-solver", choices=("mg", "fgmres"), default="mg")
     parser.add_argument("--output-root", type=Path, default=Path("validation"))
     parser.add_argument("--run-name", default="diff_convergence_"+datetime.now().strftime("%Y%m%d_%H%M%S"))
     parser.add_argument("--build-timeout", type=float, default=900)
