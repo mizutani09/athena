@@ -119,10 +119,22 @@ commands are in `$WORK/wor122/prep128_outer_t8.sh` and
   Maximum Mach was 0.0132, versus 0.0594 in the same-time 128³ supported
   PPM run; box radiative luminosity was 0.955 Lheat. Job **340205** found
   Tgas ratio 0.9929 at 813–817 R_sun and maximum speed only 0.021 km/s
-  in 850–880 R_sun. To test whether this resolution advantage persists, job
-  **340210** continues the 256³ state to `t=20` on M-bulk-a after the
-  shell audit, with a guard requiring its `t=3` maximum Mach below 0.05.
-  Job **340211** will analyze its final state. This extension is about
+  in 850–880 R_sun. Job **340210** extended this state but hit its 2-hour
+  Slurm limit at `t=12.54`, short of its target `t=20`. The last HST point
+  at `t=12.52` has maximum Mach 0.0545, box radiative luminosity about
+  0.957 Lheat, and relative box-mass change below 2e-8. There is no solver
+  failure in the completed steps. Job **340211** was canceled because its
+  `afterok` dependency was not satisfied. The last complete HDF pair is at
+  `t=11.01`; replacement analysis job **340370** found 813–817 R_sun Tgas
+  ratio 0.9888 and 850–880 R_sun maximum speed 0.072 km/s. The signal-time
+  `final.rst` was truncated (3,144,983,024 bytes instead of the expected
+  3,171,305,824) and cannot be restarted; probe job **340371** failed at
+  the restart layout check and its dependent analysis **340372** was canceled.
+  The original job also had an absolute cycle limit `nlim=250`, which would
+  have stopped it near `t≈13` even with a longer wall time. Job **340373**
+  now re-runs from the valid `t=3` restart to `t=20` with a 6-hour wall
+  limit, `nlim=2000`, and intermediate restart files at `t=8` and `t=16`.
+  Job **340374** will analyze its final state. This extension is about
   5.1 days, still far short of the year-scale science goal.
 - A targeted convection-seed test raises `velocity_perturb_fraction` from
   1e-4 to 1e-2 while retaining the same 128³ PLM supported setup. Job
