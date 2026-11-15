@@ -1,0 +1,560 @@
+{
+  "cases": {
+    "prep128": {
+      "time0_code": 0.0,
+      "time1_code": 8.0,
+      "metrics": {
+        "0-166": {
+          "cells": 4776,
+          "mean_final_vr_kms": 0.014958173521738055,
+          "rms_final_vr_kms": 0.019444810811693247,
+          "rms_final_speed_kms": 0.01947744926211952,
+          "max_final_speed_kms": 0.03216485005299261,
+          "max_final_speed_xyz_rsun": [
+            -39.47265625,
+            71.05078125,
+            -7.89453125
+          ],
+          "fields": {
+            "rho": {
+              "mass_weighted_geometric_mean_ratio": 1.0000095827878548,
+              "mass_weighted_rms_log_ratio": 5.6472933599339103e-05
+            },
+            "press": {
+              "mass_weighted_geometric_mean_ratio": 1.000184696135372,
+              "mass_weighted_rms_log_ratio": 0.0003425307913365344
+            },
+            "Er": {
+              "mass_weighted_geometric_mean_ratio": 1.0007009967723441,
+              "mass_weighted_rms_log_ratio": 0.0015386705802625284
+            },
+            "Tgas": {
+              "mass_weighted_geometric_mean_ratio": 1.0001751116163542,
+              "mass_weighted_rms_log_ratio": 0.0003846518032111201
+            },
+            "Trad": {
+              "mass_weighted_geometric_mean_ratio": 1.0001752083665962,
+              "mass_weighted_rms_log_ratio": 0.00038467039096028654
+            }
+          }
+        },
+        "500-750": {
+          "cells": 315336,
+          "mean_final_vr_kms": 0.00011038899812782041,
+          "rms_final_vr_kms": 0.0016235461647840532,
+          "rms_final_speed_kms": 0.002776103768640664,
+          "max_final_speed_kms": 0.0058660379920750785,
+          "max_final_speed_xyz_rsun": [
+            402.62109375,
+            -292.09765625,
+            -102.62890625
+          ],
+          "fields": {
+            "rho": {
+              "mass_weighted_geometric_mean_ratio": 1.0000002867972164,
+              "mass_weighted_rms_log_ratio": 5.9976124065548086e-06
+            },
+            "press": {
+              "mass_weighted_geometric_mean_ratio": 1.0000141206451898,
+              "mass_weighted_rms_log_ratio": 4.824351583947282e-05
+            },
+            "Er": {
+              "mass_weighted_geometric_mean_ratio": 1.0000489909425612,
+              "mass_weighted_rms_log_ratio": 0.00016652262793724008
+            },
+            "Tgas": {
+              "mass_weighted_geometric_mean_ratio": 1.0000130027211225,
+              "mass_weighted_rms_log_ratio": 4.4546685314910835e-05
+            },
+            "Trad": {
+              "mass_weighted_geometric_mean_ratio": 1.0000122496830157,
+              "mass_weighted_rms_log_ratio": 4.163109731715201e-05
+            }
+          }
+        },
+        "750-800": {
+          "cells": 96520,
+          "mean_final_vr_kms": 0.0006847301986274551,
+          "rms_final_vr_kms": 0.020133816426226234,
+          "rms_final_speed_kms": 0.022638807975938514,
+          "max_final_speed_kms": 0.11941947221814944,
+          "max_final_speed_xyz_rsun": [
+            -449.98828125,
+            -465.77734375,
+            -465.77734375
+          ],
+          "fields": {
+            "rho": {
+              "mass_weighted_geometric_mean_ratio": 0.9999561676007868,
+              "mass_weighted_rms_log_ratio": 0.00018767320382108413
+            },
+            "press": {
+              "mass_weighted_geometric_mean_ratio": 1.0003726859786493,
+              "mass_weighted_rms_log_ratio": 0.001029508046908394
+            },
+            "Er": {
+              "mass_weighted_geometric_mean_ratio": 1.0013128896543035,
+              "mass_weighted_rms_log_ratio": 0.0033915805620529614
+            },
+            "Tgas": {
+              "mass_weighted_geometric_mean_ratio": 1.000384230509627,
+              "mass_weighted_rms_log_ratio": 0.0008262634464832634
+            },
+            "Trad": {
+              "mass_weighted_geometric_mean_ratio": 1.000328061348767,
+              "mass_weighted_rms_log_ratio": 0.0008478925884716838
+            }
+          }
+        },
+        "800-813": {
+          "cells": 26360,
+          "mean_final_vr_kms": 0.02291744957063193,
+          "rms_final_vr_kms": 0.05737692261875335,
+          "rms_final_speed_kms": 0.06331367500651489,
+          "max_final_speed_kms": 0.1508661022925741,
+          "max_final_speed_xyz_rsun": [
+            -55.26171875,
+            -71.05078125,
+            -797.34765625
+          ],
+          "fields": {
+            "rho": {
+              "mass_weighted_geometric_mean_ratio": 1.0002787890736744,
+              "mass_weighted_rms_log_ratio": 0.000694338886926209
+            },
+            "press": {
+              "mass_weighted_geometric_mean_ratio": 0.9981325096009499,
+              "mass_weighted_rms_log_ratio": 0.04188647522055894
+            },
+            "Er": {
+              "mass_weighted_geometric_mean_ratio": 0.9959367481024363,
+              "mass_weighted_rms_log_ratio": 0.06450089940832006
+            },
+            "Tgas": {
+              "mass_weighted_geometric_mean_ratio": 0.9992054361983226,
+              "mass_weighted_rms_log_ratio": 0.016116749193824876
+            },
+            "Trad": {
+              "mass_weighted_geometric_mean_ratio": 0.9989826411687666,
+              "mass_weighted_rms_log_ratio": 0.016125224139010547
+            }
+          }
+        },
+        "813-817": {
+          "cells": 8640,
+          "mean_final_vr_kms": -0.04991281979181495,
+          "rms_final_vr_kms": 0.06595005445973416,
+          "rms_final_speed_kms": 0.07090180127539852,
+          "max_final_speed_kms": 0.1373491165047665,
+          "max_final_speed_xyz_rsun": [
+            813.13671875,
+            -55.26171875,
+            -55.26171875
+          ],
+          "fields": {
+            "rho": {
+              "mass_weighted_geometric_mean_ratio": 1.0001414163417628,
+              "mass_weighted_rms_log_ratio": 0.0005034848437956701
+            },
+            "press": {
+              "mass_weighted_geometric_mean_ratio": 0.9902679881537689,
+              "mass_weighted_rms_log_ratio": 0.018533010038051977
+            },
+            "Er": {
+              "mass_weighted_geometric_mean_ratio": 0.9634327506105448,
+              "mass_weighted_rms_log_ratio": 0.06530039603144312
+            },
+            "Tgas": {
+              "mass_weighted_geometric_mean_ratio": 0.9912650859849875,
+              "mass_weighted_rms_log_ratio": 0.016160329655107542
+            },
+            "Trad": {
+              "mass_weighted_geometric_mean_ratio": 0.9907300732382877,
+              "mass_weighted_rms_log_ratio": 0.016325111332269406
+            }
+          }
+        },
+        "817-830": {
+          "cells": 28656,
+          "mean_final_vr_kms": -0.02726876216900238,
+          "rms_final_vr_kms": 0.06467472112906593,
+          "rms_final_speed_kms": 0.06635120588321235,
+          "max_final_speed_kms": 0.17366743827655623,
+          "max_final_speed_xyz_rsun": [
+            813.13671875,
+            -71.05078125,
+            -55.26171875
+          ],
+          "fields": {
+            "rho": {
+              "mass_weighted_geometric_mean_ratio": 0.9983017150784715,
+              "mass_weighted_rms_log_ratio": 0.0026305146488266244
+            },
+            "press": {
+              "mass_weighted_geometric_mean_ratio": 1.0186420887358805,
+              "mass_weighted_rms_log_ratio": 0.0473717468393238
+            },
+            "Er": {
+              "mass_weighted_geometric_mean_ratio": 1.1166649867798975,
+              "mass_weighted_rms_log_ratio": 0.22273711583074324
+            },
+            "Tgas": {
+              "mass_weighted_geometric_mean_ratio": 1.0202402645556274,
+              "mass_weighted_rms_log_ratio": 0.04874413396135072
+            },
+            "Trad": {
+              "mass_weighted_geometric_mean_ratio": 1.0279706714115207,
+              "mass_weighted_rms_log_ratio": 0.055684275569214875
+            }
+          }
+        },
+        "830-850": {
+          "cells": 44456,
+          "mean_final_vr_kms": 0.07740799604838151,
+          "rms_final_vr_kms": 0.10538582046962298,
+          "rms_final_speed_kms": 0.11023939487381405,
+          "max_final_speed_kms": 0.23011839029738626,
+          "max_final_speed_xyz_rsun": [
+            213.15234375,
+            -371.04296875,
+            -734.19140625
+          ],
+          "fields": {
+            "rho": {
+              "mass_weighted_geometric_mean_ratio": 1.004239041721484,
+              "mass_weighted_rms_log_ratio": 0.009209875188386186
+            },
+            "press": {
+              "mass_weighted_geometric_mean_ratio": 1.0448839035541073,
+              "mass_weighted_rms_log_ratio": 0.08749978736932718
+            },
+            "Er": {
+              "mass_weighted_geometric_mean_ratio": 1.2169907186158233,
+              "mass_weighted_rms_log_ratio": 0.33600297638821985
+            },
+            "Tgas": {
+              "mass_weighted_geometric_mean_ratio": 1.0394296079406735,
+              "mass_weighted_rms_log_ratio": 0.07500739827492836
+            },
+            "Trad": {
+              "mass_weighted_geometric_mean_ratio": 1.05032043245739,
+              "mass_weighted_rms_log_ratio": 0.08400073961993697
+            }
+          }
+        },
+        "850-880": {
+          "cells": 72200,
+          "mean_final_vr_kms": -0.05461013616160021,
+          "rms_final_vr_kms": 0.20151818295865956,
+          "rms_final_speed_kms": 0.22513437267625638,
+          "max_final_speed_kms": 0.795833393100609,
+          "max_final_speed_xyz_rsun": [
+            860.50390625,
+            -71.05078125,
+            -86.83984375
+          ],
+          "fields": {
+            "rho": {
+              "mass_weighted_geometric_mean_ratio": 1.0110660321123863,
+              "mass_weighted_rms_log_ratio": 0.022624781952004583
+            },
+            "press": {
+              "mass_weighted_geometric_mean_ratio": 1.0313376008844464,
+              "mass_weighted_rms_log_ratio": 0.09249759992057646
+            },
+            "Er": {
+              "mass_weighted_geometric_mean_ratio": 1.0905495158006278,
+              "mass_weighted_rms_log_ratio": 0.26478433741680824
+            },
+            "Tgas": {
+              "mass_weighted_geometric_mean_ratio": 1.0221777741854472,
+              "mass_weighted_rms_log_ratio": 0.06623644792538116
+            },
+            "Trad": {
+              "mass_weighted_geometric_mean_ratio": 1.021906933565682,
+              "mass_weighted_rms_log_ratio": 0.06619608364346447
+            }
+          }
+        }
+      }
+    },
+    "baseline128": {
+      "time0_code": 0.0,
+      "time1_code": 7.854599952697754,
+      "metrics": {
+        "0-166": {
+          "cells": 4776,
+          "mean_final_vr_kms": 0.020961322152647722,
+          "rms_final_vr_kms": 0.02379404783994288,
+          "rms_final_speed_kms": 0.08040412023393302,
+          "max_final_speed_kms": 0.21845555242746048,
+          "max_final_speed_xyz_rsun": [
+            149.99609375,
+            -7.89453125,
+            -7.89453125
+          ],
+          "fields": {
+            "rho": {
+              "mass_weighted_geometric_mean_ratio": 0.9998518444336981,
+              "mass_weighted_rms_log_ratio": 0.0002303679033623066
+            },
+            "press": {
+              "mass_weighted_geometric_mean_ratio": 0.9999754580685972,
+              "mass_weighted_rms_log_ratio": 0.0004142227192169278
+            },
+            "Er": {
+              "mass_weighted_geometric_mean_ratio": 1.0004949888613786,
+              "mass_weighted_rms_log_ratio": 0.0014940113987487714
+            },
+            "Tgas": {
+              "mass_weighted_geometric_mean_ratio": 1.0001236296856388,
+              "mass_weighted_rms_log_ratio": 0.0003735013089880801
+            },
+            "Trad": {
+              "mass_weighted_geometric_mean_ratio": 1.0001237264309009,
+              "mass_weighted_rms_log_ratio": 0.0003735013938991992
+            }
+          }
+        },
+        "500-750": {
+          "cells": 315336,
+          "mean_final_vr_kms": -0.0017505721554270982,
+          "rms_final_vr_kms": 0.0027819063784537473,
+          "rms_final_speed_kms": 0.005163057776803251,
+          "max_final_speed_kms": 0.02738547726833295,
+          "max_final_speed_xyz_rsun": [
+            -7.89453125,
+            -7.89453125,
+            -513.14453125
+          ],
+          "fields": {
+            "rho": {
+              "mass_weighted_geometric_mean_ratio": 1.0000074896930935,
+              "mass_weighted_rms_log_ratio": 7.600340336868592e-05
+            },
+            "press": {
+              "mass_weighted_geometric_mean_ratio": 1.000024003802045,
+              "mass_weighted_rms_log_ratio": 0.00010361935147973082
+            },
+            "Er": {
+              "mass_weighted_geometric_mean_ratio": 1.0000575222055186,
+              "mass_weighted_rms_log_ratio": 0.00018113130654232967
+            },
+            "Tgas": {
+              "mass_weighted_geometric_mean_ratio": 1.0000151354559086,
+              "mass_weighted_rms_log_ratio": 4.617520935886699e-05
+            },
+            "Trad": {
+              "mass_weighted_geometric_mean_ratio": 1.0000143824161956,
+              "mass_weighted_rms_log_ratio": 4.528344490557342e-05
+            }
+          }
+        },
+        "750-800": {
+          "cells": 96520,
+          "mean_final_vr_kms": 0.021532087263737426,
+          "rms_final_vr_kms": 0.06257948404095937,
+          "rms_final_speed_kms": 0.06362866214735632,
+          "max_final_speed_kms": 0.22909141564008545,
+          "max_final_speed_xyz_rsun": [
+            -118.41796875,
+            -465.77734375,
+            -639.45703125
+          ],
+          "fields": {
+            "rho": {
+              "mass_weighted_geometric_mean_ratio": 0.9989802749282448,
+              "mass_weighted_rms_log_ratio": 0.0035363779320244856
+            },
+            "press": {
+              "mass_weighted_geometric_mean_ratio": 0.997436430640888,
+              "mass_weighted_rms_log_ratio": 0.012464249087958824
+            },
+            "Er": {
+              "mass_weighted_geometric_mean_ratio": 0.9967182399729362,
+              "mass_weighted_rms_log_ratio": 0.022911601819897966
+            },
+            "Tgas": {
+              "mass_weighted_geometric_mean_ratio": 0.9992346899743492,
+              "mass_weighted_rms_log_ratio": 0.005651958922333138
+            },
+            "Trad": {
+              "mass_weighted_geometric_mean_ratio": 0.9991785490446039,
+              "mass_weighted_rms_log_ratio": 0.005727898686287228
+            }
+          }
+        },
+        "800-813": {
+          "cells": 26360,
+          "mean_final_vr_kms": 0.07230846240362504,
+          "rms_final_vr_kms": 0.13110209083958965,
+          "rms_final_speed_kms": 0.13811008120249166,
+          "max_final_speed_kms": 0.2759001962679218,
+          "max_final_speed_xyz_rsun": [
+            481.56640625,
+            386.83203125,
+            -513.14453125
+          ],
+          "fields": {
+            "rho": {
+              "mass_weighted_geometric_mean_ratio": 0.9990352226650773,
+              "mass_weighted_rms_log_ratio": 0.010070925571927798
+            },
+            "press": {
+              "mass_weighted_geometric_mean_ratio": 0.8195110865596009,
+              "mass_weighted_rms_log_ratio": 0.21848066308457864
+            },
+            "Er": {
+              "mass_weighted_geometric_mean_ratio": 0.6420453368622052,
+              "mass_weighted_rms_log_ratio": 0.5612776030348657
+            },
+            "Tgas": {
+              "mass_weighted_geometric_mean_ratio": 0.8950481303528837,
+              "mass_weighted_rms_log_ratio": 0.1406944687270897
+            },
+            "Trad": {
+              "mass_weighted_geometric_mean_ratio": 0.8951409522366083,
+              "mass_weighted_rms_log_ratio": 0.14031939524210293
+            }
+          }
+        },
+        "813-817": {
+          "cells": 8640,
+          "mean_final_vr_kms": -0.11923998282870607,
+          "rms_final_vr_kms": 0.12123985722419402,
+          "rms_final_speed_kms": 0.12868137686344952,
+          "max_final_speed_kms": 0.18391711642325465,
+          "max_final_speed_xyz_rsun": [
+            -228.94140625,
+            -749.98046875,
+            -228.94140625
+          ],
+          "fields": {
+            "rho": {
+              "mass_weighted_geometric_mean_ratio": 1.0074328522303768,
+              "mass_weighted_rms_log_ratio": 0.009653972327989035
+            },
+            "press": {
+              "mass_weighted_geometric_mean_ratio": 0.8232278679063091,
+              "mass_weighted_rms_log_ratio": 0.20119395117299946
+            },
+            "Er": {
+              "mass_weighted_geometric_mean_ratio": 0.4785091993994106,
+              "mass_weighted_rms_log_ratio": 0.759492360399508
+            },
+            "Tgas": {
+              "mass_weighted_geometric_mean_ratio": 0.8291679544810987,
+              "mass_weighted_rms_log_ratio": 0.19272396630474944
+            },
+            "Trad": {
+              "mass_weighted_geometric_mean_ratio": 0.8317112331118578,
+              "mass_weighted_rms_log_ratio": 0.18987310196113136
+            }
+          }
+        },
+        "817-830": {
+          "cells": 28656,
+          "mean_final_vr_kms": -0.11247301880765587,
+          "rms_final_vr_kms": 0.12309956769880613,
+          "rms_final_speed_kms": 0.12999106122314721,
+          "max_final_speed_kms": 0.1903824204241299,
+          "max_final_speed_xyz_rsun": [
+            292.09765625,
+            260.51953125,
+            -718.40234375
+          ],
+          "fields": {
+            "rho": {
+              "mass_weighted_geometric_mean_ratio": 0.9912494598977272,
+              "mass_weighted_rms_log_ratio": 0.01088215439815439
+            },
+            "press": {
+              "mass_weighted_geometric_mean_ratio": 1.0285298970595025,
+              "mass_weighted_rms_log_ratio": 0.08279248662358829
+            },
+            "Er": {
+              "mass_weighted_geometric_mean_ratio": 1.1591685712593696,
+              "mass_weighted_rms_log_ratio": 0.3280591478062035
+            },
+            "Tgas": {
+              "mass_weighted_geometric_mean_ratio": 1.0372173350622762,
+              "mass_weighted_rms_log_ratio": 0.08219719734856218
+            },
+            "Trad": {
+              "mass_weighted_geometric_mean_ratio": 1.0376159733994421,
+              "mass_weighted_rms_log_ratio": 0.08201478383808415
+            }
+          }
+        },
+        "830-850": {
+          "cells": 44456,
+          "mean_final_vr_kms": 0.07391504582668235,
+          "rms_final_vr_kms": 0.08857949854192487,
+          "rms_final_speed_kms": 0.09121393568837553,
+          "max_final_speed_kms": 0.23253297367397832,
+          "max_final_speed_xyz_rsun": [
+            828.92578125,
+            -102.62890625,
+            -102.62890625
+          ],
+          "fields": {
+            "rho": {
+              "mass_weighted_geometric_mean_ratio": 1.0288969116855038,
+              "mass_weighted_rms_log_ratio": 0.03174941000842438
+            },
+            "press": {
+              "mass_weighted_geometric_mean_ratio": 1.2067450292416029,
+              "mass_weighted_rms_log_ratio": 0.19498523553447145
+            },
+            "Er": {
+              "mass_weighted_geometric_mean_ratio": 1.8191693615505689,
+              "mass_weighted_rms_log_ratio": 0.6297234063414096
+            },
+            "Tgas": {
+              "mass_weighted_geometric_mean_ratio": 1.1617838637916031,
+              "mass_weighted_rms_log_ratio": 0.15781092677735278
+            },
+            "Trad": {
+              "mass_weighted_geometric_mean_ratio": 1.161363789002783,
+              "mass_weighted_rms_log_ratio": 0.15743084546431815
+            }
+          }
+        },
+        "850-880": {
+          "cells": 72200,
+          "mean_final_vr_kms": -0.01559086018878464,
+          "rms_final_vr_kms": 0.03773797935910046,
+          "rms_final_speed_kms": 0.05157914355328793,
+          "max_final_speed_kms": 0.11342781748626994,
+          "max_final_speed_xyz_rsun": [
+            7.89453125,
+            7.89453125,
+            -876.29296875
+          ],
+          "fields": {
+            "rho": {
+              "mass_weighted_geometric_mean_ratio": 1.0114466847020511,
+              "mass_weighted_rms_log_ratio": 0.014713171727180792
+            },
+            "press": {
+              "mass_weighted_geometric_mean_ratio": 1.1450263517055836,
+              "mass_weighted_rms_log_ratio": 0.14190788953508798
+            },
+            "Er": {
+              "mass_weighted_geometric_mean_ratio": 1.5806055753658428,
+              "mass_weighted_rms_log_ratio": 0.47621527620075366
+            },
+            "Tgas": {
+              "mass_weighted_geometric_mean_ratio": 1.1213728032500876,
+              "mass_weighted_rms_log_ratio": 0.11915138991147808
+            },
+            "Trad": {
+              "mass_weighted_geometric_mean_ratio": 1.1212588291775742,
+              "mass_weighted_rms_log_ratio": 0.1190538157035306
+            }
+          }
+        }
+      }
+    }
+  }
+}

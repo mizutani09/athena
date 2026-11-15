@@ -1,0 +1,109 @@
+{
+  "method": "Estimate gas enthalpy transport in saved RSG spherical shells.\n\nThe shell-volume average is a diagnostic of unresolved surface transport, not\nan exact finite-volume flux through a spherical face.",
+  "cases": {
+    "surface_seed": {
+      "initial": {
+        "time_code": 0.0,
+        "time_day": 0.0,
+        "shells": {
+          "166-300": {
+            "cells": 23992,
+            "mean_radius_Rsun": 245.27297973632812,
+            "mass_weighted_temperature_K": 123612.63141063135,
+            "mass_weighted_radial_velocity_code": 1.1082739153932982e-21,
+            "convective_gas_enthalpy_Lstar": -6.594761308117094e-22,
+            "mean_advective_gas_enthalpy_Lstar": -8.44129447438988e-20,
+            "total_gas_enthalpy_Lstar": -8.507242087471052e-20
+          },
+          "500-700": {
+            "cells": 231976,
+            "mean_radius_Rsun": 611.2765502929688,
+            "mass_weighted_temperature_K": 37708.49701766824,
+            "mass_weighted_radial_velocity_code": -8.836731401561309e-23,
+            "convective_gas_enthalpy_Lstar": -2.046179518196003e-22,
+            "mean_advective_gas_enthalpy_Lstar": 1.3641196787973353e-21,
+            "total_gas_enthalpy_Lstar": 1.1595017269777353e-21
+          },
+          "700-750": {
+            "cells": 83360,
+            "mean_radius_Rsun": 725.591796875,
+            "mass_weighted_temperature_K": 23257.79211483373,
+            "mass_weighted_radial_velocity_code": 2.6700642986362747e-22,
+            "convective_gas_enthalpy_Lstar": -8.897113047194323e-24,
+            "mean_advective_gas_enthalpy_Lstar": -9.490253917007277e-22,
+            "total_gas_enthalpy_Lstar": -9.57922504747922e-22
+          },
+          "750-800": {
+            "cells": 96520,
+            "mean_radius_Rsun": 775.5496215820312,
+            "mass_weighted_temperature_K": 15742.690764037787,
+            "mass_weighted_radial_velocity_code": 3.974780222805967e-21,
+            "convective_gas_enthalpy_Lstar": 1.3114091446692525e-21,
+            "mean_advective_gas_enthalpy_Lstar": 4.196509262941608e-20,
+            "total_gas_enthalpy_Lstar": 4.3276501774085337e-20
+          },
+          "800-830": {
+            "cells": 63656,
+            "mean_radius_Rsun": 815.3518676757812,
+            "mass_weighted_temperature_K": 6735.235745432139,
+            "mass_weighted_radial_velocity_code": 5.630153785807134e-21,
+            "convective_gas_enthalpy_Lstar": -7.953827487965079e-21,
+            "mean_advective_gas_enthalpy_Lstar": 1.2924969667943252e-20,
+            "total_gas_enthalpy_Lstar": 4.971142179978173e-21
+          }
+        }
+      },
+      "final": {
+        "time_code": 8.0,
+        "time_day": 2.037033859425131,
+        "shells": {
+          "166-300": {
+            "cells": 23992,
+            "mean_radius_Rsun": 245.27297973632812,
+            "mass_weighted_temperature_K": 123618.33983239999,
+            "mass_weighted_radial_velocity_code": 0.00027955298169924227,
+            "convective_gas_enthalpy_Lstar": 0.0009285709299615724,
+            "mean_advective_gas_enthalpy_Lstar": 0.015523737783811463,
+            "total_gas_enthalpy_Lstar": 0.016452308713773036
+          },
+          "500-700": {
+            "cells": 231976,
+            "mean_radius_Rsun": 611.2765502929688,
+            "mass_weighted_temperature_K": 37709.351188565604,
+            "mass_weighted_radial_velocity_code": -6.17194658124536e-05,
+            "convective_gas_enthalpy_Lstar": 2.8947204090499206e-05,
+            "mean_advective_gas_enthalpy_Lstar": -0.00128733659696257,
+            "total_gas_enthalpy_Lstar": -0.0012583893928720705
+          },
+          "700-750": {
+            "cells": 83360,
+            "mean_radius_Rsun": 725.591796875,
+            "mass_weighted_temperature_K": 23257.722608446787,
+            "mass_weighted_radial_velocity_code": -2.0231188194135406e-05,
+            "convective_gas_enthalpy_Lstar": -4.046727151363127e-07,
+            "mean_advective_gas_enthalpy_Lstar": -0.00019873313634861652,
+            "total_gas_enthalpy_Lstar": -0.00019913780906375282
+          },
+          "750-800": {
+            "cells": 96520,
+            "mean_radius_Rsun": 775.5496215820312,
+            "mass_weighted_temperature_K": 15748.040398727859,
+            "mass_weighted_radial_velocity_code": -4.2560773993009305e-05,
+            "convective_gas_enthalpy_Lstar": -0.00011662628516486643,
+            "mean_advective_gas_enthalpy_Lstar": -0.0002869546508784719,
+            "total_gas_enthalpy_Lstar": -0.0004035809360433384
+          },
+          "800-830": {
+            "cells": 63656,
+            "mean_radius_Rsun": 815.3518676757812,
+            "mass_weighted_temperature_K": 6739.513551257578,
+            "mass_weighted_radial_velocity_code": 6.929791874722878e-05,
+            "convective_gas_enthalpy_Lstar": 0.002209306146004388,
+            "mean_advective_gas_enthalpy_Lstar": 0.00015141467377923466,
+            "total_gas_enthalpy_Lstar": 0.0023607208197836227
+          }
+        }
+      }
+    }
+  }
+}

@@ -46,6 +46,9 @@ Real drag_taper_start, drag_taper_end, grid_mass_tolerance;
 Real gravity_quad_full_radius, gravity_quad_taper_radius;
 Real marshak_alpha;
 Real short_test_max_dt=-1.0;
+Real prep_thermal_tau=-1.0, prep_thermal_rmin, prep_thermal_rfull;
+Real prep_thermal_rflat_end, prep_thermal_rmax, prep_thermal_dr;
+Real prep_thermal_taper_start=-1.0, prep_thermal_taper_end=-1.0;
 std::uint64_t perturb_seed;
 bool profile_initialization=false, profile_cell_average_trial=false;
 bool marshak_boundary=false;
@@ -124,6 +127,16 @@ Real CoreWeight(Real r) {
 }
 Real RadialPosition(Coordinates *c, int k, int j, int i) {
   return std::sqrt(SQR(c->x1v(i))+SQR(c->x2v(j))+SQR(c->x3v(k)));
+}
+Real PrepThermalWindow(Real r) {
+  if (r<=prep_thermal_rmin || r>=prep_thermal_rmax) return 0.0;
+  if (r<prep_thermal_rfull) {
+    const Real t=(r-prep_thermal_rmin)/(prep_thermal_rfull-prep_thermal_rmin);
+    return t*t*(3.0-2.0*t);
+  }
+  if (r<=prep_thermal_rflat_end) return 1.0;
+  const Real t=(prep_thermal_rmax-r)/(prep_thermal_rmax-prep_thermal_rflat_end);
+  return t*t*(3.0-2.0*t);
 }
 void LoadHseProfile(const std::string &filename) {
   std::ifstream stream(filename);
@@ -314,6 +327,7 @@ void CorrectionBoundary(AthenaArray<Real> &u,int nv,int axis,bool inner,
     for (int j=lo[1];j<=hi[1];++j) for (int i=lo[0];i<=hi[0];++i) u(n,k,j,i)=0.0;
 }
 Real History(MeshBlock *mb,int out) {
+  if (out>=18) return mb->ruser_meshblock_data[0](out-13);
   if (out>=12) {
     // Audit the actual Robin flux used by NRFLD on each Cartesian box face.
     // The diffusion coefficient is lagged during the most recent Newton solve.
@@ -482,6 +496,33 @@ void Mesh::InitUserMeshData(ParameterInput *pin) {
   marshak_alpha=pin->GetOrAddReal("problem","marshak_alpha",0.5);
   Require(std::isfinite(marshak_alpha) && marshak_alpha>0.0,
           "problem/marshak_alpha must be finite and positive");
+  prep_thermal_tau=pin->GetOrAddReal("problem","prep_thermal_tau",-1.0);
+  prep_thermal_rmin=pin->GetOrAddReal("problem","prep_thermal_rmin_rsun",790.0)
+      *kRsun/length_unit;
+  prep_thermal_rfull=pin->GetOrAddReal("problem","prep_thermal_rfull_rsun",805.0)
+      *kRsun/length_unit;
+  prep_thermal_rflat_end=pin->GetOrAddReal(
+      "problem","prep_thermal_rflat_end_rsun",830.0)*kRsun/length_unit;
+  prep_thermal_rmax=pin->GetOrAddReal("problem","prep_thermal_rmax_rsun",850.0)
+      *kRsun/length_unit;
+  prep_thermal_dr=pin->GetOrAddReal("problem","prep_thermal_bin_width_rsun",1.0)
+      *kRsun/length_unit;
+  prep_thermal_taper_start=pin->GetOrAddReal(
+      "problem","prep_thermal_taper_start",-1.0);
+  prep_thermal_taper_end=pin->GetOrAddReal(
+      "problem","prep_thermal_taper_end",-1.0);
+  Require(prep_thermal_tau<0.0 || (std::isfinite(prep_thermal_tau)
+          && prep_thermal_tau>0.0
+          && 0.0<=prep_thermal_rmin && prep_thermal_rmin<prep_thermal_rfull
+          && prep_thermal_rfull<=prep_thermal_rflat_end
+          && prep_thermal_rflat_end<prep_thermal_rmax
+          && std::isfinite(prep_thermal_dr) && prep_thermal_dr>0.0
+          && (prep_thermal_rmax-prep_thermal_rmin)/prep_thermal_dr<=1000.0
+          && ((prep_thermal_taper_start<0.0 && prep_thermal_taper_end<0.0)
+              || (prep_thermal_taper_start>=0.0
+                  && prep_thermal_taper_end>prep_thermal_taper_start))),
+          "prep thermal support requires imported profile, positive tau, "
+          "ordered radii, <=1000 bins, and valid optional taper");
   drag_tau=pin->GetOrAddReal("problem","core_drag_timescale",-1.0);
   const Real drag_tau_tdyn=pin->GetOrAddReal("problem","drag_tau_tdyn",-1.0);
   const Real tdyn=std::sqrt(radius*radius*radius/gm);
@@ -520,6 +561,8 @@ void Mesh::InitUserMeshData(ParameterInput *pin) {
 
   const std::string profile_file=pin->GetOrAddString("problem","hse_model_file","");
   profile_initialization=!profile_file.empty();
+  Require(prep_thermal_tau<0.0 || profile_initialization,
+          "prep thermal support requires an imported profile");
   // Reproducible WOR-122 control only.  It did not pass the surface-force or
   // luminosity gates and must stay disabled in production inputs.
   profile_cell_average_trial=pin->GetOrAddBoolean(
@@ -600,12 +643,12 @@ void Mesh::InitUserMeshData(ParameterInput *pin) {
   heat_norm=norm[1];
   EnrollUserExplicitSourceFunction(GravityHeating);
   if (short_test_max_dt>0.0) EnrollUserTimeStepFunction(ShortTestTimeStep);
-  AllocateUserHistoryOutput(18);
-  const char *hist[18]={"Erad","Egas","Epotential","radial_momentum","mass_r2",
+  AllocateUserHistoryOutput(20);
+  const char *hist[20]={"Erad","Egas","Epotential","radial_momentum","mass_r2",
       "Lheat","Mach_max","Edrag_removed","Pdrag_x_removed","Pdrag_y_removed",
       "Pdrag_z_removed","drag_power_removed","Lrad_xm","Lrad_xp",
-      "Lrad_ym","Lrad_yp","Lrad_zm","Lrad_zp"};
-  for (int q=0;q<18;++q) EnrollUserHistoryOutput(q,History,hist[q],
+      "Lrad_ym","Lrad_yp","Lrad_zm","Lrad_zp","Eprep_thermal","Pprep_thermal"};
+  for (int q=0;q<20;++q) EnrollUserHistoryOutput(q,History,hist[q],
       q==6 ? UserHistoryOperation::max : UserHistoryOperation::sum);
   if (Globals::my_rank==0) std::cout << std::setprecision(16)
       << "STAR_IN_BOX mode=" << (profile_initialization ? "tabular-profile" : "commissioning-polytrope")
@@ -614,7 +657,8 @@ void Mesh::InitUserMeshData(ParameterInput *pin) {
       << " gas_mass=" << gas_mass << " Lheat=" << lum_code
       << " time_unit_s=" << time_unit << " core_cells=" << 2.0*rcore/dx[0]
       << " static_refinement_trial=" << static_refinement_trial
-      << " profile_cell_average_trial=" << profile_cell_average_trial << '\n';
+      << " profile_cell_average_trial=" << profile_cell_average_trial
+      << " prep_thermal_tau=" << prep_thermal_tau << '\n';
 }
 
 void MeshBlock::InitUserMeshBlockData(ParameterInput*) {
@@ -625,8 +669,8 @@ void MeshBlock::InitUserMeshBlockData(ParameterInput*) {
     prfld->marshak_top_erad_ext=boundary_er;
   }
   AllocateRealUserMeshBlockDataField(1);
-  ruser_meshblock_data[0].NewAthenaArray(5);
-  for (int q=0;q<5;++q) ruser_meshblock_data[0](q)=0.0;
+  ruser_meshblock_data[0].NewAthenaArray(7);
+  for (int q=0;q<7;++q) ruser_meshblock_data[0](q)=0.0;
   AllocateUserOutputVariables(7);
   const char *names[7]={"Tgas","Trad","Er","phi","g","vr","heat"};
   for (int q=0;q<7;++q) SetUserOutputVariableName(q,names[q]);
@@ -728,6 +772,78 @@ void MeshBlock::UserWorkInLoop() {
     phydro->w(IVX,k,j,i)=u(IM1,k,j,i)/u(IDN,k,j,i);
     phydro->w(IVY,k,j,i)=u(IM2,k,j,i)/u(IDN,k,j,i);
     phydro->w(IVZ,k,j,i)=u(IM3,k,j,i)/u(IDN,k,j,i);
+  }
+}
+void Mesh::UserWorkInLoop() {
+  // This deliberately nonphysical preparation source acts after the implicit
+  // FLD solve. A common correction to each radial shell's mean gas specific
+  // energy retains angular thermal fluctuations and leaves all velocities
+  // free to develop. It is disabled in ordinary RSG runs.
+  for (int b=0;b<nblocal;++b) my_blocks(b)->ruser_meshblock_data[0](6)=0.0;
+  if (prep_thermal_tau<=0.0) return;
+  Real taper=1.0;
+  if (prep_thermal_taper_start>=0.0)
+    taper=std::max(0.0,std::min(1.0,
+        (prep_thermal_taper_end-(time+dt))
+        /(prep_thermal_taper_end-prep_thermal_taper_start)));
+  if (taper<=0.0) return;
+  const Real factor=-std::expm1(-taper*dt/prep_thermal_tau);
+  const int nbins=static_cast<int>(std::ceil(
+      (prep_thermal_rmax-prep_thermal_rmin)/prep_thermal_dr));
+  std::vector<Real> local(2*nbins,0.0),global(2*nbins,0.0);
+  for (int b=0;b<nblocal;++b) {
+    MeshBlock *mb=my_blocks(b);
+    for (int k=mb->ks;k<=mb->ke;++k) for (int j=mb->js;j<=mb->je;++j)
+      for (int i=mb->is;i<=mb->ie;++i) {
+        const Real r=RadialPosition(mb->pcoord,k,j,i);
+        const Real window=PrepThermalWindow(r);
+        if (window<=0.0) continue;
+        const int q=static_cast<int>((r-prep_thermal_rmin)/prep_thermal_dr);
+        const auto &u=mb->phydro->u;
+        const Real rho=u(IDN,k,j,i);
+        const Real egas=u(IEN,k,j,i)-Kinetic(u,k,j,i);
+        const Real target_specific=InterpolateProfile(profile_egas,r)
+            /InterpolateProfile(profile_rho,r);
+        const Real volume=mb->pcoord->GetCellVolume(k,j,i);
+        local[2*q]+=window*rho*volume;
+        local[2*q+1]+=window*(rho*target_specific-egas)*volume;
+      }
+  }
+#ifdef MPI_PARALLEL
+  MPI_Allreduce(local.data(),global.data(),2*nbins,MPI_ATHENA_REAL,
+                MPI_SUM,MPI_COMM_WORLD);
+#else
+  global=local;
+#endif
+  for (int b=0;b<nblocal;++b) {
+    MeshBlock *mb=my_blocks(b);
+    Real injected=0.0;
+    for (int k=mb->ks;k<=mb->ke;++k) for (int j=mb->js;j<=mb->je;++j)
+      for (int i=mb->is;i<=mb->ie;++i) {
+        const Real r=RadialPosition(mb->pcoord,k,j,i);
+        const Real window=PrepThermalWindow(r);
+        if (window<=0.0) continue;
+        const int q=static_cast<int>((r-prep_thermal_rmin)/prep_thermal_dr);
+        if (global[2*q]<=0.0) continue;
+        auto &u=mb->phydro->u;
+        const Real rho=u(IDN,k,j,i);
+        const Real old_egas=u(IEN,k,j,i)-Kinetic(u,k,j,i);
+        const Real delta=factor*window*rho*global[2*q+1]/global[2*q];
+        const Real new_egas=old_egas+delta;
+        Require(std::isfinite(new_egas) && new_egas>0.0,
+                "prep thermal support produced nonpositive gas energy");
+        const Real pressure=mb->peos->PresFromRhoEg(rho,new_egas);
+        Require(std::isfinite(pressure) && pressure>=pfloor,
+                "prep thermal support produced invalid gas pressure");
+        u(IEN,k,j,i)+=delta;
+        mb->phydro->w(IPR,k,j,i)=pressure;
+        mb->prfld->u_gas(k,j,i)=new_egas;
+        injected+=delta*mb->pcoord->GetCellVolume(k,j,i);
+      }
+    mb->ruser_meshblock_data[0](5)+=injected;
+    mb->ruser_meshblock_data[0](6)=injected/dt;
+    // The next explicit radiation force must see the supported gas state.
+    mb->prfld->UpdateOpacity(mb,mb->prfld->u_rad,mb->phydro->w);
   }
 }
 void MeshBlock::UserWorkBeforeOutput(ParameterInput*) {

@@ -1,0 +1,218 @@
+{
+  "cases": {
+    "prep256": {
+      "time0_code": 0.0,
+      "time1_code": 1.0,
+      "metrics": {
+        "0-166": {
+          "cells": 39024,
+          "mean_final_vr_kms": 0.00025922219853268934,
+          "fields": {
+            "rho": {
+              "mass_weighted_geometric_mean_ratio": 1.0000000173227395,
+              "mass_weighted_rms_log_ratio": 3.7634143514029953e-07
+            },
+            "press": {
+              "mass_weighted_geometric_mean_ratio": 1.0000205369222834,
+              "mass_weighted_rms_log_ratio": 4.9694084813782085e-05
+            },
+            "Er": {
+              "mass_weighted_geometric_mean_ratio": 1.0000823267695276,
+              "mass_weighted_rms_log_ratio": 0.00019916634756465476
+            },
+            "Tgas": {
+              "mass_weighted_geometric_mean_ratio": 1.0000205189734608,
+              "mass_weighted_rms_log_ratio": 4.978960178948219e-05
+            },
+            "Trad": {
+              "mass_weighted_geometric_mean_ratio": 1.0000205781525273,
+              "mass_weighted_rms_log_ratio": 4.978966584242577e-05
+            }
+          }
+        },
+        "500-750": {
+          "cells": 2528232,
+          "mean_final_vr_kms": 1.2548310188930585e-06,
+          "fields": {
+            "rho": {
+              "mass_weighted_geometric_mean_ratio": 0.9999999998435037,
+              "mass_weighted_rms_log_ratio": 6.50191420550298e-07
+            },
+            "press": {
+              "mass_weighted_geometric_mean_ratio": 1.000001862410898,
+              "mass_weighted_rms_log_ratio": 1.2922777361292406e-05
+            },
+            "Er": {
+              "mass_weighted_geometric_mean_ratio": 1.000005182371869,
+              "mass_weighted_rms_log_ratio": 4.054932203529507e-05
+            },
+            "Tgas": {
+              "mass_weighted_geometric_mean_ratio": 1.0000017432439718,
+              "mass_weighted_rms_log_ratio": 1.2197380927923494e-05
+            },
+            "Trad": {
+              "mass_weighted_geometric_mean_ratio": 1.000001294012135,
+              "mass_weighted_rms_log_ratio": 1.0136377501114092e-05
+            }
+          }
+        },
+        "750-800": {
+          "cells": 767288,
+          "mean_final_vr_kms": -3.615466289012894e-05,
+          "fields": {
+            "rho": {
+              "mass_weighted_geometric_mean_ratio": 0.9999997505350883,
+              "mass_weighted_rms_log_ratio": 1.2888606166725307e-06
+            },
+            "press": {
+              "mass_weighted_geometric_mean_ratio": 1.0000709607841631,
+              "mass_weighted_rms_log_ratio": 0.00012992997907564842
+            },
+            "Er": {
+              "mass_weighted_geometric_mean_ratio": 1.0000367866352933,
+              "mass_weighted_rms_log_ratio": 0.0008965923474965007
+            },
+            "Tgas": {
+              "mass_weighted_geometric_mean_ratio": 1.0000648568886135,
+              "mass_weighted_rms_log_ratio": 0.00011953074502992778
+            },
+            "Trad": {
+              "mass_weighted_geometric_mean_ratio": 1.0000091969677212,
+              "mass_weighted_rms_log_ratio": 0.00022414887833258965
+            }
+          }
+        },
+        "800-813": {
+          "cells": 216048,
+          "mean_final_vr_kms": 0.0007887647718115777,
+          "fields": {
+            "rho": {
+              "mass_weighted_geometric_mean_ratio": 1.0000018815467158,
+              "mass_weighted_rms_log_ratio": 6.587157212406483e-06
+            },
+            "press": {
+              "mass_weighted_geometric_mean_ratio": 0.9992942918214328,
+              "mass_weighted_rms_log_ratio": 0.004952955837520208
+            },
+            "Er": {
+              "mass_weighted_geometric_mean_ratio": 0.9964304447382341,
+              "mass_weighted_rms_log_ratio": 0.012472613977392438
+            },
+            "Tgas": {
+              "mass_weighted_geometric_mean_ratio": 0.9995673052321874,
+              "mass_weighted_rms_log_ratio": 0.002728418588229713
+            },
+            "Trad": {
+              "mass_weighted_geometric_mean_ratio": 0.9991064143832397,
+              "mass_weighted_rms_log_ratio": 0.0031181536796402475
+            }
+          }
+        },
+        "813-817": {
+          "cells": 66176,
+          "mean_final_vr_kms": -0.0005161354475176345,
+          "fields": {
+            "rho": {
+              "mass_weighted_geometric_mean_ratio": 1.0000020525609399,
+              "mass_weighted_rms_log_ratio": 1.571043854459017e-05
+            },
+            "press": {
+              "mass_weighted_geometric_mean_ratio": 0.9922905286517032,
+              "mass_weighted_rms_log_ratio": 0.012918925154408073
+            },
+            "Er": {
+              "mass_weighted_geometric_mean_ratio": 0.9333255833500417,
+              "mass_weighted_rms_log_ratio": 0.08247364394020898
+            },
+            "Tgas": {
+              "mass_weighted_geometric_mean_ratio": 0.9931934633317514,
+              "mass_weighted_rms_log_ratio": 0.01173455766482308
+            },
+            "Trad": {
+              "mass_weighted_geometric_mean_ratio": 0.9828976347677104,
+              "mass_weighted_rms_log_ratio": 0.020618416110144207
+            }
+          }
+        },
+        "817-830": {
+          "cells": 226016,
+          "mean_final_vr_kms": -0.00088603493336562,
+          "fields": {
+            "rho": {
+              "mass_weighted_geometric_mean_ratio": 0.9999962902094393,
+              "mass_weighted_rms_log_ratio": 1.059571838304125e-05
+            },
+            "press": {
+              "mass_weighted_geometric_mean_ratio": 1.0049067547168984,
+              "mass_weighted_rms_log_ratio": 0.018928367351598127
+            },
+            "Er": {
+              "mass_weighted_geometric_mean_ratio": 1.0546901770702173,
+              "mass_weighted_rms_log_ratio": 0.1030275296882498
+            },
+            "Tgas": {
+              "mass_weighted_geometric_mean_ratio": 1.004864133812766,
+              "mass_weighted_rms_log_ratio": 0.018694455005458358
+            },
+            "Trad": {
+              "mass_weighted_geometric_mean_ratio": 1.0134007555582636,
+              "mass_weighted_rms_log_ratio": 0.0257568804495107
+            }
+          }
+        },
+        "830-850": {
+          "cells": 359288,
+          "mean_final_vr_kms": 0.0016488532377363753,
+          "fields": {
+            "rho": {
+              "mass_weighted_geometric_mean_ratio": 1.0000052830055841,
+              "mass_weighted_rms_log_ratio": 7.410087480627424e-06
+            },
+            "press": {
+              "mass_weighted_geometric_mean_ratio": 1.0027273529934506,
+              "mass_weighted_rms_log_ratio": 0.017311796011251376
+            },
+            "Er": {
+              "mass_weighted_geometric_mean_ratio": 1.026180127497278,
+              "mass_weighted_rms_log_ratio": 0.07222263800061764
+            },
+            "Tgas": {
+              "mass_weighted_geometric_mean_ratio": 1.0027974209353918,
+              "mass_weighted_rms_log_ratio": 0.01538794827895444
+            },
+            "Trad": {
+              "mass_weighted_geometric_mean_ratio": 1.006481741109204,
+              "mass_weighted_rms_log_ratio": 0.018055659706053023
+            }
+          }
+        },
+        "850-880": {
+          "cells": 574408,
+          "mean_final_vr_kms": -0.0024978511355851648,
+          "fields": {
+            "rho": {
+              "mass_weighted_geometric_mean_ratio": 0.9999962472897935,
+              "mass_weighted_rms_log_ratio": 4.814852295957909e-06
+            },
+            "press": {
+              "mass_weighted_geometric_mean_ratio": 0.9811931847505228,
+              "mass_weighted_rms_log_ratio": 0.02184293358582031
+            },
+            "Er": {
+              "mass_weighted_geometric_mean_ratio": 0.9396428461019045,
+              "mass_weighted_rms_log_ratio": 0.07162747227091626
+            },
+            "Tgas": {
+              "mass_weighted_geometric_mean_ratio": 0.9846793445888252,
+              "mass_weighted_rms_log_ratio": 0.01779262739824031
+            },
+            "Trad": {
+              "mass_weighted_geometric_mean_ratio": 0.9845566364651098,
+              "mass_weighted_rms_log_ratio": 0.017906866106683232
+            }
+          }
+        }
+      }
+    }
+  }
+}
