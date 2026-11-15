@@ -219,6 +219,27 @@ def main():
     }
     if args.continuation_binary_sha:
         summary["continuation_binary_sha256"] = args.continuation_binary_sha
+        summary["comparison_audit"] = {
+            "core_ideal_eos_matches_declared_mayer_parameters": True,
+            "mu": 2.381, "gamma": 5.0 / 3.0,
+            "athena_background_gas_initial_K": 420.0,
+            "athena_background_radiation_initial_K": 14.0,
+            "mayer_background_numerical_state_published": False,
+            "athena_fld_limiter": "Levermore-Pomraning",
+            "mayer_fld_limiter": "Minerbo",
+            "athena_refinement": "Cartesian Jeans AMR; mass target inactive",
+            "mayer_refinement": "AREPO Lagrangian target 3.33e-7 Msun",
+            "model_equivalence_demonstrated": False,
+        }
+        summary["compute_audit"] = {
+            "production_path_useful_step_wall_hours_approx": 3.169,
+            "production_path_useful_node_hours_approx": 6.555,
+            "production_path_zone_cycles_approx": 1328560128,
+            "production_path_allocated_node_hours_including_stalls_approx": 114.279,
+            "final_continuation_wall_seconds": 1727,
+            "final_continuation_nodes": 1,
+            "final_continuation_mpi_ranks": 120,
+        }
     if solver_metrics is not None:
         summary["solver_metrics"] = solver_metrics
     out.with_name(out.stem + "_summary.json").write_text(
@@ -257,6 +278,28 @@ def main():
     run_title = ("WOR-92: Mayer §5 ideal EOS・一定opacityのc0からの修正継続計算"
                  if args.continuation_binary_sha else
                  "WOR-92: Mayer §5 ideal EOS・一定opacityのc0一貫計算")
+    model_audit_html = """<section><h2>EoSと比較条件の照合</h2>
+<p><strong>中心球の理想気体EoSの指定値は一致するが、計算全体がMayer §5と同一とは確認できない。</strong>
+初期球は1 M☉・3000 au・14 K、μ=2.381、γ=5/3、κP=κR=1 cm²/g。Athena++は
+P=ρkBT/(μmH)、内部エネルギー=P/(γ−1)を用い、中心球の初期密度は
+5.252×10⁻¹⁸ g/cm³。最終の最大密度セルではTgas=545.261338 K、
+Trad=545.261325 Kで、温度換算だけの一定倍率の誤りを示す証拠はない。</p>
+<table><tr><th>項目</th><th>この計算</th><th>Mayer et al. §5</th></tr>
+<tr><td>中心球EoS</td><td>固定μ=2.381、γ=5/3の理想気体</td><td>同じ指定値</td></tr>
+<tr><td>背景ガス・放射</td><td>密度=中心の1/30、圧力平衡。ガス420 K、放射14 K。背景ガスを420 Kへ戻すsink</td><td>圧力を上げ、背景セルを初期温度に保持。数値の背景密度・圧力・ガス/放射温度は未記載</td></tr>
+<tr><td>FLD limiter</td><td>Levermore–Pomraning</td><td>Minerbo</td></tr>
+<tr><td>空間精緻化</td><td>Cartesian Jeans AMR。入力中の質量目標はjeansモードで無効。初期最大セル質量7.29×10⁻⁶ M☉</td><td>AREPOの質量目標3.33×10⁻⁷ M☉</td></tr></table>
+<p>Figure 7のラスターからの概読比は半径依存で、例えば温度比は1 auで0.608、
+5 auで0.466、10 auで0.385。密度・速度も同じ倍率ではない。
+背景、FLD、解像度の各差が結果へ与える寄与は個別実験なしには決められない。</p></section>"""
+    compute_html = ("""<section><h2>計算量の目安</h2><p>検証済みc0→c1560経路の
+実際に進んだstepの合計は約3.17時間のstage wall、約6.56 node-hour、
+約1.33×10⁹ zone-cycles（セル更新）。120 MPI rankを基準にした概算は
+約375 MPI rank-hour。最後のc1420→c1560だけでは1ノード・120 rankで
+28分47秒、最大RSS 43.7 GiB。</p><p>Slurmの確保時間をそのまま合計すると
+約114 node-hour。大半はc830後の停止中に5ノードを占有した時間なので、
+進捗した計算そのものの所要量と区別する。</p></section>"""
+                    if args.continuation_binary_sha else "")
     comparison_rows = "".join(
         f"<tr><td>{entry['radius_au']:g}</td><td>{entry['rho_model_over_paper']:.3f}</td>"
         f"<td>{entry['temperature_model_over_paper']:.3f}</td>"
@@ -268,6 +311,7 @@ def main():
 <style>body{{font:16px/1.65 system-ui,sans-serif;max-width:1020px;margin:auto;padding:1.3rem;color:#263743;background:#f3f7f9}}section,figure{{background:white;border:1px solid #dbe5e8;border-radius:9px;padding:1rem;margin:1rem 0}}img{{max-width:100%}}table{{border-collapse:collapse;width:100%}}th,td{{text-align:left;border-bottom:1px solid #dbe5e8;padding:.4rem}}a{{color:#14638b}}.small{{font-size:.9rem;color:#526673}}</style></head><body>
 <h1>{html.escape(run_title)}</h1>
 <p>数値ゲート: <strong>{status}</strong>。初期一様球1 M☉・3000 au・14 K、γ=5/3、μ=2.381、κP=κR=1 cm²/g。Athena++のCartesian Jeans AMR計算を、Mayer et al. (2025) §5のAREPO計算と比較する。背景ガスは密度1/30・圧力平衡による420 K、背景放射は14 Kという明示的仮定。</p>
+{model_audit_html}
 <section><h2>履歴と保存検査</h2><table>
 <tr><th>最終履歴時刻</th><td>{final_time:.5f} kyr</td></tr>
 <tr><th>最大密度</th><td>{rho_max:.6e} g/cm³</td></tr>
@@ -277,6 +321,7 @@ def main():
 <tr><th>照合した履歴</th><td>{len(rows)} unique rows、重複{total_rows-len(rows)}行は完全一致</td></tr>
 </table></section>
 <section><h2>最終継続ジョブのソルバ監査</h2>{solver_html}</section>
+{compute_html}
 {continuation_note}
 <figure><img src="data:image/png;base64,{image_data(history_png)}" alt="最大密度と質量の時間履歴"><figcaption>破線は目標密度10⁻¹⁰ g/cm³、縦点線はMayer論文の29.09 kyr。</figcaption></figure>
 <section><h2>3D leaf-cell物理量（cycle {radial_stats['cycle']}）</h2><table>

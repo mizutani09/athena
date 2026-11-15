@@ -78,6 +78,28 @@
   "source_binary_sha256": "9e7c2faa80832a7cd5d8aa3fd4689aed1648a7f346d4d492c2c0742217020b7f",
   "source_input_sha256": "382ab6df9ca41769a96475c52548fa008f486e3a43b5693118b378d991fa5ebb",
   "continuation_binary_sha256": "b64491aa31da79216c99dbfcc6eb2b9cba805e4c385a4a67d092c303a622b5cb",
+  "comparison_audit": {
+    "core_ideal_eos_matches_declared_mayer_parameters": true,
+    "mu": 2.381,
+    "gamma": 1.6666666666666667,
+    "athena_background_gas_initial_K": 420.0,
+    "athena_background_radiation_initial_K": 14.0,
+    "mayer_background_numerical_state_published": false,
+    "athena_fld_limiter": "Levermore-Pomraning",
+    "mayer_fld_limiter": "Minerbo",
+    "athena_refinement": "Cartesian Jeans AMR; mass target inactive",
+    "mayer_refinement": "AREPO Lagrangian target 3.33e-7 Msun",
+    "model_equivalence_demonstrated": false
+  },
+  "compute_audit": {
+    "production_path_useful_step_wall_hours_approx": 3.169,
+    "production_path_useful_node_hours_approx": 6.555,
+    "production_path_zone_cycles_approx": 1328560128,
+    "production_path_allocated_node_hours_including_stalls_approx": 114.279,
+    "final_continuation_wall_seconds": 1727,
+    "final_continuation_nodes": 1,
+    "final_continuation_mpi_ranks": 120
+  },
   "solver_metrics": {
     "job_id": 340334,
     "segment_logs": 14,

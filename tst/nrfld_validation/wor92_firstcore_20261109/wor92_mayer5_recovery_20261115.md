@@ -279,3 +279,58 @@ contains the history, radial profiles, shock structure, A/B correction,
 Mayer approximate read-off, and solver audit. The report's `PASS` means
 the numerical mass/pressure/Jeans/density/solver gates passed; it does not
 assert precision agreement with Mayer's physical trajectory.
+
+## EoS and profile-offset audit
+
+Mayer et al. §5 explicitly specifies an ideal gas with fixed μ=2.381 and
+γ=5/3, 1 M☉ in a 3000 au uniform sphere at 14 K, and constant Planck and
+Rosseland opacity. The actual input matches these declared core parameters.
+The pgen's ideal-EOS branch sets `P=ρ k_B T/(μ m_H)` and
+`e_g=P/(γ−1)`. The initial uniform core density calculated independently is
+`5.2515854e-18 g/cm³`, and the derived thermal/gravitational energy ratio
+is about `0.413`, agreeing with the paper's `~0.41`. The final maximum-density
+cell has independently reconstructed gas and radiation temperatures
+`545.261338 K` and `545.261325 K`, respectively. There is no evidence of
+a single constant temperature-unit or EOS conversion error in the core.
+
+The **full physical setup is not identical**. In this input, ambient density
+is 1/30 of core density and background pressure equals the initial core
+pressure, giving initial and sink-prescribed ambient gas temperature 420 K;
+initial ambient radiation temperature is 14 K. The final HDF5 volume scan
+outside 4000 au shows 106,656 leaf cells with gas temperature around 420 K
+and radiation temperature 14 K. Mayer says ambient pressure is raised and
+background cells retain their initial temperature as a heat sink, but does
+not state the numeric background density, pressure factor, or gas/radiation
+temperatures. It is therefore impossible to assert an exact ambient match,
+or to infer that Mayer's background gas was 14 K. Our code uses the
+Levermore–Pomraning FLD limiter (`src/fld/fld.hpp`), while Mayer §2.1 uses
+Minerbo. Our `refinement_mode=jeans` makes the listed
+`target_cell_mass_msun=3.33e-7` inactive; the c0 maximum cell mass is
+`7.2855e-6 M☉`, about 22 times Mayer's target. Gravity treatment and mesh
+geometry may differ as well; no contribution is isolated yet.
+
+The comparison is not an exact constant multiplier. Approximate digitization
+of Mayer Figure 7 gives our/paper gas-temperature ratios 0.608, 0.466, and
+0.385 at 1, 5, and 10 au. Density ratios at the same radii are 0.985,
+0.503, and 0.184. These are rough raster read-offs compared to our spherical
+shell averages, not a rigorous pointwise convergence test. The density
+threshold time is 36.871 kyr here versus 29.09 kyr in Mayer. This offset
+does not by itself identify an EOS bug or a unique causal model difference.
+The older 14 K ambient trial reached the threshold near 29.14 kyr but
+also differed in sink timing and other settings and hit a pressure floor,
+so it is suggestive of ambient sensitivity, not a controlled proof.
+
+## Computation accounting
+
+Across the accepted c0→c1560 production path, the sum of completed-step
+wall durations is approximately 3.169 h, corresponding to approximately
+6.555 node-hours and 375 MPI rank-hours. Athena logs report approximately
+1,328,560,128 zone-cycles (active cell updates). These are operational
+computational-cost measures, not floating-point operation counts. The
+numbers include a small amount of repeated/ultimately rejected work around
+c1416. The final c1420→c1560 stage alone used 1 node/120 ranks for 1727 s
+(28:47) and had a maximum Slurm step RSS of 43.7 GiB. If Slurm allocation
+time is counted including stalls, the production jobs consumed about
+114.279 node-hours; most of this came from 5 nodes remaining allocated
+after progress stopped at c830. Queue wait, debug jobs, and builds are
+excluded from the useful-step estimate.
