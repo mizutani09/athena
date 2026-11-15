@@ -638,7 +638,16 @@ NRFLD::NRFLD(MeshBlock *pmb, ParameterInput *pin) :
     jacobian_check_(pin->GetOrAddBoolean("nrfld", "jacobian_check", false)),
     jacobian_check_done_(false),
     jacobian_check_epsilon_(pin->GetOrAddReal(
-        "nrfld", "jacobian_check_epsilon", 1.0e-4))
+        "nrfld", "jacobian_check_epsilon", 1.0e-4)),
+    initial_diffusion_audit_(pin->GetOrAddBoolean(
+        "nrfld", "initial_diffusion_audit", false)),
+    initial_diffusion_audit_done_(false),
+    initial_diffusion_audit_rmin_(pin->GetOrAddReal(
+        "nrfld", "initial_diffusion_audit_rmin", 750.0)),
+    initial_diffusion_audit_rmax_(pin->GetOrAddReal(
+        "nrfld", "initial_diffusion_audit_rmax", 900.0)),
+    initial_diffusion_audit_dr_(pin->GetOrAddReal(
+        "nrfld", "initial_diffusion_audit_dr", 5.0))
     {
     last_delta_rad_.NewAthenaArray(2, pmb->ncells3, pmb->ncells2, pmb->ncells1);
     last_delta_rad_.ZeroClear();
@@ -662,6 +671,19 @@ NRFLD::NRFLD(MeshBlock *pmb, ParameterInput *pin) :
       std::stringstream msg;
       msg << "### FATAL ERROR in NRFLD::NRFLD" << std::endl
           << "nrfld/jacobian_check_epsilon must be finite and positive." << std::endl;
+      ATHENA_ERROR(msg);
+    }
+    if (initial_diffusion_audit_ &&
+        (!std::isfinite(initial_diffusion_audit_rmin_)
+         || !std::isfinite(initial_diffusion_audit_rmax_)
+         || !std::isfinite(initial_diffusion_audit_dr_)
+         || initial_diffusion_audit_rmin_ < 0.0
+         || initial_diffusion_audit_rmax_ <= initial_diffusion_audit_rmin_
+         || initial_diffusion_audit_dr_ <= 0.0
+         || (initial_diffusion_audit_rmax_-initial_diffusion_audit_rmin_)
+            /initial_diffusion_audit_dr_ > 10000.0)) {
+      std::stringstream msg;
+      msg << "### FATAL ERROR in NRFLD::NRFLD: invalid initial diffusion audit bins.\n";
       ATHENA_ERROR(msg);
     }
     if (!std::isfinite(max_update_fraction_)) {
@@ -1157,6 +1179,107 @@ void NRFLD::CalculateCoefficientsOnce(const AthenaArray<Real> &u_pre,
             if (finer[face] && at_face[face])
               derivetive(NewtonRaphsonFLD::dFr_dEr_xm+face,k,j,i) *= 4.0/3.0;
         }
+  }
+  if (initial_diffusion_audit_ && !initial_diffusion_audit_done_
+      && pmy_block_->pmy_mesh->ncycle == 0 && pmy_driver_->dt_ > 0.0) {
+    if (NRFLDPrototype::SharedCoeff()) {
+      std::stringstream msg;
+      msg << "Initial diffusion audit requires unsynchronized local face coefficients.\n";
+      ATHENA_ERROR(msg);
+    }
+    DumpInitialDiffusionAudit(u_pre, derivetive);
+    initial_diffusion_audit_done_ = true;
+  }
+}
+
+void NRFLD::DumpInitialDiffusionAudit(
+    const AthenaArray<Real> &u_pre,
+    const AthenaArray<Real> &derivetive) {
+  // Read only the coefficients and radiation state used to construct the
+  // initial Newton residual.  Every shell row is local to one MeshBlock;
+  // post-processing sums rows across ranks and blocks without MPI traffic.
+  struct Bin {
+    std::int64_t cells = 0;
+    long double erad = 0.0L, diffusion = 0.0L, diffusion_abs = 0.0L;
+    long double radial_flux = 0.0L, coupling = 0.0L, boundary_loss = 0.0L;
+  };
+  const int nbins = static_cast<int>(std::ceil(
+      (initial_diffusion_audit_rmax_-initial_diffusion_audit_rmin_)
+      /initial_diffusion_audit_dr_));
+  std::vector<Bin> bins(nbins);
+  const Real dx = pmy_block_->pcoord->dx1f(pmy_block_->is);
+  const Real dy = pmy_block_->pcoord->dx2f(pmy_block_->js);
+  const Real dz = pmy_block_->pcoord->dx3f(pmy_block_->ks);
+  const Real volume = dx*dy*dz;
+  const int offset[6][3] = {{0,0,-1},{0,0,1},{0,-1,0},{0,1,0},
+                            {-1,0,0},{1,0,0}};
+  FLD *fld = pmy_block_->prfld;
+  for (int k=pmy_block_->ks; k<=pmy_block_->ke; ++k) {
+    for (int j=pmy_block_->js; j<=pmy_block_->je; ++j) {
+      for (int i=pmy_block_->is; i<=pmy_block_->ie; ++i) {
+        const Real x=pmy_block_->pcoord->x1v(i);
+        const Real y=pmy_block_->pcoord->x2v(j);
+        const Real z=pmy_block_->pcoord->x3v(k);
+        const Real r=std::hypot(x,std::hypot(y,z));
+        if (r < initial_diffusion_audit_rmin_
+            || r >= initial_diffusion_audit_rmax_) continue;
+        const int index=static_cast<int>(
+            (r-initial_diffusion_audit_rmin_)/initial_diffusion_audit_dr_);
+        Bin &bin=bins[index];
+        const Real center=u_pre(k,j,i);
+        Real face_flux[6];
+        Real boundary_loss=0.0;
+        for (int face=0; face<6; ++face) {
+          if (MarshakFaceActive(pmy_block_,fld,face,k,j,i)) {
+            face_flux[face]=MarshakFlux(fld,face,k,j,i,center,dx,nullptr);
+            boundary_loss += face_flux[face]/dx;
+          } else {
+            const int kk=k+offset[face][0], jj=j+offset[face][1];
+            const int ii=i+offset[face][2];
+            face_flux[face]=derivetive(
+                NewtonRaphsonFLD::dFr_dEr_xm+face,k,j,i)
+                *(center-u_pre(kk,jj,ii))/dx;
+          }
+        }
+        Real outflow=0.0;
+        for (Real flux : face_flux) outflow += flux;
+        const Real diffusion=-outflow/dx;
+        const Real fx=0.5*(face_flux[1]-face_flux[0]);
+        const Real fy=0.5*(face_flux[3]-face_flux[2]);
+        const Real fz=0.5*(face_flux[5]-face_flux[4]);
+        const Real rho=pmy_block_->phydro->w(IDN,k,j,i);
+        const Real tgas=pmy_block_->peos->TempFromRhoEg(rho,u_gas_(k,j,i));
+        const Real t2=tgas*tgas;
+        const Real coupling=fld->c_ph*fld->sigma_p(k,j,i)
+            *ResolvableThermalDifference(fld->a_r*t2*t2,center);
+        ++bin.cells;
+        bin.erad += static_cast<long double>(center)*volume;
+        bin.diffusion += static_cast<long double>(diffusion)*volume;
+        bin.diffusion_abs += static_cast<long double>(std::abs(diffusion))*volume;
+        if (r > 0.0)
+          bin.radial_flux += static_cast<long double>(fx*x+fy*y+fz*z)/r*volume;
+        bin.coupling += static_cast<long double>(coupling)*volume;
+        bin.boundary_loss += static_cast<long double>(boundary_loss)*volume;
+      }
+    }
+  }
+  for (int index=0; index<nbins; ++index) {
+    const Bin &bin=bins[index];
+    if (bin.cells==0) continue;
+    std::ostringstream line;
+    line << std::scientific << std::setprecision(17)
+         << "[NRFLD_INITIAL_DIFFUSION] rank=" << Globals::my_rank
+         << " gid=" << pmy_block_->gid << " bin=" << index
+         << " rlo=" << initial_diffusion_audit_rmin_+index*initial_diffusion_audit_dr_
+         << " rhi=" << std::min(initial_diffusion_audit_rmax_,
+                  initial_diffusion_audit_rmin_+(index+1)*initial_diffusion_audit_dr_)
+         << " cells=" << bin.cells << " erad=" << bin.erad
+         << " diffusion=" << bin.diffusion
+         << " diffusion_abs=" << bin.diffusion_abs
+         << " radial_flux=" << bin.radial_flux
+         << " coupling=" << bin.coupling
+         << " boundary_loss=" << bin.boundary_loss;
+    std::cout << line.str() << std::endl;
   }
 }
 

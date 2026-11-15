@@ -129,6 +129,8 @@ class NRFLD : public NewtonRaphson {
   void ApplyPhysicalBoundary() final;
   void PrintCellPhysicsDebug(int k, int j, int i) final;
   void PrintFailurePhysicsDebug(Real gas_max) final;
+  void DumpInitialDiffusionAudit(const AthenaArray<Real> &u_pre,
+                                 const AthenaArray<Real> &derivetive);
   void StoreIterate() final;
   void RestoreIterate() final;
 
@@ -201,6 +203,11 @@ class NRFLD : public NewtonRaphson {
   bool jacobian_check_;
   bool jacobian_check_done_;
   Real jacobian_check_epsilon_;
+  bool initial_diffusion_audit_;
+  bool initial_diffusion_audit_done_;
+  Real initial_diffusion_audit_rmin_;
+  Real initial_diffusion_audit_rmax_;
+  Real initial_diffusion_audit_dr_;
   // AthenaArray<Real> *u_, *def_, *src_, *uold_, *coeff_, *matrix_;
   // AthenaArray<Real> delta_u_;
   AthenaArray<Real> u_gas_, u_gas_iter_backup_;

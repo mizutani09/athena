@@ -1,0 +1,91 @@
+{
+  "logs": [
+    "/home/kosuke/simulation/test/wor122_initial_diff64_full/stdout.log"
+  ],
+  "blocks": 64,
+  "rows": 4728,
+  "rmin": 20.0,
+  "rmax": 1730.0,
+  "dx": 31.578125,
+  "lheat": 229929.4660451123,
+  "shells": {
+    "750-800": {
+      "cells": 11936,
+      "erad": 2028086.3550706198,
+      "diffusion": -340143.7526988594,
+      "diffusion_over_erad_per_code_time": -0.16771660232732805,
+      "abs_diffusion_over_erad_per_code_time": 0.1686965284599867,
+      "mean_radial_flux": 0.013132222470545489,
+      "spherical_luminosity_estimate_over_lheat": 0.4310790029308553,
+      "initial_coupling": -1815816959869.5776,
+      "boundary_loss": 0.0
+    },
+    "800-813": {
+      "cells": 2664,
+      "erad": 63351.04308001382,
+      "diffusion": -1571368.9930820083,
+      "diffusion_over_erad_per_code_time": -24.804153439073342,
+      "abs_diffusion_over_erad_per_code_time": 24.804153439073342,
+      "mean_radial_flux": 0.25099462145970064,
+      "spherical_luminosity_estimate_over_lheat": 8.92253770376922,
+      "initial_coupling": -797959955608.5072,
+      "boundary_loss": 0.0
+    },
+    "813-817": null,
+    "817-830": {
+      "cells": 2640,
+      "erad": 1483.2979958561561,
+      "diffusion": 762765.3439119984,
+      "diffusion_over_erad_per_code_time": 514.2360780119116,
+      "abs_diffusion_over_erad_per_code_time": 514.2360780119116,
+      "mean_radial_flux": 0.12819971915501244,
+      "spherical_luminosity_estimate_over_lheat": 4.751486657119489,
+      "initial_coupling": 39848690.07771171,
+      "boundary_loss": 0.0
+    },
+    "830-850": {
+      "cells": 5504,
+      "erad": 779.2705230395856,
+      "diffusion": 1917596.852705777,
+      "diffusion_over_erad_per_code_time": 2460.758871291692,
+      "abs_diffusion_over_erad_per_code_time": 2464.7694889608406,
+      "mean_radial_flux": 0.16166136784584706,
+      "spherical_luminosity_estimate_over_lheat": 6.234190291603057,
+      "initial_coupling": -3785689.080667472,
+      "boundary_loss": 0.0
+    },
+    "850-880": {
+      "cells": 8928,
+      "erad": 741.2871588026536,
+      "diffusion": -95205.4742593496,
+      "diffusion_over_erad_per_code_time": -128.4326500584847,
+      "abs_diffusion_over_erad_per_code_time": 153.16018300424184,
+      "mean_radial_flux": 0.013982252294079402,
+      "spherical_luminosity_estimate_over_lheat": 0.5717742361722347,
+      "initial_coupling": -56378.32593632396,
+      "boundary_loss": 0.0
+    },
+    "880-900": {
+      "cells": 6000,
+      "erad": 462.2994010666001,
+      "diffusion": -41321.66615482764,
+      "diffusion_over_erad_per_code_time": -89.38291085710216,
+      "abs_diffusion_over_erad_per_code_time": 90.04203766768296,
+      "mean_radial_flux": 0.020592616907890205,
+      "spherical_luminosity_estimate_over_lheat": 0.8914701108589684,
+      "initial_coupling": 55.1694417438857,
+      "boundary_loss": 0.0
+    }
+  },
+  "covered_domain": {
+    "cells": 262144,
+    "erad": 3640904252.073614,
+    "diffusion": -142509.85015633283,
+    "diffusion_over_erad_per_code_time": -3.914133420981033e-05,
+    "abs_diffusion_over_erad_per_code_time": 0.0016585133667291025,
+    "mean_radial_flux": 0.02353261634351073,
+    "spherical_luminosity_estimate_over_lheat": 0.984694594311683,
+    "initial_coupling": 368318540577356.1,
+    "boundary_loss": 142509.85015633283
+  }
+}

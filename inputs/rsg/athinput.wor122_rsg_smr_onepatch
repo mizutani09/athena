@@ -104,6 +104,11 @@ const_opacity_R = 1.0
 <nrfld>
 show_defect = false
 diagnostic_verbosity = 0
+# Read-only first implicit-stage diffusion balance, disabled for normal runs.
+initial_diffusion_audit = false
+initial_diffusion_audit_rmin = 750.0
+initial_diffusion_audit_rmax = 900.0
+initial_diffusion_audit_dr = 1.0
 linear_solver = fgmres
 coarse_operator = rediscretized
 galerkin_zero_physical_boundaries = true
