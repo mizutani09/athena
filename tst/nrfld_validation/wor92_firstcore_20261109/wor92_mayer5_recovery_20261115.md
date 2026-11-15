@@ -35,7 +35,7 @@ They write to separate run directories and never overwrite the original.
 | 340114 | M-debug, one node/120 rank | 830→831 | COMPLETED 0:0 in 35 s; same rank count as failed job, no hang |
 | 340115 | M-debug, one node/120 rank | 830→840 | COMPLETED 0:0 in 2:10; 2304 blocks, 15/15 Newton convergence, 34 FGMRES solves, max true relative residual 1.94538e-8; max gas-mass drift 4.44e-16; pressure min 5.93440e-10 dyn/cm² and Jeans min 31.957 cells; Slurm step MaxRSS 53,160,352 K |
 | 340118 | M-debug, one node/120 rank | 840→850 | COMPLETED 0:0 in 2:07; 11/11 Newton converged, 30 FGMRES solves/470 iterations, max true relative residual 1.82786e-8; no fatal error, mass drift 4.44e-16, pressure min 5.91688e-10 dyn/cm², Jeans min 42.0193 cells, rho_max 1.00515e-11 g/cm³; Slurm step MaxRSS 40,510,008 K |
-| 340113 | M-test-a, two nodes/120 rank | 830→831 | pending at 17:54 JST for node reservation; intended to test cross-node startup |
+| 340113 | M-test-a, two nodes/120 rank | 830→831 | COMPLETED 0:0 in 29 s; cross-node restart startup passed |
 
 The one-node c840 restart from 340115 has SHA-256
 `f6d62a65e9cc7c69d237b4ca027339226590199e2b8eb91664141ce04e6909e8`.
@@ -61,3 +61,39 @@ Remote case root:
 The original job 339331 and all diagnostic outputs are retained there.
 Small logs, HST, status, and provenance for jobs 340115/340118 were copied to
 `/home/kosuke/simulation/test/rad_nr/wor92_xd_20261107/firstcore_integration_evidence/`.
+
+## c1194 stop and controlled replay (20:20 JST)
+
+Job 340116 ran on `cna105` through 35 completed ten-cycle segments, from
+c840 to c1190. Segment 35 then advanced from c1190 through c1194, but its
+log and HST stopped at 19:33:30 JST, despite another 30 minutes of runtime.
+The outer guard returned exit 124 (`FAIL_SEGMENT_TIMEOUT`), and Slurm marked
+the batch job FAILED. The complete c1190 restart was preserved in the original
+directory, with SHA-256
+`cbf2e924b14f4a45c15af6bea988d1aa82b31647ca335ebe23aa6a52ca0ef6f6`.
+The c1194 HST row has rho_max `4.269612649083216e-11 g/cm³`, pressure minimum
+`5.449430854194125e-10 dyn/cm²`, and Jeans minimum `34.9456` cells. Over the
+entire c840–1194 HST, the minimum Jeans value was `31.9913` and the maximum
+relative mass change from c0 was `7.852e-15`. The last logged Newton solve
+converged, and the three preceding FGMRES solves had true relative residuals
+`5.24e-9`, `1.19e-8`, and `1.94e-8`. The log has no FATAL ERROR. This does
+not establish which code phase stopped making progress.
+
+Using the unchanged binary and settings, M-debug job 340278 restarted the
+same c1190 checkpoint on another node (`cna208`) and reached c1196 with exit
+0 in 82 s. The c1191–1194 HST rows agree **exactly in all 156 numeric fields**
+with the preceding job. This disproves a deterministic solver failure at
+c1195 for that state and binary; an intermittent MPI or node issue remains
+possible. The replay had 7/7 converged Newton solves, 18 FGMRES solves with
+maximum true relative residual `1.956862e-8`, rho_max
+`4.295610660958805e-11 g/cm³`, pressure minimum `5.448676959945764e-10`,
+Jeans minimum `34.9108`, and mass change at most `7.852e-15`. Its c1196 final
+restart SHA-256 is
+`aae6c65334b2b898f92b04451c4ed0c1e90caff3daf91c5ce6bdf3a3fc243bad`.
+
+The c1196 restart seeded M-large-a continuation job 340281 on `cna078` at
+20:18 JST. It excludes the previous node `cna105`, preserves separate output,
+and keeps the ten-cycle mass/pressure/Jeans/first-core gates. The per-segment
+time guard was reduced from 1800 to 900 s after a 6-cycle replay completed
+in 82 s. This is a watchdog adjustment, not a numerical correction. The
+first-core density gate has not been met yet.
