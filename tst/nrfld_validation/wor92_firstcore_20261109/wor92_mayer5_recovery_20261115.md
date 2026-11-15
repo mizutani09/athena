@@ -65,7 +65,7 @@ Small logs, HST, status, and provenance for jobs 340115/340118 were copied to
 ## c1194 stop and controlled replay (20:20 JST)
 
 Job 340116 ran on `cna105` through 35 completed ten-cycle segments, from
-c840 to c1190. Segment 35 then advanced from c1190 through c1194, but its
+c840 to c1190. Segment 35 then advanced to the accepted c1194 state, but its
 log and HST stopped at 19:33:30 JST, despite another 30 minutes of runtime.
 The outer guard returned exit 124 (`FAIL_SEGMENT_TIMEOUT`), and Slurm marked
 the batch job FAILED. The complete c1190 restart was preserved in the original
@@ -76,14 +76,16 @@ The c1194 HST row has rho_max `4.269612649083216e-11 g/cm³`, pressure minimum
 entire c840–1194 HST, the minimum Jeans value was `31.9913` and the maximum
 relative mass change from c0 was `7.852e-15`. The last logged Newton solve
 converged, and the three preceding FGMRES solves had true relative residuals
-`5.24e-9`, `1.19e-8`, and `1.94e-8`. The log has no FATAL ERROR. This does
-not establish which code phase stopped making progress.
+`5.24e-9`, `1.19e-8`, and `1.94e-8`. The log has no FATAL ERROR. Source
+inspection shows that `cycle=1194` is printed at the start of that step. No
+Newton entry follows, so the hang occurred after entering the c1194 step and
+before the Newton log; the exact phase remains unidentified.
 
 Using the unchanged binary and settings, M-debug job 340278 restarted the
 same c1190 checkpoint on another node (`cna208`) and reached c1196 with exit
 0 in 82 s. The c1191–1194 HST rows agree **exactly in all 156 numeric fields**
-with the preceding job. This disproves a deterministic solver failure at
-c1195 for that state and binary; an intermittent MPI or node issue remains
+with the preceding job. This disproves a deterministic solver failure in the
+c1194 step for that state and binary; an intermittent MPI or node issue remains
 possible. The replay had 7/7 converged Newton solves, 18 FGMRES solves with
 maximum true relative residual `1.956862e-8`, rho_max
 `4.295610660958805e-11 g/cm³`, pressure minimum `5.448676959945764e-10`,
@@ -101,7 +103,7 @@ first-core density gate has not been met yet.
 An additional M-test-a replay, job 340293, pinned the same c1190 restart and
 120 ranks to the original `cna105`. It also reached c1196, exit 0, in 80 s.
 The c1191–1196 HST records agree exactly with job 340278 in all 273 numeric
-fields. Slurm step MaxRSS was 38,635,204 K. Thus the c1195 hang is not
+fields. Slurm step MaxRSS was 38,635,204 K. Thus the c1194-step hang is not
 deterministically reproduced even on the same node. Both replays support
 continuation from a validated checkpoint; neither proves whether the original
 stall came from MPI progress, I/O, node load, or another intermittent cause.
@@ -125,6 +127,16 @@ time; the comparison with Mayer's roughly 29.09 kyr result requires explicit
 discussion of solver and discretization differences rather than an assertion
 of agreement.
 
+At the maximum-density cell, an independent calculation with the pgen's ideal
+gas constant gives `Tgas=396.340968 K` and the HDF5 radiation energy gives
+`Trad=396.340935 K`, a relative difference `8.37e-8`. The hot core gas and
+radiation are therefore tightly coupled at this snapshot.
+As a separate, approximate check, a finite-difference pressure gradient
+from the spherical shell means divided by `rho G M(<r)/r²` is `0.79–1.09`
+between about 1 and 6.5 au. Shell averaging and the discrete derivative
+limit precision, but the result is consistent with pressure support rather
+than a freely collapsing density spike.
+
 The full c0→c1196 HST records from jobs 339330, 339331, 340115, 340116,
 and 340278 contain 1321 saved 39-column rows at 1197 unique times. All
 124 duplicate-time rows agree exactly, including across the five-node to
@@ -140,3 +152,80 @@ post-implicit sink; those paths do not isolate a single cause of the timing
 difference. The initial c0 maximum cell mass here is `7.2855e-6 M☉`, about
 22 times Mayer's AREPO target `3.33e-7 M☉`, another material resolution
 difference.
+
+A second independent 3D output at c1340 (SHA-256
+`9b75d4f8cee1c2469978bab4dd6eb450a864e9339e19587254e278913d1f2058`)
+shows continuous evolution: rho_max `6.59093e-11 g/cm³`, central gas
+temperature `453.79 K`, central radial velocity `-0.00723 km/s`, and an
+accretion-shock candidate at `7.141–7.507 au` with density ratio `5.67` and
+inflow speeds `0.259/1.681 km/s` on the inner/outer sides. The shock has
+moved inward from c1240, and the mass inside its midpoint is about
+`0.02696 M☉`. Positive/negative x-axis density asymmetry over 3–15 au is
+at most `0.337%`.
+
+## Cycle 1416 pressure-floor stop and AMR isolation
+
+The guarded continuation job 340281 advanced c1196→c1416 in 37:59, then
+stopped at the first bad history row. At c1415 the minimum pressure was
+`5.225038548e-10 dyn/cm²` and minimum Jeans resolution `31.9967` cells.
+At c1416 these became the hydro floor `1e-19 dyn/cm²` and `1.4856e-6`
+cells; maximum density was `7.9638230e-11 g/cm³`, below the
+`1e-10 g/cm³` endpoint. Mass remained `2.936555728050224e33 g`, within
+`7.85e-15` relative of its initial value. The c1416 restart SHA-256 is
+`ec50846dfdc0ff385e628785d76e1d9032a7b0ab4cd678ee7a24780d7f18e9a1`;
+it is not a safe continuation point. Slurm FAILED/exit 2 records the
+intentional watchdog stop, not a solver crash.
+
+Independent HDF5 inspection of c1416 (M-debug snapshot job 340317,
+`profiles/c1416.athdf`, SHA-256
+`921508feeba885b14a1e1c20d2642706a5704a3f7e9e5c818fefa10d0f69aa5c`)
+found exactly two pressure-floor cells. They lie at approximately
+`(±5.7678,-2.8381,-2.8381) au`, radius `7.0269 au`, on newly created
+level-11 blocks at the accretion shock. Their total mass is
+`1.42145e-8 M☉`; ambient tracer fractions are approximately `5e-24`,
+so the ambient sink does not explain this event. The c1415 HDF5 has
+no floor cells. Its level-10 parents at the same locations have
+`P≈0.00615 dyn/cm²`, `T≈131.3 K` and positive internal energy.
+
+An independent replay from a c1410 restart, job 340318 on M-debug,
+reproduced the c1416 HST row exactly and wrote the good c1415 restart
+SHA-256 `15723c62b753add16c9db17ea5a217523029c47fed5315eba52501078c7f81c2`.
+The controlled c1415→1416 replay 340325 kept the same binary and 120
+ranks but set `problem/N_J=1` for that one step, suppressing new blocks.
+It finished with zero blocks created and `Pmin=5.223125215e-10 dyn/cm²`,
+`Jeans min=31.9899` cells. This isolates new AMR refinement as necessary
+for the observed failure on this step. It does not yet prove whether the
+new-cell conservative interpolation itself or a later step involving
+those cells is responsible.
+
+A separate source/binary experiment now tests a conservative,
+positivity-preserving hydro prolongation limiter. The original binary
+and all validated outputs remain untouched. The limiter is enabled only
+with `ATHENA_WOR92_ZERO_B_POSITIVE_AMR=1` and only for the unmagnetized
+ideal-EOS case. No claim of success is made before the c1415 replay and
+subsequent continuation pass the same physical gates.
+
+The isolated XD build completed in job 340329: binary SHA-256
+`b64491aa31da79216c99dbfcc6eb2b9cba805e4c385a4a67d092c303a622b5cb`,
+modified `mesh_refinement.cpp` SHA-256
+`c1d30575e44c3bfa1eadc43ada51ea6a97e83ec0559bce1aa241fbccf363d18a`.
+For the same c1415 restart, A/B jobs 340331 and 340332 used this *same*
+binary with the limiter on/off. OFF reproduced the original c1416 floor
+(`Pmin=1e-19`, Jeans `1.4856278e-6`); ON completed c1420 with
+`Pmin=5.2204654e-10 dyn/cm²`, Jeans `32.0109` and unchanged global mass.
+Both cases created 14 new blocks. Independent HDF5 audits found zero
+pressure-floor cells at c1416 and c1420 with the limiter on. In the
+two affected fine parent families the changed density occupies 8 children
+each; their summed density differs from the unmodified HDF5 by only
+`5.9e-9` and `1.8e-8` relative at float32 output precision. The local
+physical pressure changed from the code floor `1e-10` to about
+`1.09e6` code units at the two original bad cells. This is a limited
+reconstruction change, not a continuation with AMR disabled.
+
+The guarded M-large-a continuation job 340334 started from the good
+c1420 restart SHA-256
+`d02ae7ad40028c2f1a359a93ab37168a040f78ecb5ac43c1f831346c8eebc64d`.
+Its c1430 and c1440 checkpoints passed the full-row pressure, Jeans and
+mass gates. At c1440: rho_max `8.30935e-11 g/cm³`, Pmin
+`5.20741e-10 dyn/cm²`, Jeans min `40.7285`, and the original gas mass.
+The monitored density threshold remains to be checked.

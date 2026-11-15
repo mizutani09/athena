@@ -11,6 +11,7 @@
 // C++ headers
 #include <algorithm>   // max()
 #include <cmath>
+#include <cstdlib>
 #include <cstring>     // strcmp()
 #include <sstream>
 #include <stdexcept>  // runtime_error
@@ -21,6 +22,7 @@
 #include "../athena.hpp"
 #include "../athena_arrays.hpp"
 #include "../coordinates/coordinates.hpp"
+#include "../eos/eos.hpp"
 #include "../field/field.hpp"
 #include "../globals.hpp"
 #include "../hydro/hydro.hpp"
@@ -563,6 +565,91 @@ void MeshRefinement::ProlongateCellCenteredValues(
         }
       }
     }
+#if NON_BAROTROPIC_EOS && !GENERAL_EOS
+    // Conservative hydro prolongation can make E-kinetic negative at a shock
+    // even when every coarse cell is physical. Limit all five conserved
+    // deviations by one factor, so each child's pressure stays within the
+    // coarse stencil's lower bound without changing the parent average.
+    // This pressure estimate assumes zero magnetic energy. Enable it only
+    // for the explicitly unmagnetized collapse experiment.
+    const char *zero_b_limiter = std::getenv("ATHENA_WOR92_ZERO_B_POSITIVE_AMR");
+    if (zero_b_limiter != nullptr && zero_b_limiter[0] == '1'
+        && &coarse == &pmb->phydro->coarse_cons_ && &fine == &pmb->phydro->u
+        && sn == IDN && en >= IEN) {
+      const Real gm1 = pmb->peos->GetGamma() - 1.0;
+      const Real rho_floor = pmb->peos->GetDensityFloor();
+      const Real p_floor = pmb->peos->GetPressureFloor();
+      auto pressure = [gm1](const AthenaArray<Real> &u, int k, int j, int i) {
+        const Real rho = u(IDN,k,j,i);
+        if (!(rho > 0.0)) return -1.0;
+        const Real m1 = u(IM1,k,j,i), m2 = u(IM2,k,j,i), m3 = u(IM3,k,j,i);
+        return gm1*(u(IEN,k,j,i) - 0.5*(m1*m1 + m2*m2 + m3*m3)/rho);
+      };
+      for (int k=sk; k<=ek; ++k) {
+        const int fk = (k-pmb->cks)*2 + pmb->ks;
+        for (int j=sj; j<=ej; ++j) {
+          const int fj = (j-pmb->cjs)*2 + pmb->js;
+          for (int i=si; i<=ei; ++i) {
+            const int fi = (i-pmb->cis)*2 + pmb->is;
+            const Real parent_p = pressure(coarse,k,j,i);
+            if (!(parent_p > p_floor)) continue;
+            Real target_p = parent_p;
+            const int dk[6] = {-1,1,0,0,0,0};
+            const int dj[6] = {0,0,-1,1,0,0};
+            const int di[6] = {0,0,0,0,-1,1};
+            for (int q=0; q<6; ++q) {
+              const Real neighbor_p = pressure(coarse,k+dk[q],j+dj[q],i+di[q]);
+              if (neighbor_p > p_floor) target_p = std::min(target_p,neighbor_p);
+            }
+            target_p = std::max(2.0*p_floor,0.999*target_p);
+            bool needs_limit = false;
+            for (int dz=0; dz<2; ++dz)
+              for (int dy=0; dy<2; ++dy)
+                for (int dx=0; dx<2; ++dx)
+                  if (!(fine(IDN,fk+dz,fj+dy,fi+dx) > rho_floor)
+                      || !(pressure(fine,fk+dz,fj+dy,fi+dx) >= target_p))
+                    needs_limit = true;
+            if (!needs_limit) continue;
+            auto physical = [&](Real theta) {
+              for (int dz=0; dz<2; ++dz)
+                for (int dy=0; dy<2; ++dy)
+                  for (int dx=0; dx<2; ++dx) {
+                    const int z=fk+dz, y=fj+dy, x=fi+dx;
+                    const Real rho = coarse(IDN,k,j,i)
+                        + theta*(fine(IDN,z,y,x)-coarse(IDN,k,j,i));
+                    if (!(rho > rho_floor)) return false;
+                    Real m2 = 0.0;
+                    for (int n=IM1; n<=IM3; ++n) {
+                      const Real m = coarse(n,k,j,i)
+                          + theta*(fine(n,z,y,x)-coarse(n,k,j,i));
+                      m2 += m*m;
+                    }
+                    const Real e = coarse(IEN,k,j,i)
+                        + theta*(fine(IEN,z,y,x)-coarse(IEN,k,j,i));
+                    if (!(gm1*(e-0.5*m2/rho) >= target_p)) return false;
+                  }
+              return true;
+            };
+            Real lo = 0.0, hi = 1.0;
+            for (int q=0; q<48; ++q) {
+              const Real mid = 0.5*(lo+hi);
+              if (physical(mid)) lo=mid;
+              else hi=mid;
+            }
+            const Real theta = 0.999999*lo;
+            for (int dz=0; dz<2; ++dz)
+              for (int dy=0; dy<2; ++dy)
+                for (int dx=0; dx<2; ++dx)
+                  for (int n=IDN; n<=IEN; ++n) {
+                    const Real center = coarse(n,k,j,i);
+                    Real &child = fine(n,fk+dz,fj+dy,fi+dx);
+                    child = center + theta*(child-center);
+                  }
+          }
+        }
+      }
+    }
+#endif
   } else if (pmb->block_size.nx2 > 1) {
     int k = pmb->cks, fk = pmb->ks;
     for (int n=sn; n<=en; n++) {

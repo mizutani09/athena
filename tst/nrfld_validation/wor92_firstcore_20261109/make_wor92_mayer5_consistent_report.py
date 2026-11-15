@@ -73,7 +73,7 @@ def make_history_plot(rows, out):
     plt.close(fig)
 
 
-def make_profile_plot(radial, axis, paper, out):
+def make_profile_plot(radial, axis, paper, out, prior):
     inner = radial["r_inner_au"]
     outer = radial["r_outer_au"]
     r = np.sqrt(inner * outer)
@@ -85,8 +85,14 @@ def make_profile_plot(radial, axis, paper, out):
                            constrained_layout=True)
     for i, (our_field, paper_field, ylabel) in enumerate(fields):
         sign = -1 if i == 2 else 1
+        for name, previous in prior:
+            r_previous = np.sqrt(previous["r_inner_au"] * previous["r_outer_au"])
+            r_previous[0] = previous["r_outer_au"][0] / 2
+            ax[i].plot(r_previous, sign * previous[our_field],
+                       color="#83aabc", linewidth=1.1, alpha=.8,
+                       label=name)
         ax[i].plot(r, sign * radial[our_field], color="#14638b", linewidth=2,
-                   label="Athena++ radial shell mean")
+                   label="Latest Athena++ radial shell mean")
         ax[i].scatter(paper["r_au"], sign * paper[paper_field],
                       facecolors="none", edgecolors="#9b577d", s=42,
                       label="Mayer Fig. 7 approximate read-off")
@@ -133,14 +139,23 @@ def main():
     parser.add_argument("axis_csv", type=Path)
     parser.add_argument("axis_json", type=Path)
     parser.add_argument("output_html", type=Path)
+    parser.add_argument("--prior-radial", type=Path, action="append", default=[],
+                        help="Earlier radial CSV to overlay; may be repeated")
+    parser.add_argument("--solver-metrics", type=Path,
+                        help="JSON with final Slurm and Newton/FGMRES audit")
+    parser.add_argument("--continuation-binary-sha", default="",
+                        help="SHA-256 of a separately validated continuation binary")
     args = parser.parse_args()
     paths = sorted(args.history_dir.glob("job_*.hst"))
     rows, total_rows = read_hst(paths)
     radial = read_csv(args.radial_csv)
     axis = read_csv(args.axis_csv)
+    prior = [(path.stem.split("_")[0], read_csv(path)) for path in args.prior_radial]
     paper = read_csv(Path(__file__).with_name("mayer_fig7_approx_read_off.csv"))
     radial_stats = json.loads(args.radial_json.read_text())
     axis_stats = json.loads(args.axis_json.read_text())
+    solver_metrics = (json.loads(args.solver_metrics.read_text())
+                      if args.solver_metrics else None)
     final_time = rows[-1, 0] * CODE_TO_KYR
     initial_mass = rows[0, 22]
     mass_drift = float(np.max(np.abs(rows[:, 22] - initial_mass) / initial_mass))
@@ -151,6 +166,23 @@ def main():
     shock_mid = (shock["inner_au"] + shock["outer_au"]) / 2
     core_mass = float(np.interp(shock_mid, radial["r_outer_au"],
                                 radial["enclosed_mass_g"]) / MSUN)
+    r_shell = np.sqrt(radial["r_inner_au"] * radial["r_outer_au"])
+    r_shell[0] = radial["r_outer_au"][0] / 2
+    comparisons = []
+    for r_paper, rho_paper, temp_paper, vr_paper in zip(
+            paper["r_au"], paper["rho_est_g_cm3"], paper["Tgas_est_K"],
+            paper["vr_est_km_s"]):
+        log_r = np.log(r_shell)
+        rho_model = float(np.exp(np.interp(np.log(r_paper), log_r,
+                                           np.log(radial["mean_rho_g_cm3"]))))
+        temp_model = float(np.interp(np.log(r_paper), log_r,
+                                      radial["mass_weighted_temp_K"]))
+        infall_model = float(-np.interp(np.log(r_paper), log_r,
+                                         radial["mass_weighted_vrad_km_s"]))
+        comparisons.append({"radius_au": float(r_paper),
+                            "rho_model_over_paper": rho_model / float(rho_paper),
+                            "temperature_model_over_paper": temp_model / float(temp_paper),
+                            "infall_model_over_paper": infall_model / -float(vr_paper)})
     if radial_stats["time_code"] > rows[-1, 0] + 1e-6:
         raise ValueError("3D snapshot is newer than HST history")
     out = args.output_html
@@ -158,7 +190,7 @@ def main():
     history_png = out.with_name(out.stem + "_history.png")
     profile_png = out.with_name(out.stem + "_profile.png")
     make_history_plot(rows, history_png)
-    shock_png = make_profile_plot(radial, axis, paper, profile_png)
+    shock_png = make_profile_plot(radial, axis, paper, profile_png, prior)
     summary = {
         "history_rows": int(len(rows)), "duplicate_rows_verified": total_rows - len(rows),
         "history_last_time_kyr": float(final_time), "history_rho_max_g_cm3": rho_max,
@@ -178,19 +210,50 @@ def main():
         "mass_inside_shock_msun": core_mass,
         "mayer_reference_time_kyr": MAYER_KYR,
         "mayer_reference_shock_radius_au": [6, 7],
+        "mayer_figure7_approx_read_off_ratios": comparisons,
         "source_base_commit": SOURCE_BASE_COMMIT,
         "source_binary_sha256": SOURCE_BINARY_SHA,
         "source_input_sha256": SOURCE_INPUT_SHA,
     }
+    if args.continuation_binary_sha:
+        summary["continuation_binary_sha256"] = args.continuation_binary_sha
+    if solver_metrics is not None:
+        summary["solver_metrics"] = solver_metrics
     out.with_name(out.stem + "_summary.json").write_text(
         json.dumps(summary, indent=2) + "\n")
+    solver_ok = (solver_metrics is None or
+                 (solver_metrics["slurm_state"] == "COMPLETED" and
+                  solver_metrics["newton_nonconverged"] == 0 and
+                  solver_metrics["fatal_lines"] == 0))
     status = "PASS" if all((summary["mass_gate_pass"], summary["pressure_gate_pass"],
-                             summary["jeans_gate_pass"], summary["rho_target_pass"])) else "INCOMPLETE"
+                             summary["jeans_gate_pass"], summary["rho_target_pass"],
+                             solver_ok)) else "INCOMPLETE"
+    if solver_metrics is None:
+        solver_html = "<p>最終ジョブのソルバ集計は未入力。</p>"
+    else:
+        solver_html = (
+            "<table>"
+            f"<tr><th>Job・Slurm</th><td>{solver_metrics['job_id']}・{html.escape(solver_metrics['slurm_state'])}</td></tr>"
+            f"<tr><th>Newton</th><td>{solver_metrics['newton_converged']} / {solver_metrics['newton_total']} 収束、最大反復{solver_metrics['newton_iterations_max']}</td></tr>"
+            f"<tr><th>FGMRES</th><td>{solver_metrics['fgmres_solves']} solves / {solver_metrics['fgmres_iterations']} iterations、最大true相対残差{solver_metrics['fgmres_true_relative_max']:.3e}</td></tr>"
+            f"<tr><th>実行時間・最大RSS</th><td>{solver_metrics['elapsed_seconds']/60:.1f} min・{solver_metrics['maxrss_kib']/1024/1024:.2f} GiB</td></tr>"
+            "</table>")
+    continuation_note = (f"<p>cycle 1415 から磁場ゼロのAMR保存変数補間へ圧力正値制限を適用した。"
+                         f"継続バイナリ SHA-256 {html.escape(args.continuation_binary_sha)}。</p>"
+                         if args.continuation_binary_sha else "")
+    run_title = ("WOR-92: Mayer §5 ideal EOS・一定opacityのc0からの修正継続計算"
+                 if args.continuation_binary_sha else
+                 "WOR-92: Mayer §5 ideal EOS・一定opacityのc0一貫計算")
+    comparison_rows = "".join(
+        f"<tr><td>{entry['radius_au']:g}</td><td>{entry['rho_model_over_paper']:.3f}</td>"
+        f"<td>{entry['temperature_model_over_paper']:.3f}</td>"
+        f"<td>{entry['infall_model_over_paper']:.3f}</td></tr>"
+        for entry in comparisons)
     document = f"""<!doctype html><html lang="ja"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>WOR-92 Mayer ideal EOS c0一貫計算</title>
+<title>{html.escape(run_title)}</title>
 <style>body{{font:16px/1.65 system-ui,sans-serif;max-width:1020px;margin:auto;padding:1.3rem;color:#263743;background:#f3f7f9}}section,figure{{background:white;border:1px solid #dbe5e8;border-radius:9px;padding:1rem;margin:1rem 0}}img{{max-width:100%}}table{{border-collapse:collapse;width:100%}}th,td{{text-align:left;border-bottom:1px solid #dbe5e8;padding:.4rem}}a{{color:#14638b}}.small{{font-size:.9rem;color:#526673}}</style></head><body>
-<h1>WOR-92: Mayer §5 ideal EOS・一定opacityのc0一貫計算</h1>
+<h1>{html.escape(run_title)}</h1>
 <p>検証状態: <strong>{status}</strong>。初期一様球1 M☉・3000 au・14 K、γ=5/3、μ=2.381、κP=κR=1 cm²/g。Athena++のCartesian Jeans AMR計算を、Mayer et al. (2025) §5のAREPO計算と比較する。背景ガスは密度1/30・圧力平衡による420 K、背景放射は14 Kという明示的仮定。</p>
 <section><h2>履歴と保存検査</h2><table>
 <tr><th>最終履歴時刻</th><td>{final_time:.5f} kyr</td></tr>
@@ -200,6 +263,8 @@ def main():
 <tr><th>最小Jeans解像度</th><td>{jeans_min:.3f} cells</td></tr>
 <tr><th>照合した履歴</th><td>{len(rows)} unique rows、重複{total_rows-len(rows)}行は完全一致</td></tr>
 </table></section>
+<section><h2>最終継続ジョブのソルバ監査</h2>{solver_html}</section>
+{continuation_note}
 <figure><img src="data:image/png;base64,{image_data(history_png)}" alt="最大密度と質量の時間履歴"><figcaption>破線は目標密度10⁻¹⁰ g/cm³、縦点線はMayer論文の29.09 kyr。</figcaption></figure>
 <section><h2>3D leaf-cell物理量（cycle {radial_stats['cycle']}）</h2><table>
 <tr><th>時刻</th><td>{radial_stats['time_years']/1000:.5f} kyr</td></tr>
@@ -209,7 +274,8 @@ def main():
 <tr><th>衝撃波内・外の流入速度</th><td>{shock['inner_infall_km_s']:.3f} / {shock['outer_infall_km_s']:.3f} km/s</td></tr>
 <tr><th>衝撃波半径内の質量</th><td>{core_mass:.4f} M☉</td></tr>
 </table></section>
-<figure><img src="data:image/png;base64,{image_data(profile_png)}" alt="半径方向プロファイルとMayer論文概読値"><figcaption>青: 当計算の体積重み球殻平均。紫丸: Mayer Figure 7のラスター図からの概読値。概読点は公開数値表でなく、厳密なacceptance gateには使わない。</figcaption></figure>
+<figure><img src="data:image/png;base64,{image_data(profile_png)}" alt="半径方向プロファイルとMayer論文概読値"><figcaption>青: 当計算の最新体積重み球殻平均。淡青: 先行cycle。紫丸: Mayer Figure 7のラスター図からの概読値。概読点は公開数値表でなく、厳密なacceptance gateには使わない。</figcaption></figure>
+<section><h2>Mayer Figure 7 概読点との比</h2><table><tr><th>半径 [au]</th><th>密度比</th><th>温度比</th><th>流入速度比</th></tr>{comparison_rows}</table><p class="small">いずれも当計算/Mayer概読値。ラスター図からの概読値と球殻平均の比較であり、精密な収束判定ではない。</p></section>
 <figure><img src="data:image/png;base64,{image_data(shock_png)}" alt="正のx軸の衝撃波構造"><figcaption>3D出力の正のx軸に沿った密度と流入速度。</figcaption></figure>
 <section><h2>比較の限界と再現情報</h2><p>Mayerの基準時刻は約29.09 kyr、第一コア半径は6–7 au。当計算にはCartesian Jeans AMRとAREPO質量精緻化の差があり、背景放射14 Kの初期値は論文に明記されていない。時刻や半径の差をソルバの単一原因へ帰属しない。</p>
 <p class="small">Source base commit {html.escape(SOURCE_BASE_COMMIT)}<br>Binary SHA-256 {html.escape(SOURCE_BINARY_SHA)}<br>Input SHA-256 {html.escape(SOURCE_INPUT_SHA)}<br>References: <a href="https://arxiv.org/html/2510.12620#S5">Mayer et al. 2025 §5</a>; <a href="https://arxiv.org/html/2410.07016#S3">precursor §3.1</a>.</p></section>
