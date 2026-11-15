@@ -41,6 +41,7 @@ record the raw-output location, hashes, commands, and pass/fail rules:
 | Local gas–radiation coupling | Low/high gas-energy cases PASS, 20/20 and 1,800/1,800 Newton steps, respectively, against a fixed radiation bath. Both use one MPI rank and have zero FGMRES iterations; they check the local nonlinear root, not distributed Krylov behavior or closed energy conservation. |
 | Closed periodic box, WOR-64 | Five local cases PASS on this exact candidate commit `01256e87`: Newton targets 1e-6/1e-8/1e-10 at CFL 0.2 plus CFL 0.1/0.4 at target 1e-8. All reached code time 1; all Newton/FGMRES calls converged, maximum mass and total-energy relative drift across cases were 8.66e-15 and 8.77e-15. |
 | Optically thin streaming, WOR-59 | Four 2-rank cases PASS through 2 ns: all Newton and FGMRES calls converged, requested dt held except for the final shortened step, and final HDF5 snapshots agree. The thin, fine-step case has front-center lag −2.870916 cm and 10–90% width 9.258959 cm, matching the older WOR-59 128-cell values to the quoted 0.001 cm. |
+| Coupled AMR restart, WOR-106 | Six direct/checkpoint pairs PASS on this candidate source: legacy/shared-face, static/adaptive, 4→4 and adaptive 1→4 ranks. All final times and topologies agree exactly, even with 0 allowed ULP; largest active-field difference is 1.137e-13 against 1e-10. All recorded Newton/FGMRES calls converge. |
 
 The closed-box raw run is under
 `/home/kosuke/simulation/test/rad_nr/wor114_collapse_candidate_20261116/closed_box/`.
@@ -72,6 +73,27 @@ front lag and width are reported separately. They reflect the finite-step,
 finite-grid implicit FLD transport documented in WOR-59, not a conservation
 failure. The local output includes profile CSVs, 21-frame MP4, PNGs, and a
 standalone HTML report. The entire isolated build and four runs took 42.2 min.
+
+The six restart pairs are recorded in
+[`restart_summary.json`](../tst/nrfld_validation/wor114_candidate_20261116/restart_summary.json)
+and in raw logs/HDF5 under
+`/home/kosuke/simulation/test/rad_nr/wor114_collapse_candidate_20261116/restart_amr/`.
+The binary SHA-256 is
+`fb8a2c7855e167920ea31e33a817e9d9df09c118b24433c5c8692e7bf6968297`;
+the JSON summary records the base and per-case input hashes, direct/restarted
+Newton and FGMRES counts, maximum FGMRES true-relative residual, final times,
+and active-field differences. Configure and isolated make took about 110 s;
+the six-pair suite took 27.85 s with launcher-reported peak RSS 123,176 KiB.
+The older Draft PR #3 had two 1-ULP strict-time failures and passed with a
+2-ULP allowance. This exact source passed 0 ULP for these six cases; that
+observation does not prove strict bitwise restart timing for other inputs.
+
+To reproduce the AMR restart cases, build an isolated copy of this source with
+`python3 configure.py --prob=nrfld_diff_amr_interface -nrmgfld -mpi -hdf5
+-h5double --cflag=-O3`, then run
+`python3 tst/nrfld_validation/wor106_coupled_amr_restart.py --binary
+/path/to/build/bin/athena --input inputs/radiation/athinput.nrfld_diff_amr_interface
+--output /path/to/new/output --time-ulps 0` from the repository root.
 
 The old Draft PR #3's 2026-11-09 table AMR guard and one-step uniform result
 belong to its earlier `8e0ee6aa` source and are historical. The final paper
