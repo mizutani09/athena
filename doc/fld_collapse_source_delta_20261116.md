@@ -40,6 +40,7 @@ record the raw-output location, hashes, commands, and pass/fail rules:
 | Jeans-only AMR, 2 MPI ranks | N_J=4 stays at 8 blocks; N_J=32 creates 56 blocks and finishes at 64 leaves. Both one-step Newton/FGMRES and mass/true-residual checks PASS. |
 | Local gas–radiation coupling | Low/high gas-energy cases PASS, 20/20 and 1,800/1,800 Newton steps, respectively, against a fixed radiation bath. Both use one MPI rank and have zero FGMRES iterations; they check the local nonlinear root, not distributed Krylov behavior or closed energy conservation. |
 | Closed periodic box, WOR-64 | Five local cases PASS on this exact candidate commit `01256e87`: Newton targets 1e-6/1e-8/1e-10 at CFL 0.2 plus CFL 0.1/0.4 at target 1e-8. All reached code time 1; all Newton/FGMRES calls converged, maximum mass and total-energy relative drift across cases were 8.66e-15 and 8.77e-15. |
+| Optically thin streaming, WOR-59 | Four 2-rank cases PASS through 2 ns: all Newton and FGMRES calls converged, requested dt held except for the final shortened step, and final HDF5 snapshots agree. The thin, fine-step case has front-center lag −2.870916 cm and 10–90% width 9.258959 cm, matching the older WOR-59 128-cell values to the quoted 0.001 cm. |
 
 The closed-box raw run is under
 `/home/kosuke/simulation/test/rad_nr/wor114_collapse_candidate_20261116/closed_box/`.
@@ -51,6 +52,26 @@ build plus five runs took 118.7 s wall time; individual solver runs were
 0.54–0.67 s and peaked at 33,480–34,116 KiB RSS. This one-block serial
 box tests the coupled local/conservation path; AMR and MPI are covered by
 different tests.
+
+The streaming run and its local HTML report are under
+`/home/kosuke/simulation/test/rad_nr/wor114_collapse_candidate_20261116/streaming/`.
+The manifest records the same clean candidate commit `01256e87`, binary
+SHA-256 `b38c313e970e764b7ded1576dd522f7fb58ba43eeda953bda926d3253293a6b0`,
+and build-source SHA-256 `f13aa5ba2ff8c449a30ad3b3d834b1c09f142f9f6eb011eebfdca7ccfcc0523b`.
+The four cases used `chi_R=1e-4,1e-7 cm^-1` and `dt=dx/(2c),dx/(20c)`:
+
+| chi_R [cm^-1] | dt divisor | Newton steps | FGMRES calls | fitted speed/c | x50−(x0+ct) [cm] | 10–90% width [cm] | wall [s] | peak RSS [KiB] |
+| ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| 1e-4 | 2 | 154 | 202 | 0.906396 | −8.548100 | 22.568720 | 94.25 | 218256 |
+| 1e-4 | 20 | 1535 | 1937 | 0.965783 | −3.086468 | 13.917801 | 886.30 | 218160 |
+| 1e-7 | 2 | 154 | 230 | 0.910307 | −8.429497 | 20.503655 | 121.23 | 218288 |
+| 1e-7 | 20 | 1535 | 2743 | 0.970132 | −2.870916 | 9.258959 | 1302.52 | 218244 |
+
+The suite's PASS checks solver convergence, output integrity, and dt; the
+front lag and width are reported separately. They reflect the finite-step,
+finite-grid implicit FLD transport documented in WOR-59, not a conservation
+failure. The local output includes profile CSVs, 21-frame MP4, PNGs, and a
+standalone HTML report. The entire isolated build and four runs took 42.2 min.
 
 The old Draft PR #3's 2026-11-09 table AMR guard and one-step uniform result
 belong to its earlier `8e0ee6aa` source and are historical. The final paper
