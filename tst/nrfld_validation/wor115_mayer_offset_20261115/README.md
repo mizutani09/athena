@@ -286,3 +286,32 @@ the validated reference history and profiles remain in the existing
 `wor92_xd_20261107/firstcore_integration_evidence/ideal_mayer5_postsync_c0_20261110/`
 folder. All experimental XD jobs for this study are complete or explicitly
 stopped; no further long run is queued by this branch.
+
+## Application decision (2026-11-16)
+
+The primary application goal is a reproducible three-dimensional collapse
+with a tabulated EOS and variable opacity through first-core formation. That
+goal is already met by the independent WOR-92/118 corrected c0→c1080 path
+(source `ff60f8f0`, jobs 338469/338485/338486). The
+[application candidate HTML](table_eos_application_candidate.html) and its
+[PNG](table_eos_application_candidate.png)/[PDF](table_eos_application_candidate.pdf)
+show only that verified table-EOS trajectory. Its source script is
+`make_application_gate.py`; the source data are the tracked
+`../wor92_firstcore_20261109/wor118_full_c0_history.csv` and
+`c1080_wor118_full_profile.csv`. The candidate is suitable for a limited
+numerical application claim, with final manuscript selection and the unified
+publication source handled by WOR-88/114. The Mayer pointwise profile
+comparison is a separate optional research question tracked in WOR-96; it
+is not a prerequisite for demonstrating the tabulated calculation.
+
+The tabulated c0 path uses `background_sink_after_implicit=false`, whereas
+the opt-in post-AMR repair above is gated to the later post-implicit sink
+configuration. The tabulated history has one accepted early background-gas
+temperature relative error of 0.14859 at code time 717.662; the maximum in
+the final c500→c1080 stage is 2.36e-5. This is a limitation to disclose,
+not evidence of a failed first-core solve. The final publication source
+should explicitly decide how to handle background resets and rerun a short
+regression if that ordering changes. The accepted linear solves used a
+bounded-inexact cap of 1e-7; the c10→c500 maximum true relative residual
+was 6.70e-8, so the full path must not be described as every linear solve
+meeting 2e-8.
