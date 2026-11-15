@@ -1,0 +1,340 @@
+{
+  "cases": {
+    "plm_t1": {
+      "dt_code": 1,
+      "blocks": 4096,
+      "metrics": {
+        "0-166:all": {
+          "cells": 39024,
+          "mass_weighted_mean_radial_acceleration_over_g": -0.00034361892709542996,
+          "mass_weighted_rms_radial_acceleration_over_g": 0.010714007975387543,
+          "mass_weighted_rms_vector_acceleration_over_g": 0.01808854036706315
+        },
+        "0-166:axis": {
+          "cells": 11760,
+          "mass_weighted_mean_radial_acceleration_over_g": -0.0004700631072634185,
+          "mass_weighted_rms_radial_acceleration_over_g": 0.009777896098462115,
+          "mass_weighted_rms_vector_acceleration_over_g": 0.022894350761904474
+        },
+        "0-166:diagonal": {
+          "cells": 4176,
+          "mass_weighted_mean_radial_acceleration_over_g": -0.0017103710589151443,
+          "mass_weighted_rms_radial_acceleration_over_g": 0.027594782481661598,
+          "mass_weighted_rms_vector_acceleration_over_g": 0.029328485680446957
+        },
+        "166-500:all": {
+          "cells": 1025288,
+          "mass_weighted_mean_radial_acceleration_over_g": 0.000035339080520628686,
+          "mass_weighted_rms_radial_acceleration_over_g": 0.0003236472997559057,
+          "mass_weighted_rms_vector_acceleration_over_g": 0.0023414518657373534
+        },
+        "166-500:axis": {
+          "cells": 307824,
+          "mass_weighted_mean_radial_acceleration_over_g": -0.0001935197651459676,
+          "mass_weighted_rms_radial_acceleration_over_g": 0.00038544728441800876,
+          "mass_weighted_rms_vector_acceleration_over_g": 0.003209633011482305
+        },
+        "166-500:diagonal": {
+          "cells": 106712,
+          "mass_weighted_mean_radial_acceleration_over_g": 0.000263061560511694,
+          "mass_weighted_rms_radial_acceleration_over_g": 0.0003577993132636747,
+          "mass_weighted_rms_vector_acceleration_over_g": 0.00038829130360470184
+        },
+        "500-750:all": {
+          "cells": 2528232,
+          "mass_weighted_mean_radial_acceleration_over_g": -0.0002867797444233939,
+          "mass_weighted_rms_radial_acceleration_over_g": 0.00045108930783092146,
+          "mass_weighted_rms_vector_acceleration_over_g": 0.0010222693224072041
+        },
+        "500-750:axis": {
+          "cells": 759432,
+          "mass_weighted_mean_radial_acceleration_over_g": -0.0005307119070935329,
+          "mass_weighted_rms_radial_acceleration_over_g": 0.0006135549730041756,
+          "mass_weighted_rms_vector_acceleration_over_g": 0.0013660798447504474
+        },
+        "500-750:diagonal": {
+          "cells": 262224,
+          "mass_weighted_mean_radial_acceleration_over_g": -0.000044439137331853394,
+          "mass_weighted_rms_radial_acceleration_over_g": 0.00037383251406878184,
+          "mass_weighted_rms_vector_acceleration_over_g": 0.00047723272996882954
+        },
+        "750-800:all": {
+          "cells": 767288,
+          "mass_weighted_mean_radial_acceleration_over_g": -0.0020681523610331107,
+          "mass_weighted_rms_radial_acceleration_over_g": 0.004360509833998993,
+          "mass_weighted_rms_vector_acceleration_over_g": 0.0048804712158060735
+        },
+        "750-800:axis": {
+          "cells": 229896,
+          "mass_weighted_mean_radial_acceleration_over_g": -0.0032307240635157915,
+          "mass_weighted_rms_radial_acceleration_over_g": 0.006036543426830106,
+          "mass_weighted_rms_vector_acceleration_over_g": 0.0065184240114379835
+        },
+        "750-800:diagonal": {
+          "cells": 80072,
+          "mass_weighted_mean_radial_acceleration_over_g": -0.0009340884181393726,
+          "mass_weighted_rms_radial_acceleration_over_g": 0.002374619370193645,
+          "mass_weighted_rms_vector_acceleration_over_g": 0.0027862176404471334
+        },
+        "800-813:all": {
+          "cells": 216048,
+          "mass_weighted_mean_radial_acceleration_over_g": 0.047679925528801397,
+          "mass_weighted_rms_radial_acceleration_over_g": 0.06266796422491004,
+          "mass_weighted_rms_vector_acceleration_over_g": 0.0699763809993526
+        },
+        "800-813:axis": {
+          "cells": 64920,
+          "mass_weighted_mean_radial_acceleration_over_g": 0.04468624202866627,
+          "mass_weighted_rms_radial_acceleration_over_g": 0.05781031186227578,
+          "mass_weighted_rms_vector_acceleration_over_g": 0.06357482349616662
+        },
+        "800-813:diagonal": {
+          "cells": 22368,
+          "mass_weighted_mean_radial_acceleration_over_g": 0.053394032675247276,
+          "mass_weighted_rms_radial_acceleration_over_g": 0.07750130058906197,
+          "mass_weighted_rms_vector_acceleration_over_g": 0.08147613039988462
+        },
+        "813-817:all": {
+          "cells": 66176,
+          "mass_weighted_mean_radial_acceleration_over_g": -0.007875313272485727,
+          "mass_weighted_rms_radial_acceleration_over_g": 0.025558094664941307,
+          "mass_weighted_rms_vector_acceleration_over_g": 0.04905167710297902
+        },
+        "813-817:axis": {
+          "cells": 19608,
+          "mass_weighted_mean_radial_acceleration_over_g": -0.012242360547873166,
+          "mass_weighted_rms_radial_acceleration_over_g": 0.025624333505369083,
+          "mass_weighted_rms_vector_acceleration_over_g": 0.05181981075574502
+        },
+        "813-817:diagonal": {
+          "cells": 6488,
+          "mass_weighted_mean_radial_acceleration_over_g": -0.001307556939688179,
+          "mass_weighted_rms_radial_acceleration_over_g": 0.023736713555881906,
+          "mass_weighted_rms_vector_acceleration_over_g": 0.03556146746934301
+        },
+        "817-830:all": {
+          "cells": 226016,
+          "mass_weighted_mean_radial_acceleration_over_g": -0.04140791659747447,
+          "mass_weighted_rms_radial_acceleration_over_g": 0.06912256154758797,
+          "mass_weighted_rms_vector_acceleration_over_g": 0.0769602282315832
+        },
+        "817-830:axis": {
+          "cells": 68136,
+          "mass_weighted_mean_radial_acceleration_over_g": -0.036034673247117385,
+          "mass_weighted_rms_radial_acceleration_over_g": 0.06466270887203591,
+          "mass_weighted_rms_vector_acceleration_over_g": 0.07368253033429327
+        },
+        "817-830:diagonal": {
+          "cells": 23288,
+          "mass_weighted_mean_radial_acceleration_over_g": -0.05136334025466602,
+          "mass_weighted_rms_radial_acceleration_over_g": 0.07963711399482555,
+          "mass_weighted_rms_vector_acceleration_over_g": 0.084124433957469
+        },
+        "830-850:all": {
+          "cells": 359288,
+          "mass_weighted_mean_radial_acceleration_over_g": 0.00627335085793352,
+          "mass_weighted_rms_radial_acceleration_over_g": 0.035484179168429705,
+          "mass_weighted_rms_vector_acceleration_over_g": 0.03826706384997969
+        },
+        "830-850:axis": {
+          "cells": 107424,
+          "mass_weighted_mean_radial_acceleration_over_g": 0.012140945801222235,
+          "mass_weighted_rms_radial_acceleration_over_g": 0.04458415772535412,
+          "mass_weighted_rms_vector_acceleration_over_g": 0.04768746617492095
+        },
+        "830-850:diagonal": {
+          "cells": 37304,
+          "mass_weighted_mean_radial_acceleration_over_g": 0.0016835083978895256,
+          "mass_weighted_rms_radial_acceleration_over_g": 0.025564474894395495,
+          "mass_weighted_rms_vector_acceleration_over_g": 0.026452210849566005
+        },
+        "850-880:all": {
+          "cells": 574408,
+          "mass_weighted_mean_radial_acceleration_over_g": -0.05329824888578493,
+          "mass_weighted_rms_radial_acceleration_over_g": 0.055306271446299876,
+          "mass_weighted_rms_vector_acceleration_over_g": 0.059978216183941474
+        },
+        "850-880:axis": {
+          "cells": 172632,
+          "mass_weighted_mean_radial_acceleration_over_g": -0.07186534175917483,
+          "mass_weighted_rms_radial_acceleration_over_g": 0.07241235628226246,
+          "mass_weighted_rms_vector_acceleration_over_g": 0.07725135740435671
+        },
+        "850-880:diagonal": {
+          "cells": 60112,
+          "mass_weighted_mean_radial_acceleration_over_g": -0.03419438248983407,
+          "mass_weighted_rms_radial_acceleration_over_g": 0.03439441621328575,
+          "mass_weighted_rms_vector_acceleration_over_g": 0.03614863413635812
+        }
+      }
+    },
+    "ppm_t1": {
+      "dt_code": 1,
+      "blocks": 4096,
+      "metrics": {
+        "0-166:all": {
+          "cells": 39024,
+          "mass_weighted_mean_radial_acceleration_over_g": 0.0009673248623030351,
+          "mass_weighted_rms_radial_acceleration_over_g": 0.006669890629512759,
+          "mass_weighted_rms_vector_acceleration_over_g": 0.006676619029414266
+        },
+        "0-166:axis": {
+          "cells": 11760,
+          "mass_weighted_mean_radial_acceleration_over_g": 0.0011241506137317694,
+          "mass_weighted_rms_radial_acceleration_over_g": 0.003253266748289964,
+          "mass_weighted_rms_vector_acceleration_over_g": 0.0032840388152319882
+        },
+        "0-166:diagonal": {
+          "cells": 4176,
+          "mass_weighted_mean_radial_acceleration_over_g": 0.000530052444868414,
+          "mass_weighted_rms_radial_acceleration_over_g": 0.018775403750677024,
+          "mass_weighted_rms_vector_acceleration_over_g": 0.018777858709135016
+        },
+        "166-500:all": {
+          "cells": 1025288,
+          "mass_weighted_mean_radial_acceleration_over_g": 0.00000579519325874307,
+          "mass_weighted_rms_radial_acceleration_over_g": 0.00008262842885729844,
+          "mass_weighted_rms_vector_acceleration_over_g": 0.00010758687102860978
+        },
+        "166-500:axis": {
+          "cells": 307824,
+          "mass_weighted_mean_radial_acceleration_over_g": 0.000007294411612186302,
+          "mass_weighted_rms_radial_acceleration_over_g": 0.0000867602748521287,
+          "mass_weighted_rms_vector_acceleration_over_g": 0.0001105472475787444
+        },
+        "166-500:diagonal": {
+          "cells": 106712,
+          "mass_weighted_mean_radial_acceleration_over_g": 0.000004428058268656366,
+          "mass_weighted_rms_radial_acceleration_over_g": 0.00008542608100984636,
+          "mass_weighted_rms_vector_acceleration_over_g": 0.0001020184576282242
+        },
+        "500-750:all": {
+          "cells": 2528232,
+          "mass_weighted_mean_radial_acceleration_over_g": 0.00000645066900344399,
+          "mass_weighted_rms_radial_acceleration_over_g": 0.00023849790774885485,
+          "mass_weighted_rms_vector_acceleration_over_g": 0.00030041477724684223
+        },
+        "500-750:axis": {
+          "cells": 759432,
+          "mass_weighted_mean_radial_acceleration_over_g": 0.0000033894919118114054,
+          "mass_weighted_rms_radial_acceleration_over_g": 0.0002651404927074144,
+          "mass_weighted_rms_vector_acceleration_over_g": 0.0003243809626649554
+        },
+        "500-750:diagonal": {
+          "cells": 262224,
+          "mass_weighted_mean_radial_acceleration_over_g": 0.00000909143948056626,
+          "mass_weighted_rms_radial_acceleration_over_g": 0.00022093312687151412,
+          "mass_weighted_rms_vector_acceleration_over_g": 0.000274219567561896
+        },
+        "750-800:all": {
+          "cells": 767288,
+          "mass_weighted_mean_radial_acceleration_over_g": -0.0006826776547459556,
+          "mass_weighted_rms_radial_acceleration_over_g": 0.0020945309746445264,
+          "mass_weighted_rms_vector_acceleration_over_g": 0.002608318504852678
+        },
+        "750-800:axis": {
+          "cells": 229896,
+          "mass_weighted_mean_radial_acceleration_over_g": -0.0013159500041435288,
+          "mass_weighted_rms_radial_acceleration_over_g": 0.003024447818961355,
+          "mass_weighted_rms_vector_acceleration_over_g": 0.0034607180245009705
+        },
+        "750-800:diagonal": {
+          "cells": 80072,
+          "mass_weighted_mean_radial_acceleration_over_g": -0.00009098117073478307,
+          "mass_weighted_rms_radial_acceleration_over_g": 0.001238523143710124,
+          "mass_weighted_rms_vector_acceleration_over_g": 0.0017588118900028103
+        },
+        "800-813:all": {
+          "cells": 216048,
+          "mass_weighted_mean_radial_acceleration_over_g": 0.04575683464371318,
+          "mass_weighted_rms_radial_acceleration_over_g": 0.06045577755489681,
+          "mass_weighted_rms_vector_acceleration_over_g": 0.06784511085216587
+        },
+        "800-813:axis": {
+          "cells": 64920,
+          "mass_weighted_mean_radial_acceleration_over_g": 0.043201491342389625,
+          "mass_weighted_rms_radial_acceleration_over_g": 0.06194144475755862,
+          "mass_weighted_rms_vector_acceleration_over_g": 0.06785709351780572
+        },
+        "800-813:diagonal": {
+          "cells": 22368,
+          "mass_weighted_mean_radial_acceleration_over_g": 0.05076948743673517,
+          "mass_weighted_rms_radial_acceleration_over_g": 0.0693211316961396,
+          "mass_weighted_rms_vector_acceleration_over_g": 0.07323422343829061
+        },
+        "813-817:all": {
+          "cells": 66176,
+          "mass_weighted_mean_radial_acceleration_over_g": -0.02189402762536546,
+          "mass_weighted_rms_radial_acceleration_over_g": 0.032070207759806936,
+          "mass_weighted_rms_vector_acceleration_over_g": 0.048247677041274334
+        },
+        "813-817:axis": {
+          "cells": 19608,
+          "mass_weighted_mean_radial_acceleration_over_g": -0.03541419600528534,
+          "mass_weighted_rms_radial_acceleration_over_g": 0.04118822993432749,
+          "mass_weighted_rms_vector_acceleration_over_g": 0.057029372922384254
+        },
+        "813-817:diagonal": {
+          "cells": 6488,
+          "mass_weighted_mean_radial_acceleration_over_g": -0.00502861566812594,
+          "mass_weighted_rms_radial_acceleration_over_g": 0.019797671573367693,
+          "mass_weighted_rms_vector_acceleration_over_g": 0.030058893667648166
+        },
+        "817-830:all": {
+          "cells": 226016,
+          "mass_weighted_mean_radial_acceleration_over_g": -0.052012008809725396,
+          "mass_weighted_rms_radial_acceleration_over_g": 0.08172848375186739,
+          "mass_weighted_rms_vector_acceleration_over_g": 0.08753584735618773
+        },
+        "817-830:axis": {
+          "cells": 68136,
+          "mass_weighted_mean_radial_acceleration_over_g": -0.049821744507436455,
+          "mass_weighted_rms_radial_acceleration_over_g": 0.08255848097959989,
+          "mass_weighted_rms_vector_acceleration_over_g": 0.08845738296758215
+        },
+        "817-830:diagonal": {
+          "cells": 23288,
+          "mass_weighted_mean_radial_acceleration_over_g": -0.059373441587908415,
+          "mass_weighted_rms_radial_acceleration_over_g": 0.08789298105167966,
+          "mass_weighted_rms_vector_acceleration_over_g": 0.09150338706378808
+        },
+        "830-850:all": {
+          "cells": 359288,
+          "mass_weighted_mean_radial_acceleration_over_g": 0.053967905391921554,
+          "mass_weighted_rms_radial_acceleration_over_g": 0.06789775686570636,
+          "mass_weighted_rms_vector_acceleration_over_g": 0.0691499006848782
+        },
+        "830-850:axis": {
+          "cells": 107424,
+          "mass_weighted_mean_radial_acceleration_over_g": 0.07958581995331022,
+          "mass_weighted_rms_radial_acceleration_over_g": 0.09480249595964363,
+          "mass_weighted_rms_vector_acceleration_over_g": 0.09623887031553859
+        },
+        "830-850:diagonal": {
+          "cells": 37304,
+          "mass_weighted_mean_radial_acceleration_over_g": 0.030202198633084917,
+          "mass_weighted_rms_radial_acceleration_over_g": 0.03746944819225394,
+          "mass_weighted_rms_vector_acceleration_over_g": 0.03792059158487382
+        },
+        "850-880:all": {
+          "cells": 574408,
+          "mass_weighted_mean_radial_acceleration_over_g": -0.017414742317385466,
+          "mass_weighted_rms_radial_acceleration_over_g": 0.026883610165129235,
+          "mass_weighted_rms_vector_acceleration_over_g": 0.031155239612437022
+        },
+        "850-880:axis": {
+          "cells": 172632,
+          "mass_weighted_mean_radial_acceleration_over_g": -0.04024513184661155,
+          "mass_weighted_rms_radial_acceleration_over_g": 0.044842146834831065,
+          "mass_weighted_rms_vector_acceleration_over_g": 0.048993722462613326
+        },
+        "850-880:diagonal": {
+          "cells": 60112,
+          "mass_weighted_mean_radial_acceleration_over_g": 0.0014900436139209483,
+          "mass_weighted_rms_radial_acceleration_over_g": 0.004563214771089518,
+          "mass_weighted_rms_vector_acceleration_over_g": 0.006483926429232587
+        }
+      }
+    }
+  }
+}

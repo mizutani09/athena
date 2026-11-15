@@ -1,0 +1,142 @@
+{
+  "gid": 457,
+  "mesh_n": [
+    128,
+    128,
+    128
+  ],
+  "excluded_domain_boundary_cells": 256,
+  "dx_rsun": [
+    15.7890625,
+    15.7890625,
+    15.7890625
+  ],
+  "shells": {
+    "750-800": {
+      "cells": 277,
+      "gas_support_over_g": {
+        "continuum_profile": 0.8877863317864377,
+        "sampled_profile_centered": 0.9235528693562334,
+        "mapped_hdf_centered": 0.923716029076682,
+        "actual_godunov": 0.8934248134445352
+      },
+      "difference_mean_over_g": {
+        "sampling_minus_continuum": 0.03576653756979556,
+        "mapped_minus_sampling": 0.00016315972044890354,
+        "godunov_minus_mapped": -0.030291215632146738
+      },
+      "difference_rms_over_g": {
+        "sampling_minus_continuum": 0.049818549121116475,
+        "mapped_minus_sampling": 0.000810947242014222,
+        "godunov_minus_mapped": 0.03390321635938025
+      },
+      "mapped_pressure_minus_profile_relative_mean": -0.0001534594883471848,
+      "mapped_pressure_minus_profile_relative_rms": 0.0003366663781818655
+    },
+    "800-813": {
+      "cells": 184,
+      "gas_support_over_g": {
+        "continuum_profile": 0.9587438604162062,
+        "sampled_profile_centered": 0.9594694570816978,
+        "mapped_hdf_centered": 0.9590222491843685,
+        "actual_godunov": 1.0253606803244453
+      },
+      "difference_mean_over_g": {
+        "sampling_minus_continuum": 0.0007255966654914506,
+        "mapped_minus_sampling": -0.00044720789732918066,
+        "godunov_minus_mapped": 0.06633843114007659
+      },
+      "difference_rms_over_g": {
+        "sampling_minus_continuum": 0.09936908494637087,
+        "mapped_minus_sampling": 0.0008316805223152322,
+        "godunov_minus_mapped": 0.07760537444474956
+      },
+      "mapped_pressure_minus_profile_relative_mean": -0.00037975863346691147,
+      "mapped_pressure_minus_profile_relative_rms": 0.0005648377289957815
+    },
+    "813-817": {
+      "cells": 69,
+      "gas_support_over_g": {
+        "continuum_profile": 0.9803726498539517,
+        "sampled_profile_centered": 0.7893394210135877,
+        "mapped_hdf_centered": 0.7893171288359662,
+        "actual_godunov": 0.93534755742937
+      },
+      "difference_mean_over_g": {
+        "sampling_minus_continuum": -0.19103322884036403,
+        "mapped_minus_sampling": -0.00002229217762149976,
+        "godunov_minus_mapped": 0.146030428593404
+      },
+      "difference_rms_over_g": {
+        "sampling_minus_continuum": 0.19183697258409135,
+        "mapped_minus_sampling": 0.00038473134417959517,
+        "godunov_minus_mapped": 0.14619397459787511
+      },
+      "mapped_pressure_minus_profile_relative_mean": 0.002265565486217842,
+      "mapped_pressure_minus_profile_relative_rms": 0.0025138546854454667
+    },
+    "817-830": {
+      "cells": 212,
+      "gas_support_over_g": {
+        "continuum_profile": 0.9952543103016103,
+        "sampled_profile_centered": 0.8706470391696334,
+        "mapped_hdf_centered": 0.8708969532286542,
+        "actual_godunov": 0.9545850357615598
+      },
+      "difference_mean_over_g": {
+        "sampling_minus_continuum": -0.12460727113197705,
+        "mapped_minus_sampling": 0.00024991405902093425,
+        "godunov_minus_mapped": 0.08368808253290563
+      },
+      "difference_rms_over_g": {
+        "sampling_minus_continuum": 0.16294871276495745,
+        "mapped_minus_sampling": 0.0007723675915454459,
+        "godunov_minus_mapped": 0.11198378815301678
+      },
+      "mapped_pressure_minus_profile_relative_mean": -0.0007089913193483144,
+      "mapped_pressure_minus_profile_relative_rms": 0.0012809121491498912
+    },
+    "830-850": {
+      "cells": 339,
+      "gas_support_over_g": {
+        "continuum_profile": 1.0094170454937268,
+        "sampled_profile_centered": 1.4645892564730916,
+        "mapped_hdf_centered": 1.4642450203863322,
+        "actual_godunov": 0.9854046488355463
+      },
+      "difference_mean_over_g": {
+        "sampling_minus_continuum": 0.45517221097936483,
+        "mapped_minus_sampling": -0.0003442360867596564,
+        "godunov_minus_mapped": -0.47884037155078557
+      },
+      "difference_rms_over_g": {
+        "sampling_minus_continuum": 0.5242799038678082,
+        "mapped_minus_sampling": 0.0038164764133220394,
+        "godunov_minus_mapped": 0.5730833603392094
+      },
+      "mapped_pressure_minus_profile_relative_mean": -0.005226641989716557,
+      "mapped_pressure_minus_profile_relative_rms": 0.005755113186123221
+    },
+    "850-880": {
+      "cells": 502,
+      "gas_support_over_g": {
+        "continuum_profile": 1.0188534908796127,
+        "sampled_profile_centered": 2.2870281201561427,
+        "mapped_hdf_centered": 2.274730044125332,
+        "actual_godunov": 0.7660589530926675
+      },
+      "difference_mean_over_g": {
+        "sampling_minus_continuum": 1.2681746292765297,
+        "mapped_minus_sampling": -0.012298076030810305,
+        "godunov_minus_mapped": -1.5086710910326648
+      },
+      "difference_rms_over_g": {
+        "sampling_minus_continuum": 1.2747287991417207,
+        "mapped_minus_sampling": 0.013534159148013461,
+        "godunov_minus_mapped": 1.5161933758535253
+      },
+      "mapped_pressure_minus_profile_relative_mean": -0.006190995897304537,
+      "mapped_pressure_minus_profile_relative_rms": 0.006786810902058617
+    }
+  }
+}
