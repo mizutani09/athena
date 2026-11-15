@@ -1,5 +1,11 @@
 # FLD paper source integration manifest (WOR-114)
 
+**Historical Phase 0 audit (2026-11-09).** See
+[fld_collapse_source_delta_20261116.md](fld_collapse_source_delta_20261116.md)
+for the independent successor candidate aligned to the verified table-collapse
+source. The earlier pending table-AMR statements below apply only to the
+Draft PR #3 source.
+
 Audit date: 2026-11-09. This document distinguishes a candidate source tree from a validated publication release. No paper release tag has been made.
 
 ## Phase 0 decision

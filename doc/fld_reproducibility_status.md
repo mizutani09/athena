@@ -1,5 +1,10 @@
 # WOR-114 candidate reproducibility status
 
+**Historical audit (2026-11-09).** The successor collapse-source candidate is
+documented in [fld_collapse_source_delta_20261116.md](fld_collapse_source_delta_20261116.md).
+The table-AMR guard below describes the older Draft PR #3 source, not the
+verified first-core source restored by that successor branch.
+
 Candidate parent: `8e0ee6aa2261e5cb4f4b53ca94752c4caa549b80` (WOR-92 first-core branch). The integration branch adds the WOR-95 regression driver and historical artifacts plus the WOR-106 diagnostic time-tolerance option; it does not change `src/`. The PR head, not this document, is the exact candidate source SHA. No publication tag or final paper source has been declared.
 
 The moving WOR-92 branch advanced to `3518882f` during this work. Its new `54657730` Newton line-search change is absent from this source and these tests. Draft PR #3 uses the fixed review base `codex/wor114-fixed-base-8e0ee6aa`; results cannot be transferred to the moving branch without rerunning the numerical gates.
