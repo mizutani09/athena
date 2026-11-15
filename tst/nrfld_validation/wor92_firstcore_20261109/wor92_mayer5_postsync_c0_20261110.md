@@ -95,3 +95,10 @@ before execution and are not part of this path.
 
 XD directory: `/work/mizutaniks/output/fld/collapse/wor92_xd_20261107/ideal_mayer5_postsync_c0_20261110/`.
 Local preflight evidence: `/home/kosuke/simulation/test/rad_nr/wor92_xd_20261107/firstcore_integration_evidence/ideal_mayer5_postsync_c0_20261110/job_339330/`.
+
+**2026-11-15 continuation update:** Job 339331 reached cycle 830 with the
+mass/pressure/Jeans gates intact, then stalled during its next five-node
+restart initialization. It was canceled on user request; the c830 checkpoint
+is preserved. Subsequent one-node tests and guarded job 340116 are described
+in [the recovery record](wor92_mayer5_recovery_20261115.md). The paragraph
+above describes the submission state on 2026-11-10, not the latest outcome.
