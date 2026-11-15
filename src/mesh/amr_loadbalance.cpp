@@ -40,6 +40,7 @@
 void Mesh::LoadBalancingAndAdaptiveMeshRefinement(ParameterInput *pin) {
   int nnew = 0, ndel = 0;
   amr_updated = false;
+  for (int b=0; b<nblocal; ++b) my_blocks(b)->amr_level_changed_ = false;
 
   if (adaptive) {
     UpdateMeshBlockTree(nnew, ndel);
@@ -565,6 +566,7 @@ void Mesh::RedistributeAndRefineMeshBlocks(ParameterInput *pin, int ntot) {
       SetBlockSizeAndBoundaries(newloc[n], block_size, block_bcs);
       newlist(n-nbs) = new MeshBlock(n, n-nbs, newloc[n], block_size, block_bcs, this,
                                      pin, true);
+      newlist(n-nbs)->amr_level_changed_ = (loclist[on].level != newloc[n].level);
       // fill the conservative variables
       if ((loclist[on].level > newloc[n].level)) { // fine to coarse (f2c)
         for (int ll=0; ll<nleaf; ll++) {

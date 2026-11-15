@@ -1,0 +1,56 @@
+{
+  "snapshot": "/home/kosuke/simulation/test/rad_nr/wor92_xd_20261107/firstcore_integration_evidence/ideal_mayer5_postsync_c0_20261110/profiles/c1560_positive_amr.athdf",
+  "method": "same-block centered gradients; exclude outer cell layer",
+  "kappa_R_cm2_g": 1.0,
+  "rho_unit_g_cm3": 1e-18,
+  "bands_au": {
+    "0-7": {
+      "count": 60664,
+      "median": 6.5388498294849384e-06,
+      "p95": 0.00021949772750012858,
+      "p99": 0.002490803236300684,
+      "max": 0.004622000224940859,
+      "gradient_weighted_mean": 6.464271357449739e-06,
+      "fraction_above_1pct": 0.0,
+      "fraction_above_5pct": 0.0,
+      "reduced_gradient_median": 0.006253994761240795,
+      "reduced_gradient_p95": 0.03599280093005995
+    },
+    "7-30": {
+      "count": 99392,
+      "median": 0.005051909029455848,
+      "p95": 0.01195932460288914,
+      "p99": 0.013835808742172382,
+      "max": 0.014375405146971776,
+      "gradient_weighted_mean": 0.0031887784453634286,
+      "fraction_above_1pct": 0.1428887636831938,
+      "fraction_above_5pct": 0.0,
+      "reduced_gradient_median": 0.16952844830023112,
+      "reduced_gradient_p95": 0.2600195388078229
+    },
+    "30-300": {
+      "count": 159744,
+      "median": 0.014361029100775968,
+      "p95": 0.02349880529688808,
+      "p99": 0.024030037244022365,
+      "max": 0.02440004919232286,
+      "gradient_weighted_mean": 0.01858855390700276,
+      "fraction_above_1pct": 0.5763721955128205,
+      "fraction_above_5pct": 0.0,
+      "reduced_gradient_median": 0.2850105286025891,
+      "reduced_gradient_p95": 0.36596915477202024
+    },
+    "300-3000": {
+      "count": 165576,
+      "median": 5.94165386669232e-06,
+      "p95": 0.00022219736923484446,
+      "p99": 0.08104061987951988,
+      "max": 0.13487089554804976,
+      "gradient_weighted_mean": 0.04762143351536227,
+      "fraction_above_1pct": 0.020437744600666764,
+      "fraction_above_5pct": 0.015944339759385417,
+      "reduced_gradient_median": 0.0059619904836443055,
+      "reduced_gradient_p95": 0.036211817931848925
+    }
+  }
+}

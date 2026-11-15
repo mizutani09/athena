@@ -115,6 +115,7 @@ class MeshBlock {
   int gid, lid;
   int cis, cie, cjs, cje, cks, cke, cnghost;
   int gflag;
+  bool amr_level_changed_; // set for blocks created by refinement or derefinement
 
   // user output variables for analysis
   int nuser_out_var;
@@ -322,6 +323,7 @@ class Mesh {
   // defined in either the prob file or default_pgen.cpp in ../pgen/
   void UserWorkAfterLoop(ParameterInput *pin);   // called in main loop
   void UserWorkInLoop(); // called in main after each cycle
+  void UserWorkAfterAMR(); // called after AMR, before boundary resynchronization
 
  private:
   // data

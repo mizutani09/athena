@@ -878,6 +878,13 @@ void Mesh::UserWorkInLoop() {
     std::cout << "[WOR92_OPACITY_ACCEPTED] cycle=" << ncycle
               << " Tmin_K=" << minimum_temperature << std::endl;
 }
+void Mesh::UserWorkAfterAMR() {
+  if (!background_sink_after_implicit || !fix_background_temperature) return;
+  for (int b=0; b<nblocal; ++b) {
+    MeshBlock *pmb = my_blocks(b);
+    if (pmb->amr_level_changed_) ApplyBackgroundHeatSink(pmb);
+  }
+}
 void Mesh::UserWorkAfterLoop(ParameterInput *pin) {
   (void)pin;
   if (guard_accepted_opacity_domain) opacity_table->ReportDiagnostics(std::cout);

@@ -1,0 +1,39 @@
+{
+  "snapshot": "/home/kosuke/simulation/test/rad_nr/wor115_mayer_offset_20261115/highres_c1621.athdf",
+  "mayer_target_cell_mass_msun": 3.33e-07,
+  "mayer_split_threshold_msun": 6.66e-07,
+  "regions": {
+    "r_below_7au": {
+      "cells": 233760,
+      "mass_msun_p10_p50_p90": [
+        2.6171558106818434e-08,
+        9.015162549743094e-08,
+        3.0629405798206193e-07
+      ],
+      "fraction_above_mayer_split_threshold": 0.006262833675564682
+    },
+    "r_below_7au_rho_above_1e-11": {
+      "cells": 111010,
+      "mass_msun_p10_p50_p90": [
+        9.660643705078885e-08,
+        1.5103278087601605e-07,
+        4.383158817569772e-07
+      ],
+      "fraction_above_mayer_split_threshold": 0.013188001080983695
+    },
+    "r_below_7au_rho_above_5e-11": {
+      "cells": 39456,
+      "mass_msun_p10_p50_p90": [
+        8.668284141232964e-08,
+        1.0552001278788278e-07,
+        5.817022395502564e-07
+      ],
+      "fraction_above_mayer_split_threshold": 0.03710462287104623
+    }
+  },
+  "densest_cell": {
+    "rho_g_cm3": 1.0081244000000001e-10,
+    "mass_msun": 1.3025226330963445e-07,
+    "mass_over_mayer_target": 0.39114793786677016
+  }
+}

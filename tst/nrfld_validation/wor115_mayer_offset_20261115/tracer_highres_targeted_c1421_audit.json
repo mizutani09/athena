@@ -1,0 +1,42 @@
+{
+  "source": "/home/kosuke/simulation/test/rad_nr/wor115_mayer_offset_20261115/highres_targeted_c1421.athdf",
+  "cycle": 1421,
+  "bands_au": {
+    "7": {
+      "cells": 233760,
+      "max_tracer": 4.213601378473163e-18,
+      "cells_tracer_ge_half": 0,
+      "mass_weighted_tracer": 3.469627474682534e-18
+    },
+    "30": {
+      "cells": 656176,
+      "max_tracer": 4.213601378473163e-18,
+      "cells_tracer_ge_half": 0,
+      "mass_weighted_tracer": 3.469597675312625e-18
+    },
+    "100": {
+      "cells": 994256,
+      "max_tracer": 4.213601378473163e-18,
+      "cells_tracer_ge_half": 0,
+      "mass_weighted_tracer": 3.469530931880162e-18
+    },
+    "300": {
+      "cells": 1303216,
+      "max_tracer": 4.213601378473163e-18,
+      "cells_tracer_ge_half": 0,
+      "mass_weighted_tracer": 3.469485758828386e-18
+    },
+    "1000": {
+      "cells": 1670280,
+      "max_tracer": 2.240166594447146e-07,
+      "cells_tracer_ge_half": 0,
+      "mass_weighted_tracer": 3.017372754056757e-10
+    },
+    "3000": {
+      "cells": 1972016,
+      "max_tracer": 0.966690182685852,
+      "cells_tracer_ge_half": 63786,
+      "mass_weighted_tracer": 0.030830285471699092
+    }
+  }
+}

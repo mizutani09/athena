@@ -1,0 +1,31 @@
+{
+  "snapshot": "/home/kosuke/simulation/test/rad_nr/wor115_mayer_offset_20261115/baseline_c0.athdf",
+  "method": "same-block centered gradient, interior cells only",
+  "analytic_model": "uniform sphere, radius 3000 au, rho 5.2515854e-18 g/cm3",
+  "acceleration_ratio_measured_over_analytic": {
+    "300-600": {
+      "count": 472,
+      "median": 1.0000103553228163,
+      "p05": 0.9999812210530968,
+      "p95": 1.000027932715892
+    },
+    "600-1000": {
+      "count": 1456,
+      "median": 1.000018018270082,
+      "p05": 0.9999577547994882,
+      "p95": 1.0000508350333626
+    },
+    "1000-1500": {
+      "count": 5696,
+      "median": 0.9999943163789595,
+      "p05": 0.9998490244471747,
+      "p95": 1.0000971069038767
+    },
+    "1500-2500": {
+      "count": 25848,
+      "median": 1.000098877495756,
+      "p05": 0.9995239702391254,
+      "p95": 1.0003271044235909
+    }
+  }
+}

@@ -1,0 +1,39 @@
+{
+  "snapshot": "/home/kosuke/simulation/test/rad_nr/wor115_mayer_offset_20261115/pressure_c1113_firstcross.athdf",
+  "mayer_target_cell_mass_msun": 3.33e-07,
+  "mayer_split_threshold_msun": 6.66e-07,
+  "regions": {
+    "r_below_7au": {
+      "cells": 144008,
+      "mass_msun_p10_p50_p90": [
+        6.058642777859949e-08,
+        1.7602017546480283e-07,
+        5.520607306591299e-07
+      ],
+      "fraction_above_mayer_split_threshold": 0.05823982000999944
+    },
+    "r_below_7au_rho_above_1e-11": {
+      "cells": 93864,
+      "mass_msun_p10_p50_p90": [
+        1.2346526884807257e-07,
+        2.380845524746847e-07,
+        6.15022395744044e-07
+      ],
+      "fraction_above_mayer_split_threshold": 0.07929557657888008
+    },
+    "r_below_7au_rho_above_5e-11": {
+      "cells": 13144,
+      "mass_msun_p10_p50_p90": [
+        5.383063253345687e-07,
+        6.586818749334658e-07,
+        8.871994422325805e-07
+      ],
+      "fraction_above_mayer_split_threshold": 0.4786214242239805
+    }
+  },
+  "densest_cell": {
+    "rho_g_cm3": 1.00152208e-10,
+    "mass_msun": 1.0351938127839998e-06,
+    "mass_over_mayer_target": 3.10869012848048
+  }
+}

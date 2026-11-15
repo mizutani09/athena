@@ -1,0 +1,42 @@
+{
+  "source": "/home/kosuke/simulation/test/rad_nr/wor92_xd_20261107/firstcore_integration_evidence/ideal_mayer5_postsync_c0_20261110/profiles/c1560_positive_amr.athdf",
+  "cycle": 1560,
+  "bands_au": {
+    "7": {
+      "cells": 144008,
+      "max_tracer": 3.4869414083188044e-18,
+      "cells_tracer_ge_half": 0,
+      "mass_weighted_tracer": 3.4694526686998806e-18
+    },
+    "30": {
+      "cells": 379944,
+      "max_tracer": 3.4869414083188044e-18,
+      "cells_tracer_ge_half": 0,
+      "mass_weighted_tracer": 3.469452087932066e-18
+    },
+    "100": {
+      "cells": 589000,
+      "max_tracer": 3.4869414083188044e-18,
+      "cells_tracer_ge_half": 0,
+      "mass_weighted_tracer": 3.46945110303619e-18
+    },
+    "300": {
+      "cells": 757200,
+      "max_tracer": 3.4869414083188044e-18,
+      "cells_tracer_ge_half": 0,
+      "mass_weighted_tracer": 3.469450428977881e-18
+    },
+    "1000": {
+      "cells": 958304,
+      "max_tracer": 2.3760864564792428e-07,
+      "cells_tracer_ge_half": 0,
+      "mass_weighted_tracer": 3.1945606029578524e-10
+    },
+    "3000": {
+      "cells": 1148872,
+      "max_tracer": 0.9654476046562195,
+      "cells_tracer_ge_half": 45275,
+      "mass_weighted_tracer": 0.03081121368793891
+    }
+  }
+}

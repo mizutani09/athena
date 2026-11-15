@@ -1,0 +1,39 @@
+{
+  "snapshot": "/home/kosuke/simulation/test/rad_nr/wor92_xd_20261107/firstcore_integration_evidence/ideal_mayer5_postsync_c0_20261110/profiles/c1560_positive_amr.athdf",
+  "mayer_target_cell_mass_msun": 3.33e-07,
+  "mayer_split_threshold_msun": 6.66e-07,
+  "regions": {
+    "r_below_7au": {
+      "cells": 144008,
+      "mass_msun_p10_p50_p90": [
+        4.3067441488482355e-08,
+        1.408362329219004e-07,
+        4.856785712080388e-07
+      ],
+      "fraction_above_mayer_split_threshold": 0.04284484195322482
+    },
+    "r_below_7au_rho_above_1e-11": {
+      "cells": 79394,
+      "mass_msun_p10_p50_p90": [
+        1.2083845243203295e-07,
+        2.2739232661310878e-07,
+        5.947234936774092e-07
+      ],
+      "fraction_above_mayer_split_threshold": 0.07134040355694385
+    },
+    "r_below_7au_rho_above_5e-11": {
+      "cells": 10682,
+      "mass_msun_p10_p50_p90": [
+        5.410165983418317e-07,
+        6.623228653718998e-07,
+        8.851064598269589e-07
+      ],
+      "fraction_above_mayer_split_threshold": 0.4884853023778319
+    }
+  },
+  "densest_cell": {
+    "rho_g_cm3": 1.00087944e-10,
+    "mass_msun": 1.0345295668675768e-06,
+    "mass_over_mayer_target": 3.106695395998729
+  }
+}

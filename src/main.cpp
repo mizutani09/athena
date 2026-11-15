@@ -660,6 +660,15 @@ int main(int argc, char *argv[]) {
 
     performance.Mark(PerformanceTimer::amr);
     pmesh->LoadBalancingAndAdaptiveMeshRefinement(pinput);
+    // Let problem generators repair newly created AMR cells before boundary sync.
+    static const bool post_amr_background_sink = []() {
+      const char *value = std::getenv("ATHENA_WOR115_POST_AMR_BACKGROUND_SINK");
+      return value != nullptr && std::string(value) == "1";
+    }();
+    if (pmesh->amr_updated && post_amr_background_sink
+        && pinput->DoesParameterExist("problem", "background_sink_after_implicit")
+        && pinput->GetBoolean("problem", "background_sink_after_implicit"))
+      pmesh->UserWorkAfterAMR();
     // Newly refined blocks need the same gas/radiation boundary state as a restart
     // before the next explicit flux calculation or checkpoint.
     if (NRMGFLD_ENABLED && pmesh->amr_updated)

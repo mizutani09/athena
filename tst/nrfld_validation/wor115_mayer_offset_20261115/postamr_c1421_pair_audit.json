@@ -1,0 +1,16 @@
+{
+  "cycle": 1421,
+  "uncorrected_sha256": "3fd398a44b20cfaec4f62972cdb5821a7c0c1e672b378656b65263d6b2115eba",
+  "corrected_sha256": "522de9202f1558ccea9b8d4972a0e205085a0640d46b2ada72fdfabe95c66f0a",
+  "cells": 2269184,
+  "pressure_changed_over_1e-4_cells": 57645,
+  "changed_with_background_tracer_ge_half": 57645,
+  "changed_inside_1000au": 0,
+  "changed_radius_min_au": 2324.45166015625,
+  "changed_radius_max_au": 5829.86328125,
+  "max_density_relative_difference": 0.0,
+  "pressure_ratio_min": 0.5801789295218871,
+  "pressure_ratio_max": 16.526065183057998,
+  "internal_energy_change_over_total": 0.0004111446184784554,
+  "internal_energy_change_over_r_lt_3000au": 0.002261674621249472
+}

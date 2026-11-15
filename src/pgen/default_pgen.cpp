@@ -54,6 +54,11 @@ void __attribute__((weak)) Mesh::UserWorkInLoop() {
   return;
 }
 
+void __attribute__((weak)) Mesh::UserWorkAfterAMR() {
+  // do nothing
+  return;
+}
+
 //========================================================================================
 //! \fn void Mesh::UserWorkAfterLoop(ParameterInput *pin)
 //! \brief Function called after main loop is finished for user-defined work.

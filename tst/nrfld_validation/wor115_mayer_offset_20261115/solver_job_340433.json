@@ -1,0 +1,50 @@
+{
+  "job_id": 340433,
+  "segments": [
+    {
+      "log": "segment_000.log",
+      "newton_total": 11,
+      "newton_converged": 11,
+      "newton_iterations_max": 3,
+      "fgmres_solves": 30,
+      "fgmres_iterations_total": 470,
+      "fgmres_iterations_max": 17,
+      "fgmres_true_relative_max": 1.921551414850767e-08,
+      "fatal_lines": 0
+    },
+    {
+      "log": "segment_001.log",
+      "newton_total": 11,
+      "newton_converged": 11,
+      "newton_iterations_max": 3,
+      "fgmres_solves": 30,
+      "fgmres_iterations_total": 470,
+      "fgmres_iterations_max": 17,
+      "fgmres_true_relative_max": 1.9414147249866902e-08,
+      "fatal_lines": 0
+    },
+    {
+      "log": "segment_002.log",
+      "newton_total": 11,
+      "newton_converged": 11,
+      "newton_iterations_max": 3,
+      "fgmres_solves": 30,
+      "fgmres_iterations_total": 468,
+      "fgmres_iterations_max": 17,
+      "fgmres_true_relative_max": 1.8831939389855967e-08,
+      "fatal_lines": 0
+    }
+  ],
+  "newton_total": 33,
+  "newton_converged": 33,
+  "fgmres_solves": 90,
+  "fgmres_iterations_total": 1408,
+  "fatal_lines": 0,
+  "newton_iterations_max": 3,
+  "fgmres_iterations_max": 17,
+  "fgmres_true_relative_max": 1.9414147249866902e-08,
+  "slurm_state": "COMPLETED",
+  "elapsed_seconds": 374,
+  "exit_code": "0:0",
+  "maxrss_kib": 38570224
+}

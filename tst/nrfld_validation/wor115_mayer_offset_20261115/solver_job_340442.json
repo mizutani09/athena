@@ -1,0 +1,31 @@
+{
+  "job_id": 340442,
+  "segments": [
+    {
+      "log": "launcher.log",
+      "newton_total": 4,
+      "newton_converged": 4,
+      "newton_dt_zero_initialization": 0,
+      "newton_iterations_max": 3,
+      "fgmres_solves": 9,
+      "fgmres_iterations_total": 99,
+      "fgmres_iterations_max": 11,
+      "fgmres_true_relative_max": 1.7581613700887352e-08,
+      "fatal_lines": 0
+    }
+  ],
+  "newton_total": 4,
+  "newton_converged": 4,
+  "newton_dt_zero_initialization": 0,
+  "fgmres_solves": 9,
+  "fgmres_iterations_total": 99,
+  "fatal_lines": 0,
+  "newton_active_total": 4,
+  "newton_iterations_max": 3,
+  "fgmres_iterations_max": 11,
+  "fgmres_true_relative_max": 1.7581613700887352e-08,
+  "slurm_state": "COMPLETED",
+  "elapsed_seconds": 61,
+  "exit_code": "0:0",
+  "maxrss_kib": 47389512
+}
