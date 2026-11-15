@@ -136,6 +136,13 @@ commands are in `$WORK/wor122/prep128_outer_t8.sh` and
   limit, `nlim=2000`, and intermediate restart files at `t=8` and `t=16`.
   Job **340374** will analyze its final state. This extension is about
   5.1 days, still far short of the year-scale science goal.
+  On 2026-11-16 at about 01:26 JST, job **340373** was still running at
+  `t=17.03` (about 4.34 d), with maximum Mach 0.0739 and box radiative
+  luminosity 0.957 Lheat. Its stderr was empty and the saved Newton solves
+  were converged. Valid intermediate restart files had been written. A
+  proposed `t=20` to `t=50` extension must pass a gate on the completed
+  `t=20` HST and shell analysis; its submission was not confirmed after the
+  SSH/VPN connection stopped responding.
 - A targeted convection-seed test raises `velocity_perturb_fraction` from
   1e-4 to 1e-2 while retaining the same 128³ PLM supported setup. Job
   **340236** completed normally at `t=8`; job **340237** measured virtually
