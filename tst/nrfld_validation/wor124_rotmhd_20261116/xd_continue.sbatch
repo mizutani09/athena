@@ -9,7 +9,7 @@
 
 set -euo pipefail
 base=/work/mizutaniks/output/fld/collapse/wor124_rotmhd_20261116
-source_dir="$base/source"
+source_dir="${WOR124_SOURCE_DIR:-$base/source}"
 rst="${WOR124_RESTART:?set WOR124_RESTART}"
 label="${WOR124_LABEL:?set WOR124_LABEL}"
 target="${WOR124_TARGET:-40}"
@@ -45,6 +45,7 @@ cd "$source_dir"
 {
   date -Is
   sha256sum "$rst" bin/athena
+  printf 'source_dir=%s\n' "$source_dir"
   printf 'source_commit=%s\n' "$(cat "$base/source_commit.txt")"
   printf 'target=%s cfl=%s cap=%s restart=%s max=%s mg=%s limiter=%s numlevel=%s\n' \
     "$target" "$cfl" "$cap" "$restart" "$max_iterations" "$mg_vcycles" "$variable_limiter" "$numlevel"

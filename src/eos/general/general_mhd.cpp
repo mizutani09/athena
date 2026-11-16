@@ -18,6 +18,7 @@
 
 // C++ headers
 #include <cmath>   // sqrt()
+#include <limits>
 #include <sstream>
 
 // Athena++ headers
@@ -57,6 +58,13 @@ EquationOfState::EquationOfState(MeshBlock *pmb, ParameterInput *pin) :
       std::stringstream msg;
       msg << "### FATAL ERROR in EquationOfState::EquationOfState" << std::endl
           << "EOS table data uninitialized. Should be initialized by Mesh." << std::endl;
+      ATHENA_ERROR(msg);
+    }
+    temperature_floor_ = pin->GetOrAddReal("hydro", "tfloor", 0.0);
+    if (!std::isfinite(temperature_floor_) || temperature_floor_ < 0.0) {
+      std::stringstream msg;
+      msg << "### FATAL ERROR in EquationOfState::EquationOfState" << std::endl
+          << "hydro/tfloor must be finite and nonnegative" << std::endl;
       ATHENA_ERROR(msg);
     }
   }
@@ -109,10 +117,48 @@ void EquationOfState::ConservedToPrimitive(
         Real pb = 0.5*(SQR(bcc1) + SQR(bcc2) + SQR(bcc3));
         Real ke = 0.5*di*(SQR(u_m1) + SQR(u_m2) + SQR(u_m3));
 
-        // apply pressure/energy floor, correct total energy
-        u_e = (u_e - ke - pb > energy_floor_) ?  u_e : energy_floor_ + ke + pb;
-        // MSBC: if ke >> energy_floor_ then u_e - ke may still be zero at this point due
-        //       to floating point errors/catastrophic cancellation
+        // Apply the energy floor before evaluating the table.  A fixed code-
+        // unit floor may be smaller than an ULP of ke+pb, in which case the
+        // total-energy reconstruction can still leave zero gas energy.
+        const Real gas_before_floor = u_e - ke - pb;
+        if (!(gas_before_floor > energy_floor_)) {
+          Real floor_egas = energy_floor_;
+#if EOS_TABLE_ENABLED
+          if (temperature_floor_ > 0.0) {
+            floor_egas = EgasFromRhoT(u_d, temperature_floor_);
+            if (!std::isfinite(floor_egas) || floor_egas <= 0.0) {
+              std::stringstream msg;
+              msg << "### FATAL ERROR in EquationOfState::ConservedToPrimitive"
+                  << std::endl
+                  << "hydro/tfloor lies outside the EOS table at rho=" << u_d
+                  << ", Tfloor=" << temperature_floor_ << std::endl;
+              ATHENA_ERROR(msg);
+            }
+          }
+#endif
+          u_e = floor_egas + ke + pb;
+        }
+#if EOS_TABLE_ENABLED
+        if (temperature_floor_ > 0.0) {
+          const Real egas = u_e - ke - pb;
+          const Real roundoff_guard = 8.0*std::numeric_limits<Real>::epsilon()
+                                    *(std::abs(ke) + std::abs(pb) + 1.0);
+          const Real temperature = TempFromRhoEg(u_d, egas);
+          if (!std::isfinite(egas) || egas <= energy_floor_ + roundoff_guard
+              || !std::isfinite(temperature) || temperature < temperature_floor_) {
+            const Real floor_egas = EgasFromRhoT(u_d, temperature_floor_);
+            if (!std::isfinite(floor_egas) || floor_egas <= 0.0) {
+              std::stringstream msg;
+              msg << "### FATAL ERROR in EquationOfState::ConservedToPrimitive"
+                  << std::endl
+                  << "hydro/tfloor lies outside the EOS table at rho=" << u_d
+                  << ", Tfloor=" << temperature_floor_ << std::endl;
+              ATHENA_ERROR(msg);
+            }
+            u_e = floor_egas + ke + pb;
+          }
+        }
+#endif
         w_p = PresFromRhoEg(u_d, u_e - ke - pb);
       }
     }
