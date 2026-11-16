@@ -322,10 +322,60 @@ KSP forcing-term approach (https://petsc.org/release/manual/snes/).
 The extended support improves Tgas, radiative luminosity and outer-flow speed
 relative to the matched PPM control, but that run's Mach and outer speed keep
 growing through `t=36`. The PLM extension through `t=24` still accelerates
-and has negligible convective heat transport. The 256³ result remains
-subsonic through `t=17`, but FGMRES must converge past that point before
-extending it. Track the energy source, shell-mean Tgas and Er,
+and has negligible convective heat transport. The 256³ continuation now
+reaches `t=36` with all implicit solves converged. Track the energy source,
+shell-mean Tgas and Er,
 shell velocities, maximum Mach, radiative luminosity and convective-flux
 proxy. The artificial source should be tapered only when the convective
 flux can carry the missing luminosity; a time-based taper alone would be an
 unverified assumption.
+
+### 256³ continuation to t=36 (2026-11-16)
+
+XD **340968** (M-bulk-a, 64 ranks, 1 h 18 min 21 s) and its M-debug
+analysis **340969** both completed with exit code 0. The run reached code
+time 36, or 9.17 days. All 343 FGMRES solves met their 1e-4 target
+(maximum 38 iterations, mean 26.6); all 114 Newton solves converged
+(maximum 4 iterations, largest final max norm 9.01e-9). `stderr.log` is
+empty, and the opacity-domain, clamp, negative, zero, and nonfinite counts
+are all zero. The final restart is 3,171,305,829 bytes and complete.
+
+| Quantity | t=28 (7.13 d) | t=36 (9.17 d) |
+| --- | ---: | ---: |
+| Maximum Mach | 0.12084 | 0.15479 |
+| Mean outward core velocity, r<166 R☉ [km/s] | 0.1327 | 0.1787 |
+| RMS speed, 850–880 R☉ [km/s] | 0.0844 | 0.1083 |
+| Tgas/initial, 813–817 R☉ | 0.99189 | 0.99191 |
+| Tgas/initial, 850–880 R☉ | 1.00029 | 0.99934 |
+| Lrad/Lheat at six box faces | 0.95665 | 0.95661 |
+| 800–830 R☉ convective enthalpy covariance/Lstar | 0.00156 | 0.00197 |
+
+Box gas mass changed by -1.48e-8 relative over t=28→36. These data show a
+continued but smooth speed increase, stable shell-mean temperature, and
+good numerical convergence. They do not yet show the convective transport
+needed to remove preparation heating. The t=36 HST endpoint uses a short
+alignment step, so its instantaneous `Pprep_thermal/Lheat=0.723` is not
+representative. Ordinary-step medians are 0.986 over t=24–28 and 0.979
+over t=32–36; the *integrated* preparation energy over t=28→36 is
+0.946 Lheat times the elapsed code time. Hence there is no evidence that
+convection has replaced the artificial source.
+
+One gated extension, XD **341037**, has been submitted to M-bulk-a to run
+t=36→52 (13.24 days), with a four-hour limit and the same physics and
+FGMRES settings. Its startup gate requires t≥35.99, maximum Mach<0.20,
+and maximum FGMRES iterations over the last 30 solves<100. The single
+dependent M-debug analysis is **341038** (`afterany`). HDF cadence is four
+code time units and restart cadence eight, to limit storage. Files and
+scripts are under `$WORK/wor122/prep256_fgmres_r40_t{36,52}/` and
+`$WORK/wor122/prep256_fgmres_r40_t52{,_analysis}.sh`. The next decision is based on t=52 shell speed, core flow,
+Mach, source power, convective proxy, luminosity, mass, and solver status.
+
+M-debug directional analysis **341039** also completed in 32 s. Its JSON
+is `$WORK/wor122/axis_flow_t28_t36.json`. In the core r<166 R☉, mean
+radial velocity at t=28 was 0.1307 km/s in 15-degree Cartesian-axis cones
+and 0.1342 km/s toward box diagonals; at t=36 these rose to 0.1765 and
+0.1802 km/s. The core expansion remains nearly isotropic by this measure.
+In the outer 830–900 R☉ shell, the axis-cone mean rose from +0.1531 to
++0.1742 km/s while the diagonal-cone mean fell from -0.0369 to -0.0481
+km/s. The outer angular contrast continues to grow, but these shell
+averages do not yet identify where the disturbance originates.
