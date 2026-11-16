@@ -210,6 +210,36 @@ commands are in `$WORK/wor122/prep128_outer_t8.sh` and
   limit; one dependent M-debug analysis job **340672** audits the last HDF
   state and the t=20-to-28 convective-flux proxy. All large outputs stay
   under `$WORK/wor122`.
+  **340671 and 340672 completed**. The run reached `t=28` (7.13 d) in
+  1 h 20 min 48 s. All 393 FGMRES solves met the target (largest 39
+  iterations), all 131 Newton solves converged (largest final L2
+  1.95e-11 and max norm 6.41e-9), stderr was empty, and the opacity-domain
+  check remained clean. Maximum Mach rose from 0.08668 at `t=20` to
+  0.12084 at `t=28`; relative box-mass change over that interval was
+  -1.84e-8, and Lrad/Lheat was 0.95665 at the endpoint. Shell Tgas ratios
+  at `t=28` were 0.99189 (813–817 R_sun) and 1.00029 (850–880 R_sun).
+  The 850–880 R_sun RMS speed rose from 0.0603 to 0.0844 km/s. Core
+  0–166 R_sun mean outward radial speed rose from 0.0791 to 0.1327 km/s.
+  The 800–830 R_sun convective gas enthalpy-flux proxy rose only from
+  0.00114 to 0.00156 Lstar, still far too small to replace artificial
+  preparation heating. This is a smoothly growing disturbance, not a
+  stationary configuration or a solver crash.
+  A further gated 256³ continuation **340968** runs `t=28` to `t=36`
+  (9.17 d) with the same physics and solver settings; dependent analysis
+  **340969** follows. One M-debug analysis job **340971** compares core
+  axis and diagonal radial flow at `t=20` and `t=28` to test whether the
+  growing center signal is directionally localized.
+  **340971 completed**: in 0–166 R_sun, mass-weighted radial velocity
+  along Cartesian-axis cones (within 15 degrees) versus diagonal cones
+  was 0.0778 versus 0.0802 km/s at `t=20`, and 0.1307 versus 0.1342
+  km/s at `t=28`. The growing core expansion is nearly isotropic by this
+  measure. In 830–900 R_sun, axis-cone velocity rose from +0.1203 to
+  +0.1531 km/s, while diagonal-cone velocity changed from -0.0264 to
+  -0.0369 km/s. Thus the outer angular flow is strongly structured even
+  while the core's mean radial flow has little axis preference. This
+  diagnostic does not establish where the outer pattern originates.
+  Compact values and the comparison figure are
+  `wor122_prep_thermal_20261115/axis_flow_t20_t28.json/png`.
 - A targeted convection-seed test raises `velocity_perturb_fraction` from
   1e-4 to 1e-2 while retaining the same 128³ PLM supported setup. Job
   **340236** completed normally at `t=8`; job **340237** measured virtually
