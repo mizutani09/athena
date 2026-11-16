@@ -49,20 +49,100 @@ magnetically dominated. The local binary SHA256 was
 These one-cycle wall times are a *pilot*, not full-collapse throughput;
 the magnetic field already shortens the initial timestep by 2.95×.
 
-## Current gate
+## XD solver gates and limits (2026-11-16)
 
-The combined case at cycle 1 reaches a second-cycle FGMRES true relative
-residual of about `5.95e-6` after the original 300 iterations and aborts.
-This occurs in both continuous c0→c2 and c1-checkpoint→c2 runs, so it is
-not a restart-specific discrepancy. From the same c1 restart, the 80/600
-MG3 settings previously used for long collapse reach c2: two active Newton
-calls converge, three FGMRES solves have at most 295 iterations and true
-relative residual `1.996e-8`; the one-cycle continuation took 183 s on the
-local 2-rank host. This establishes a short restart gate, not yet sustained
-collapse throughput. **No long magnetized collapse is validated by this
-short gate.**
+The XD Intel/MPI/HDF5 binary SHA256 is
+`f4ba920bb57839a0849b922393062847e708627226a3915f5b2b6cc6a877c588`.
+The source tree staged on XD is `cff00992b14e5907d52dc22d8197b7fe98a0625f`.
+All jobs use 64 MPI ranks on one node unless noted; source, inputs, tables,
+full logs, resources and HDF outputs are under
+`/work/mizutaniks/output/fld/collapse/wor124_rotmhd_20261116/`.
+
+- The 129 μG field with and without rotation passed three cycles on XD
+  (`340724`, `340725`) but both stopped in the fourth when FGMRES reached
+  600 iterations; true relative residuals were `5.52e-5` and `1.85e-5`,
+  respectively. Restarting the same state reproduced the latter failure.
+  Reducing CFL to 0.1–0.2 cleared that one step but did not sustain later
+  steps. Five MG V-cycles or a 160-vector Krylov restart also helped at
+  individual steps without providing sustained convergence. These are
+  **unsolved strong-field pilot conditions**.
+- The initial 129 μG field shortens the CFL 0.3 timestep from 31.11 to
+  10.54 code units (factor 2.95), before its additional linear-solver cost.
+  One code time unit is 14.991 years. Our field is *ideal MHD*; Mayer's
+  §6.2 calculation uses non-ideal MHD.
+- The opt-in FGMRES absolute-norm diagnostic at equal initial timestep
+  found a combined-case second Newton right-hand-side L2 norm of `0.11477`
+  and a 600-iteration absolute residual of `5.81e-6` (relative `5.06e-5`).
+  Setting the FGMRES target globally to `1e-4` made Newton exhaust its
+  backtracking immediately (`340770`), so this relaxation was rejected.
+  The diagnostic-only source edit was reverted; the separate binary and
+  logs remain under `source_absdiag/` and `pdebug_abs_B/` on XD.
+- Halving B0 to 64.5 μG still stopped before cycle 30 (`340758`). At
+  B0=32.25 μG (one quarter of Mayer's field strength), the
+  rotation+field case reached cycle 30 (`340773`) with CFL 0.3, FGMRES
+  160/600 MG3 and bounded inexact cap `1e-6`: 117 s, 63 linear solves,
+  maximum 600 iterations, maximum accepted true relative residual
+  `1.30e-7`, all 30 Newton solves converged, and Slurm MaxRSS 4.86 GB.
+  Gas mass changed by `-3.2e-15` relative, `divB_max=6.34e-18`, EOS
+  outside cells 0, negative gas-energy cells 0, and HDF total-energy
+  decomposition error at cycle 30 was at most `3.92e-7` across 61,440 cells.
+- Rotation alone passed cycle 5 with the original 80-vector restart, then
+  stalled at cycle 6 (`340756`). A 160-vector restart from that checkpoint
+  reached cycle 30 (`340772`, 98 s for 25 cycles, all 26 active Newton
+  solves converged). Its cycle-30 Jeans minimum was 25.19 cells; the weak
+  field case's was 27.23 cells. The two conditions were then continued
+  at increased AMR resolution.
+
+The matched 30-cycle XD run `340796` used one M-test-a node, 64 MPI ranks,
+one binary, CFL 0.3, 160/600 MG3, and cap `1e-6`. All three cases completed,
+with 30 converged Newton solves each. Their largest final Newton component
+residuals were `4.84e-6`, `4.51e-6`, and `3.80e-6` (requirement `1e-5`).
+This is an **early-collapse, level-3 performance comparison**, where every
+case still has more than 24 cells per Jeans length.
+
+| Case | B0 | Wall for 30 cycles | Simulated code time | Wall per code time | Sum/max FGMRES iterations | Max true relative residual |
+|---|---:|---:|---:|---:|---:|---:|
+| No rotation, no B | 0 | 83 s | 830.18 | 0.100 s | 5953 / 208 | 6.92e-8 |
+| Rotation only | 0 | 130 s | 810.47 | 0.160 s | 9780 / 590 | 8.03e-8 |
+| Rotation + weak B | 32.25 μG | 116 s | 630.03 | 0.184 s | 8926 / 600 | 2.45e-7 |
+
+Thus rotation costs 1.57× wall time per 30 cycles, and the weak-field
+combined case costs 1.40×, relative to the matched baseline. Per *simulated
+physical time* the factors are 1.60× and 1.84× because the magnetic CFL
+step is shorter. These ratios describe this early, low-resolution setup;
+they do not predict first-core throughput after AMR growth.
+
+**Resolution correction.** The short comparison input allows only two
+additional AMR levels (actual maximum level 3). Low-resolution exploratory
+jobs `340775` (rotation) and `340776` (32.25 μG plus rotation) completed to
+code time 2100 but first fell below 16 cells per Jeans length at times
+1359.53 and 1364.58. Their terminal Jeans minima were only 1.19 and 1.20.
+Their later physical states are **not valid first-core results**; the jobs
+provide only solver/performance evidence before that resolution limit.
+
+Starting instead from the cycle-30 checkpoints (Jeans minima above 25),
+`mesh/numlevel=11` allowed both cases to reach cycle 40 (`340787`, `340788`).
+Each had 848 leaf MeshBlocks, actual maximum level 4, and Jeans minima
+46.26 and 47.19. The rotation continuation took 199 s and used 10.79 GB
+Slurm MaxRSS; the weak-field continuation took 142 s and used 10.95 GB.
+The latter's cycle-40 HDF audit found no negative gas energy or EOS-domain
+cells among 434,176 cells and at most `4.56e-7` energy-decomposition error.
+Its user-history gas mass fell by `5.70e-7` relative over ten steps;
+`divB_max` stayed below `1.36e-17`. These are measured budgets to follow,
+not a claim of exact AMR MHD conservation.
+
+The one-node segmented runner passed its cycle-40→50 smoke gate (`340793`):
+848 MeshBlocks, Jeans minimum 49.69, no opacity-domain errors. The two-node
+rotation and three-node weak-field high-AMR jobs are `340791` and `340792`.
+Together they request five nodes. Each ten-cycle segment records the restart,
+elapsed time, MeshBlock count, density, Jeans resolution, temperature, mass,
+angular momentum and magnetic divergence. They stop at the first-core
+density candidate (`rho_max≥1e-10 g cm^-3`), Jeans minimum below 16,
+opacity-domain issue, solver failure, target time, or wall budget. Their
+status and `progress.csv` are under `high_amr_long/` on XD. The 129 μG
+strong-field case remains open separately from this weak-field run.
 
 `collapse_rotmhd_pilot_20261116.py` repeats the local gate;
 `collapse_rotmhd_energy_audit_20261116.py` checks HDF energy closure;
-`xd_mtest_fourway.sbatch` is the next short, matched-condition XD job using
-80/600 MG3 for all four variants.
+`xd_mtest_fourway.sbatch`, `xd_continue.sbatch`, and
+`xd_high_amr_segments.sbatch` define the XD gates and continuation.
