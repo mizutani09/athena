@@ -489,9 +489,14 @@ void Mesh::InitUserMeshData(ParameterInput *pin) {
   enable_rotation=pin->GetOrAddBoolean("problem","enable_rotation",true);
   enable_magnetic_field=pin->GetOrAddBoolean("problem","enable_magnetic_field",true);
 #if EOS_TABLE_ENABLED
-  if (enable_magnetic_field) {
+  // The validated first-core table run had B=0. Keep that default gate, but
+  // permit an explicitly marked MHD pilot for controlled solver validation.
+  const bool table_mhd_pilot=pin->GetOrAddBoolean(
+      "problem","enable_tabular_mhd_pilot",false);
+  if (enable_magnetic_field && !table_mhd_pilot) {
     std::stringstream msg;
-    msg << "### FATAL ERROR in protostellar_core_fld: table EOS pilot requires B=0.";
+    msg << "### FATAL ERROR in protostellar_core_fld: table EOS with B requires "
+        << "problem/enable_tabular_mhd_pilot=true and separate validation.";
     ATHENA_ERROR(msg);
   }
 #endif
