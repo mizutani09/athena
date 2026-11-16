@@ -243,8 +243,15 @@ def review_html(out):
          "two maxima at each output time; it is not a trajectory of one fluid element."),
         ("最終 xy 断面（補助図候補）", "collapse_final_xy_slice",
          "Native leaf-cell density and table-EOS gas temperature in the cell-centered plane "
-         "containing z=0, rasterized without smoothing. The field of view is 64×64 au."),
+         "containing z=0, rasterized without smoothing. The field of view is 64×64 au. "
+         "The angular pattern is present in native cell data; see the directional audit below."),
     ]
+    if (out / "directional_anisotropy.png").is_file():
+        figures.append(("軸方向・斜め方向の差（診断）", "directional_anisotropy",
+                        "Native z=0 cells averaged in 0.5 au rings and 10-degree wedges. "
+                        "The temperature difference is a few percent; the density difference "
+                        "is much larger near the first-core shock and outside it. "
+                        "This does not by itself identify the numerical source."))
     sections = []
     for title, stem, caption in figures:
         data = base64.b64encode((out / (stem + ".png")).read_bytes()).decode("ascii")
@@ -261,13 +268,14 @@ showing that the specified table EOS and variable opacity configuration reached 
 No matched-condition agreement with Mayer et al. is claimed.</p>"""
     html += "".join(sections)
     html += """<section><h2>図を選ぶときの注意</h2><ul>
-<li>主図は半径分布と進化の2枚を推奨。xy断面は3D形状を示したい場合の補助図。</li>
+<li>主図は半径分布と進化の2枚を推奨。半径平均は方向差を隠すため、球対称性の精度を示す図ではない。</li>
+<li>xy断面の四回対称パターンは元セルにも存在する。温度は数％、一部の半径では密度が20–30％以上異なる。原因と収束性は未確定で、現時点では診断図として扱う。</li>
 <li>背景ガス・放射場は固定処理があるため、全エネルギー保存を主張しない。</li>
 <li>線形FGMRESはbounded-inexact cap 1e−7を使用。Newton収束、Jeans解像度、質量保存は別途確認済み。</li>
 <li>第一コアまでを対象とし、H₂解離・第二コアは範囲外。</li>
 </ul><p>構図の参考：<a href="https://arxiv.org/html/2510.12620v4">Mayer et al. (2025), Figs. 7–9</a>、
 <a href="https://arxiv.org/html/1501.04102v1">Tomida et al. (2015), Figs. 1, 2, 4</a>。
-定量比較ではなく図の診断量を参考にした。</p><p>入力データと SHA256 は <code>manifest.json</code> に記録。</p></section>
+定量比較ではなく図の診断量を参考にした。<a href="https://arxiv.org/html/1102.1216">Commerçon et al. (2011), Fig. 6</a> は非回転3D AMR例で、密度の角度方向の散らばりが小さいと報告している。今回の方向差は同等の球対称性を示すものではない。</p><p>詳細は <a href="directional_audit.md">方向差の監査</a>。入力データと SHA256 は <code>manifest.json</code> に記録。</p></section>
 </body></html>"""
     (out / "review.html").write_text(html)
 
