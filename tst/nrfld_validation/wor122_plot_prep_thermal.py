@@ -52,7 +52,9 @@ def main():
     prep256 = ROOT / "prep256_outer_t3/wor122_prep256_outer_t3.hst"
     if prep256.exists():
         cases["256³ PPM gas, outer 790–900 R$_\\odot$"] = np.loadtxt(prep256)
-        followup256 = ROOT / "prep256_fgmres_t20/wor122_prep256_fgmres_t20.hst"
+        followup256 = ROOT / "prep256_fgmres_r40_t20/wor122_prep256_fgmres_r40_t20.hst"
+        if not followup256.exists():
+            followup256 = ROOT / "prep256_fgmres_t20/wor122_prep256_fgmres_t20.hst"
         if not followup256.exists():
             followup256 = ROOT / "prep256_outer_t20c/wor122_prep256_outer_t20c.hst"
         if not followup256.exists():

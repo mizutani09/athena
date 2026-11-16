@@ -167,7 +167,11 @@ commands are in `$WORK/wor122/prep128_outer_t8.sh` and
   likely cause of the immediate restart-probe failure. Job **340609**
   isolates the larger Krylov restart width by running from `t=16` to
   `t=17.25` with settings 40/500/**1** and HDF saved around the original
-  failure point.
+  failure point. Dependent job **340612** extends to `t=20` only if 340609
+  completes normally, maximum Mach remains below 0.15, and the last 30
+  linear solves all use fewer than 200 iterations. Dependent analysis
+  **340613** then checks shells and the convective-flux proxy. No automatic
+  longer run is scheduled before that gate.
 - A targeted convection-seed test raises `velocity_perturb_fraction` from
   1e-4 to 1e-2 while retaining the same 128³ PLM supported setup. Job
   **340236** completed normally at `t=8`; job **340237** measured virtually
