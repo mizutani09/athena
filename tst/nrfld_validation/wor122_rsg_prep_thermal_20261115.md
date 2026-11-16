@@ -170,8 +170,19 @@ commands are in `$WORK/wor122/prep128_outer_t8.sh` and
   failure point. Dependent job **340612** extends to `t=20` only if 340609
   completes normally, maximum Mach remains below 0.15, and the last 30
   linear solves all use fewer than 200 iterations. Dependent analysis
-  **340613** then checks shells and the convective-flux proxy. No automatic
-  longer run is scheduled before that gate.
+  **340613** then checks shells and the convective-flux proxy. A separate
+  diagnostic job **340619**, dependent on completion of 340609, uses the
+  same `t=16` checkpoint with restart 20, maximum 500 iterations and one MG
+  V-cycle through `t=17.25`. Comparing 340619 with 340609 distinguishes
+  the effect of a larger Krylov restart width from merely raising the
+  iteration cap. **340609 completed normally** at `t=17.25` in 20 min;
+  maximum Mach was 0.07483, all 96 linear solves met the 1e-4 true-residual
+  target, the largest solve took 37 iterations, and the last 30 averaged
+  25.1 iterations (maximum 36). The opacity-domain check remained clean.
+  The Krylov basis memory reported on rank 0 rose from 85,983,232 to
+  169,869,312 bytes when the restart width doubled from 20 to 40. Job
+  **340612** started its gated continuation to `t=20`. No automatic longer
+  run is scheduled before that gate.
 - A targeted convection-seed test raises `velocity_perturb_fraction` from
   1e-4 to 1e-2 while retaining the same 128³ PLM supported setup. Job
   **340236** completed normally at `t=8`; job **340237** measured virtually
