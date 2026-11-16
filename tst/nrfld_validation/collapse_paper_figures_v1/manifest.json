@@ -1,0 +1,35 @@
+{
+  "source_commit": "ff60f8f07842acb00e7753932bcfe30867e3a66e",
+  "solver_src_tree": "c4ab200383c7317a2feccc50aa9578d5cf71478d",
+  "input_sha256": "aad81db83087d27351db59ef70b9b14a68e8a2dc3e6fc164a4cb73e8d413e7e6",
+  "sha256": {
+    "history": "0b3c78fde38f3525a7d9cedfd291e9b8caa89a67c524151816b4201c8f01d806",
+    "profile": "46f4225864cadf75a49b9ad7cc62c69bb1b034f54eb4db4a8c9683be722bc9cd",
+    "hdf": "13767189008f53ffb9e802b7ef66dcd97faff7045adbdd59051d19269a0354ac",
+    "eos": "742a3456923d4c7056c3705accbcc793af3e0c79408a2f597a0cd9271b13ba43"
+  },
+  "evolution": {
+    "unique_history_samples": 1081,
+    "last_time_kyr": 29.1104622110745,
+    "last_rho_max": 1.04414476146472e-10,
+    "last_Tgas_max": 434.5238142876649
+  },
+  "radial": {
+    "radial_bins_shown": 33,
+    "shock_interval_xaxis_au": [
+      7.507,
+      7.874
+    ]
+  },
+  "slice": {
+    "slice_cycle": 1080,
+    "plane": "cell containing z=0",
+    "extent_au": 32.0,
+    "pixels_per_axis": 512,
+    "eos_outside_table": 0,
+    "rho_min": 1.52642255859375e-14,
+    "rho_max": 1.0441448e-10,
+    "T_min": 28.229553191963248,
+    "T_max": 434.5237910117575
+  }
+}
