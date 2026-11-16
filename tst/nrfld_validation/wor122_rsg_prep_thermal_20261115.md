@@ -217,6 +217,9 @@ short output-alignment steps from instantaneous power/luminosity curves.
 
 ### Inexact Newton / FGMRES strategy (2026-11-16)
 
+The cross-problem convergence and time-to-solution strategy is tracked in
+Linear WOR-123; this report holds the RSG-specific evidence and job results.
+
 The 256³ RSG input requests a 1e-4 **relative Schur-system** FGMRES
 residual, but accepts a time step only after the **full gas and radiation**
 Newton residual has L2 and maximum norms both below 1e-8. The current
