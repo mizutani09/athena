@@ -10,7 +10,7 @@
 
 set -euo pipefail
 base=/work/mizutaniks/output/fld/collapse/wor124_rotmhd_20261116
-source_dir="$base/source"
+source_dir="${WOR124_SOURCE_DIR:-$base/source}"
 reader="$base/scripts/read_restart.py"
 initial_rst="${WOR124_RESTART:?set WOR124_RESTART}"
 initial_cycle="${WOR124_INITIAL_CYCLE:-40}"
@@ -46,6 +46,8 @@ stop_epoch=$((started + 23*3600 + 30*60))
 {
   date -Is
   printf 'source_commit=%s\n' "$(cat "$base/source_commit.txt")"
+  printf 'source_dir=%s\n' "$source_dir"
+  sha256sum "$source_dir/src/eos/general/general_mhd.cpp"
   printf 'label=%s ranks=%s initial_cycle=%s max_amr_level=11 cfl=0.3 fgmres=160/600_mg3 cap=1e-6\n' \
     "$label" "$SLURM_NTASKS" "$initial_cycle"
   sha256sum "$initial_rst" "$reader" bin/athena
@@ -54,7 +56,7 @@ stop_epoch=$((started + 23*3600 + 30*60))
   module list 2>&1
   env | grep '^ATHENA_' | sort
 } > "$job/provenance.txt"
-printf 'segment,start_cycle,end_cycle,meshblocks,time,jeans_min,rho_max,Tgas_max,gas_mass,divB_max,Lz,level_max,elapsed_seconds,exit_code,reason\n' \
+printf 'segment,start_cycle,end_cycle,meshblocks,time,jeans_min,rho_max,Tgas_max,gas_mass,divB_max,Lz,Eint_gas_cgs,Ekin_gas_cgs,Emag_cgs,Erad_tot_cgs,level_max,elapsed_seconds,exit_code,reason\n' \
   > "$job/progress.csv"
 
 segment=0
@@ -102,8 +104,8 @@ while true; do
   fi
   after=$(python3 "$reader" "$rst" --field cycle)
   blocks=$(python3 "$reader" "$rst" --field meshblocks)
-  read -r simtime jeans rho tgas gasmass divb lz level < <(
-    awk 'END {print $1,$35,$16,$20,$23,$24,$25,$36}' "$hst")
+  read -r simtime jeans rho tgas gasmass divb lz eint ekin emag erad level < <(
+    awk 'END {print $1,$35,$16,$20,$23,$24,$25,$31,$32,$33,$34,$36}' "$hst")
   reason=CONTINUE
   if (( code != 0 )) || grep -q 'FATAL ERROR' "$log"; then
     reason=FAIL_SOLVER
@@ -122,9 +124,7 @@ while true; do
   elif python3 -c 'import sys; sys.exit(0 if float(sys.argv[1]) >= 10000 else 1)' "$simtime"; then
     reason=TARGET_TIME
   fi
-  printf '%d,%d,%d,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%d,%s\n' \
-    "$segment" "$current" "$after" "$blocks" "$simtime" "$jeans" "$rho" \
-    "$tgas" "$gasmass" "$divb" "$lz" "$level" "$elapsed" "$code" "$reason" \
+  printf '%s\n' "$segment,$current,$after,$blocks,$simtime,$jeans,$rho,$tgas,$gasmass,$divb,$lz,$eint,$ekin,$emag,$erad,$level,$elapsed,$code,$reason" \
     >> "$job/progress.csv"
   printf 'SEGMENT=%d CYCLE=%d TIME=%s BLOCKS=%s JEANS=%s RHO=%s REASON=%s\n' \
     "$segment" "$after" "$simtime" "$blocks" "$jeans" "$rho" "$reason" \

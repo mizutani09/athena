@@ -226,7 +226,12 @@ errors, and every active Newton solve converged.
 Local two-rank one-cycle rotation and 129 μG combined pilots both passed with
 the trial and retained their original largest FGMRES iteration counts (236
 and 186). Sequential local rotation wall times were 82.93 s for the original
-and 80.46 s for the trial; this short gate shows no measurable slowdown.
+and 80.46 s for the trial; combined wall times were 100.04 and 99.64 s.
+The respective density, temperature, mass, magnetic-field and linear-residual
+outputs match. The trial's combined HDF has zero negative-gas or EOS-domain
+cells and a maximum energy-decomposition error of `2.57e-6`, matching the
+original output at single precision. This short gate shows no measurable
+slowdown.
 Exact-rank 128-MPI trial jobs `340992` (CFL 0.1) and `341000` (original CFL
 0.3) are queued. The trial remains isolated until those tests and an energy
 budget review are complete. The strong-field FGMRES failure is a separate
