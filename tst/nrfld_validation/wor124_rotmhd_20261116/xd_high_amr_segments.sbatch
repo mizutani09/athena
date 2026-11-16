@@ -13,6 +13,7 @@ base=/work/mizutaniks/output/fld/collapse/wor124_rotmhd_20261116
 source_dir="$base/source"
 reader="$base/scripts/read_restart.py"
 initial_rst="${WOR124_RESTART:?set WOR124_RESTART}"
+initial_cycle="${WOR124_INITIAL_CYCLE:-40}"
 label="${WOR124_LABEL:?set WOR124_LABEL}"
 job="$base/high_amr_long/${label}_job_${SLURM_JOB_ID}"
 mkdir -p "$job/output"
@@ -35,8 +36,9 @@ export ATHENA_WOR92_POSITIVE_NR_GHOST=2
 cd "$source_dir"
 
 if [[ ! -s "$initial_rst" ]] ||
-   [[ $(python3 "$reader" "$initial_rst" --field cycle) != 40 ]]; then
-  printf 'FAIL_INVALID_C40_CHECKPOINT path=%s\n' "$initial_rst" > "$job/status.txt"
+   [[ $(python3 "$reader" "$initial_rst" --field cycle) != "$initial_cycle" ]]; then
+  printf 'FAIL_INVALID_CHECKPOINT expected_cycle=%s path=%s\n' \
+    "$initial_cycle" "$initial_rst" > "$job/status.txt"
   exit 1
 fi
 started=$(date +%s)
@@ -44,8 +46,8 @@ stop_epoch=$((started + 23*3600 + 30*60))
 {
   date -Is
   printf 'source_commit=%s\n' "$(cat "$base/source_commit.txt")"
-  printf 'label=%s ranks=%s max_amr_level=11 cfl=0.3 fgmres=160/600_mg3 cap=1e-6\n' \
-    "$label" "$SLURM_NTASKS"
+  printf 'label=%s ranks=%s initial_cycle=%s max_amr_level=11 cfl=0.3 fgmres=160/600_mg3 cap=1e-6\n' \
+    "$label" "$SLURM_NTASKS" "$initial_cycle"
   sha256sum "$initial_rst" "$reader" bin/athena
   sha256sum data/eos/protostellar_tomida2015_material.tab \
             data/opacity/protostellar_semenov2003_nrm_c_a.h5

@@ -133,14 +133,58 @@ not a claim of exact AMR MHD conservation.
 
 The one-node segmented runner passed its cycle-40→50 smoke gate (`340793`):
 848 MeshBlocks, Jeans minimum 49.69, no opacity-domain errors. The two-node
-rotation and three-node weak-field high-AMR jobs are `340791` and `340792`.
-Together they request five nodes. Each ten-cycle segment records the restart,
+rotation high-AMR job is `340791`. The three-node weak-field job `340792` was
+cancelled before starting after the 129 μG combined case passed its high-AMR
+cycle-20 gate; the strong-field combined long job `340822` now has priority.
+Together the rotation and strong-field jobs request five nodes. Each ten-cycle
+segment records the restart,
 elapsed time, MeshBlock count, density, Jeans resolution, temperature, mass,
 angular momentum and magnetic divergence. They stop at the first-core
 density candidate (`rho_max≥1e-10 g cm^-3`), Jeans minimum below 16,
 opacity-domain issue, solver failure, target time, or wall budget. Their
 status and `progress.csv` are under `high_amr_long/` on XD. The 129 μG
-strong-field case remains open separately from this weak-field run.
+strong-field case remains a guarded exploratory ideal-MHD calculation, not a
+non-ideal MHD reproduction of Mayer et al.
+
+### 129 μG high-AMR gate and long job
+
+With `mesh/numlevel=11`, B0=129 μG, CFL 0.3, FGMRES 160/600 with MG3,
+and bounded inexact cap `1e-6`, the magnetic-only case passed cycle 10
+(`340807`, 566 s). The rotation+magnetic case passed cycle 10 (`340810`,
+722 s) and cycle 20 (`340815`, 506 s for cycles 10–20). The low-AMR
+cycle-4 failure did not recur in either high-AMR case. The combined run's
+first ten active Newton solves converged; its 30 FGMRES solves used 6645
+iterations in total, at most 514 in one solve, and true relative residual
+at most `2.00e-8`. At cycle 10, the HDF audit of 491,520 cells found no
+negative gas energy or EOS-domain cells and at most `2.58e-6` energy closure
+error at single precision. Its maximum magnetic-to-gas-energy ratio was
+18.73, illustrating why the MHD energy-closure correction is needed.
+
+The combined cycle-10→20 gate ended with 960 MeshBlocks, level 4, Jeans
+minimum 60.52, `rho_max=5.28e-18 g cm^-3`, gas mass stable to history
+precision, `divB_max=3.83e-17`, and no opacity-domain or solver errors.
+Its 30 FGMRES solves used 4617 iterations in total, at most 199 in one
+solve, and true relative residual at most `2.00e-8`. This is an early
+collapse gate; it does not establish behavior at first-core density.
+
+Job `340822` continues the combined case from the verified cycle-20
+checkpoint on three M-large-a nodes and 192 MPI ranks for at most 24 h.
+It uses the same guarded ten-cycle segments and `mesh/numlevel=11` as the
+rotation job, allowing direct comparison of their high-AMR progress and
+resources. The script's `WOR124_INITIAL_CYCLE=20` check prevents an
+accidental start from another restart. The queued start estimate was
+2026-11-16 18:04 JST. The rotation-only job had reached cycle 300,
+actual level 10, Jeans minimum 31.96, and `rho_max=3.10e-14 g cm^-3`
+without a solver failure by the time of this submission.
+
+At submission, a three-node P-large-a 24-h job was estimated to begin
+2026-11-17 03:58 JST, whereas M-large-a was estimated to begin the same
+evening. M-large-a's per-node memory limit is 117,760 MB; the measured
+one-node cycle-10 combined job's Slurm step MaxRSS was 11.72 GB. The
+long jobs record memory in Slurm accounting for later review. Pending
+P-debug continuations `340820` and `340821`, the magnetic-only M-test
+continuation `340811`, and the redundant weak-field long job `340792`
+were cancelled before execution to avoid duplicate resource use.
 
 `collapse_rotmhd_pilot_20261116.py` repeats the local gate;
 `collapse_rotmhd_energy_audit_20261116.py` checks HDF energy closure;
