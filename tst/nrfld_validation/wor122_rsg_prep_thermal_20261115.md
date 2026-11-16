@@ -132,17 +132,23 @@ commands are in `$WORK/wor122/prep128_outer_t8.sh` and
   the restart layout check and its dependent analysis **340372** was canceled.
   The original job also had an absolute cycle limit `nlim=250`, which would
   have stopped it near `t≈13` even with a longer wall time. Job **340373**
-  now re-runs from the valid `t=3` restart to `t=20` with a 6-hour wall
-  limit, `nlim=2000`, and intermediate restart files at `t=8` and `t=16`.
-  Job **340374** will analyze its final state. This extension is about
-  5.1 days, still far short of the year-scale science goal.
-  On 2026-11-16 at about 01:26 JST, job **340373** was still running at
-  `t=17.03` (about 4.34 d), with maximum Mach 0.0739 and box radiative
-  luminosity 0.957 Lheat. Its stderr was empty and the saved Newton solves
-  were converged. Valid intermediate restart files had been written. A
-  proposed `t=20` to `t=50` extension must pass a gate on the completed
-  `t=20` HST and shell analysis; its submission was not confirmed after the
-  SSH/VPN connection stopped responding.
+  re-ran from the valid `t=3` restart with a 6-hour wall limit and
+  `nlim=2000`. It reached `t=17.09` (about 4.35 d) before FGMRES failed:
+  200 iterations left relative residual 0.00195 against a 1e-4 target,
+  with no reported breakdown. The preceding three solves took 63, 119,
+  and 200 iterations, showing an abrupt loss of convergence. Its last HST
+  at `t=17.03` had maximum Mach 0.0739, radiative luminosity 0.957 Lheat,
+  and relative box-mass change -2.5e-8. The 128³ PPM run had maximum Mach
+  about 0.245 at the same time; the 256³ disturbance is much smaller but
+  still growing. The `t=16` restart is complete and available. Job
+  **340374** was canceled because its dependency could not be satisfied.
+  A `t=20` to `t=50` extension was not submitted during the SSH outage.
+- Job **340590** restarts the valid `t=16` state with FGMRES restart 40,
+  maximum 500 iterations, and two MG preconditioner V-cycles per Krylov
+  iteration (formerly 20/200/1). It runs to `t=17.25`, saves HDF states
+  around the failure, and checks whether a stronger linear solve passes
+  the previously failing time. This changes solver settings only; the
+  thermal preparation source and physical initial data are unchanged.
 - A targeted convection-seed test raises `velocity_perturb_fraction` from
   1e-4 to 1e-2 while retaining the same 128³ PLM supported setup. Job
   **340236** completed normally at `t=8`; job **340237** measured virtually
@@ -178,8 +184,9 @@ short output-alignment steps from instantaneous power/luminosity curves.
 The extended support improves Tgas, radiative luminosity and outer-flow speed
 relative to the matched PPM control, but that run's Mach and outer speed keep
 growing through `t=36`. The PLM extension through `t=24` still accelerates
-and has negligible convective heat transport. The 256³ result is promising
-at `t=3` but needs the `t=20` extension. Track the energy source, shell-mean Tgas and Er,
+and has negligible convective heat transport. The 256³ result remains
+subsonic through `t=17`, but FGMRES must converge past that point before
+extending it. Track the energy source, shell-mean Tgas and Er,
 shell velocities, maximum Mach, radiative luminosity and convective-flux
 proxy. The artificial source should be tapered only when the convective
 flux can carry the missing luminosity; a time-based taper alone would be an
