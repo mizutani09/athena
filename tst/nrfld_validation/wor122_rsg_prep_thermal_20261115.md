@@ -149,6 +149,12 @@ commands are in `$WORK/wor122/prep128_outer_t8.sh` and
   around the failure, and checks whether a stronger linear solve passes
   the previously failing time. This changes solver settings only; the
   thermal preparation source and physical initial data are unchanged.
+  Job **340593** analyzes the last readable HDF state whether the probe
+  succeeds or fails. If the probe succeeds with maximum Mach below 0.15,
+  dependent job **340595** continues to `t=20` with the same FGMRES
+  settings; job **340596** then measures shell evolution and the convective
+  enthalpy-flux proxy. Both continuation and analysis jobs are skipped if
+  their prerequisites fail.
 - A targeted convection-seed test raises `velocity_perturb_fraction` from
   1e-4 to 1e-2 while retaining the same 128³ PLM supported setup. Job
   **340236** completed normally at `t=8`; job **340237** measured virtually
