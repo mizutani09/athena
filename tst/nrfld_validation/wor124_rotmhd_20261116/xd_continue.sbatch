@@ -24,7 +24,12 @@ job="$base/continuation/${label}_job_${SLURM_JOB_ID}"
 mkdir -p "$job/output"
 module use /opt/modulefiles /work/opt/intel/modulefiles /work/opt/local_oneapi/modulefiles
 module load intel/2024.0 mpi/2021.13 hdf5-parallel/1.14.5
-export I_MPI_FABRICS=shm OMP_NUM_THREADS=1
+if (( SLURM_JOB_NUM_NODES > 1 )); then
+  export I_MPI_FABRICS=shm:ofi
+else
+  export I_MPI_FABRICS=shm
+fi
+export OMP_NUM_THREADS=1
 export ATHENA_NRFLD_CONSERVATIVE_PROTOTYPE=1
 export ATHENA_NRFLD_CONSERVATIVE_SHARED_COEFF=1
 export ATHENA_NRFLD_EXPERIMENTAL_TANGENTIAL_RECONSTRUCTION=1
