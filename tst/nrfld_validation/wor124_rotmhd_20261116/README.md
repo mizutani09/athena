@@ -196,7 +196,7 @@ update drove gas energy below the fixed `efloor≈1e-10`, adding that floor to
 kinetic energy around `6e5` could leave only a floating-point ULP. FLD's
 slightly different kinetic arithmetic then measured zero gas energy. The
 trial uses the configured table-EOS temperature floor (`5.02 K`) for such
-cells, with an eight-ULP guard, and applies the same temperature bound to
+cells, with an `8ε` roundoff guard, and applies the same temperature bound to
 other table-MHD cells. The corresponding table minimum at the failure
 density `rho≈56610.7` is about `1.47e4` code energy units.
 
@@ -232,11 +232,35 @@ outputs match. The trial's combined HDF has zero negative-gas or EOS-domain
 cells and a maximum energy-decomposition error of `2.57e-6`, matching the
 original output at single precision. This short gate shows no measurable
 slowdown.
-Exact-rank 128-MPI trial jobs `340992` (CFL 0.1) and `341000` (original CFL
-0.3) are queued. The trial remains isolated until those tests and an energy
-budget review are complete. The strong-field FGMRES failure is a separate
-issue; MG5 job `340976` lowered the cycle-55 true residual from `8.965e-6`
-to `2.610e-6` at 600 iterations but still exceeded cap `1e-6`.
+The original-CFL 0.3 test passed c760→770 with both 64 MPI (`341002`,
+188 s) and the original 128 MPI (`341000`, 130 s). Both reached t=1950.367,
+beyond the original failure time t≈1950.296. The 128-MPI run had 12/12
+converged active Newton solves, 30 FGMRES solves totaling 297 iterations
+(maximum 10), no opacity errors, Jeans minimum 32.0025, and unchanged
+gas mass at history precision. The 64- and 128-rank density and temperature
+agree to better than 2×10⁻⁹ relative at c770. The exact-rank CFL 0.1 test
+`340992` passed c770→780 (138 s, t=1950.307): 12/12 active Newton solves
+converged, 30 FGMRES solves totaled 279 iterations (maximum 10), mass was
+unchanged at history precision, and Jeans minimum was 32.006.
+
+The candidate's 2-node 128-MPI high-AMR continuation `341013` started from
+the verified c770 restart with original CFL 0.3 and is guarded in 10-cycle
+segments. It passed c790 with `rho_max=7.04e-12 g cm^-3`, Jeans minimum
+31.97, 3536 MeshBlocks, no opacity errors, and gas mass unchanged at
+history precision. Its c790 HDF snapshot has 1,810,432 positive-gas-energy
+cells, zero EOS-domain cells, and maximum single-precision energy-closure
+error `8.97e-5`. Its provenance records the candidate MHD source SHA256
+`fc526cb4545b11deccd40923d0cf1afbbaea7f8a30a4bb09b8e29865dceaa968`
+and binary SHA256 above. No first-core claim is made until its full output
+is audited. The trial remains isolated from the frozen solver and main.
+
+The strong-field FGMRES failure is a separate issue: MG5 job `340976`
+lowered the cycle-55 true residual from `8.965e-6` to `2.610e-6` at 600
+iterations but still exceeded cap `1e-6`. The original-binary 192-MPI
+cap-`1e-5` test `340980` also failed at cycle 55 (residual `1.01865e-5`).
+After the 32.25 μG combined case passed its c40→50 AMR11 smoke gate,
+candidate-code guarded long job `341015` was queued on three M-large-a
+nodes to measure magnetized evolution beyond the strong-field blocker.
 
 `collapse_rotmhd_pilot_20261116.py` repeats the local gate;
 `collapse_rotmhd_energy_audit_20261116.py` checks HDF energy closure;
@@ -275,15 +299,14 @@ FGMRES solves already needed more than 500 iterations before the cycle-55
 solve stopped at 600. The high-AMR early gate therefore did not establish
 sustained strong-field convergence.
 
-The table-EOS hydro energy floor in this input is `1e-10` code units, while
+The original MHD EOS energy floor in this input is `1e-10` code units, while
 the table's minimum gas energy at the reported failure density
 `rho≈56610.7` is about `1.47e4` code units. The difference in multiplication
 and division ordering between `ConservedToPrimitive` and
 `FLD::LoadHydroVariables` can also move a kinetic-energy estimate by one
 floating-point ULP, enough to turn an energy-floor-sized difference into
-zero. This provides a concrete candidate mechanism, but the location where
-the four cells lose internal energy has not yet been proven. Short guarded
-restart probes are queued: rotation at CFL 0.1 (`340975`) and strong-field
-MG5 (`340976`); a bounded inexact cap `1e-5` probe (`340980`) runs only if
-MG5 fails. These probes use M-large-a, the same MPI rank counts as the long
-jobs, and do not claim a validated cure.
+zero. This provides a concrete candidate mechanism, but the exact update
+where the four cells lose internal energy has not yet been instrumented.
+The completed short probes and the isolated MHD EOS trial are recorded above;
+the guarded long continuation is still required before claiming sustained
+collapse success.
