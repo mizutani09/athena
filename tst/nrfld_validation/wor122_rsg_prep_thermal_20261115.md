@@ -153,8 +153,21 @@ commands are in `$WORK/wor122/prep128_outer_t8.sh` and
   succeeds or fails. If the probe succeeds with maximum Mach below 0.15,
   dependent job **340595** continues to `t=20` with the same FGMRES
   settings; job **340596** then measures shell evolution and the convective
-  enthalpy-flux proxy. Both continuation and analysis jobs are skipped if
-  their prerequisites fail.
+  enthalpy-flux proxy. In fact **340590** failed during the first restarted
+  step: even 500 iterations left relative residual 7.75e-4 against 1e-4.
+  The two preceding linear solves took 32 and 101 iterations. There was no
+  new HDF, so afterany analysis **340593** could not run; **340595** and
+  **340596** were canceled. The original uninterrupted run had crossed
+  `t=16`, so this immediate failure might involve restart-state consistency,
+  or the changed preconditioner could itself be harmful. Job **340604**
+  reran a few steps from the *same* `t=16` checkpoint with the original
+  FGMRES settings 20/200/1 and completed normally at `t=16.15` in 2.5 min,
+  maximum Mach 0.0701. Thus the checkpoint is usable and the changed
+  FGMRES settings, especially the extra MG preconditioner cycle, are a
+  likely cause of the immediate restart-probe failure. Job **340609**
+  isolates the larger Krylov restart width by running from `t=16` to
+  `t=17.25` with settings 40/500/**1** and HDF saved around the original
+  failure point.
 - A targeted convection-seed test raises `velocity_perturb_fraction` from
   1e-4 to 1e-2 while retaining the same 128³ PLM supported setup. Job
   **340236** completed normally at `t=8`; job **340237** measured virtually
