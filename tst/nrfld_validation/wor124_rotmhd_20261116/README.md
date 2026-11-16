@@ -186,6 +186,53 @@ P-debug continuations `340820` and `340821`, the magnetic-only M-test
 continuation `340811`, and the redundant weak-field long job `340792`
 were cancelled before execution to avoid duplicate resource use.
 
+## Isolated table-MHD temperature-floor trial
+
+The source-only trial on branch `exp/wor124-tabular-energy-floor-20261116`
+(commit `48d4ff14`) changes `src/eos/general/general_mhd.cpp`. This MHD EOS
+path is used even by the zero-field rotation case because the executable was
+built with `-b`. Previously it did not read `hydro/tfloor`; when a conservative
+update drove gas energy below the fixed `efloor≈1e-10`, adding that floor to
+kinetic energy around `6e5` could leave only a floating-point ULP. FLD's
+slightly different kinetic arithmetic then measured zero gas energy. The
+trial uses the configured table-EOS temperature floor (`5.02 K`) for such
+cells, with an eight-ULP guard, and applies the same temperature bound to
+other table-MHD cells. The corresponding table minimum at the failure
+density `rho≈56610.7` is about `1.47e4` code energy units.
+
+The trial was built separately on XD under `source_floor_trial/` (binary
+SHA256 `2a8b93e1dbfbeb82f03660407f883cd472b8e6db1bded58fefe5af575ea8955c`);
+the original XD source and binary were not overwritten. The two-code
+comparison used the *same* cycle-770 restart, CFL 0.1, 64 MPI ranks, 160/600
+FGMRES with MG3 and cap `1e-6`:
+
+| Job | Source | Result | Last simulated time |
+|---:|---|---|---:|
+| `340996` | original | FAIL after cycle 773, `FLD::LoadHydroVariables` gas energy 0 | 1950.265 |
+| `340995` | temperature-floor trial | PASS cycle 775 | 1950.277 |
+| `340998` | temperature-floor trial, continued | PASS cycle 785 | 1950.336 |
+
+The original failed near time 1950.296 in its 128-rank long run. The trial
+passed beyond that time. The 64-rank original and trial logs have identical
+Newton final residuals and FGMRES iteration/residual histories through cycle
+773; the change acts at the failing update rather than perturbing the prior
+trajectory. In the trial's cycle-785 HDF output, all 1,810,432 active cells
+have positive gas energy and lie inside the EOS domain. Its maximum HDF
+single-precision energy-decomposition error is `8.98e-5`, the same scale as
+the original cycle-760 HDF (`8.98e-5`). The trial's cycle-775→785 history
+has relative gas-mass change `4.4e-16`, Jeans minimum 32.0, no opacity-domain
+errors, and every active Newton solve converged.
+
+Local two-rank one-cycle rotation and 129 μG combined pilots both passed with
+the trial and retained their original largest FGMRES iteration counts (236
+and 186). Sequential local rotation wall times were 82.93 s for the original
+and 80.46 s for the trial; this short gate shows no measurable slowdown.
+Exact-rank 128-MPI trial jobs `340992` (CFL 0.1) and `341000` (original CFL
+0.3) are queued. The trial remains isolated until those tests and an energy
+budget review are complete. The strong-field FGMRES failure is a separate
+issue; MG5 job `340976` lowered the cycle-55 true residual from `8.965e-6`
+to `2.610e-6` at 600 iterations but still exceeded cap `1e-6`.
+
 `collapse_rotmhd_pilot_20261116.py` repeats the local gate;
 `collapse_rotmhd_energy_audit_20261116.py` checks HDF energy closure;
 `xd_mtest_fourway.sbatch`, `xd_continue.sbatch`, and
