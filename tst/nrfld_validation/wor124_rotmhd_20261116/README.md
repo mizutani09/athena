@@ -190,3 +190,48 @@ were cancelled before execution to avoid duplicate resource use.
 `collapse_rotmhd_energy_audit_20261116.py` checks HDF energy closure;
 `xd_mtest_fourway.sbatch`, `xd_continue.sbatch`, and
 `xd_high_amr_segments.sbatch` define the XD gates and continuation.
+
+## High-AMR long-job review (2026-11-16)
+
+The two long jobs **did not reach the first-core density candidate**. Their
+last complete checkpoints and failure segments are retained on XD under
+`high_amr_long/`; a local offline HTML review with progress plots and the
+failure logs is at
+`/home/kosuke/simulation/test/collapse_rotmhd_20261116/long_review_20261116/index.html`.
+
+| Case/job | Last complete cycle | Failed segment | Stop | Job elapsed | Slurm step MaxRSS |
+|---|---:|---:|---|---:|---:|
+| Rotation, 2 nodes/128 ranks, `340791` | 760 | 760–770, after cycle 766 | `FLD::LoadHydroVariables`: conserved `E_total-E_kinetic=0` in four reported cells | 1:35:34 | 33.8 GB |
+| Rotation + 129 μG, 3 nodes/192 ranks, `340822` | 50 | 50–60, near cycle 55 | FGMRES 600 iterations, true relative residual `8.965e-6` > inexact cap `1e-6` | 0:10:03 | 13.9 GB |
+
+The rotation-only run reached `rho_max=6.90e-12 g cm^-3`, `Tgas_max=96.95 K`,
+level 12, 3368 MeshBlocks, and a Jeans minimum of 32.0 at its last complete
+checkpoint. Its active Newton solves all converged (832 in the segment
+logs), and 1722 FGMRES solves used 22389 iterations in total, at most 161
+for any solve. Over the long run the user-history gas mass changed by about
+`-5.6e-16` relative, and angular momentum by `+2.36e-4`. The cycle-760
+HDF output has positive `E_total-E_kinetic` in all 1,724,416 active cells;
+the four failed cells acquire zero inferred gas energy during subsequent
+updates. This is a local energy-state failure, not a Jeans-resolution or
+memory limit.
+
+The strong-field combined run reached `rho_max=5.41e-18 g cm^-3`, level 4,
+960 MeshBlocks, and a Jeans minimum of 59.8 at its last complete cycle 50.
+Its gas mass remained constant to history precision, and the largest
+recorded `divB` was `6.33e-17`. In the failure segment, several successful
+FGMRES solves already needed more than 500 iterations before the cycle-55
+solve stopped at 600. The high-AMR early gate therefore did not establish
+sustained strong-field convergence.
+
+The table-EOS hydro energy floor in this input is `1e-10` code units, while
+the table's minimum gas energy at the reported failure density
+`rho≈56610.7` is about `1.47e4` code units. The difference in multiplication
+and division ordering between `ConservedToPrimitive` and
+`FLD::LoadHydroVariables` can also move a kinetic-energy estimate by one
+floating-point ULP, enough to turn an energy-floor-sized difference into
+zero. This provides a concrete candidate mechanism, but the location where
+the four cells lose internal energy has not yet been proven. Short guarded
+restart probes are queued: rotation at CFL 0.1 (`340975`) and strong-field
+MG5 (`340976`); a bounded inexact cap `1e-5` probe (`340980`) runs only if
+MG5 fails. These probes use M-large-a, the same MPI rank counts as the long
+jobs, and do not claim a validated cure.
