@@ -2,7 +2,10 @@
 
 Open [review.html](review.html) to compare the three candidates. The proposed
 main paper pair is `collapse_final_radial.pdf` plus
-`collapse_evolution.pdf`; the xy slice is an optional visual supplement.
+`collapse_evolution.pdf`; the xy slice is a diagnostic supplement pending
+interpretation of the grid-aligned angular structure. See
+[directional_audit.md](directional_audit.md) and
+[directional_anisotropy.pdf](directional_anisotropy.pdf).
 
 ## Why these diagnostics
 
@@ -30,6 +33,9 @@ temperature `(<E_r>/a_r)^1/4`, and mass-weighted radial velocity. The pale
 band marks the `7.507–7.874 au` accretion-shock candidate from the **+x-axis**
 profile; it is a guide, not a measured spherical shock surface. The density
 break and slower inner flow identify a first-core candidate.
+These are angular means: they conceal a 20–30% axis/diagonal density
+difference in some shells outside the first core. They should not be used to
+claim that the 3D solution has recovered spherical symmetry to that accuracy.
 
 **Evolution.** Maximum gas density over the complete `0–29.11046 kyr`
 calculation, maximum gas temperature during the final `28.5–29.12 kyr`,
@@ -44,9 +50,11 @@ tables against an independent physical reference.
 
 **Optional slice.** Gas density and table-EOS gas temperature on the native
 leaf-cell plane containing `z=0`, shown in a `64×64 au` view. The renderer
-rasterizes cell values to pixels without smoothing. It is useful for showing
-the compact approximately spherical core but adds little to the two main
-diagnostic figures.
+rasterizes cell values to pixels without smoothing. The visible fourfold
+angular pattern is present in native cells, although temperature differences
+are much smaller than the density differences. This slice is currently a
+diagnostic figure; the numerical origin and convergence of the angular
+structure have not yet been established.
 
 ## Scope and provenance
 
