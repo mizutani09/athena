@@ -310,3 +310,30 @@ where the four cells lose internal energy has not yet been instrumented.
 The completed short probes and the isolated MHD EOS trial are recorded above;
 the guarded long continuation is still required before claiming sustained
 collapse success.
+
+## Plasma-beta interpretation (2026-11-16)
+
+Here plasma beta means `beta_gas=8*pi*Pgas_cgs/B_G^2`, not the rotational
+energy ratio `Erot/|Egrav|=0.004973` above. The table below was measured from
+active-cell HDF snapshots. The dense-core mask requires the background
+tracer to be below 0.5 and `rho>=1e-18 g cm^-3`; the global minimum includes
+the dilute ambient. The analysis code and JSON are under
+`/home/kosuke/simulation/test/collapse_rotmhd_20261116/plasma_beta_20261116/`.
+
+| Field / cycle | Global minimum beta | Dense-core minimum beta | Beta at density maximum |
+|---|---:|---:|---:|
+| 129 μG / 0 | 0.03847 (ambient) | 2.176 | 3.847 |
+| 129 μG / 50 | 0.03334 (ambient) | 0.8827 | 3.813 |
+| 32.25 μG / 950 | 0.2151 (dense gas) | 0.2151 | 9.549 |
+
+The 32.25 μG run reached beta 0.2151 in cloud material at
+`rho=1.87e-13 g cm^-3`, about 8.08 au from the center. Its c950 snapshot
+has 2,068,480 active cells, zero nonpositive gas-energy cells, zero
+EOS-outside cells, and maximum single-precision energy-closure error
+`8.96e-5`. Thus this run has already evolved magnetically dominated dense
+gas, whereas the 129 μG FGMRES failure occurred while the maximum-density
+cell still had beta 3.813. The failure is not explained by a single plasma-
+beta threshold. The 129 μG initial field corresponds to the Mayer et al.
+mass-to-flux ratio 5 setup, while the 32.25 μG run has a four-times weaker
+field and is a distinct physical case. Neither beta minimum establishes
+first-core completion; the guarded jobs remain under observation.
