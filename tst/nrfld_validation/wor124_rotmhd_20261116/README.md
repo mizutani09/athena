@@ -325,6 +325,7 @@ the dilute ambient. The analysis code and JSON are under
 | 129 μG / 0 | 0.03847 (ambient) | 2.176 | 3.847 |
 | 129 μG / 50 | 0.03334 (ambient) | 0.8827 | 3.813 |
 | 32.25 μG / 950 | 0.2151 (dense gas) | 0.2151 | 9.549 |
+| 32.25 μG / 1600 | 0.05371 (dense gas) | 0.05371 | 14.76 |
 
 The 32.25 μG run reached beta 0.2151 in cloud material at
 `rho=1.87e-13 g cm^-3`, about 8.08 au from the center. Its c950 snapshot
@@ -337,3 +338,80 @@ beta threshold. The 129 μG initial field corresponds to the Mayer et al.
 mass-to-flux ratio 5 setup, while the 32.25 μG run has a four-times weaker
 field and is a distinct physical case. Neither beta minimum establishes
 first-core completion; the guarded jobs remain under observation.
+At c1600 the same weak-field run reached beta `0.05371` in cloud material
+at `rho=1.01e-13 g cm^-3`. The 2,082,816-cell HDF snapshot still has zero
+nonpositive gas-energy and EOS-outside cells and maximum single-precision
+energy-closure error `8.99e-5`. Its audit is under
+`/home/kosuke/simulation/test/collapse_rotmhd_20261117/`.
+
+## Inexact Newton checkpoint comparison (2026-11-17)
+
+The guarded long jobs remain on the original FGMRES target `2e-8`, with
+bounded inexact true-residual cap `1e-6`. The log field `inexact_accept=1`
+means the final residual is under that cap; it does not establish that the
+solver stopped early. Actual early stopping requires `stagnation_stop=1`.
+Across completed weak-field long-job segments, six early stops occurred in
+cycles 51–85 with true residuals `2.08e-8`–`2.50e-8`, just above the ordinary
+target. Every following Newton solve converged. Recent long-job segments
+reach `2e-8` normally, with no stagnation stops.
+
+To test a genuinely looser linear solve, M-test-a job `341091` replayed the
+same c1580 weak-field+rotation restart for five cycles at 64 MPI ranks.
+All conditions used the same trial binary and settings except the FGMRES
+relative target:
+
+| Target | PASS | FGMRES sum/max iterations | Max true relative residual | Newton | Wall |
+|---:|:---:|---:|---:|---:|---:|
+| `2e-8` | yes | 154 / 11 | `1.90e-8` | 6/6 converged | 116 s |
+| `1e-7` | yes | 140 / 10 | `9.43e-8` | 6/6 converged | 115 s |
+| `1e-6` | yes | 119 / 8 | `8.45e-7` | 6/6 converged | 105 s |
+
+The largest final Newton max norm was about `3.30e-7` in every case,
+comfortably below the `1e-5` stopping threshold. At c1585 the strict and
+`1e-6` HDF snapshots have the same AMR layout; all 2,082,816 active-cell
+density and magnetic-strength values agree at output precision. Nonpositive
+gas-energy and EOS-outside counts are both zero, and the maximum HDF
+single-precision energy-closure error is `8.997e-5` in both. Their history
+mass, density maximum, temperature maximum, angular momentum, and Jeans
+minimum also agree at printed precision; the integrated gas internal energy
+differs by about `1e-12` relative. Short-run evidence and logs are under
+`/home/kosuke/simulation/test/collapse_rotmhd_20261117/inexact_ab_job341091/`.
+
+A 20-cycle strict/`1e-6` continuation from the same checkpoint passed on
+M-test-a as job `341098`. The strict and relaxed conditions had 60 FGMRES
+solves totaling 622 and 479 iterations, maximum true relative residuals
+`1.98e-8` and `8.45e-7`, and 21/21 converged Newton solves in each case.
+Their maximum final Newton max norms were `3.29644e-7` and `3.29659e-7`.
+Wall times were 435 and 370 s, a 14.9% reduction in this matched replay;
+Slurm step MaxRSS was 35.7 and 36.0 GB. Both had zero opacity errors.
+The c1600 history mass, angular momentum, maximum density, temperature,
+and Jeans minimum agree at printed precision; integrated gas internal energy
+differs by `3.61e-12` relative.
+
+The c1600 snapshots have the same AMR layout and 2,082,816 active cells.
+The density relative L1 difference is `8.05e-12` (maximum local relative
+difference `7.90e-7`); for radiation energy the values are `1.37e-10` and
+`5.09e-6`. Both snapshots have zero nonpositive gas-energy and EOS-outside
+cells and maximum HDF single-precision energy-closure error `8.99e-5`.
+Logs, HST, HDF, and cellwise comparison are under
+`/home/kosuke/simulation/test/collapse_rotmhd_20261117/inexact_sustain_job341098/`.
+
+This establishes a promising *fixed linear tolerance* candidate over this
+20-cycle interval; it is not yet an adaptive Newton forcing term, nor a
+high-density whole-collapse validation. The production long jobs have not
+been altered. A further exploratory `1e-5`/`1e-4` M-test job `341109` was
+cancelled before execution because the shared account reached its job limit;
+there is no result from those thresholds. The two reproducible scripts are
+`xd_inexact_newton_ab.sbatch` and `xd_inexact_newton_sustain_ab.sbatch`.
+
+### Resolution margin during the live 32.25 μG run
+
+At c1780 the guarded three-node run had `rho_max=6.26e-11 g cm^-3` and a
+minimum of 18.53 Jeans cells, approaching its explicit 16-cell stop limit
+before the `1e-10 g cm^-3` density candidate. The recent empirical
+Jeans-versus-density slope projects the 16-cell crossing near the density
+candidate; this is a warning, not a demonstrated failure. A one-node
+M-test-a gate `341113` was submitted from the immutable c1780 checkpoint
+with `mesh/numlevel=12` for ten cycles. It was still pending under the
+shared account's job-count limit when recorded. The production job remains
+on `numlevel=11` with its guard active.
