@@ -411,7 +411,26 @@ minimum of 18.53 Jeans cells, approaching its explicit 16-cell stop limit
 before the `1e-10 g cm^-3` density candidate. The recent empirical
 Jeans-versus-density slope projects the 16-cell crossing near the density
 candidate; this is a warning, not a demonstrated failure. A one-node
-M-test-a gate `341113` was submitted from the immutable c1780 checkpoint
-with `mesh/numlevel=12` for ten cycles. It was still pending under the
-shared account's job-count limit when recorded. The production job remains
-on `numlevel=11` with its guard active.
+M-test-a gate `341113` restarted from the immutable c1780 checkpoint with
+`mesh/numlevel=12` and passed through c1790. It created one additional
+actual AMR level (13) and 4292 MeshBlocks; the Jeans minimum increased to
+32.07 cells. All 13 active Newton solves converged; 30 FGMRES solves used
+308 iterations in total, at most 11, with maximum true relative residual
+`1.92e-8`. The ten-cycle gas-mass relative change was `-4.19e-9`, opacity
+errors were zero, elapsed time 242 s on one M-test-a node/64 MPI ranks, and
+Slurm step MaxRSS 44.5 GB. The c1790 HDF audit found 2,197,504 active cells,
+zero nonpositive gas-energy and EOS-outside cells, and maximum
+single-precision energy-closure error `8.99e-5`. Logs and HDF audit are at
+`/home/kosuke/simulation/test/collapse_rotmhd_20261117/amr12_gate_job341113/`.
+The higher-resolution c1790 density maximum is `6.49e-11 g cm^-3`, about
+2.8% above the original-resolution branch; this is a new resolved trajectory,
+not a bitwise continuation of the old physics.
+
+The production job remains on `numlevel=11` with its guard active. A
+three-node dependent rescue job `341124` runs only after original job
+`341015` ends and its status explicitly says `STOP_UNDERRESOLVED`; it also
+checks gate `341113` before reading the final restart and using
+`numlevel=12`. If the original job reaches the first-core density candidate
+or stops for another reason, this job exits without evolving gas. The
+dependent script is `xd_high_amr_segments_floor_rescue.sbatch` and uses the
+same isolated trial binary as the original long job.
