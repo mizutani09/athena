@@ -51,18 +51,23 @@ def main():
                  np.loadtxt(plm_followup)])
     prep256 = ROOT / "prep256_outer_t3/wor122_prep256_outer_t3.hst"
     if prep256.exists():
-        cases["256³ PPM gas, outer 790–900 R$_\\odot$"] = np.loadtxt(prep256)
-        followup256 = ROOT / "prep256_fgmres_r40_t20/wor122_prep256_fgmres_r40_t20.hst"
-        if not followup256.exists():
-            followup256 = ROOT / "prep256_fgmres_t20/wor122_prep256_fgmres_t20.hst"
-        if not followup256.exists():
-            followup256 = ROOT / "prep256_outer_t20c/wor122_prep256_outer_t20c.hst"
-        if not followup256.exists():
-            followup256 = ROOT / "prep256_outer_t20/wor122_prep256_outer_t20.hst"
-        if followup256.exists():
-            cases["256³ PPM gas, outer 790–900 R$_\\odot$"] = np.vstack(
-                [cases["256³ PPM gas, outer 790–900 R$_\\odot$"],
-                 np.loadtxt(followup256)])
+        # Keep the physical restart chain.  The t20c run diverged from the
+        # accepted chain after its t=16 checkpoint, so trim overlapping rows
+        # before appending the successful FGMRES restart and continuations.
+        chain = [prep256]
+        for name in (
+            "prep256_outer_t20c/wor122_prep256_outer_t20c.hst",
+            "prep256_fgmres_r40_t17p25/wor122_prep256_fgmres_r40_t17p25.hst",
+            "prep256_fgmres_r40_t20/wor122_prep256_fgmres_r40_t20.hst",
+            "prep256_fgmres_r40_t28/wor122_prep256_fgmres_r40_t28.hst",
+        ):
+            path = ROOT / name
+            if path.exists():
+                chain.append(path)
+        arrays = [np.atleast_2d(np.loadtxt(path)) for path in chain]
+        for idx in range(len(arrays) - 1):
+            arrays[idx] = arrays[idx][arrays[idx][:, 0] < arrays[idx + 1][0, 0]]
+        cases["256³ PPM gas, outer 790–900 R$_\\odot$"] = np.vstack(arrays)
     seed = (ROOT / "prep128_outer_plm_seed1e2_t8"
             / "wor122_prep128_outer_plm_seed1e2_t8.hst")
     if seed.exists():

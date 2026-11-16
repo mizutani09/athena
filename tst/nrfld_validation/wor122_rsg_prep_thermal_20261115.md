@@ -183,6 +183,33 @@ commands are in `$WORK/wor122/prep128_outer_t8.sh` and
   169,869,312 bytes when the restart width doubled from 20 to 40. Job
   **340612** started its gated continuation to `t=20`. No automatic longer
   run is scheduled before that gate.
+  **340612 completed** at `t=20` (5.09 d) in 37 min 20 s, and analysis
+  **340613 completed**. All 168 FGMRES solves met the 1e-4 target (maximum
+  33 iterations), and every Newton solve reported `converged` (largest final
+  L2 1.08e-11 and max norm 2.45e-9, below the 1e-8 nonlinear target).
+  Stderr was empty, the opacity-domain check was clean, maximum Mach was
+  0.08668, box radiative luminosity was 0.95687 Lheat, and the mass change
+  since the `t=17.25` restart was -5.62e-9. The corresponding 128³ PPM
+  prepared run had Mach 0.260 at `t=20`. The t=0-to-20 shell audit found
+  Tgas ratio 0.9900 in 813–817 R_sun and 0.9991 in 850–880 R_sun; the
+  latter shell's RMS speed was 0.060 km/s. The core (0–166 R_sun) had
+  mean outward radial speed 0.079 km/s, a signal to keep monitoring.
+  The 800–830 R_sun convective gas enthalpy-flux proxy was only 0.00114
+  Lheat at `t=20`; the artificial shell heating cannot yet be tapered on
+  evidence of convective heat transport.
+  Width-20/maximum-500/MG1 control **340619** also completed at `t=17.25`
+  (maximum 124 FGMRES iterations, all Newton solves converged, Mach
+  0.07483). This shows that the original 20/200 failure is not reproduced
+  from the `t=16` checkpoint with the new output schedule; it does not
+  isolate width from the iteration cap on the original uninterrupted
+  trajectory. The separate inexact-solver job 340625 belonged to WOR-123;
+  it was canceled before starting when the user moved solver-strategy work
+  to a separate chat, so the RSG physics continuation could take priority.
+  For the RSG physics trajectory, gated **340671** now extends the accepted
+  256³ run from `t=20` to `t=28` (7.13 d) on M-bulk-a, 64 ranks, 3-hour
+  limit; one dependent M-debug analysis job **340672** audits the last HDF
+  state and the t=20-to-28 convective-flux proxy. All large outputs stay
+  under `$WORK/wor122`.
 - A targeted convection-seed test raises `velocity_perturb_fraction` from
   1e-4 to 1e-2 while retaining the same 128³ PLM supported setup. Job
   **340236** completed normally at `t=8`; job **340237** measured virtually
@@ -242,10 +269,12 @@ non-decreasing nonlinear merit, or failed Newton stopping must reject the
 trial; `failure_policy=warn_keep_old` is inappropriate for this experiment
 because it skips the implicit FLD update.
 
-First test the existing parameter path before changing solver code. XD job
-**340625** restarts the same valid `t=16` state to `t=17.25` with FGMRES
-restart 20, cap 200, MG1 and **relative target 1e-2**. It is serialized
-after the width-versus-cap control job 340619. Compare normal completion,
+First test the existing parameter path before changing solver code. The
+prepared XD script for job **340625** would restart the same valid `t=16`
+state to `t=17.25` with FGMRES restart 20, cap 200, MG1 and **relative
+target 1e-2**. The job was canceled while pending; WOR-123 can requeue it
+from `$WORK/wor122/prep256_inexact1e2_t17p25.sh` when solver-strategy work
+resumes in its separate chat. Compare normal completion,
 all `[NR]` final L2/max residuals, Newton and linear iteration counts,
 runtime, max Mach, mass and source-aware energy budgets, luminosity, and opacity-domain
 checks against strict job 340609. If it converges and agrees, prototype a
