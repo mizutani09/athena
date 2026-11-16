@@ -215,6 +215,48 @@ short output-alignment steps from instantaneous power/luminosity curves.
 
 ## Next decision
 
+### Inexact Newton / FGMRES strategy (2026-11-16)
+
+The 256³ RSG input requests a 1e-4 **relative Schur-system** FGMRES
+residual, but accepts a time step only after the **full gas and radiation**
+Newton residual has L2 and maximum norms both below 1e-8. The current
+FGMRES path throws a fatal error whenever it reaches its iteration cap above
+the inner target, before Newton can try that finite correction. At the
+340373 failure, the true relative linear residual was 0.001954 after 200
+iterations, with no breakdown. This is below a plausible 1e-2 inexact
+Newton forcing cap, but the Schur-system norm is **not identical** to the
+full nonlinear norm after gas elimination, boundary handoff, and smoothing.
+It therefore does not by itself prove the full Newton step would succeed.
+
+The nonlinear driver already reevaluates the coupled residual after each
+trial, accepts a trial only if the L2 merit decreases, and commits only when
+both L2 and maximum residual pass the strict Newton target. Thus a finite,
+moderately inaccurate linear direction can be tested safely as an
+**opt-in** inexact Newton experiment; the nonlinear acceptance gate must
+remain unchanged. Never treat the inner solver's failure to meet 1e-4 as a
+successful *time step* on its own. NaN, Inf, algebraic breakdown, a
+non-decreasing nonlinear merit, or failed Newton stopping must reject the
+trial; `failure_policy=warn_keep_old` is inappropriate for this experiment
+because it skips the implicit FLD update.
+
+First test the existing parameter path before changing solver code. XD job
+**340625** restarts the same valid `t=16` state to `t=17.25` with FGMRES
+restart 20, cap 200, MG1 and **relative target 1e-2**. It is serialized
+after the width-versus-cap control job 340619. Compare normal completion,
+all `[NR]` final L2/max residuals, Newton and linear iteration counts,
+runtime, max Mach, mass and source-aware energy budgets, luminosity, and opacity-domain
+checks against strict job 340609. If it converges and agrees, prototype a
+proper inexact Newton policy: a bounded forcing term (for example an
+Eisenstat–Walker schedule), report true linear residual and forcing target,
+retry a rejected Newton direction with a tighter linear target or wider
+Krylov basis, and retain the existing strict nonlinear stopping tests.
+Check the actual coupled residual after handoff rather than treating the
+Schur residual as an exact forcing ratio. Keep the current strict behavior
+as the default until local and 256³ regression tests pass. This follows
+the inexact-Newton condition in Eisenstat & Walker (1996,
+https://doi.org/10.1137/0917003) and PETSc's documented adaptive
+KSP forcing-term approach (https://petsc.org/release/manual/snes/).
+
 The extended support improves Tgas, radiative luminosity and outer-flow speed
 relative to the matched PPM control, but that run's Mach and outer speed keep
 growing through `t=36`. The PLM extension through `t=24` still accelerates
