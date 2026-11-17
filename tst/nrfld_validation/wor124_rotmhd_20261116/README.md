@@ -434,3 +434,51 @@ checks gate `341113` before reading the final restart and using
 or stops for another reason, this job exits without evolving gas. The
 dependent script is `xd_high_amr_segments_floor_rescue.sbatch` and uses the
 same isolated trial binary as the original long job.
+
+## Final review of 32.25 μG + rotation continuation (2026-11-17)
+
+M-large-a job `341015` completed normally after 5:00:57 on three nodes and
+192 MPI ranks. Its 220 guarded ten-cycle segments advanced c50→2250 and
+stopped at the explicit `FIRST_CORE_DENSITY_CANDIDATE` condition:
+`rho_max=1.0118777e-10 g cm^-3`, `Tgas_max=338.34 K`, 4572 leaf MeshBlocks,
+actual maximum AMR level 12, and minimum Jeans resolution **16.1278 cells**.
+The 16-cell guard was not crossed, but this is a narrow margin. The
+conditional AMR+1 rescue job `341124` exited with `SKIP_NO_UNDERRESOLUTION`
+without advancing the gas. Density threshold alone does not prove a
+hydrostatic or resolution-converged first core.
+
+All 2200 active Newton solves converged (299 additional zero-iteration
+entries were also converged). Across 6124 FGMRES solves there were 67075
+iterations in total, maximum 254, and maximum true relative residual
+`2.498e-8`. Six early stagnation accepts were followed by converged Newton
+steps. The largest reported Newton final max residual was `9.801e-6`.
+All 220 opacity diagnostics reported zero out-of-domain, clamped, negative,
+zero, and nonfinite results. The final c2250 HDF contains 2,340,864 active
+cells; an independent EOS/energy audit found zero nonpositive gas-energy and
+zero EOS-outside cells. At single-precision output accuracy the maximum
+relative `E_total=E_gas+E_kinetic+E_magnetic` closure discrepancy is
+`8.976e-5` (median `1.511e-7`). The minimum gas plasma β in dense
+cloud-derived material is `0.0371`, while β at the density maximum is
+`10.18`. From the first complete segment c60 through c2250, history gas
+mass changed by `+2.259e-6` relative and `Lz` by `+4.066e-4` relative.
+The last reported `divB_max` was `2.760e-10` in code units. Slurm step
+MaxRSS over the job was 33.72 GB; elapsed wall represents 15.05 node hours
+for this continuation, not the cost of the c0→2250 evolution.
+
+The c2250 density peak is near `(-0.183,-0.183,-0.183) au`. A spherical
+volume-mean profile around it has central ~1 au density `8.4e-11 g cm^-3`,
+temperature ~315 K, and radial velocity about `-0.04 sqrt(P/rho)`. At ~8 au
+the corresponding values are ~`1e-12 g cm^-3`, ~76 K, and
+`-0.92 sqrt(P/rho)`. Central inflow has slowed, but this simple profile is
+not a force-balance or shock proof. The analysis and clickable HTML review
+are at `/home/kosuke/simulation/test/collapse_rotmhd_20261117/status_review/`;
+the final HDF, profile script, independent audits, complete progress,
+provenance, restart hash, and solver summary are in sibling
+`final_B32_job341015/`.
+
+The rotation-only two-node job `341013` was still running at the final
+review: its last complete c3080 had `rho_max=1.46935e-11 g cm^-3`,
+`Tgas_max=199.65 K`, and Jeans minimum `30.10` cells, with no solver or
+opacity failure. Its first-core candidate and final performance remain to
+be reviewed. The 129 μG case remains blocked by the previously documented
+FGMRES true-residual cap at c55; the weak-field result does not resolve it.
