@@ -116,6 +116,9 @@ It would not constitute a new HSE model or remove the 800–817-Rsun cliff.
 
 The physical equations also differ. Equation (2) of Chiavassa et al. has
 gas pressure and gravity in momentum, with no radiation-force term shown.
+More decisively, Section 4.2 explicitly states that its 3D simulations
+assume `P_rad=0` when discussing the pressure balance. This is an explicit
+modeling distinction, not an inference solely from an omitted term.
 Our RSG calculation explicitly applies `-lambda grad(E_r)` to gas momentum,
 and the 1D HSE builder includes radiation acceleration. With the *actual*
 softened gravity and WOR-55 opacity, radiating the whole Lstar would give
