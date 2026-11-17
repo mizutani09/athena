@@ -151,6 +151,7 @@ static_refinement_trial = true
 profile_cell_average_trial = false
 # Preparatory shell-mean gas-energy support. Disabled by default.
 prep_thermal_tau = -1.0
+prep_thermal_conservative = false
 prep_thermal_rmin_rsun = 790.0
 prep_thermal_rfull_rsun = 805.0
 prep_thermal_rflat_end_rsun = 830.0

@@ -49,6 +49,7 @@ Real short_test_max_dt=-1.0;
 Real prep_thermal_tau=-1.0, prep_thermal_rmin, prep_thermal_rfull;
 Real prep_thermal_rflat_end, prep_thermal_rmax, prep_thermal_dr;
 Real prep_thermal_taper_start=-1.0, prep_thermal_taper_end=-1.0;
+bool prep_thermal_conservative=false;
 std::uint64_t perturb_seed;
 bool profile_initialization=false, profile_cell_average_trial=false;
 bool marshak_boundary=false;
@@ -327,6 +328,8 @@ void CorrectionBoundary(AthenaArray<Real> &u,int nv,int axis,bool inner,
     for (int j=lo[1];j<=hi[1];++j) for (int i=lo[0];i<=hi[0];++i) u(n,k,j,i)=0.0;
 }
 Real History(MeshBlock *mb,int out) {
+  if (out>=20) return prep_thermal_conservative
+      ? mb->ruser_meshblock_data[0](out-15) : 0.0;
   if (out>=18) return mb->ruser_meshblock_data[0](out-13);
   if (out>=12) {
     // Audit the actual Robin flux used by NRFLD on each Cartesian box face.
@@ -511,6 +514,10 @@ void Mesh::InitUserMeshData(ParameterInput *pin) {
       "problem","prep_thermal_taper_start",-1.0);
   prep_thermal_taper_end=pin->GetOrAddReal(
       "problem","prep_thermal_taper_end",-1.0);
+  prep_thermal_conservative=pin->GetOrAddBoolean(
+      "problem","prep_thermal_conservative",false);
+  Require(!prep_thermal_conservative || prep_thermal_tau>0.0,
+          "conservative prep thermal transport requires positive prep_thermal_tau");
   Require(prep_thermal_tau<0.0 || (std::isfinite(prep_thermal_tau)
           && prep_thermal_tau>0.0
           && 0.0<=prep_thermal_rmin && prep_thermal_rmin<prep_thermal_rfull
@@ -643,12 +650,13 @@ void Mesh::InitUserMeshData(ParameterInput *pin) {
   heat_norm=norm[1];
   EnrollUserExplicitSourceFunction(GravityHeating);
   if (short_test_max_dt>0.0) EnrollUserTimeStepFunction(ShortTestTimeStep);
-  AllocateUserHistoryOutput(20);
-  const char *hist[20]={"Erad","Egas","Epotential","radial_momentum","mass_r2",
+  AllocateUserHistoryOutput(22);
+  const char *hist[22]={"Erad","Egas","Epotential","radial_momentum","mass_r2",
       "Lheat","Mach_max","Edrag_removed","Pdrag_x_removed","Pdrag_y_removed",
       "Pdrag_z_removed","drag_power_removed","Lrad_xm","Lrad_xp",
-      "Lrad_ym","Lrad_yp","Lrad_zm","Lrad_zp","Eprep_thermal","Pprep_thermal"};
-  for (int q=0;q<20;++q) EnrollUserHistoryOutput(q,History,hist[q],
+      "Lrad_ym","Lrad_yp","Lrad_zm","Lrad_zp","Eprep_thermal","Pprep_thermal",
+      "Eprep_redirected","Pprep_redirected"};
+  for (int q=0;q<22;++q) EnrollUserHistoryOutput(q,History,hist[q],
       q==6 ? UserHistoryOperation::max : UserHistoryOperation::sum);
   if (Globals::my_rank==0) std::cout << std::setprecision(16)
       << "STAR_IN_BOX mode=" << (profile_initialization ? "tabular-profile" : "commissioning-polytrope")
@@ -658,7 +666,8 @@ void Mesh::InitUserMeshData(ParameterInput *pin) {
       << " time_unit_s=" << time_unit << " core_cells=" << 2.0*rcore/dx[0]
       << " static_refinement_trial=" << static_refinement_trial
       << " profile_cell_average_trial=" << profile_cell_average_trial
-      << " prep_thermal_tau=" << prep_thermal_tau << '\n';
+      << " prep_thermal_tau=" << prep_thermal_tau
+      << " prep_thermal_conservative=" << prep_thermal_conservative << '\n';
 }
 
 void MeshBlock::InitUserMeshBlockData(ParameterInput*) {
@@ -787,7 +796,7 @@ void Mesh::UserWorkInLoop() {
         (prep_thermal_taper_end-(time+dt))
         /(prep_thermal_taper_end-prep_thermal_taper_start)));
   if (taper<=0.0) return;
-  const Real factor=-std::expm1(-taper*dt/prep_thermal_tau);
+  Real factor=-std::expm1(-taper*dt/prep_thermal_tau);
   const int nbins=static_cast<int>(std::ceil(
       (prep_thermal_rmax-prep_thermal_rmin)/prep_thermal_dr));
   std::vector<Real> local(2*nbins,0.0),global(2*nbins,0.0);
@@ -815,6 +824,14 @@ void Mesh::UserWorkInLoop() {
 #else
   global=local;
 #endif
+  // During preparation, move at most the central luminosity released in this
+  // step into the supported shells. This keeps the core source nonnegative.
+  Real shell_deficit=0.0;
+  for (int q=0;q<nbins;++q) shell_deficit+=global[2*q+1];
+  Require(std::isfinite(shell_deficit),"nonfinite prep thermal shell deficit");
+  if (prep_thermal_conservative && factor*shell_deficit>lum_code*dt)
+    factor=lum_code*dt/shell_deficit;
+  const Real redirected=prep_thermal_conservative ? factor*shell_deficit : 0.0;
   for (int b=0;b<nblocal;++b) {
     MeshBlock *mb=my_blocks(b);
     Real injected=0.0;
@@ -842,6 +859,29 @@ void Mesh::UserWorkInLoop() {
       }
     mb->ruser_meshblock_data[0](5)+=injected;
     mb->ruser_meshblock_data[0](6)=injected/dt;
+  }
+  for (int b=0;b<nblocal;++b) {
+    MeshBlock *mb=my_blocks(b);
+    if (prep_thermal_conservative && redirected!=0.0) {
+      for (int k=mb->ks;k<=mb->ke;++k) for (int j=mb->js;j<=mb->je;++j)
+        for (int i=mb->is;i<=mb->ie;++i) {
+          const Real r=RadialPosition(mb->pcoord,k,j,i);
+          const Real weight=CoreWeight(r);
+          if (weight<=0.0) continue;
+          auto &u=mb->phydro->u;
+          const Real rho=u(IDN,k,j,i);
+          const Real delta=-redirected*weight/heat_norm;
+          const Real egas=u(IEN,k,j,i)-Kinetic(u,k,j,i)+delta;
+          Require(std::isfinite(egas) && egas>0.0,
+                  "conservative prep transport produced nonpositive core gas energy");
+          const Real pressure=mb->peos->PresFromRhoEg(rho,egas);
+          Require(std::isfinite(pressure) && pressure>=pfloor,
+                  "conservative prep transport produced invalid core pressure");
+          u(IEN,k,j,i)+=delta;
+          mb->phydro->w(IPR,k,j,i)=pressure;
+          mb->prfld->u_gas(k,j,i)=egas;
+        }
+    }
     // The next explicit radiation force must see the supported gas state.
     mb->prfld->UpdateOpacity(mb,mb->prfld->u_rad,mb->phydro->w);
   }
