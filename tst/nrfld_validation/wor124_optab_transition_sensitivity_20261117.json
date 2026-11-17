@@ -1,0 +1,38 @@
+{
+  "date": "2026-11-17",
+  "method": "Compare 200 K and 400 K transition-end offsets against the 300 K default after Athena-style bilinear interpolation in log10(rho), log10(T), and log10(kappa)",
+  "domain": {
+    "log10_density": [-17.69897000433602, -7.0, 181],
+    "temperature_K": [900.0, 2300.0, 351]
+  },
+  "transition_start_offset_K": 100.0,
+  "planck": {
+    "end200_vs_end300": {
+      "median_abs_dex": 0.0,
+      "p99_abs_dex": 0.2911745742998806,
+      "max_abs_dex": 0.3569920092413029,
+      "fraction_gt_0p1dex": 0.08606821866490375
+    },
+    "end400_vs_end300": {
+      "median_abs_dex": 0.0,
+      "p99_abs_dex": 0.16549467210804752,
+      "max_abs_dex": 0.1889549693461103,
+      "fraction_gt_0p1dex": 0.08657190977632967
+    }
+  },
+  "rosseland": {
+    "end200_vs_end300": {
+      "median_abs_dex": 0.0,
+      "p99_abs_dex": 0.20543006424353016,
+      "max_abs_dex": 0.3102503358638309,
+      "fraction_gt_0p1dex": 0.0583494671892462
+    },
+    "end400_vs_end300": {
+      "median_abs_dex": 0.0,
+      "p99_abs_dex": 0.15546853039941952,
+      "max_abs_dex": 0.21332447021767065,
+      "fraction_gt_0p1dex": 0.05444586107569533
+    }
+  },
+  "interpretation": "The width choice affects only the localized dust-gas handoff, but can shift opacity there by factors of roughly 1.5-2.3. A trajectory crossing the handoff is still needed before selecting a production default."
+}
