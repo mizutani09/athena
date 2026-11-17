@@ -14,6 +14,8 @@
       "radiative_luminosity_Lstar": 0.014374959348960766,
       "local_eddington_luminosity_Lstar": 0.05593756532918625,
       "full_luminosity_radiation_acceleration_over_gravity": 17.877074093502515,
+      "initial_radiation_acceleration_over_gravity": 0.2569822133724583,
+      "initial_radiation_pressure_over_gas_pressure": 0.18430666006885274,
       "required_convective_luminosity_Lstar": 0.9856250406510393,
       "sound_speed_km_s": 23.525629016203947,
       "sonic_two_stream_Lstar": {
@@ -28,6 +30,8 @@
       "radiative_luminosity_Lstar": 0.014122604311573124,
       "local_eddington_luminosity_Lstar": 0.07262324513930489,
       "full_luminosity_radiation_acceleration_over_gravity": 13.769695888441973,
+      "initial_radiation_acceleration_over_gravity": 0.1944639665231613,
+      "initial_radiation_pressure_over_gas_pressure": 0.09864705306405698,
       "required_convective_luminosity_Lstar": 0.9858773956884269,
       "sound_speed_km_s": 19.07823905118719,
       "sonic_two_stream_Lstar": {
@@ -42,6 +46,8 @@
       "radiative_luminosity_Lstar": 0.013493680749047538,
       "local_eddington_luminosity_Lstar": 0.0964986973207955,
       "full_luminosity_radiation_acceleration_over_gravity": 10.362834191177209,
+      "initial_radiation_acceleration_over_gravity": 0.13983277623105952,
+      "initial_radiation_pressure_over_gas_pressure": 0.050636502832066325,
       "required_convective_luminosity_Lstar": 0.9865063192509524,
       "sound_speed_km_s": 15.8359769778298,
       "sonic_two_stream_Lstar": {
@@ -56,6 +62,8 @@
       "radiative_luminosity_Lstar": 0.003616785198152973,
       "local_eddington_luminosity_Lstar": 0.057530188361212535,
       "full_luminosity_radiation_acceleration_over_gravity": 17.382178443799614,
+      "initial_radiation_acceleration_over_gravity": 0.06286760570718812,
+      "initial_radiation_pressure_over_gas_pressure": 0.020922140227859015,
       "required_convective_luminosity_Lstar": 0.996383214801847,
       "sound_speed_km_s": 12.190624721815789,
       "sonic_two_stream_Lstar": {
@@ -70,6 +78,8 @@
       "radiative_luminosity_Lstar": 0.01404881781329164,
       "local_eddington_luminosity_Lstar": 0.4512088246371322,
       "full_luminosity_radiation_acceleration_over_gravity": 2.216268710622432,
+      "initial_radiation_acceleration_over_gravity": 0.031135955340833316,
+      "initial_radiation_pressure_over_gas_pressure": 0.009705334992126476,
       "required_convective_luminosity_Lstar": 0.9859511821867084,
       "sound_speed_km_s": 8.27049063990655,
       "sonic_two_stream_Lstar": {
@@ -84,6 +94,8 @@
       "radiative_luminosity_Lstar": 0.0383414495344684,
       "local_eddington_luminosity_Lstar": 1.535713128047981,
       "full_luminosity_radiation_acceleration_over_gravity": 0.6511632815635842,
+      "initial_radiation_acceleration_over_gravity": 0.024966544098769,
+      "initial_radiation_pressure_over_gas_pressure": 0.007432215958150498,
       "required_convective_luminosity_Lstar": 0.9616585504655316,
       "sound_speed_km_s": 7.65620113255075,
       "sonic_two_stream_Lstar": {
@@ -98,6 +110,8 @@
       "radiative_luminosity_Lstar": 0.6784569483851496,
       "local_eddington_luminosity_Lstar": 51.02709354929346,
       "full_luminosity_radiation_acceleration_over_gravity": 0.019597432078587326,
+      "initial_radiation_acceleration_over_gravity": 0.013296013964223596,
+      "initial_radiation_pressure_over_gas_pressure": 0.0032921086725517324,
       "required_convective_luminosity_Lstar": 0.3215430516148504,
       "sound_speed_km_s": 7.38453378867498,
       "sonic_two_stream_Lstar": {

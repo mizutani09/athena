@@ -61,6 +61,7 @@ def main():
     parser.add_argument("--json", type=Path, required=True)
     parser.add_argument("--figure", type=Path, required=True)
     parser.add_argument("--transport-figure", type=Path)
+    parser.add_argument("--force-figure", type=Path)
     args = parser.parse_args()
     eos = AthenaEos(args.eos)
     data = np.loadtxt(args.profile)
@@ -77,6 +78,8 @@ def main():
                      for radius in data[selected, 0]])
     gamma_full = (data[selected, 8] * luminosity
                   / (4.0 * np.pi * data[selected, 0] ** 2 * CLIGHT * grav))
+    gamma_actual = gamma_full * radiative
+    pressure_ratio = data[selected, 3] / (3.0 * data[selected, 5])
     contrasts = (0.1, 0.3, 0.5)
     curves = {str(q): [] for q in contrasts}
     cs = []
@@ -99,6 +102,8 @@ def main():
             "radiative_luminosity_Lstar": float(radiative[j]),
             "local_eddington_luminosity_Lstar": float(1.0 / gamma_full[j]),
             "full_luminosity_radiation_acceleration_over_gravity": float(gamma_full[j]),
+            "initial_radiation_acceleration_over_gravity": float(gamma_actual[j]),
+            "initial_radiation_pressure_over_gas_pressure": float(pressure_ratio[j]),
             "required_convective_luminosity_Lstar": float(required[j]),
             "sound_speed_km_s": float(cs[j]),
             "sonic_two_stream_Lstar": {key: float(values[j]) for key, values in curves.items()},
@@ -147,6 +152,19 @@ def main():
         fig.savefig(args.transport_figure, dpi=180)
         plt.close(fig)
         print(args.transport_figure)
+    if args.force_figure:
+        args.force_figure.parent.mkdir(parents=True, exist_ok=True)
+        fig, ax = plt.subplots(figsize=(8.2, 4.8))
+        ax.plot(rr, gamma_actual, label="Initial radiation acceleration / gravity", lw=2)
+        ax.plot(rr, pressure_ratio, label="Initial radiation pressure / gas pressure", lw=2)
+        ax.axhline(0.1, color="gray", ls="--", lw=1)
+        ax.set(xlim=(100, 825), ylim=(0, 1), xlabel="Radius [Rsun]", ylabel="Ratio")
+        ax.grid(alpha=0.25)
+        ax.legend(fontsize=8)
+        fig.tight_layout()
+        fig.savefig(args.force_figure, dpi=180)
+        plt.close(fig)
+        print(args.force_figure)
     print(args.json)
     print(args.figure)
 
