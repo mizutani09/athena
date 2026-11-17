@@ -68,8 +68,49 @@ new candidate:
    luminosity, temperature, mass, energy ledger, and solver status.
 6. A source-taper gate before any year-scale production run.
 
-No new XD job was submitted from this screen: no candidate passed the
+At this first screen no new XD job was submitted: no candidate passed the
 pre-3D transport/exterior criteria. The immediate implementation work is
 to formulate a flux-closed 1D envelope (or a documented staged precursor)
 and test it locally. Subsequent 3D jobs should be limited to candidates
 that pass the cheap checks above.
+
+## Local transport timescale and one limited continuation
+
+Using the optimistic efficient-MLT relations in Goldberg et al. (2022),
+Eqs. (2)–(3), with `alpha=3`, `nu=8`, the tabulated material EOS for
+`c_P` and the isobaric density response, and the *initial* flux deficit,
+gives the following indicative scales. The gas pressure height uses the
+initial radiation-reduced gravity; this is not a self-consistent turbulent
+HSE. Near the photosphere radiative leakage makes the efficient-MLT
+assumption poor, so the figures are diagnostic scales, not predictions.
+
+| Radius [Rsun] | MLT speed [km/s] | Mach | `H/v` [days] | `3H/v` [days] | implied `P_turb/P_gas` |
+| ---: | ---: | ---: | ---: | ---: | ---: |
+| 700 | 10.52 | 0.45 | 78.1 | 234.4 | 0.33 |
+| 750 | 9.66 | 0.51 | 69.6 | 208.8 | 0.37 |
+| 800 | 6.50 | 0.53 | 53.6 | 160.9 | 0.33 |
+| 810 | 4.97 | 0.60 | 34.0 | 102.0 | 0.41 |
+| 813 | 5.24 | 0.68 | 27.1 | 81.3 | 0.54 |
+| 817 | 5.29 | 0.72 | 19.5 | 58.6 | 0.76 |
+
+The completed 256³ state at 13.24 days is shorter than even a local
+`H/v` at 813 Rsun. This does not establish that the preparation will
+work; it means the absence of developed convection at that checkpoint
+is not by itself a decisive failure. The large implied turbulent pressure
+also reinforces the need for a new mechanically consistent mean state.
+Reproduction: `wor122_mlt_transport_scale.py`,
+`wor122_mlt_transport_scale_20261117.json`, and
+`doc/figures/wor122_mlt_turnover_20261117.png`.
+
+One bounded continuation was therefore submitted to XD as **341450**,
+M-bulk-a, 64 MPI ranks, 110 GB, 11 h 30 min walltime. The script
+`wor122_prep256_to110_20261117.sh` resumes the valid t=52 restart,
+first to t=80 (~20.4 days), then to t=110 (~28.0 days). The second stage
+runs only if t=80 has maximum Mach <0.5, mass drift <1e-4, six-face
+`Lrad/Lheat` between 0.5 and 1.5, and normal solver/opacity termination.
+All output, including ~3-GB restarts, remains under `$WORK/wor122/`.
+The script SHA-256 is
+`859f670d482c09f3c9c6891caf9de801cae0fe03e6ea6554c85287cfcc3fb8c0`.
+No other RSG job was submitted. A successful t=110 check still requires
+shell-temperature, surface-Mach, convection-flux, and source-power
+analysis before considering any taper or production extension.
