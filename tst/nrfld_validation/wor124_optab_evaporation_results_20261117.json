@@ -77,6 +77,47 @@
     "max_absolute_history_difference": 7.815970093361102e-14,
     "pass": true
   },
+  "xd_mtest": {
+    "job_id": 341681,
+    "source_commit": "6a58d1556ba5f09ef9598e4f8beb5f06755e2bcf",
+    "binary_sha256": "47991407002e899ef72f61a47e64acc7f6306e7307181820b94c661e7f0a70ae",
+    "compiler_modules": ["intel/2024.0", "mpi/2021.13", "hdf5-parallel/1.14.5"],
+    "ranks": 2,
+    "mesh": [8, 4, 4],
+    "elapsed_including_build": "00:04:04",
+    "cases": {
+      "end200": {
+        "cycles": 71,
+        "Tgas_final_K": 1842.0352665342382,
+        "Trad_final_K": 4193.530299405795,
+        "fgmres_above_strict_target": 125,
+        "fgmres_true_relative_residual_max": 4.4569665712304305e-7,
+        "wall_time_seconds": 46.63,
+        "pass": true
+      },
+      "end300": {
+        "cycles": 71,
+        "Tgas_final_K": 1840.0226021744602,
+        "Trad_final_K": 4252.394401205327,
+        "fgmres_above_strict_target": 125,
+        "fgmres_true_relative_residual_max": 3.945252742759933e-7,
+        "wall_time_seconds": 46.54,
+        "pass": true
+      },
+      "end400": {
+        "cycles": 71,
+        "Tgas_final_K": 1837.6911841666777,
+        "Trad_final_K": 4317.327416157927,
+        "fgmres_above_strict_target": 124,
+        "fgmres_true_relative_residual_max": 3.984390190546991e-7,
+        "wall_time_seconds": 46.13,
+        "pass": true
+      }
+    },
+    "opacity_diagnostics_all_zero": true,
+    "pass": true,
+    "evidence_root": "/work/mizutaniks/output/fld/collapse/wor124_rotmhd_20261116/optab_evaporation_gate_20261117/job_341681"
+  },
   "opacity_diagnostics_all_cases": {
     "out_of_domain": 0,
     "clamped": 0,

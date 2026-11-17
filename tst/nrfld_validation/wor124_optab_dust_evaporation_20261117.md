@@ -66,6 +66,27 @@ maximum true residual `3.77349e-7`.  The complete history differs by at most
 binary64 precision.  This establishes rank reproducibility for this reduced
 gate, not a new physical qualification of the transition prescription.
 
+## XD reproduction
+
+XD M-test job `341681` built commit `6a58d155` with Intel 2024.0, MPI 2021.13,
+and parallel HDF5 1.14.5, then repeated all three cases with two ranks and two
+MeshBlocks.  The job completed with status `PASS` in 4:04 including the build.
+
+| transition end offset | cycles | final Tgas (K) | final Trad (K) | true FGMRES residual max | run wall time | status |
+|---:|---:|---:|---:|---:|---:|:---:|
+| 200 K | 71 | 1842.0352665 | 4193.5302994 | 4.46e-7 | 46.63 s | PASS |
+| 300 K | 71 | 1840.0226022 | 4252.3944012 | 3.95e-7 | 46.54 s | PASS |
+| 400 K | 71 | 1837.6911842 | 4317.3274162 | 3.98e-7 | 46.13 s | PASS |
+
+Every XD case exited zero and reported zero out-of-domain, clamped, negative,
+zero, and non-finite opacity results.  Local and XD final gas temperatures
+agree within `2.6e-8 K`; the largest final radiation-temperature difference is
+`2.75e-6 K`, or `6.4e-10` relative.  The XD binary SHA-256 is
+`47991407002e899ef72f61a47e64acc7f6306e7307181820b94c661e7f0a70ae`.
+Job `341678` was an environment-only failed submission: XD has no `python`
+executable in that module environment.  The batch script was changed to call
+`python3`; no solver or test parameter changed between `341678` and `341681`.
+
 ## Provenance and limits
 
 - Athena source base before this change: `fa9552b0f20fb3c35f71e77f33dd8dda8168441d`.
@@ -78,6 +99,8 @@ gate, not a new physical qualification of the transition prescription.
   and end-400 `a242eb7d2ffe78cc4ae1d6c59aef05f749ddbb1b513412b31ce49c38cb909276`.
 - Local evidence root:
   `/home/kosuke/simulation/test/collapse_rotmhd_20261117/optab_evaporation_gate_20261117`.
+- XD evidence root:
+  `/work/mizutaniks/output/fld/collapse/wor124_rotmhd_20261116/optab_evaporation_gate_20261117/job_341681`.
 
 The high fraction of bounded inexact linear accepts is expected from the
 known double-precision correction floor but means this experiment is an outer
