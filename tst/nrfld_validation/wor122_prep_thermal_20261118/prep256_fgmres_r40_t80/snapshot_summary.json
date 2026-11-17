@@ -1,0 +1,24 @@
+{
+  "time": 80.0,
+  "core_radius_rsun": 166.0,
+  "min_er": 1.8555439282863517e-06,
+  "core_rms_speed": 0.004515098296889582,
+  "surface_mean_temperature": 6252.674812585168,
+  "surface_max_mach_proxy": 0.16723947823916085,
+  "global_max_mach_proxy": 0.33702452701156255,
+  "global_max_xyz_r_rho": [
+    -619.720703125,
+    -627.615234375,
+    -667.087890625,
+    1105.8756103515625,
+    1.0014736164919852e-13
+  ],
+  "axis_diagonal_rms_radial_speed": [
+    0.004611578008671401,
+    0.004630960110491329
+  ],
+  "axis_diagonal_cell_counts": [
+    9216,
+    3240
+  ]
+}
