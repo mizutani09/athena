@@ -1,0 +1,116 @@
+<comment>
+problem = Uniform table-EOS gas heated through dust evaporation by FLD coupling
+configure = --prob=test_optab_eos --eos=general/eos_table -nrmgfld -hdf5 -mpi
+
+<job>
+problem_id = wor124_evap
+
+<output1>
+file_type = hst
+dcycle = 1
+data_format = %.16e
+
+<time>
+cfl_number = 0.003
+nlim = 100
+tlim = 0.02
+integrator = rk2
+xorder = 2
+ncycle_out = 1
+
+<mesh>
+nx1 = 4
+x1min = 0.0
+x1max = 1.0
+ix1_bc = periodic
+ox1_bc = periodic
+nx2 = 4
+x2min = 0.0
+x2max = 1.0
+ix2_bc = periodic
+ox2_bc = periodic
+nx3 = 4
+x3min = 0.0
+x3max = 1.0
+ix3_bc = periodic
+ox3_bc = periodic
+
+<meshblock>
+nx1 = 4
+nx2 = 4
+nx3 = 4
+
+<hydro>
+rho_unit = 1.0e-10
+egas_unit = 1.0
+leng_unit = 3.0e6
+T_unit = 1.0
+dens_pow = -1.0
+eos_file_name = EOS_TABLE
+eos_file_type = ascii
+eos_read_ratios = true
+eos_rho_unit = 1.0e-10
+eos_egas_unit = 1.0
+eos_temp_unit = 1.0
+eos_table_clamp = false
+density_floor = 1.0e-8
+pressure_floor = 1.0e-12
+
+<nrfld>
+mgmode = MGI
+fas = false
+linear_solver = fgmres
+smoother = jacobi-rb
+npresmooth = 2
+npostsmooth = 2
+omega = 1.0
+threshold = 1.0e-10
+nr_threshold = 1.0e-10
+nr_accept_l2_threshold = 1.0e-9
+nr_accept_max_threshold = 1.0e-9
+nr_max_iterations = 100
+fgmres_threshold = 2.0e-8
+fgmres_restart = 80
+fgmres_max_iterations = 300
+fgmres_mg_vcycles = 3
+fgmres_compact_basis = true
+fgmres_reuse_basis = true
+fgmres_batched_reductions = true
+fgmres_flux_form_matvec = true
+fgmres_precision_floor_factor = 0
+exact_local_gas_solve = true
+ix1_bc = periodic
+ox1_bc = periodic
+ix2_bc = periodic
+ox2_bc = periodic
+ix3_bc = periodic
+ox3_bc = periodic
+
+<fld>
+output_defect = true
+is_couple = true
+only_rad = false
+fixed_u_rad = false
+cut_diff = false
+include_radiation_force = false
+fixed_flux_limiter = false
+use_opacity_table = true
+opacity_table_file = OPACITY_TABLE
+opacity_table_file_type = hdf5
+opacity_table_axis = trho
+opacity_table_domain_policy = error
+opacity_accepted_state_guard = true
+opacity_table_planck_format = log10
+opacity_table_rosseland_format = log10
+
+<problem>
+dir = 1
+use_fixed_boundaries = false
+rho0_L = 1.0e-10
+rho0_R = 1.0e-10
+T0_L = 900.0
+T0_R = 900.0
+Trad0_L = 7000.0
+Trad0_R = 7000.0
+v0_L = 0.0
+v0_R = 0.0

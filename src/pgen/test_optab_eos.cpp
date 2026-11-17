@@ -68,6 +68,7 @@ namespace {
   // Real HistoryL1norm(MeshBlock *pmb, int iout);
   Real rho0_L, rho0_R;
   Real T0_L, T0_R;
+  Real Trad0_L, Trad0_R;
   Real v0_L, v0_R;
   Real p0_L, p0_R;
   Real egas0_L, egas0_R;
@@ -388,7 +389,8 @@ void GetOpacityFromUserTable(MeshBlock *pmb, AthenaArray<Real> &u_fld,
 #pragma omp simd
       for(int i=il; i<=iu; ++i) {
         Real rho = prim(IDN,k,j,i);
-        Real egas = prim(IEN,k,j,i);
+        Real pressure = prim(IPR,k,j,i);
+        Real egas = pmb->peos->EgasFromRhoP(rho, pressure);
         Real rho_phys = rho*rho_unit;
         Real temp_phys = pmb->peos->TempFromRhoEg(rho, egas)*T_unit;
         prfld->sigma_p(k,j,i) =
@@ -514,10 +516,17 @@ void Mesh::InitUserMeshData(ParameterInput *pin) {
   rho0_R = pin->GetReal("problem", "rho0_R") / rho_unit;
   T0_L = pin->GetReal("problem", "T0_L") / T_unit;
   T0_R = pin->GetReal("problem", "T0_R") / T_unit;
+  Trad0_L = pin->GetOrAddReal("problem", "Trad0_L", T0_L*T_unit) / T_unit;
+  Trad0_R = pin->GetOrAddReal("problem", "Trad0_R", T0_R*T_unit) / T_unit;
   v0_L = pin->GetReal("problem", "v0_L") / vel_unit;
   v0_R = pin->GetReal("problem", "v0_R") / vel_unit;
 
-  if (dir == 1) {
+  const bool use_fixed_boundaries =
+      pin->GetOrAddBoolean("problem", "use_fixed_boundaries", true);
+  if (!use_fixed_boundaries) {
+    // Periodic boundaries are useful for spatially uniform thermal-coupling
+    // tests; no user boundary function should be enrolled in that case.
+  } else if (dir == 1) {
     EnrollUserFLDBoundaryFunction(BoundaryFace::inner_x1, FLDFixedInnerX1);
     EnrollUserFLDBoundaryFunction(BoundaryFace::outer_x1, FLDFixedOuterX1);
     EnrollUserNRBoundaryFunction(BoundaryFace::inner_x1, NRInnerX1);
@@ -571,8 +580,8 @@ void MeshBlock::InitUserMeshBlockData(ParameterInput *pin) {
   // p0_R = rho0_R*T0_R;
   p0_L = FindPFromRhoT(this, rho0_L, T0_L);
   p0_R = FindPFromRhoT(this, rho0_R, T0_R);
-  Er0_L = a_r_sim*std::pow(T0_L, 4);
-  Er0_R = a_r_sim*std::pow(T0_R, 4);
+  Er0_L = a_r_sim*std::pow(Trad0_L, 4);
+  Er0_R = a_r_sim*std::pow(Trad0_R, 4);
   egas0_L = peos->EgasFromRhoP(rho0_L, p0_L);
   egas0_R = peos->EgasFromRhoP(rho0_R, p0_R);
 
@@ -648,6 +657,8 @@ void MeshBlock::ProblemGenerator(ParameterInput *pin) {
     std::cout << "sigma_P = " << sigma_P << std::endl;
     std::cout << "sigma_R = " << sigma_R << std::endl;
     std::cout << "T0_L = " << T0_L << std::endl;
+    std::cout << "Trad0_L = " << Trad0_L << std::endl;
+    std::cout << "Trad0_R = " << Trad0_R << std::endl;
     Real T0_L_check = peos->TempFromRhoEg(rho0_L, egas0_L);
     std::cout << "T0_L_check = " << T0_L_check << std::endl;
 
@@ -672,6 +683,8 @@ void MeshBlock::ProblemGenerator(ParameterInput *pin) {
     ofs << "rho0_R          = " << rho0_R << std::endl;
     ofs << "T0_L            = " << T0_L << std::endl;
     ofs << "T0_R            = " << T0_R << std::endl;
+    ofs << "Trad0_L         = " << Trad0_L << std::endl;
+    ofs << "Trad0_R         = " << Trad0_R << std::endl;
     ofs << "v0_L            = " << v0_L << std::endl;
     ofs << "v0_R            = " << v0_R << std::endl;
     ofs << "p0_L            = " << p0_L << std::endl;

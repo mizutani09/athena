@@ -1,0 +1,88 @@
+{
+  "date": "2026-11-17T20:40:00+09:00",
+  "source_base_commit": "fa9552b0f20fb3c35f71e77f33dd8dda8168441d",
+  "optab_commit": "2d95b7c1a944e15d80605afee783c22eed441ae1",
+  "binary_sha256": "34b2779c3278b6639437bcaa867510eee72cfa4da62c451cdc053e3a7a30a550",
+  "input_sha256": "2216b53917c5db87c0cd6182278418d30a000814a85d5efbcb4cfe4e3221530b",
+  "environment": {
+    "ATHENA_WOR92_INEXACT_TRUE_CAP": 1e-6,
+    "mpi_ranks": 1,
+    "mesh": [4, 4, 4],
+    "cfl": 0.003,
+    "time_limit": 0.02,
+    "rho_g_cm3": 1e-10,
+    "Tgas_initial_K": 900.0,
+    "Trad_initial_K": 7000.0
+  },
+  "cases": {
+    "end200": {
+      "cycles": 71,
+      "Tgas_final_K": 1842.0352665504151,
+      "Trad_final_K": 4193.530299449595,
+      "max_relative_total_energy_drift": 9.198725114956119e-10,
+      "fgmres_solves": 137,
+      "fgmres_above_strict_target": 128,
+      "fgmres_iterations_sum": 38416,
+      "fgmres_iterations_max": 300,
+      "fgmres_true_relative_residual_max": 4.826127842716763e-7,
+      "newton_stages": 71,
+      "newton_iterations_max": 2,
+      "newton_relaxed_accepts": 0,
+      "memory_kib": 44932,
+      "wall_time": "00:00:14.06",
+      "pass": true
+    },
+    "end300": {
+      "cycles": 71,
+      "Tgas_final_K": 1840.022602165363,
+      "Trad_final_K": 4252.394402033069,
+      "max_relative_total_energy_drift": 9.198725114956119e-10,
+      "fgmres_solves": 138,
+      "fgmres_above_strict_target": 126,
+      "fgmres_iterations_sum": 37823,
+      "fgmres_iterations_max": 300,
+      "fgmres_true_relative_residual_max": 3.8697105249183485e-7,
+      "newton_stages": 71,
+      "newton_iterations_max": 2,
+      "newton_relaxed_accepts": 0,
+      "memory_kib": 44996,
+      "wall_time": "00:00:14.37",
+      "pass": true
+    },
+    "end400": {
+      "cycles": 71,
+      "Tgas_final_K": 1837.6911841924205,
+      "Trad_final_K": 4317.327418905826,
+      "max_relative_total_energy_drift": 9.467082673353389e-10,
+      "fgmres_solves": 136,
+      "fgmres_above_strict_target": 125,
+      "fgmres_iterations_sum": 37522,
+      "fgmres_iterations_max": 300,
+      "fgmres_true_relative_residual_max": 3.6664639095874494e-7,
+      "newton_stages": 71,
+      "newton_iterations_max": 2,
+      "newton_relaxed_accepts": 0,
+      "memory_kib": 44884,
+      "wall_time": "00:00:14.64",
+      "pass": true
+    }
+  },
+  "mpi_reproducibility": {
+    "case": "end300_two_blocks_to_t=0.01",
+    "ranks": [1, 2],
+    "cycles": 35,
+    "fgmres_solves": 69,
+    "fgmres_above_strict_target": 62,
+    "fgmres_true_relative_residual_max": 3.7734887311101215e-7,
+    "max_absolute_history_difference": 7.815970093361102e-14,
+    "pass": true
+  },
+  "opacity_diagnostics_all_cases": {
+    "out_of_domain": 0,
+    "clamped": 0,
+    "negative_results": 0,
+    "zero_results": 0,
+    "nonfinite_results": 0
+  },
+  "conclusion": "PASS as a bounded-inexact outer-Newton, conservation, transition-sensitivity, and MPI-reproducibility gate; not a strict-inner-FGMRES or self-consistent spectral-dust qualification"
+}
