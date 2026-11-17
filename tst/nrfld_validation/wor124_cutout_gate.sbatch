@@ -25,6 +25,16 @@ else
   printf 'Unknown WOR124_CUTOUT_CASE=%s\n' "$case_name" >&2
   exit 2
 fi
+checkpoint=${WOR124_CUTOUT_CHECKPOINT:-$checkpoint}
+reader=$base/scripts/read_restart.py
+if [[ -n "${WOR124_CUTOUT_EXPECT_CYCLE:-}" ]]; then
+  actual_cycle=$(python3 "$reader" "$checkpoint" --field cycle)
+  if [[ "$actual_cycle" != "$WOR124_CUTOUT_EXPECT_CYCLE" ]]; then
+    printf 'Invalid checkpoint cycle: expected %s, got %s\n' \
+      "$WOR124_CUTOUT_EXPECT_CYCLE" "$actual_cycle" >&2
+    exit 2
+  fi
+fi
 job=$trial/job_${SLURM_JOB_ID}
 mkdir -p "$job/output"
 module use /opt/modulefiles /work/opt/intel/modulefiles /work/opt/local_oneapi/modulefiles
@@ -46,6 +56,8 @@ cd "$source_dir"
 {
   date -Is
   printf 'checkpoint='; sha256sum "$checkpoint"
+  printf 'case=%s numlevel=%s target_cycle=%s\n' \
+    "$case_name" "$numlevel" "${WOR124_CUTOUT_NLIM:-1785}"
   printf 'binary='; sha256sum bin/athena
   printf 'source_commit='; cat "$base/source_commit.txt"
   printf 'eos='; sha256sum data/eos/protostellar_tomida2015_material.tab
@@ -57,7 +69,7 @@ started=$(date +%s)
 set +e
 /usr/bin/time -v -o "$job/resources.txt" \
   mpirun -np "$SLURM_NTASKS" bin/athena \
-  -r "$checkpoint" -d "$job/output" -t 00:27:00 \
+  -r "$checkpoint" -d "$job/output" -t "${WOR124_CUTOUT_WALL:-00:27:00}" \
   job/problem_id="$case_name" \
   time/nlim="${WOR124_CUTOUT_NLIM:-1785}" time/tlim=10000 time/ncycle_out=1 \
   mesh/numlevel="$numlevel" \
@@ -72,6 +84,17 @@ code=$?
 set -e
 elapsed=$(($(date +%s)-started))
 printf 'exit=%d elapsed_seconds=%d\n' "$code" "$elapsed" > "$job/status.txt"
+if [[ -s "$job/output/$case_name.final.rst" ]]; then
+  final_cycle=$(python3 "$reader" "$job/output/$case_name.final.rst" --field cycle)
+  printf 'final_cycle=%s\n' "$final_cycle" >> "$job/status.txt"
+  if [[ "$final_cycle" != "${WOR124_CUTOUT_NLIM:-1785}" ]]; then
+    printf 'incomplete=1\n' >> "$job/status.txt"
+    exit 1
+  fi
+else
+  printf 'final_restart_missing=1\n' >> "$job/status.txt"
+  exit 1
+fi
 if grep -q 'FATAL ERROR' "$job/run.log"; then
   printf 'fatal_error=1\n' >> "$job/status.txt"
   exit 1

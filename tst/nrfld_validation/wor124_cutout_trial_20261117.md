@@ -44,6 +44,7 @@ mass inside the crop.
 | Run | XD job | Blocks at end | Wall time | Slurm step MaxRSS | Result |
 |---|---:|---:|---:|---:|---|
 | Central crop | 341264 | 2535 | 70 s | 25.7 GB | PASS, numerical gate |
+| Central ±750 au crop | 341329 | 2927 | 81 s | 28.8 GB | PASS, numerical gate |
 | Full domain | 341272 | 4124 | 126 s | 37.7 GB | PASS, reference |
 
 All Newton diagnostics reported `converged`; the maximum FGMRES true relative
@@ -70,6 +71,19 @@ while volume-integrated radiation energy differs by +13.86%. Central maximum
 density and temperature history differences at cycle 1785 are -3.26e-7 and
 -1.49e-7, respectively.
 
+The ±750 au crop was built by the same no-remap procedure (2920 starting
+blocks, restart SHA-256
+`c15b6ca45c37f4e86d358657efa858c40dd8b83494e6c7633acf0ccb94ee1641`).
+At cycle 1785, 2924 of 2927 blocks matched the parent exactly in position
+and level. Its 0–10 au relative L2 differences were `1.26e-7` in density and
+`2.55e-7` in radiation energy. The 150–300 au radiation-energy difference
+fell from 14.2% at ±375 au to 7.33% at ±750 au; the matched-cell
+radiation-energy integral difference fell from +13.86% to +7.65%. Thus
+moving the boundary outward reduces the discrepancy, while leaving an
+appreciable outer radiation error. The short run had 15 FGMRES solves,
+10–11 iterations each, a maximum true relative residual `8.53e-9`, all
+Newton diagnostics converged, and no opacity-domain events.
+
 ## Interpretation and remaining work
 
 This is a technically valid no-remap restart and a useful short-time core
@@ -77,6 +91,10 @@ diagnostic. It is **not** a physically validated long-time central zoom.
 The fluid and implicit FLD solve still use periodic boundaries at ±375 au;
 the current conservative FLD prototype rejects nonperiodic boundaries. The
 large radiation discrepancy outside about 50 au appears within five steps.
+At cycle 1800 (20 steps), the matched-cell volume-integrated radiation
+energy difference has grown to +20.47%; the 150–300 au relative L2 difference
+is 21.14%, while the 0–10 au radiation difference is 4.33e-5. The outer
+radiation error grows before an appreciable central density departure.
 Because changing the domain also changes the gravity solve and MG hierarchy,
 the test alone does not assign that discrepancy uniquely to the periodic
 boundary. It does show that continuing this crop as a physical second-core
@@ -93,6 +111,30 @@ physical interval, but the error is growing. The periodic crop remains
 unvalidated for longer continuation. A planned ±750 au short comparison
 (job 341275) was canceled before it started when the user requested a pause.
 No second-core production job was launched from the periodic crop.
+
+Independently of the boundary issue, this checkpoint still uses the current
+table ranges: opacity density `1e-21`–`1e-7 g cm^-3` and temperature
+`5`–about `9900 K`; the material EOS density range ends at
+`1e-4 g cm^-3`. The accepted-state opacity guard is enabled. Cropping the
+mesh does not extend either table or supply the extra AMR resolution needed
+beyond the first-core state (cycle 2250 has a minimum of 16.13 Jeans cells).
+
+After work resumed, a ±750 au cycle-1780→1830 diagnostic (XD M-test-a
+job 341331) completed successfully in 758 s. It used at most 28.0 GB
+according to Slurm step MaxRSS. All 52 Newton diagnostics converged;
+150 FGMRES solves took 9–11 iterations and had a maximum true relative
+residual `1.99e-8`, below the `2e-8` target. Opacity-domain counters remained
+zero. Gas mass changed by -1.37e-7 relative to its first saved history row;
+`divB_max` changed from `1.72e-10` to `2.02e-10` code units.
+
+At cycle 1830, against the existing full-domain history, central maximum
+density differs by -1.90e-5, maximum gas temperature by -8.46e-6, and maximum
+radiation energy by -3.39e-5. This is about a factor of three smaller than
+the ±375 au crop at the same cycle. A further ±750 au overlap continuation
+to the parent's cycle 2250 was submitted as diagnostic job 341336 on
+M-large-a. It is a validation run, not a second-core production run.
+Zero-step export jobs 341333 and 341334 were queued to compare the cycle-1830
+spatial fields of both crops with the parent at the same cycle.
 
 Local HTML report and raw comparisons:
 `/home/kosuke/simulation/test/collapse_rotmhd_20261117/cutout_trial_20261117/report/index.html`.

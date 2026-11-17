@@ -34,7 +34,8 @@ def history_difference(parent_path, crop_path):
     return result
 
 
-def render(comparison, history, outdir):
+def render(comparison, history, outdir, alternate=None, later=None,
+           alternate_history=None):
     outdir.mkdir(parents=True, exist_ok=True)
     bins = comparison["bins"]
     x = np.array([(int(name.split("-")[0]) + int(name.split("-")[1][:-2]))/2
@@ -50,10 +51,74 @@ def render(comparison, history, outdir):
     fig.savefig(outdir/"radial_difference.svg")
     plt.close(fig)
 
+    alternate_html = ""
+    if alternate is not None:
+        alt_bins = alternate["bins"]
+        fig, ax = plt.subplots(figsize=(7, 4.3))
+        for source, label, style in ((bins, "375 au", "-"),
+                                     (alt_bins, "750 au", "--")):
+            radii = np.array([(int(name.split("-")[0])
+                               + int(name.split("-")[1][:-2]))/2
+                              for name in source])
+            for field, color in (("Erad_cgs", "tab:red"),
+                                 ("Trad_K", "tab:blue")):
+                ax.semilogy(radii,
+                            [b[field]["relative_l2"] for b in source.values()],
+                            "o"+style, color=color, label=f"{field}, {label}")
+        ax.set(xlabel="Radius bin center [au]", ylabel="Relative L2 difference",
+               title="Radiation error vs cutout width, cycle 1785")
+        ax.grid(True, which="both", alpha=0.25)
+        ax.legend()
+        fig.tight_layout()
+        fig.savefig(outdir/"width_comparison.svg")
+        plt.close(fig)
+        a = bins["150-300au"]
+        b = alt_bins["150-300au"]
+        alternate_html = f"""<h2>境界までの距離</h2>
+<p>±750 auの短時間試験 job 341329 も正常終了。5 stepの壁時間81秒、
+MaxRSS 28.8 GB。150–300 auでの輻射エネルギー相対L2差は
+±375 auの {a['Erad_cgs']['relative_l2']:.2%} から
+±750 auの {b['Erad_cgs']['relative_l2']:.2%} に減少した。
+境界の影響は距離を増すと弱まるが、±750 auでも残る。</p>
+<img src="width_comparison.svg" alt="切り出し幅と輻射場の差">
+<p><a href="c1785_compare750.json">750 au比較JSON</a></p>"""
+        (outdir/"c1785_compare750.json").write_text(json.dumps(alternate, indent=2)+"\n")
+
+    later_html = ""
+    if later is not None:
+        fig, ax = plt.subplots(figsize=(7, 4.3))
+        for data, label in ((comparison, "cycle 1785"), (later, "cycle 1800")):
+            radii = np.array([(int(name.split("-")[0])
+                               + int(name.split("-")[1][:-2]))/2
+                              for name in data["bins"]])
+            ax.semilogy(radii,
+                        [b["Erad_cgs"]["relative_l2"]
+                         for b in data["bins"].values()], "o-", label=label)
+        ax.set(xlabel="Radius bin center [au]", ylabel="Radiation relative L2 difference",
+               title="Radiation error growth, 375 au crop")
+        ax.grid(True, which="both", alpha=0.25)
+        ax.legend()
+        fig.tight_layout()
+        fig.savefig(outdir/"time_comparison.svg")
+        plt.close(fig)
+        e = later["bins"]["150-300au"]["Erad_cgs"]["relative_l2"]
+        later_html = f"""<h2>時間とともに広がる差</h2>
+<p>375 au切り出しのc1800（20 step）では、150–300 auの輻射エネルギー差が
+{e:.2%}、一致ブロックの輻射エネルギー体積積分差が
+{later['volume_integrals']['Erad_cgs']['relative_signed_difference']:+.2%} に増えた。</p>
+<img src="time_comparison.svg" alt="輻射場の差の時間発展">
+<p><a href="c1800_compare375.json">c1800比較JSON</a></p>"""
+        (outdir/"c1800_compare375.json").write_text(json.dumps(later, indent=2)+"\n")
+
     fig, ax = plt.subplots(figsize=(7, 4.3))
     for field, values in history["fields"].items():
         ax.semilogy(history["cycles"], np.maximum(abs(np.array(values)), 1e-12),
-                    label=field)
+                    label=f"{field}, 375 au")
+    if alternate_history is not None:
+        for field, values in alternate_history["fields"].items():
+            ax.semilogy(alternate_history["cycles"],
+                        np.maximum(abs(np.array(values)), 1e-12), "--",
+                        label=f"{field}, 750 au")
     ax.set(xlabel="Cycle", ylabel="Absolute relative difference",
            title="Central maxima: crop vs full-domain history")
     ax.grid(True, which="both", alpha=0.25)
@@ -68,6 +133,13 @@ def render(comparison, history, outdir):
             html.escape(name), *(b[f]["relative_l2"] for f in PLOT_FIELDS))
         for name, b in bins.items())
     last = {k: v[-1] for k, v in history["fields"].items()}
+    alternate_history_html = ""
+    if alternate_history is not None:
+        alt_last = {k: v[-1] for k, v in alternate_history["fields"].items()}
+        alternate_history_html = f"""<p>±750 au切り出しのc{alternate_history['cycles'][-1]}では、
+最大密度 {alt_last['rho_max']:+.3g}、最高ガス温度
+{alt_last['Tgas_max']:+.3g}、最大輻射エネルギー
+{alt_last['Er_max']:+.3g}。<a href="history_compare750.json">750 au履歴JSON</a></p>"""
     mass = comparison["volume_integrals"]["rho_cgs"]
     rad = comparison["volume_integrals"]["Erad_cgs"]
     title = "WOR-124: central restart cutout A/B"
@@ -98,10 +170,13 @@ opacity表域外アクセスは0。</p>
 <p>一致ブロックでの体積積分差：密度 {mass['relative_signed_difference']:+.3%}、
 輻射エネルギー {rad['relative_signed_difference']:+.3%}。</p>
 <img src="radial_difference.svg" alt="半径ごとの相対L2差">
+{alternate_html}
+{later_html}
 <h2>中心最大値の履歴</h2>
 <p>c{history['cycles'][-1]}での全領域に対する差：
 最大密度 {last['rho_max']:+.3g}、最高ガス温度 {last['Tgas_max']:+.3g}、
 最大輻射エネルギー {last['Er_max']:+.3g}。</p>
+{alternate_history_html}
 <img src="history_difference.svg" alt="中心最大値の履歴差">
 <p>生データ：<a href="c1785_compare.json">空間比較JSON</a>、
 <a href="history_compare.json">履歴比較JSON</a>。</p>
@@ -110,6 +185,9 @@ opacity表域外アクセスは0。</p>
 </html>"""
     (outdir/"index.html").write_text(page)
     (outdir/"history_compare.json").write_text(json.dumps(history, indent=2) + "\n")
+    if alternate_history is not None:
+        (outdir/"history_compare750.json").write_text(
+            json.dumps(alternate_history, indent=2) + "\n")
     (outdir/"c1785_compare.json").write_text(json.dumps(comparison, indent=2) + "\n")
 
 
@@ -119,10 +197,19 @@ def main():
     parser.add_argument("parent_history", type=Path)
     parser.add_argument("crop_history", type=Path)
     parser.add_argument("outdir", type=Path)
+    parser.add_argument("--alternate-comparison", type=Path)
+    parser.add_argument("--later-comparison", type=Path)
+    parser.add_argument("--alternate-history", type=Path)
     args = parser.parse_args()
     comparison = json.loads(args.comparison.read_text())
     history = history_difference(args.parent_history, args.crop_history)
-    render(comparison, history, args.outdir)
+    alternate = (json.loads(args.alternate_comparison.read_text())
+                 if args.alternate_comparison else None)
+    later = (json.loads(args.later_comparison.read_text())
+             if args.later_comparison else None)
+    alternate_history = (history_difference(args.parent_history, args.alternate_history)
+                         if args.alternate_history else None)
+    render(comparison, history, args.outdir, alternate, later, alternate_history)
     print(args.outdir/"index.html")
 
 
