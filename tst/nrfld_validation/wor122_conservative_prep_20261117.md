@@ -44,6 +44,22 @@ conservative option. Run directory `$WORK/wor122/prep128_transfer_t8`; script
 `$WORK/wor122/athena_prep_transfer`. It is compared against the existing
 matched 128³ additional-heating run `$WORK/wor122/prep128_outer_t8`.
 
+The job completed normally in 4 min 35 s with zero opacity-domain errors.
+At t=8, maximum Mach was **0.12170**, versus **0.14942** in the matched
+additional-heating control. Integrated shell and redirected energies each
+equal 0.98761 Lheat times elapsed time. However, the six-face radiative
+luminosity rose to **1.37086 Lheat**, versus **0.97119** in the control.
+Thus energy redirection reduces the early maximum speed but lets the outer
+radiation field drain appreciably faster. This is not evidence of a stable,
+source-free convective equilibrium, and no longer run was submitted.
+
+The XD trial used the physically identical first version of the transfer
+implementation, which stored redirected energy in two extra meshblock restart
+fields. The committed implementation derives the two new history columns from
+the shell correction and retains the existing seven-element restart field;
+its local old-restart continuation passed. The XD trial restart should not be
+used with the final executable without regenerating it.
+
 The initial 1D radiative transition was also tested with temperature-smooth
 opacity trials. A 0.1-dex Gaussian in log T slightly widened the transition
 but the local 64³ one-step maximum Mach increased from 0.00505 to 0.00528,
