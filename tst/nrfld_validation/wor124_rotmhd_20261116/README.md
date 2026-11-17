@@ -537,3 +537,42 @@ our first-core density candidate. Our threshold time is 29.476 kyr versus
 this is contextual because the physics differs. A local illustrated
 comparison and exact HDF-derived metrics are at
 `/home/kosuke/simulation/test/collapse_rotmhd_20261117/literature_review/index.html`.
+
+## Final rotation-only review (2026-11-18)
+
+The two-node rotation-only M-large-a job `341013` reached its 24-hour wall
+limit at its cycle-4390 output.  Slurm reports `TIMEOUT`, but the final
+segment wrote its opacity diagnostic and HDF before termination.  The
+automatic `final.rst` is truncated at 1,006,263,566 bytes and must not be
+used.  The full-size numbered checkpoint `.00444.rst` is at the same cycle
+and time (`1987.5665222692214`), has 5146 MeshBlocks, and has SHA-256
+`34268ab26806ec364816098e3ace7f7683bb967d7d527e64ac8dfbd1e305a992`.
+
+All 3620 active Newton solves converged in at most four iterations.  The
+10,875 FGMRES solves used at most 15 iterations, with maximum true relative
+residual `1.99998485e-8`, no result above the strict `2e-8` target, no
+stagnation accept, and no breakdown.  All 362 opacity diagnostics were clean.
+The final HDF audit found zero EOS-outside cells and zero nonpositive gas
+energies among 2,634,752 active cells; the maximum single-precision total
+energy closure discrepancy was `9.039e-5`.  Gas mass is unchanged at printed
+history precision from the verified c770 continuation, and angular momentum
+changed by `+2.598e-4` relative.  Maximum Slurm-step RSS was 40.03 GB; the run
+used approximately 48 node hours.
+
+This trajectory did not reach the explicit first-core density candidate.  At
+c4390 it has `rho_max=2.1197e-11 g cm^-3`, `Tgas_max=252.46 K`, and minimum
+Jeans resolution 27.03 cells over the reviewed history.  The central inflow
+has slowed, but the density condition and a hydrostatic force-balance test are
+not satisfied.  Recent density slopes do not support spending another single
+24-hour allocation in the expectation of reliably reaching `1e-10 g cm^-3`.
+This is physical slow evolution with rotation, not nonlinear-solver stalling.
+
+The detailed report and machine-readable result are
+`../wor124_rotation_final_20261118.md` and
+`../wor124_rotation_final_results_20261118.json`.  Restart replay job `341788`
+used the numbered checkpoint and completed c4390--4400 with the same numerical
+settings.  All 10 active Newton solves converged, the 30 FGMRES solves used at
+most 12 iterations and had maximum true relative residual `1.969e-8`, and the
+c4400 HDF again had zero EOS-outside and nonpositive-gas-energy cells.  The
+new complete final restart has SHA-256
+`a3996f967f9b1d978286fc1fa3e1e733af9d770a76eccd4e21b51d3e55d5ef83`.
