@@ -54,3 +54,12 @@ sample coordinates, the largest relative interpolation changes were
 This is only a generator audit. It is not a validated physical second-core
 EOS/opacity package; the high-density gas opacity and smooth restart
 transition still need independent work.
+
+Tomida et al. (2013), Appendix 2, combined Semenov dust with Ferguson
+low-temperature gas and Opacity Project gas tables, and explicitly noted
+that the dense protostellar region lies outside the available opacity
+coverage. They extrapolated the nearest high-density values there while
+describing the uncertainty. Their Appendix 1 also warns that their ideal
+chemical-equilibrium EOS becomes invalid above roughly `0.1 g cm^-3`.
+Our `1e-2 g cm^-3` trial stays below that stated EOS limit, but a
+source-backed gas-opacity bridge and sensitivity brackets remain necessary.
