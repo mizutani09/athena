@@ -482,3 +482,58 @@ review: its last complete c3080 had `rho_max=1.46935e-11 g cm^-3`,
 opacity failure. Its first-core candidate and final performance remain to
 be reviewed. The 129 μG case remains blocked by the previously documented
 FGMRES true-residual cap at c55; the weak-field result does not resolve it.
+
+## Why the rotation-only run needs more cycles; literature comparison
+
+As checked at 2026-11-17 09:36 JST, rotation-only job `341013` was still
+running normally (c3140, `rho_max=1.4883e-11 g cm^-3`, Jeans minimum
+30.05 cells). Its cycle count is not a stalled timestep artifact. At the
+matched physical time of the final weak-field state, the rotation-only
+c2000 HDF is at `t=1966.2441` code units and the 32.25 μG c2250 HDF at
+`t=1966.2499`, only about 0.09 yr apart. Their peak densities differ by
+a factor 11.07: `9.143e-12` versus `1.012e-10 g cm^-3`. The recent
+rotation-only timestep is about 0.0088 code units/cycle, *larger* than the
+weak-field final timestep of about 0.0060. The rotation-only peak density
+fell 20.3% from c1050 (`1.0235e-11`) to c1310 (`8.1596e-12`) and then
+recovered. This explains much of the extra physical evolution and cycles.
+
+Across the first 234 complete rotation-only segments c770→3110, all 2340
+active Newton solves converged; 7020 FGMRES solves used at most 15
+iterations, with maximum true relative residual `2.000e-8`, no stagnation
+accepts, and zero opacity diagnostic errors. c2000/c3090 HDF audits found
+zero nonpositive gas-energy or EOS-outside cells among ~2.56 million cells
+each. History gas mass was unchanged to output precision from c780→3100,
+while `Lz` changed by `+1.455e-4` relative. Slurm step MaxRSS reached
+39.2 GB. No numerical hang, nonlinear failure, or memory fault is evident.
+The job has a finite 24 h wall limit and a restart every ten cycles; its
+recent density growth rate, if unchanged, would not reach `1e-10` before
+that limit. Collapse may accelerate, so this is only a planning estimate.
+
+At the matched time, rotation-only density peaks at cylindrical radius
+3.03 au versus 0.26 au for the weak-field run. Within 5 au, rotation-only
+contains `0.00457 M_sun` versus `0.01686 M_sun` with weak B, and its
+mass-weighted `v_phi/sqrt(P/rho)` is 0.624 versus 0.422. Within 10 au,
+mass-weighted specific `j_z` is 15.00 versus 10.55 in common code units.
+This is consistent with reduced rotational support and magnetic braking,
+but a direct Maxwell-stress/torque budget has not been measured; the two
+states also differ in mass distribution. The density decline is physically
+plausible given the first-core bounce discussed by Mayer et al. (2025),
+§6.3, but is not proven to have the same mechanism.
+
+[Mayer et al. (2025), §§5–6](https://arxiv.org/html/2510.12620v4) use the
+same initial 1 Msun, 3000 au, 14 K sphere and the same angular speed
+`1.48e-13 s^-1`. Their magnetized §6 model begins with 129 μG (mass-to-flux
+ratio 5) and non-ideal MHD; our completed weak-field model begins with
+32.25 μG (ratio about 20 for the same geometry) and ideal MHD. Both use
+Tomida-type thermodynamics, but the EOS implementations, opacity coverage,
+mesh, and resolution are not identical. At `rho≈1e-10 g cm^-3`, our
+temperature at the densest cell is 338 K, of the same order as Mayer's
+§6 Fig. 8 track. Our 5–7 au density/inflow transition is qualitatively
+similar to the 6–7 au first-core boundary described in their simpler §5
+model, although §5 uses ideal EOS and constant opacity. The later §6
+magnetorotational outflow and second-core comparisons are inapplicable to
+our first-core density candidate. Our threshold time is 29.476 kyr versus
+29.09 kyr for Mayer's simpler §5 model, a difference of 0.386 kyr (1.3%);
+this is contextual because the physics differs. A local illustrated
+comparison and exact HDF-derived metrics are at
+`/home/kosuke/simulation/test/collapse_rotmhd_20261117/literature_review/index.html`.
