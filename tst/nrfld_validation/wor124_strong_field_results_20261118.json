@@ -1,0 +1,69 @@
+{
+  "case": "WOR-124 rotation plus 129 microG strong field",
+  "date_jst": "2026-11-18",
+  "original_failure": {
+    "cycle": 55,
+    "fgmres_restart": 160,
+    "fgmres_max_iterations": 600,
+    "mg_vcycles": 3,
+    "true_relative_residual": 1.018645e-5,
+    "target": 2e-8
+  },
+  "loose_and_timestep_gate": {
+    "job_id": 341792,
+    "result": "all rejected"
+  },
+  "krylov_gate": {
+    "job_id": 341793,
+    "selected": "restart600_mg3_max600",
+    "selected_elapsed_seconds": 134,
+    "selected_fgmres_iterations": [466, 572],
+    "selected_fgmres_true_relative_residuals": [1.8127533548067909e-8, 1.659297508003393e-8],
+    "selected_newton_iterations": 2,
+    "selected_newton_final_max": 2.6745984181464598e-6
+  },
+  "c56_hdf_audit": {
+    "meshblocks": 960,
+    "active_cells": 491520,
+    "rho_max_g_cm3": 5.445025569971162e-18,
+    "Tgas_max_K": 13.996170997619629,
+    "eos_outside_cells": 0,
+    "nonpositive_gas_energy_cells": 0,
+    "energy_closure_relative_median": 3.81859699541836e-7,
+    "energy_closure_relative_p99": 2.2618160982466626e-6,
+    "energy_closure_relative_max": 2.6371351011283787e-6,
+    "divB_max": 6.429318882839041e-17,
+    "gas_mass_relative_change": 0.0,
+    "hdf_sha256": "6ddb77ea4f2705a053f5f7b2a137ec979392b0975f4272f437bb3cd02bced5e2"
+  },
+  "sustain_gate": {
+    "job_id": 341799,
+    "status": "FAILED_CYCLE_59",
+    "completed_cycles": [55, 56, 57, 58],
+    "failure_first_linear_residual": 1.139243630008382e-7,
+    "failure_second_linear_residual": 0.005563283065632991,
+    "elapsed_seconds": 171
+  },
+  "long_job": {
+    "job_id": 341800,
+    "partition": "M-large-a",
+    "nodes": 5,
+    "mpi_ranks": 320,
+    "status": "CANCELLED_WITHOUT_START"
+  },
+  "expanded_krylov_gate": {
+    "job_id": 341805,
+    "fgmres_restart": 1000,
+    "fgmres_max_iterations": 1000,
+    "mg_vcycles": 3,
+    "status": "PENDING_MTEST_QOS"
+  },
+  "replacement_long_job": {
+    "job_id": 341806,
+    "partition": "M-large-a",
+    "nodes": 5,
+    "mpi_ranks": 320,
+    "dependency": "afterok:341805",
+    "status": "PENDING_GATE"
+  }
+}

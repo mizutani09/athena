@@ -576,3 +576,20 @@ most 12 iterations and had maximum true relative residual `1.969e-8`, and the
 c4400 HDF again had zero EOS-outside and nonpositive-gas-energy cells.  The
 new complete final restart has SHA-256
 `a3996f967f9b1d978286fc1fa3e1e733af9d770a76eccd4e21b51d3e55d5ef83`.
+
+## Strong-field Krylov recovery and production gate (2026-11-18)
+
+The rotation plus 129 microG case fails in its first c55 FGMRES solve with
+restart 160, before Newton can accept a correction.  Deliberately loose
+tolerances and CFL 0.15 did not sustain the trajectory.  Restart 600/MG3 met
+the strict `2e-8` target at c55, but the 128-rank c55--65 sustain job `341799`
+failed at c59: an inexact-cap-eligible `1.139e-7` first correction was followed
+by a `5.563e-3` linear residual.  The unstarted restart-600 production job was
+cancelled.
+
+M-test job `341805` therefore tests restart/max 1000 with MG3 and the unchanged
+strict target through c65.  Five-node M-large-a job `341806` starts from the
+immutable c50 restart and is protected by both `afterok:341805` and an
+in-script gate-status check.  It uses CFL 0.3, AMR `numlevel=12`, and guarded
+ten-cycle segments.  See `../wor124_strong_field_20261118.md` and
+`../wor124_strong_field_results_20261118.json` for the evidence and job IDs.
