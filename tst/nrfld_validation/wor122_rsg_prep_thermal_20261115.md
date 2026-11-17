@@ -379,3 +379,57 @@ In the outer 830–900 R☉ shell, the axis-cone mean rose from +0.1531 to
 +0.1742 km/s while the diagonal-cone mean fell from -0.0369 to -0.0481
 km/s. The outer angular contrast continues to grow, but these shell
 averages do not yet identify where the disturbance originates.
+
+### 256³ continuation to t=52 (2026-11-17)
+
+XD **341037** (M-bulk-a, 64 ranks, 2 h 27 min 41 s) and its M-debug
+analysis **341038** both completed with exit code 0. The run reached
+code time 52, or 13.24 days. All 607 FGMRES solves met the 1e-4 target
+(maximum 58 iterations, mean 28.2); all 193 Newton solves converged
+(maximum 4 iterations, largest final max norm 9.56e-9). `stderr.log` is
+empty and the opacity-domain, clamp, negative, zero, and nonfinite counts
+are zero. The saved radiation energy remains positive.
+
+| Quantity | t=36 (9.17 d) | t=52 (13.24 d) |
+| --- | ---: | ---: |
+| Global maximum Mach, tabular EOS | 0.15479 | 0.22199 |
+| Mean outward core velocity, r<166 R☉ [km/s] | 0.1787 | 0.2134 |
+| RMS speed, 850–880 R☉ [km/s] | 0.1083 | 0.1539 |
+| Tgas/initial, 813–817 R☉ | 0.99191 | 0.99267 |
+| Tgas/initial, 850–880 R☉ | 0.99934 | 1.00063 |
+| Lrad/Lheat at six box faces | 0.95661 | 0.95737 |
+| 800–830 R☉ convective enthalpy covariance/Lstar | 0.00197 | 0.00267 |
+
+Box gas mass changed by -2.93e-8 relative over t=36→52. The integrated
+preparation energy supplied 0.945 Lheat times the elapsed code time; the
+ordinary-step median `Pprep_thermal/Lheat` remained roughly 0.95–0.97
+throughout the interval. Thus the artificial surface support still carries
+almost a full stellar luminosity. The growing velocity is not yet a solver
+failure or a source-free convective equilibrium.
+
+Targeted M-debug diagnostics **341244** completed in 25 s. Initial
+submission **341243** exited before reading data because the analysis
+script was absent from the remote checkout; the same script was copied to
+`$WORK/wor122/wor122_analyze_snapshot.py` and the corrected job passed.
+At t=52, the ideal-gas-5/3 Mach *proxy* peaks at 0.22196 near radius
+1104 R☉ in density-floor exterior gas, versus the tabular-EOS global
+history maximum 0.22199. The largest proxy in 800–860 R☉ is 0.16514,
+up from 0.13009 at t=36. The global maximum therefore appears dominated
+by the dilute exterior; the stellar surface still shows a subsonic but
+growing disturbance. The proxy is not a tabular-EOS Mach calculation.
+
+At t=36 and t=52, the core 0–166 R☉ axis-cone/diagonal-cone mean radial
+velocities were 0.1765/0.1802 and 0.2121/0.2133 km/s, respectively.
+Core expansion remains nearly isotropic. In 830–900 R☉, the same
+axis/diagonal values were +0.1742/-0.0481 and +0.1821/-0.0708 km/s;
+the outer angular contrast grew. Compact remote diagnostics are
+`$WORK/wor122/{machloc_t36.json,machloc_t52.json,axis_flow_t36_t52.json}`;
+large snapshots and histories remain under
+`$WORK/wor122/prep256_fgmres_r40_t52/`.
+
+No further RSG evolution was submitted at this gate. The next useful
+implementation is a startup model that balances the discrete gas force
+and FLD face flux on the actual mesh and supplies a measured path from
+artificial support to convective transport. Simply extending the same
+initial transient will consume a great deal of time before the necessary
+source-free condition can be checked.
