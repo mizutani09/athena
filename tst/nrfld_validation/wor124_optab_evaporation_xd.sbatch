@@ -21,7 +21,7 @@ export OMP_NUM_THREADS=1
 export ATHENA_WOR92_INEXACT_TRUE_CAP=1e-6
 
 cd "$source_dir"
-./configure.py --prob=test_optab_eos --eos=general/eos_table \
+python3 ./configure.py --prob=test_optab_eos --eos=general/eos_table \
   -nrmgfld -hdf5 -mpi > "$job/configure.log" 2>&1
 make clean >> "$job/configure.log" 2>&1
 make -j16 > "$job/build.log" 2>&1
