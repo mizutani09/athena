@@ -1,6 +1,6 @@
 # WOR-124 second-core preparation, full-domain AMR gate
 
-## State at 2026-11-17 20:03 JST
+## State at 2026-11-17 20:24 JST
 
 The original worktree has unrelated uncommitted changes. This experiment uses
 the isolated branch `exp/wor124-second-core-amr-gate-20261117`, based on the
@@ -16,8 +16,8 @@ remained close, which supports a diagnostic use only.
 ## XD job progress
 
 - Rotation-only high-AMR job `341013` was RUNNING on M-large-a, two nodes and
-  128 MPI ranks. Its latest completed segment was cycle 4380, with 5146
-  blocks, `rho_max=2.10745e-11 g cm^-3`, and minimum Jeans resolution 27.65
+  128 MPI ranks. Its latest completed segment was cycle 4390, with 5146
+  blocks, `rho_max=2.11970e-11 g cm^-3`, and minimum Jeans resolution 27.61
   cells. Its 24-hour limit ends at about 2026-11-17 22:12 JST. This job was
   left untouched.
 - Full-domain five-cycle jobs `341626` (`mesh/numlevel=11` control) and
@@ -124,13 +124,26 @@ handoff, but its 99th-percentile Planck difference is 0.291 or 0.165 dex and
 its Rosseland difference is 0.205 or 0.155 dex. Thus the choice is localized
 but not numerically negligible while a trajectory crosses dust evaporation.
 
-XD job `341645` uses
+XD job `341645` used
 [`wor124_secondcore_opacity_gate.sbatch`](wor124_secondcore_opacity_gate.sbatch)
 to compare this table against level-12 control job `341627` from exactly the
-same cycle-2250 restart for five cycles. At 20:03 JST it was pending on
-M-test-a because of the per-user QOS limit. Since the checkpoint is only
-340 K, this gate checks table reading, low-temperature equivalence, restart,
-Newton/FGMRES, AMR, conservation, and memory; it does not exercise the
-OPTAB-dominated high-temperature regime. A continuation that actually crosses
-dust evaporation remains required before choosing a transition width and
-using the bridge for a second-core production claim.
+same cycle-2250 restart for five cycles and completed with PASS on M-test-a.
+It reached cycle 2255 in 140 s with 4852 blocks, a 32.1235-cell minimum Jeans
+resolution, `rho_max=1.02615e-10 g cm^-3`, `Tmax=340.339 K`, and no opacity
+domain or value event. MPI-step MaxRSS was 51,598,952 KiB, 11.36% above the
+control's single-run watermark; wall time was 5.4% lower, so neither difference
+is treated as a stable performance measurement.
+
+The hybrid and control used identical Newton and FGMRES iteration sequences:
+three Newton iterations per cycle and FGMRES mean/max 9.47/10. Their final
+rho, temperature, Jeans resolution, and radiation-energy histories agree to
+approximately `1e-11` relative. `divB_max` differed by 5.5% but remained only
+`3.14e-10` in absolute value. The duplicate M-debug fallback job `341648` was
+canceled while pending once the M-test job started.
+
+Because the checkpoint is only 340 K, this gate validates table reading,
+low-temperature equivalence, restart, Newton/FGMRES, AMR, conservation, and
+memory; it does not exercise the OPTAB-dominated high-temperature regime. A
+continuation that actually crosses dust evaporation remains required before
+choosing a transition width and using the bridge for a second-core production
+claim.

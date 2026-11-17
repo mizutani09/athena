@@ -8,7 +8,8 @@
   },
   "assets": {
     "eos_sha256": "742a3456923d4c7056c3705accbcc793af3e0c79408a2f597a0cd9271b13ba43",
-    "semenov_opacity_sha256": "6c42445452bca6aeca1253f31ab049b2ff107dea3601f946b4c61c93db022f94"
+    "semenov_opacity_sha256": "6c42445452bca6aeca1253f31ab049b2ff107dea3601f946b4c61c93db022f94",
+    "hybrid_optab_opacity_sha256": "3a7048546bf140454b7bd8d7d108cafa04e45080f92d1cfadd7af49888a7ed5c"
   },
   "common": {
     "partition": "M-test-a",
@@ -85,7 +86,50 @@
         "zero": 0,
         "nonfinite": 0
       }
+    },
+    "341645": {
+      "mesh_numlevel": 12,
+      "opacity": "Semenov dust plus OPTAB gas hybrid",
+      "result": "PASS",
+      "elapsed_seconds": 140,
+      "mpi_step_maxrss_kib": 51598952,
+      "final_blocks": 4852,
+      "rho_max_g_cm3": 1.026148516215802e-10,
+      "temperature_max_K": 340.3392212720292,
+      "jeans_min_cells": 32.1234830793045,
+      "divB_max": 3.144577931379899e-10,
+      "newton_calls": 5,
+      "newton_iterations_each": [3, 3, 3, 3, 3],
+      "newton_max_final_l2": 2.4203830121932776e-10,
+      "newton_max_final_max": 5.115228032199639e-6,
+      "fgmres_calls": 15,
+      "fgmres_mean_iterations": 9.466666666666667,
+      "fgmres_max_iterations": 10,
+      "fgmres_max_true_relative_residual": 1.867784186575671e-8,
+      "relative_change_first_to_last_stored_history": {
+        "mass": -2.93642976976383e-9,
+        "gas_mass": -2.9364284606499478e-9,
+        "Lz": 7.12583084243893e-8,
+        "radiation_energy": -1.1337115294269302e-4
+      },
+      "opacity_diagnostics": {
+        "out_of_domain": 0,
+        "clamped": 0,
+        "negative": 0,
+        "zero": 0,
+        "nonfinite": 0
+      },
+      "comparison_to_semenov_control_341627": {
+        "identical_newton_and_fgmres_iteration_sequences": true,
+        "rho_max_relative_difference": -3.2470805660928508e-12,
+        "temperature_max_relative_difference": -3.616481650243996e-12,
+        "jeans_min_relative_difference": -1.5217945108754957e-13,
+        "radiation_energy_relative_difference": -4.849296090314685e-12,
+        "divB_absolute": 3.144577931379899e-10,
+        "wall_time_relative_difference": -0.05405405405405406,
+        "mpi_step_maxrss_relative_difference": 0.1136100414098693
+      }
     }
   },
-  "interpretation": "Adding level 12 doubled Jeans resolution with about six percent block, wall-time, and memory overhead and did not worsen Newton-FGMRES convergence."
+  "interpretation": "Adding level 12 doubled Jeans resolution with about six percent block, wall-time, and memory overhead and did not worsen Newton-FGMRES convergence. At 340 K, the hybrid table reproduced the Semenov control to roughly 1e-11 relative in thermodynamic histories with an identical nonlinear/linear iteration sequence. This validates table loading and low-temperature equivalence, not the OPTAB-dominated regime."
 }
