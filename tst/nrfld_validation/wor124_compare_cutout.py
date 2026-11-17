@@ -79,6 +79,8 @@ def compare(parent, crop):
               "matched_cells": len(pairs)*512, "bins": {}}
     dx1, dx2, dx3 = (np.diff(v[ci], axis=1) for v in c["xf"])
     volume = dx1[:, None, None, :] * dx2[:, None, :, None] * dx3[:, :, None, None]
+    result["matched_volume_fraction"] = float(
+        np.sum(volume) / crop_width**3)
     result["volume_integrals"] = {}
     for field in ("rho_cgs", "Erad_cgs"):
         j = FIELDS.index(field)
@@ -89,6 +91,23 @@ def compare(parent, crop):
             "relative_signed_difference": float(np.sum((b-a)*volume)/total),
             "relative_l1_difference": float(np.sum(abs(b-a)*volume)/total),
         }
+    result["spherical_integrals"] = {}
+    for limit in (10, 50, 150, 300):
+        mask = radius < limit
+        if not mask.any():
+            continue
+        region = {"matched_cells": int(mask.sum())}
+        for field in ("rho_cgs", "Erad_cgs"):
+            j = FIELDS.index(field)
+            a = p["u"][j, pi][mask]
+            b = c["u"][j, ci][mask]
+            v = volume[mask]
+            total = np.sum(a*v)
+            region[field] = {
+                "relative_signed_difference": float(np.sum((b-a)*v)/total),
+                "relative_l1_difference": float(np.sum(abs(b-a)*v)/total),
+            }
+        result["spherical_integrals"][f"r_lt_{limit}au"] = region
     for low, high in BINS:
         mask = (radius >= low) & (radius < high)
         if not mask.any():

@@ -55,7 +55,7 @@ the parent history's `1.68e-10`.
 
 [`wor124_compare_cutout.py`](wor124_compare_cutout.py) compared 2532 of 2535
 cropped MeshBlocks with parent blocks at exactly the same coordinates and
-refinement level (1,296,384 cells). Three unmatched blocks are around 52 au;
+physical cell width (1,296,384 cells). Three unmatched blocks are around 52 au;
 they reflect different AMR decisions after the restart. Relative L2 errors:
 
 | Radius | Density | Gas temperature | Radiation energy | Radiation temperature | B1 |
@@ -75,7 +75,7 @@ The ±750 au crop was built by the same no-remap procedure (2920 starting
 blocks, restart SHA-256
 `c15b6ca45c37f4e86d358657efa858c40dd8b83494e6c7633acf0ccb94ee1641`).
 At cycle 1785, 2924 of 2927 blocks matched the parent exactly in position
-and level. Its 0–10 au relative L2 differences were `1.26e-7` in density and
+and physical cell width. Its 0–10 au relative L2 differences were `1.26e-7` in density and
 `2.55e-7` in radiation energy. The 150–300 au radiation-energy difference
 fell from 14.2% at ±375 au to 7.33% at ±750 au; the matched-cell
 radiation-energy integral difference fell from +13.86% to +7.65%. Thus
@@ -95,6 +95,11 @@ At cycle 1800 (20 steps), the matched-cell volume-integrated radiation
 energy difference has grown to +20.47%; the 150–300 au relative L2 difference
 is 21.14%, while the 0–10 au radiation difference is 4.33e-5. The outer
 radiation error grows before an appreciable central density departure.
+At cycle 1830, a zero-step snapshot export from the saved restart shows the
+same trend: the ±375 au crop differs in radiation energy by 35.53% in the
+150–300 au shell, and its matched-cell radiation-energy integral is +34.11%
+above the full domain. Inside 10 au, radiation-energy relative L2 difference
+is only 1.27e-4 and the signed enclosed-mass difference is +1.00e-6.
 Because changing the domain also changes the gravity solve and MG hierarchy,
 the test alone does not assign that discrepancy uniquely to the periodic
 boundary. It does show that continuing this crop as a physical second-core
@@ -130,11 +135,75 @@ zero. Gas mass changed by -1.37e-7 relative to its first saved history row;
 At cycle 1830, against the existing full-domain history, central maximum
 density differs by -1.90e-5, maximum gas temperature by -8.46e-6, and maximum
 radiation energy by -3.39e-5. This is about a factor of three smaller than
-the ±375 au crop at the same cycle. A further ±750 au overlap continuation
-to the parent's cycle 2250 was submitted as diagnostic job 341336 on
-M-large-a. It is a validation run, not a second-core production run.
-Zero-step export jobs 341333 and 341334 were queued to compare the cycle-1830
-spatial fields of both crops with the parent at the same cycle.
+the ±375 au crop at the same cycle.
+
+The ±750 au overlap continuation to the parent's cycle 2250, diagnostic
+job 341336 on M-large-a, completed successfully in 6900 s on one node and
+64 MPI ranks. Its final mesh contained 3319 blocks, and it performed
+703,808,000 zone-cycles. Slurm step MaxRSS was 43.6 GB. All 425 Newton
+diagnostics converged. FGMRES performed 1265 solves, totaling 12,672
+iterations (6–12 per solve); maximum true relative residual was
+`1.996e-8`, below the `2e-8` target. All five opacity-domain counters
+were zero; there was no fatal solver event. Relative to the first saved
+history row, gas mass changed by -1.94e-6 and angular momentum by
+-4.29e-4. `divB_max` changed from `2.04e-10` to `3.13e-10` code units.
+
+At cycle 2250, the crop has `rho_max=1.0117196e-10 g cm^-3`,
+`Tgas_max=338.3187 K`, and a minimum of 16.1286 Jeans cells. Both meshes
+have the same smallest cell width, 0.36621094 au;
+their relative AMR level numbers differ because the crop has a smaller
+root domain. Against
+the full-domain cycle-2250 history, the central density, temperature, and
+maximum radiation-energy differences are -1.56e-4, -6.89e-5, and
+-2.75e-4. The crop is later by `1.5245e-4` code-time units at the same
+cycle; linear extrapolation of the last two parent history samples to the
+crop time gives differences -2.04e-4, -8.96e-5, and -3.58e-4. These are
+small central differences over approximately 46 physical years, but do
+not validate the periodic outer radiation boundary for second-core evolution.
+
+Zero-step export jobs 341333 and 341334 also completed, providing true
+cycle-1830 spatial fields for both crop widths. Their spatial comparison
+matches 99.9908% of the ±375 au crop volume and 99.9989% of the ±750 au
+crop volume to the parent at the same coordinates and physical cell width. At
+150–300 au, the radiation-energy relative L2 difference is 35.53% for
+±375 au and 18.27% for ±750 au. Within 10 au, the corresponding
+radiation-energy relative L2 differences are 1.27e-4 and 5.36e-5.
+The signed radiation-energy integral within 300 au differs by +29.10%
+and +14.95%, respectively. Doubling the crop width reduces, but does
+not remove, the outer radiation error. These snapshots were exported
+without advancing the restart, so the spatial comparison is at the
+exact same cycle as the parent.
+
+The cycle-2250 ±750 au HDF spatial comparison matches 3308 of 3319 cropped
+blocks and **99.9985% of the crop volume** to parent blocks at the same
+coordinates and physical cell width. Relative L2 differences are:
+
+| Radius | Density | Gas temperature | Radiation energy | Radiation temperature | B1 |
+|---|---:|---:|---:|---:|---:|
+| 0–10 au | 9.02e-5 | 2.43e-4 | 1.94e-4 | 2.43e-4 | 1.15e-4 |
+| 10–50 au | 1.45e-3 | 2.67e-2 | 1.49e-2 | 2.71e-2 | 1.15e-3 |
+| 50–150 au | 1.24e-3 | 2.15e-1 | 1.17 | 2.24e-1 | 1.49e-3 |
+| 150–300 au | 4.37e-5 | 2.62e-1 | 1.61 | 2.71e-1 | 4.22e-5 |
+| 300–650 au | 1.49e-5 | 2.66e-1 | 1.62 | 2.73e-1 | 1.17e-5 |
+| 650–1300 au | 4.70e-2 | 2.67e-1 | 1.63 | 2.73e-1 | 3.89e-2 |
+
+Inside 10 au, the signed enclosed mass and radiation-energy differences
+are only +1.20e-5 and +9.40e-5. Across the matched cube they are -0.389%
+and +160.5%, respectively. The outer mismatch is therefore not an AMR
+matching artifact, and the small center error does not make the whole
+state physically consistent.
+
+The mechanism is visible in the output and source. At cycle 2250, the
+crop's minimum gas/radiation temperatures are 17.739/17.822 K, compared
+with 14.003/14.001 K in the same parent region. The maximum crop
+`background_tracer` is only `3.25e-8`, far below the sink threshold
+`0.5`; the entire ±750 au cube lies inside the initial 3000 au core and
+contains no ambient reservoir. With periodic boundaries, radiative heat
+cannot leave this small domain in the same way as the parent, and the
+outer gas and radiation warm strongly. This explains why the no-remap
+cutout is numerically stable yet is not a physical second-core
+continuation. A meaningful central zoom needs validated nonperiodic FLD
+and MHD inflow/radiation boundaries plus an external-gravity treatment.
 
 Local HTML report and raw comparisons:
 `/home/kosuke/simulation/test/collapse_rotmhd_20261117/cutout_trial_20261117/report/index.html`.
