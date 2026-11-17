@@ -101,6 +101,14 @@ thermodynamic structure and equations. We cannot attribute it to WOR-55
 alone. Reproduction and checksums are in
 `tst/nrfld_validation/wor122_opacity_reference_20261117.py` and its JSON;
 the plot is `doc/figures/wor122_opacity_reference_20261117.png`.
+The XD raw Optab file
+`$WORK/wor55/optab/work/rsg_2p5_7p0_p14_3/output/opac_table.h5`
+was checked directly. The four source layers bracketing the 700-Rsun
+state in `(rho,T)` have κR = 18.20, 23.85, 26.06, and 34.88 cm²/g;
+the layers around 750 Rsun have κR = 15.99–25.55 cm²/g. Thus the
+~4–10-fold difference from MESA OPAL at those states is present in raw
+Optab means and is not caused solely by the final structured-grid
+interpolation. This does not identify which microphysical source causes it.
 At fixed 1D temperature/radiation gradient in diffusion, replacing only
 κR by the MESA OPAL value would raise the 700-Rsun radiative fraction from
 0.0144 to approximately 0.137, still leaving most of Lstar to convection.
