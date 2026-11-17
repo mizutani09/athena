@@ -1,0 +1,147 @@
+{
+  "definition": "Opacity in cm2/g at identical imported-profile rho,T states; MESA tables use logR=logrho-3logT+18 and are interpolated bilinearly in log opacity. No extrapolation.",
+  "inputs": {
+    "profile": {
+      "path": "data/ic/st35gm03n07_wor55_lte_fld_trial.dat",
+      "sha256": "ac65bbc48d8e44df40923802363fa94d3e5466ac8a4f4ad3aaf63f9b0fd4b2c4"
+    },
+    "wor55": {
+      "path": "data/opacity/rsg_gray_opacity_wor55.h5",
+      "sha256": "00c517e858f33e85fb3fab26618600f43335c445b99ea01d3393549fc27eaefb"
+    },
+    "t7": {
+      "path": "data/opacity/rsg_gray_opacity_t7.h5",
+      "sha256": "6f5d39922be2436daf45c049c081adcf65e2b71ff15ab05ef4c066413ae65a14"
+    },
+    "opal": {
+      "path": "/home/kosuke/simulation/mesa/data/kap_data/gs98_z0.02_x0.7.data",
+      "sha256": "de88cf4d402b99190ea395530152d03041cbcc95e0be8e169a1ff320b3b3cdbe"
+    },
+    "lowt": {
+      "path": "/home/kosuke/simulation/mesa/data/kap_data/lowT_fa05_gs98_z0.02_x0.7.data",
+      "sha256": "892809b40011522346dba0edd41e40a1e56e4e6ee29a7ae49126bfd07857554d"
+    }
+  },
+  "samples": {
+    "300": {
+      "sample_radius_rsun": 299.7522869191656,
+      "rho_g_cm3": 3.13664041673523e-08,
+      "temperature_K": 100279.57160202913,
+      "log10_R": -4.5071726757079915,
+      "opacity_cm2_g": {
+        "WOR-55 Optab": 1.6507095096051705,
+        "older t7": 1.9825102103626637,
+        "MESA OPAL GS98": 1.7447454393205173,
+        "MESA Ferguson GS98": NaN
+      }
+    },
+    "500": {
+      "sample_radius_rsun": 499.94785206192967,
+      "rho_g_cm3": 9.714824671791287e-09,
+      "temperature_K": 47119.087678614,
+      "log10_R": -4.0321556520266775,
+      "opacity_cm2_g": {
+        "WOR-55 Optab": 15.302743638386442,
+        "older t7": 15.646917645199052,
+        "MESA OPAL GS98": 5.760943683596328,
+        "MESA Ferguson GS98": NaN
+      }
+    },
+    "600": {
+      "sample_radius_rsun": 599.5045655383312,
+      "rho_g_cm3": 4.0169541187334455e-09,
+      "temperature_K": 36084.866112940595,
+      "log10_R": -4.06807842348217,
+      "opacity_cm2_g": {
+        "WOR-55 Optab": 24.18377534700025,
+        "older t7": 23.856273184119477,
+        "MESA OPAL GS98": 4.034197412009838,
+        "MESA Ferguson GS98": NaN
+      }
+    },
+    "700": {
+      "sample_radius_rsun": 700.1434172046936,
+      "rho_g_cm3": 1.9823253284387324e-09,
+      "temperature_K": 26402.263483780833,
+      "log10_R": -3.9677485524265492,
+      "opacity_cm2_g": {
+        "WOR-55 Optab": 28.855165482706052,
+        "older t7": 28.18565996208901,
+        "MESA OPAL GS98": 3.0327033138834905,
+        "MESA Ferguson GS98": 2.9981210553206106
+      }
+    },
+    "750": {
+      "sample_radius_rsun": 749.9217739428944,
+      "rho_g_cm3": 1.5656268773903753e-09,
+      "temperature_K": 19786.35192053825,
+      "log10_R": -3.6944089192237684,
+      "opacity_cm2_g": {
+        "WOR-55 Optab": 21.47345678321701,
+        "older t7": 21.49306654656733,
+        "MESA OPAL GS98": 4.98090123068272,
+        "MESA Ferguson GS98": 5.740634104841545
+      }
+    },
+    "780": {
+      "sample_radius_rsun": 780.2216432617993,
+      "rho_g_cm3": 1.4104749749317575e-09,
+      "temperature_K": 15103.384479222017,
+      "log10_R": -3.3878574492748683,
+      "opacity_cm2_g": {
+        "WOR-55 Optab": 15.689121626757737,
+        "older t7": 17.118625238695305,
+        "MESA OPAL GS98": 11.4996182394292,
+        "MESA Ferguson GS98": 11.210941528810705
+      }
+    },
+    "800": {
+      "sample_radius_rsun": 799.7001306810952,
+      "rho_g_cm3": 1.4326482944957101e-09,
+      "temperature_K": 11061.8913313784,
+      "log10_R": -2.975348576223041,
+      "opacity_cm2_g": {
+        "WOR-55 Optab": 25.713827340659876,
+        "older t7": 22.617292095714973,
+        "MESA OPAL GS98": 30.666136511300056,
+        "MESA Ferguson GS98": 30.58299711074085
+      }
+    },
+    "810": {
+      "sample_radius_rsun": 810.521512580704,
+      "rho_g_cm3": 2.107750517057986e-09,
+      "temperature_K": 8371.562584388612,
+      "log10_R": -2.444600380378617,
+      "opacity_cm2_g": {
+        "WOR-55 Optab": 3.231708992649716,
+        "older t7": 3.1523174511157617,
+        "MESA OPAL GS98": 3.456527358343749,
+        "MESA Ferguson GS98": 3.621704892625476
+      }
+    },
+    "813": {
+      "sample_radius_rsun": 812.6857889606258,
+      "rho_g_cm3": 2.241471035869608e-09,
+      "temperature_K": 7613.384283936847,
+      "log10_R": -2.2942001224863624,
+      "opacity_cm2_g": {
+        "WOR-55 Optab": 0.9466502789547143,
+        "older t7": 0.9976042777937066,
+        "MESA OPAL GS98": 0.9413535505747773,
+        "MESA Ferguson GS98": 1.0090639625499316
+      }
+    },
+    "817": {
+      "sample_radius_rsun": 817.0143417204694,
+      "rho_g_cm3": 2.3250797187517497e-09,
+      "temperature_K": 5780.264916683111,
+      "log10_R": -1.9194053814866763,
+      "opacity_cm2_g": {
+        "WOR-55 Optab": 0.028315062202318664,
+        "older t7": 0.031025738421324646,
+        "MESA OPAL GS98": 0.025308988710690226,
+        "MESA Ferguson GS98": 0.030392307663597653
+      }
+    }
+  }
+}
