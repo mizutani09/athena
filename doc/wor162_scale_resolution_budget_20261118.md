@@ -32,6 +32,13 @@ surface refinement.  The cell and physical-step estimates are geometric.
 Memory and CPU-hour columns below are calibrated from a local serial run; XD
 MPI measurements supply the production wall-clock estimates.
 
+The surface-L3 plus central-L6 stability run reaches `0.1 t_dyn` without
+damping and passes all numeric gates.  Relative mass drift is zero, angular-
+momentum drift is `1.67e-5`, mechanical-energy drift is `1.77e-5`, radial
+Mach RMS is `6.81e-3`, and the virial residual remains below `2.05e-3`.
+Surface L3 therefore reduces the central-L6-only Mach RMS by a factor of 30
+while retaining its energy and angular-momentum quality.
+
 ## Physical scales
 
 The target rotating model has `M_gas=15.30 Msun`, `M_core=5.70 Msun`,
@@ -111,7 +118,8 @@ quality mesh are:
 | none | `56,56,56,56,56,56,64` | 400 | `1,638,400` | about 2.6 GiB (scaled) |
 | L1 | `8,440,56,56,56,56,64` | 736 | `3,014,656` | 4.74 GiB |
 | L2 | `0,264,1976,56,56,56,64` | 2,472 | `10,125,312` | 16.40 GiB |
-| L3 | `0,80,2408,8376,56,56,64` | 11,040 | `44,990,464` | 86.86 GiB aggregate |
+| L3 calibration | `0,80,2408,8376,56,56,64` | 11,040 | `45,219,840` | 86.86 GiB aggregate |
+| L3 at `0.1 t_dyn` | `0,72,2416,8824,56,56,64` | 11,488 | `47,054,848` | 179.45 GiB aggregate |
 
 The L2 topology is 2.32 times larger than the former spheroidal-shell
 estimate.  An O3 serial stress test completed one full hydro plus self-gravity
@@ -159,6 +167,20 @@ radial Mach RMS agrees to better than `2e-10` relative, while angular-momentum
 drift is `2.55e-9`, mechanical-energy drift is below `1.86e-6`, and the
 virial residual is `2.05e-3`.  Thus MPI decomposition does not introduce a
 detectable physical discrepancy at this duration.
+
+The full two-node `0.1 t_dyn` gate completed 4,753 cycles in 2.01 h wall
+time, including initialization and output, with 6,949.30 s in the main loop
+and `3.18e7` zone-cycles/s.  Dynamic surface AMR grew from 10,984 blocks at
+initialization to 11,488 blocks at the end.  Slurm measured 179.45 GiB
+aggregate RSS, 81.6% of the 220 GiB request.  The run wrote 13 GiB in 33,999
+files, including a 4.8 GiB final restart.  A continuation to `1 t_dyn` should
+therefore use two restart stages of about `0.45 t_dyn` each on the 12-hour
+bulk partition rather than relying on a marginal single 24-hour allocation.
+The multigrid driver reported 9,648 rejected slow V-cycle sequences, about two
+per hydro cycle, but their accepted final defect stayed bounded between
+`3.01e-6` and `4.85e-6` and ended at `3.80e-6`.  This is the same warning mode
+seen in the scaling jobs and produced neither NaNs nor growing conservation
+errors; it should remain monitored during the longer restart stages.
 
 ### XD MPI calibration
 
@@ -283,6 +305,15 @@ Mach 23--40 while containing only `5.5e-6` of the slice radial energy.  Inside
 the Mach RMS is only 0.0101.  This separates the now-resolved compact-core
 energetics from the remaining surface-resolution error.
 
+Adding surface L3 changes that `0.1 t_dyn` Mach RMS from 0.204 to 0.00681.
+At the final time, radial and nonradial perturbation energies are respectively
+`7.03e-6` and `2.27e-5` of the binding scale, and mean and RMS radius drifts
+remain below `4.25e-5`.  The local three-dimensional Mach maximum still
+reaches 42.3 in negligible-mass surface cells.  The final equatorial slice
+puts only `6.90e-7` of radial and `9.18e-9` of nonradial slice energy outside
+`800 Rsun`; this confirms why the local maximum is not a rejection gate.
+The evolved virial residual stays near `-1.2e-3` without secular runaway.
+
 The resolution prescription is therefore:
 
 - central L5 is sufficient for economical discriminators; central L6 is the
@@ -295,11 +326,10 @@ The resolution prescription is therefore:
 ## Execution sequence
 
 1. Keep the validated face-mass-flux core-work update and central L6.
-2. Run the tracer-following surface-L3 mesh for `0.1 t_dyn` as a stability
-   gate on at least two exclusive XD nodes; topology and two-node scaling are
-   complete.
-3. Extend a passing L3 result to at least `1 t_dyn`, and to `3 t_dyn` if the
-   diagnostics have not settled.
+2. The two-node tracer-following surface-L3 `0.1 t_dyn` stability gate is
+   complete and passes all numeric criteria.
+3. Continue its final restart to at least `1 t_dyn` in two approximately
+   `0.45 t_dyn` stages, and to `3 t_dyn` if the diagnostics have not settled.
 4. Use a short surface-level-4 run only to establish convergence of the
    level-3 result.
 5. Test the generated nonrotating and `Omega=2e-8 s^-1` SCF profiles in the
