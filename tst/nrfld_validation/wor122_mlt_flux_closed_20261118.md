@@ -69,15 +69,23 @@ to radiation at the surface is consequently sharp, and the turbulent
 support that would accompany this flux cannot be ignored when judging
 mechanical consistency.
 
-The same trial permits a first check of the efficient-eddy assumption.
-For an eddy length `alpha H`, `tau_eddy v/c` is about 19 at 500 R☉,
-1.35 at 800 R☉, 0.087 at 813 R☉, and 0.00092 at 817 R☉. Diffusion-time
-coefficients are order unity to several, so the last two values strongly
-indicate that photons escape an eddy before it turns over. The optimistic
-efficient-MLT closure is especially unreliable exactly where the surface
-luminosity switches channels. These estimates use the trial's predicted
-velocity and its sampled opacity; they are not a radiation-hydrodynamic
-measurement.
+Correction after checking the actual MLT heat-capacity factor: the earlier
+`tau_eddy v/c` test alone does **not** determine whether an eddy cools before
+turnover. Ludwig, Freytag & Steffen (1999), Appendix A, define the
+convective efficiency `Gamma=(nabla-nabla_e)/(nabla_e-nabla_ad)` using
+`rho*cP*v*tau_eddy/(f3*sigma*T^3)` and an optical-depth correction.
+MESA's documentation explicitly corrects the Henyey coefficient printed
+in Ludwig et al.'s table: `f3=8*f4=32*pi^2/3`, not `f4/8`; here
+`f4=4*pi^2/3`. With the corrected constants, the selected efficient-MLT
+trial gives `Gamma≈1.82, 18.9, 63.7, 2.64, 0.011` at 500, 700, 800,
+813, and 817 R☉, respectively. The eddy optical depth is still ≈85 at
+817 R☉, so the optical-depth correction there is below 0.2%. Eddy
+radiative loss is strong at 817 R☉, whereas the value at 813 R☉ is
+intermediate; the original inference of strong loss already at 813 R☉
+from `tau_eddy v/c` was too strong. These are local estimates from the
+trial's predicted velocity, not an integrated lossy-MLT model or a
+radiation-hydrodynamic measurement. The integrated Henyey trial and its
+own limitations are documented in `wor122_henyey_mlt_20261118.md`.
 
 ## Sampling and limitations
 

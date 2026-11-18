@@ -167,38 +167,54 @@
       "closure_relative_error": -1.7763568394002505e-15
     }
   },
-  "selected_fine_eddy_leakage_scale": {
+  "selected_fine_eddy_efficiency": {
     "400": {
       "mixing_length_optical_depth": 491594.2926172805,
-      "optical_depth_times_velocity_over_c": 9.9160786423528
+      "optical_depth_times_velocity_over_c": 9.9160786423528,
+      "henyey_convective_efficiency_gamma": 0.5156818397245625,
+      "temperature_contrast_fraction_gamma_over_one_plus_gamma": 0.3402309285557415
     },
     "500": {
       "mixing_length_optical_depth": 916998.0049490561,
-      "optical_depth_times_velocity_over_c": 19.165380233958217
+      "optical_depth_times_velocity_over_c": 19.165380233958217,
+      "henyey_convective_efficiency_gamma": 1.8204157960361445,
+      "temperature_contrast_fraction_gamma_over_one_plus_gamma": 0.6454423488177115
     },
     "600": {
       "mixing_length_optical_depth": 1796116.6619435016,
-      "optical_depth_times_velocity_over_c": 28.825664085052175
+      "optical_depth_times_velocity_over_c": 28.825664085052175,
+      "henyey_convective_efficiency_gamma": 11.454077126413532,
+      "temperature_contrast_fraction_gamma_over_one_plus_gamma": 0.919705009865474
     },
     "700": {
       "mixing_length_optical_depth": 2152800.7391870464,
-      "optical_depth_times_velocity_over_c": 46.21531031240333
+      "optical_depth_times_velocity_over_c": 46.21531031240333,
+      "henyey_convective_efficiency_gamma": 18.89898302092699,
+      "temperature_contrast_fraction_gamma_over_one_plus_gamma": 0.9497461755232246
     },
     "750": {
       "mixing_length_optical_depth": 631251.7032185091,
-      "optical_depth_times_velocity_over_c": 10.900279017865772
+      "optical_depth_times_velocity_over_c": 10.900279017865772,
+      "henyey_convective_efficiency_gamma": 24.040789430534424,
+      "temperature_contrast_fraction_gamma_over_one_plus_gamma": 0.9600651567805362
     },
     "800": {
       "mixing_length_optical_depth": 104010.68001159742,
-      "optical_depth_times_velocity_over_c": 1.349807050177002
+      "optical_depth_times_velocity_over_c": 1.349807050177002,
+      "henyey_convective_efficiency_gamma": 63.737997064288905,
+      "temperature_contrast_fraction_gamma_over_one_plus_gamma": 0.9845531211136029
     },
     "813": {
       "mixing_length_optical_depth": 6273.46272703002,
-      "optical_depth_times_velocity_over_c": 0.08682346768598008
+      "optical_depth_times_velocity_over_c": 0.08682346768598008,
+      "henyey_convective_efficiency_gamma": 2.637743606237024,
+      "temperature_contrast_fraction_gamma_over_one_plus_gamma": 0.725104320632859
     },
     "817": {
       "mixing_length_optical_depth": 85.2653873065716,
-      "optical_depth_times_velocity_over_c": 0.00091745991973287
+      "optical_depth_times_velocity_over_c": 0.00091745991973287,
+      "henyey_convective_efficiency_gamma": 0.011347417892156082,
+      "temperature_contrast_fraction_gamma_over_one_plus_gamma": 0.011220098742928815
     }
   }
 }

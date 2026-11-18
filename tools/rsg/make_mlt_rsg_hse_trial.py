@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
-"""Trial RSG profile with local diffusion + efficient MLT flux closure.
+"""Trial RSG profile with local diffusion + MLT flux closure.
 
-This is a structural diagnostic, not a 3D-ready initial condition. It omits
-eddy radiative leakage and turbulent pressure from HSE, and the imported
-exterior is a gray atmosphere until separately rebuilt with LTE FLD.
+This is a structural diagnostic, not a 3D-ready initial condition. It offers
+either efficient MLT or Henyey eddy cooling. Both omit turbulent pressure
+from HSE. The exterior is gray until separately rebuilt with LTE FLD.
 """
 
 from __future__ import annotations
@@ -26,7 +26,7 @@ from make_hse_model import mapped_mass
 
 
 def local_closure(eos, opacity, r, pressure, temperature, args):
-    """Return gradient, radiative flux, and optimistic turbulent support."""
+    """Return gradient, radiative flux, and an MLT velocity scale."""
     density = density_from_pt(eos, pressure, temperature)
     entropy = entropy_from_rho_t(eos, density, temperature)
     _, _, _, p_rho, p_s, t_rho, t_s = state_derivatives(
@@ -53,14 +53,41 @@ def local_closure(eos, opacity, r, pressure, temperature, args):
             raise ValueError("radiative acceleration exceeds gravity")
         scale_height = pressure/(density*geff)
         excess = max(nabla-nabla_ad, 0.0)
-        speed = np.sqrt(grav*expansion*args.alpha**2*scale_height
-                        *excess/args.velocity_coefficient)
-        # Same optimistic efficient-MLT coefficient as the earlier
-        # wor122_mlt_transport_scale.py diagnostic.
-        convective = (density*cp*temperature*np.sqrt(grav*expansion)
-                      *args.alpha**2*np.sqrt(scale_height)
-                      /np.sqrt(args.velocity_coefficient)*excess**1.5)
-        return radiative, convective, speed, geff
+        eddy_optical_depth = kappa*density*args.alpha*scale_height
+        if args.mlt_option == "henyey":
+            # Ludwig, Freytag & Steffen (1999), Appendix A, Henyey row:
+            # Gamma=(nabla-nabla_e)/(nabla_e-nabla_ad),
+            # v^2=f1*l^2*g*delta*(nabla-nabla_e)/H,
+            # Fconv=f2*rho*cp*v*T*l*(nabla-nabla_e)/H.
+            f1, f2 = 1/8, 1/2
+            # MESA documents a correction to Ludwig et al. Table A1:
+            # the Henyey f3 is 8*f4, not f4/8 as printed there.
+            f4 = 4*np.pi**2/3
+            f3 = 8*f4
+            sigma = AR*CLIGHT/4
+            speed_coefficient = np.sqrt(
+                f1*grav*expansion*args.alpha**2*scale_height)
+            gamma_coefficient = (density*cp*speed_coefficient
+                                 *eddy_optical_depth/(f3*sigma*temperature**3)
+                                 *(1+f4/eddy_optical_depth**2))
+            inverse_gamma_coefficient = 1/gamma_coefficient
+            contrast_root = (2*excess/(np.sqrt(
+                inverse_gamma_coefficient**2+4*excess)
+                +inverse_gamma_coefficient)) if excess else 0.0
+            contrast = contrast_root**2
+            speed = speed_coefficient*contrast_root
+            gamma = gamma_coefficient*contrast_root
+            convective = f2*density*cp*temperature*args.alpha*speed*contrast
+        else:
+            # Same optimistic coefficient as the earlier local audit.
+            contrast = excess
+            speed = np.sqrt(grav*expansion*args.alpha**2*scale_height
+                            *contrast/args.velocity_coefficient)
+            convective = (density*cp*temperature*np.sqrt(grav*expansion)
+                          *args.alpha**2*np.sqrt(scale_height)
+                          /np.sqrt(args.velocity_coefficient)*contrast**1.5)
+            gamma = None
+        return radiative, convective, speed, geff, gamma, eddy_optical_depth
 
     hi = max(1.0, nabla_ad + 1.0)
     while sum(fluxes(hi)[:2]) < total_flux:
@@ -69,11 +96,12 @@ def local_closure(eos, opacity, r, pressure, temperature, args):
             raise ValueError(f"cannot close luminosity at r={r / RSUN:g} Rsun")
     nabla = brentq(lambda value: sum(fluxes(value)[:2])-total_flux,
                    0.0, hi, xtol=1e-10, rtol=1e-10)
-    radiative, convective, speed, geff = fluxes(nabla)
+    radiative, convective, speed, geff, gamma, eddy_tau = fluxes(nabla)
     return dict(nabla=nabla, nabla_ad=nabla_ad, density=density,
                 radiative_flux=radiative, convective_flux=convective,
                 total_flux=total_flux, turbulent_pressure=density*speed**2,
-                gas_pressure=pressure, gravity=grav, geff=geff)
+                gas_pressure=pressure, gravity=grav, geff=geff,
+                eddy_efficiency_gamma=gamma, eddy_optical_depth=eddy_tau)
 
 
 def main():
@@ -82,6 +110,8 @@ def main():
     parser.add_argument("--opacity", type=Path, required=True)
     parser.add_argument("--output", type=Path, required=True)
     parser.add_argument("--alpha", type=float, default=3.0)
+    parser.add_argument("--mlt-option", choices=("efficient", "henyey"),
+                        default="efficient")
     parser.add_argument("--velocity-coefficient", type=float, default=8.0)
     parser.add_argument("--potential-mass-msun", type=float, default=12.0)
     parser.add_argument("--radius-rsun", type=float, default=830.0)
@@ -133,9 +163,10 @@ def main():
     np.savetxt(args.output, columns, fmt="%.16e", header=(
         "r_cm rho_g_cm3 egas_erg_cm3 erad_erg_cm3 T_K Pgas_dyn_cm2 "
         "M_spherical_g tau kappa_R flux_rad hse_relative\n"
-        "efficient MLT local flux closure; no turbulent pressure in HSE"))
+        f"{args.mlt_option} MLT local flux closure; no turbulent pressure in HSE"))
     samples = {}
-    for nominal in (400, 500, 600, 700, 750, 800, 813, 817):
+    for nominal in (400, 500, 600, 700, 750, 800,
+                    813, 814, 815, 816, 817, 818):
         i = int(np.argmin(abs(r/RSUN-nominal)))
         closed = local_closure(eos, opacity, r[i], pressure[i],
                                temperature[i], args)
@@ -146,13 +177,23 @@ def main():
                 closed["radiative_flux"]/closed["total_flux"]),
             "turbulent_pressure_over_gas": float(
                 closed["turbulent_pressure"]/closed["gas_pressure"]),
+            "eddy_efficiency_gamma": (None if closed["eddy_efficiency_gamma"]
+                                       is None else float(
+                                           closed["eddy_efficiency_gamma"])),
+            "eddy_optical_depth": float(closed["eddy_optical_depth"]),
             "closure_relative_error": float((
                 closed["radiative_flux"]+closed["convective_flux"])
                 /closed["total_flux"]-1),
         }
     measured = {
-        "model": "efficient-MLT flux-closed trial, no turbulent pressure in HSE",
+        "model": f"{args.mlt_option}-MLT flux-closed trial, no turbulent pressure in HSE",
+        "mlt_option": args.mlt_option,
         "alpha": args.alpha, "velocity_coefficient": args.velocity_coefficient,
+        "mlt_coefficients": ({"f1": 1/8, "f2": 1/2,
+                              "f3_corrected": 32*np.pi**2/3,
+                              "f4": 4*np.pi**2/3}
+                             if args.mlt_option == "henyey"
+                             else {"nu": args.velocity_coefficient}),
         "eos": str(args.eos), "opacity": str(args.opacity),
         "surface_temperature_K": args.effective_temperature,
         "mass_inside_radius_msun": float(mass[-1]/MSUN),

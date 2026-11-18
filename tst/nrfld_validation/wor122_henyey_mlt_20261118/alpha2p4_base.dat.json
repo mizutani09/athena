@@ -1,0 +1,90 @@
+{
+  "model": "henyey-MLT flux-closed trial, no turbulent pressure in HSE",
+  "mlt_option": "henyey",
+  "alpha": 2.4,
+  "velocity_coefficient": 8.0,
+  "eos": "data/eos/rsg_tomida2013_material_eos.tab",
+  "opacity": "data/opacity/rsg_gray_opacity_wor55.h5",
+  "surface_temperature_K": 3227.8,
+  "mass_inside_radius_msun": 3.3868161493442854,
+  "mapped_mass_msun": 3.3981129146225313,
+  "central_logrho_logT": [
+    -7.362633200387625,
+    5.220742920362825
+  ],
+  "max_abs_resolved_interior_hse": 0.03743063919261438,
+  "samples": {
+    "400": {
+      "radius_rsun": 400.39113858552804,
+      "nabla": 0.47602701606159986,
+      "radiative_luminosity_fraction": 0.3922547195838443,
+      "turbulent_pressure_over_gas": 0.06722447373958604,
+      "eddy_efficiency_gamma": 1.6152978891994798,
+      "eddy_optical_depth": 973340.5606037983,
+      "closure_relative_error": -4.440892098500626e-16
+    },
+    "500": {
+      "radius_rsun": 499.94785206192967,
+      "nabla": 0.49097315442713213,
+      "radiative_luminosity_fraction": 0.08421200898516737,
+      "turbulent_pressure_over_gas": 0.09678441696050963,
+      "eddy_efficiency_gamma": 6.254199417729989,
+      "eddy_optical_depth": 1882705.9092968681,
+      "closure_relative_error": 2.1853141518590746e-10
+    },
+    "600": {
+      "radius_rsun": 599.5045655383312,
+      "nabla": 0.2820632939885001,
+      "radiative_luminosity_fraction": 0.009191185185047619,
+      "turbulent_pressure_over_gas": 0.0866229145589987,
+      "eddy_efficiency_gamma": 36.095919344806475,
+      "eddy_optical_depth": 3368137.221848157,
+      "closure_relative_error": 5.170963657263883e-10
+    },
+    "700": {
+      "radius_rsun": 700.1434172046936,
+      "nabla": 0.6937187369210058,
+      "radiative_luminosity_fraction": 0.004304841775085703,
+      "turbulent_pressure_over_gas": 0.2634508380615383,
+      "eddy_efficiency_gamma": 53.32820159196743,
+      "eddy_optical_depth": 3465620.4073939775,
+      "closure_relative_error": 0.0
+    },
+    "750": {
+      "radius_rsun": 749.9217739428944,
+      "nabla": 0.5561220928942293,
+      "radiative_luminosity_fraction": 0.002831285286375985,
+      "turbulent_pressure_over_gas": 0.2991496653291511,
+      "eddy_efficiency_gamma": 59.5736438460331,
+      "eddy_optical_depth": 946053.4059304519,
+      "closure_relative_error": 1.4976908602193362e-10
+    },
+    "800": {
+      "radius_rsun": 799.7001306810952,
+      "nabla": 0.2370260082845358,
+      "radiative_luminosity_fraction": 0.0010464529242079565,
+      "turbulent_pressure_over_gas": 0.3767612192214513,
+      "eddy_efficiency_gamma": 141.0587597002142,
+      "eddy_optical_depth": 162076.50961688257,
+      "closure_relative_error": -3.9968028886505635e-15
+    },
+    "813": {
+      "radius_rsun": 812.6857889606258,
+      "nabla": 0.46572309922823785,
+      "radiative_luminosity_fraction": 0.010494449797548981,
+      "turbulent_pressure_over_gas": 0.6074871027125132,
+      "eddy_efficiency_gamma": 12.32359364966986,
+      "eddy_optical_depth": 17301.109619695737,
+      "closure_relative_error": 1.2092549184217205e-12
+    },
+    "817": {
+      "radius_rsun": 817.0143417204694,
+      "nabla": 1.6045340201215124,
+      "radiative_luminosity_fraction": 0.99999007197974,
+      "turbulent_pressure_over_gas": 0.0009985552025645408,
+      "eddy_efficiency_gamma": 0.0011283129648876813,
+      "eddy_optical_depth": 154.35562178878018,
+      "closure_relative_error": -2.220446049250313e-16
+    }
+  }
+}

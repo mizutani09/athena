@@ -14,7 +14,10 @@ import numpy as np
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / "tools/rsg"))
 from make_fld_exterior_trial import fld_luminosity  # noqa: E402
-from make_gray_rsg_hse import CLIGHT, G, LSUN, MSUN, RSUN, gravity  # noqa: E402
+from make_gray_rsg_hse import (  # noqa: E402
+    AR, CLIGHT, G, LSUN, MSUN, RSUN, AthenaEos, entropy_from_rho_t,
+    gravity, state_derivatives,
+)
 
 FOLDER = ROOT / "tst/nrfld_validation/wor122_mlt_flux_closed_20261118"
 FIGURE = ROOT / "doc/figures/wor122_mlt_flux_closed_20261118.png"
@@ -30,8 +33,16 @@ def transition(profile):
     radius = profile[:, 0]/RSUN
     luminosity = fld_luminosity(profile, 91932*LSUN)
     mask = (radius > 800) & (radius < 830)
-    low, high = (float(np.interp(level, luminosity[mask], radius[mask]))
-                 for level in (.1, .9))
+    rr, ll = radius[mask], luminosity[mask]
+    crossings = []
+    for level in (.1, .9):
+        indices = np.flatnonzero((ll[:-1] < level) & (ll[1:] >= level))
+        if not indices.size:
+            raise ValueError(f"no outward FLD luminosity crossing at {level}")
+        i = indices[0]
+        crossings.append(float(rr[i] + (level-ll[i])*(rr[i+1]-rr[i])
+                               /(ll[i+1]-ll[i])))
+    low, high = crossings
     return radius, luminosity, high-low
 
 
@@ -60,7 +71,11 @@ def main():
         "max_abs_resolved_interior_hse":
             fine["max_abs_resolved_interior_hse"],
     }
-    eddy_leakage = {}
+    eddy_efficiency = {}
+    eos = AthenaEos(ROOT / "data/eos/rsg_tomida2013_material_eos.tab")
+    sigma = CLIGHT*AR/4
+    f4 = 4*np.pi**2/3
+    f3 = 8*f4  # Corrected Henyey coefficient in MESA documentation.
     for nominal, sample in fine["samples"].items():
         row = fine_base[np.argmin(abs(fine_base[:, 0]/RSUN - float(nominal)))]
         radius, density, _, _, _, pressure, _, _, kappa, flux = row[:10]
@@ -70,10 +85,19 @@ def main():
         speed = np.sqrt(sample["turbulent_pressure_over_gas"]
                         *pressure/density)
         optical_depth = kappa*density*1.537*height
-        eddy_leakage[nominal] = {
+        entropy = entropy_from_rho_t(eos, density, row[4])
+        _, _, _, p_rho, p_s, t_rho, t_s = state_derivatives(
+            eos, density, entropy)
+        cp = entropy/(t_s-t_rho*p_s/p_rho)
+        gamma = (density*cp*speed*optical_depth/(f3*sigma*row[4]**3)
+                 *(1+f4/optical_depth**2))
+        eddy_efficiency[nominal] = {
             "mixing_length_optical_depth": float(optical_depth),
             "optical_depth_times_velocity_over_c": float(
                 optical_depth*speed/CLIGHT),
+            "henyey_convective_efficiency_gamma": float(gamma),
+            "temperature_contrast_fraction_gamma_over_one_plus_gamma":
+                float(gamma/(1+gamma)),
         }
     summary = {
         "model_assumptions": "Efficient MLT, no eddy radiative leakage, "
@@ -83,7 +107,7 @@ def main():
         "selected_coarse_surface_10_90_width_rsun": coarse_width,
         "selected_fine_surface_10_90_width_rsun": fine_width,
         "selected_fine_samples": fine["samples"],
-        "selected_fine_eddy_leakage_scale": eddy_leakage,
+        "selected_fine_eddy_efficiency": eddy_efficiency,
     }
     (FOLDER / "scan_summary.json").write_text(json.dumps(summary, indent=2)+"\n")
 

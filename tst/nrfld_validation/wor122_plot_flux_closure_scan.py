@@ -41,8 +41,16 @@ def main():
         radius = profile[:, 0] / RSUN
         lum = fld_luminosity(profile, LUMINOSITY)
         surface = (radius >= 795) & (radius <= 850)
-        low, high = [float(np.interp(level, lum[surface], radius[surface]))
-                     for level in (0.1, 0.9)]
+        rr, ll = radius[surface], lum[surface]
+        crossings = []
+        for level in (0.1, 0.9):
+            indices = np.flatnonzero((ll[:-1] < level) & (ll[1:] >= level))
+            if not indices.size:
+                raise ValueError(f"no outward FLD luminosity crossing at {level}")
+            i = indices[0]
+            crossings.append(float(rr[i] + (level-ll[i])*(rr[i+1]-rr[i])
+                                   /(ll[i+1]-ll[i])))
+        low, high = crossings
         rr = [point["radius_rsun"] for point in points.values()]
         capacity = [point[
             "optimistic_convective_capacity_over_required_by_window"]["5Rsun"]

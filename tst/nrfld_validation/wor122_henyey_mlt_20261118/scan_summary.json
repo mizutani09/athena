@@ -1,0 +1,157 @@
+{
+  "literature": "Ludwig, Freytag & Steffen 1999, Appendix A, Henyey row",
+  "corrected_henyey_coefficients": {
+    "f1": 0.125,
+    "f2": 0.5,
+    "f3_corrected": 105.27578027828649,
+    "f4": 13.159472534785811
+  },
+  "assumptions": "Diffusion interior; no turbulent pressure in HSE; static 3D velocity field not initialized",
+  "mapped_mass_msun_by_alpha": {
+    "2.0": 1.003085765431531,
+    "2.2": 1.7210878872347315,
+    "2.35": 2.835029817846161,
+    "2.36": 2.9513795796653195,
+    "2.366": 3.004010386751605,
+    "2.4": 3.3981129146225313,
+    "2.6": 6.933633420640655,
+    "3.0": 26.14084397058923
+  },
+  "selected_mass_inside_radius_msun": 2.992602542763972,
+  "selected_resolved_interior_hse_max_abs": 0.006040593484987409,
+  "selected_local_samples": {
+    "400": {
+      "radius_rsun": 400.00000430000006,
+      "nabla": 0.4825469877022754,
+      "radiative_luminosity_fraction": 0.45014057369917826,
+      "turbulent_pressure_over_gas": 0.0733130542438518,
+      "eddy_efficiency_gamma": 1.245969723138335,
+      "eddy_optical_depth": 813793.8885657819,
+      "closure_relative_error": 1.0698109065288008e-12
+    },
+    "500": {
+      "radius_rsun": 500.0000033,
+      "nabla": 0.5047098530516169,
+      "radiative_luminosity_fraction": 0.10481284436486396,
+      "turbulent_pressure_over_gas": 0.10657790222464862,
+      "eddy_efficiency_gamma": 4.721172658059898,
+      "eddy_optical_depth": 1545566.8296506535,
+      "closure_relative_error": 4.7669646008330346e-11
+    },
+    "600": {
+      "radius_rsun": 600.0000023,
+      "nabla": 0.2856796472900168,
+      "radiative_luminosity_fraction": 0.010959045858524042,
+      "turbulent_pressure_over_gas": 0.09290082557027655,
+      "eddy_efficiency_gamma": 29.137688055321085,
+      "eddy_optical_depth": 2855200.5795373227,
+      "closure_relative_error": 3.176392482373558e-11
+    },
+    "700": {
+      "radius_rsun": 700.0000013,
+      "nabla": 0.7097526257172662,
+      "radiative_luminosity_fraction": 0.005212859513786132,
+      "turbulent_pressure_over_gas": 0.27451847813843455,
+      "eddy_efficiency_gamma": 43.03608176533687,
+      "eddy_optical_depth": 3146200.7825836143,
+      "closure_relative_error": 4.440892098500626e-16
+    },
+    "750": {
+      "radius_rsun": 750.0000008,
+      "nabla": 0.5873975606984899,
+      "radiative_luminosity_fraction": 0.0033201622642216903,
+      "turbulent_pressure_over_gas": 0.288433786726326,
+      "eddy_efficiency_gamma": 49.74305914876941,
+      "eddy_optical_depth": 889363.1547193909,
+      "closure_relative_error": -2.7430280269413743e-11
+    },
+    "800": {
+      "radius_rsun": 800.0000003,
+      "nabla": 0.24143827719409863,
+      "radiative_luminosity_fraction": 0.0010863931259873028,
+      "turbulent_pressure_over_gas": 0.37638746985311666,
+      "eddy_efficiency_gamma": 134.83494097736437,
+      "eddy_optical_depth": 156756.50952900865,
+      "closure_relative_error": -8.881784197001252e-16
+    },
+    "813": {
+      "radius_rsun": 812.9729731432432,
+      "nabla": 0.5262840575844616,
+      "radiative_luminosity_fraction": 0.012566587930588045,
+      "turbulent_pressure_over_gas": 0.6257598982234728,
+      "eddy_efficiency_gamma": 10.270384426427684,
+      "eddy_optical_depth": 15764.49928523804,
+      "closure_relative_error": 1.9095836023552692e-14
+    },
+    "814": {
+      "radius_rsun": 814.0540542135135,
+      "nabla": 0.6362719253370792,
+      "radiative_luminosity_fraction": 0.021268570248769422,
+      "turbulent_pressure_over_gas": 0.6783750527483227,
+      "eddy_efficiency_gamma": 6.209577573700384,
+      "eddy_optical_depth": 9950.674673129495,
+      "closure_relative_error": -1.6209256159527285e-14
+    },
+    "815": {
+      "radius_rsun": 814.8648650162163,
+      "nabla": 0.8958027841377306,
+      "radiative_luminosity_fraction": 0.04185541890084612,
+      "turbulent_pressure_over_gas": 0.7605087942905113,
+      "eddy_efficiency_gamma": 3.3570698408724673,
+      "eddy_optical_depth": 6258.586065616102,
+      "closure_relative_error": -5.85003157027586e-11
+    },
+    "816": {
+      "radius_rsun": 815.9459460864865,
+      "nabla": 2.2254953597492277,
+      "radiative_luminosity_fraction": 0.2297618801481816,
+      "turbulent_pressure_over_gas": 0.9046679395057525,
+      "eddy_efficiency_gamma": 0.8072966422785989,
+      "eddy_optical_depth": 2046.5755860421393,
+      "closure_relative_error": -1.5790702079243601e-12
+    },
+    "817": {
+      "radius_rsun": 817.0270271567568,
+      "nabla": 1.5830545710404584,
+      "radiative_luminosity_fraction": 0.9999919753646915,
+      "turbulent_pressure_over_gas": 0.000859135278664688,
+      "eddy_efficiency_gamma": 0.001016153911200721,
+      "eddy_optical_depth": 149.2060812001944,
+      "closure_relative_error": 2.220446049250313e-16
+    },
+    "818": {
+      "radius_rsun": 818.1081082270271,
+      "nabla": 0.7872720976703654,
+      "radiative_luminosity_fraction": 0.9999999748394232,
+      "turbulent_pressure_over_gas": 2.2328220182881893e-05,
+      "eddy_efficiency_gamma": 6.780029554567499e-05,
+      "eddy_optical_depth": 51.02702444098341,
+      "closure_relative_error": 1.0946132888989268e-11
+    }
+  },
+  "reference_fld_10_90_width_rsun": 3.3523973004814707,
+  "efficient_mlt_fld_10_90_width_rsun": 2.3560583188418605,
+  "henyey_fld_10_90_width_rsun": 0.9288809484708054,
+  "raw_mlt_turbulent_pressure_gradient": {
+    "800-810 Rsun": {
+      "raw_rho_v2_gradient_over_rho_g": -0.06509505378230279,
+      "one_third_isotropic_estimate_over_rho_g": -0.0216983512607676
+    },
+    "810-813 Rsun": {
+      "raw_rho_v2_gradient_over_rho_g": 0.18592204972384274,
+      "one_third_isotropic_estimate_over_rho_g": 0.06197401657461425
+    },
+    "813-817 Rsun": {
+      "raw_rho_v2_gradient_over_rho_g": -2.743798661083408,
+      "one_third_isotropic_estimate_over_rho_g": -0.9145995536944694
+    },
+    "815-819 Rsun": {
+      "raw_rho_v2_gradient_over_rho_g": -3.0436024517842637,
+      "one_third_isotropic_estimate_over_rho_g": -1.0145341505947545
+    },
+    "817-821 Rsun": {
+      "raw_rho_v2_gradient_over_rho_g": -0.0028754340937560833,
+      "one_third_isotropic_estimate_over_rho_g": -0.0009584780312520278
+    }
+  }
+}
