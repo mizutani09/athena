@@ -1,0 +1,73 @@
+{
+  "model": "efficient-MLT flux-closed trial, no turbulent pressure in HSE",
+  "alpha": 1.52,
+  "velocity_coefficient": 8.0,
+  "eos": "data/eos/rsg_tomida2013_material_eos.tab",
+  "opacity": "data/opacity/rsg_gray_opacity_wor55.h5",
+  "surface_temperature_K": 3227.8,
+  "mass_inside_radius_msun": 2.763429118259869,
+  "mapped_mass_msun": 2.7748061130621506,
+  "central_logrho_logT": [
+    -7.472751370063476,
+    5.195075555265365
+  ],
+  "max_abs_resolved_interior_hse": 0.011500983252342391,
+  "samples": {
+    "400": {
+      "radius_rsun": 400.39113858552804,
+      "nabla": 0.463750202984721,
+      "radiative_luminosity_fraction": 0.4747497652290442,
+      "turbulent_pressure_over_gas": 0.037354709997644966,
+      "closure_relative_error": -4.2165382296843745e-11
+    },
+    "500": {
+      "radius_rsun": 499.94785206192967,
+      "nabla": 0.5074505609480935,
+      "radiative_luminosity_fraction": 0.13380894576030644,
+      "turbulent_pressure_over_gas": 0.05518173931338864,
+      "closure_relative_error": 2.0117241206207837e-13
+    },
+    "600": {
+      "radius_rsun": 599.5045655383312,
+      "nabla": 0.30792633844476897,
+      "radiative_luminosity_fraction": 0.0144468131598279,
+      "turbulent_pressure_over_gas": 0.04739615371284046,
+      "closure_relative_error": 8.548717289613705e-14
+    },
+    "700": {
+      "radius_rsun": 700.1434172046936,
+      "nabla": 0.7529028825284145,
+      "radiative_luminosity_fraction": 0.00651974822566841,
+      "turbulent_pressure_over_gas": 0.132212116726933,
+      "closure_relative_error": -1.9959145447501214e-11
+    },
+    "750": {
+      "radius_rsun": 749.9217739428944,
+      "nabla": 0.5420751233726068,
+      "radiative_luminosity_fraction": 0.003214601480861256,
+      "turbulent_pressure_over_gas": 0.1270585341122496,
+      "closure_relative_error": -8.779643678735738e-11
+    },
+    "800": {
+      "radius_rsun": 799.7001306810952,
+      "nabla": 0.2612187090136397,
+      "radiative_luminosity_fraction": 0.0010948931914780335,
+      "turbulent_pressure_over_gas": 0.17101458861316904,
+      "closure_relative_error": -1.985045461339041e-11
+    },
+    "813": {
+      "radius_rsun": 812.6857889606258,
+      "nabla": 0.6298562618236004,
+      "radiative_luminosity_fraction": 0.01856800778910251,
+      "turbulent_pressure_over_gas": 0.3030487748406312,
+      "closure_relative_error": 6.31272811801864e-12
+    },
+    "817": {
+      "radius_rsun": 817.0143417204694,
+      "nabla": 1.2628772938028885,
+      "radiative_luminosity_fraction": 0.8572520709832784,
+      "turbulent_pressure_over_gas": 0.28287923811103677,
+      "closure_relative_error": -2.220446049250313e-16
+    }
+  }
+}

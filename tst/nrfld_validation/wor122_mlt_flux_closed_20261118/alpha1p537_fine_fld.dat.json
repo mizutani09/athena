@@ -1,0 +1,16 @@
+{
+  "base": "tst/nrfld_validation/wor122_mlt_flux_closed_20261118/alpha1p537_fine_base.dat",
+  "output": "tst/nrfld_validation/wor122_mlt_flux_closed_20261118/alpha1p537_fine_fld.dat",
+  "surface_temperature_K": 3227.7999999999993,
+  "q_surface": 0.341139723939514,
+  "join_q": 0.99,
+  "join_radius_Rsun": 860.1808643472419,
+  "join_end_Rsun": 900.0,
+  "min_rho_g_cm3": 1e-21,
+  "FLD_L_over_Lstar_830_1000_range": [
+    0.97343766991417,
+    1.0055469798768122
+  ],
+  "max_abs_unfloored_outer_HSE_residual": 0.0008250990034194477,
+  "max_abs_outer_HSE_residual": 0.9908566771246722
+}
