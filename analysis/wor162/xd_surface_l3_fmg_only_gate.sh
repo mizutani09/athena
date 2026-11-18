@@ -22,10 +22,12 @@ export OMP_NUM_THREADS=1
 ulimit -c 0
 
 repository=$HOME/simulation/athena-wor162
-restart=/work/mizutaniks/wor162/surface_l3_t01_342434/scf_rsg_relax.final.rst
+source_run=/work/mizutaniks/wor162/surface_l3_t01_342434
+restart=$source_run/scf_rsg_relax.final.rst
 run=/work/mizutaniks/wor162/surface_l3_fmg0_gate_${SLURM_JOB_ID}
 test -f "$restart"
 mkdir -p "$run"
+cp "$source_run/scf_rsg_relax.hst" "$run/scf_rsg_relax.hst"
 cd "$repository"
 
 sha256sum bin/athena "$restart" > "$run/provenance.sha256"
