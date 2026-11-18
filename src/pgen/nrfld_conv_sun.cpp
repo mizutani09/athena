@@ -91,6 +91,17 @@ namespace {
   // Real HistoryL1norm(MeshBlock *pmb, int iout);
   Real nabla, nabla_eps;
   Real grav_acc;
+  bool use_profile_gravity = false;
+  bool marshak_vacuum_top = false;
+  Real marshak_alpha = 0.5;
+  Real bottom_heat_depth = 0.0;
+  Real bottom_heat_rate = 0.0;
+  Real surface_heat_zmin = 0.0;
+  Real surface_heat_zmax = 0.0;
+  Real surface_heat_rate = 0.0;
+  bool transfer_heat_to_bottom = false;
+  Real heat_transfer_start = -1.0;
+  Real heat_transfer_end = -1.0;
   Real z_ref, rho_ref, T_ref, press_ref;
   Real T_ex;
   Real stellar_r_base, stellar_r_surface, stellar_r_photosphere;
@@ -249,7 +260,11 @@ namespace {
     ReadStellarProfileScaleFile(scale_file, r_b_cgs, r_b_rsun,
                                 rho_b_cgs, p_b_cgs, g_b_cgs);
     stellar_r_base = r_b_cgs/leng_unit;
-    stellar_r_photosphere = stellar_r_base/r_b_rsun;
+    // The legacy solar scale convention uses r_b_cgs/r_b_rsun.  An explicit
+    // photospheric radius lets local boxes use a different stellar radius
+    // while retaining the same profile normalization and solar defaults.
+    stellar_r_photosphere = pin->GetOrAddReal(
+        "problem", "photosphere_radius_cgs", r_b_cgs/r_b_rsun)/leng_unit;
     Real rho_b_code = rho_b_cgs/rho_unit;
     Real p_b_code = p_b_cgs/egas_unit;
     Real g_b_code = g_b_cgs/grav_unit;
@@ -667,6 +682,16 @@ namespace {
         for (int i = pmb->is; i <= pmb->ie; ++i) {
           Real frad, fenth, fkin, ftot;
           ComputeFluxesAtCell(pmb, k, j, i, frad, fenth, fkin, ftot);
+          if (marshak_vacuum_top && pm->time > 0.0) {
+            const Real dface = std::max(
+                pmb->prfld->marshak_dface_all(5,k,j,i), TINY_NUMBER);
+            const Real acoef = marshak_alpha*pmb->prfld->c_ph
+                *0.5*pmb->pcoord->dx3f(k);
+            const Real erad = pmb->prfld->u_rad(k,j,i);
+            const Real eb = dface*erad/(dface+acoef);
+            frad = marshak_alpha*pmb->prfld->c_ph*eb;
+            ftot = frad+fenth+fkin;
+          }
           Real area = pmb->pcoord->GetFace3Area(k+1, j, i);
           ftop_rad += frad*area;
           ftop_tot += ftot*area;
@@ -767,7 +792,8 @@ void NRFixedOuterX3(MeshBlock *pmb,
                                         z_anchor, z_ghost,
                                         rho_ghost, pres_ghost, egas_ghost, temp_ghost);
         u_gas(ke+k,j,i) = egas_ghost;
-        u_rad(ke+k,j,i) = a_r_sim*std::pow(T_ex, 4);
+        u_rad(ke+k,j,i) = marshak_vacuum_top
+            ? u_rad(ke,j,i) : a_r_sim*std::pow(T_ex, 4);
         rho_anchor = rho_ghost;
         pres_anchor = pres_ghost;
         z_anchor = z_ghost;
@@ -820,7 +846,8 @@ void FLDFixedOuterX3(MeshBlock *pmb, Coordinates *pco, FLD *pfld,
   for (int k=1; k<=ngh; k++) {
     for (int j=js; j<=je; j++) {
       for (int i=is; i<=ie; i++) {
-        u_rad_fld(ke+k,j,i) = a_r_sim*std::pow(T_ex, 4);
+        u_rad_fld(ke+k,j,i) = marshak_vacuum_top
+            ? u_rad_fld(ke,j,i) : a_r_sim*std::pow(T_ex, 4);
       }
     }
   }
@@ -957,6 +984,73 @@ void ConstantOpacity(MeshBlock *pmb, AthenaArray<Real> &u_fld,
   }
 }
 
+// Optional local RSG-patch source: sample the imported radial gravity at
+// each height.  The default solar-box setup is unchanged.
+Real SurfaceHeatFraction(Real time) {
+  if (!transfer_heat_to_bottom || time <= heat_transfer_start) return 1.0;
+  if (time >= heat_transfer_end) return 0.0;
+  const Real x=(time-heat_transfer_start)/(heat_transfer_end-heat_transfer_start);
+  return 0.5*(1.0+std::cos(M_PI*x));
+}
+
+void ProfileGravitySource(MeshBlock *pmb, Real time, Real dt,
+                          const AthenaArray<Real> &w,
+                          const AthenaArray<Real> &,
+                          const AthenaArray<Real> &,
+                          AthenaArray<Real> &u, AthenaArray<Real> &) {
+  const Real surface_fraction=SurfaceHeatFraction(time);
+  const Real bottom_fraction=transfer_heat_to_bottom ? 1.0-surface_fraction : 1.0;
+  for (int k=pmb->ks; k<=pmb->ke; ++k) {
+    const Real z = pmb->pcoord->x3v(k);
+    Real g = 0.0;
+    if (use_profile_gravity) {
+      Real rho_profile, press_profile, temp_profile;
+      GetProfileAtHeight(z, rho_profile, press_profile, temp_profile, g);
+    }
+    const Real bottom_heating = (bottom_heat_rate > 0.0
+        && z < pmb->pmy_mesh->mesh_size.x3min+bottom_heat_depth)
+        ? bottom_fraction*bottom_heat_rate : 0.0;
+    const Real surface_heating = (surface_heat_rate > 0.0
+        && z >= surface_heat_zmin && z < surface_heat_zmax)
+        ? surface_fraction*surface_heat_rate : 0.0;
+    for (int j=pmb->js; j<=pmb->je; ++j) {
+      for (int i=pmb->is; i<=pmb->ie; ++i) {
+        const Real force = -w(IDN,k,j,i)*g;
+        u(IM3,k,j,i) += dt*force;
+        u(IEN,k,j,i) += dt*(force*w(IVZ,k,j,i)
+                            +bottom_heating+surface_heating);
+      }
+    }
+  }
+}
+
+Real HistoryBottomHeat(MeshBlock *pmb, int) {
+  if (bottom_heat_rate <= 0.0) return 0.0;
+  Real power = 0.0;
+  for (int k=pmb->ks; k<=pmb->ke; ++k) {
+    if (pmb->pcoord->x3v(k)
+        >= pmb->pmy_mesh->mesh_size.x3min+bottom_heat_depth) continue;
+    for (int j=pmb->js; j<=pmb->je; ++j)
+      for (int i=pmb->is; i<=pmb->ie; ++i)
+        power += bottom_heat_rate*pmb->pcoord->GetCellVolume(k,j,i);
+  }
+  return power*(transfer_heat_to_bottom
+      ? 1.0-SurfaceHeatFraction(pmb->pmy_mesh->time) : 1.0);
+}
+
+Real HistorySurfaceHeat(MeshBlock *pmb, int) {
+  if (surface_heat_rate <= 0.0) return 0.0;
+  Real power = 0.0;
+  for (int k=pmb->ks; k<=pmb->ke; ++k) {
+    const Real z=pmb->pcoord->x3v(k);
+    if (z<surface_heat_zmin || z>=surface_heat_zmax) continue;
+    for (int j=pmb->js; j<=pmb->je; ++j)
+      for (int i=pmb->is; i<=pmb->ie; ++i)
+        power += surface_heat_rate*pmb->pcoord->GetCellVolume(k,j,i);
+  }
+  return power*SurfaceHeatFraction(pmb->pmy_mesh->time);
+}
+
 //========================================================================================
 //! \fn void Mesh::InitUserMeshData(ParameterInput *pin)
 //  \brief
@@ -1013,6 +1107,88 @@ void Mesh::InitUserMeshData(ParameterInput *pin) {
   z_ref = mesh_size.x3max; // reference is top
   LoadStellarProfile(pin);
   SetProfileWindow(pin, mesh_size);
+  use_profile_gravity = pin->GetOrAddBoolean(
+      "problem", "use_profile_gravity", false);
+  const Real bottom_heat_flux_cgs = pin->GetOrAddReal(
+      "problem", "bottom_heat_flux_cgs", 0.0);
+  bottom_heat_depth = pin->GetOrAddReal(
+      "problem", "bottom_heat_depth_cgs", 0.0)/leng_unit;
+  if (!std::isfinite(bottom_heat_flux_cgs) || bottom_heat_flux_cgs < 0.0
+      || !std::isfinite(bottom_heat_depth)
+      || (bottom_heat_flux_cgs > 0.0 && bottom_heat_depth <= 0.0)) {
+    std::stringstream msg;
+    msg << "invalid bottom heat flux/depth";
+    ATHENA_ERROR(msg);
+  }
+  bottom_heat_rate = 0.0;
+  if (bottom_heat_flux_cgs > 0.0) {
+    const Real dz=(mesh_size.x3max-mesh_size.x3min)/mesh_size.nx3;
+    const Real nz=bottom_heat_depth/dz;
+    if (bottom_heat_depth > mesh_size.x3max-mesh_size.x3min
+        || std::abs(nz-std::round(nz)) > 1.0e-10) {
+      std::stringstream msg;
+      msg << "bottom heat depth must cover an integer number of cells";
+      ATHENA_ERROR(msg);
+    }
+    bottom_heat_rate = bottom_heat_flux_cgs
+        /(egas_unit*vel_unit*bottom_heat_depth);
+  }
+  const Real surface_heat_flux_cgs = pin->GetOrAddReal(
+      "problem", "surface_heat_flux_cgs", 0.0);
+  surface_heat_rate = 0.0;
+  if (!std::isfinite(surface_heat_flux_cgs) || surface_heat_flux_cgs < 0.0) {
+    std::stringstream msg;
+    msg << "problem/surface_heat_flux_cgs must be finite and nonnegative";
+    ATHENA_ERROR(msg);
+  }
+  if (surface_heat_flux_cgs > 0.0) {
+    const Real inner_rsun=pin->GetReal("problem", "surface_heat_inner_rsun");
+    const Real outer_rsun=pin->GetReal("problem", "surface_heat_outer_rsun");
+    surface_heat_zmin=z_photosphere
+        +(inner_rsun*6.957e10/leng_unit-stellar_r_photosphere);
+    surface_heat_zmax=z_photosphere
+        +(outer_rsun*6.957e10/leng_unit-stellar_r_photosphere);
+    const Real dz=(mesh_size.x3max-mesh_size.x3min)/mesh_size.nx3;
+    const Real nmin=(surface_heat_zmin-mesh_size.x3min)/dz;
+    const Real nmax=(surface_heat_zmax-mesh_size.x3min)/dz;
+    if (!std::isfinite(inner_rsun) || !std::isfinite(outer_rsun)
+        || surface_heat_zmin<mesh_size.x3min
+        || surface_heat_zmax>mesh_size.x3max
+        || surface_heat_zmax<=surface_heat_zmin
+        || std::abs(nmin-std::round(nmin))>1.0e-10
+        || std::abs(nmax-std::round(nmax))>1.0e-10) {
+      std::stringstream msg;
+      msg << "surface heat shell must span whole cells inside the local box";
+      ATHENA_ERROR(msg);
+    }
+    surface_heat_rate=surface_heat_flux_cgs
+        /(egas_unit*vel_unit*(surface_heat_zmax-surface_heat_zmin));
+  }
+  transfer_heat_to_bottom=pin->GetOrAddBoolean(
+      "problem", "transfer_heat_to_bottom", false);
+  if (transfer_heat_to_bottom) {
+    heat_transfer_start=pin->GetReal("problem", "heat_transfer_start_code");
+    heat_transfer_end=pin->GetReal("problem", "heat_transfer_end_code");
+    if (!(bottom_heat_flux_cgs>0.0 && surface_heat_flux_cgs>0.0)
+        || std::abs(bottom_heat_flux_cgs/surface_heat_flux_cgs-1.0)>1.0e-10
+        || !std::isfinite(heat_transfer_start)
+        || !std::isfinite(heat_transfer_end)
+        || heat_transfer_start<0.0 || heat_transfer_end<=heat_transfer_start) {
+      std::stringstream msg;
+      msg << "transfer requires equal positive surface/bottom fluxes"
+          << " and 0<=start<end";
+      ATHENA_ERROR(msg);
+    }
+  }
+  if (use_profile_gravity) {
+    if (pin->GetOrAddReal("hydro", "grav_acc3", 0.0) != 0.0) {
+      std::stringstream msg;
+      msg << "Do not combine problem/use_profile_gravity with hydro/grav_acc3";
+      ATHENA_ERROR(msg);
+    }
+  }
+  if (use_profile_gravity || bottom_heat_rate > 0.0 || surface_heat_rate > 0.0)
+    EnrollUserExplicitSourceFunction(ProfileGravitySource);
 
   Real rho_top, press_top, temp_top, grav_top;
   GetProfileAtHeight(mesh_size.x3max, rho_top, press_top, temp_top, grav_top);
@@ -1030,6 +1206,20 @@ void Mesh::InitUserMeshData(ParameterInput *pin) {
   bottom_pressure_scale = 1.0;
 
   T_ex = pin->GetReal("problem", "top_radiation_temperature")/T_unit;
+  const std::string top_radiation_boundary = pin->GetOrAddString(
+      "problem", "top_radiation_boundary", "fixed_temperature");
+  marshak_vacuum_top = (top_radiation_boundary == "marshak_vacuum");
+  if (!marshak_vacuum_top && top_radiation_boundary != "fixed_temperature") {
+    std::stringstream msg;
+    msg << "problem/top_radiation_boundary must be fixed_temperature or marshak_vacuum";
+    ATHENA_ERROR(msg);
+  }
+  marshak_alpha = pin->GetOrAddReal("problem", "marshak_alpha", 0.5);
+  if (!std::isfinite(marshak_alpha) || marshak_alpha <= 0.0) {
+    std::stringstream msg;
+    msg << "problem/marshak_alpha must be finite and positive";
+    ATHENA_ERROR(msg);
+  }
   target_top_flux_cgs = pin->GetOrAddReal("problem", "target_solar_flux_cgs", 6.34e10);
   flux_feedback_on = pin->GetOrAddBoolean("problem", "flux_feedback_on", false);
   flux_relax_time = pin->GetOrAddReal("problem", "flux_relax_time_cgs", 1.0e5)/time_unit;
@@ -1071,7 +1261,8 @@ void Mesh::InitUserMeshData(ParameterInput *pin) {
     ATHENA_ERROR(msg);
   }
 
-  AllocateUserHistoryOutput(14);
+  AllocateUserHistoryOutput(surface_heat_rate > 0.0 ? 16
+      : (bottom_heat_rate > 0.0 ? 15 : 14));
   EnrollUserHistoryOutput(0, HistoryTg, "Tgas", UserHistoryOperation::max);
   EnrollUserHistoryOutput(1, HistoryTr, "Trad", UserHistoryOperation::max);
   EnrollUserHistoryOutput(2, HistoryEg, "egas", UserHistoryOperation::max);
@@ -1086,11 +1277,23 @@ void Mesh::InitUserMeshData(ParameterInput *pin) {
   EnrollUserHistoryOutput(11, HistoryMassDrift, "mass_drift", UserHistoryOperation::max);
   EnrollUserHistoryOutput(12, HistoryVzRms, "vz2_mean", UserHistoryOperation::sum);
   EnrollUserHistoryOutput(13, HistoryEkinConv, "ekin_conv", UserHistoryOperation::sum);
+  if (bottom_heat_rate > 0.0)
+    EnrollUserHistoryOutput(14, HistoryBottomHeat, "Pheat_bottom", UserHistoryOperation::sum);
+  if (surface_heat_rate > 0.0) {
+    if (bottom_heat_rate <= 0.0)
+      EnrollUserHistoryOutput(14, HistoryBottomHeat, "Pheat_bottom", UserHistoryOperation::sum);
+    EnrollUserHistoryOutput(15, HistorySurfaceHeat, "Pheat_surface", UserHistoryOperation::sum);
+  }
 
 }
 
 
 void MeshBlock::InitUserMeshBlockData(ParameterInput *pin) {
+  if (marshak_vacuum_top) {
+    prfld->marshak_face_boundary[5] = true;
+    prfld->marshak_top_alpha = marshak_alpha;
+    prfld->marshak_top_erad_ext = 0.0;
+  }
   int idata_size = 0;
   idata_size += 1; // for test counter
   AllocateIntUserMeshBlockDataField(idata_size);

@@ -1,0 +1,55 @@
+# WOR-14/122: separating the RSG core and surface thermal failure
+
+2026-11-18. All experiments use the WOR-55 gray opacity and Tomida material EOS. They are **short causal diagnostics**, not an accepted full-star model.
+
+## Core-source control on XD
+
+The `wor-122-rsg-smr` branch adds an optional 300–400 R☉ shell for the fixed luminosity source and an independent drag radius to `nrfld_star_in_box.cpp`. The ordinary central source remains the default. With the same 128³ grid, 300 R☉ drag radius, and physical luminosity, XD M-debug job **342462** ran center-source and shell-source cases sequentially to code time 8 (2.04 days); the earlier build job was **342459**. Both converged, ended normally, and reported zero opacity table domain/clamp/nonfinite excursions. Files are on `$WORK/wor122/outer_source128_{center,outer}/`, including `shell.json` and HDF/HST snapshots. The build tree is `$WORK/wor122/athena_outer_control`.
+
+| Mass-weighted shell metric at t=8 | Central source | 300–400 R☉ shell source |
+| --- | ---: | ---: |
+| 813–817 R☉ Tgas/T0 | 0.855561 | 0.855587 |
+| 800–813 R☉ Tgas/T0 | 0.896952 | 0.896967 |
+| 817–830 R☉ Tgas/T0 | 0.930766 | 0.930779 |
+| 0–166 R☉ mean radial velocity [km/s] | +0.002519 | −0.000639 |
+| Outer-box luminosity / injected luminosity | 1.951158 | 1.951442 |
+
+Moving the source visibly changes the center but not the early surface cooling. This is a source-placement control, **not** a true excised core or an inner luminosity boundary. It does not determine the long-time central instability. The high early whole-box luminosity is also affected by the mapped surface state, so this test should not be extended as a production run.
+
+## Resolved local photosphere pilot
+
+`export_rsg_surface_patch_profile.py` converts the existing 1D RSG profile into the Cartesian convection-box profile schema, preserving the original 12 M☉ fixed-potential radial gravity. The local periodic box spans 10×10×60 R☉, with r=800–860 R☉ vertically, 16×16×96 cells and Δ=0.625 R☉. Thus the 3.35 R☉ radiative transition has about five cells vertically. `nrfld_conv_sun.cpp` gains opt-in imported gravity, a vacuum Marshak FLD top face, and a bottom 5 R☉ gas-heating layer. The latter deposits `F★=8.389×10⁹ erg cm⁻² s⁻¹` over the horizontal area. The default solar-box setup retains its former boundary/source and history columns. The patch keeps radiation force on; the lower hydro boundary is reflective and the upper hydro boundary fixes the atmosphere. It is a local thermal test, not a convection model for the full star.
+
+Three local checks were made: one-step fixed-temperature and Marshak smoke tests; a matched 2.04-day Marshak pair without/with bottom heating; and a seeded-heating extension described below. The one-step source integral was 2.65283 code power versus 2.652834729 expected. For the 2.04-day pair, both Newton runs completed with zero opacity excursions, and the bottom-power history stayed constant at 2.65283 in the heated case. A separate one-step no-heating run after the final code change confirmed that the ordinary 24-column history schema is preserved.
+
+| At code t=8 / 2.04 d | No bottom heat | Bottom heat |
+| --- | ---: | ---: |
+| 800–813 R☉ Tgas/T0 | 0.918065 | 0.998925 |
+| **813–817 R☉ Tgas/T0** | **0.746961** | **0.747179** |
+| 817–830 R☉ Tgas/T0 | 0.896987 | 0.897154 |
+| Top radiative flux / F★ | 0.658448 | 0.658854 |
+| Local `all-E` change [reported units] | −1,592,300 | +476,200 |
+
+The difference of the two energy changes, 2,068,500 reported units, is close to the expected injection of `2.65283 × 8 × 10⁵ = 2,122,264` units; the remaining difference includes the slightly changed boundary transport and work. Heating holds the **bottom** near its initial temperature but has no measurable effect on the 813–817 R☉ layer over 2.04 days. The initial xz-slice mean `F_rad/F★` is 0.00796 at 800–813 R☉, 0.2245 at 813–817 R☉, and 0.9773 at 817–830 R☉, while initial gas enthalpy flux is zero. Radiation therefore removes energy from the narrow transition faster than the static gas can replace it. At t=8 the xz-slice mean enthalpy flux at 813–817 R☉ is still slightly inward (−0.0196 F★). The Marshak top at 860 R☉ is in a thin region: the imported initial Rosseland optical depth from 850 R☉ to the top is about 0.0045, while at 817 R☉ it is about 9. The top truncation is still a difference from the full-star boundary and remains a systematic limitation.
+
+One **preparation-only** alternative replaces the bottom source by the same total power spread uniformly over the cell-aligned 812.5–817.5 R☉ layer, without directly relaxing gas temperature. In the seeded 2.04-day local run, `Pheat_surface=2.65283` code units, `Tgas/T0=0.98591` at 813–817 R☉, `Fenth/F★=+0.0270` there, and the top radiative flux is `0.88985 F★`. The matched no-support run had `Tgas/T0≈0.747`, inward enthalpy flux, and top `≈0.658 F★`. Newton converged and opacity-domain errors remained zero. This shows that replacing the **missing transport locally** can hold the surface briefly; it is an artificial source and does not establish a self-sustaining convective envelope. It must be transferred gradually to the bottom/source-free physical configuration only after an upward enthalpy flux grows.
+
+The same supported 10 R☉ box reached code t=20 (5.09 d), with `Tgas/T0=1.01266` at 813–817 R☉, `Fenth/F★=+0.03791`, top `Frad/F★=0.88033`, and maximum xz-slice Mach ≈0.085. The support holds the transition for five days, but the upward enthalpy flux remains much smaller than the missing luminosity and its growth from t=16 to 20 has nearly stalled (`0.03795→0.03791`). This is why the wider, longer transfer run is a **gate**, not an assumed successful solution.
+
+The temperature ratios are geometric means over **one xz slice** (all vertical and x1 cells in each bin), and the fluxes are arithmetic slice means. They are neither full-volume nor spherical luminosities. Figure: `doc/figures/wor122_surface_patch_pilot_20261118.png`; compact numbers: `tst/nrfld_validation/wor122_surface_patch_pilot_20261118.json`. Reproduce the latter and figure with `tools/rsg/analyze_rsg_surface_patch.py` and the saved outputs in `/tmp/wor122_rsg_patch_{noheat,heat}_t8/` on this machine.
+
+## Interpretation and next gate
+
+The two independent controls isolate the immediate failure from the central heat-source location. Resolving the surface transition alone also does **not** make the imported profile thermally stationary: the initial radiative flux rises by almost a stellar luminosity through the layer, while the 3D convective enthalpy flux begins at zero. Supplying the luminosity at the bottom is necessary for a sustained envelope but cannot bridge that deficit on a two-day time scale. This does not establish that the FLD solver is defective, nor does it prove that a wider 3D domain with developed convection must fail.
+
+A radiative-only precursor is not an obvious shortcut under the same luminosity and 830 R☉ photospheric boundary. Taking the existing 1D flux-closed ODE and reducing its efficient-MLT alpha to `10⁻⁶` makes inward integration fail at r=815.814 R☉: the trial state has κR=9.566 cm²/g and `κR F★/(c g)=6.61`, so its maximum sub-Eddington radiative flux is only `0.151 F★`. This is one **attempted** radiative structure, not a theorem about all possible boundary/opacity choices. It explains why a static, purely radiative replacement for the missing convective flux is unlikely in the current setup and why the convection precursor needs an explicit thermal-support stage.
+
+The next candidate should supply an EOS-consistent interior luminosity and develop a measured upward enthalpy flux before the artificial support is released. A meaningful acceptance gate is a several-day 3D exterior run with sufficiently wide horizontal modes, resolved optical-depth transition, `F_rad+F_enth+F_kin` roughly flat across the unstable layer, stable gas/radiation temperature and radius, and energy/mass closure. Use the WOR-163/165 work on FLD-consistent equilibrium and outer boundaries, and the WOR-160/161 work on conservative mapping/force balance. Only after that gate should the full-star 256³/year-scale calculation be resumed; the 21 M☉ MESA three-layer fit should not be substituted for this 12 M☉ Freytag comparison without redefining the target.
+
+### Seeded local extension and wider-domain control
+
+The bottom-heated Marshak patch with a 0.05-sound-speed initial vertical perturbation reached code t=20 (5.09 d), cycle 585, with zero opacity excursions and converged Newton solves. In the 813–817 R☉ slice, `Tgas/T0=0.7091`, mean `Fenth/F★=−0.0556`, and top `Frad/F★=0.5785`. The perturbation did not build the missing upward enthalpy flux within five days. The initial local pressure scale height is about 15.5 R☉ and `sqrt(H/g)` about 19 days, so this is less than one local dynamical time. Its 10 R☉ horizontal width can also suppress large convective modes. The screening run cannot settle the 3D convection question.
+
+To test the horizontal-width limitation with one controlled XD job, `athinput.wor122_rsg_patch_wide_seeded` keeps Δ=0.625 R☉ and the same vertical physics but widens the periodic domain to 40×40 R☉ (64×64×96 cells). XD M-debug job **342490** completed normally in 13:42 elapsed to code t=20, cycle 585; zero opacity excursions and empty stderr. Output is `$WORK/wor122/surface_patch_wide_seeded/`. At code t=8 the 813–817 R☉ slice has `Tgas/T0=0.74725` and `Fenth/F★=−0.01895`, very close to the 10 R☉ box at the same time (`0.74736`, `−0.01943`). At code t=20 the wide-box values are `Tgas/T0=0.70907` and `Fenth/F★=−0.05466`, again effectively the same as the narrow box (`0.70914`, `−0.05564`); the top radiative flux is `0.57854 F★`. The wide-box bottom-power history reads 42.4454 code units, exactly 16 times the narrow-box power for its 16-fold horizontal area. This rules out the narrow horizontal box as the sole cause of cooling over **five days**, while longer-time convection remains open.
+
+An opt-in transfer schedule now uses a smooth cosine to move a fixed total luminosity from the preparation shell to the bottom layer. It preserves the total source power at every instant. In a local t=0–8 transfer smoke test, the recorded `(bottom,surface)` code powers were `(0,2.65283)` initially, `(1.34331,1.30952)` at t=4.03, and `(2.65283,0)` at t=8; their sum stayed 2.65283 to the history's precision. The transition shell temperature at t=8 was only `0.79121 T0`, so transferring within two days is too fast. The wider follow-up input `athinput.wor122_rsg_patch_wide_transfer` holds the shell support to code t=80 (~20.4 d), transfers it to the bottom by t=160 (~40.7 d), then follows the unsupported surface to t=200 (~50.9 d). XD M-bulk-a job **342523** is running this one long gate; all outputs, including six full 3D snapshots for area-averaged flux analysis, are under `$WORK/wor122/surface_patch_wide_transfer/`. No physical success is claimed until its source-free phase passes the thermal and convective-flux gate.

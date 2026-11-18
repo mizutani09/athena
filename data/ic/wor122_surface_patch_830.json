@@ -1,0 +1,14 @@
+{
+  "input": "data/ic/st35gm03n07_wor55_lte_fld_trial.dat",
+  "input_sha256": "ac65bbc48d8e44df40923802363fa94d3e5466ac8a4f4ad3aaf63f9b0fd4b2c4",
+  "reference_rsun": 830.0,
+  "rho_ref_cgs": 1.0134659070039773e-09,
+  "pgas_ref_cgs": 207.03039713722083,
+  "gravity_ref_cgs": 0.39690157342664306,
+  "source_columns": [
+    "r_cm",
+    "rho_g_cm3",
+    "Pgas_dyn_cm2"
+  ],
+  "gravity": "WOR-14 fixed Freytag potential, Mpot=12 Msun, rcore=166 Rsun, router=996 Rsun"
+}

@@ -40,6 +40,7 @@ constexpr Real kG=6.67430e-8, kMsun=1.98847e33, kRsun=6.957e10;
 constexpr Real kLsun=3.828e33, kAr=7.5657e-15, kRgas=8.3144621e7;
 Real rho_unit, energy_unit, length_unit, time_unit, velocity_unit;
 Real gm, radius, rcore, router, rheat, drag_tau, gamma_gas, mu, tsurface;
+Real heat_shell_inner=-1.0, heat_shell_outer=-1.0, drag_radius;
 Real index_poly, perturb, rho_surface, heat_norm, lum_code, boundary_er, bc_scale;
 Real dfloor, pfloor, kp_const, kr_const;
 Real drag_taper_start, drag_taper_end, grid_mass_tolerance;
@@ -123,6 +124,11 @@ Real DensityShape(Real r) {
   return std::exp(-(Potential(r)-Potential(radius))/ciso2);
 }
 Real CoreWeight(Real r) {
+  if (heat_shell_inner>=0.0) {
+    if (r<=heat_shell_inner || r>=heat_shell_outer) return 0.0;
+    const Real x=(r-heat_shell_inner)/(heat_shell_outer-heat_shell_inner);
+    return SQR(std::sin(M_PI*x));
+  }
   if (r>=rheat) return 0.0;
   return SQR(1.0-SQR(r/rheat));
 }
@@ -461,6 +467,23 @@ void Mesh::InitUserMeshData(ParameterInput *pin) {
   router=Positive(pin,"problem","outer_flattening_fraction")*radius;
   rheat=Positive(pin,"problem","heating_radius_fraction")*radius;
   Require(rheat<=rcore && rcore<radius && router>radius,"require rheat<=rcore<R<router");
+  const Real shell_inner_rsun=pin->GetOrAddReal(
+      "problem","heating_shell_inner_rsun",-1.0);
+  const Real shell_outer_rsun=pin->GetOrAddReal(
+      "problem","heating_shell_outer_rsun",-1.0);
+  Require((shell_inner_rsun<0.0 && shell_outer_rsun<0.0)
+          || (shell_inner_rsun>=0.0 && shell_outer_rsun>shell_inner_rsun
+              && shell_outer_rsun*kRsun/length_unit<radius),
+          "heating shell must be disabled or satisfy 0<=inner<outer<Rstar");
+  heat_shell_inner=(shell_inner_rsun<0.0) ? -1.0
+      : shell_inner_rsun*kRsun/length_unit;
+  heat_shell_outer=(shell_outer_rsun<0.0) ? -1.0
+      : shell_outer_rsun*kRsun/length_unit;
+  drag_radius=pin->GetOrAddReal(
+      "problem","drag_radius_fraction",rcore/radius)*radius;
+  Require(std::isfinite(drag_radius) && drag_radius>0.0
+          && drag_radius<radius,
+          "problem/drag_radius_fraction must give 0<drag radius<Rstar");
   if (multilevel) {
     Require(!core_quadrature_gravity,
             "static refinement trial requires problem/core_quadrature_gravity=false");
@@ -664,6 +687,8 @@ void Mesh::InitUserMeshData(ParameterInput *pin) {
       << "STAR_IN_BOX rho_surface=" << rho_surface << " heat_norm=" << heat_norm
       << " gas_mass=" << gas_mass << " Lheat=" << lum_code
       << " time_unit_s=" << time_unit << " core_cells=" << 2.0*rcore/dx[0]
+      << " heat_shell_rsun=(" << shell_inner_rsun << ',' << shell_outer_rsun << ')'
+      << " drag_radius_rsun=" << drag_radius*length_unit/kRsun
       << " static_refinement_trial=" << static_refinement_trial
       << " profile_cell_average_trial=" << profile_cell_average_trial
       << " prep_thermal_tau=" << prep_thermal_tau
@@ -761,11 +786,11 @@ void MeshBlock::UserWorkInLoop() {
         (drag_taper_end-pmy_mesh->time)/(drag_taper_end-drag_taper_start)));
   }
   if (taper<=0.0) return;
-  // Exact kinetic damping, only in the artificial core. No gas/radiation anchor.
+  // Exact kinetic damping in the configured inner control region. No gas/radiation anchor.
   for (int k=ks;k<=ke;++k) for (int j=js;j<=je;++j) for (int i=is;i<=ie;++i) {
     const Real r=RadialPosition(pcoord,k,j,i);
-    if (r>=rcore) continue;
-    const Real f=std::exp(-taper*pmy_mesh->dt*SQR(1.0-SQR(r/rcore))/drag_tau);
+    if (r>=drag_radius) continue;
+    const Real f=std::exp(-taper*pmy_mesh->dt*SQR(1.0-SQR(r/drag_radius))/drag_tau);
     auto &u=phydro->u;
     const Real oldk=Kinetic(u,k,j,i);
     const Real oldm[3]={u(IM1,k,j,i),u(IM2,k,j,i),u(IM3,k,j,i)};

@@ -1,0 +1,230 @@
+{
+  "noheat": {
+    "directory": "/tmp/wor122_rsg_patch_noheat_t8",
+    "time_code": 8.0,
+    "time_days": 2.037033859425131,
+    "energy_initial": 23169700.0,
+    "energy_final": 21577400.0,
+    "top_radiative_flux_over_Fstar": 0.6584479675765884,
+    "bottom_heat_power_code": 0.0,
+    "surface_heat_power_code": 0.0,
+    "shells": {
+      "800-813": {
+        "cells_in_z": 21,
+        "Tgas_ratio": 0.918064534664154,
+        "Erad_ratio": 0.7103833556175232,
+        "initial_Frad_over_Fstar": 0.007961027324199677,
+        "final_Frad_over_Fstar": 0.17697522044181824,
+        "initial_Fenth_over_Fstar": 0.0,
+        "final_Fenth_over_Fstar": 0.01642792671918869
+      },
+      "813-817": {
+        "cells_in_z": 6,
+        "Tgas_ratio": 0.7469614744186401,
+        "Erad_ratio": 0.3113097846508026,
+        "initial_Frad_over_Fstar": 0.22453723847866058,
+        "final_Frad_over_Fstar": 0.6378462314605713,
+        "initial_Fenth_over_Fstar": 0.0,
+        "final_Fenth_over_Fstar": -0.019582971930503845
+      },
+      "817-830": {
+        "cells_in_z": 21,
+        "Tgas_ratio": 0.8969869017601013,
+        "Erad_ratio": 0.6473575830459595,
+        "initial_Frad_over_Fstar": 0.9772894978523254,
+        "final_Frad_over_Fstar": 0.6447871923446655,
+        "initial_Fenth_over_Fstar": 0.0,
+        "final_Fenth_over_Fstar": -0.006552261300384998
+      },
+      "830-850": {
+        "cells_in_z": 32,
+        "Tgas_ratio": 1.0020443201065063,
+        "Erad_ratio": 1.0081956386566162,
+        "initial_Frad_over_Fstar": 0.9898404479026794,
+        "final_Frad_over_Fstar": 0.6565312743186951,
+        "initial_Fenth_over_Fstar": 0.0,
+        "final_Fenth_over_Fstar": -0.00022345990873873234
+      },
+      "850-860": {
+        "cells_in_z": 16,
+        "Tgas_ratio": 1.0743926763534546,
+        "Erad_ratio": 1.3324432373046875,
+        "initial_Frad_over_Fstar": 0.9455434679985046,
+        "final_Frad_over_Fstar": 0.6379961371421814,
+        "initial_Fenth_over_Fstar": 0.0,
+        "final_Fenth_over_Fstar": 4.373287447378971e-05
+      }
+    }
+  },
+  "heat": {
+    "directory": "/tmp/wor122_rsg_patch_heat_t8",
+    "time_code": 8.0,
+    "time_days": 2.037033859425131,
+    "energy_initial": 23169700.0,
+    "energy_final": 23645900.0,
+    "top_radiative_flux_over_Fstar": 0.6588544522589105,
+    "bottom_heat_power_code": 2.65283,
+    "surface_heat_power_code": 0.0,
+    "shells": {
+      "800-813": {
+        "cells_in_z": 21,
+        "Tgas_ratio": 0.9989250898361206,
+        "Erad_ratio": 0.9957072138786316,
+        "initial_Frad_over_Fstar": 0.007961027324199677,
+        "final_Frad_over_Fstar": 0.18575730919837952,
+        "initial_Fenth_over_Fstar": 0.0,
+        "final_Fenth_over_Fstar": 0.1127660796046257
+      },
+      "813-817": {
+        "cells_in_z": 6,
+        "Tgas_ratio": 0.7471786141395569,
+        "Erad_ratio": 0.3116719722747803,
+        "initial_Frad_over_Fstar": 0.22453723847866058,
+        "final_Frad_over_Fstar": 0.6380144357681274,
+        "initial_Fenth_over_Fstar": 0.0,
+        "final_Fenth_over_Fstar": -0.019589757546782494
+      },
+      "817-830": {
+        "cells_in_z": 21,
+        "Tgas_ratio": 0.8971542716026306,
+        "Erad_ratio": 0.6478407979011536,
+        "initial_Frad_over_Fstar": 0.9772894978523254,
+        "final_Frad_over_Fstar": 0.6452516913414001,
+        "initial_Fenth_over_Fstar": 0.0,
+        "final_Fenth_over_Fstar": -0.006549909245222807
+      },
+      "830-850": {
+        "cells_in_z": 32,
+        "Tgas_ratio": 1.0021847486495972,
+        "Erad_ratio": 1.0087612867355347,
+        "initial_Frad_over_Fstar": 0.9898404479026794,
+        "final_Frad_over_Fstar": 0.6572635769844055,
+        "initial_Fenth_over_Fstar": 0.0,
+        "final_Fenth_over_Fstar": -0.0002231621037935838
+      },
+      "850-860": {
+        "cells_in_z": 16,
+        "Tgas_ratio": 1.0745583772659302,
+        "Erad_ratio": 1.3332643508911133,
+        "initial_Frad_over_Fstar": 0.9455434679985046,
+        "final_Frad_over_Fstar": 0.6389430165290833,
+        "initial_Fenth_over_Fstar": 0.0,
+        "final_Fenth_over_Fstar": 4.3770927732111886e-05
+      }
+    }
+  },
+  "seeded_heat": {
+    "directory": "/tmp/wor122_rsg_patch_seeded_heat_t20",
+    "time_code": 20.0,
+    "time_days": 5.092584648562828,
+    "energy_initial": 23169100.0,
+    "energy_final": 24093400.0,
+    "top_radiative_flux_over_Fstar": 0.5785337942543808,
+    "bottom_heat_power_code": 2.65283,
+    "surface_heat_power_code": 0.0,
+    "shells": {
+      "800-813": {
+        "cells_in_z": 21,
+        "Tgas_ratio": 1.145124077796936,
+        "Erad_ratio": 1.7194905281066895,
+        "initial_Frad_over_Fstar": 0.00796292070299387,
+        "final_Frad_over_Fstar": 0.22639243304729462,
+        "initial_Fenth_over_Fstar": -0.0008144641178660095,
+        "final_Fenth_over_Fstar": 0.5646328926086426
+      },
+      "813-817": {
+        "cells_in_z": 6,
+        "Tgas_ratio": 0.7091352939605713,
+        "Erad_ratio": 0.25274014472961426,
+        "initial_Frad_over_Fstar": 0.22510109841823578,
+        "final_Frad_over_Fstar": 0.5826725363731384,
+        "initial_Fenth_over_Fstar": 0.0005468570743687451,
+        "final_Fenth_over_Fstar": -0.055637653917074203
+      },
+      "817-830": {
+        "cells_in_z": 21,
+        "Tgas_ratio": 0.8682588338851929,
+        "Erad_ratio": 0.5680495500564575,
+        "initial_Frad_over_Fstar": 0.9779849648475647,
+        "final_Frad_over_Fstar": 0.5779106020927429,
+        "initial_Fenth_over_Fstar": -0.00064158218447119,
+        "final_Fenth_over_Fstar": -0.01932707242667675
+      },
+      "830-850": {
+        "cells_in_z": 32,
+        "Tgas_ratio": 0.9773672819137573,
+        "Erad_ratio": 0.9124946594238281,
+        "initial_Frad_over_Fstar": 0.9898404479026794,
+        "final_Frad_over_Fstar": 0.5795000195503235,
+        "initial_Fenth_over_Fstar": 0.0,
+        "final_Fenth_over_Fstar": -0.0008379840292036533
+      },
+      "850-860": {
+        "cells_in_z": 16,
+        "Tgas_ratio": 1.0402560234069824,
+        "Erad_ratio": 1.1710041761398315,
+        "initial_Frad_over_Fstar": 0.9455434679985046,
+        "final_Frad_over_Fstar": 0.5663473010063171,
+        "initial_Fenth_over_Fstar": 0.0,
+        "final_Fenth_over_Fstar": 6.744029087712988e-05
+      }
+    }
+  },
+  "surface_support": {
+    "directory": "/tmp/wor122_rsg_patch_surface_support_t8",
+    "time_code": 8.0,
+    "time_days": 2.037033859425131,
+    "energy_initial": 23169100.0,
+    "energy_final": 23404900.0,
+    "top_radiative_flux_over_Fstar": 0.8898521873882466,
+    "bottom_heat_power_code": 0.0,
+    "surface_heat_power_code": 2.65283,
+    "shells": {
+      "800-813": {
+        "cells_in_z": 21,
+        "Tgas_ratio": 1.0066876411437988,
+        "Erad_ratio": 1.0269941091537476,
+        "initial_Frad_over_Fstar": 0.00796292070299387,
+        "final_Frad_over_Fstar": 0.0048835095949471,
+        "initial_Fenth_over_Fstar": -0.0008144641178660095,
+        "final_Fenth_over_Fstar": -0.008447864092886448
+      },
+      "813-817": {
+        "cells_in_z": 6,
+        "Tgas_ratio": 0.9859133958816528,
+        "Erad_ratio": 0.9443065524101257,
+        "initial_Frad_over_Fstar": 0.22510109841823578,
+        "final_Frad_over_Fstar": 0.4207741916179657,
+        "initial_Fenth_over_Fstar": 0.0005468570743687451,
+        "final_Fenth_over_Fstar": 0.02702658250927925
+      },
+      "817-830": {
+        "cells_in_z": 21,
+        "Tgas_ratio": 0.9860084056854248,
+        "Erad_ratio": 0.9447392225265503,
+        "initial_Frad_over_Fstar": 0.9779849648475647,
+        "final_Frad_over_Fstar": 0.9035103917121887,
+        "initial_Fenth_over_Fstar": -0.00064158218447119,
+        "final_Fenth_over_Fstar": -0.002956290263682604
+      },
+      "830-850": {
+        "cells_in_z": 32,
+        "Tgas_ratio": 1.0706275701522827,
+        "Erad_ratio": 1.3138737678527832,
+        "initial_Frad_over_Fstar": 0.9898404479026794,
+        "final_Frad_over_Fstar": 0.8930588960647583,
+        "initial_Fenth_over_Fstar": 0.0,
+        "final_Fenth_over_Fstar": -4.6248061380538275e-07
+      },
+      "850-860": {
+        "cells_in_z": 16,
+        "Tgas_ratio": 1.1583960056304932,
+        "Erad_ratio": 1.8006459474563599,
+        "initial_Frad_over_Fstar": 0.9455434679985046,
+        "final_Frad_over_Fstar": 0.8799076080322266,
+        "initial_Fenth_over_Fstar": 0.0,
+        "final_Fenth_over_Fstar": 6.705339910695329e-05
+      }
+    }
+  }
+}
