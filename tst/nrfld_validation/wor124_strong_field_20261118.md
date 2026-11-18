@@ -205,5 +205,62 @@ is `1.05e-7` median, `1.47e-6` p99 and `4.29e-6` maximum; HDF SHA-256 is
 Five-node M-large-a job `342419` started from that validated c880 restart at
 2026-11-18 20:40:17 JST.  Its first segment entered the main loop with the
 expected restart-2000/max-2500/MG5 configuration and with the inexact cap
-disabled.  This is the active long continuation; it remains guarded by fatal,
-opacity-domain, Jeans-resolution and first-core-density checks.
+disabled.
+
+## Cycle-880 nonlinear localization and timestep result
+
+Job `342419` did not complete its first c880 step.  It failed after 1392 s
+with `backtracking_exhausted`, not with an MPI, memory, opacity or linear-solve
+error.  All seven FGMRES solves met the strict target in 1253--1282
+iterations with `inexact_accept=0`.  Newton nevertheless stalled after six
+corrections at combined `L2=2.11855e-5` and maximum `1.0`; the maximum was a
+localized total-energy row on level-9 block 1256 at a corner adjoining both
+level-8 and level-10 blocks.  The final gas maximum was only `3.27022e-6`.
+No step completed and no output was written, so the validated c880 restart
+from job `342417` remains the recovery point.
+
+The componentwise FGMRES backward error was initially `5.54e-6` and
+`2.76e-6`, then grew to `0.156`, `0.0999`, `0.0685`, `0.473`, and `0.997`
+as the right-hand side became localized.  A global relative residual of
+`2e-8` therefore did not imply an accurate correction for the single
+coarse/fine corner row.  This explains why making the global Krylov solve
+strict removed the earlier unsafe inexact handoff but did not by itself make
+the next nonlinear step convergent.
+
+Two controls excluded tempting but incorrect explanations.  With the
+positive radiation-ghost limiter disabled, job `342453` reproduced the same
+localized total-energy maximum and reached componentwise FGMRES error
+`0.263`; it was stopped after the third conclusive correction.  With the
+limiter restored and `backward_error_convergence=true`, job `342460` reduced
+the reported L2 norm to `5.49e-7` but left the localized maximum at `0.161`;
+it too was stopped after three corrections.  Thus neither the positivity
+limiter nor a different roundoff normalization is the root remedy.
+
+M-test job `342475` replayed the identical c880 checkpoint with only the CFL
+number changed from 0.3 to 0.15.  It passed c880--881 in 38 s of solver time.
+The two strict FGMRES solves required only 23 iterations each and ended at
+`1.72624e-8` and `1.27655e-8`; their componentwise backward errors were
+`2.61e-7` and `2.45e-8`.  Newton converged in two corrections to
+`L2=1.38712e-9`, maximum `1.91554e-7`, with clean opacity diagnostics.  The
+c881 restart SHA-256 is
+`38607e1f2e0f2480c298493ca9c2df4abb4ef7c943a57db62509a9ebb106359c`.
+
+The c881 HDF again has 2,211,840 cells, zero EOS-outside and zero nonpositive
+gas-energy cells.  Its total-energy closure relative error is `1.05e-7`
+median, `1.47e-6` p99 and `4.36e-6` maximum; HDF SHA-256 is
+`9adfa43a31f1dddd0d32717f7407861db4a2b35275374a07bb2d004cb26fc7b9`.
+The improvement is not a trade of robustness for cost: halving the explicit
+CFL made the implicit radiation system much better conditioned and reduced
+the solve from roughly 23 minutes without a completed step to 38 seconds for
+a completed step.
+
+Ten-step sustain gate `342477` then passed c880--890 in 211 s of solver time
+(214 s Slurm elapsed).  All 20 FGMRES solves met the strict target in 22--26
+iterations, with maximum true relative residual `1.96603e-8` and no inexact
+accept.  All ten Newton steps converged in two corrections; maximum final L2
+was `1.38733e-9` and maximum final component was `1.03987e-6`.  Opacity
+diagnostics were clean.  The complete c890 restart SHA-256 is
+`6eaedecddb24a1aa82b28e79d26d08cc4bb16397554140df003a73ab0268b10b`.
+Dependent five-node M-large-a continuation `342478` passed both the Slurm
+dependency and its independent in-script gate.  It is pending only for five
+M-large-a nodes, with scheduler-estimated start 2026-11-18 22:10:45 JST.

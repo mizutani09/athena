@@ -644,3 +644,27 @@ Iteration-ceiling results above `2e-8` are no longer cap-accepted; a future
 failure leaves a checkpoint instead of advancing Newton with a demonstrably
 unsafe coarse correction.  Five-node M-large-a job `342419` started from the
 validated c880 restart at 20:40 JST and is the active long continuation.
+
+That c880 continuation exposed a separate nonlinear localization.  Job
+`342419` made all seven linear solves strict but failed Newton backtracking
+without completing the step.  A single total-energy row at a level-9 corner
+adjoining levels 8 and 10 retained normalized maximum 1.0 while its right-hand
+side became invisible to the global FGMRES norm; componentwise linear
+backward error grew to 0.997.  Disabling the positive ghost limiter (`342453`)
+and changing only the nonlinear residual normalization (`342460`) did not
+remove that localized row.
+
+Halving CFL from 0.3 to 0.15 on the identical c880 checkpoint (`342475`) did.
+The implicit system changed from 1250--1280 FGMRES iterations per correction
+to 23, and Newton converged in two corrections to maximum `1.92e-7`.  The
+step took 38 s, opacity checks were clean, and the c881 HDF has zero EOS and
+gas-energy violations with closure maximum `4.36e-6`.  Thus the lower CFL is
+also substantially faster at this strong-field AMR state, not merely a
+smaller-step workaround.  Ten-step sustain gate `342477` and dependent
+five-node continuation `342478` use the strict solver with CFL 0.15.
+
+Gate `342477` passed c880--890 in 211 s.  All 20 strict FGMRES solves used
+22--26 iterations, and all ten Newton steps converged in two corrections with
+maximum final component `1.04e-6`.  The c890 restart is complete and hashed.
+Job `342478` cleared its dependency and internal gate and is pending only for
+five M-large-a nodes.

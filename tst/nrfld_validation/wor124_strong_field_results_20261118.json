@@ -236,6 +236,95 @@
         "mg_vcycles": 5,
         "inexact_cap_enabled": false,
         "start_jst": "2026-11-18T20:40:17+09:00",
-        "status": "RUNNING"
+        "status": "FAILED_CYCLE_880_BACKTRACKING_EXHAUSTED",
+        "elapsed_seconds": 1392,
+        "completed_steps": 0,
+        "fgmres_solve_count": 7,
+        "fgmres_iteration_min": 1253,
+        "fgmres_iteration_max": 1282,
+        "fgmres_residual_max": 1.9649380573386849e-08,
+        "fgmres_local_backward_errors": [
+            5.535412947610172e-06,
+            2.7576908047481054e-06,
+            0.15566422325897397,
+            0.09989780697240881,
+            0.06848335544071858,
+            0.4728881644692697,
+            0.9974622311220593
+        ],
+        "newton_iterations": 6,
+        "newton_final_l2": 2.1185458350231164e-05,
+        "newton_final_max": 1.0000000000000002,
+        "newton_final_gas_max": 3.2702227404363066e-06,
+        "failure_location_gid": 1256,
+        "failure_location_level": 9,
+        "failure_neighbor_levels": [8, 10]
+    },
+    "c880_no_positive_ghost_control": {
+        "job_id": 342453,
+        "status": "CANCELLED_AFTER_CONCLUSIVE_THREE_CORRECTIONS",
+        "fgmres_local_backward_error_third": 0.2628869535127411,
+        "localized_total_energy_max": 1.0000000000000002
+    },
+    "c880_backward_error_control": {
+        "job_id": 342460,
+        "status": "CANCELLED_AFTER_CONCLUSIVE_THREE_CORRECTIONS",
+        "third_newton_l2": 5.485084843803014e-07,
+        "third_newton_max": 0.16121506103197192,
+        "fgmres_local_backward_error_third": 0.15569826303820528
+    },
+    "c880_cfl015_gate": {
+        "job_id": 342475,
+        "status": "PASS",
+        "elapsed_solver_seconds": 38,
+        "fgmres_iterations": [
+            23,
+            23
+        ],
+        "fgmres_true_relative_residuals": [
+            1.7262356782859806e-08,
+            1.276552561040236e-08
+        ],
+        "fgmres_local_backward_errors": [
+            2.6117270328480886e-07,
+            2.4519695837475947e-08
+        ],
+        "newton_iterations": 2,
+        "newton_final_l2": 1.3871168869672375e-09,
+        "newton_final_max": 1.9155385261465546e-07,
+        "final_restart_sha256": "38607e1f2e0f2480c298493ca9c2df4abb4ef7c943a57db62509a9ebb106359c"
+    },
+    "c881_hdf_audit": {
+        "active_cells": 2211840,
+        "eos_outside_cells": 0,
+        "nonpositive_gas_energy_cells": 0,
+        "energy_closure_relative_median": 1.0541315866882261e-07,
+        "energy_closure_relative_p99": 1.4698372613020035e-06,
+        "energy_closure_relative_max": 4.3565862821119345e-06,
+        "hdf_sha256": "9adfa43a31f1dddd0d32717f7407861db4a2b35275374a07bb2d004cb26fc7b9"
+    },
+    "c880_cfl015_sustain": {
+        "job_id": 342477,
+        "start_cycle": 880,
+        "target_cycle": 890,
+        "status": "PASS",
+        "elapsed_solver_seconds": 211,
+        "elapsed_slurm_seconds": 214,
+        "fgmres_solve_count": 20,
+        "fgmres_iteration_min": 22,
+        "fgmres_iteration_max": 26,
+        "fgmres_residual_max": 1.9660347524107599e-08,
+        "newton_step_count": 10,
+        "newton_iteration_max": 2,
+        "newton_final_l2_max": 1.3873312949891369e-09,
+        "newton_final_max_max": 1.0398699875826865e-06,
+        "final_restart_sha256": "6eaedecddb24a1aa82b28e79d26d08cc4bb16397554140df003a73ab0268b10b"
+    },
+    "cfl015_long_continuation": {
+        "job_id": 342478,
+        "dependency": "afterok:342477",
+        "start_cycle_if_gate_passes": 890,
+        "status": "PENDING_RESOURCES",
+        "scheduler_estimated_start_jst": "2026-11-18T22:10:45+09:00"
   }
 }
