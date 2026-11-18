@@ -1,0 +1,28 @@
+{
+  "interface_relative_error": -0.0008888582626719321,
+  "mapped_interface_equatorial_radius_cm": 4765435587426.781,
+  "recommended_mapping": {
+    "atmosphere_mass_g": 2.4437122429467804e+28,
+    "density_center_l1_relative": 0.0005090237201451971,
+    "discrete_J_relative_error": -5.033635999018848e-06,
+    "energy_relative_error": 0.0029807871693243726,
+    "force_l2_relative": 0.06905041930199934,
+    "force_max_relative": 0.7860932562341595,
+    "mass_relative_error": -2.177651639811984e-05,
+    "min_dx_cm": 74733398437.5,
+    "pressure_recovery_l1_relative": 4.336667288144595e-06,
+    "quadrature": 3.0,
+    "radiative_mass_g": 1.1551813429192309e+33,
+    "refinement_levels": 5.0,
+    "root_points": 64.0,
+    "temperature_center_l1_relative": 0.0017711861966560086
+  },
+  "schema_version": 1,
+  "source": {
+    "angular_velocity_rad_s": 4e-08,
+    "core_support_radius_cm": 354149715880.2513,
+    "interface_equatorial_radius_cm": 4769675152596.428,
+    "profile_angular_points": 32,
+    "profile_radial_points": 2048
+  }
+}

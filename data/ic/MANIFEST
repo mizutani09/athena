@@ -22,3 +22,14 @@ radiation_force = included consistently in gas HSE
 spherical_mass_msun = 2.9992386261223065
 resolved_interior_hse_max = 0.008484531916230248
 qualification = production asset validation PASS; 32^3 full-FLD CFL=0.3 100-cycle test PASS
+
+# Axisymmetric rotating BSCF model for WOR-160
+filename = rsg21_scf_omega4e-8.csv
+sidecar = rsg21_scf_omega4e-8.json
+generator_repository = /home/kosuke/simulation/mhd/BSCF-rsg
+generator_commit = fe3f380
+grid = 2048 radial x 32 angular; multipoles through l=20
+rotation = Omega=4.0e-8 rad s^-1; inertial-frame mapping
+sha256 = 4fbc65747d24d59b8cd0a1b90b0b3f3b4e22cc92617ec31b97627738ba306c89
+sidecar_sha256 = 6e34529f8494a914f411b19baa90ea6cfa1594a65cba68040ef08f673be0176d
+qualification = SCF converged; virial error=9.01843e-6; WOR-160 Cartesian/SMR audit PASS

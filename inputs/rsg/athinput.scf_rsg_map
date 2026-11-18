@@ -1,0 +1,122 @@
+<comment>
+problem = WOR-160 conservative mapping of the C++ rotating SCF RSG to Cartesian HD
+configure = --prob=scf_rsg --coord=cartesian --eos=adiabatic --flux=hllc --nscalars=2
+frame = inertial; velocity = (-Omega*y, Omega*x, 0)
+source gas mass = 3.041623627857687e34 g
+source Jz = 8.350713376408741e53 g cm^2 s^-1
+
+<job>
+problem_id = scf_rsg_map
+
+<output1>
+file_type = hst
+dcycle = 1
+
+<output2>
+file_type = tab
+variable = prim
+data_format = %20.12e
+x3_slice = 0.0
+dt = 1.0
+
+<output3>
+file_type = tab
+variable = uov
+id = uov
+data_format = %20.12e
+x3_slice = 0.0
+dt = 1.0
+
+<time>
+cfl_number = 0.3
+nlim = 1
+tlim = 1.0e-3
+integrator = rk2
+xorder = 2
+ncycle_out = 1
+
+<mesh>
+refinement = static
+nx1 = 64
+x1min = -1100.0
+x1max = 1100.0
+ix1_bc = outflow
+ox1_bc = outflow
+nx2 = 64
+x2min = -1100.0
+x2max = 1100.0
+ix2_bc = outflow
+ox2_bc = outflow
+nx3 = 64
+x3min = -1100.0
+x3max = 1100.0
+ix3_bc = outflow
+ox3_bc = outflow
+
+<meshblock>
+nx1 = 16
+nx2 = 16
+nx3 = 16
+
+<refinement1>
+level = 1
+x1min = -550.0
+x1max = 550.0
+x2min = -550.0
+x2max = 550.0
+x3min = -550.0
+x3max = 550.0
+
+<refinement2>
+level = 2
+x1min = -275.0
+x1max = 275.0
+x2min = -275.0
+x2max = 275.0
+x3min = -275.0
+x3max = 275.0
+
+<refinement3>
+level = 3
+x1min = -137.5
+x1max = 137.5
+x2min = -137.5
+x2max = 137.5
+x3min = -137.5
+x3max = 137.5
+
+<refinement4>
+level = 4
+x1min = -68.75
+x1max = 68.75
+x2min = -68.75
+x2max = 68.75
+x3min = -68.75
+x3max = 68.75
+
+<refinement5>
+level = 5
+x1min = -34.375
+x1max = 34.375
+x2min = -34.375
+x2max = 34.375
+x3min = -34.375
+x3max = 34.375
+
+<hydro>
+gamma = 1.6666666666666667
+mu = 0.6353437771420501
+rho_unit = 1.0e-8
+egas_unit = 1.0e5
+leng_unit = 6.957e10
+dfloor = 1.0e-8
+pfloor = 1.0e-9
+
+<problem>
+scf_profile_file = data/ic/rsg21_scf_omega4e-8.csv
+angular_velocity_rad_s = 4.0e-8
+frame = inertial
+cell_quadrature_order = 3
+atmosphere_density_g_cm3 = 1.0e-14
+atmosphere_temperature_k = 1.0e4
+rotate_atmosphere = false
