@@ -1,0 +1,379 @@
+{
+  "method": "Audit the missing convective-flux closure in the imported RSG profile.\n\nThe efficient-MLT estimate is deliberately optimistic: it ignores eddy\nradiative leakage and the back reaction of turbulent pressure on HSE.\nIt is a local feasibility diagnostic, not a replacement 1D stellar model.",
+  "profile": "data/ic/st35gm03n07_wor55_lte_fld_trial.dat",
+  "eos": "data/eos/rsg_tomida2013_material_eos.tab",
+  "luminosity_lsun": 91932.0,
+  "mixing_length_alpha": 3.0,
+  "velocity_coefficient_nu": 8.0,
+  "gradient_windows_rsun": [
+    3,
+    5,
+    10
+  ],
+  "points": {
+    "400": {
+      "radius_rsun": 400.39113858552804,
+      "radiative_luminosity_fraction": 0.17525675696744034,
+      "required_convective_luminosity_fraction": 0.8247432430325596,
+      "nabla_ad_from_discrete_entropy": 0.39738452098676663,
+      "required_excess_nabla_efficient_mlt": 0.03237093965339209,
+      "required_total_nabla_efficient_mlt": 0.42975546064015874,
+      "required_total_nabla_local_flux_closed": 0.4292182724540292,
+      "local_flux_closed_radiative_fraction": 0.18406707009153814,
+      "local_flux_closed_convective_fraction": 0.8159329299084603,
+      "local_flux_closed_velocity_km_s": 7.307598992947329,
+      "local_flux_closed_turbulent_pressure_over_gas": 0.05763837027553848,
+      "measured_nabla_by_window": {
+        "3Rsun": 0.39789960355427534,
+        "5Rsun": 0.3986925839574993,
+        "10Rsun": 0.39993922650748526
+      },
+      "optimistic_convective_capacity_over_required_by_window": {
+        "3Rsun": 0.0020071615022396994,
+        "5Rsun": 0.008122879640825214,
+        "10Rsun": 0.022170644107514903
+      },
+      "required_velocity_km_s": 7.263927946136645,
+      "required_mach": 0.18493319018971272,
+      "implied_turbulent_pressure_over_gas": 0.05695152179176036
+    },
+    "450": {
+      "radius_rsun": 450.1694953237289,
+      "radiative_luminosity_fraction": 0.07043010436702944,
+      "required_convective_luminosity_fraction": 0.9295698956329705,
+      "nabla_ad_from_discrete_entropy": 0.39498858161364936,
+      "required_excess_nabla_efficient_mlt": 0.04504018956024423,
+      "required_total_nabla_efficient_mlt": 0.4400287711738936,
+      "required_total_nabla_local_flux_closed": 0.4393666583388058,
+      "local_flux_closed_radiative_fraction": 0.07583659732372032,
+      "local_flux_closed_convective_fraction": 0.9241634026762805,
+      "local_flux_closed_velocity_km_s": 7.490608724225042,
+      "local_flux_closed_turbulent_pressure_over_gas": 0.07355373903328186,
+      "measured_nabla_by_window": {
+        "3Rsun": 0.39471896547055013,
+        "5Rsun": 0.39456804720195887,
+        "10Rsun": 0.3939215487820886
+      },
+      "optimistic_convective_capacity_over_required_by_window": {
+        "3Rsun": 0.0,
+        "5Rsun": 0.0,
+        "10Rsun": 0.0
+      },
+      "required_velocity_km_s": 7.423670088292739,
+      "required_mach": 0.20908471311953347,
+      "implied_turbulent_pressure_over_gas": 0.07224501027374276
+    },
+    "500": {
+      "radius_rsun": 499.94785206192967,
+      "radiative_luminosity_fraction": 0.024061260437543086,
+      "required_convective_luminosity_fraction": 0.9759387395624569,
+      "nabla_ad_from_discrete_entropy": 0.34231915421556586,
+      "required_excess_nabla_efficient_mlt": 0.056184756029447024,
+      "required_total_nabla_efficient_mlt": 0.39850391024501286,
+      "required_total_nabla_local_flux_closed": 0.3977664278263897,
+      "local_flux_closed_radiative_fraction": 0.026897424843104718,
+      "local_flux_closed_convective_fraction": 0.973102575156895,
+      "local_flux_closed_velocity_km_s": 7.309887645153636,
+      "local_flux_closed_turbulent_pressure_over_gas": 0.08561430012297097,
+      "measured_nabla_by_window": {
+        "3Rsun": 0.3437526800376224,
+        "5Rsun": 0.3358187542368702,
+        "10Rsun": 0.32978538942134666
+      },
+      "optimistic_convective_capacity_over_required_by_window": {
+        "3Rsun": 0.004075496564441569,
+        "5Rsun": 0.0,
+        "10Rsun": 0.0
+      },
+      "required_velocity_km_s": 7.234963333529009,
+      "required_mach": 0.23495016831010535,
+      "implied_turbulent_pressure_over_gas": 0.08386824904290044
+    },
+    "550": {
+      "radius_rsun": 549.7262088001304,
+      "radiative_luminosity_fraction": 0.01031268968089927,
+      "required_convective_luminosity_fraction": 0.9896873103191007,
+      "nabla_ad_from_discrete_entropy": 0.20112803544505126,
+      "required_excess_nabla_efficient_mlt": 0.05084433503547604,
+      "required_total_nabla_efficient_mlt": 0.2519723704805273,
+      "required_total_nabla_local_flux_closed": 0.25134580576504956,
+      "local_flux_closed_radiative_fraction": 0.012387594398114593,
+      "local_flux_closed_convective_fraction": 0.9876124056015435,
+      "local_flux_closed_velocity_km_s": 6.498088545331688,
+      "local_flux_closed_turbulent_pressure_over_gas": 0.07989018391636296,
+      "measured_nabla_by_window": {
+        "3Rsun": 0.20539963476014014,
+        "5Rsun": 0.20699597687248808,
+        "10Rsun": 0.20758749428284082
+      },
+      "optimistic_convective_capacity_over_required_by_window": {
+        "3Rsun": 0.024351286178581837,
+        "5Rsun": 0.03920710696367051,
+        "10Rsun": 0.04528249469428201
+      },
+      "required_velocity_km_s": 6.431495119111968,
+      "required_mach": 0.24472092249403143,
+      "implied_turbulent_pressure_over_gas": 0.07826112019688579
+    },
+    "600": {
+      "radius_rsun": 599.5045655383312,
+      "radiative_luminosity_fraction": 0.010195832727774976,
+      "required_convective_luminosity_fraction": 0.989804167272225,
+      "nabla_ad_from_discrete_entropy": 0.18912025581808345,
+      "required_excess_nabla_efficient_mlt": 0.06576424030532248,
+      "required_total_nabla_efficient_mlt": 0.2548844961234059,
+      "required_total_nabla_local_flux_closed": 0.253698664301088,
+      "local_flux_closed_radiative_fraction": 0.013000114212811824,
+      "local_flux_closed_convective_fraction": 0.9869998857871876,
+      "local_flux_closed_velocity_km_s": 7.030985286131463,
+      "local_flux_closed_turbulent_pressure_over_gas": 0.10635206902612936,
+      "measured_nabla_by_window": {
+        "3Rsun": 0.18963740183610414,
+        "5Rsun": 0.190336381456135,
+        "10Rsun": 0.19174479681044826
+      },
+      "optimistic_convective_capacity_over_required_by_window": {
+        "3Rsun": 0.0006973247280062165,
+        "5Rsun": 0.002514681315854145,
+        "10Rsun": 0.007972514707975983
+      },
+      "required_velocity_km_s": 6.923822006392515,
+      "required_mach": 0.28409280376985613,
+      "implied_turbulent_pressure_over_gas": 0.10313482942795928
+    },
+    "650": {
+      "radius_rsun": 650.3650604664929,
+      "radiative_luminosity_fraction": 0.014439126595661161,
+      "required_convective_luminosity_fraction": 0.9855608734043388,
+      "nabla_ad_from_discrete_entropy": 0.29599383683647307,
+      "required_excess_nabla_efficient_mlt": 0.13061102274049666,
+      "required_total_nabla_efficient_mlt": 0.4266048595769697,
+      "required_total_nabla_local_flux_closed": 0.4226210619342303,
+      "local_flux_closed_radiative_fraction": 0.018485392508936924,
+      "local_flux_closed_convective_fraction": 0.981514607491063,
+      "local_flux_closed_velocity_km_s": 9.210110810235266,
+      "local_flux_closed_turbulent_pressure_over_gas": 0.2093760861948706,
+      "measured_nabla_by_window": {
+        "3Rsun": 0.30329808963083194,
+        "5Rsun": 0.3042988479474342,
+        "10Rsun": 0.2991234943930106
+      },
+      "optimistic_convective_capacity_over_required_by_window": {
+        "3Rsun": 0.01322494722974197,
+        "5Rsun": 0.016033952085326403,
+        "10Rsun": 0.003709159293709212
+      },
+      "required_velocity_km_s": 8.966001380693855,
+      "required_mach": 0.37183621733367994,
+      "implied_turbulent_pressure_over_gas": 0.19842435143314605
+    },
+    "675": {
+      "radius_rsun": 675.2542388355932,
+      "radiative_luminosity_fraction": 0.015447517488475665,
+      "required_convective_luminosity_fraction": 0.9845524825115244,
+      "nabla_ad_from_discrete_entropy": 0.380596866149802,
+      "required_excess_nabla_efficient_mlt": 0.1789960553687315,
+      "required_total_nabla_efficient_mlt": 0.5595929215185335,
+      "required_total_nabla_local_flux_closed": 0.553724260780054,
+      "local_flux_closed_radiative_fraction": 0.019307946134155648,
+      "local_flux_closed_convective_fraction": 0.9806920538658441,
+      "local_flux_closed_velocity_km_s": 10.410403820651704,
+      "local_flux_closed_turbulent_pressure_over_gas": 0.29149833496375144,
+      "measured_nabla_by_window": {
+        "3Rsun": 0.4021291251688653,
+        "5Rsun": 0.40125923177307155,
+        "10Rsun": 0.38702448336628
+      },
+      "optimistic_convective_capacity_over_required_by_window": {
+        "3Rsun": 0.04172239234355264,
+        "5Rsun": 0.03921975467805013,
+        "10Rsun": 0.006804713073967493
+      },
+      "required_velocity_km_s": 10.108719004120145,
+      "required_mach": 0.416432981709819,
+      "implied_turbulent_pressure_over_gas": 0.27484837588912514
+    },
+    "700": {
+      "radius_rsun": 700.1434172046936,
+      "radiative_luminosity_fraction": 0.014374959348960766,
+      "required_convective_luminosity_fraction": 0.9856250406510393,
+      "nabla_ad_from_discrete_entropy": 0.4015880911001595,
+      "required_excess_nabla_efficient_mlt": 0.2173923270223731,
+      "required_total_nabla_efficient_mlt": 0.6189804181225327,
+      "required_total_nabla_local_flux_closed": 0.6131129564012205,
+      "local_flux_closed_radiative_fraction": 0.017413156334618683,
+      "local_flux_closed_convective_fraction": 0.982586843665376,
+      "local_flux_closed_velocity_km_s": 10.779950197054331,
+      "local_flux_closed_turbulent_pressure_over_gas": 0.34646308093214706,
+      "measured_nabla_by_window": {
+        "3Rsun": 0.4669650829828093,
+        "5Rsun": 0.46365870967451017,
+        "10Rsun": 0.4620744235130867
+      },
+      "optimistic_convective_capacity_over_required_by_window": {
+        "3Rsun": 0.16491914855467468,
+        "5Rsun": 0.15256776812830067,
+        "10Rsun": 0.14676400708762835
+      },
+      "required_velocity_km_s": 10.521429608154817,
+      "required_mach": 0.4472326585150128,
+      "implied_turbulent_pressure_over_gas": 0.3300448512589976
+    },
+    "725": {
+      "radius_rsun": 725.0325955737941,
+      "radiative_luminosity_fraction": 0.01372348642321275,
+      "required_convective_luminosity_fraction": 0.9862765135767873,
+      "nabla_ad_from_discrete_entropy": 0.38569611888803806,
+      "required_excess_nabla_efficient_mlt": 0.25705633984009413,
+      "required_total_nabla_efficient_mlt": 0.6427524587281321,
+      "required_total_nabla_local_flux_closed": 0.638959216933657,
+      "local_flux_closed_radiative_fraction": 0.015500013837740521,
+      "local_flux_closed_convective_fraction": 0.9844999861628274,
+      "local_flux_closed_velocity_km_s": 10.745518556858134,
+      "local_flux_closed_turbulent_pressure_over_gas": 0.39088333104839623,
+      "measured_nabla_by_window": {
+        "3Rsun": 0.5422422586669186,
+        "5Rsun": 0.5425963282717372,
+        "10Rsun": 0.5440941677307402
+      },
+      "optimistic_convective_capacity_over_required_by_window": {
+        "3Rsun": 0.4752488397510257,
+        "5Rsun": 0.47686209844089905,
+        "10Rsun": 0.4837068773851499
+      },
+      "required_velocity_km_s": 10.6060568598018,
+      "required_mach": 0.48235305354023894,
+      "implied_turbulent_pressure_over_gas": 0.3808029426911041
+    },
+    "750": {
+      "radius_rsun": 749.9217739428944,
+      "radiative_luminosity_fraction": 0.014122604311573125,
+      "required_convective_luminosity_fraction": 0.9858773956884269,
+      "nabla_ad_from_discrete_entropy": 0.2993576423950827,
+      "required_excess_nabla_efficient_mlt": 0.2509800740730893,
+      "required_total_nabla_efficient_mlt": 0.550337716468172,
+      "required_total_nabla_local_flux_closed": 0.5521377406544853,
+      "local_flux_closed_radiative_fraction": 0.012991739798181952,
+      "local_flux_closed_convective_fraction": 0.9870082602004682,
+      "local_flux_closed_velocity_km_s": 9.59799735660631,
+      "local_flux_closed_turbulent_pressure_over_gas": 0.36808054032823745,
+      "measured_nabla_by_window": {
+        "3Rsun": 0.611510000194493,
+        "5Rsun": 0.6077301613368937,
+        "10Rsun": 0.6074180092266517
+      },
+      "optimistic_convective_capacity_over_required_by_window": {
+        "3Rsun": 1.3870466404438746,
+        "5Rsun": 1.3619295338363042,
+        "10Rsun": 1.3598621240537918
+      },
+      "required_velocity_km_s": 9.65575823298964,
+      "required_mach": 0.506113704052198,
+      "implied_turbulent_pressure_over_gas": 0.37252409813482074
+    },
+    "780": {
+      "radius_rsun": 780.2216432617993,
+      "radiative_luminosity_fraction": 0.013493680749047537,
+      "required_convective_luminosity_fraction": 0.9865063192509524,
+      "nabla_ad_from_discrete_entropy": 0.2237651353820004,
+      "required_excess_nabla_efficient_mlt": 0.28684466336033093,
+      "required_total_nabla_efficient_mlt": 0.5106097987423314,
+      "required_total_nabla_local_flux_closed": 0.5164007208920555,
+      "local_flux_closed_radiative_fraction": 0.00913753281280343,
+      "local_flux_closed_convective_fraction": 0.9908624671871968,
+      "local_flux_closed_velocity_km_s": 8.626349089844036,
+      "local_flux_closed_turbulent_pressure_over_gas": 0.4050029373718413,
+      "measured_nabla_by_window": {
+        "3Rsun": 0.8055816359118032,
+        "5Rsun": 0.8040812638672896,
+        "10Rsun": 0.8054149006673056
+      },
+      "optimistic_convective_capacity_over_required_by_window": {
+        "3Rsun": 2.8887428872064453,
+        "5Rsun": 2.877575980687505,
+        "10Rsun": 2.8875012051425917
+      },
+      "required_velocity_km_s": 8.761811082069817,
+      "required_mach": 0.5532851616503521,
+      "implied_turbulent_pressure_over_gas": 0.4178225589449935
+    },
+    "800": {
+      "radius_rsun": 799.7001306810952,
+      "radiative_luminosity_fraction": 0.003616785198152973,
+      "required_convective_luminosity_fraction": 0.996383214801847,
+      "nabla_ad_from_discrete_entropy": 0.1124584242122072,
+      "required_excess_nabla_efficient_mlt": 0.14841547913672196,
+      "required_total_nabla_efficient_mlt": 0.2608739033489291,
+      "required_total_nabla_local_flux_closed": 0.2632627537837451,
+      "local_flux_closed_radiative_fraction": 0.0012401858941674306,
+      "local_flux_closed_convective_fraction": 0.998759814101429,
+      "local_flux_closed_velocity_km_s": 6.4086624498335665,
+      "local_flux_closed_turbulent_pressure_over_gas": 0.3260131198752876,
+      "measured_nabla_by_window": {
+        "3Rsun": 0.802484579329666,
+        "5Rsun": 0.804345339040191,
+        "10Rsun": 0.8129039377330493
+      },
+      "optimistic_convective_capacity_over_required_by_window": {
+        "3Rsun": 10.024888049949492,
+        "5Rsun": 10.065465811612793,
+        "10Rsun": 10.252805982466537
+      },
+      "required_velocity_km_s": 6.496319142135189,
+      "required_mach": 0.5328946867267328,
+      "implied_turbulent_pressure_over_gas": 0.3349924254433348
+    },
+    "813": {
+      "radius_rsun": 812.6857889606258,
+      "radiative_luminosity_fraction": 0.0383414495344684,
+      "required_convective_luminosity_fraction": 0.9616585504655316,
+      "nabla_ad_from_discrete_entropy": 0.09833073959787353,
+      "required_excess_nabla_efficient_mlt": 0.2981690133970437,
+      "required_total_nabla_efficient_mlt": 0.39649975299491724,
+      "required_total_nabla_local_flux_closed": 0.4020152923993542,
+      "local_flux_closed_radiative_fraction": 0.0181372442644012,
+      "local_flux_closed_convective_fraction": 0.9818627557355989,
+      "local_flux_closed_velocity_km_s": 5.256690056353293,
+      "local_flux_closed_turbulent_pressure_over_gas": 0.5432970252152074,
+      "measured_nabla_by_window": {
+        "3Rsun": 0.8681902969299535,
+        "5Rsun": 0.8955987564167016,
+        "10Rsun": 0.8133792054424179
+      },
+      "optimistic_convective_capacity_over_required_by_window": {
+        "3Rsun": 4.1488095203870445,
+        "5Rsun": 4.372328170372577,
+        "10Rsun": 3.7137225637497893
+      },
+      "required_velocity_km_s": 5.2437584167059965,
+      "required_mach": 0.6849034300329279,
+      "implied_turbulent_pressure_over_gas": 0.5406272541169129
+    },
+    "817": {
+      "radius_rsun": 817.0143417204694,
+      "radiative_luminosity_fraction": 0.6784569483851496,
+      "required_convective_luminosity_fraction": 0.3215430516148504,
+      "nabla_ad_from_discrete_entropy": 0.3345768659110019,
+      "required_excess_nabla_efficient_mlt": 0.6532585595535524,
+      "required_total_nabla_efficient_mlt": 0.9878354254645543,
+      "required_total_nabla_local_flux_closed": 1.0044692470786196,
+      "local_flux_closed_radiative_fraction": 0.6661388357586335,
+      "local_flux_closed_convective_fraction": 0.33386116424112605,
+      "local_flux_closed_velocity_km_s": 5.356576821109604,
+      "local_flux_closed_turbulent_pressure_over_gas": 0.7801315680352848,
+      "measured_nabla_by_window": {
+        "3Rsun": 0.9305143049816997,
+        "5Rsun": 0.8112604312554179,
+        "10Rsun": 0.668915188539866
+      },
+      "optimistic_convective_capacity_over_required_by_window": {
+        "3Rsun": 0.8713112913020206,
+        "5Rsun": 0.6233293909990484,
+        "10Rsun": 0.36614370809919344
+      },
+      "required_velocity_km_s": 5.290302343267222,
+      "required_mach": 0.7164030248436943,
+      "implied_turbulent_pressure_over_gas": 0.7609465674657927
+    }
+  }
+}
