@@ -161,8 +161,9 @@ int main(int argc, char** argv) {
     const double gas_mass = 3.041623627857687e34;
     const double core_mass = 1.134037100608219e34;
     const double total_mass = gas_mass+core_mass;
-    const double equatorial_radius = 6.679757551079786e13;
-    const double polar_radius = 6.102703576377927e13;
+    const double equatorial_radius = 6.679783093541112e13;
+    const double polar_radius = 6.102720249750556e13;
+    const double interface_radius = 4.769675152596428e12;
     const double core_support_radius = 3.541497158802513e11;
     const double omega = 4.0e-8;
     const double gamma = 5.0/3.0;
@@ -192,13 +193,11 @@ int main(int argc, char** argv) {
         *equatorial_radius*equatorial_radius*polar_radius);
     const double acoustic_time = AcousticCrossingTime(ray, gamma, equatorial_radius);
     double maximum_sound_speed = 0.0;
-    double interface_radius = 0.0;
     for (const Point& p : ray) {
       if (p.density > 0.0 && p.pressure > 0.0) {
         maximum_sound_speed = std::max(maximum_sound_speed,
                                       std::sqrt(gamma*p.pressure/p.density));
       }
-      if (p.layer == 2) interface_radius = std::max(interface_radius, p.radius);
     }
 
     const double thresholds[] = {1.0e-8, 1.0e-9, 1.0e-10, 1.0e-11};

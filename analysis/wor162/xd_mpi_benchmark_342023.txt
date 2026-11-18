@@ -1,0 +1,21 @@
+Loading itac version 2022.2
+
+Loading PrgEnv-oneapi/2025.1
+  Loading requirement: compiler/2025.1.1 mpi/2021.15 mkl/2025.1
+    debugger/2025.1.1 dpct/2025.1.0 itac/2022.2 advisor/2025.4 vtune/2025.8
+ranks=8 wall_s=45.95 maxrss_kb=8472
+zone-cycles = 70451200
+cpu time used  = 4.3097685999999996e+01
+zone-cycles/cpu_second = 1.6346863727208001e+06
+ranks=16 wall_s=26.43 maxrss_kb=8424
+zone-cycles = 70451200
+cpu time used  = 2.3581581999999997e+01
+zone-cycles/cpu_second = 2.9875518953732625e+06
+ranks=32 wall_s=15.82 maxrss_kb=8356
+zone-cycles = 70451200
+cpu time used  = 1.3749134000000000e+01
+zone-cycles/cpu_second = 5.1240463581197187e+06
+ranks=56 wall_s=12.02 maxrss_kb=8512
+zone-cycles = 70451200
+cpu time used  = 9.2786510000000000e+00
+zone-cycles/cpu_second = 7.5928278798286514e+06

@@ -13,16 +13,15 @@ criterion.  This gives about 5.2 cells per pressure scale height at
 default production mesh.  Surface level 5 is not justified: the minimum
 one-block-thick shell alone makes it a roughly 200-million-cell calculation.
 
-These estimates are intentionally separated from the forthcoming XD MPI
-benchmark.  The cell and physical-step estimates are geometric; the memory
-and CPU-hour estimates are calibrated from a local serial run and must be
-updated with measured parallel efficiency before submitting the long run.
+The cell and physical-step estimates are geometric.  Memory and CPU-hour
+columns below are calibrated from a local serial run; a separate XD MPI
+benchmark supplies the production wall-clock estimate.
 
 ## Physical scales
 
 The target rotating model has `M_gas=15.30 Msun`, `M_core=5.70 Msun`,
-`R_eq=960.12 Rsun`, and `R_p=877.17 Rsun`.  Its inner layer interface is at
-about `68.25 Rsun`, and the compact spline core support radius is
+`R_eq=960.15 Rsun`, and `R_p=877.21 Rsun`.  Its inner layer interface is at
+about `68.56 Rsun`, and the compact spline core support radius is
 `h=5.091 Rsun`.
 
 | quantity | value | interpretation |
@@ -31,7 +30,7 @@ about `68.25 Rsun`, and the compact spline core support radius is
 | code time | `2.2000e4 s = 0.25463 d` | Athena input time unit |
 | `sqrt(R_eq^3/GM)` | `1.0341e7 s = 119.69 d` | adopted dynamical time, `470.06` code time |
 | uniform-sphere free-fall time | `1.1486e7 s = 132.94 d` | `pi/sqrt(8) t_dyn` |
-| equatorial acoustic crossing | `2.2530e7 s = 260.76 d` | center-to-surface integral of `dr/c_s` |
+| equatorial acoustic crossing | `2.2536e7 s = 260.83 d` | center-to-surface integral of `dr/c_s` |
 | rotation period | `1.5708e8 s = 4.98 yr` | `15.19 t_dyn` |
 | `Omega/Omega_K` | `0.4137` | target is rotating but not near shedding |
 | equatorial rotation speed | `26.72 km s^-1` | initial rigid rotation |
@@ -90,11 +89,31 @@ production history cadence; MPI communication is not represented.
 | 5 | `1.074 Rsun` | 20.90 | `2.03e8` | 301 GiB | 6959 |
 
 The level-3 value is about 10 times the baseline cost but does not reduce the
-timestep, because the existing central L5 region already controls it.  On 112
-physical cores, the ideal level-3 cost is 4.2 wall hours per `t_dyn`; a
-realistic request must use the measured XD efficiency rather than this ideal
-number.  Level 4 should initially run for only `0.25--0.5 t_dyn` as a
-convergence discriminator.
+timestep, because the existing central L5 region already controls it.  Level
+4 should initially run for only `0.25--0.5 t_dyn` as a convergence
+discriminator.
+
+### XD MPI calibration
+
+The XD2000 benchmark used one shared node, Intel oneAPI 2025.1, 1,409,024
+active cells, and 50 steps.  History was written only at the beginning and
+end.
+
+| MPI ranks | wall time | main-loop time | zone-cycles/s |
+|---:|---:|---:|---:|
+| 8 | 45.95 s | 43.10 s | `1.63e6` |
+| 16 | 26.43 s | 23.58 s | `2.99e6` |
+| 32 | 15.82 s | 13.75 s | `5.12e6` |
+| 56 | 12.02 s | 9.28 s | `7.59e6` |
+
+At 56 ranks the steady cost is `0.186 s/step`, giving `1.45 h/t_dyn` or
+`4.36 h` for three dynamical times before normal history and snapshot I/O.
+The production request is therefore one 56-core node for 8 hours, with an
+expected wall time near 5 hours.  Scaling the measured rate by cell count
+gives about `14.2 h/t_dyn` for surface level 3 on 56 ranks; two nodes should
+be budgeted at roughly `8--10 h/t_dyn` until that larger mesh is benchmarked.
+A surface-level-4 `0.25 t_dyn` discriminator is already an approximately
+8-hour, two-node calculation.
 
 At ten stored double-precision fields, an uncompressed full snapshot is about
 `1.1 GB` for level 3 and `4.1 GB` for level 4.  Full 3-D output should therefore
@@ -116,23 +135,21 @@ At root64 before evolution:
 - the nonradial perturbation energy is `5.42e-9` of the gravitational virial
   scale.
 
-The BSCF equilibrium virial error is `2.59e-5`.  The much larger mapped value
+The production BSCF equilibrium virial error is `9.02e-6`.  The much larger mapped value
 is therefore an Athena discretization/mapping signal, consistent with the
 surface and SMR force residual measured in WOR-161.  Root32 gives a still
 larger mapped virial residual of about `2.6e-2`.
 
 ## Execution sequence
 
-1. Benchmark root64 on XD at several MPI task counts, with history output
-   disabled except at the beginning and end.
-2. Run the undamped root64 baseline for `3 t_dyn` and evaluate mass, angular
+1. Run the undamped root64 baseline for `3 t_dyn` and evaluate mass, angular
    momentum, mechanical energy, radial Mach, perturbation energy, radius, and
    virial drift.
-3. Implement tracer/`H_P`-based block refinement and run surface level 3 for
+2. Implement tracer/`H_P`-based block refinement and run surface level 3 for
    at least `1 t_dyn`; extend to `3 t_dyn` if it materially reduces drift.
-4. Use a short level-4 run only to establish convergence of the level-3
+3. Use a short level-4 run only to establish convergence of the level-3
    result.
-5. Generate and test the nonrotating and `Omega=2e-8 s^-1` SCF profiles in the
+4. Test the generated nonrotating and `Omega=2e-8 s^-1` SCF profiles in the
    same order.  No damping is part of the reference result.
 
 The long-run input is `inputs/rsg/athinput.scf_rsg_relaxation`.  It uses a
