@@ -148,6 +148,39 @@
     "fgmres_max_iterations": 2500,
     "mg_vcycles": 5,
     "target_cycle": 875,
+    "status": "PASS",
+    "elapsed_seconds": 335,
+    "fgmres_iterations": [1115, 1128],
+    "fgmres_true_relative_residuals": [1.7316357512083482e-8, 1.9921675840232947e-8],
+    "newton_iterations": 2,
+    "newton_final_max": 2.3630824978477571e-7,
+    "basis_bytes_per_rank": 213045248,
+    "final_restart_sha256": "0884d4dd2747c61c754d5142876429606e574db315f1e755026617f2b3e54810"
+  },
+  "c875_hdf_audit": {
+    "active_cells": 2211840,
+    "eos_outside_cells": 0,
+    "nonpositive_gas_energy_cells": 0,
+    "energy_closure_relative_median": 1.0502490299266037e-7,
+    "energy_closure_relative_p99": 1.4741685756138105e-6,
+    "energy_closure_relative_max": 4.376112995891511e-6,
+    "hdf_sha256": "59c1fd9e2798b14db96d31fd9bf542a03d190e0df4d54b8e7c9fe96b6b5194fb"
+  },
+  "c875_wide_krylov_sustain": {
+    "job_id": 342173,
+    "partition": "M-test-a",
+    "nodes": 5,
+    "mpi_ranks": 320,
+    "target_cycle": 880,
     "status": "PENDING_MTEST_QOS"
+  },
+  "wide_krylov_continuation": {
+    "job_id": 342174,
+    "partition": "M-large-a",
+    "nodes": 5,
+    "mpi_ranks": 320,
+    "dependency": "afterok:342173",
+    "start_cycle_if_gate_passes": 880,
+    "status": "PENDING_GATE"
   }
 }

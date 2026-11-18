@@ -619,3 +619,10 @@ third solve failing at `1.734e-4`.  Job `342092` therefore tests MG5 with a
 step.  This distinguishes loss at the iteration-1000 restart from an
 intrinsically ineffective MG5 preconditioner while remaining memory-safe on
 five nodes.
+
+Job `342092` passed: both c874 FGMRES solves reached the strict target in 1115
+and 1128 iterations, and Newton converged in two corrections.  The c875 HDF
+has zero EOS-domain and gas-energy violations and maximum energy-closure
+error `4.38e-6`.  Sustain job `342173` checks the same configuration through
+c880; dependent five-node continuation `342174` can start only after that
+gate passes and its c880 restart is revalidated.

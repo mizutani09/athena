@@ -5,7 +5,7 @@
 #SBATCH --ntasks-per-node=64
 #SBATCH --mem=110G
 #SBATCH --time=24:00:00
-#SBATCH --job-name=wor124_B129_m1600_long
+#SBATCH --job-name=wor124_B129_r2k_long
 #SBATCH --output=/work/mizutaniks/output/fld/collapse/wor124_rotmhd_20261116/slurm-%j.out
 
 set -euo pipefail
@@ -13,11 +13,11 @@ base=/work/mizutaniks/output/fld/collapse/wor124_rotmhd_20261116
 source_dir="$base/source_floor_trial"
 reader="$base/scripts/read_restart.py"
 gate_job="${WOR124_GATE_JOB:?set WOR124_GATE_JOB to the c870 sustain gate}"
-gate="$base/strong_field_c870_max1600/job_${gate_job}"
+gate="$base/strong_field_c875_r2000_sustain/job_${gate_job}"
 gate_status="$gate/status.csv"
-initial_rst="$gate/output/wor124_B129_c870_m1600.final.rst"
+initial_rst="$gate/output/wor124_B129_c875_r2000_sustain.final.rst"
 initial_cycle=880
-label=combined_B129_r1000m1600_amr12_5node
+label=combined_B129_r2000m2500mg5_amr12_5node
 job="$base/high_amr_long/${label}_job_${SLURM_JOB_ID}"
 mkdir -p "$job/output"
 rst="$job/output/$label.final.rst"
@@ -39,7 +39,7 @@ export ATHENA_WOR92_CENTERED_FACE_TRIAL=1
 export ATHENA_WOR92_POSITIVE_NR_GHOST=2
 
 if [[ ! -s "$gate_status" ]] ||
-   ! grep -q '^r1000_max1600_mg3,0,1,0,' "$gate_status"; then
+   ! grep -q '^r2000_max2500_mg5_sustain,0,1,0,' "$gate_status"; then
   printf 'FAIL_GATE job=%s status=%s\n' "$gate_job" "$gate_status" \
     > "$job/status.txt"
   exit 1
@@ -60,7 +60,7 @@ stop_epoch=$((started + 23*3600 + 30*60))
   printf 'source_dir=%s\n' "$source_dir"
   printf 'gate_job=%s gate_status=%s\n' "$gate_job" "$gate_status"
   cat "$gate_status"
-  printf 'label=%s ranks=%s initial_cycle=%s max_amr_level=12 cfl=0.3 fgmres=1000/1600_mg3 threshold=2e-8 cap=1e-6\n' \
+  printf 'label=%s ranks=%s initial_cycle=%s max_amr_level=12 cfl=0.3 fgmres=2000/2500_mg5 threshold=2e-8 cap=1e-6\n' \
     "$label" "$SLURM_NTASKS" "$initial_cycle"
   sha256sum "$initial_rst" "$reader" bin/athena \
     src/eos/general/general_mhd.cpp
@@ -100,8 +100,8 @@ while true; do
     time/ncycle_out=10 output2/dcycle=10 output2/variable=cons,prim,uov \
     output4/dcycle=10 nrfld/diagnostic_verbosity=0 \
     nrfld/jacobian_check=false nrfld/jacobian_check_each_cycle=false \
-    nrfld/fgmres_threshold=2e-8 nrfld/fgmres_restart=1000 \
-    nrfld/fgmres_max_iterations=1600 nrfld/fgmres_mg_vcycles=3 \
+    nrfld/fgmres_threshold=2e-8 nrfld/fgmres_restart=2000 \
+    nrfld/fgmres_max_iterations=2500 nrfld/fgmres_mg_vcycles=5 \
     > "$log" 2>&1
   code=$?
   set -e

@@ -149,3 +149,21 @@ M-test `342092` tests one c874 step with MG5, restart width 2000 and maximum
 discarded at iteration 1000.  The measured basis allocation is expected to
 be about 213 MB/rank, or 13.6 GB/node, within the 110 GB/node request.  The
 job is pending only because another same-user M-test occupies the QOS slot.
+
+Job `342092` passed in 335 s.  Its two FGMRES solves met the strict target at
+1115 / `1.73164e-8` and 1128 / `1.99217e-8`; Newton converged in two
+corrections with final maximum residual `2.36308e-7`.  This is direct evidence
+that retaining the Krylov space across iteration 1000, rather than merely
+raising the cap or MG count, resolves the c874 failure.  The c875 restart has
+SHA-256 `0884d4dd2747c61c754d5142876429606e574db315f1e755026617f2b3e54810`.
+
+The c875 HDF contains 2,211,840 cells with zero EOS-outside and zero
+nonpositive-gas-energy cells.  Its total-energy closure error is
+`1.05e-7` median, `1.47e-6` p99 and `4.38e-6` maximum; HDF SHA-256 is
+`59c1fd9e2798b14db96d31fd9bf542a03d190e0df4d54b8e7c9fe96b6b5194fb`.
+
+Five-node M-test `342173` now checks c875--880 with the same
+restart-2000/max-2500/MG5 configuration and per-cycle restarts.  Five-node
+M-large-a continuation `342174` has an `afterok:342173` dependency and an
+independent status/cycle gate; it starts from c880 only if the sustain test
+passes.
