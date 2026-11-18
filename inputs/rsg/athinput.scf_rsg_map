@@ -1,6 +1,6 @@
 <comment>
 problem = WOR-160 conservative mapping of the C++ rotating SCF RSG to Cartesian HD
-configure = --prob=scf_rsg --coord=cartesian --eos=adiabatic --flux=hllc --nscalars=2
+configure = --prob=scf_rsg --coord=cartesian --eos=adiabatic --flux=hllc --nscalars=2 --grav=mg
 frame = inertial; velocity = (-Omega*y, Omega*x, 0)
 source gas mass = 3.041623627857687e34 g
 source Jz = 8.350713376408741e53 g cm^2 s^-1
@@ -11,6 +11,7 @@ problem_id = scf_rsg_map
 <output1>
 file_type = hst
 dcycle = 1
+data_format = %20.12e
 
 <output2>
 file_type = tab
@@ -40,18 +41,18 @@ refinement = static
 nx1 = 64
 x1min = -1100.0
 x1max = 1100.0
-ix1_bc = outflow
-ox1_bc = outflow
+ix1_bc = user
+ox1_bc = user
 nx2 = 64
 x2min = -1100.0
 x2max = 1100.0
-ix2_bc = outflow
-ox2_bc = outflow
+ix2_bc = user
+ox2_bc = user
 nx3 = 64
 x3min = -1100.0
 x3max = 1100.0
-ix3_bc = outflow
-ox3_bc = outflow
+ix3_bc = user
+ox3_bc = user
 
 <meshblock>
 nx1 = 16
@@ -119,4 +120,26 @@ frame = inertial
 cell_quadrature_order = 3
 atmosphere_density_g_cm3 = 1.0e-14
 atmosphere_temperature_k = 1.0e4
+atmosphere_mode = isothermal_monopole
+atmosphere_reference_radius_cm = 6.679783093541112e13
 rotate_atmosphere = false
+gas_mass_g = 3.041623627857687e34
+core_mass_g = 1.134037100608219e34
+core_support_radius_cm = 3.541497158802513e11
+
+<gravity>
+mgmode = fmg
+threshold = 1.0e-12
+ix1_bc = multipole
+ox1_bc = multipole
+ix2_bc = multipole
+ox2_bc = multipole
+ix3_bc = multipole
+ox3_bc = multipole
+mporder = 4
+auto_mporigin = false
+nodipole = true
+mporigin_x1 = 0.0
+mporigin_x2 = 0.0
+mporigin_x3 = 0.0
+fill_ghost = true

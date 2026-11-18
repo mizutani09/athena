@@ -1,0 +1,87 @@
+{
+  "cases": {
+    "root32_l5": {
+      "angular_momentum_relative_error": -5.060563551539943e-06,
+      "atmosphere_mass_g": 2.552165529532e+27,
+      "core_interaction_energy_relative_error": -0.00673065643895332,
+      "core_potential_energy_erg": -2.039074720111e+48,
+      "core_power_erg_s": 9.038625372941e+22,
+      "force_l2_relative": 0.1855928042066532,
+      "force_max_relative": 0.7866489255402,
+      "gas_potential_l2_relative": 0.0007301484729224012,
+      "gravity_torque_erg": -8.193627858051e+29,
+      "hd_energy_relative_error": 0.002941412286680656,
+      "rho_atm": 1e-14,
+      "root_points": 32,
+      "self_gravity_energy_relative_error": 9.06860132481313e-05,
+      "self_potential_energy_erg": -9.967535288282e+47,
+      "stellar_mass_relative_error": -2.2136081555323983e-05
+    },
+    "root64_high_atm": {
+      "angular_momentum_relative_error": -6.6268171647898555e-06,
+      "atmosphere_mass_g": 2.478599477465e+28,
+      "core_interaction_energy_relative_error": 0.0002838552109531989,
+      "core_potential_energy_erg": -2.053474755179e+48,
+      "core_power_erg_s": -2.917377795415e+21,
+      "force_l2_relative": 0.062051708721018374,
+      "force_max_relative": 0.519064047853,
+      "gas_potential_l2_relative": 0.000581987265428788,
+      "gravity_torque_erg": 5.337227465338e+29,
+      "hd_energy_relative_error": 0.0029807685506253456,
+      "rho_atm": 1e-13,
+      "root_points": 64,
+      "self_gravity_energy_relative_error": 0.00015239708963599163,
+      "self_potential_energy_erg": -9.968150339837e+47,
+      "stellar_mass_relative_error": -2.2128843644608764e-05
+    },
+    "root64_l5": {
+      "angular_momentum_relative_error": -5.033635911866341e-06,
+      "atmosphere_mass_g": 2.552165529532e+27,
+      "core_interaction_energy_relative_error": 0.0002839160241854266,
+      "core_potential_energy_erg": -2.053474880022e+48,
+      "core_power_erg_s": -3.064951748005e+21,
+      "force_l2_relative": 0.06205170953576142,
+      "force_max_relative": 0.7866488762058,
+      "gas_potential_l2_relative": 0.0005828908673127343,
+      "gravity_torque_erg": 8.075431560414e+29,
+      "hd_energy_relative_error": 0.002980756909292781,
+      "rho_atm": 1e-14,
+      "root_points": 64,
+      "self_gravity_energy_relative_error": 0.0001549493748405073,
+      "self_potential_energy_erg": -9.968175777523e+47,
+      "stellar_mass_relative_error": -2.1776516029192727e-05
+    },
+    "root64_low_atm": {
+      "angular_momentum_relative_error": -4.872711217296377e-06,
+      "atmosphere_mass_g": 2.525673927678e+26,
+      "core_interaction_energy_relative_error": 0.00028392226221440886,
+      "core_potential_energy_erg": -2.053474892828e+48,
+      "core_power_erg_s": -3.101737149761e+21,
+      "force_l2_relative": 0.06205171438718484,
+      "force_max_relative": 0.9699938620227,
+      "gas_potential_l2_relative": 0.0005829820996128025,
+      "gravity_torque_erg": -1.806766233403e+30,
+      "hd_energy_relative_error": 0.0029807556885528275,
+      "rho_atm": 1e-15,
+      "root_points": 64,
+      "self_gravity_energy_relative_error": 0.0001552063083902766,
+      "self_potential_energy_erg": -9.968178338285e+47,
+      "stellar_mass_relative_error": -2.174035606550273e-05
+    }
+  },
+  "one_step_root32": {
+    "delta_HD_energy_relative": -1.394110204722132e-06,
+    "delta_J_relative": 1.6389101187286315e-09,
+    "delta_mass_relative": 0.0,
+    "delta_mechanical_energy_relative": -0.0003101119001277519,
+    "final_core_power_erg_s": -1.40843600149e+40,
+    "final_gravity_torque_erg": -4.687118044875e+39
+  },
+  "schema_version": 1,
+  "slice": {
+    "force_relative_median": 0.0010501264282301124,
+    "force_relative_p90": 0.010549829156447362,
+    "force_relative_p99": 0.10285943520181606,
+    "stellar_cells": 17856
+  }
+}

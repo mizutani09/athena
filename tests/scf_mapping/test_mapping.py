@@ -6,6 +6,8 @@ from __future__ import annotations
 import argparse
 import csv
 import json
+import math
+import re
 import subprocess
 import tempfile
 import unittest
@@ -27,6 +29,7 @@ class MappingTests(unittest.TestCase):
         cls.directory = Path(cls.tempdir.name)
         cls.metadata = json.loads(METADATA.read_text(encoding="utf-8"))
         cls.unit = cls.directory/"test_profile"
+        cls.gravity_unit = cls.directory/"test_core_gravity"
         cls.audit = cls.directory/"audit"
         common = ["g++", "-O2", "-std=c++11", "-Wall", "-Wextra", "-Wpedantic"]
         subprocess.run(common + [
@@ -35,6 +38,9 @@ class MappingTests(unittest.TestCase):
         subprocess.run(common + [
             str(ROOT/"tools/rsg/scf_smr_map_audit.cpp"),
             "-o", str(cls.audit)], check=True)
+        subprocess.run(common + [
+            str(ROOT/"tests/scf_mapping/test_scf_core_gravity.cpp"),
+            "-o", str(cls.gravity_unit)], check=True)
 
     @classmethod
     def tearDownClass(cls) -> None:
@@ -42,6 +48,10 @@ class MappingTests(unittest.TestCase):
 
     def test_profile_loader_and_cell_quadrature(self) -> None:
         subprocess.run([str(self.unit), str(PROFILE)], check=True,
+                       capture_output=True, text=True)
+
+    def test_core_spline_and_isothermal_atmosphere(self) -> None:
+        subprocess.run([str(self.gravity_unit)], check=True,
                        capture_output=True, text=True)
 
     def test_recommended_smr_mapping_closes_conserved_quantities(self) -> None:
@@ -76,13 +86,20 @@ class MappingTests(unittest.TestCase):
         subprocess.run([
             str(self.athena), "-i", str(INPUT), "-d", str(run_directory),
             f"problem/scf_profile_file={PROFILE}",
+            "mesh/nx1=32", "mesh/nx2=32", "mesh/nx3=32",
+            "time/nlim=0", "output2/dt=-1", "output3/dt=-1",
         ], check=True, capture_output=True, text=True)
-        records = [line for line in
-                   (run_directory/"scf_rsg_map.hst").read_text(
-                       encoding="utf-8").splitlines()
-                   if line and not line.startswith("#")]
-        initial = [float(value) for value in records[0].split()]
-        mapped_mass, mapped_stellar_mass, mapped_j, mapped_energy = initial[-4:]
+        lines = (run_directory/"scf_rsg_map.hst").read_text(
+            encoding="utf-8").splitlines()
+        header = next(line for line in lines if line.startswith("# [1]="))
+        names = re.findall(r"\[\d+\]=([^ ]+)", header)
+        values = [float(value) for value in next(
+            line for line in lines if line and not line.startswith("#")).split()]
+        initial = dict(zip(names, values))
+        mapped_mass = initial["mapped_mass_g"]
+        mapped_stellar_mass = initial["mapped_stellar_mass_g"]
+        mapped_j = initial["mapped_Jz_g_cm2_s"]
+        mapped_energy = initial["mapped_E_erg"]
         meta = self.metadata
         expected_energy = (meta["pressure_volume_integral_erg"]
                            /(5.0/3.0-1.0)
@@ -91,8 +108,13 @@ class MappingTests(unittest.TestCase):
         self.assertLess(abs(mapped_j/meta["angular_momentum_g_cm2_s"]-1.0),
                         1.0e-4)
         self.assertLess(abs(mapped_energy/expected_energy-1.0), 5.0e-3)
-        # Default history formatting rounds away the tiny atmosphere mass.
+        # Total mass includes the separately tracked atmosphere.
         self.assertGreaterEqual(mapped_mass, mapped_stellar_mass)
+        self.assertGreater(initial["atmosphere_mass_g"], 0.0)
+        self.assertLess(math.sqrt(initial["phi_error2"]
+                                  /initial["phi_norm2"]), 2.0e-3)
+        self.assertLess(math.sqrt(initial["force_error2"]
+                                  /initial["force_norm2"]), 0.25)
 
 
 def parse_args() -> tuple[Path | None, list[str]]:

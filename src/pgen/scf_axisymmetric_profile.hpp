@@ -44,6 +44,57 @@ struct Conserved {
   double kinetic_energy;
 };
 
+struct AtmosphereModel {
+  double density_reference;
+  double pressure_reference;
+  double density_floor;
+  double pressure_floor;
+  double sound_speed_squared;
+  double reference_radius;
+  double monopole_gm;
+  bool isothermal_monopole;
+  bool rotate;
+};
+
+inline AtmosphereModel UniformAtmosphere(double density, double pressure,
+                                         bool rotate) {
+  AtmosphereModel model = {};
+  model.density_reference = density;
+  model.pressure_reference = pressure;
+  model.density_floor = density;
+  model.pressure_floor = pressure;
+  model.rotate = rotate;
+  return model;
+}
+
+inline void AtmosphereState(const AtmosphereModel& model,
+                            double x, double y, double z,
+                            double* density, double* pressure) {
+  if (!(model.density_reference > 0.0)
+      || !(model.pressure_reference > 0.0)) {
+    throw std::invalid_argument("atmosphere reference state must be positive");
+  }
+  *density = model.density_reference;
+  *pressure = model.pressure_reference;
+  if (model.isothermal_monopole) {
+    if (!(model.sound_speed_squared > 0.0)
+        || !(model.reference_radius > 0.0) || !(model.monopole_gm > 0.0)) {
+      throw std::invalid_argument("invalid isothermal monopole atmosphere");
+    }
+    const double radius = std::sqrt(x*x+y*y+z*z);
+    if (radius > 0.0) {
+      const double delta_potential = model.monopole_gm
+          *(1.0/model.reference_radius-1.0/radius);
+      const double exponent = std::max(-80.0, std::min(
+          0.0, -delta_potential/model.sound_speed_squared));
+      *density = model.density_reference*std::exp(exponent);
+      *pressure = *density*model.sound_speed_squared;
+    }
+    *density = std::max(*density, model.density_floor);
+    *pressure = std::max(*pressure, model.pressure_floor);
+  }
+}
+
 inline Conserved ZeroConserved() {
   Conserved value = {};
   return value;
@@ -278,18 +329,18 @@ class AxisymmetricProfile {
 inline Conserved Sample(const AxisymmetricProfile& profile,
                         double x, double y, double z,
                         double angular_velocity, double gamma,
-                        double atmosphere_density, double atmosphere_pressure,
-                        bool rotate_atmosphere) {
-  if (!(gamma > 1.0) || !(atmosphere_density > 0.0)
-      || !(atmosphere_pressure > 0.0)) {
-    throw std::invalid_argument("invalid EOS or atmosphere mapping parameters");
-  }
+                        const AtmosphereModel& atmosphere) {
+  if (!(gamma > 1.0)) throw std::invalid_argument("invalid gamma");
+  double atmosphere_density = 0.0;
+  double atmosphere_pressure = 0.0;
+  AtmosphereState(atmosphere, x, y, z,
+                  &atmosphere_density, &atmosphere_pressure);
   const State source = profile.Interpolate(std::hypot(x, y), z);
   const bool stellar = source.density > atmosphere_density
       && source.pressure > atmosphere_pressure;
   const double density = stellar ? source.density : atmosphere_density;
   const double pressure = stellar ? source.pressure : atmosphere_pressure;
-  const double omega = stellar || rotate_atmosphere ? angular_velocity : 0.0;
+  const double omega = stellar || atmosphere.rotate ? angular_velocity : 0.0;
   const double vx = -omega*y;
   const double vy = omega*x;
   Conserved result;
@@ -311,6 +362,16 @@ inline Conserved Sample(const AxisymmetricProfile& profile,
       ? density*source.temperature : density*pressure
           *profile.mean_molecular_weight()/(density*kGasConstantCgs);
   return result;
+}
+
+inline Conserved Sample(const AxisymmetricProfile& profile,
+                        double x, double y, double z,
+                        double angular_velocity, double gamma,
+                        double atmosphere_density, double atmosphere_pressure,
+                        bool rotate_atmosphere) {
+  return Sample(profile, x, y, z, angular_velocity, gamma,
+                UniformAtmosphere(atmosphere_density, atmosphere_pressure,
+                                  rotate_atmosphere));
 }
 
 inline void GaussLegendreRule(int order, std::vector<double>* nodes,
@@ -339,9 +400,7 @@ inline Conserved CellAverage(const AxisymmetricProfile& profile,
                              double z_lower, double z_upper,
                              int quadrature_order,
                              double angular_velocity, double gamma,
-                             double atmosphere_density,
-                             double atmosphere_pressure,
-                             bool rotate_atmosphere) {
+                             const AtmosphereModel& atmosphere) {
   if (!(x_upper > x_lower) || !(y_upper > y_lower)
       || !(z_upper > z_lower)) {
     throw std::invalid_argument("cell bounds must have positive volume");
@@ -361,7 +420,7 @@ inline Conserved CellAverage(const AxisymmetricProfile& profile,
         const double weight = weights[i]*weights[j]*weights[k]/8.0;
         const Conserved point = Sample(
             profile, x, y, z, angular_velocity, gamma,
-            atmosphere_density, atmosphere_pressure, rotate_atmosphere);
+            atmosphere);
         average.density += weight*point.density;
         average.momentum_x += weight*point.momentum_x;
         average.momentum_y += weight*point.momentum_y;
@@ -379,6 +438,23 @@ inline Conserved CellAverage(const AxisymmetricProfile& profile,
     }
   }
   return average;
+}
+
+
+inline Conserved CellAverage(const AxisymmetricProfile& profile,
+                             double x_lower, double x_upper,
+                             double y_lower, double y_upper,
+                             double z_lower, double z_upper,
+                             int quadrature_order,
+                             double angular_velocity, double gamma,
+                             double atmosphere_density,
+                             double atmosphere_pressure,
+                             bool rotate_atmosphere) {
+  return CellAverage(profile, x_lower, x_upper, y_lower, y_upper,
+                     z_lower, z_upper, quadrature_order,
+                     angular_velocity, gamma,
+                     UniformAtmosphere(atmosphere_density, atmosphere_pressure,
+                                       rotate_atmosphere));
 }
 
 }  // namespace scf_map
