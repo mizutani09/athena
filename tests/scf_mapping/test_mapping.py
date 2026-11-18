@@ -30,6 +30,7 @@ class MappingTests(unittest.TestCase):
         cls.metadata = json.loads(METADATA.read_text(encoding="utf-8"))
         cls.unit = cls.directory/"test_profile"
         cls.gravity_unit = cls.directory/"test_core_gravity"
+        cls.array_lifetime_unit = cls.directory/"test_athena_array_lifetime"
         cls.audit = cls.directory/"audit"
         common = ["g++", "-O2", "-std=c++11", "-Wall", "-Wextra", "-Wpedantic"]
         subprocess.run(common + [
@@ -41,6 +42,9 @@ class MappingTests(unittest.TestCase):
         subprocess.run(common + [
             str(ROOT/"tests/scf_mapping/test_scf_core_gravity.cpp"),
             "-o", str(cls.gravity_unit)], check=True)
+        subprocess.run(common + [
+            str(ROOT/"tests/scf_mapping/test_athena_array_lifetime.cpp"),
+            "-o", str(cls.array_lifetime_unit)], check=True)
 
     @classmethod
     def tearDownClass(cls) -> None:
@@ -52,6 +56,10 @@ class MappingTests(unittest.TestCase):
 
     def test_core_spline_and_isothermal_atmosphere(self) -> None:
         subprocess.run([str(self.gravity_unit)], check=True,
+                       capture_output=True, text=True)
+
+    def test_empty_athena_array_copy_and_move_lifetime(self) -> None:
+        subprocess.run([str(self.array_lifetime_unit)], check=True,
                        capture_output=True, text=True)
 
     def test_recommended_smr_mapping_closes_conserved_quantities(self) -> None:

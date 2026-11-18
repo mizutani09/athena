@@ -181,13 +181,10 @@ AthenaArray<T>::~AthenaArray() {
 // copy constructor (does a deep copy)
 
 template<typename T>
-__attribute__((nothrow)) AthenaArray<T>::AthenaArray(const AthenaArray<T>& src) {
-  nx1_ = src.nx1_;
-  nx2_ = src.nx2_;
-  nx3_ = src.nx3_;
-  nx4_ = src.nx4_;
-  nx5_ = src.nx5_;
-  nx6_ = src.nx6_;
+__attribute__((nothrow)) AthenaArray<T>::AthenaArray(const AthenaArray<T>& src) :
+    // Empty arrays are valid vector members and still need deterministic ownership state.
+    pdata_(nullptr), nx1_(src.nx1_), nx2_(src.nx2_), nx3_(src.nx3_),
+    nx4_(src.nx4_), nx5_(src.nx5_), nx6_(src.nx6_), state_(DataStatus::empty) {
   if (src.pdata_) {
     std::size_t size = (src.nx1_)*(src.nx2_)*(src.nx3_)*(src.nx4_)*(src.nx5_)*(src.nx6_);
     pdata_ = new T[size]; // allocate memory for array data
@@ -223,13 +220,10 @@ AthenaArray<T> &AthenaArray<T>::operator= (const AthenaArray<T> &src) {
 
 // move constructor
 template<typename T>
-__attribute__((nothrow)) AthenaArray<T>::AthenaArray(AthenaArray<T>&& src) {
-  nx1_ = src.nx1_;
-  nx2_ = src.nx2_;
-  nx3_ = src.nx3_;
-  nx4_ = src.nx4_;
-  nx5_ = src.nx5_;
-  nx6_ = src.nx6_;
+__attribute__((nothrow)) AthenaArray<T>::AthenaArray(AthenaArray<T>&& src) :
+    // The source may be empty; initialize the destination before testing pdata_.
+    pdata_(nullptr), nx1_(src.nx1_), nx2_(src.nx2_), nx3_(src.nx3_),
+    nx4_(src.nx4_), nx5_(src.nx5_), nx6_(src.nx6_), state_(DataStatus::empty) {
   if (src.pdata_) {
     // && (src.state_ != DataStatus::allocated){  // (if forbidden to move shallow slices)
     //  ---- >state_ = DataStatus::allocated;
