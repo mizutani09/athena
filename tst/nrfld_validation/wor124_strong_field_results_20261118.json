@@ -342,6 +342,7 @@
         "accepted_temperature_min_K": 5.114395942894449,
         "gas_mass_relative_change": 1.7848e-08,
         "angular_momentum_relative_change": 4.80468e-07,
+        "max_step_rss_kib": 37023184,
         "final_restart_sha256": "8ec753e3e09aa27e4feaa0749d30edc6553dea5158d3c74986e177c14510ce95"
     },
     "c920_hdf_audit": {

@@ -676,7 +676,7 @@ reported out-of-domain lookups were matched by 112 clamps during transient
 trial/ghost evaluation.  Every accepted-state guard passed, and the post-regrid
 c920 HDF independently has zero cells outside the opacity table, EOS table, or
 positive gas-energy domain.  Its minimum temperature is 5.114 K versus the
-5 K opacity-table bound.
+5 K opacity-table bound.  Maximum Slurm step RSS was 35.3 GiB.
 
 The production wrapper now permits fully clamped transient lookups only when
 all accepted-state checks pass and a new post-regrid HDF audit confirms every

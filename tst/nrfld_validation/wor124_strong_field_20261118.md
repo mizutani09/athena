@@ -274,6 +274,7 @@ residual `1.99927e-8` and no inexact accept.  All 30 Newton steps converged in
 two corrections; maximum final L2 was `1.37062e-9` and maximum final component
 was `6.28255e-6`.  Gas mass changed by `+1.78e-8` and angular momentum by
 `+4.80e-7` relative over the run.  Jeans resolution remained above 32 cells.
+Slurm's maximum step RSS was 37,023,184 KiB (35.3 GiB).
 
 The job stopped intentionally after c920 because its original wrapper treated
 any opacity-table clamp as a production stop.  The last segment reported 112
