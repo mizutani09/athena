@@ -117,3 +117,21 @@ failure leaves the last completed state.  The job is queued for resources.
 Five-node M-large-a continuation `341971` is submitted with an
 `afterok:341961` dependency and repeats the status/cycle checks internally;
 it will start from the gate's c880 restart only if the gate passes.
+
+Job `341961` ran for 910 s and failed while stepping from c874.  The first
+solve improved from `9.82929e-7` at iteration 1000 to `3.27737e-7` at
+iteration 1600, but remained above the strict target and was cap-accepted.
+The following solve improved from `4.08331e-5` to `5.14881e-6` over the same
+iterations but remained above the cap.  Raising only the maximum iteration
+count is therefore insufficient.  Per-cycle output preserved a complete
+c874 restart (4,320 MeshBlocks, SHA-256
+`94c1d4bf5295bec5bb56de715bcb8bb325b8376b56097e2658168b210a136e7d`).
+The unsatisfiable dependent job `341971` was cancelled.
+
+M-test job `342035` now replays c874--880 with restart 1000, maximum 2000,
+and MG5.  This targets the measured slow MG convergence (worst factor about
+0.982) instead of only extending the outer Krylov iteration.  It uses five
+nodes/320 ranks and per-cycle restarts.  At the 13:25 scheduler review it had
+a reserved start of 2026-11-18 13:46:46 JST on
+`cna047-048,059-061`; no queue migration was justified because both M and P
+node pools lacked five immediately idle exclusive nodes.

@@ -603,3 +603,11 @@ zero EOS-outside and nonpositive-gas-energy cells, Jeans minimum 32.14 cells,
 and maximum energy-closure discrepancy `4.21e-6`.  M-test job `341961` tests
 the minimal continuation change, restart 1000 / maximum 1600 / MG3, from the
 complete c870 checkpoint while retaining the strict target.
+
+Job `341961` preserved a complete c874 restart but did not pass: its first
+solve ended at `3.277e-7` after 1600 iterations and the following solve at
+`5.149e-6`.  The dependent long job was cancelled.  M-test `342035` therefore
+tests the c874 state with MG5, restart 1000, and maximum 2000 iterations.  This
+directly strengthens the preconditioner after the MG convergence factor had
+deteriorated to about 0.982; it retains the strict target and per-cycle
+restart protection.

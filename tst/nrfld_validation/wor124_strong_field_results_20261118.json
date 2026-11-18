@@ -102,7 +102,14 @@
     "fgmres_restart": 1000,
     "fgmres_max_iterations": 1600,
     "mg_vcycles": 3,
-    "status": "PENDING_RESOURCES"
+    "status": "FAILED_CYCLE_874",
+    "elapsed_seconds": 910,
+    "first_solve_residual_at_1000": 9.829289323033442e-7,
+    "first_solve_residual_at_1600": 3.2773723300396175e-7,
+    "second_solve_residual_at_1000": 4.0833072838369356e-5,
+    "second_solve_residual_at_1600": 5.1488141955876254e-6,
+    "last_complete_cycle": 874,
+    "last_complete_restart_sha256": "94c1d4bf5295bec5bb56de715bcb8bb325b8376b56097e2658168b210a136e7d"
   },
   "extended_iteration_continuation": {
     "job_id": 341971,
@@ -111,6 +118,18 @@
     "mpi_ranks": 320,
     "dependency": "afterok:341961",
     "start_cycle_if_gate_passes": 880,
-    "status": "PENDING_GATE"
+    "status": "CANCELLED_DEPENDENCY_FAILED"
+  },
+  "c874_stronger_preconditioner_gate": {
+    "job_id": 342035,
+    "partition": "M-test-a",
+    "nodes": 5,
+    "mpi_ranks": 320,
+    "fgmres_restart": 1000,
+    "fgmres_max_iterations": 2000,
+    "mg_vcycles": 5,
+    "target_cycle": 880,
+    "status": "PENDING_RESERVED_START",
+    "scheduled_start_jst": "2026-11-18T13:46:46+09:00"
   }
 }
