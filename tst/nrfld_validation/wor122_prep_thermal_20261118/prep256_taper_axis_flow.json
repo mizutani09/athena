@@ -1,0 +1,433 @@
+{
+  "snapshots": {
+    "t110": {
+      "time_code": 110.0,
+      "shells": {
+        "0-166": {
+          "all": {
+            "cells": 39024,
+            "mass_weighted_vr_kms": 0.12535171448887486,
+            "rms_vr_kms": 0.13310352941522152,
+            "rms_speed_kms": 0.1331064817533326,
+            "max_speed_kms": 0.18710381547321503
+          },
+          "axis15": {
+            "cells": 4008,
+            "mass_weighted_vr_kms": 0.12369357799092642,
+            "rms_vr_kms": 0.1318371507732241,
+            "rms_speed_kms": 0.1318409629353533,
+            "max_speed_kms": 0.18684787810136724
+          },
+          "diagonal": {
+            "cells": 4176,
+            "mass_weighted_vr_kms": 0.12626601489173508,
+            "rms_vr_kms": 0.13405323196255461,
+            "rms_speed_kms": 0.13405510038739368,
+            "max_speed_kms": 0.18710381547321503
+          }
+        },
+        "166-300": {
+          "all": {
+            "cells": 191120,
+            "mass_weighted_vr_kms": 0.07159987170699929,
+            "rms_vr_kms": 0.07636468238878208,
+            "rms_speed_kms": 0.0763811698511593,
+            "max_speed_kms": 0.10764666089825232
+          },
+          "axis15": {
+            "cells": 19368,
+            "mass_weighted_vr_kms": 0.07168277191000208,
+            "rms_vr_kms": 0.07658743178303702,
+            "rms_speed_kms": 0.07661273776893239,
+            "max_speed_kms": 0.10631750592268283
+          },
+          "diagonal": {
+            "cells": 20048,
+            "mass_weighted_vr_kms": 0.07160894004447757,
+            "rms_vr_kms": 0.07624635642088921,
+            "rms_speed_kms": 0.0762580173925787,
+            "max_speed_kms": 0.10727041323255057
+          }
+        },
+        "300-500": {
+          "all": {
+            "cells": 834168,
+            "mass_weighted_vr_kms": 0.08433936610944168,
+            "rms_vr_kms": 0.09209999839178301,
+            "rms_speed_kms": 0.09216638698302479,
+            "max_speed_kms": 0.13100937337416038
+          },
+          "axis15": {
+            "cells": 85152,
+            "mass_weighted_vr_kms": 0.08450296794614566,
+            "rms_vr_kms": 0.09222183991429705,
+            "rms_speed_kms": 0.09231313126439059,
+            "max_speed_kms": 0.1293444435519361
+          },
+          "diagonal": {
+            "cells": 86664,
+            "mass_weighted_vr_kms": 0.08412321745765944,
+            "rms_vr_kms": 0.09197028019441053,
+            "rms_speed_kms": 0.09204062548171565,
+            "max_speed_kms": 0.1300612942564544
+          }
+        },
+        "500-700": {
+          "all": {
+            "cells": 1854904,
+            "mass_weighted_vr_kms": 0.037765611584694506,
+            "rms_vr_kms": 0.05436247194150276,
+            "rms_speed_kms": 0.05442233615327905,
+            "max_speed_kms": 0.11223321380255534
+          },
+          "axis15": {
+            "cells": 189840,
+            "mass_weighted_vr_kms": 0.03777217118264126,
+            "rms_vr_kms": 0.05441148683977108,
+            "rms_speed_kms": 0.054471497363142024,
+            "max_speed_kms": 0.1104545045484102
+          },
+          "diagonal": {
+            "cells": 192904,
+            "mass_weighted_vr_kms": 0.03776718360354282,
+            "rms_vr_kms": 0.05437304142276787,
+            "rms_speed_kms": 0.0544148052666217,
+            "max_speed_kms": 0.11050861282485737
+          }
+        },
+        "700-830": {
+          "all": {
+            "cells": 1948856,
+            "mass_weighted_vr_kms": 0.001860760143239697,
+            "rms_vr_kms": 0.15341025997417554,
+            "rms_speed_kms": 0.17002524309853076,
+            "max_speed_kms": 1.2108738519296987
+          },
+          "axis15": {
+            "cells": 199320,
+            "mass_weighted_vr_kms": -0.01040819990986203,
+            "rms_vr_kms": 0.31592708099359257,
+            "rms_speed_kms": 0.3559242079626868,
+            "max_speed_kms": 1.2108738519296987
+          },
+          "diagonal": {
+            "cells": 201536,
+            "mass_weighted_vr_kms": 0.01027434082091584,
+            "rms_vr_kms": 0.15885222712786418,
+            "rms_speed_kms": 0.16667348668329043,
+            "max_speed_kms": 0.7386673185004778
+          }
+        },
+        "830-900": {
+          "all": {
+            "cells": 1338664,
+            "mass_weighted_vr_kms": 0.011990406234749394,
+            "rms_vr_kms": 0.14191095910639814,
+            "rms_speed_kms": 0.15716147373441353,
+            "max_speed_kms": 0.9339141701203794
+          },
+          "axis15": {
+            "cells": 136680,
+            "mass_weighted_vr_kms": -0.032570422791362706,
+            "rms_vr_kms": 0.2985364946887644,
+            "rms_speed_kms": 0.3257196596080925,
+            "max_speed_kms": 0.9339141701203794
+          },
+          "diagonal": {
+            "cells": 139288,
+            "mass_weighted_vr_kms": -0.027900339610005973,
+            "rms_vr_kms": 0.1583896346345473,
+            "rms_speed_kms": 0.16299949958754492,
+            "max_speed_kms": 0.48205384675623536
+          }
+        }
+      }
+    },
+    "hold": {
+      "time_code": 120.0,
+      "shells": {
+        "0-166": {
+          "all": {
+            "cells": 39024,
+            "mass_weighted_vr_kms": 0.13454291007575522,
+            "rms_vr_kms": 0.14091841645157116,
+            "rms_speed_kms": 0.1409216895523292,
+            "max_speed_kms": 0.19117122284655752
+          },
+          "axis15": {
+            "cells": 4008,
+            "mass_weighted_vr_kms": 0.13286108292067272,
+            "rms_vr_kms": 0.13959775015521558,
+            "rms_speed_kms": 0.1396015264446413,
+            "max_speed_kms": 0.19060472975826584
+          },
+          "diagonal": {
+            "cells": 4176,
+            "mass_weighted_vr_kms": 0.1352619227253182,
+            "rms_vr_kms": 0.14170390971011582,
+            "rms_speed_kms": 0.1417064281032404,
+            "max_speed_kms": 0.19117122284655752
+          }
+        },
+        "166-300": {
+          "all": {
+            "cells": 191120,
+            "mass_weighted_vr_kms": 0.06862965148181713,
+            "rms_vr_kms": 0.0777494724997621,
+            "rms_speed_kms": 0.0777658777733289,
+            "max_speed_kms": 0.1252661775887203
+          },
+          "axis15": {
+            "cells": 19368,
+            "mass_weighted_vr_kms": 0.06880978603548968,
+            "rms_vr_kms": 0.07809801927595213,
+            "rms_speed_kms": 0.07812364794438632,
+            "max_speed_kms": 0.12437035841830665
+          },
+          "diagonal": {
+            "cells": 20048,
+            "mass_weighted_vr_kms": 0.06862923393435762,
+            "rms_vr_kms": 0.07761157663008397,
+            "rms_speed_kms": 0.07762332406875966,
+            "max_speed_kms": 0.1252661775887203
+          }
+        },
+        "300-500": {
+          "all": {
+            "cells": 834168,
+            "mass_weighted_vr_kms": 0.10447237537086014,
+            "rms_vr_kms": 0.10989488210295473,
+            "rms_speed_kms": 0.10995105747367817,
+            "max_speed_kms": 0.14936421603950747
+          },
+          "axis15": {
+            "cells": 85152,
+            "mass_weighted_vr_kms": 0.10464098372652883,
+            "rms_vr_kms": 0.11003289805373695,
+            "rms_speed_kms": 0.11011038536402885,
+            "max_speed_kms": 0.14771005274065085
+          },
+          "diagonal": {
+            "cells": 86664,
+            "mass_weighted_vr_kms": 0.10427477700491321,
+            "rms_vr_kms": 0.10975137418295842,
+            "rms_speed_kms": 0.10981081723041464,
+            "max_speed_kms": 0.14853211339397063
+          }
+        },
+        "500-700": {
+          "all": {
+            "cells": 1854904,
+            "mass_weighted_vr_kms": 0.046785972528730464,
+            "rms_vr_kms": 0.06576918634091683,
+            "rms_speed_kms": 0.0658211768289344,
+            "max_speed_kms": 0.13064990412762026
+          },
+          "axis15": {
+            "cells": 189840,
+            "mass_weighted_vr_kms": 0.04676593482101161,
+            "rms_vr_kms": 0.06582380104907042,
+            "rms_speed_kms": 0.06587588514066212,
+            "max_speed_kms": 0.12874121650393025
+          },
+          "diagonal": {
+            "cells": 192904,
+            "mass_weighted_vr_kms": 0.04679995514028024,
+            "rms_vr_kms": 0.06577964007592402,
+            "rms_speed_kms": 0.06581446359273704,
+            "max_speed_kms": 0.12910190370659108
+          }
+        },
+        "700-830": {
+          "all": {
+            "cells": 1948856,
+            "mass_weighted_vr_kms": 0.002148086072348966,
+            "rms_vr_kms": 0.16068304150090984,
+            "rms_speed_kms": 0.17884940699002871,
+            "max_speed_kms": 1.285883475253786
+          },
+          "axis15": {
+            "cells": 199320,
+            "mass_weighted_vr_kms": -0.010347063114467725,
+            "rms_vr_kms": 0.3274103701662522,
+            "rms_speed_kms": 0.3705713324316454,
+            "max_speed_kms": 1.285883475253786
+          },
+          "diagonal": {
+            "cells": 201536,
+            "mass_weighted_vr_kms": 0.010253122817571349,
+            "rms_vr_kms": 0.16587626362601265,
+            "rms_speed_kms": 0.17360361846398653,
+            "max_speed_kms": 0.8464332947328688
+          }
+        },
+        "830-900": {
+          "all": {
+            "cells": 1338664,
+            "mass_weighted_vr_kms": 0.009674197824484696,
+            "rms_vr_kms": 0.15218142927395337,
+            "rms_speed_kms": 0.1700849376837783,
+            "max_speed_kms": 1.0396308732790163
+          },
+          "axis15": {
+            "cells": 136680,
+            "mass_weighted_vr_kms": -0.07845914830115357,
+            "rms_vr_kms": 0.3201679868063609,
+            "rms_speed_kms": 0.35268997752458514,
+            "max_speed_kms": 1.0396308732790163
+          },
+          "diagonal": {
+            "cells": 139288,
+            "mass_weighted_vr_kms": 0.005991198713082294,
+            "rms_vr_kms": 0.18197106230194698,
+            "rms_speed_kms": 0.1873240245265911,
+            "max_speed_kms": 0.5315336957320017
+          }
+        }
+      }
+    },
+    "taper": {
+      "time_code": 120.0,
+      "shells": {
+        "0-166": {
+          "all": {
+            "cells": 39024,
+            "mass_weighted_vr_kms": 0.13454309156721617,
+            "rms_vr_kms": 0.14091861601883665,
+            "rms_speed_kms": 0.14092188893339752,
+            "max_speed_kms": 0.19117119847463057
+          },
+          "axis15": {
+            "cells": 4008,
+            "mass_weighted_vr_kms": 0.13286139272000452,
+            "rms_vr_kms": 0.13959806241348865,
+            "rms_speed_kms": 0.13960184044031546,
+            "max_speed_kms": 0.19060462287787286
+          },
+          "diagonal": {
+            "cells": 4176,
+            "mass_weighted_vr_kms": 0.13526219420630203,
+            "rms_vr_kms": 0.14170418447163638,
+            "rms_speed_kms": 0.1417066974732263,
+            "max_speed_kms": 0.19117119847463057
+          }
+        },
+        "166-300": {
+          "all": {
+            "cells": 191120,
+            "mass_weighted_vr_kms": 0.06862959122904423,
+            "rms_vr_kms": 0.07774943366032237,
+            "rms_speed_kms": 0.07776583895467362,
+            "max_speed_kms": 0.12526656746183407
+          },
+          "axis15": {
+            "cells": 19368,
+            "mass_weighted_vr_kms": 0.06880972898354695,
+            "rms_vr_kms": 0.07809798308804793,
+            "rms_speed_kms": 0.07812361179799142,
+            "max_speed_kms": 0.12437096709563812
+          },
+          "diagonal": {
+            "cells": 20048,
+            "mass_weighted_vr_kms": 0.06862917296017171,
+            "rms_vr_kms": 0.07761153702762091,
+            "rms_speed_kms": 0.07762328440975469,
+            "max_speed_kms": 0.12526656746183407
+          }
+        },
+        "300-500": {
+          "all": {
+            "cells": 834168,
+            "mass_weighted_vr_kms": 0.10447237758402829,
+            "rms_vr_kms": 0.10989488371065749,
+            "rms_speed_kms": 0.10995105908511031,
+            "max_speed_kms": 0.14936423516879063
+          },
+          "axis15": {
+            "cells": 85152,
+            "mass_weighted_vr_kms": 0.10464098486201404,
+            "rms_vr_kms": 0.11003289930401354,
+            "rms_speed_kms": 0.1101103866555225,
+            "max_speed_kms": 0.1477100589964134
+          },
+          "diagonal": {
+            "cells": 86664,
+            "mass_weighted_vr_kms": 0.10427477978179167,
+            "rms_vr_kms": 0.10975137596387866,
+            "rms_speed_kms": 0.10981081900007636,
+            "max_speed_kms": 0.14853221563168476
+          }
+        },
+        "500-700": {
+          "all": {
+            "cells": 1854904,
+            "mass_weighted_vr_kms": 0.04678597406086544,
+            "rms_vr_kms": 0.06576918850883778,
+            "rms_speed_kms": 0.06582117898017356,
+            "max_speed_kms": 0.13064990791832826
+          },
+          "axis15": {
+            "cells": 189840,
+            "mass_weighted_vr_kms": 0.046765936573202264,
+            "rms_vr_kms": 0.06582380360002091,
+            "rms_speed_kms": 0.0658758876374613,
+            "max_speed_kms": 0.1287412320333983
+          },
+          "diagonal": {
+            "cells": 192904,
+            "mass_weighted_vr_kms": 0.04679995641230147,
+            "rms_vr_kms": 0.06577964192716829,
+            "rms_speed_kms": 0.06581446544681595,
+            "max_speed_kms": 0.129102022522483
+          }
+        },
+        "700-830": {
+          "all": {
+            "cells": 1948856,
+            "mass_weighted_vr_kms": 0.0016463979575593126,
+            "rms_vr_kms": 0.1617333033982789,
+            "rms_speed_kms": 0.1794327051087934,
+            "max_speed_kms": 1.2830915969086396
+          },
+          "axis15": {
+            "cells": 199320,
+            "mass_weighted_vr_kms": -0.010711183349225937,
+            "rms_vr_kms": 0.3287676353012076,
+            "rms_speed_kms": 0.37124169184901273,
+            "max_speed_kms": 1.2830915969086396
+          },
+          "diagonal": {
+            "cells": 201536,
+            "mass_weighted_vr_kms": 0.009606079285623447,
+            "rms_vr_kms": 0.1657774364407457,
+            "rms_speed_kms": 0.17367395864898313,
+            "max_speed_kms": 0.8991537028674479
+          }
+        },
+        "830-900": {
+          "all": {
+            "cells": 1338664,
+            "mass_weighted_vr_kms": 0.020491272313939334,
+            "rms_vr_kms": 0.1532505608060006,
+            "rms_speed_kms": 0.17096754247695448,
+            "max_speed_kms": 1.0252404900627257
+          },
+          "axis15": {
+            "cells": 136680,
+            "mass_weighted_vr_kms": -0.07062061671948683,
+            "rms_vr_kms": 0.3142630516499004,
+            "rms_speed_kms": 0.3470527028636047,
+            "max_speed_kms": 1.0252404900627257
+          },
+          "diagonal": {
+            "cells": 139288,
+            "mass_weighted_vr_kms": 0.01995711408816757,
+            "rms_vr_kms": 0.1876323826196792,
+            "rms_speed_kms": 0.1928127977950684,
+            "max_speed_kms": 0.5233564522663683
+          }
+        }
+      }
+    }
+  }
+}
