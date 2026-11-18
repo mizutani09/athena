@@ -1,0 +1,11 @@
+{
+  "samples": 97,
+  "final_time_code": 4.700000000000e+01,
+  "final_time_over_tdyn": 9.998716970181e-02,
+  "maximum_abs_mass_relative_drift": 0.000000000000e+00,
+  "maximum_abs_J_relative_drift": 8.315396155015e-05,
+  "maximum_abs_mechanical_energy_relative_drift": 1.520891137831e-05,
+  "maximum_radial_mach_rms": 2.040738301567e-01,
+  "maximum_radial_mach": 1.108337998934e+02,
+  "maximum_abs_virial_relative_residual": 3.051888652303e-03
+}

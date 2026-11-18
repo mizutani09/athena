@@ -12,15 +12,16 @@
   "equatorial_rotation_speed_cm_s": 2.67191324e+06,
   "surface_escape_speed_cm_s": 9.13480502e+06,
   "maximum_sound_speed_cm_s": 5.10821618e+07,
+  "core_support_sound_crossing_time_s": 6.93294299e+03,
   "code_time_s": 2.19999657e+04,
   "estimated_root64_cfl_dt_s": 4.17085021e+02,
   "projected_root64_dt_from_benchmark_s": 3.66976491e+02,
   "estimated_steps_per_dynamical_time": 2.81799250e+04,
   "surface_samples": [
-    {"density_g_cm3": 1.00000000e-08, "radius_cm": 5.11137231e+13, "pressure_scale_height_cm": 4.75582443e+12, "sound_speed_cm_s": 2.73713232e+06},
-    {"density_g_cm3": 1.00000000e-09, "radius_cm": 6.25292812e+13, "pressure_scale_height_cm": 1.56221995e+12, "sound_speed_cm_s": 1.27046428e+06},
-    {"density_g_cm3": 1.00000000e-10, "radius_cm": 6.58025262e+13, "pressure_scale_height_cm": 3.86932040e+11, "sound_speed_cm_s": 5.89697283e+05},
-    {"density_g_cm3": 1.00000000e-11, "radius_cm": 6.65657921e+13, "pressure_scale_height_cm": 8.59095373e+10, "sound_speed_cm_s": 2.73713232e+05}
+    {"density_g_cm3": 1.00000000e-08, "radius_cm": 5.11137231e+13, "pressure_scale_height_cm": 4.75582443e+12, "sound_speed_cm_s": 2.73713232e+06, "scale_height_sound_crossing_time_s": 1.73752083e+06},
+    {"density_g_cm3": 1.00000000e-09, "radius_cm": 6.25292812e+13, "pressure_scale_height_cm": 1.56221995e+12, "sound_speed_cm_s": 1.27046428e+06, "scale_height_sound_crossing_time_s": 1.22964492e+06},
+    {"density_g_cm3": 1.00000000e-10, "radius_cm": 6.58025262e+13, "pressure_scale_height_cm": 3.86932040e+11, "sound_speed_cm_s": 5.89697283e+05, "scale_height_sound_crossing_time_s": 6.56153677e+05},
+    {"density_g_cm3": 1.00000000e-11, "radius_cm": 6.65657921e+13, "pressure_scale_height_cm": 8.59095373e+10, "sound_speed_cm_s": 2.73713232e+05, "scale_height_sound_crossing_time_s": 3.13866949e+05}
   ],
   "resolution_levels": [
     {"surface_level": 0, "dx_rsun": 3.43750000e+01, "estimated_cells": 1.40902400e+06, "estimated_memory_gib": 2.08656428e+00, "estimated_cpu_hours_per_tdyn": 4.82664517e+01, "cells_per_H_rho1e-9": 6.53247068e-01},

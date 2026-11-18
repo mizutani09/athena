@@ -1,0 +1,9 @@
+{
+  "snapshot": "00003",
+  "tab_files": 88,
+  "stellar_slice_cells": 21072,
+  "radial_ke_fraction_r_lt_20_rsun": 9.864501340873e-01,
+  "radial_ke_fraction_20_to_100_rsun": 1.353196660487e-02,
+  "radial_ke_fraction_100_to_800_rsun": 1.751120239049e-05,
+  "radial_ke_fraction_r_gt_800_rsun": 3.881053993590e-07
+}

@@ -119,8 +119,22 @@ void CoreGravitySource(MeshBlock* block, const Real, const Real dt,
   for (int k = block->ks; k <= block->ke; ++k) {
     for (int j = block->js; j <= block->je; ++j) {
       for (int i = block->is; i <= block->ie; ++i) {
-        Real ax, ay, az;
-        CoreAccelerationCode(block->pcoord, k, j, i, &ax, &ay, &az);
+        const Real x = block->pcoord->x1v(i);
+        const Real y = block->pcoord->x2v(j);
+        const Real z = block->pcoord->x3v(k);
+        const Real phi = CorePotentialCode(x,y,z);
+        const Real phi1_l = CorePotentialCode(block->pcoord->x1v(i-1),y,z);
+        const Real phi1_r = CorePotentialCode(block->pcoord->x1v(i+1),y,z);
+        const Real phi2_l = CorePotentialCode(x,block->pcoord->x2v(j-1),z);
+        const Real phi2_r = CorePotentialCode(x,block->pcoord->x2v(j+1),z);
+        const Real phi3_l = CorePotentialCode(x,y,block->pcoord->x3v(k-1));
+        const Real phi3_r = CorePotentialCode(x,y,block->pcoord->x3v(k+1));
+        const Real ax = -(phi1_r-phi1_l)
+            /(block->pcoord->x1v(i+1)-block->pcoord->x1v(i-1));
+        const Real ay = -(phi2_r-phi2_l)
+            /(block->pcoord->x2v(j+1)-block->pcoord->x2v(j-1));
+        const Real az = -(phi3_r-phi3_l)
+            /(block->pcoord->x3v(k+1)-block->pcoord->x3v(k-1));
         const Real density = primitive(IDN,k,j,i);
         const Real dpx = dt*density*ax;
         const Real dpy = dt*density*ay;
@@ -128,11 +142,29 @@ void CoreGravitySource(MeshBlock* block, const Real, const Real dt,
         conserved(IM1,k,j,i) += dpx;
         conserved(IM2,k,j,i) += dpy;
         conserved(IM3,k,j,i) += dpz;
-        // Midpoint kick: the external force changes kinetic, not internal,
-        // energy when hydrodynamic fluxes are absent.
-        conserved(IEN,k,j,i) += primitive(IVX,k,j,i)*dpx
-            +primitive(IVY,k,j,i)*dpy+primitive(IVZ,k,j,i)*dpz
-            +0.5*(dpx*dpx+dpy*dpy+dpz*dpz)/density;
+        // Use the same face-mass-flux work discretization as Athena++
+        // self-gravity.  For this static potential it makes the exchange
+        // between gas energy and integral(rho*Phi_core) conservative apart
+        // from boundary and AMR reflux errors.
+        const Real dphi1_l = -(phi-phi1_l);
+        const Real dphi1_r = -(phi1_r-phi);
+        conserved(IEN,k,j,i) += 0.5*dt/block->pcoord->dx1v(i)
+            *(block->phydro->flux[X1DIR](IDN,k,j,i)*dphi1_l
+              +block->phydro->flux[X1DIR](IDN,k,j,i+1)*dphi1_r);
+        if (block->block_size.nx2 > 1) {
+          const Real dphi2_l = -(phi-phi2_l);
+          const Real dphi2_r = -(phi2_r-phi);
+          conserved(IEN,k,j,i) += 0.5*dt/block->pcoord->dx2v(j)
+              *(block->phydro->flux[X2DIR](IDN,k,j,i)*dphi2_l
+                +block->phydro->flux[X2DIR](IDN,k,j+1,i)*dphi2_r);
+        }
+        if (block->block_size.nx3 > 1) {
+          const Real dphi3_l = -(phi-phi3_l);
+          const Real dphi3_r = -(phi3_r-phi);
+          conserved(IEN,k,j,i) += 0.5*dt/block->pcoord->dx3v(k)
+              *(block->phydro->flux[X3DIR](IDN,k,j,i)*dphi3_l
+                +block->phydro->flux[X3DIR](IDN,k+1,j,i)*dphi3_r);
+        }
       }
     }
   }

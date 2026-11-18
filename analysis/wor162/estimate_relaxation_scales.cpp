@@ -232,6 +232,8 @@ int main(int argc, char** argv) {
     std::cout << "  \"equatorial_rotation_speed_cm_s\": " << equatorial_speed << ",\n";
     std::cout << "  \"surface_escape_speed_cm_s\": " << escape_speed << ",\n";
     std::cout << "  \"maximum_sound_speed_cm_s\": " << maximum_sound_speed << ",\n";
+    std::cout << "  \"core_support_sound_crossing_time_s\": "
+              << core_support_radius/maximum_sound_speed << ",\n";
     std::cout << "  \"code_time_s\": " << time_unit << ",\n";
     std::cout << "  \"estimated_root64_cfl_dt_s\": " << cfl_dt << ",\n";
     std::cout << "  \"projected_root64_dt_from_benchmark_s\": "
@@ -244,7 +246,9 @@ int main(int argc, char** argv) {
       std::cout << "    {\"density_g_cm3\": " << s.density
                 << ", \"radius_cm\": " << s.radius
                 << ", \"pressure_scale_height_cm\": " << s.pressure_scale_height
-                << ", \"sound_speed_cm_s\": " << s.sound_speed << "}"
+                << ", \"sound_speed_cm_s\": " << s.sound_speed
+                << ", \"scale_height_sound_crossing_time_s\": "
+                << s.pressure_scale_height/s.sound_speed << "}"
                 << (i+1 == samples.size() ? "\n" : ",\n");
     }
     std::cout << "  ],\n";
