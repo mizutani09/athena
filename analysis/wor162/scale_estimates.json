@@ -1,0 +1,33 @@
+{
+  "equatorial_radius_cm": 6.67975755e+13,
+  "polar_radius_cm": 6.10270358e+13,
+  "interface_radius_cm": 4.74776362e+12,
+  "core_support_radius_cm": 3.54149716e+11,
+  "mean_density_g_cm3": 3.66094261e-08,
+  "dynamical_time_s": 1.03413107e+07,
+  "free_fall_time_s": 1.14863082e+07,
+  "equatorial_acoustic_crossing_time_s": 2.25295537e+07,
+  "rotation_period_s": 1.57079633e+08,
+  "omega_over_omega_kepler": 4.13652427e-01,
+  "equatorial_rotation_speed_cm_s": 2.67190302e+06,
+  "surface_escape_speed_cm_s": 9.13482249e+06,
+  "maximum_sound_speed_cm_s": 5.10821618e+07,
+  "code_time_s": 2.19999657e+04,
+  "estimated_root64_cfl_dt_s": 4.17085100e+02,
+  "projected_root64_dt_from_benchmark_s": 3.66976491e+02,
+  "estimated_steps_per_dynamical_time": 2.81797633e+04,
+  "surface_samples": [
+    {"density_g_cm3": 1.00000000e-08, "radius_cm": 5.11137231e+13, "pressure_scale_height_cm": 4.75582443e+12, "sound_speed_cm_s": 2.73713232e+06},
+    {"density_g_cm3": 1.00000000e-09, "radius_cm": 6.25292812e+13, "pressure_scale_height_cm": 1.56221995e+12, "sound_speed_cm_s": 1.27046428e+06},
+    {"density_g_cm3": 1.00000000e-10, "radius_cm": 6.58025262e+13, "pressure_scale_height_cm": 3.86932040e+11, "sound_speed_cm_s": 5.89697283e+05},
+    {"density_g_cm3": 1.00000000e-11, "radius_cm": 6.65657921e+13, "pressure_scale_height_cm": 8.59095373e+10, "sound_speed_cm_s": 2.73713232e+05}
+  ],
+  "resolution_levels": [
+    {"surface_level": 0, "dx_rsun": 3.43750000e+01, "estimated_cells": 1.40902400e+06, "estimated_memory_gib": 2.08656428e+00, "estimated_cpu_hours_per_tdyn": 4.82661749e+01, "cells_per_H_rho1e-9": 6.53247068e-01},
+    {"surface_level": 1, "dx_rsun": 1.71875000e+01, "estimated_cells": 2.00066978e+06, "estimated_memory_gib": 2.96270759e+00, "estimated_cpu_hours_per_tdyn": 6.85330254e+01, "cells_per_H_rho1e-9": 1.30649414e+00},
+    {"surface_level": 2, "dx_rsun": 8.59375000e+00, "estimated_cells": 4.36725290e+06, "estimated_memory_gib": 6.46728082e+00, "estimated_cpu_hours_per_tdyn": 1.49600427e+02, "cells_per_H_rho1e-9": 2.61298827e+00},
+    {"surface_level": 3, "dx_rsun": 4.29687500e+00, "estimated_cells": 1.38335854e+07, "estimated_memory_gib": 2.04855738e+01, "estimated_cpu_hours_per_tdyn": 4.73870035e+02, "cells_per_H_rho1e-9": 5.22597654e+00},
+    {"surface_level": 4, "dx_rsun": 2.14843750e+00, "estimated_cells": 5.16989154e+07, "estimated_memory_gib": 7.65587456e+01, "estimated_cpu_hours_per_tdyn": 1.77094847e+03, "cells_per_H_rho1e-9": 1.04519531e+01},
+    {"surface_level": 5, "dx_rsun": 1.07421875e+00, "estimated_cells": 2.03160235e+08, "estimated_memory_gib": 3.00851433e+02, "estimated_cpu_hours_per_tdyn": 6.95926219e+03, "cells_per_H_rho1e-9": 2.09039062e+01}
+  ]
+}

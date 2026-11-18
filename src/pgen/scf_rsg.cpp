@@ -50,7 +50,7 @@ Real time_unit, mass_unit, gravity_code, four_pi_gravity_code;
 Real angular_velocity, angular_velocity_code, gamma_gas;
 Real atmosphere_density, atmosphere_pressure, atmosphere_sound_speed_squared;
 Real atmosphere_density_floor, atmosphere_pressure_floor;
-Real atmosphere_reference_radius, atmosphere_monopole_gm;
+Real atmosphere_reference_radius, surface_polar_radius, atmosphere_monopole_gm;
 Real mean_molecular_weight, core_mass, core_support_radius;
 Real core_mass_code, core_support_radius_code, core_gm_code;
 int quadrature_order;
@@ -364,6 +364,95 @@ Real HistoryGravityDiagnostic(MeshBlock* block, int output) {
   return total;
 }
 
+Real HistoryRelaxationDiagnostic(MeshBlock* block, int output) {
+  Real total = 0.0;
+  const Real mass_scale = rho_unit*std::pow(length_unit,3);
+  const Real momentum_scale = mass_scale*velocity_unit;
+  const Real energy_scale = pressure_unit*std::pow(length_unit,3);
+  const Real radius_scale = length_unit;
+  for (int k = block->ks; k <= block->ke; ++k) {
+    const Real z = block->pcoord->x3v(k);
+    for (int j = block->js; j <= block->je; ++j) {
+      const Real y = block->pcoord->x2v(j);
+      for (int i = block->is; i <= block->ie; ++i) {
+        const Real x = block->pcoord->x1v(i);
+        const Real radius = std::sqrt(x*x+y*y+z*z);
+        const Real cylindrical_radius = std::hypot(x,y);
+        const Real volume = block->pcoord->GetCellVolume(k,j,i);
+        const Real density = block->phydro->u(IDN,k,j,i);
+        const Real stellar_density = block->pscalars->s(0,k,j,i);
+        const Real vx = block->phydro->u(IM1,k,j,i)/density;
+        const Real vy = block->phydro->u(IM2,k,j,i)/density;
+        const Real vz = block->phydro->u(IM3,k,j,i)/density;
+        const Real radial_velocity = radius > 0.0
+            ? (x*vx+y*vy+z*vz)/radius : 0.0;
+        const Real target_vx = -angular_velocity_code*y;
+        const Real target_vy = angular_velocity_code*x;
+        const Real dvx = vx-target_vx;
+        const Real dvy = vy-target_vy;
+        const Real dvz = vz;
+        const Real perturbation_speed2 = dvx*dvx+dvy*dvy+dvz*dvz;
+        const Real pressure = block->phydro->w(IPR,k,j,i);
+        const Real sound_speed2 = gamma_gas*pressure/density;
+        const Real stellar_fraction = std::min(
+            static_cast<Real>(1.0), std::max(static_cast<Real>(0.0),
+            stellar_density/density));
+        const Real ellipsoidal_radius = std::sqrt(
+            SQR(cylindrical_radius*length_unit/atmosphere_reference_radius)
+            +SQR(z*length_unit/surface_polar_radius));
+
+        if (output == 14) total += stellar_density*radial_velocity*volume;
+        if (output == 15) total += 0.5*stellar_density
+            *radial_velocity*radial_velocity*volume;
+        if (output == 16) total += 0.5*stellar_density*std::max(
+            static_cast<Real>(0.0), perturbation_speed2
+                                      -radial_velocity*radial_velocity)*volume;
+        if (output == 17 && sound_speed2 > 0.0) total += stellar_density
+            *radial_velocity*radial_velocity/sound_speed2*volume;
+        if (output == 18 && sound_speed2 > 0.0 && stellar_fraction > 0.5) {
+          total = std::max(total, std::abs(radial_velocity)/std::sqrt(sound_speed2));
+        }
+        if (output == 19) total += stellar_density*radius*volume;
+        if (output == 20) total += stellar_density*radius*radius*volume;
+        if (output == 21) total += 3.0*pressure*stellar_fraction*volume;
+        if (output == 22 || output == 23) {
+          Real ax = 0.0, ay = 0.0, az = 0.0;
+          if (output == 22) {
+            ax = -(block->pgrav->phi(k,j,i+1)-block->pgrav->phi(k,j,i-1))
+                /(block->pcoord->x1v(i+1)-block->pcoord->x1v(i-1));
+            ay = -(block->pgrav->phi(k,j+1,i)-block->pgrav->phi(k,j-1,i))
+                /(block->pcoord->x2v(j+1)-block->pcoord->x2v(j-1));
+            az = -(block->pgrav->phi(k+1,j,i)-block->pgrav->phi(k-1,j,i))
+                /(block->pcoord->x3v(k+1)-block->pcoord->x3v(k-1));
+          } else {
+            CoreAccelerationCode(block->pcoord, k, j, i, &ax, &ay, &az);
+          }
+          total += stellar_density*(x*ax+y*ay+z*az)*volume;
+        }
+        if (output == 24) total += 0.5*stellar_density
+            *(vx*vx+vy*vy+vz*vz)*volume;
+        if (output == 25) total += 0.5*stellar_density
+            *perturbation_speed2*volume;
+        if (output == 26 && ellipsoidal_radius > 1.0) {
+          total += stellar_density*volume;
+        }
+        if (output == 27) total += stellar_density*ellipsoidal_radius*volume;
+        if (output == 28 && stellar_fraction > 0.5) {
+          total = std::max(total, ellipsoidal_radius);
+        }
+      }
+    }
+  }
+  if (output == 14) return total*momentum_scale;
+  if (output >= 15 && output <= 16) return total*energy_scale;
+  if (output == 17 || output == 26) return total*mass_scale;
+  if (output == 19) return total*mass_scale*radius_scale;
+  if (output == 20) return total*mass_scale*radius_scale*radius_scale;
+  if (output >= 21 && output <= 25) return total*energy_scale;
+  if (output == 27) return total*mass_scale;
+  return total;
+}
+
 }  // namespace
 
 void Mesh::InitUserMeshData(ParameterInput* pin) {
@@ -392,6 +481,8 @@ void Mesh::InitUserMeshData(ParameterInput* pin) {
   const Real gas_mass = pin->GetReal("problem", "gas_mass_g");
   atmosphere_reference_radius = pin->GetReal(
       "problem", "atmosphere_reference_radius_cm");
+  surface_polar_radius = pin->GetOrAddReal(
+      "problem", "surface_polar_radius_cm", atmosphere_reference_radius);
   quadrature_order = pin->GetOrAddInteger("problem", "cell_quadrature_order", 2);
   rotate_atmosphere = pin->GetOrAddBoolean(
       "problem", "rotate_atmosphere", false);
@@ -403,7 +494,7 @@ void Mesh::InitUserMeshData(ParameterInput* pin) {
           && atmosphere_temperature > 0.0,
           "rotation and atmosphere parameters must be nonnegative/positive");
   Require(core_mass > 0.0 && core_support_radius > 0.0 && gas_mass > 0.0
-          && atmosphere_reference_radius > 0.0,
+          && atmosphere_reference_radius > 0.0 && surface_polar_radius > 0.0,
           "core, gas, and atmosphere reference parameters must be positive");
   Require(quadrature_order >= 1 && quadrature_order <= 3,
           "cell_quadrature_order must be 1, 2, or 3");
@@ -458,7 +549,7 @@ void Mesh::InitUserMeshData(ParameterInput* pin) {
   Require(pin->GetOrAddBoolean("gravity", "fill_ghost", true),
           "gravity/fill_ghost must be true for force diagnostics");
 
-  AllocateUserHistoryOutput(14);
+  AllocateUserHistoryOutput(29);
   EnrollUserHistoryOutput(0, HistoryMass, "mapped_mass_g");
   EnrollUserHistoryOutput(1, HistoryStellarMass, "mapped_stellar_mass_g");
   EnrollUserHistoryOutput(2, HistoryAngularMomentum, "mapped_Jz_g_cm2_s");
@@ -476,6 +567,36 @@ void Mesh::InitUserMeshData(ParameterInput* pin) {
                           "core_potential_energy_erg");
   EnrollUserHistoryOutput(13, HistoryGravityDiagnostic,
                           "self_potential_energy_erg");
+  EnrollUserHistoryOutput(14, HistoryRelaxationDiagnostic,
+                          "stellar_radial_momentum_g_cm_s");
+  EnrollUserHistoryOutput(15, HistoryRelaxationDiagnostic,
+                          "stellar_radial_ke_erg");
+  EnrollUserHistoryOutput(16, HistoryRelaxationDiagnostic,
+                          "stellar_nonradial_perturbation_ke_erg");
+  EnrollUserHistoryOutput(17, HistoryRelaxationDiagnostic,
+                          "stellar_radial_mach2_mass_g");
+  EnrollUserHistoryOutput(18, HistoryRelaxationDiagnostic,
+                          "stellar_radial_mach_max", UserHistoryOperation::max);
+  EnrollUserHistoryOutput(19, HistoryRelaxationDiagnostic,
+                          "stellar_r_mass_g_cm");
+  EnrollUserHistoryOutput(20, HistoryRelaxationDiagnostic,
+                          "stellar_r2_mass_g_cm2");
+  EnrollUserHistoryOutput(21, HistoryRelaxationDiagnostic,
+                          "stellar_pressure_virial_erg");
+  EnrollUserHistoryOutput(22, HistoryRelaxationDiagnostic,
+                          "stellar_self_gravity_virial_erg");
+  EnrollUserHistoryOutput(23, HistoryRelaxationDiagnostic,
+                          "stellar_core_gravity_virial_erg");
+  EnrollUserHistoryOutput(24, HistoryRelaxationDiagnostic,
+                          "stellar_kinetic_energy_erg");
+  EnrollUserHistoryOutput(25, HistoryRelaxationDiagnostic,
+                          "stellar_perturbation_ke_erg");
+  EnrollUserHistoryOutput(26, HistoryRelaxationDiagnostic,
+                          "stellar_mass_outside_initial_surface_g");
+  EnrollUserHistoryOutput(27, HistoryRelaxationDiagnostic,
+                          "stellar_ellipsoidal_radius_mass_g");
+  EnrollUserHistoryOutput(28, HistoryRelaxationDiagnostic,
+                          "stellar_ellipsoidal_radius_max", UserHistoryOperation::max);
   if (Globals::my_rank == 0) {
     std::cout << std::scientific << std::setprecision(8)
               << "scf_rsg profile=" << filename

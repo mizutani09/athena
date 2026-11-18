@@ -122,6 +122,7 @@ atmosphere_density_g_cm3 = 1.0e-14
 atmosphere_temperature_k = 1.0e4
 atmosphere_mode = isothermal_monopole
 atmosphere_reference_radius_cm = 6.679783093541112e13
+surface_polar_radius_cm = 6.102703576377927e13
 rotate_atmosphere = false
 gas_mass_g = 3.041623627857687e34
 core_mass_g = 1.134037100608219e34
