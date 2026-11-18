@@ -182,6 +182,16 @@ per hydro cycle, but their accepted final defect stayed bounded between
 seen in the scaling jobs and produced neither NaNs nor growing conservation
 errors; it should remain monitored during the longer restart stages.
 
+The existing FGMRES implementation cannot replace this gravity solve: it is
+part of the NRFLD `linearMG` driver, and its production Galerkin hierarchy is
+restricted to uniform topology.  Self-gravity accepts only FMG or MGI.  The
+warning is instead caused by asking an already accepted FMG solution with a
+`3--5e-6` defect to meet an unattainable `1e-12` absolute threshold.  Its next
+V-cycle is rejected and rolled back on every Runge--Kutta stage.  The efficient
+equivalent setting is therefore FMG with `threshold=-1` and `niteration=0`,
+which keeps the accepted FMG result and omits only the discarded polishing
+cycle.  A short restart gate precedes the long continuation with this setting.
+
 ### XD MPI calibration
 
 The XD2000 benchmark used one shared node, Intel oneAPI 2025.1, 1,409,024
