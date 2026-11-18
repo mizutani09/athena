@@ -611,3 +611,11 @@ tests the c874 state with MG5, restart 1000, and maximum 2000 iterations.  This
 directly strengthens the preconditioner after the MG convergence factor had
 deteriorated to about 0.982; it retains the strict target and per-cycle
 restart protection.
+
+Job `342035` showed that MG5 improves the first c874 solve to `3.365e-8` at
+iteration 2000, but two cap-accepted non-strict corrections still led to a
+third solve failing at `1.734e-4`.  Job `342092` therefore tests MG5 with a
+2000-vector Krylov width and a 2500-iteration ceiling for the single c874
+step.  This distinguishes loss at the iteration-1000 restart from an
+intrinsically ineffective MG5 preconditioner while remaining memory-safe on
+five nodes.

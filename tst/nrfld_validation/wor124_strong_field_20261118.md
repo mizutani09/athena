@@ -135,3 +135,17 @@ nodes/320 ranks and per-cycle restarts.  At the 13:25 scheduler review it had
 a reserved start of 2026-11-18 13:46:46 JST on
 `cna047-048,059-061`; no queue migration was justified because both M and P
 node pools lacked five immediately idle exclusive nodes.
+
+Job `342035` started at 13:29 and failed after 835 s during the first c874
+step.  MG5 was materially stronger than MG3: its first solve decreased from
+`9.79248e-7` at iteration 1000 to `3.36460e-8` at iteration 2000.  This was
+still just above the strict target and was cap-accepted.  The second solve
+ended at `6.10969e-7` and was also cap-accepted; a third Newton solve then
+ended at `1.73372e-4`.  No step completed and no new restart was written.
+Thus MG5 alone does not remove the unsafe inexact-correction sequence.
+
+M-test `342092` tests one c874 step with MG5, restart width 2000 and maximum
+2500 iterations.  It retains the useful Krylov subspace that job `342035`
+discarded at iteration 1000.  The measured basis allocation is expected to
+be about 213 MB/rank, or 13.6 GB/node, within the 110 GB/node request.  The
+job is pending only because another same-user M-test occupies the QOS slot.

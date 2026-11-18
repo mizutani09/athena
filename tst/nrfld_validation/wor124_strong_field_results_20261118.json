@@ -129,7 +129,25 @@
     "fgmres_max_iterations": 2000,
     "mg_vcycles": 5,
     "target_cycle": 880,
-    "status": "PENDING_RESERVED_START",
-    "scheduled_start_jst": "2026-11-18T13:46:46+09:00"
+    "status": "FAILED_FIRST_STEP",
+    "start_jst": "2026-11-18T13:29:12+09:00",
+    "elapsed_seconds": 835,
+    "first_solve_residual_at_1000": 9.792479919373506e-7,
+    "first_solve_residual_at_2000": 3.3646005939859454e-8,
+    "second_solve_residual_at_1000": 2.5741310499002482e-5,
+    "second_solve_residual_at_2000": 6.109687449005968e-7,
+    "third_solve_residual_at_1000": 0.005553967445053283,
+    "third_solve_residual_at_2000": 0.0001733717546640236
+  },
+  "c874_wide_krylov_gate": {
+    "job_id": 342092,
+    "partition": "M-test-a",
+    "nodes": 5,
+    "mpi_ranks": 320,
+    "fgmres_restart": 2000,
+    "fgmres_max_iterations": 2500,
+    "mg_vcycles": 5,
+    "target_cycle": 875,
+    "status": "PENDING_MTEST_QOS"
   }
 }
