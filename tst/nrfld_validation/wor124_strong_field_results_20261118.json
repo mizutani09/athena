@@ -172,7 +172,17 @@
     "nodes": 5,
     "mpi_ranks": 320,
     "target_cycle": 880,
-    "status": "PENDING_MTEST_QOS"
+        "status": "TIMEOUT_AFTER_NUMERICAL_PROGRESS",
+        "elapsed_seconds": 1821,
+        "last_complete_cycle": 879,
+        "completed_newton_steps": 4,
+        "completed_fgmres_solve_count": 8,
+        "completed_fgmres_iteration_min": 1082,
+        "completed_fgmres_iteration_max": 1263,
+        "completed_fgmres_residual_max": 1.9943652254898033e-08,
+        "partial_c879_first_solve_iterations": 1166,
+        "partial_c879_first_solve_residual": 1.9758188223718379e-08,
+        "fatal": false
   },
   "wide_krylov_continuation": {
     "job_id": 342174,
@@ -181,6 +191,51 @@
     "mpi_ranks": 320,
     "dependency": "afterok:342173",
     "start_cycle_if_gate_passes": 880,
-    "status": "PENDING_GATE"
+        "status": "CANCELLED_DEPENDENCY_TIMEOUT"
+    },
+    "c879_strict_wide_krylov_gate": {
+        "job_id": 342417,
+        "partition": "M-test-a",
+        "nodes": 5,
+        "mpi_ranks": 320,
+        "fgmres_restart": 2000,
+        "fgmres_max_iterations": 2500,
+        "mg_vcycles": 5,
+        "inexact_cap_enabled": false,
+        "status": "PASS",
+        "elapsed_seconds": 358,
+        "fgmres_iterations": [
+            1166,
+            1193
+        ],
+        "fgmres_true_relative_residuals": [
+            1.9748213681547211e-08,
+            1.9384535068345522e-08
+        ],
+        "newton_iterations": 2,
+        "newton_final_max": 5.6897017460773586e-07,
+        "final_restart_sha256": "75b1a599d6036d4ea5fee02dd8d7a8161b33be3825d005f53a816952d7f37dfb"
+    },
+    "c880_hdf_audit": {
+        "active_cells": 2211840,
+        "eos_outside_cells": 0,
+        "nonpositive_gas_energy_cells": 0,
+        "energy_closure_relative_median": 1.0544077693336914e-07,
+        "energy_closure_relative_p99": 1.4676606377330354e-06,
+        "energy_closure_relative_max": 4.287129812120372e-06,
+        "hdf_sha256": "eca6fafbbf0be438ca72bcb4d7839f020d2a8f2eca5ae87825450bd3ba9603af"
+    },
+    "strict_wide_krylov_production": {
+        "job_id": 342419,
+        "partition": "M-large-a",
+        "nodes": 5,
+        "mpi_ranks": 320,
+        "start_cycle": 880,
+        "fgmres_restart": 2000,
+        "fgmres_max_iterations": 2500,
+        "mg_vcycles": 5,
+        "inexact_cap_enabled": false,
+        "start_jst": "2026-11-18T20:40:17+09:00",
+        "status": "RUNNING"
   }
 }

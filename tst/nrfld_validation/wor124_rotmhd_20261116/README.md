@@ -626,3 +626,21 @@ has zero EOS-domain and gas-energy violations and maximum energy-closure
 error `4.38e-6`.  Sustain job `342173` checks the same configuration through
 c880; dependent five-node continuation `342174` can start only after that
 gate passes and its c880 restart is revalidated.
+
+Job `342173` completed four full cycles through c879 and reached the strict
+target in all eight completed FGMRES solves (1082--1263 iterations), but the
+30-minute M-test limit interrupted the next cycle; this was a scheduler
+timeout, not a numerical failure.  The dependent job was cancelled.  A
+single-cycle replacement gate, `342417`, also disables the experimental
+inexact/stagnation accept paths.  It passed c879--880 in 358 s: both solves
+reached the strict target at 1166 / `1.975e-8` and 1193 / `1.938e-8`, Newton
+converged in two corrections, and the c880 HDF has no EOS-domain or gas-energy
+violations.  Its maximum total-energy closure discrepancy is `4.29e-6`.
+
+The root production policy for this trajectory is therefore a Krylov width
+large enough to retain the measured 1100--1260-vector correction mode
+(restart 2000, maximum 2500, MG5), together with strict-only Newton handoff.
+Iteration-ceiling results above `2e-8` are no longer cap-accepted; a future
+failure leaves a checkpoint instead of advancing Newton with a demonstrably
+unsafe coarse correction.  Five-node M-large-a job `342419` started from the
+validated c880 restart at 20:40 JST and is the active long continuation.

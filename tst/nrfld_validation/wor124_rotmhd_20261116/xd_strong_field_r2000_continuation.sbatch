@@ -5,19 +5,19 @@
 #SBATCH --ntasks-per-node=64
 #SBATCH --mem=110G
 #SBATCH --time=24:00:00
-#SBATCH --job-name=wor124_B129_r2k_long
+#SBATCH --job-name=wor124_B129_strict_r2k
 #SBATCH --output=/work/mizutaniks/output/fld/collapse/wor124_rotmhd_20261116/slurm-%j.out
 
 set -euo pipefail
 base=/work/mizutaniks/output/fld/collapse/wor124_rotmhd_20261116
 source_dir="$base/source_floor_trial"
 reader="$base/scripts/read_restart.py"
-gate_job="${WOR124_GATE_JOB:?set WOR124_GATE_JOB to the c870 sustain gate}"
-gate="$base/strong_field_c875_r2000_sustain/job_${gate_job}"
+gate_job="${WOR124_GATE_JOB:?set WOR124_GATE_JOB to the c879 strict gate}"
+gate="$base/strong_field_c879_strict_r2000/job_${gate_job}"
 gate_status="$gate/status.csv"
-initial_rst="$gate/output/wor124_B129_c875_r2000_sustain.final.rst"
+initial_rst="$gate/output/wor124_B129_c879_strict_r2000.final.rst"
 initial_cycle=880
-label=combined_B129_r2000m2500mg5_amr12_5node
+label=combined_B129_strict_r2000m2500mg5_amr12_5node
 job="$base/high_amr_long/${label}_job_${SLURM_JOB_ID}"
 mkdir -p "$job/output"
 rst="$job/output/$label.final.rst"
@@ -33,13 +33,13 @@ export ATHENA_NRFLD_EXPERIMENTAL_VARIABLE_LIMITER=1
 export ATHENA_NRFLD_EXPERIMENTAL_COUPLED=1
 export ATHENA_NRFLD_EXPERIMENTAL_REGRID=1
 export ATHENA_NRFLD_CONSERVATIVE_DIFFERENCE_JV=0
-export ATHENA_WOR92_INEXACT_TRUE_CAP=1e-6
-export ATHENA_WOR92_INEXACT_STAGNATION_RATIO=0.9
+unset ATHENA_WOR92_INEXACT_TRUE_CAP
+unset ATHENA_WOR92_INEXACT_STAGNATION_RATIO
 export ATHENA_WOR92_CENTERED_FACE_TRIAL=1
 export ATHENA_WOR92_POSITIVE_NR_GHOST=2
 
 if [[ ! -s "$gate_status" ]] ||
-   ! grep -q '^r2000_max2500_mg5_sustain,0,1,0,' "$gate_status"; then
+   ! grep -q '^strict_r2000_max2500_mg5,0,1,0,' "$gate_status"; then
   printf 'FAIL_GATE job=%s status=%s\n' "$gate_job" "$gate_status" \
     > "$job/status.txt"
   exit 1
@@ -60,7 +60,7 @@ stop_epoch=$((started + 23*3600 + 30*60))
   printf 'source_dir=%s\n' "$source_dir"
   printf 'gate_job=%s gate_status=%s\n' "$gate_job" "$gate_status"
   cat "$gate_status"
-  printf 'label=%s ranks=%s initial_cycle=%s max_amr_level=12 cfl=0.3 fgmres=2000/2500_mg5 threshold=2e-8 cap=1e-6\n' \
+  printf 'label=%s ranks=%s initial_cycle=%s max_amr_level=12 cfl=0.3 fgmres=2000/2500_mg5 threshold=2e-8 inexact_cap=disabled\n' \
     "$label" "$SLURM_NTASKS" "$initial_cycle"
   sha256sum "$initial_rst" "$reader" bin/athena \
     src/eos/general/general_mhd.cpp

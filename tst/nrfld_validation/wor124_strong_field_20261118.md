@@ -167,3 +167,43 @@ restart-2000/max-2500/MG5 configuration and per-cycle restarts.  Five-node
 M-large-a continuation `342174` has an `afterok:342173` dependency and an
 independent status/cycle gate; it starts from c880 only if the sustain test
 passes.
+
+## Sustained result and strict-only production policy
+
+Job `342173` ended with Slurm `TIMEOUT` after 1821 s; it did not encounter a
+numerical failure.  It completed c875--879, leaving complete per-cycle
+checkpoints through c879.  The eight completed FGMRES solves for c875--878 all
+met the strict `2e-8` target in 1082--1263 iterations, and all four Newton
+steps converged in two corrections.  The first c879 solve also met the strict
+target at 1166 / `1.97582e-8` before the 30-minute queue limit interrupted its
+second solve.  There was no fatal or opacity diagnostic error.  Because Slurm
+did not classify the gate as successful, dependent job `342174` became
+unsatisfiable and was cancelled without starting.
+
+The recurring mechanism is now sufficiently isolated.  Restart width 1000
+discarded a useful Krylov space just before the 1115--1263 iterations required
+by this state.  Independently, the experimental `1e-6` inexact cap allowed an
+iteration-ceiling result to enter Newton even when it was not accurate enough
+for the following linearization.  The production policy is therefore
+restart 2000 / maximum 2500 / MG5, with the inexact cap and stagnation accept
+unset.  A solve that cannot reach the strict target stops at a complete
+checkpoint instead of advancing with a coarse correction.
+
+M-test job `342417` validated this strict-only policy from the complete c879
+checkpoint.  It completed c879--880 in 358 s.  Both FGMRES solves met the
+strict target at 1166 / `1.97482e-8` and 1193 / `1.93845e-8`, with
+`inexact_accept=0` and `inexact_cap=0`; Newton converged in two corrections
+with final maximum residual `5.68970e-7`.  Opacity diagnostics were clean.
+The c880 restart SHA-256 is
+`75b1a599d6036d4ea5fee02dd8d7a8161b33be3825d005f53a816952d7f37dfb`.
+
+The c880 HDF contains 2,211,840 cells, zero EOS-outside cells and zero
+nonpositive inferred gas energies.  Its total-energy closure relative error
+is `1.05e-7` median, `1.47e-6` p99 and `4.29e-6` maximum; HDF SHA-256 is
+`eca6fafbbf0be438ca72bcb4d7839f020d2a8f2eca5ae87825450bd3ba9603af`.
+
+Five-node M-large-a job `342419` started from that validated c880 restart at
+2026-11-18 20:40:17 JST.  Its first segment entered the main loop with the
+expected restart-2000/max-2500/MG5 configuration and with the inexact cap
+disabled.  This is the active long continuation; it remains guarded by fatal,
+opacity-domain, Jeans-resolution and first-core-density checks.
