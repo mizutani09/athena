@@ -264,3 +264,36 @@ diagnostics were clean.  The complete c890 restart SHA-256 is
 Dependent five-node M-large-a continuation `342478` passed both the Slurm
 dependency and its independent in-script gate.  It is pending only for five
 M-large-a nodes, with scheduler-estimated start 2026-11-18 22:10:45 JST.
+
+## CFL-0.15 long continuation and opacity-gate refinement
+
+Job `342478` started at 22:34:30 JST and completed normally after 313 s.  It
+advanced three ten-cycle segments from c890 to c920.  All 60 FGMRES solves
+met the strict target in 24--31 iterations, with maximum true relative
+residual `1.99927e-8` and no inexact accept.  All 30 Newton steps converged in
+two corrections; maximum final L2 was `1.37062e-9` and maximum final component
+was `6.28255e-6`.  Gas mass changed by `+1.78e-8` and angular momentum by
+`+4.80e-7` relative over the run.  Jeans resolution remained above 32 cells.
+
+The job stopped intentionally after c920 because its original wrapper treated
+any opacity-table clamp as a production stop.  The last segment reported 112
+out-of-domain lookups and exactly 112 clamps, with no negative, zero or
+nonfinite opacity result.  These were transient Newton or ghost evaluations,
+not accepted active cells: the accepted-state guard passed every cycle and
+reported minimum `T=5.11440 K`, above the 5 K table bound.  An independent
+post-regrid c920 HDF audit found all 2,383,872 cells inside both opacity axes:
+`rho=2.873e-20--8.356e-14 g cm^-3` versus table
+`1e-21--1e-7 g cm^-3`, and `T=5.114--21.148 K` versus table
+`5--9900 K`.  It also found zero EOS-outside and nonpositive-gas-energy cells,
+with total-energy closure relative error `9.96e-8` median, `1.44e-6` p99 and
+`4.25e-6` maximum.  The HDF SHA-256 is
+`b9e2f3c0273324ee957fc84457dbaf86351eabf43f5d9649b54ee3a28badea52`.
+
+The c920 restart is complete, with SHA-256
+`8ec753e3e09aa27e4feaa0749d30edc6553dea5158d3c74986e177c14510ce95`.
+The continuation wrapper now distinguishes transient trial clamps from an
+invalid accepted state.  It requires equal out-of-domain and clamp counts,
+zero bad opacity results, ten accepted-state guard records per segment, and a
+new post-regrid HDF audit against both table axes.  Any accepted or post-regrid
+cell outside the table still stops the run.  Five-node resume job `342607` is
+submitted from c920 and is pending M-large-a resources.

@@ -12,12 +12,13 @@ set -euo pipefail
 base=/work/mizutaniks/output/fld/collapse/wor124_rotmhd_20261116
 source_dir="$base/source_floor_trial"
 reader="$base/scripts/read_restart.py"
+opacity_audit="$base/scripts/collapse_opacity_domain_audit.py"
 gate_job="${WOR124_GATE_JOB:?set WOR124_GATE_JOB to the c880--890 CFL gate}"
 gate="$base/strong_field_c880_cfl015_sustain/job_${gate_job}"
 gate_status="$gate/status.csv"
-initial_rst="$gate/output/wor124_B129_c880_cfl015_sustain.final.rst"
-initial_cycle=890
-label=combined_B129_strict_r2000m2500mg5_cfl015_amr12_5node
+initial_rst="${WOR124_INITIAL_RST:-$gate/output/wor124_B129_c880_cfl015_sustain.final.rst}"
+initial_cycle="${WOR124_INITIAL_CYCLE:-890}"
+label="${WOR124_LABEL:-combined_B129_strict_r2000m2500mg5_cfl015_amr12_5node}"
 job="$base/high_amr_long/${label}_job_${SLURM_JOB_ID}"
 mkdir -p "$job/output"
 rst="$job/output/$label.final.rst"
@@ -62,7 +63,7 @@ stop_epoch=$((started + 23*3600 + 30*60))
   cat "$gate_status"
   printf 'label=%s ranks=%s initial_cycle=%s max_amr_level=12 cfl=0.15 fgmres=2000/2500_mg5 threshold=2e-8 inexact_cap=disabled backward_error=false\n' \
     "$label" "$SLURM_NTASKS" "$initial_cycle"
-  sha256sum "$initial_rst" "$reader" bin/athena
+  sha256sum "$initial_rst" "$reader" "$opacity_audit" bin/athena
   sha256sum data/eos/protostellar_tomida2015_material.tab \
             data/opacity/protostellar_semenov2003_nrm_c_a.h5
   module list 2>&1
@@ -116,14 +117,39 @@ while true; do
   read -r simtime jeans rho tgas gasmass divb lz eint ekin emag erad level < <(
     awk 'END {print $1,$35,$16,$20,$23,$24,$25,$31,$32,$33,$34,$36}' "$hst")
   reason=CONTINUE
+  opacity_line=$(grep '^FLD_OPACITY_DIAGNOSTICS ' "$log" | tail -n 1 || true)
+  accepted_count=$(grep -c '^\[WOR92_OPACITY_ACCEPTED\] ' "$log" || true)
+  opacity_counts=$(printf '%s\n' "$opacity_line" | sed -n \
+    's/.*out_of_domain=\([0-9][0-9]*\) clamped=\([0-9][0-9]*\) negative_results=\([0-9][0-9]*\) zero_results=\([0-9][0-9]*\) nonfinite_results=\([0-9][0-9]*\).*/\1 \2 \3 \4 \5/p')
+  opacity_out=0
+  opacity_clamped=0
+  opacity_neg=0
+  opacity_zero=0
+  opacity_nonfinite=0
+  latest_hdf=$(find "$job/output" -maxdepth 1 -type f -name '*.prim.*.athdf' \
+    -printf '%p\n' | sort | tail -n 1)
+  opacity_state_ok=0
+  if [[ -n "$latest_hdf" ]] &&
+     python3 "$opacity_audit" "$latest_hdf" \
+       data/opacity/protostellar_semenov2003_nrm_c_a.h5 \
+       >> "$job/opacity_domain_audit.jsonl"; then
+    opacity_state_ok=1
+  fi
   if (( code != 0 )) || grep -q 'FATAL ERROR' "$log"; then
     reason=FAIL_SOLVER
   elif (( after <= current )); then
     reason=FAIL_NO_PROGRESS
   elif [[ -z "${jeans:-}" || -z "${rho:-}" ]]; then
     reason=FAIL_HISTORY
-  elif ! grep -q '^FLD_OPACITY_DIAGNOSTICS out_of_domain=0 clamped=0 negative_results=0 zero_results=0 nonfinite_results=0$' "$log"; then
-    reason=STOP_OPACITY_DOMAIN
+  elif [[ -z "$opacity_counts" || "$accepted_count" -ne 10 ]]; then
+    reason=STOP_OPACITY_DIAGNOSTIC
+  elif read -r opacity_out opacity_clamped opacity_neg opacity_zero opacity_nonfinite \
+       <<< "$opacity_counts" &&
+       (( opacity_out != opacity_clamped || opacity_neg != 0 ||
+          opacity_zero != 0 || opacity_nonfinite != 0 )); then
+    reason=STOP_OPACITY_RESULT
+  elif (( opacity_state_ok != 1 )); then
+    reason=STOP_OPACITY_ACCEPTED_DOMAIN
   elif python3 -c 'import math,sys; x=float(sys.argv[1]); sys.exit(0 if not math.isfinite(x) else 1)' "$jeans"; then
     reason=FAIL_HISTORY
   elif python3 -c 'import sys; sys.exit(0 if float(sys.argv[1]) < 16 else 1)' "$jeans"; then
@@ -138,6 +164,10 @@ while true; do
   printf 'SEGMENT=%d CYCLE=%d TIME=%s BLOCKS=%s JEANS=%s RHO=%s REASON=%s\n' \
     "$segment" "$after" "$simtime" "$blocks" "$jeans" "$rho" "$reason" \
     | tee -a "$job/status.txt"
+  if (( opacity_out > 0 )); then
+    printf 'SEGMENT=%d TRANSIENT_OPACITY_CLAMPS=%d ACCEPTED_STATE_AUDIT=PASS\n' \
+      "$segment" "$opacity_out" | tee -a "$job/status.txt"
+  fi
   if [[ "$reason" == FAIL_* ]]; then exit 1; fi
   if [[ "$reason" != CONTINUE ]]; then break; fi
   segment=$((segment + 1))

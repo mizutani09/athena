@@ -668,3 +668,17 @@ Gate `342477` passed c880--890 in 211 s.  All 20 strict FGMRES solves used
 maximum final component `1.04e-6`.  The c890 restart is complete and hashed.
 Job `342478` cleared its dependency and internal gate and is pending only for
 five M-large-a nodes.
+
+Job `342478` subsequently completed c890--920 in 313 s and stopped safely at
+the wrapper's opacity gate.  All 60 FGMRES solves were strict in 24--31
+iterations, and all 30 Newton steps converged in two corrections.  The 112
+reported out-of-domain lookups were matched by 112 clamps during transient
+trial/ghost evaluation.  Every accepted-state guard passed, and the post-regrid
+c920 HDF independently has zero cells outside the opacity table, EOS table, or
+positive gas-energy domain.  Its minimum temperature is 5.114 K versus the
+5 K opacity-table bound.
+
+The production wrapper now permits fully clamped transient lookups only when
+all accepted-state checks pass and a new post-regrid HDF audit confirms every
+cell lies inside both opacity axes.  Resume job `342607` starts from the
+complete c920 checkpoint and is pending five M-large-a nodes.
