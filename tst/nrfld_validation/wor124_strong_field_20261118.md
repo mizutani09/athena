@@ -77,3 +77,43 @@ both the Krylov width and maximum iteration count to 1000.  Replacement
 five-node M-large-a job `341806` is submitted with an `afterok:341805`
 dependency and a second in-script status-file gate.  It cannot start unless
 all ten gate cycles through c65, including c59, pass.
+
+## Long-run result and cycle-874 gate
+
+M-test job `341805` passed c55--65 in 360 s on 128 ranks.  All 20 active
+FGMRES solves met the strict `2e-8` target (maximum 747 iterations), all ten
+steps converged in two Newton corrections, and there was no fatal or opacity
+diagnostic error.  This validated restart/max 1000 for the early failure.
+
+Five-node job `341806` then advanced the immutable c50 restart through the
+durable c870 checkpoint in 82 successful ten-cycle segments.  The 1,649
+accepted FGMRES solves before the fatal solve were at or below the `1e-6`
+inexact cap; only three early stagnation accepts exceeded the strict target,
+and those were within `7.1e-11` of it.  All 968 logged active Newton solves
+converged in at most two corrections.  No opacity, EOS-domain, gas-energy,
+Jeans-resolution, or memory failure occurred.
+
+The next segment advanced transiently through c873.  At c874 its first
+linear solve reached `9.82929e-7` after 1000 iterations and was accepted by
+the inexact cap; the next Newton linearization ended at `7.26944e-5` and
+aborted.  The complete c870 restart remains available with SHA-256
+`745301b146ca6dea1464e9a79b42318d6074efc0fe758283357e863a9516a60f`.
+The pattern again shows that a cap-eligible but non-strict first correction
+is unsafe for this strong-field trajectory.
+
+The c870 HDF has 2,211,840 active cells, no EOS-outside cells, and no
+nonpositive inferred gas energy.  Its total-energy closure relative error is
+`1.05e-7` median, `1.48e-6` p99, and `4.21e-6` maximum.  The history has
+`rho_max=7.68e-14 g cm^-3`, `Tmax=18.23 K`, Jeans minimum 32.14 cells, mass
+change `+2.45e-7` relative, and `divB_max=6.69e-13`.  The minimum plasma beta
+is 0.0213 globally, 0.129 for `rho>1e-16 g cm^-3`, and 6.43 at the density
+maximum.
+
+M-test job `341961` replays c870--880 on the same 320 ranks with restart 1000,
+MG3, and maximum iterations 1600.  This preserves the tested basis width but
+allows a second restarted phase instead of accepting the c874 correction at
+iteration 1000.  Per-cycle restart output is enabled so that any later
+failure leaves the last completed state.  The job is queued for resources.
+Five-node M-large-a continuation `341971` is submitted with an
+`afterok:341961` dependency and repeats the status/cycle checks internally;
+it will start from the gate's c880 restart only if the gate passes.

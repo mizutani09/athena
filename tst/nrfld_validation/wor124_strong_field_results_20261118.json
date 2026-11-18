@@ -56,7 +56,14 @@
     "fgmres_restart": 1000,
     "fgmres_max_iterations": 1000,
     "mg_vcycles": 3,
-    "status": "PENDING_MTEST_QOS"
+    "status": "PASS",
+    "elapsed_seconds": 360,
+    "fgmres_solve_count": 20,
+    "fgmres_iteration_max": 747,
+    "fgmres_residual_max": 1.9882824696159525e-8,
+    "newton_step_count": 10,
+    "newton_iteration_max": 2,
+    "newton_final_max_max": 2.8352366733640157e-6
   },
   "replacement_long_job": {
     "job_id": 341806,
@@ -64,6 +71,46 @@
     "nodes": 5,
     "mpi_ranks": 320,
     "dependency": "afterok:341805",
+    "status": "FAILED_CYCLE_874",
+    "elapsed_seconds": 6492,
+    "durable_start_cycle": 50,
+    "durable_end_cycle": 870,
+    "successful_ten_cycle_segments": 82,
+    "failure_first_linear_residual": 9.829289444461544e-7,
+    "failure_second_linear_residual": 7.269435118995683e-5,
+    "final_restart_sha256": "745301b146ca6dea1464e9a79b42318d6074efc0fe758283357e863a9516a60f"
+  },
+  "c870_hdf_audit": {
+    "active_cells": 2211840,
+    "rho_max_g_cm3": 7.677111377306236e-14,
+    "Tgas_max_K": 18.2264915916191,
+    "jeans_cells_min": 32.14363602491265,
+    "eos_outside_cells": 0,
+    "nonpositive_gas_energy_cells": 0,
+    "energy_closure_relative_median": 1.0450861061689775e-7,
+    "energy_closure_relative_p99": 1.4805875835118944e-6,
+    "energy_closure_relative_max": 4.213762299799252e-6,
+    "gas_mass_relative_change": 2.4544599409196723e-7,
+    "divB_max": 6.693534615465069e-13,
+    "plasma_beta_min_all": 0.02133726488965965,
+    "plasma_beta_min_rho_gt_1e-16": 0.12916067444495835,
+    "plasma_beta_at_rho_max": 6.430730306783174,
+    "hdf_sha256": "2d35e32b59d17ca6b6b6d2ba1e7c73ccd2f879f09426e29a60e03b8d6b5d025a"
+  },
+  "c870_extended_iteration_gate": {
+    "job_id": 341961,
+    "fgmres_restart": 1000,
+    "fgmres_max_iterations": 1600,
+    "mg_vcycles": 3,
+    "status": "PENDING_RESOURCES"
+  },
+  "extended_iteration_continuation": {
+    "job_id": 341971,
+    "partition": "M-large-a",
+    "nodes": 5,
+    "mpi_ranks": 320,
+    "dependency": "afterok:341961",
+    "start_cycle_if_gate_passes": 880,
     "status": "PENDING_GATE"
   }
 }

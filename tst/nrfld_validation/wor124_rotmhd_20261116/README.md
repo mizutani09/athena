@@ -593,3 +593,13 @@ immutable c50 restart and is protected by both `afterok:341805` and an
 in-script gate-status check.  It uses CFL 0.3, AMR `numlevel=12`, and guarded
 ten-cycle segments.  See `../wor124_strong_field_20261118.md` and
 `../wor124_strong_field_results_20261118.json` for the evidence and job IDs.
+
+Job `341805` passed all ten gate cycles, but the resulting long job exposed a
+later instance of the same mechanism.  Job `341806` durably advanced c50--870
+before c874: the first solve stopped at the iteration-1000 ceiling with true
+residual `9.829e-7` and was cap-accepted, after which the next solve failed at
+`7.269e-5`.  The c870 state remains physically and numerically admissible:
+zero EOS-outside and nonpositive-gas-energy cells, Jeans minimum 32.14 cells,
+and maximum energy-closure discrepancy `4.21e-6`.  M-test job `341961` tests
+the minimal continuation change, restart 1000 / maximum 1600 / MG3, from the
+complete c870 checkpoint while retaining the strict target.
