@@ -330,7 +330,20 @@ g++ -O2 -std=c++11 -Wall -Wextra -pedantic \
   -o /tmp/analyze_relaxation_slice
 /tmp/analyze_relaxation_slice RUN 00001 \
   RUN/slice_00001.csv RUN/slice_00001.json
+
+g++ -O2 -std=c++11 -Wall -Wextra -pedantic \
+  analysis/wor162/evaluate_relaxation_gates.cpp \
+  -o /tmp/evaluate_relaxation_gates
+/tmp/evaluate_relaxation_gates RUN/relaxation_diagnostics.csv \
+  RUN/relaxation_gates.json
 ```
+
+The gate evaluator applies all numeric limits in the table above to history
+samples at or after an optional third-argument start time in units of
+`t_dyn`.  Its JSON result deliberately leaves the required non-growing virial
+trend as a time-series review rather than inferring a trend from one maximum.
+The two-node `0.1 t_dyn` production launcher is
+`analysis/wor162/xd_surface_l3_t01.sh`.
 
 Machine-readable scale estimates and the root64 initial audit are stored in
 `analysis/wor162/`.  The level-5/6/7 comparison is in
