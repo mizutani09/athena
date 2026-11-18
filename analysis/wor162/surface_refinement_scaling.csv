@@ -3,3 +3,5 @@ surface_level,status,surface_dx_rsun,cells_per_hp_rho1e-9,blocks_l0,blocks_l1,bl
 1,measured_local_init,17.1875,1.31,8,440,56,56,56,56,64,736,3014656,4970420,12.27,,O3 serial quadrature-order 1 nlim 0
 2,measured_local_cycle,8.59375,2.61,0,264,1976,56,56,56,64,2472,10125312,17198204,67.19,24.137113,O3 serial quadrature-order 1 nlim 1
 3,measured_xd_1node,4.296875,5.23,0,80,2408,8376,56,56,64,11040,44990464,91075508,29.34,12.415079,56-rank job 342204; maxrss is AveRSS times ranks
+3,measured_xd_1node_5cycle,4.296875,5.23,0,80,2408,8376,56,56,64,11040,44990464,109093527.76,76.91,56.058727,56-rank job 342212; five cycles; maxrss is AveRSS times ranks
+3,measured_xd_2node_5cycle,4.296875,5.23,0,80,2408,8376,56,56,64,11040,44990464,117290880,19.84,8.560531,112-rank job 342205; five cycles; maxrss is AveRSS times ranks

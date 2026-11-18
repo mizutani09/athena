@@ -135,14 +135,30 @@ momentum drift `5.10e-10`, mechanical-energy drift `1.37e-6`, radial Mach RMS
 the serial L2 smoke remains far below the acceptance gate but must be tracked
 in the `0.1 t_dyn` stability run.
 
-The XD L3 result lies near the low end of the blockwise bound.  Slurm reports
-1.55 GiB mean and 1.84 GiB maximum RSS per rank; multiplying the mean by 56
-gives 86.86 GiB aggregate memory.  The first one-node cycle took 12.42 s in
-the main loop (`3.62e6` zone-cycles/s), which would be 161 h per `t_dyn` if
-sustained.  This is substantially slower than cell-count scaling from the
-small central-L6 mesh, so it is an upper allocation estimate until the queued
-five-cycle one- and two-node measurements separate first-cycle and scaling
-effects.
+The XD L3 result lies near the low end of the blockwise bound.  The initial
+one-cycle run used 86.86 GiB aggregate memory.  Sustained five-cycle jobs then
+completed on both one and two nodes.  The shared one-node job used 104.04 GiB,
+close to its 110 GiB request, and took 56.06 s in the main loop
+(`4.03e6` zone-cycles/s).  The exclusive two-node job used 111.86 GiB in
+total, or 55.93 GiB per node, and took 8.56 s (`2.64e7` zone-cycles/s).
+
+The apparent 6.55-fold speedup is not a pure strong-scaling measurement: XD
+runs one-node jobs on a shared node but allocates two or more nodes
+exclusively, and the one-node case is also close to its memory limit.  It does
+show that two nodes are the minimum practical production configuration.  At
+the measured `dt=0.0100331`, one dynamical time requires about 46,851 cycles.
+The two-node rate therefore gives 2.23 h for `0.1 t_dyn`, 22.3 h for
+`1 t_dyn`, and 66.8 h for `3 t_dyn`, or 44.6 node-hours per dynamical time,
+before output and restart overhead.  Suitable allocation budgets are 3 h,
+24--30 h, and 72--90 h respectively; a site wall-time limit may require the
+longest case to be continued through scheduled restarts.  The one-node
+equivalent is 146 h per `t_dyn` and is not recommended.
+
+Both five-cycle jobs reached `1.067e-4 t_dyn` with zero mass drift.  Their
+radial Mach RMS agrees to better than `2e-10` relative, while angular-momentum
+drift is `2.55e-9`, mechanical-energy drift is below `1.86e-6`, and the
+virial residual is `2.05e-3`.  Thus MPI decomposition does not introduce a
+detectable physical discrepancy at this duration.
 
 ### XD MPI calibration
 
@@ -279,8 +295,9 @@ The resolution prescription is therefore:
 ## Execution sequence
 
 1. Keep the validated face-mass-flux core-work update and central L6.
-2. Complete the L3 XD topology and multi-node scaling benchmark, then run the
-   tracer-following surface-L3 mesh for `0.1 t_dyn` as a stability gate.
+2. Run the tracer-following surface-L3 mesh for `0.1 t_dyn` as a stability
+   gate on at least two exclusive XD nodes; topology and two-node scaling are
+   complete.
 3. Extend a passing L3 result to at least `1 t_dyn`, and to `3 t_dyn` if the
    diagnostics have not settled.
 4. Use a short surface-level-4 run only to establish convergence of the

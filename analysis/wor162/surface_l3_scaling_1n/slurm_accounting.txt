@@ -1,0 +1,10 @@
+job_id=342212
+state=COMPLETED
+allocation_elapsed=00:01:22
+step_elapsed=00:01:17
+mpi_ranks=56
+total_cpu=01:07:33
+step_max_rss_per_rank=2550644K
+step_average_rss_per_rank=1948098.71K
+aggregate_rss_from_average=109093527.76K
+aggregate_rss_gib=104.04
