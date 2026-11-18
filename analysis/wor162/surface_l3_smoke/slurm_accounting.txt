@@ -1,0 +1,9 @@
+job_id=342204
+state=COMPLETED
+elapsed=00:00:30
+allocated_cpus=56
+total_cpu=00:25:04.416
+step_max_rss=1924320K
+step_average_rss=1626348.36K
+step_max_vm_size=1361212K
+aggregate_rss_from_average=91075508.16K

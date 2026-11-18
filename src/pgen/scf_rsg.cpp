@@ -56,6 +56,12 @@ Real core_mass_code, core_support_radius_code, core_gm_code;
 int quadrature_order;
 bool rotate_atmosphere, isothermal_atmosphere;
 scf_map::AtmosphereModel atmosphere_model;
+int root_logical_level, surface_refinement_level;
+Real surface_tracer_lower, surface_tracer_upper, surface_density_code;
+constexpr int kMeshBlockHistoryStart = 29;
+constexpr int kTrackedMeshLevels = 7;
+
+int SurfaceRefinementCondition(MeshBlock* block);
 
 void Require(bool condition, const std::string& message) {
   if (!condition) {
@@ -312,6 +318,11 @@ Real HistoryMass(MeshBlock* block, int) {
   return total;
 }
 
+Real HistoryMeshLevel(MeshBlock* block, int output) {
+  const int relative_level = block->loc.level-root_logical_level;
+  return relative_level == output-kMeshBlockHistoryStart ? 1.0 : 0.0;
+}
+
 Real HistoryStellarMass(MeshBlock* block, int) {
   Real total = 0.0;
 #if NSCALARS > 0
@@ -488,6 +499,7 @@ Real HistoryRelaxationDiagnostic(MeshBlock* block, int output) {
 }  // namespace
 
 void Mesh::InitUserMeshData(ParameterInput* pin) {
+  root_logical_level = root_level;
   Require(mesh_size.nx2 > 1 && mesh_size.nx3 > 1,
           "a three-dimensional Cartesian mesh is required");
   const std::string frame = pin->GetOrAddString("problem", "frame", "inertial");
@@ -566,6 +578,25 @@ void Mesh::InitUserMeshData(ParameterInput* pin) {
   SetGravitationalConstant(gravity_code);
   EnrollUserMGGravitySourceMaskFunction(AtmosphereGravityMask);
   EnrollUserExplicitSourceFunction(CoreGravitySource);
+  surface_refinement_level = pin->GetOrAddInteger(
+      "problem", "surface_refinement_level", 3);
+  surface_tracer_lower = pin->GetOrAddReal(
+      "problem", "surface_tracer_lower", 1.0e-6);
+  surface_tracer_upper = pin->GetOrAddReal(
+      "problem", "surface_tracer_upper", 1.0-1.0e-6);
+  const Real surface_density = pin->GetOrAddReal(
+      "problem", "surface_refinement_density_g_cm3", 1.0e-9);
+  surface_density_code = surface_density/rho_unit;
+  Require(surface_refinement_level >= 0
+              && surface_refinement_level <= max_level-root_level,
+          "surface_refinement_level must lie within the configured mesh levels");
+  Require(surface_tracer_lower >= 0.0
+              && surface_tracer_lower < surface_tracer_upper
+              && surface_tracer_upper <= 1.0,
+          "invalid surface tracer refinement interval");
+  Require(surface_density > 0.0,
+          "surface_refinement_density_g_cm3 must be positive");
+  if (adaptive) EnrollUserRefinementCondition(SurfaceRefinementCondition);
   const char* boundary_names[6] = {
       "ix1_bc", "ox1_bc", "ix2_bc", "ox2_bc", "ix3_bc", "ox3_bc"};
   BValFunc boundary_functions[6] = {
@@ -581,7 +612,7 @@ void Mesh::InitUserMeshData(ParameterInput* pin) {
   Require(pin->GetOrAddBoolean("gravity", "fill_ghost", true),
           "gravity/fill_ghost must be true for force diagnostics");
 
-  AllocateUserHistoryOutput(29);
+  AllocateUserHistoryOutput(kMeshBlockHistoryStart+kTrackedMeshLevels);
   EnrollUserHistoryOutput(0, HistoryMass, "mapped_mass_g");
   EnrollUserHistoryOutput(1, HistoryStellarMass, "mapped_stellar_mass_g");
   EnrollUserHistoryOutput(2, HistoryAngularMomentum, "mapped_Jz_g_cm2_s");
@@ -629,6 +660,12 @@ void Mesh::InitUserMeshData(ParameterInput* pin) {
                           "stellar_ellipsoidal_radius_mass_g");
   EnrollUserHistoryOutput(28, HistoryRelaxationDiagnostic,
                           "stellar_ellipsoidal_radius_max", UserHistoryOperation::max);
+  for (int level = 0; level < kTrackedMeshLevels; ++level) {
+    std::stringstream name;
+    name << "meshblocks_L" << level;
+    EnrollUserHistoryOutput(kMeshBlockHistoryStart+level, HistoryMeshLevel,
+                            name.str().c_str());
+  }
   if (Globals::my_rank == 0) {
     std::cout << std::scientific << std::setprecision(8)
               << "scf_rsg profile=" << filename
@@ -641,10 +678,55 @@ void Mesh::InitUserMeshData(ParameterInput* pin) {
               << " atmosphere_mode=" << atmosphere_mode
               << " core_mass_g=" << core_mass
               << " core_support_radius_cm=" << core_support_radius
+              << " surface_refinement_level=" << surface_refinement_level
+              << " surface_refinement_density_g_cm3=" << surface_density
               << " G_code=" << gravity_code
               << " frame=inertial\n";
   }
 }
+
+namespace {
+
+int SurfaceRefinementCondition(MeshBlock* block) {
+  const int relative_level = block->loc.level-root_logical_level;
+
+  // The level-4--6 compact-core hierarchy is seeded by the static refinement
+  // regions in the input.  Pin those blocks while AMR follows the surface.
+  if (relative_level > surface_refinement_level) return 0;
+
+  Real minimum_fraction = 1.0;
+  Real maximum_fraction = 0.0;
+  bool density_below_target = false;
+  bool density_above_target = false;
+  for (int k = block->ks; k <= block->ke; ++k) {
+    for (int j = block->js; j <= block->je; ++j) {
+      for (int i = block->is; i <= block->ie; ++i) {
+        const Real density = block->phydro->u(IDN,k,j,i);
+        if (density <= 0.0) continue;
+        const Real fraction = std::max(static_cast<Real>(0.0),
+            std::min(static_cast<Real>(1.0),
+                     block->pscalars->s(0,k,j,i)/density));
+        const Real stellar_density = std::max(
+            static_cast<Real>(0.0), block->pscalars->s(0,k,j,i));
+        minimum_fraction = std::min(minimum_fraction, fraction);
+        maximum_fraction = std::max(maximum_fraction, fraction);
+        density_below_target = density_below_target
+            || stellar_density <= surface_density_code;
+        density_above_target = density_above_target
+            || stellar_density >= surface_density_code;
+      }
+    }
+  }
+  const bool crosses_surface = maximum_fraction > surface_tracer_lower
+      && minimum_fraction < surface_tracer_upper;
+  const bool crosses_density = density_below_target && density_above_target;
+  const bool resolves_surface = crosses_surface || crosses_density;
+  if (resolves_surface && relative_level < surface_refinement_level) return 1;
+  if (resolves_surface) return 0;
+  return -1;
+}
+
+}  // namespace
 
 void MeshBlock::InitUserMeshBlockData(ParameterInput*) {
   AllocateUserOutputVariables(13);

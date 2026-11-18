@@ -19,7 +19,8 @@ through level 3, selected by the stellar tracer and a pressure-scale-height
 criterion.  This gives about 5.2 cells per pressure scale height at
 `rho=1e-9 g cm^-3`.  A level-4 surface run is a convergence check, not the
 default production mesh.  Surface level 5 is not justified: the minimum
-one-block-thick shell alone makes it a roughly 200-million-cell calculation.
+one-block-thick shell and its transition hierarchy make it a several-hundred-
+million-cell calculation.
 
 At `0.1 t_dyn`, central L5 conserves mechanical energy to `6.54e-6`, but a
 compact-core nonradial signal and `1.52e-3` angular-momentum drift remain.
@@ -92,27 +93,56 @@ this with optical-depth and opacity information.
 
 ## Cell, memory, and CPU budget
 
-The shell estimates use the surface area of the oblate spheroid and the
-minimum shell thickness of one 16-cell MeshBlock at each refinement level.
-They include all coarser transition shells.  Memory uses the measured local
-root32 resident set (`1.831748 GB` for `1,179,648` active cells), and CPU cost
-uses `103.25 CPU s` for 20 steps.  The benchmark wrote the expensive gravity
-history every five cycles, so its per-zone CPU cost is conservative for the
-production history cadence; MPI communication is not represented.
+The implemented AMR condition follows both the conserved stellar-mass
+fraction and the `rho_star=1e-9 g cm^-3` layer.  A block is refined when it
+contains both stellar and atmosphere material or straddles the target-density
+layer.  This ensures that the quoted 5.23 cells per `H_P` are actually present,
+rather than depending on the phase of the surface relative to a block edge.
+The compact-core L4--L6 hierarchy is pinned independently.  History output
+records the number of MeshBlocks on every relative level, so active-cell
+counts do not rely on a continuum shell approximation.
 
-| surface level | surface `dx` | cells per `H_P` at `1e-9` | estimated active cells | memory | CPU h / `t_dyn` |
-|---:|---:|---:|---:|---:|---:|
-| 0 | `34.375 Rsun` | 0.65 | `1.41e6` | 2.1 GiB | 48 |
-| 1 | `17.188 Rsun` | 1.31 | `2.00e6` | 3.0 GiB | 69 |
-| 2 | `8.594 Rsun` | 2.61 | `4.37e6` | 6.5 GiB | 150 |
-| 3 | `4.297 Rsun` | 5.23 | `1.38e7` | 20.5 GiB | 474 |
-| 4 | `2.148 Rsun` | 10.45 | `5.17e7` | 76.6 GiB | 1771 |
-| 5 | `1.074 Rsun` | 20.90 | `2.03e8` | 301 GiB | 6959 |
+The 16-cell block width makes the surface shell substantially thicker than a
+single pressure scale height.  The measured topologies for the central-L6
+quality mesh are:
 
-The level-3 value is about 10 times the baseline cost but does not reduce the
-timestep, because the existing central L5 region already controls it.  Level
-4 should initially run for only `0.25--0.5 t_dyn` as a convergence
-discriminator.
+| surface target | MeshBlocks L0--L6 | total blocks | active cells | local peak RSS |
+|---:|---|---:|---:|---:|
+| none | `56,56,56,56,56,56,64` | 400 | `1,638,400` | about 2.6 GiB (scaled) |
+| L1 | `8,440,56,56,56,56,64` | 736 | `3,014,656` | 4.74 GiB |
+| L2 | `0,264,1976,56,56,56,64` | 2,472 | `10,125,312` | 16.40 GiB |
+| L3 | `0,80,2408,8376,56,56,64` | 11,040 | `44,990,464` | 86.86 GiB aggregate |
+
+The L2 topology is 2.32 times larger than the former spheroidal-shell
+estimate.  An O3 serial stress test completed one full hydro plus self-gravity
+cycle with unchanged topology, 10,125,312 zone-cycles, 67.19 s total wall time,
+24.14 CPU s in the main loop, and 17,198,204 KiB peak RSS.  During this test a
+pre-existing `AthenaArray` lifetime bug was found: copying or moving an empty
+array left its ownership state uninitialized when the multigrid octet vector
+grew.  Initializing empty-array ownership fixed the deterministic O3 shutdown
+failure; the same 2,360-block case then exits cleanly, and a placement-new C++
+regression test covers the failure mode.
+
+The L2 one-cycle diagnostic at `2.14e-5 t_dyn` has zero mass drift,
+`2.25e-9` angular-momentum drift, `4.86e-9` mechanical-energy drift,
+`1.83e-4` radial Mach RMS, and a `2.25e-3` virial residual.  This is not an
+evolution-duration result, but it excludes an immediate conservation or
+multigrid-handoff regression from enabling surface AMR.
+
+The 56-rank L3 one-cycle result is also clean: mass drift is zero, angular-
+momentum drift `5.10e-10`, mechanical-energy drift `1.37e-6`, radial Mach RMS
+`1.70e-4`, and the virial residual `2.05e-3`.  The larger energy delta than in
+the serial L2 smoke remains far below the acceptance gate but must be tracked
+in the `0.1 t_dyn` stability run.
+
+The XD L3 result lies near the low end of the blockwise bound.  Slurm reports
+1.55 GiB mean and 1.84 GiB maximum RSS per rank; multiplying the mean by 56
+gives 86.86 GiB aggregate memory.  The first one-node cycle took 12.42 s in
+the main loop (`3.62e6` zone-cycles/s), which would be 161 h per `t_dyn` if
+sustained.  This is substantially slower than cell-count scaling from the
+small central-L6 mesh, so it is an upper allocation estimate until the queued
+five-cycle one- and two-node measurements separate first-cycle and scaling
+effects.
 
 ### XD MPI calibration
 
@@ -134,19 +164,12 @@ measured `1.27 h/t_dyn` over the first `0.0213 t_dyn` and `1.36 h/t_dyn` over
 one-node allocation.  Central L6 measured `3.14 h/t_dyn`, and L7 measured
 `7.28 h/t_dyn`.
 
-Scaling the measured rate by cell count gives about `12--14 h/t_dyn` for
-surface level 3 with central L5 on 56 ranks; two nodes should be budgeted at
-roughly `7--10 h/t_dyn` until that larger mesh is benchmarked.  Combining the
-quality-recommended central L6 with surface level 3 approximately doubles the
-step count, giving `25--30 h/t_dyn` on one node or a prudent
-`15--20 h/t_dyn` two-node allocation.  A surface-level-4 `0.25 t_dyn`
-discriminator is already an approximately 8-hour, two-node calculation with
-central L5 and about twice that with central L6.
-
-At ten stored double-precision fields, an uncompressed full snapshot is about
-`1.1 GB` for level 3 and `4.1 GB` for level 4.  Full 3-D output should therefore
-be no more frequent than `0.25 t_dyn`; equatorial slices and reduced radial
-profiles can be written much more often.
+The continuum-shell cost estimate previously quoted here was too small by a
+factor of at least two at L2 and should not be used for allocations.  The
+measured block count implies about 3.6 GB per ten-field uncompressed L3
+snapshot.  Full 3-D output should therefore be no more
+frequent than `0.25 t_dyn`; equatorial slices and reduced radial profiles can
+be written much more often.
 
 ## Initial mapped-state audit
 
@@ -256,16 +279,19 @@ The resolution prescription is therefore:
 ## Execution sequence
 
 1. Keep the validated face-mass-flux core-work update and central L6.
-2. Implement tracer/`H_P`-based block refinement and run surface level 3 for
-   at least `1 t_dyn`; extend to `3 t_dyn` if it materially reduces drift.
-3. Use a short surface-level-4 run only to establish convergence of the
+2. Complete the L3 XD topology and multi-node scaling benchmark, then run the
+   tracer-following surface-L3 mesh for `0.1 t_dyn` as a stability gate.
+3. Extend a passing L3 result to at least `1 t_dyn`, and to `3 t_dyn` if the
+   diagnostics have not settled.
+4. Use a short surface-level-4 run only to establish convergence of the
    level-3 result.
-4. Test the generated nonrotating and `Omega=2e-8 s^-1` SCF profiles in the
+5. Test the generated nonrotating and `Omega=2e-8 s^-1` SCF profiles in the
    same order.  No damping is part of the reference result.
 
-The long-run input is `inputs/rsg/athinput.scf_rsg_relaxation`.  It uses a
-100-cycle history cadence, `0.01 t_dyn` slices, `0.1 t_dyn` restarts, and
-`0.25 t_dyn` full primitive snapshots.
+The surface input is
+`inputs/rsg/athinput.scf_rsg_relaxation_surface_l3`.  It uses a 100-cycle
+history cadence, `0.01 t_dyn` slices, `0.1 t_dyn` restarts, and `0.25 t_dyn`
+full primitive snapshots.
 
 ## Reproduction
 

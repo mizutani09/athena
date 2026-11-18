@@ -1,0 +1,55 @@
+scf_rsg profile=data/ic/rsg21_scf_omega4e-8.csv nr=2048 nmu=32 omega_rad_s=4.00000000e-08 quadrature_order=3 atmosphere_rho=1.00000000e-14 atmosphere_pressure=1.30865571e-02 atmosphere_mode=isothermal_monopole core_mass_g=1.13403710e+34 core_support_radius_cm=3.54149716e+11 surface_refinement_level=3 surface_refinement_density_g_cm3=1.00000000e-09 G_code=3.23035112e-07 frame=inertial
+### Warning in Mesh::Initialize
+The number of MeshBlocks increased more than twice during initialization.
+More computing power than you expected may be required.
+### Warning in MultigridDriver::SolveIterative
+Rejecting divergent V-cycle sequence: defect norm = 5.984036837785973e-06, cycle convergence factor = 1.231226439515464e+00, best-relative factor = 1.231226439515464e+00, patience = 1, and niter = 0.
+### Warning in MultigridDriver::SolveIterative
+Slow multigrid convergence occurred 1 times in this solve; worst convergence factor = 1.231226439515464e+00, final defect norm = 4.860224444287379e-06.
+### Warning in Mesh::Initialize
+The number of MeshBlocks increased more than twice during initialization.
+More computing power than you expected may be required.
+### Warning in MultigridDriver::SolveIterative
+Rejecting divergent V-cycle sequence: defect norm = 5.984038783376875e-06, cycle convergence factor = 1.231219059238339e+00, best-relative factor = 1.231219059238339e+00, patience = 1, and niter = 0.
+### Warning in MultigridDriver::SolveIterative
+Slow multigrid convergence occurred 1 times in this solve; worst convergence factor = 1.231219059238339e+00, final defect norm = 4.860255158069712e-06.
+### Warning in MultigridDriver::SolveIterative
+Rejecting divergent V-cycle sequence: defect norm = 6.395631108560600e-06, cycle convergence factor = 2.119338453533678e+00, best-relative factor = 2.119338453533678e+00, patience = 1, and niter = 0.
+### Warning in MultigridDriver::SolveIterative
+Slow multigrid convergence occurred 1 times in this solve; worst convergence factor = 2.119338453533678e+00, final defect norm = 3.017748815861312e-06.
+### Warning in Mesh::Initialize
+The number of MeshBlocks increased more than twice during initialization.
+More computing power than you expected may be required.
+### Warning in MultigridDriver::SolveIterative
+Rejecting divergent V-cycle sequence: defect norm = 6.395630766764109e-06, cycle convergence factor = 2.119358006504814e+00, best-relative factor = 2.119358006504814e+00, patience = 1, and niter = 0.
+### Warning in MultigridDriver::SolveIterative
+Slow multigrid convergence occurred 1 times in this solve; worst convergence factor = 2.119358006504814e+00, final defect norm = 3.017720813158700e-06.
+### Warning in Mesh::Initialize
+The number of MeshBlocks increased more than twice during initialization.
+More computing power than you expected may be required.
+
+Setup complete, entering main loop...
+
+cycle=0 time=0.0000000000000000e+00 dt=1.0083247286197588e-02
+### Warning in MultigridDriver::SolveIterative
+Rejecting divergent V-cycle sequence: defect norm = 6.3955782558780240e-06, cycle convergence factor = 2.1292015065938834e+00, best-relative factor = 2.1292015065938834e+00, patience = 1, and niter = 0.
+### Warning in MultigridDriver::SolveIterative
+Slow multigrid convergence occurred 1 times in this solve; worst convergence factor = 2.1292015065938834e+00, final defect norm = 3.0037449419755156e-06.
+### Warning in MultigridDriver::SolveIterative
+Rejecting divergent V-cycle sequence: defect norm = 6.3955900722750102e-06, cycle convergence factor = 2.1264621200545339e+00, best-relative factor = 2.1264621200545339e+00, patience = 1, and niter = 0.
+### Warning in MultigridDriver::SolveIterative
+Slow multigrid convergence occurred 1 times in this solve; worst convergence factor = 2.1264621200545339e+00, final defect norm = 3.0076200332743255e-06.
+### Warning in MultigridDriver::SolveIterative
+Rejecting divergent V-cycle sequence: defect norm = 7.6140957683654536e-06, cycle convergence factor = 2.3054911693731444e+00, best-relative factor = 2.3054911693731444e+00, patience = 1, and niter = 0.
+### Warning in MultigridDriver::SolveIterative
+Slow multigrid convergence occurred 1 times in this solve; worst convergence factor = 2.3054911693731444e+00, final defect norm = 3.3025915993578503e-06.
+
+Terminating on cycle limit
+time=1.0083247286197588e-02 cycle=1
+tlim=1.0000000000000000e+00 nlim=1
+
+Number of MeshBlocks = 11040; 10640  created, 0 destroyed during this simulation.
+
+zone-cycles = 44990464
+cpu time used  = 1.2415078999999999e+01
+zone-cycles/cpu_second = 3.6238564410262718e+06
