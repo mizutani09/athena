@@ -44,7 +44,11 @@ def load_snapshot(run_dir, index):
             raise ValueError("primitive and user-output times differ")
         if not np.array_equal(hp["LogicalLocations"][:], hu["LogicalLocations"][:]):
             raise ValueError("primitive and user-output block orders differ")
-        z = hp["x3v"][:].reshape(-1) + 800.0
+        # Accept both 0–60 Rsun height coordinates and direct 800–860 Rsun
+        # radius coordinates used by the local patch inputs.
+        radius_offset = (800.0 if float(hp.attrs["RootGridX3"][0]) < 100.0
+                         else 0.0)
+        z = hp["x3v"][:].reshape(-1) + radius_offset
         # Athena++ HDF arrays are (variable, block, z, y, x), while x3v
         # is (block, z).  Reshape only after checking the metadata.
         prim_hdf = hp["prim"][:]

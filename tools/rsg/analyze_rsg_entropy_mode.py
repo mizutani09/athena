@@ -28,6 +28,10 @@ def snapshot(run_dir, index, zmin=813.0, zmax=817.0):
         x = hp["x1v"][:]
         y = hp["x2v"][:]
         z = hp["x3v"][:]
+        # Older patch inputs use a height above 800 Rsun; newer ones use
+        # the physical radius directly. Keep both conventions comparable.
+        radius_offset = (800.0 if float(hp.attrs["RootGridX3"][0]) < 100.0
+                         else 0.0)
         rho = hp["prim"][0]
         press = hp["prim"][1]
         temp = hu["user_out_var"][2]
@@ -40,7 +44,7 @@ def snapshot(run_dir, index, zmin=813.0, zmax=817.0):
         pattern = (np.sin(2*np.pi*(x[block]-x0)/lx)[None, :]
                    * np.sin(2*np.pi*(y[block]-y0)/ly)[:, None])
         for k, zcell in enumerate(z[block]):
-            height = float(zcell) + 800.0
+            height = float(zcell) + radius_offset
             if zmin <= height < zmax:
                 item = levels.setdefault(height, {"pattern": [], "rho": [],
                                                   "press": [], "temp": [],

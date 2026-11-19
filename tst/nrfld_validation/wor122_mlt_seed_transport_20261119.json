@@ -1,0 +1,132 @@
+{
+  "cases": {
+    "full": [
+      {
+        "time_code": 0.0,
+        "time_days": 0.0,
+        "transition_T_over_initial": 1.0,
+        "outer_T_over_initial": 1.0,
+        "temperature_mode_over_initial": 1.0,
+        "convective_proxy_over_Fstar": 0.0008575058483211469,
+        "transition_max_Mach": 0.19368623197078705,
+        "mass_drift": 0.0
+      },
+      {
+        "time_code": 4.02125883102417,
+        "time_days": 1.0239300495385693,
+        "transition_T_over_initial": 0.7500479774328621,
+        "outer_T_over_initial": 1.1367774705797065,
+        "temperature_mode_over_initial": 0.12667088350687808,
+        "convective_proxy_over_Fstar": 2.214070574466643e-05,
+        "transition_max_Mach": 0.29482516646385193,
+        "mass_drift": -1.942616153716159e-06
+      },
+      {
+        "time_code": 8.0,
+        "time_days": 2.0370338594251307,
+        "transition_T_over_initial": 0.7008980194649929,
+        "outer_T_over_initial": 1.1103965097206938,
+        "temperature_mode_over_initial": 0.0792820196906456,
+        "convective_proxy_over_Fstar": 9.989443228443823e-06,
+        "transition_max_Mach": 0.31124022603034973,
+        "mass_drift": -2.6432640818363495e-06
+      }
+    ],
+    "nodiff": [
+      {
+        "time_code": 0.0,
+        "time_days": 0.0,
+        "transition_T_over_initial": 1.0,
+        "outer_T_over_initial": 1.0,
+        "temperature_mode_over_initial": 1.0,
+        "convective_proxy_over_Fstar": 0.0008575058483211469,
+        "transition_max_Mach": 0.19368623197078705,
+        "mass_drift": 0.0
+      },
+      {
+        "time_code": 4.020688533782959,
+        "time_days": 1.0237848351897838,
+        "transition_T_over_initial": 0.9999534440803604,
+        "outer_T_over_initial": 1.0001318699074082,
+        "temperature_mode_over_initial": 2.3276621254886343,
+        "convective_proxy_over_Fstar": 0.0016384887898818542,
+        "transition_max_Mach": 0.1937732845544815,
+        "mass_drift": -6.861045930284249e-07
+      },
+      {
+        "time_code": 8.0,
+        "time_days": 2.0370338594251307,
+        "transition_T_over_initial": 0.9997404240605959,
+        "outer_T_over_initial": 1.0002284334710516,
+        "temperature_mode_over_initial": 3.468102866349422,
+        "convective_proxy_over_Fstar": 0.0023140459702498156,
+        "transition_max_Mach": 0.19195812940597534,
+        "mass_drift": -1.4818827076545915e-07
+      }
+    ],
+    "closedtop": [
+      {
+        "time_code": 0.0,
+        "time_days": 0.0,
+        "transition_T_over_initial": 1.0,
+        "outer_T_over_initial": 1.0,
+        "temperature_mode_over_initial": 1.0,
+        "convective_proxy_over_Fstar": 0.0008575058483211469,
+        "transition_max_Mach": 0.19368623197078705,
+        "mass_drift": 0.0
+      },
+      {
+        "time_code": 4.02125883102417,
+        "time_days": 1.0239300495385693,
+        "transition_T_over_initial": 0.8728849653332683,
+        "outer_T_over_initial": 2.154296663231634,
+        "temperature_mode_over_initial": 0.3965992365738285,
+        "convective_proxy_over_Fstar": 0.00019575768723102956,
+        "transition_max_Mach": 0.2922320067882538,
+        "mass_drift": -4.0912454821739885e-06
+      },
+      {
+        "time_code": 8.0,
+        "time_days": 2.0370338594251307,
+        "transition_T_over_initial": 0.8899251181691414,
+        "outer_T_over_initial": 2.3020745631640263,
+        "temperature_mode_over_initial": 0.35590323087498155,
+        "convective_proxy_over_Fstar": 0.00018373636618086134,
+        "transition_max_Mach": 0.3129500448703766,
+        "mass_drift": -5.250496225572832e-06
+      }
+    ],
+    "fixedtop": [
+      {
+        "time_code": 0.0,
+        "time_days": 0.0,
+        "transition_T_over_initial": 1.0,
+        "outer_T_over_initial": 1.0,
+        "temperature_mode_over_initial": 1.0,
+        "convective_proxy_over_Fstar": 0.0008575058483211469,
+        "transition_max_Mach": 0.19368623197078705,
+        "mass_drift": 0.0
+      },
+      {
+        "time_code": 4.02125883102417,
+        "time_days": 1.0239300495385693,
+        "transition_T_over_initial": 0.7475390991841299,
+        "outer_T_over_initial": 0.992199940885604,
+        "temperature_mode_over_initial": 0.12460702475459526,
+        "convective_proxy_over_Fstar": 2.172538714501365e-05,
+        "transition_max_Mach": 0.29395830631256104,
+        "mass_drift": -1.83330911307511e-06
+      },
+      {
+        "time_code": 8.0,
+        "time_days": 2.0370338594251307,
+        "transition_T_over_initial": 0.6991663767179096,
+        "outer_T_over_initial": 0.9906101007547263,
+        "temperature_mode_over_initial": 0.07833847452762882,
+        "convective_proxy_over_Fstar": 9.831048410101966e-06,
+        "transition_max_Mach": 0.3114522695541382,
+        "mass_drift": -2.0505543504301116e-06
+      }
+    ]
+  }
+}
