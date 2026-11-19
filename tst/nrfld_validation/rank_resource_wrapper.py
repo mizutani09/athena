@@ -23,7 +23,12 @@ def main() -> int:
         raise SystemExit("usage: rank_resource_wrapper.py OUTPUT_DIR COMMAND [ARGS ...]")
     output = Path(sys.argv[1]).resolve()
     rank = mpi_rank()
-    result = subprocess.run(sys.argv[2:], check=False)
+    # Slurm PMI2 supplies each rank with an inherited control descriptor.  The
+    # Python default (close_fds=True) discards it before an MPI payload can call
+    # MPI_Init, producing "PMI_Init returned 14" on XD2000.  Preserve inherited
+    # descriptors just as a shell/perf/time launcher would; this wrapper is the
+    # direct child of srun and does not open unrelated descriptors first.
+    result = subprocess.run(sys.argv[2:], check=False, close_fds=False)
     usage = resource.getrusage(resource.RUSAGE_CHILDREN)
     record = {
         "rank": rank,

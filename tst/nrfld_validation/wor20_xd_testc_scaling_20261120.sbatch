@@ -23,7 +23,8 @@ test "$SLURM_NTASKS" -eq "$expected_ranks"
 root=/work/mizutaniks/wor20/xd_scaling_20261120
 repo=/work/mizutaniks/wor20/athena-performance-20261120
 binary=$repo/bin/athena
-wrapper=$repo/tst/nrfld_validation/rank_resource_wrapper.py
+wrapper=$root/assets/rank_resource_wrapper.py
+wrapper_sha=d30afe06b6b70e72686051cc3479b82dcf43fc5468a2e0ead497877b38776d3c
 python=/work/opt/cray/pe/python/3.11.7/bin/python3.11
 commit=6ff44924b64d955be27fd240269ca4cbd488b982
 binary_sha=f42869088d82a3294b35679380a06bac4140163bf0cdbc94df47f4779d38aca6
@@ -32,6 +33,7 @@ test ! -e "$run"
 mkdir -p "$run"
 test "$(git -C "$repo" rev-parse HEAD)" = "$commit"
 test "$(sha256sum "$binary" | awk '{print $1}')" = "$binary_sha"
+test "$(sha256sum "$wrapper" | awk '{print $1}')" = "$wrapper_sha"
 test -x "$python"
 
 source /etc/profile.d/modules.sh
@@ -166,8 +168,9 @@ cp "$0" "$run/job.sbatch"
 {
   printf 'job_id=%s\nnodes=%s\nranks=%s\nrepeat=%s\n' \
     "$SLURM_JOB_ID" "$SLURM_JOB_NUM_NODES" "$SLURM_NTASKS" "$WOR20_REPEAT"
-  printf 'source_commit=%s\nbinary_sha256=%s\ninput_sha256=%s\n' \
-    "$commit" "$binary_sha" "$(sha256sum "$run/input.used" | awk '{print $1}')"
+  printf 'source_commit=%s\nbinary_sha256=%s\nwrapper_sha256=%s\ninput_sha256=%s\n' \
+    "$commit" "$binary_sha" "$wrapper_sha" \
+    "$(sha256sum "$run/input.used" | awk '{print $1}')"
   module list 2>&1
 } > "$run/provenance.txt"
 
