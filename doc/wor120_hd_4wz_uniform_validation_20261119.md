@@ -6,11 +6,14 @@
 - Branch: `wor-120-hd-4wz`
 - Base: WOR-162 commit `1f3647935e4e`
 - Reference: `athena_st/4th-order` commit `38b4ea1bf579`
-- Current scope: Newtonian HD, Cartesian uniform grid, no FLD, no MHD
+- Current scope: Newtonian HD on Cartesian uniform and locally order-reduced
+  SMR/AMR grids; no FLD, MHD, or relativity
 
 The existing WOR-120 and WOR-162 worktrees and the BSCF repository were not modified.
-`time/xorder=4wz` is rejected for FLD, MHD, relativity, and SMR/AMR until their
-separate numerical contracts are implemented and validated.
+`time/xorder=4wz` is rejected for FLD, MHD, and relativity until their separate
+numerical contracts are implemented and validated. On SMR/AMR, it uses WENO-Z in
+safe same-level regions and a conservative PLM fallback around coarse-fine
+transitions. Characteristic `4wzc` remains rejected on multilevel meshes.
 
 ## Implemented numerical path
 
@@ -131,8 +134,54 @@ This local smooth-wave result makes 4wz about 2.6 times faster and 2.9 times mor
 accurate than the legacy fourth-order path. It is not yet a stellar-surface or AMR
 performance estimate.
 
+## SCF surface-AMR smoke tests
+
+The production-facing tests use the adiabatic SCF RSG problem, HLLC, two XD nodes
+and 112 MPI ranks. They do not yet include FLD. BSCF and its repository remain
+untouched.
+
+An existing WOR-162 surface-L3 restart could not be reused because it was written by
+an `NGHOST=2` binary, while 4wz requires `NGHOST=4`; the per-MeshBlock restart record
+sizes are intentionally incompatible. A fresh `NGHOST=4` state is therefore required.
+
+The first fresh surface-L2 A/B smoke (`343421`) completed both one-cycle cases with
+2,472 MeshBlocks and 10,125,312 active cells. It exposed repeated gravity multigrid
+warnings caused by requesting a `1e-12` absolute defect after the FMG solution had
+already converged as far as this AMR hierarchy permits. The warning is not an FLD
+FGMRES problem: FGMRES exists in the NRFLD linear solver, not the self-gravity driver.
+
+The input now uses the WOR-162-validated efficient equivalent,
+`gravity/mgmode=fmg`, `threshold=-1`, `niteration=0`. This retains the accepted FMG
+solution and omits only the divergent polishing V-cycle. The repeated surface-L2 job
+`343434` produced zero multigrid warnings and completed normally:
+
+| method | wall time | max mass drift | max J drift | max mechanical-energy drift | max radial Mach RMS |
+|---|---:|---:|---:|---:|---:|
+| RK2 + x2 | 7.96 s | 0 | 2.22e-9 | 5.44e-10 | 1.699e-4 |
+| RK4 + 4wz | 8.23 s | 4.27e-12 | 1.46e-9 | 1.35e-7 | 1.707e-4 |
+
+The one-cycle runtime difference is only 3.4% and is too short for a production
+throughput conclusion. The 4wz fallback mask covered 5,940,960 of 10,125,312 active
+cells (58.7%). This high value is plausible for 16-cubed blocks because the radius-3
+coarse-fine safety band occupies 18.75% of a block width on every touching face, but
+the aggregate alone cannot separate the physical troubled-cell sensor from AMR
+geometry. Cause-separated and level-separated C++ telemetry has therefore been added
+before starting the expensive surface-L3 state.
+
+The L3 workflow creates the expensive `NGHOST=4` state once with `nlim=0`, writes one
+forced final restart, and branches RK2+x2 and RK4+4wz from that byte-identical state.
+Delaying the normal restart `next_time` avoids a redundant multi-gigabyte initial
+restart. A C++ comparison tool writes final A/B differences and the WENO-Z fallback
+fractions to JSON.
+
 ## Next gates
 
-1. Build with the SCF table EOS and run positivity/domain smoke tests.
-2. Run an SCF-specific central-L7 plus surface-L3 short HD A/B comparison.
-3. Add sensor/fallback telemetry before using 4wz for production tuning.
+1. Split the L2 fallback fraction into sensor and coarse-fine contributions and by
+   refinement level.
+2. Compare 16-cubed and 32-cubed MeshBlocks at surface L2; larger blocks reduce both
+   ghost overhead and the fractional width of the AMR safety band but may over-refine
+   a thicker physical shell.
+3. Generate the fresh central-L6 plus surface-L3 `NGHOST=4` state and run the
+   same-restart HD A/B comparison.
+4. If the L3 one-cycle gate passes, extend the more promising configuration far enough
+   to assess secular stability and production throughput.
