@@ -404,7 +404,13 @@
         "partition": "M-large-a",
         "nodes": 5,
         "start_cycle": 930,
-        "status": "PENDING_RESOURCES",
-        "scheduler_estimated_start_jst": "2026-11-19T10:37:23+09:00"
+        "status": "RUNNING_FIRST_AUDIT_PASS_CYCLE_940",
+        "start_jst": "2026-11-19T10:33:15+09:00",
+        "first_segment_end_cycle": 940,
+        "first_segment_reason": "CONTINUE",
+        "c940_opacity_domain_outside_cells": 0,
+        "c940_nonfinite_or_nonpositive_cells": 0,
+        "c940_temperature_min_K": 5.106207847595215,
+        "c940_temperature_max_K": 21.709470748901367
     }
 }

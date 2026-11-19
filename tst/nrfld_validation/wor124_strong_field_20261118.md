@@ -322,3 +322,11 @@ The audit now has an XD-native `h5dump` backend and no longer requires Python
 HDF5 packages on compute nodes.  It reproduced the `h5py` audit exactly on
 the c930 file.  Five-node M-large-a job `342848` resumes from c930 and is
 pending resources, with scheduler-estimated start at 10:37:23 JST.
+
+Job `342848` started at 10:33:15 JST.  Its first production segment completed
+c930--940 and the new compute-node-native audit passed: all 2,383,872
+post-regrid cells are finite, positive, and inside both opacity axes
+(`T=5.106--21.709 K`).  The wrapper recorded `REASON=CONTINUE` and proceeded
+automatically to c940--950.  This confirms that the c930 stop was solely the
+missing Python package and that the replacement audit works in the allocated
+compute environment.

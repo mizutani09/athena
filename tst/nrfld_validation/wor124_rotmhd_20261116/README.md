@@ -688,4 +688,6 @@ Resume `342607` completed c920--930 in 118 s with 20 strict FGMRES solves at
 stop was only a missing `h5py` package on compute nodes.  Independent c930
 audit found zero opacity/EOS-domain and nonpositive-gas-energy cells, and the
 restart is complete.  The audit now uses XD's native `h5dump` backend; its
-result matches `h5py` exactly.  Five-node resume `342848` continues from c930.
+result matches `h5py` exactly.  Five-node resume `342848` started from c930;
+its first c930--940 segment passed the new audit on the allocated compute
+nodes and continued automatically to c940--950.
