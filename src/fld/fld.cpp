@@ -152,6 +152,20 @@ FLD::FLD(MeshBlock *pmb, ParameterInput *pin) :
   is_couple = pin->GetOrAddBoolean("fld", "is_couple", true);
   only_rad = pin->GetOrAddBoolean("fld", "only_rad", false);
   cut_diff = pin->GetOrAddBoolean("fld", "cut_diff", false);
+  if (pin->DoesParameterExist("fld", "diffusion_ramp_start_code")
+      || pin->DoesParameterExist("fld", "diffusion_ramp_end_code")) {
+    diffusion_ramp_start = pin->GetReal("fld", "diffusion_ramp_start_code");
+    diffusion_ramp_end = pin->GetReal("fld", "diffusion_ramp_end_code");
+    if (cut_diff || !std::isfinite(diffusion_ramp_start)
+        || !std::isfinite(diffusion_ramp_end)
+        || diffusion_ramp_start < 0.0
+        || diffusion_ramp_end <= diffusion_ramp_start) {
+      std::stringstream msg;
+      msg << "### FATAL ERROR: FLD diffusion ramp requires cut_diff=false"
+          << " and 0<=start<end.\n";
+      ATHENA_ERROR(msg);
+    }
+  }
   include_radiation_force =
       pin->GetOrAddBoolean("fld", "include_radiation_force", true);
   radiation_pressure_in_riemann = pin->GetOrAddBoolean(
@@ -571,6 +585,20 @@ FLD::FLD(MeshBlock *pmb, ParameterInput *pin) :
   // std::cout << "c_ph in sim: " << c_ph << std::endl;
   // std::cout << "a_r in sim: " << a_r << std::endl;
   // std::cout << "const_opacity in sim: " << const_opacity << std::endl;
+}
+
+Real FLD::DiffusionFactor() const {
+  if (cut_diff) return 0.0;
+  if (diffusion_ramp_end < 0.0) return 1.0;
+  const Real time = pmy_block->pmy_mesh->time;
+  if (time <= diffusion_ramp_start) return 0.0;
+  if (time >= diffusion_ramp_end) return 1.0;
+  const Real x = (time-diffusion_ramp_start)
+      /(diffusion_ramp_end-diffusion_ramp_start);
+  const Real raised_cosine = 0.5*(1.0-std::cos(M_PI*x));
+  // A quadratic onset reduces the initial jump from the strictly local
+  // exchange solve to a globally coupled diffusion solve.
+  return raised_cosine*raised_cosine;
 }
 
 void FLD::EnrollOpacityFunction(FLDOpacityFunc MyOpacityFunction) {

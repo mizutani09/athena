@@ -232,6 +232,11 @@ class FLD {
   bool is_couple;
   bool only_rad;
   bool cut_diff;
+  // Preparation-only continuation: multiply the implicit diffusion operator
+  // and its Marshak face flux by a common time-dependent factor.
+  Real diffusion_ramp_start{-1.0};
+  Real diffusion_ramp_end{-1.0};
+  Real DiffusionFactor() const;
   bool include_radiation_force;
   bool radiation_pressure_in_riemann;
   // Radiation pressure enters the Riemann wave construction when coupled;

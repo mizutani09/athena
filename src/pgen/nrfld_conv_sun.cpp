@@ -97,6 +97,7 @@ namespace {
   Real marshak_alpha = 0.5;
   Real bottom_heat_depth = 0.0;
   Real bottom_heat_rate = 0.0;
+  bool bottom_heat_follow_diffusion_ramp = false;
   Real surface_heat_zmin = 0.0;
   Real surface_heat_zmax = 0.0;
   Real surface_heat_rate = 0.0;
@@ -664,6 +665,9 @@ namespace {
     frad = ComputeRadiativeFluxZ(erad, pmb->prfld->u_rad(k-1, j, i),
                                  pmb->prfld->u_rad(k+1, j, i), sigma_r_loc,
                                  pmb->pcoord->dx3f(k));
+    // Keep preparation diagnostics consistent with the scaled implicit FLD
+    // operator.  The Marshak top-face diagnostic below uses its scaled D.
+    frad *= pmb->prfld->DiffusionFactor();
     fenth = (egas + pres)*vz;
     fkin = 0.5*rho*(SQR(vx) + SQR(vy) + SQR(vz))*vz;
     ftot = frad + fenth + fkin;
@@ -1042,7 +1046,9 @@ void ProfileGravitySource(MeshBlock *pmb, Real time, Real dt,
                           const AthenaArray<Real> &,
                           AthenaArray<Real> &u, AthenaArray<Real> &) {
   const Real surface_fraction=SurfaceHeatFraction(time);
-  const Real bottom_fraction=transfer_heat_to_bottom ? 1.0-surface_fraction : 1.0;
+  const Real bottom_fraction=(transfer_heat_to_bottom ? 1.0-surface_fraction : 1.0)
+      *(bottom_heat_follow_diffusion_ramp
+            ? pmb->prfld->DiffusionFactor() : 1.0);
   for (int k=pmb->ks; k<=pmb->ke; ++k) {
     const Real z = pmb->pcoord->x3v(k);
     Real g = 0.0;
@@ -1078,7 +1084,9 @@ Real HistoryBottomHeat(MeshBlock *pmb, int) {
         power += bottom_heat_rate*pmb->pcoord->GetCellVolume(k,j,i);
   }
   return power*(transfer_heat_to_bottom
-      ? 1.0-SurfaceHeatFraction(pmb->pmy_mesh->time) : 1.0);
+      ? 1.0-SurfaceHeatFraction(pmb->pmy_mesh->time) : 1.0)
+      *(bottom_heat_follow_diffusion_ramp
+            ? pmb->prfld->DiffusionFactor() : 1.0);
 }
 
 Real HistorySurfaceHeat(MeshBlock *pmb, int) {
@@ -1170,6 +1178,15 @@ void Mesh::InitUserMeshData(ParameterInput *pin) {
     ATHENA_ERROR(msg);
   }
   bottom_heat_rate = 0.0;
+  bottom_heat_follow_diffusion_ramp = pin->GetOrAddBoolean(
+      "problem", "bottom_heat_follow_diffusion_ramp", false);
+  if (bottom_heat_follow_diffusion_ramp
+      && (!pin->DoesParameterExist("fld", "diffusion_ramp_start_code")
+          || !pin->DoesParameterExist("fld", "diffusion_ramp_end_code"))) {
+    std::stringstream msg;
+    msg << "### FATAL ERROR: bottom heat ramp requires FLD diffusion ramp.\n";
+    ATHENA_ERROR(msg);
+  }
   if (bottom_heat_flux_cgs > 0.0) {
     const Real dz=(mesh_size.x3max-mesh_size.x3min)/mesh_size.nx3;
     const Real nz=bottom_heat_depth/dz;

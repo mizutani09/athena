@@ -82,10 +82,10 @@ enum DriftFace { XMinus, XPlus, YMinus, YPlus, ZMinus, ZPlus };
 inline bool MarshakFaceActive(const MeshBlock *pmb, const FLD *fld,
                               const int face, const int k, const int j,
                               const int i) {
-  // cut_diff removes the entire diffusion operator, including its physical
-  // boundary flux.  Keeping a Marshak face here changes the supposedly local
-  // exchange problem and defeats its total-energy cancellation.
-  if (fld->cut_diff) return false;
+  // At zero diffusion, remove the physical boundary flux as well.  Keeping
+  // a Marshak face here changes the local exchange problem and defeats its
+  // total-energy cancellation.
+  if (fld->DiffusionFactor() == 0.0) return false;
   const bool enabled = fld->marshak_face_boundary[face]
       || (face == ZPlus && fld->marshak_top_boundary);
   if (!enabled) return false;
@@ -1145,14 +1145,16 @@ void NRFLD::CalculateCoefficientsOnce(const AthenaArray<Real> &u_pre,
     }
   }
 
-  if (pfld->cut_diff) {
+  const Real diffusion_factor = pfld->DiffusionFactor();
+  if (diffusion_factor != 1.0) {
     for (int k=ks; k<=ke; k++) {
       for (int j=js; j<=je; j++) {
         for (int i=is; i<=ie; i++) {
           for (int n = 0; n < 6; n++) {
-            derivetive(NewtonRaphsonFLD::dFr_dEr_xm+n,k,j,i) = 0.0;
+            derivetive(NewtonRaphsonFLD::dFr_dEr_xm+n,k,j,i) *= diffusion_factor;
+            pfld->marshak_dface_all(n,k,j,i) *= diffusion_factor;
           }
-          pfld->marshak_dface(k,j,i) = 0.0;
+          pfld->marshak_dface(k,j,i) *= diffusion_factor;
         }
       }
     }
@@ -1947,7 +1949,7 @@ void NRFLD::AddDifference(AthenaArray<Real> &u_rad,
           // directly instead of recovering Er by subtracting two large gas
           // energies.  The latter loses the small radiation state before the
           // stiff exchange coefficient magnifies its rounding error.
-          if (pfld->cut_diff && !pfld->fixed_u_rad) {
+          if (pfld->DiffusionFactor() == 0.0 && !pfld->fixed_u_rad) {
             const Real erad_old = uold_(k,j,i);
             const Real total = egas_old + erad_old;
             const Real upper_bound = std::nextafter(
