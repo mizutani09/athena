@@ -1,0 +1,171 @@
+{
+  "cycle": 1080,
+  "time_code": 1941.903564453125,
+  "half_angle_deg": 15,
+  "hdf_sha256": "13767189008f53ffb9e802b7ef66dcd97faff7045adbdd59051d19269a0354ac",
+  "eos_sha256": "742a3456923d4c7056c3705accbcc793af3e0c79408a2f597a0cd9271b13ba43",
+  "shells": [
+    {
+      "inner_au": 1,
+      "outer_au": 5,
+      "axis": {
+        "cells": 8712,
+        "mean_radius_au": 3.784562587738037,
+        "mean_rho_g_cm3": 2.2440277170454547e-11,
+        "mean_Tgas_K": 344.0594713594009,
+        "mean_Trad_K": 344.0634898666523,
+        "level_min": 11,
+        "level_max": 11,
+        "mean_level": 11.0
+      },
+      "body_diagonal": {
+        "cells": 11168,
+        "mean_radius_au": 3.747328042984009,
+        "mean_rho_g_cm3": 2.2402090659596663e-11,
+        "mean_Tgas_K": 350.5504292216361,
+        "mean_Trad_K": 350.5555978769462,
+        "level_min": 10,
+        "level_max": 11,
+        "mean_level": 10.966620305980529
+      },
+      "rho_g_cm3_axis_minus_diag_fraction": 0.001703144267609027,
+      "Tgas_K_axis_minus_diag_fraction": -0.018689505740720168,
+      "Trad_K_axis_minus_diag_fraction": -0.018692570143394392
+    },
+    {
+      "inner_au": 5,
+      "outer_au": 7,
+      "axis": {
+        "cells": 7080,
+        "mean_radius_au": 6.161513805389404,
+        "mean_rho_g_cm3": 5.40554394277224e-12,
+        "mean_Tgas_K": 247.51279677354424,
+        "mean_Trad_K": 247.51317785874602,
+        "level_min": 10,
+        "level_max": 11,
+        "mean_level": 10.374233128834355
+      },
+      "body_diagonal": {
+        "cells": 4464,
+        "mean_radius_au": 6.098940372467041,
+        "mean_rho_g_cm3": 5.668549962509713e-12,
+        "mean_Tgas_K": 246.56094948485156,
+        "mean_Trad_K": 246.56105032490336,
+        "level_min": 10,
+        "level_max": 11,
+        "mean_level": 10.104895104895105
+      },
+      "rho_g_cm3_axis_minus_diag_fraction": -0.047499329875111226,
+      "Tgas_K_axis_minus_diag_fraction": 0.0038530575481939048,
+      "Trad_K_axis_minus_diag_fraction": 0.0038541882151713713
+    },
+    {
+      "inner_au": 7,
+      "outer_au": 9,
+      "axis": {
+        "cells": 3216,
+        "mean_radius_au": 8.087631225585938,
+        "mean_rho_g_cm3": 1.0314510507035139e-12,
+        "mean_Tgas_K": 181.08737847993527,
+        "mean_Trad_K": 181.0863111690124,
+        "level_min": 10,
+        "level_max": 10,
+        "mean_level": 10.0
+      },
+      "body_diagonal": {
+        "cells": 4488,
+        "mean_radius_au": 8.081347465515137,
+        "mean_rho_g_cm3": 1.380907285587957e-12,
+        "mean_Tgas_K": 180.13789961161785,
+        "mean_Trad_K": 180.13636170928407,
+        "level_min": 10,
+        "level_max": 10,
+        "mean_level": 10.0
+      },
+      "rho_g_cm3_axis_minus_diag_fraction": -0.28972166334265553,
+      "Tgas_K_axis_minus_diag_fraction": 0.005256990171528176,
+      "Trad_K_axis_minus_diag_fraction": 0.005259633633508791
+    },
+    {
+      "inner_au": 10,
+      "outer_au": 15,
+      "axis": {
+        "cells": 7632,
+        "mean_radius_au": 12.806306838989258,
+        "mean_rho_g_cm3": 1.9534350581654333e-13,
+        "mean_Tgas_K": 121.33743157542287,
+        "mean_Trad_K": 121.33758308025477,
+        "level_min": 9,
+        "level_max": 10,
+        "mean_level": 9.291866028708133
+      },
+      "body_diagonal": {
+        "cells": 5312,
+        "mean_radius_au": 12.76443099975586,
+        "mean_rho_g_cm3": 1.6472678500043377e-13,
+        "mean_Tgas_K": 120.0388174557118,
+        "mean_Trad_K": 120.03882846843152,
+        "level_min": 9,
+        "level_max": 10,
+        "mean_level": 9.078901227352425
+      },
+      "rho_g_cm3_axis_minus_diag_fraction": 0.17005968888264636,
+      "Tgas_K_axis_minus_diag_fraction": 0.010760082028978499,
+      "Trad_K_axis_minus_diag_fraction": 0.010761238875748995
+    },
+    {
+      "inner_au": 15,
+      "outer_au": 20,
+      "axis": {
+        "cells": 5160,
+        "mean_radius_au": 17.73318099975586,
+        "mean_rho_g_cm3": 1.0817009012839147e-13,
+        "mean_Tgas_K": 79.47779632895669,
+        "mean_Trad_K": 79.47827731299164,
+        "level_min": 9,
+        "level_max": 9,
+        "mean_level": 9.0
+      },
+      "body_diagonal": {
+        "cells": 6344,
+        "mean_radius_au": 17.643526077270508,
+        "mean_rho_g_cm3": 8.430241372801274e-14,
+        "mean_Tgas_K": 79.26700205162189,
+        "mean_Trad_K": 79.2672761626106,
+        "level_min": 8,
+        "level_max": 9,
+        "mean_level": 8.94251497005988
+      },
+      "rho_g_cm3_axis_minus_diag_fraction": 0.2480112839201741,
+      "Tgas_K_axis_minus_diag_fraction": 0.0026557629539386276,
+      "Trad_K_axis_minus_diag_fraction": 0.0026583566690384927
+    },
+    {
+      "inner_au": 20,
+      "outer_au": 30,
+      "axis": {
+        "cells": 7632,
+        "mean_radius_au": 25.612613677978516,
+        "mean_rho_g_cm3": 5.420021650094697e-14,
+        "mean_Tgas_K": 50.111260907291175,
+        "mean_Trad_K": 50.11108214158097,
+        "level_min": 8,
+        "level_max": 9,
+        "mean_level": 8.291866028708133
+      },
+      "body_diagonal": {
+        "cells": 5312,
+        "mean_radius_au": 25.52886199951172,
+        "mean_rho_g_cm3": 4.21921515476889e-14,
+        "mean_Tgas_K": 50.412980784221304,
+        "mean_Trad_K": 50.41281902062907,
+        "level_min": 8,
+        "level_max": 9,
+        "mean_level": 8.078901227352425
+      },
+      "rho_g_cm3_axis_minus_diag_fraction": 0.2491497033706913,
+      "Tgas_K_axis_minus_diag_fraction": -0.006002927688945775,
+      "Trad_K_axis_minus_diag_fraction": -0.006003286294295392
+    }
+  ]
+}

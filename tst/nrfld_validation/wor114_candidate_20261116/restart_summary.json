@@ -1,0 +1,198 @@
+{
+  "build_commit": "6b46523fb8964e8895bd4882bec5b7c6b590414f",
+  "source_tree_git": "c4ab200383c7317a2feccc50aa9578d5cf71478d",
+  "binary_sha256": "fb8a2c7855e167920ea31e33a817e9d9df09c118b24433c5c8692e7bf6968297",
+  "base_input_sha256": "f66b47090c2c21a3ea99a383f0cedb9af18cb6b20bcf9e8da38c1a7c3f3f740a",
+  "raw_output_root": "/home/kosuke/simulation/test/rad_nr/wor114_collapse_candidate_20261116/restart_amr",
+  "suite_wall_seconds": 27.85,
+  "suite_launcher_maxrss_kib": 123176,
+  "cases": [
+    {
+      "case": "baseline_adaptive_1to4",
+      "input_sha256": "11a5d2df46b7f0ee115db346044c05b1cc5a459c1496901723c9f22bd8bea893",
+      "final_time_code": 0.012070562800802827,
+      "time_difference": 0.0,
+      "allowed_time_ulps": 0,
+      "max_active_field_difference": 2.842170943040401e-14,
+      "field_tolerance": 1e-10,
+      "topology_equal": true,
+      "runs": {
+        "direct": {
+          "newton_calls": 9,
+          "newton_all_converged": true,
+          "fgmres_calls": 36,
+          "fgmres_max_iterations": 35,
+          "fgmres_max_relative_residual": 8.500536202820394e-09,
+          "fgmres_all_within_target": true,
+          "log_sha256": "b4a78503606ca8c95e1010690cf5b8fe33d025bd8c3831a364bdc62d23f63106"
+        },
+        "restart": {
+          "newton_calls": 5,
+          "newton_all_converged": true,
+          "fgmres_calls": 10,
+          "fgmres_max_iterations": 35,
+          "fgmres_max_relative_residual": 7.942867077413657e-09,
+          "fgmres_all_within_target": true,
+          "log_sha256": "f6c9b31d171dedbad48f7557ab5534df164f94883e1e87e813bd58401e01c04a"
+        }
+      },
+      "passed": true
+    },
+    {
+      "case": "baseline_adaptive_4to4",
+      "input_sha256": "11a5d2df46b7f0ee115db346044c05b1cc5a459c1496901723c9f22bd8bea893",
+      "final_time_code": 0.012070562800802827,
+      "time_difference": 0.0,
+      "allowed_time_ulps": 0,
+      "max_active_field_difference": 5.684341886080802e-14,
+      "field_tolerance": 1e-10,
+      "topology_equal": true,
+      "runs": {
+        "direct": {
+          "newton_calls": 9,
+          "newton_all_converged": true,
+          "fgmres_calls": 36,
+          "fgmres_max_iterations": 35,
+          "fgmres_max_relative_residual": 8.500536227706137e-09,
+          "fgmres_all_within_target": true,
+          "log_sha256": "37a80ebe98eb81ebfeb13837c5ebb866e084c812fee4a9a010580e5808855b93"
+        },
+        "restart": {
+          "newton_calls": 5,
+          "newton_all_converged": true,
+          "fgmres_calls": 10,
+          "fgmres_max_iterations": 35,
+          "fgmres_max_relative_residual": 7.999798637375426e-09,
+          "fgmres_all_within_target": true,
+          "log_sha256": "61811c26f339d1c89b6681235012b01f64db6efd85e9233003754b6781b3fbe2"
+        }
+      },
+      "passed": true
+    },
+    {
+      "case": "baseline_static_4to4",
+      "input_sha256": "6ecd28f98cbe57fc82e3f35d3fe7cb4fe234ec410767c75e5cacfd011dd91668",
+      "final_time_code": 0.010654649239956309,
+      "time_difference": 0.0,
+      "allowed_time_ulps": 0,
+      "max_active_field_difference": 1.1368683772161603e-13,
+      "field_tolerance": 1e-10,
+      "topology_equal": true,
+      "runs": {
+        "direct": {
+          "newton_calls": 6,
+          "newton_all_converged": true,
+          "fgmres_calls": 39,
+          "fgmres_max_iterations": 36,
+          "fgmres_max_relative_residual": 8.500536227706137e-09,
+          "fgmres_all_within_target": true,
+          "log_sha256": "1ed81ba716c846b35d972d7d5796ca06593ff57361c35a6d9b3f79bd66366add"
+        },
+        "restart": {
+          "newton_calls": 4,
+          "newton_all_converged": true,
+          "fgmres_calls": 13,
+          "fgmres_max_iterations": 36,
+          "fgmres_max_relative_residual": 7.999798637375426e-09,
+          "fgmres_all_within_target": true,
+          "log_sha256": "a9a0cb3af356e3c5c99afa4fb56b7e4a1470dac9aaf2682a016b30d04989ccd1"
+        }
+      },
+      "passed": true
+    },
+    {
+      "case": "candidate_adaptive_1to4",
+      "input_sha256": "11a5d2df46b7f0ee115db346044c05b1cc5a459c1496901723c9f22bd8bea893",
+      "final_time_code": 0.012070562800802827,
+      "time_difference": 0.0,
+      "allowed_time_ulps": 0,
+      "max_active_field_difference": 5.684341886080802e-14,
+      "field_tolerance": 1e-10,
+      "topology_equal": true,
+      "runs": {
+        "direct": {
+          "newton_calls": 9,
+          "newton_all_converged": true,
+          "fgmres_calls": 35,
+          "fgmres_max_iterations": 10,
+          "fgmres_max_relative_residual": 9.934088607237425e-09,
+          "fgmres_all_within_target": true,
+          "log_sha256": "25610be25364e4b4c943b1fbc6a89f9193d4eb8a46da1aa25b81201842931421"
+        },
+        "restart": {
+          "newton_calls": 5,
+          "newton_all_converged": true,
+          "fgmres_calls": 9,
+          "fgmres_max_iterations": 9,
+          "fgmres_max_relative_residual": 6.9614987301030005e-09,
+          "fgmres_all_within_target": true,
+          "log_sha256": "a6a299a103c525e752c17308a169abde5e2ac0383b7e3b2ba3ea326af4e1076b"
+        }
+      },
+      "passed": true
+    },
+    {
+      "case": "candidate_adaptive_4to4",
+      "input_sha256": "11a5d2df46b7f0ee115db346044c05b1cc5a459c1496901723c9f22bd8bea893",
+      "final_time_code": 0.012070562800802827,
+      "time_difference": 0.0,
+      "allowed_time_ulps": 0,
+      "max_active_field_difference": 2.842170943040401e-14,
+      "field_tolerance": 1e-10,
+      "topology_equal": true,
+      "runs": {
+        "direct": {
+          "newton_calls": 9,
+          "newton_all_converged": true,
+          "fgmres_calls": 35,
+          "fgmres_max_iterations": 10,
+          "fgmres_max_relative_residual": 9.934088744108893e-09,
+          "fgmres_all_within_target": true,
+          "log_sha256": "1fecea22930ef43cd2faeab652e3aa12602f987a43781cdb82b0ca1c4f36f565"
+        },
+        "restart": {
+          "newton_calls": 5,
+          "newton_all_converged": true,
+          "fgmres_calls": 9,
+          "fgmres_max_iterations": 9,
+          "fgmres_max_relative_residual": 6.961457738568013e-09,
+          "fgmres_all_within_target": true,
+          "log_sha256": "61bc7823ac2b6f56362713144b905a46d51debc7e210432c3775a21557e084cb"
+        }
+      },
+      "passed": true
+    },
+    {
+      "case": "candidate_static_4to4",
+      "input_sha256": "6ecd28f98cbe57fc82e3f35d3fe7cb4fe234ec410767c75e5cacfd011dd91668",
+      "final_time_code": 0.010654856206154546,
+      "time_difference": 0.0,
+      "allowed_time_ulps": 0,
+      "max_active_field_difference": 1.1368683772161603e-13,
+      "field_tolerance": 1e-10,
+      "topology_equal": true,
+      "runs": {
+        "direct": {
+          "newton_calls": 6,
+          "newton_all_converged": true,
+          "fgmres_calls": 35,
+          "fgmres_max_iterations": 10,
+          "fgmres_max_relative_residual": 9.934088744108893e-09,
+          "fgmres_all_within_target": true,
+          "log_sha256": "dc701a8695e10431f64c058694c6fed78674fe42eb6f953741291233f9aa5af8"
+        },
+        "restart": {
+          "newton_calls": 4,
+          "newton_all_converged": true,
+          "fgmres_calls": 9,
+          "fgmres_max_iterations": 9,
+          "fgmres_max_relative_residual": 6.961457738568013e-09,
+          "fgmres_all_within_target": true,
+          "log_sha256": "4af67d4654dc65ebae09b3d66ca9fbf008534370a8c1275b05c60031caf8674b"
+        }
+      },
+      "passed": true
+    }
+  ],
+  "passed": true
+}

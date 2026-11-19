@@ -1,0 +1,332 @@
+{
+  "status": "passed",
+  "preset": "fast",
+  "git": {
+    "branch": "codex/wor114-collapse-candidate-20261116",
+    "commit": "3f4e29e4cdf99e2f58cd2c64d34369427934ec5e",
+    "dirty": false,
+    "status": []
+  },
+  "source_tree_git": "c4ab200383c7317a2feccc50aa9578d5cf71478d",
+  "raw_output_root": "/home/kosuke/simulation/test/rad_nr/wor114_collapse_candidate_20261116/mixed_frame_fast",
+  "build": {
+    "shock": {
+      "binary_sha256": "2e6cd07967310c06678cf07dd5872a2fb2d7fdff73cade4e0adaf823d0b301c0",
+      "source_sha256": "9c59a94fea790304ae66eb6d9faf942de5956713d1db7a08c014890dcb275b0c"
+    },
+    "pulse": {
+      "binary_sha256": "286740f1d31a3bcea7a5ee243c66df33fe840a603edc060cc4c601d2a7b6c0aa",
+      "source_sha256": "c3323a6fca5f66a2dc5a43b7fc4f3c71495ee10b6c7269627be06134611c70ac"
+    }
+  },
+  "reference": {
+    "mach2": "ae0b0ae9aeb47beeb986739e00235e9a519c791be7c2678aeb5d49f0eaa2b835",
+    "mach5": "9483f0ca01a334c404ad7fafb2bf5729175ae3f2530ec5ce3d5b037812025b46"
+  },
+  "cases": {
+    "shock2_n64_cfl0.3_implicit": {
+      "cycles": 2539,
+      "time_code": 0.05000000074505806,
+      "wall_seconds": 31.75,
+      "launcher_max_rss_kib": 40032,
+      "input_sha256": "4b3a8cc373a391bd7126ee4e3eeec6b1dd52f97ffc328d05a68e00aa8688fcfe",
+      "final_sha256": "481fe46ee8db0c70f2d751517698504dfb1091a109728db99f03788ade677599",
+      "raw_L1_percent": {
+        "rho": 0.6291604520480386,
+        "tgas": 0.6959690996488173,
+        "trad": 0.2780259380924379
+      },
+      "aligned_L1_percent": {
+        "rho": 0.5754022177884225,
+        "tgas": 0.615155032983421,
+        "trad": 0.557170103655051
+      },
+      "solver": {
+        "strict_converged": 2539,
+        "relaxed_accepted": 0,
+        "fgmres_calls": 5078,
+        "nr_iterations_total": 5078,
+        "fgmres_iterations_total": 35546,
+        "max_final_l2": 7.150259535739283e-13,
+        "max_final_point": 5.719461529094217e-12
+      }
+    },
+    "shock2_n64_cfl0.3_explicit": {
+      "cycles": 2539,
+      "time_code": 0.05000000074505806,
+      "wall_seconds": 45.52,
+      "launcher_max_rss_kib": 39948,
+      "input_sha256": "562a45b9c55ff48b75136b10d70d630dbbaf143d055a71e2e530604a2f80fa2f",
+      "final_sha256": "a25dffd310df4fe2d1a5f8b5a59f6fce05c577bdf8e24cae85d3d469f762dee0",
+      "raw_L1_percent": {
+        "rho": 0.628803746719935,
+        "tgas": 0.6956486819133602,
+        "trad": 0.27770707226414676
+      },
+      "aligned_L1_percent": {
+        "rho": 0.5757675617141349,
+        "tgas": 0.615608560520875,
+        "trad": 0.5575958165661998
+      },
+      "solver": {
+        "strict_converged": 2539,
+        "relaxed_accepted": 0,
+        "fgmres_calls": 7617,
+        "nr_iterations_total": 7617,
+        "fgmres_iterations_total": 55845,
+        "max_final_l2": 1.8366159668416167e-16,
+        "max_final_point": 1.7858984272908264e-15
+      }
+    },
+    "shock5_n64_cfl0.3_implicit": {
+      "cycles": 1147,
+      "time_code": 0.03999999910593033,
+      "wall_seconds": 19.81,
+      "launcher_max_rss_kib": 39852,
+      "input_sha256": "7d2d8c51a2139a97b60c649a66af24038d8f42ca8498fbb47f67e2c71b39288b",
+      "final_sha256": "ef31d5de8340de821d259f16751b53ffdd4ac6bf7cfda6a88c885483ef993330",
+      "raw_L1_percent": {
+        "rho": 7.226080913469904,
+        "tgas": 6.547295436967293,
+        "trad": 6.503166218449127
+      },
+      "aligned_L1_percent": {
+        "rho": 1.374935072792702,
+        "tgas": 0.39870406748142223,
+        "trad": 0.2948525763737427
+      },
+      "solver": {
+        "strict_converged": 1147,
+        "relaxed_accepted": 0,
+        "fgmres_calls": 3447,
+        "nr_iterations_total": 3447,
+        "fgmres_iterations_total": 23880,
+        "max_final_l2": 3.5212183981588417e-10,
+        "max_final_point": 2.7990805718469273e-09
+      }
+    },
+    "shock5_n64_cfl0.3_explicit": {
+      "cycles": 1147,
+      "time_code": 0.03999999910593033,
+      "wall_seconds": 20.14,
+      "launcher_max_rss_kib": 39948,
+      "input_sha256": "70d83af45c04fada00c1fb2dcb23dea12bf26fd341409108e0c992e8c20d7c33",
+      "final_sha256": "11cb0d9ed6bd192e744ab1906e58b6af68a4908ca8ae2a0e75c87cca4371dd9f",
+      "raw_L1_percent": {
+        "rho": 7.215372721126845,
+        "tgas": 6.5616297540549064,
+        "trad": 6.518809626566173
+      },
+      "aligned_L1_percent": {
+        "rho": 1.3810875385520403,
+        "tgas": 0.3837603912794317,
+        "trad": 0.28123701333830997
+      },
+      "solver": {
+        "strict_converged": 1147,
+        "relaxed_accepted": 0,
+        "fgmres_calls": 3509,
+        "nr_iterations_total": 3509,
+        "fgmres_iterations_total": 24535,
+        "max_final_l2": 1.5649543688034225e-09,
+        "max_final_point": 9.953823187122762e-09
+      }
+    },
+    "pulse_n32_cfl0.03_static_implicit": {
+      "cycles": 1729,
+      "time_code": 906.7528076171875,
+      "wall_seconds": 25.62,
+      "launcher_max_rss_kib": 35848,
+      "input_sha256": "722808fc005a7241aac3f30494df962c3bcbbd5e03961feafe8dd7a8eed45a89",
+      "final_sha256": "81d2810186b42566b020050e8feb54378b6e0a4ae74914bd4ff58ca861b56bb6",
+      "solver": {
+        "strict_converged": 1729,
+        "relaxed_accepted": 0,
+        "fgmres_calls": 4095,
+        "nr_iterations_total": 4095,
+        "fgmres_iterations_total": 8137,
+        "max_final_l2": 2.49323857771393e-09,
+        "max_final_point": 9.982777170948323e-09
+      }
+    },
+    "pulse_n32_cfl0.03_moving_implicit": {
+      "cycles": 1778,
+      "time_code": 906.7528076171875,
+      "wall_seconds": 27.13,
+      "launcher_max_rss_kib": 35740,
+      "input_sha256": "1c2146485ffa884566abee0d28e912f1289ca364106f6e38e0b72271e64e3f96",
+      "final_sha256": "e67d52dce0f11ec75a2e950c0e28c4660f96eb26bef3538c5b64d46523d37b6f",
+      "solver": {
+        "strict_converged": 1778,
+        "relaxed_accepted": 0,
+        "fgmres_calls": 4238,
+        "nr_iterations_total": 4238,
+        "fgmres_iterations_total": 8474,
+        "max_final_l2": 1.7687457155907238e-09,
+        "max_final_point": 9.978570808586132e-09
+      },
+      "shifted_static_relative_L1": {
+        "rho": 0.0037649351887167034,
+        "Tgas": 0.0031394729670000563,
+        "Erad": 0.018003765971060095
+      }
+    },
+    "pulse_n32_cfl0.03_moving_explicit": {
+      "cycles": 1778,
+      "time_code": 906.7528076171875,
+      "wall_seconds": 27.25,
+      "launcher_max_rss_kib": 35748,
+      "input_sha256": "76191e406306f481bdee71acb7c32cb8393da90d41bab8b54e80353823476d8a",
+      "final_sha256": "3681b055e04a17cd368cfe9b490c251862eafc8ff52d7f15ce1d65cbc140e144",
+      "solver": {
+        "strict_converged": 1778,
+        "relaxed_accepted": 0,
+        "fgmres_calls": 4305,
+        "nr_iterations_total": 4305,
+        "fgmres_iterations_total": 7900,
+        "max_final_l2": 1.7728533037790068e-09,
+        "max_final_point": 9.986867119357736e-09
+      },
+      "shifted_static_relative_L1": {
+        "rho": 0.0037615748197708542,
+        "Tgas": 0.0031381498571390024,
+        "Erad": 0.018005857628133795
+      }
+    }
+  },
+  "closed_box": {
+    "box_implicit": {
+      "energy_rel_drift": -7.87214676137304e-15,
+      "mass_rel_drift": -7.401486830834377e-16,
+      "cycles": 29,
+      "solver": {
+        "good": true,
+        "cycles": 29,
+        "nr_status_count": 29,
+        "strict_converged": 29,
+        "relaxed_accepted": 0,
+        "fgmres_calls": 64,
+        "max_final_l2": 3.06782422312599e-09,
+        "max_final_point": 7.373527961611053e-09
+      },
+      "input_sha256": "1374b44a268cd3ee34ec7500b2c54decd6783d36b0d3460f57e12fd444feb96c",
+      "history_sha256": "d053477454120902d6a853af4fb03f4f03cd31e95217db346118179a2fc2873f"
+    },
+    "box_explicit": {
+      "energy_rel_drift": -6.362997075907063e-08,
+      "mass_rel_drift": -2.2746234895620887e-08,
+      "cycles": 29,
+      "solver": {
+        "good": true,
+        "cycles": 29,
+        "nr_status_count": 29,
+        "strict_converged": 29,
+        "relaxed_accepted": 0,
+        "fgmres_calls": 72,
+        "max_final_l2": 2.725316124791222e-09,
+        "max_final_point": 9.605969504127522e-09
+      },
+      "input_sha256": "b5b516eff519b72874d7399faff6592827115868c6f1fabdabcc5f737521b328",
+      "history_sha256": "9091bb43c32a8c0840fcc863dec720d27d097870928de7008503b0df1fae749a"
+    }
+  },
+  "diagnostic": {
+    "status": "passed",
+    "modes": {
+      "implicit": {
+        "solver": {
+          "good": true,
+          "cycles": 1,
+          "nr_status_count": 1,
+          "strict_converged": 1,
+          "relaxed_accepted": 0,
+          "fgmres_calls": 3,
+          "max_final_l2": 7.646757554310963e-12,
+          "max_final_point": 3.242704593659392e-11
+        },
+        "jacobian": [
+          {
+            "epsilon": 0.0001,
+            "gas_l2_rel": 0.00011753253886552966,
+            "gas_max_rel": 0.00013375846370883778,
+            "radiation_l2_rel": 0.00011753955347385383,
+            "radiation_max_rel": 0.0001337646043685851
+          },
+          {
+            "epsilon": 1e-05,
+            "gas_l2_rel": 1.1754965365847617e-05,
+            "gas_max_rel": 1.3378004686861057e-05,
+            "radiation_l2_rel": 1.1755667079073866e-05,
+            "radiation_max_rel": 1.3378618999090632e-05
+          },
+          {
+            "epsilon": 1.0000000000000002e-06,
+            "gas_l2_rel": 1.175004093687849e-06,
+            "gas_max_rel": 1.3375990358327495e-06,
+            "radiation_l2_rel": 1.1750742367309057e-06,
+            "radiation_max_rel": 1.3376604619284398e-06
+          }
+        ],
+        "ledger": {
+          "lambda_abs_volume": 542.7542109202527,
+          "explicit_q_abs_volume": 0.0,
+          "implicit_q_abs_volume": 1014.4530526970782,
+          "explicit_pair_balance_volume": 1.0189455182639675e-10,
+          "explicit_floor_volume": 0.0,
+          "implicit_pair_balance_volume": 0.0,
+          "pair_balance_relative_to_exchanged_energy": 1.877360871205994e-13
+        },
+        "input_sha256": "86c7a7f190354097bf370e7df3c2509270ff64b1685794bda4329419f6d2b6d2",
+        "run_log_sha256": "7a6de3b6dfe4a75898dd02ae945cc385a2d59310b33390875fa906dc6d10a950"
+      },
+      "explicit": {
+        "solver": {
+          "good": true,
+          "cycles": 1,
+          "nr_status_count": 1,
+          "strict_converged": 1,
+          "relaxed_accepted": 0,
+          "fgmres_calls": 3,
+          "max_final_l2": 6.561821153696834e-12,
+          "max_final_point": 2.945948435409585e-11
+        },
+        "jacobian": [
+          {
+            "epsilon": 0.0001,
+            "gas_l2_rel": 0.00011753253878561202,
+            "gas_max_rel": 0.00013375846356401607,
+            "radiation_l2_rel": 0.00011753955339394822,
+            "radiation_max_rel": 0.00013376460422375006
+          },
+          {
+            "epsilon": 1e-05,
+            "gas_l2_rel": 1.1754965357888525e-05,
+            "gas_max_rel": 1.3378004672508987e-05,
+            "radiation_l2_rel": 1.1755667071092247e-05,
+            "radiation_max_rel": 1.3378618984737238e-05
+          },
+          {
+            "epsilon": 1.0000000000000002e-06,
+            "gas_l2_rel": 1.1750040929122185e-06,
+            "gas_max_rel": 1.3375990343826228e-06,
+            "radiation_l2_rel": 1.1750742359196762e-06,
+            "radiation_max_rel": 1.3376604604781796e-06
+          }
+        ],
+        "ledger": {
+          "lambda_abs_volume": 542.6877643109264,
+          "explicit_q_abs_volume": 1528.3945060926285,
+          "implicit_q_abs_volume": 0.0,
+          "explicit_pair_balance_volume": 1.1175863652481549e-10,
+          "explicit_floor_volume": 0.0,
+          "implicit_pair_balance_volume": 0.0,
+          "pair_balance_relative_to_exchanged_energy": 5.396146648633087e-14
+        },
+        "input_sha256": "c8593c890e8ee8d57da4a746cc8a37ac1ba76573ceacc93268ad25d32d53c6cc",
+        "run_log_sha256": "1d290fc0ec6c8e4f2ee9d90ac1cf17261cbcbf42cf980e11e4be0767b7405cea"
+      }
+    },
+    "definitions": "local fixed-coefficient gas/radiation finite-difference Jv; first two source updates, code-volume integrals"
+  },
+  "case_count": 11
+}

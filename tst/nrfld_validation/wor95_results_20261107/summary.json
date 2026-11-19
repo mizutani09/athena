@@ -1,0 +1,154 @@
+{
+  "git_head": "209e22398",
+  "amr_binary_sha256": "c4619ec2630088837696b1da2cb3d3612c040c4dd06a8426b693da47ae7cbab4",
+  "amr": [
+    {
+      "N_J": 4,
+      "root_dx_au": 375.0,
+      "min_dx_au": 375.0,
+      "initial_jeans_min": 15.2334,
+      "actual_max_level": 1,
+      "blocks_final": 8,
+      "blocks_created": 0,
+      "blocks_destroyed": 0,
+      "actual_dt": 4.144635899727114,
+      "next_step_dt": 4.120282771481628,
+      "newton_solves": 1,
+      "newton_max_iterations": 4,
+      "newton_max_final_l2": 3.5723828805558745e-09,
+      "newton_max_final_max": 9.976487196310762e-09,
+      "fgmres_solves": 4,
+      "fgmres_max_iterations": 9,
+      "fgmres_max_true_relative_residual": 1.1751751714236449e-08,
+      "input_sha256": "4a8c59e17197fa8d216736e7920744e37d8952b9838d0d7ad32b187b06372bd0",
+      "log_sha256": "689cc22ff80d65277d83fdda053eb7579cdf099f55d47f75c446c1af8f722da8"
+    },
+    {
+      "N_J": 32,
+      "root_dx_au": 375.0,
+      "min_dx_au": 187.5,
+      "initial_jeans_min": 30.4667,
+      "actual_max_level": 2,
+      "blocks_final": 64,
+      "blocks_created": 56,
+      "blocks_destroyed": 0,
+      "actual_dt": 2.072317949863557,
+      "next_step_dt": 2.060724780545122,
+      "newton_solves": 1,
+      "newton_max_iterations": 4,
+      "newton_max_final_l2": 1.1062079206063615e-08,
+      "newton_max_final_max": 1.9942498477438248e-08,
+      "fgmres_solves": 4,
+      "fgmres_max_iterations": 11,
+      "fgmres_max_true_relative_residual": 1.3877861159454668e-08,
+      "input_sha256": "407e9b03e5f430d7ae28a8258ad231db1a3929c9ddc1609da6325afdb475404f",
+      "log_sha256": "74d35f5f6bb582a1e986f68d33b24520df8ca5f170bcb5f63457c3f2f51d6969"
+    }
+  ],
+  "diffusion_mg": {
+    "resolutions": [
+      16,
+      32,
+      64
+    ],
+    "fixed_diffusion_number": {
+      "relative_l1": [
+        0.009047807668186329,
+        0.002309231354516646,
+        0.0005770276865297476
+      ],
+      "order_in_dx": [
+        1.9701555425130686,
+        2.0007002713572364
+      ],
+      "order_in_dt": [
+        0.9850777712565343,
+        1.0003501356786182
+      ],
+      "interpretation": "coupled refinement; not an independent temporal-order proof"
+    },
+    "space_time_extrapolated": {
+      "relative_l1": [
+        0.006202609040954213,
+        0.0015667291242122522,
+        0.0003903821390046882
+      ],
+      "order_in_dx": [
+        1.9851194225560038,
+        2.004796817667511
+      ]
+    },
+    "time_fixed_grid": {
+      "resolution": 32,
+      "steps": [
+        40,
+        80,
+        160,
+        320
+      ],
+      "successive_profile_differences": [
+        0.0014686355517491126,
+        0.0007399264800280813,
+        0.00037136582933844223
+      ],
+      "order_in_dt": [
+        0.9890225942202692,
+        0.9945408559819026
+      ]
+    },
+    "passed": true
+  },
+  "diffusion_fgmres": {
+    "resolutions": [
+      16,
+      32,
+      64
+    ],
+    "fixed_diffusion_number": {
+      "relative_l1": [
+        0.009047807668186329,
+        0.002309231354516646,
+        0.0005770276865297476
+      ],
+      "order_in_dx": [
+        1.9701555425130686,
+        2.0007002713572364
+      ],
+      "order_in_dt": [
+        0.9850777712565343,
+        1.0003501356786182
+      ],
+      "interpretation": "coupled refinement; not an independent temporal-order proof"
+    },
+    "space_time_extrapolated": {
+      "relative_l1": [
+        0.006202609040954213,
+        0.0015667291242122522,
+        0.0003903821390046882
+      ],
+      "order_in_dx": [
+        1.9851194225560038,
+        2.004796817667511
+      ]
+    },
+    "time_fixed_grid": {
+      "resolution": 32,
+      "steps": [
+        40,
+        80,
+        160,
+        320
+      ],
+      "successive_profile_differences": [
+        0.0014686355517491126,
+        0.0007399264800280813,
+        0.00037136582933844223
+      ],
+      "order_in_dt": [
+        0.9890225942202692,
+        0.9945408559819026
+      ]
+    },
+    "passed": true
+  }
+}

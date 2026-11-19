@@ -1,0 +1,112 @@
+{
+  "schema_version": 1,
+  "status": "review_candidate_not_final_release",
+  "date_jst": "2026-11-20",
+  "review": {
+    "github_draft_pr": 4,
+    "branch": "codex/wor114-collapse-candidate-20261116",
+    "documentation_parent": "3ff84aa23",
+    "solver_src_tree": "c4ab200383c7317a2feccc50aa9578d5cf71478d",
+    "author_review_required": true,
+    "fork_master_merged": false,
+    "official_publication_tag_created": false
+  },
+  "applications": {
+    "protostellar_collapse": {
+      "decision": "include_with_limited_claim",
+      "paper_role": "primary_application",
+      "claim": "Stable three-dimensional Cartesian-AMR evolution with the specified tabulated EOS and variable opacity through a first-core candidate.",
+      "execution_source_commit": "ff60f8f07842acb00e7753932bcfe30867e3a66e",
+      "execution_src_tree": "c4ab200383c7317a2feccc50aa9578d5cf71478d",
+      "collaborator_branch": "collab/protostellar-collapse-first-core-v1",
+      "collaborator_tag": "protostellar-firstcore-v1",
+      "collaborator_commit": "6e658312bb504a90b2e385604193213c2bb07702",
+      "figure_branch": "paper/protostellar-collapse-figures-v1",
+      "figure_commit": "59ff33be1f9352cd5fa33c0f25f85105f941550b",
+      "figures_integrated_into_review_branch": true,
+      "selected_figures": {
+        "final_radial_pdf": {
+          "path": "tst/nrfld_validation/collapse_paper_figures_v1/collapse_final_radial.pdf",
+          "sha256": "d397daa7f3af45cbf24e48f02f908739418fd435cf2618a60f99f3f6f8549ee6"
+        },
+        "evolution_pdf": {
+          "path": "tst/nrfld_validation/collapse_paper_figures_v1/collapse_evolution.pdf",
+          "sha256": "a5764dda106f07cf39d2eeaf5a7d07767c74df623113538393f4d583be2bcad5"
+        },
+        "diagnostic_xy_slice_pdf": {
+          "path": "tst/nrfld_validation/collapse_paper_figures_v1/collapse_final_xy_slice.pdf",
+          "sha256": "c32482e0966343d8e0f3e8956775ca0247b3cf022db73603872749da882a1b74",
+          "paper_role": "diagnostic_supplement_not_main_shape_accuracy_figure"
+        }
+      },
+      "xd_jobs": [338469, 338485, 338486],
+      "sha256": {
+        "binary": "908d5def56faf5e0993526f1c709b2593eec814a2a26ffd83d4a0133b6ac0810",
+        "input": "aad81db83087d27351db59ef70b9b14a68e8a2dc3e6fc164a4cb73e8d413e7e6",
+        "eos_table": "742a3456923d4c7056c3705accbcc793af3e0c79408a2f597a0cd9271b13ba43",
+        "opacity_table": "6c42445452bca6aeca1253f31ab049b2ff107dea3601f946b4c61c93db022f94",
+        "final_hdf5": "13767189008f53ffb9e802b7ef66dcd97faff7045adbdd59051d19269a0354ac"
+      },
+      "excluded_claims": [
+        "matched-condition reproduction of Mayer et al. (2025)",
+        "second-core formation",
+        "high-temperature opacity validation",
+        "resolution convergence of the Cartesian directional imprint"
+      ]
+    },
+    "solar_local_convection": {
+      "decision": "include_with_limited_claim",
+      "paper_role": "secondary_application_if_space_permits",
+      "claim": "Stable non-magnetic three-dimensional radiative-convective transport with tabulated EOS, physical Rosseland opacity, and grey FLD, including controlled 96 km states bracketing one solar flux.",
+      "gate_commit": "8dfaa1a2ab788287519778d9eead20fa723c7240",
+      "gate_document": "doc/solar_application_gate_20261120.md",
+      "gate_report": {
+        "path": "tst/nrfld_validation/solar_application_gate_20261120/index.html",
+        "flux_figure": "tst/nrfld_validation/solar_application_gate_20261120/flux_gate.png",
+        "flux_figure_sha256": "23be4d2afe005a6fff5dc665d069684bad293fdbcf9b5b3b4f294a754e2f503a"
+      },
+      "evidence_source": {
+        "base_commit": "1924314e611eca8e89e451860032e4363dd0f9e3",
+        "working_tree_state": "hashed_uncommitted_four_file_diff",
+        "binary_sha256": "203a72c932d944ac510faa8ab5621b91cb438c45cbd087366dd67662e4d9b232",
+        "pgen_sha256": "cf045b866babbefd0bbcb46a9b06e60b68831ffa748a674ee34a4d36ab3f4350",
+        "four_file_diff_sha256": "57e4dfdfd580c8c4329c784959ef84cdbccded37ef27d01a92feb134053fe70f",
+        "archived_top_face_patch_sha256": "dca932ded6c463f171fc0e03e98381439c8d72f506c70f96916c4abd743f80d8"
+      },
+      "clean_opt_in_candidate": {
+        "branch": "exp/wor174-solar-top-face-optin-20261120",
+        "implementation_commit": "2670facd11ea872d45565d091ad8da8b8709c771",
+        "provenance_fix_commit": "f3bfffa4f31d9589ebb2660bed30ba2da02304a8",
+        "mature_ab_report_commit": "2a75dcfae",
+        "default_enabled": false,
+        "adopted_into_publication_source": false,
+        "remaining_gate": null,
+        "mature_same_restart_ab": {
+          "xd_job": 343705,
+          "start_time": 65000.0,
+          "end_time": 66000.0,
+          "slurm_state": "COMPLETED",
+          "exit_code": "0:0",
+          "disabled_top_radiation_fsun_1000": 0.17652179357142858,
+          "enabled_top_radiation_fsun_1000": 1.1648905166666665,
+          "disabled_mass_drift_final": 0.00342365,
+          "enabled_mass_drift_final": 0.00359314,
+          "enabled_final_fallback_fraction": 0.128662109375,
+          "decision": "PASS as a default-off option for the tested solar application; not a global FLD default"
+        }
+      },
+      "excluded_claims": [
+        "grid-converged emergent flux",
+        "quantitative reproduction of the observed solar atmosphere",
+        "non-grey spectral validation",
+        "unique asymptotic thermal equilibrium"
+      ]
+    }
+  },
+  "separate_not_automatically_integrated": [
+    "WOR-120/WOR-122 RSG high-order and SMR experiments",
+    "WOR-123 default-off plateau-based inexact FGMRES",
+    "WOR-124 table-EOS MHD and strong-field experiments",
+    "WOR-115 unused post-AMR ambient-reset trial"
+  ]
+}
