@@ -144,10 +144,16 @@ int main(int argc, char** argv) {
     const History wz_history = ReadHistory(argv[2]);
     const Diagnostics x2 = GetDiagnostics(x2_history);
     const Diagnostics wz = GetDiagnostics(wz_history);
-    const double time_scale = std::max(std::max(std::abs(x2.time), std::abs(wz.time)),
-                                       1.0);
-    if (std::abs(x2.time-wz.time) > 1.0e-12*time_scale) {
-      throw std::runtime_error("A/B histories end at different times");
+    const double time_scale = std::max(
+        std::max(std::abs(x2.time), std::abs(wz.time)),
+        std::numeric_limits<double>::min());
+    const double time_relative_difference = std::abs(x2.time-wz.time)/time_scale;
+    // A fixed-cycle throughput gate normally ends at slightly different physical
+    // times because the methods have independent CFL estimates.  Permit a 0.1%
+    // mismatch and report it explicitly; fixed-time stability gates still end at
+    // the same time to roundoff.
+    if (time_relative_difference > 1.0e-3) {
+      throw std::runtime_error("A/B final times differ by more than 0.1 percent");
     }
     const std::vector<double>& wz_final = wz_history.rows.back();
     const double available = Value(wz_history, wz_final, "wenoz_available_cells");
@@ -169,6 +175,11 @@ int main(int argc, char** argv) {
     output << std::scientific << std::setprecision(12)
            << "{\n"
            << "  \"final_time_code\": " << x2.time << ",\n"
+           << "  \"rk2_x2_final_time_code\": " << x2.time << ",\n"
+           << "  \"rk4_4wz_final_time_code\": " << wz.time << ",\n"
+           << "  \"final_time_absolute_difference\": " << wz.time-x2.time << ",\n"
+           << "  \"final_time_symmetric_relative_difference\": "
+           << SymmetricRelativeDifference(x2.time, wz.time) << ",\n"
            << "  \"wenoz_available_cells\": " << available << ",\n"
            << "  \"wenoz_sensor_fallback_cells\": " << sensor << ",\n"
            << "  \"wenoz_amr_fallback_cells\": " << amr << ",\n"
