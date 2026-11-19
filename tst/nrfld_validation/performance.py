@@ -76,7 +76,13 @@ def input_text(args, ranks, enabled):
                 "include_radiation_force": "true", "const_opacity": 0.4,
                 "stage_diagnostics": "false"},
         "nrfld": {"mgmode": "MGI", "fas": "false", "smoother": "jacobi-rb",
-                  "prolongation": "trilinear", "npresmooth": 2, "npostsmooth": 2,
+                  "linear_solver": args.linear_solver,
+                  "fgmres_threshold": 1e-10, "fgmres_restart": 20,
+                  "fgmres_max_iterations": 200, "fgmres_mg_vcycles": 1,
+                  "coarse_operator": args.coarse_operator,
+                  "prolongation": ("constant" if args.coarse_operator == "galerkin"
+                                   else "trilinear"),
+                  "npresmooth": 2, "npostsmooth": 2,
                   "omega": 1, "threshold": 1e-10, "nr_threshold": 1e-8,
                   "nr_max_iterations": 100, "failure_policy": "abort",
                   "diagnostic_verbosity": 0, "coarse_solver": "direct",
@@ -157,6 +163,12 @@ def analyse(directory, args, ranks, case):
         raise ValueError("Unexpected final time (CFL may have reduced requested dt)")
     raw = [json.loads((directory / f"performance_rank{rank}.json").read_text())
            for rank in range(ranks)]
+    resources = [json.loads((directory / f"resource_rank{rank}.json").read_text())
+                 for rank in range(ranks)]
+    if ([item["rank"] for item in resources] != list(range(ranks)) or
+            any(item["returncode"] != 0 or item["max_rss_kib"] <= 0
+                for item in resources)):
+        raise ValueError("Invalid per-rank resource records")
     for rank, item in enumerate(raw):
         if item["rank"] != rank or len(item["steps"]) != args.steps:
             raise ValueError("Incomplete timing window")
@@ -196,6 +208,11 @@ def analyse(directory, args, ranks, case):
             "mass_relative_drift": mass_drift, "minimum_rho": float(fields["rho"].min()),
             "minimum_pressure": float(fields["press"].min()),
             "short_window": wall < 10.0,
+            "max_rank_rss_kib": max(item["max_rss_kib"] for item in resources),
+            "mean_rank_rss_kib": float(np.mean([item["max_rss_kib"]
+                                                 for item in resources])),
+            "sum_rank_peak_rss_kib": sum(item["max_rss_kib"] for item in resources),
+            "resource_note": "Per-rank child high-water marks; their sum is not a simultaneous node RSS measurement",
             "rank_mean_unassigned_seconds": mean_wall - sum(v["mean"] for v in seconds.values())}
 
 
@@ -244,7 +261,9 @@ def aggregate(root, runs, mode):
     for case, ranks in sorted({(r["case"], r["ranks"]) for r in good}):
         group = [r for r in good if r["case"] == case and r["ranks"] == ranks]
         times = [r["metrics"]["seconds_per_step"] for r in group]
-        rows.append({"case": case, "ranks": ranks, "repeats": len(group),
+        rows.append({"case": case, "linear_solver": group[0]["linear_solver"],
+                     "coarse_operator": group[0]["coarse_operator"],
+                     "ranks": ranks, "repeats": len(group),
                      "seconds_per_step_median": float(np.median(times)),
                      "seconds_per_step_min": min(times), "seconds_per_step_max": max(times),
                      "implicit_fld_fraction_mean": float(np.mean([
@@ -275,6 +294,9 @@ def main():
     p.add_argument("--repeat", type=int, default=3)
     p.add_argument("--dt", type=float, default=1e-4)
     p.add_argument("--mode", choices=["strong", "weak"], default="strong")
+    p.add_argument("--linear-solver", choices=["mg", "fgmres"], default="mg")
+    p.add_argument("--coarse-operator", choices=["rediscretized", "galerkin"],
+                   default="rediscretized")
     p.add_argument("--build-jobs", type=int, default=4)
     p.add_argument("--timeout", type=float, default=900)
     p.add_argument("--hdf5-path", type=Path)
@@ -306,6 +328,8 @@ def main():
     manifest["builds"] = {}
     (root / "source.diff").write_text(subprocess.check_output(["git", "diff", "HEAD"], cwd=repo, text=True))
     shutil.copy2(__file__, root / "performance.py.archive")
+    resource_wrapper = Path(__file__).resolve().with_name("rank_resource_wrapper.py")
+    shutil.copy2(resource_wrapper, root / "rank_resource_wrapper.py.archive")
     # Freeze once: concurrent edits must not change the physics between builds.
     if not args.build_root:
         prepare_build_source(repo, root / "source_snapshot")
@@ -356,6 +380,8 @@ def main():
                     directory = root / f"{case}_p{ranks}_r{repeat}"
                     directory.mkdir()
                     run = {"case": case, "ranks": ranks, "repeat": repeat, "path": str(directory),
+                           "linear_solver": args.linear_solver,
+                           "coarse_operator": args.coarse_operator,
                            "measured_steps": args.steps, "commands": [], "status": "running"}
                     manifest["runs"].append(run)
                     try:
@@ -364,7 +390,9 @@ def main():
                         command = ["mpirun", "--bind-to", args.bind_to]
                         if args.bind_to == "hwthread":
                             command += ["--use-hwthread-cpus"]
-                        command += ["--report-bindings", "-np", str(ranks), str(binary), "-i", "input.used"]
+                        command += ["--report-bindings", "-np", str(ranks),
+                                    sys.executable, str(resource_wrapper), str(directory),
+                                    str(binary), "-i", "input.used"]
                         run["elapsed_seconds"] = execute(command, directory, directory / "run.log",
                                                           args.timeout, run["commands"])
                         run["metrics"] = analyse(directory, args, ranks, case)
@@ -372,7 +400,11 @@ def main():
                             control = directory / "timer_off"
                             control.mkdir()
                             (control / "input.used").write_text(input_text(args, ranks, False))
-                            off_time = execute(command, control, control / "run.log", args.timeout, run["commands"])
+                            off_command = list(command)
+                            wrapper_output_index = off_command.index(str(directory))
+                            off_command[wrapper_output_index] = str(control)
+                            off_time = execute(off_command, control, control / "run.log", args.timeout,
+                                               run["commands"])
                             if "FATAL" in (control / "run.log").read_text():
                                 raise ValueError("Timer-off control failed")
                             left, right = final_fields(directory), final_fields(control)

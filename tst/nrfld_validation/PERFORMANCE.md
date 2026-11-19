@@ -15,6 +15,15 @@ python3 /home/kosuke/simulation/athena/tst/nrfld_validation/performance.py \
   --hdf5-path /usr/lib/x86_64-linux-gnu/hdf5/openmpi
 ```
 
+The default linear solve is the historical standalone MG path. Select the
+current Krylov path explicitly with `--linear-solver fgmres`; it uses an MG
+V-cycle as a right preconditioner and records the selection in every run and
+summary row. Uniform-grid Galerkin comparison is available through
+`--coarse-operator galerkin`, which also selects the required constant
+variational prolongation. The default `rediscretized` operator retains
+trilinear prolongation. Run the policies in separate invocations so each
+result directory has one unambiguous solver configuration.
+
 `--hdf5-path` is machine-specific; omit it if the compiler already finds HDF5.
 Requirements: Python numpy/h5py/matplotlib, C++11, Open MPI (`--bind-to` options),
 and the parallel HDF5 C library. The MESA SDK's serial HDF5 is not suitable for
@@ -70,6 +79,10 @@ and the cycle, dt, active global cells, Newton count/residual/reason for each st
 One MPI barrier starts the measurement window after warm-up. No barriers or
 reductions are added between phases. Initial setup and final snapshots lie
 outside the timed window; launcher/end-to-end time is recorded separately.
+Each MPI rank is launched through a thin wrapper that records
+`resource_rank<N>.json`, including the rank's child-process peak RSS and CPU
+usage. The reported sum of rank peak RSS values is an upper-bound-style
+diagnostic, not a simultaneous node high-water measurement.
 
 - `explicit_integrator`: HD or MHD stage task list, including radiation transport,
   coupled Riemann work and gravity source work where enabled.
@@ -111,7 +124,8 @@ isolated timer-overhead estimate; short-run ratios are noisy.
 - `summary.json`, `summary.csv`: metrics, repeat ranges, scaling efficiency.
 - `timing_breakdown.png`, `scaling.png`: diagnostic figures.
 - Each case/rank/repeat directory: materialized input, log, raw rank timings,
-  initial/final HDF5 snapshots, history, optional `timer_off/` control.
+  per-rank resource records, initial/final HDF5 snapshots, history, optional
+  `timer_off/` control.
 - Nonzero exit on any failed run. Failed measurements retain their logs and
   manifest entries; they are excluded from timing figures.
 

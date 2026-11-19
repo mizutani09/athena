@@ -17,7 +17,8 @@ class PerformanceAnalysisTests(unittest.TestCase):
         self.addCleanup(self.tmp.cleanup)
         self.root = Path(self.tmp.name)
         self.args = argparse.Namespace(warmup=1, steps=2, dt=1e-4, mode="strong",
-                                       resolution=32, block=16)
+                                       resolution=32, block=16, linear_solver="mg",
+                                       coarse_operator="rediscretized")
         (self.root / "run.log").write_text("Terminating on cycle limit\n")
         (self.root / "benchmark.hst").write_text("0 0.0001 1\n0.0003 0.0001 1\n")
         for kind, names in (("prim", ["rho", "press"]), ("rad", ["Er"])):
@@ -37,6 +38,9 @@ class PerformanceAnalysisTests(unittest.TestCase):
                            "newton_iterations": 2, "newton_l2": 1e-10,
                            "newton_max": 1e-9, "newton_reason": "converged"}
                           for i in (1, 2)]})
+            (self.root / f"resource_rank{rank}.json").write_text(json.dumps({
+                "rank": rank, "returncode": 0, "max_rss_kib": 1000 + rank
+            }))
         self.save()
 
     def save(self):
@@ -50,6 +54,8 @@ class PerformanceAnalysisTests(unittest.TestCase):
         result = self.read()
         self.assertEqual(result["implicit_fld_fraction_rank_mean"], 0.5)
         self.assertEqual(result["zone_cycles_per_second"], 65536)
+        self.assertEqual(result["max_rank_rss_kib"], 1001)
+        self.assertEqual(result["sum_rank_peak_rss_kib"], 2001)
 
     def test_fatal_even_if_launcher_returned_zero(self):
         (self.root / "run.log").write_text("### FATAL ERROR\n")
@@ -87,6 +93,15 @@ class PerformanceAnalysisTests(unittest.TestCase):
         self.assertIn("nx2 = 64", text)
         self.assertIn("nx3 = 32", text)
         self.assertIn("x1max = 2", text)
+
+    def test_fgmres_galerkin_selects_variational_transfer(self):
+        self.args.linear_solver = "fgmres"
+        self.args.coarse_operator = "galerkin"
+        text = input_text(self.args, 1, True)
+        self.assertIn("linear_solver = fgmres", text)
+        self.assertIn("fgmres_threshold = 1e-10", text)
+        self.assertIn("coarse_operator = galerkin", text)
+        self.assertIn("prolongation = constant", text)
 
     def test_roundoff_is_distinguished_from_changed_solution(self):
         a = {"Bcc1": np.array([0.1])}
