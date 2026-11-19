@@ -1,0 +1,28 @@
+{
+  "passed": true,
+  "recorded_at_jst": "2026-11-20",
+  "review_branch_commit": "2fe5102cdd58e25100415acc9e7e2d31f02896d0",
+  "source_tree_git": "c4ab200383c7317a2feccc50aa9578d5cf71478d",
+  "input_sha256": "aad81db83087d27351db59ef70b9b14a68e8a2dc3e6fc164a4cb73e8d413e7e6",
+  "table_sha256": {
+    "data/eos/protostellar_tomida2015_material.tab": "742a3456923d4c7056c3705accbcc793af3e0c79408a2f597a0cd9271b13ba43",
+    "data/opacity/protostellar_semenov2003_nrm_c_a.h5": "6c42445452bca6aeca1253f31ab049b2ff107dea3601f946b4c61c93db022f94"
+  },
+  "binary_sha256": "2f1bae484696bd05e0cf70d9deb1e6df512dd67bf99ae7346feea1ae6476f112",
+  "mpi_ranks": 2,
+  "newton_calls": 1,
+  "fgmres_calls": 2,
+  "fgmres_max_iterations": 207,
+  "fgmres_max_true_relative_residual": 5.7348670354221436e-08,
+  "fgmres_inexact_accepts": 2,
+  "gas_mass_relative_change": -3.219646771412954e-15,
+  "rho_max_g_cm3": 5.260380295676447e-18,
+  "Tgas_max_K": 13.99108112916993,
+  "jeans_min_cells": 30.31325552283023,
+  "history_sha256": "791eea68ebf755b0be4b1d589bc7e0399ba0cf4a3a774c62449f80ccfe5c57ab",
+  "launcher_maxrss_kib": 412776,
+  "configure_seconds": 0.06445744098164141,
+  "build_seconds": 105.74681049998617,
+  "run_seconds": 55.87970241997391,
+  "raw_output_root": "/home/kosuke/simulation/test/rad_nr/wor114_publication_candidate_20261120/smoke_head_2rank_20261120"
+}

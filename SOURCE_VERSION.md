@@ -33,6 +33,12 @@ test and the fixed input.  The exact input SHA-256 is
 `aad81db83087d27351db59ef70b9b14a68e8a2dc3e6fc164a4cb73e8d413e7e6`.
 External tables are not bundled in public Git.
 
+The acceptance test was repeated from review commit `2fe5102c` on
+2026-11-20 with two MPI ranks.  It reproduced the recorded binary hash,
+converged one Newton solve with two bounded-inexact FGMRES accepts, and had a
+gas-mass relative change of `-3.22e-15`.  The compact machine-readable record
+is `examples/protostellar_firstcore_v1/review_head_repeat_20261120.json`.
+
 The selected paper figures, caption drafts, and claim boundary are collected
 in `tst/nrfld_validation/publication_applications_20261120.html` and
 `doc/fld_application_selection_20261120.md`.
