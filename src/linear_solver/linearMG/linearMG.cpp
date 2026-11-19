@@ -128,8 +128,9 @@ linearMGDriver::linearMGDriver(Mesh *pm, ParameterInput *pin, NewtonRaphsonDrive
       coefficient_diagnostics_(false), coefficient_diagnostic_limit_(1),
       coefficient_diagnostic_count_(0), uniform_pcg_(false),
       uniform_pcg_threshold_(1.0e-10), uniform_pcg_max_iterations_(10000),
-      fgmres_(false), fgmres_threshold_(1.0e-8), fgmres_restart_(20),
-      fgmres_max_iterations_(200), fgmres_mg_vcycles_(1),
+      fgmres_(false), fgmres_threshold_(1.0e-8),
+      fgmres_inexact_true_cap_(0.0), fgmres_stagnation_ratio_(0.9),
+      fgmres_restart_(20), fgmres_max_iterations_(200), fgmres_mg_vcycles_(1),
       galerkin_coarse_operator_(false), experimental_27_point_galerkin_(false) {
   eps_ = pin->GetOrAddReal("nrfld", "threshold", -1.0);
   niter_ = pin->GetOrAddInteger("nrfld", "niteration", -1);
@@ -179,6 +180,21 @@ linearMGDriver::linearMGDriver(Mesh *pm, ParameterInput *pin, NewtonRaphsonDrive
     ATHENA_ERROR(msg);
   }
   fgmres_threshold_ = pin->GetOrAddReal("nrfld", "fgmres_threshold", 1.0e-8);
+  // The environment defaults allow a bounded pilot to be resumed from an old
+  // restart that predates these parameters.  An explicit input/restart value
+  // always wins and is written into subsequent restarts.
+  const char *inexact_cap_env = std::getenv(
+      "ATHENA_NRFLD_INEXACT_TRUE_CAP");
+  const Real default_inexact_cap = inexact_cap_env != nullptr
+      ? std::strtod(inexact_cap_env, nullptr) : 0.0;
+  const char *stagnation_ratio_env = std::getenv(
+      "ATHENA_NRFLD_INEXACT_STAGNATION_RATIO");
+  const Real default_stagnation_ratio = stagnation_ratio_env != nullptr
+      ? std::strtod(stagnation_ratio_env, nullptr) : 0.9;
+  fgmres_inexact_true_cap_ = pin->GetOrAddReal(
+      "nrfld", "fgmres_inexact_true_cap", default_inexact_cap);
+  fgmres_stagnation_ratio_ = pin->GetOrAddReal(
+      "nrfld", "fgmres_stagnation_ratio", default_stagnation_ratio);
   fgmres_restart_ = pin->GetOrAddInteger("nrfld", "fgmres_restart", 20);
   fgmres_max_iterations_ = pin->GetOrAddInteger(
       "nrfld", "fgmres_max_iterations", 200);
@@ -210,12 +226,19 @@ linearMGDriver::linearMGDriver(Mesh *pm, ParameterInput *pin, NewtonRaphsonDrive
       || !std::isfinite(uniform_pcg_threshold_)
       || uniform_pcg_max_iterations_ <= 0
       || !(fgmres_threshold_ > 0.0) || !std::isfinite(fgmres_threshold_)
+      || !std::isfinite(fgmres_inexact_true_cap_)
+      || fgmres_inexact_true_cap_ < 0.0 || fgmres_inexact_true_cap_ > 1.0e-1
+      || !std::isfinite(fgmres_stagnation_ratio_)
+      || !(fgmres_stagnation_ratio_ > 0.0)
+      || !(fgmres_stagnation_ratio_ < 1.0)
       || fgmres_restart_ <= 0 || fgmres_max_iterations_ <= 0
       || fgmres_mg_vcycles_ <= 0) {
     std::stringstream msg;
     msg << "### FATAL ERROR in linearMGDriver::linearMGDriver" << std::endl
         << "Krylov thresholds must be finite and positive, and iteration, "
-        << "restart, and MG V-cycle counts must be positive." << std::endl;
+        << "restart, and MG V-cycle counts must be positive; the optional "
+        << "inexact true-residual cap must be in [0, 0.1], and its "
+        << "stagnation ratio must be in (0, 1)." << std::endl;
     ATHENA_ERROR(msg);
   }
   cache_coefficient_hierarchy_ =
@@ -364,6 +387,8 @@ linearMGDriver::linearMGDriver(Mesh *pm, ParameterInput *pin, NewtonRaphsonDrive
                 << " compact=" << fgmres_compact_basis_
                 << " reuse=" << fgmres_reuse_basis_
                 << " batched_reductions=" << fgmres_batched_reductions_
+                << " inexact_true_cap=" << fgmres_inexact_true_cap_
+                << " stagnation_ratio=" << fgmres_stagnation_ratio_
                 << std::endl;
     }
     if (experimental_27_point_galerkin_) {
@@ -1637,6 +1662,19 @@ void linearMGDriver::SolveFGMRES(int stage) {
   Real relative_residual = static_cast<Real>(beta/bnorm);
   int total_iterations = 0;
   bool breakdown = false;
+  // Optional bounded inexact-Newton pilot.  Evaluate progress only at restart
+  // boundaries, where x and the independently recomputed true residual are
+  // consistent.  A slow projected residual is never sufficient by itself:
+  // the true residual must also be below the explicit cap.  The outer Newton
+  // merit and convergence tests remain unchanged.
+  const Real inexact_cap = fgmres_inexact_true_cap_;
+  const Real stagnation_ratio = fgmres_stagnation_ratio_;
+  const bool inexact_enabled = std::isfinite(inexact_cap)
+      && inexact_cap > fgmres_threshold_ && inexact_cap <= 1.0e-1
+      && std::isfinite(stagnation_ratio)
+      && stagnation_ratio > 0.0 && stagnation_ratio < 1.0;
+  Real previous_true_residual = relative_residual;
+  bool stagnation_stop = false;
 
   while (relative_residual > fgmres_threshold_
          && total_iterations < fgmres_max_iterations_) {
@@ -1738,8 +1776,29 @@ void linearMGDriver::SolveFGMRES(int stage) {
     beta = norm(r);
     relative_residual = static_cast<Real>(beta/bnorm);
     if (breakdown) break;
+    if (inexact_enabled) {
+      const Real progress_ratio = relative_residual/previous_true_residual;
+      if (Globals::my_rank == 0) {
+        std::cout << "[LINEAR_FGMRES_RESTART] iterations=" << total_iterations
+                  << " true_relative_residual=" << relative_residual
+                  << " progress_ratio=" << progress_ratio
+                  << " inexact_cap=" << inexact_cap
+                  << " stagnation_ratio=" << stagnation_ratio << std::endl;
+      }
+      // Require two completed restart intervals.  This prevents an ordinary
+      // first-restart decrease from being classified as stagnation.
+      stagnation_stop = total_iterations > width
+          && relative_residual > fgmres_threshold_
+          && relative_residual <= inexact_cap
+          && progress_ratio >= stagnation_ratio;
+      previous_true_residual = relative_residual;
+      if (stagnation_stop) break;
+    }
   }
   load_delta(x);
+  const bool inexact_accept = !breakdown && stagnation_stop
+      && std::isfinite(relative_residual)
+      && relative_residual <= inexact_cap;
   if (Globals::my_rank == 0) {
     std::cout << "[LINEAR_FGMRES] iterations=" << total_iterations
               << " relative_residual=" << relative_residual
@@ -1754,16 +1813,21 @@ void linearMGDriver::SolveFGMRES(int stage) {
               << " workspace_bytes=" << (basis_slots + work_slots)*sizeof(Real)
               << " workspace_rebuilt=" << workspace_rebuilt
               << " workspace_rebuilds=" << fgmres_workspace_rebuilds_
+              << " inexact_accept=" << inexact_accept
+              << " inexact_cap=" << inexact_cap
+              << " stagnation_stop=" << stagnation_stop
               << " breakdown=" << breakdown << std::endl;
   }
-  if (breakdown || !(relative_residual <= fgmres_threshold_)
+  if (breakdown
+      || (!(relative_residual <= fgmres_threshold_) && !inexact_accept)
       || !std::isfinite(relative_residual)) {
     std::stringstream msg;
     msg << "### FATAL ERROR in linearMGDriver::SolveFGMRES" << std::endl
         << "FGMRES did not reach its requested relative residual: iterations="
         << total_iterations << ", relative_residual=" << relative_residual
         << ", target=" << fgmres_threshold_ << ", breakdown=" << breakdown
-        << "." << std::endl;
+        << ", inexact_accept=" << inexact_accept
+        << ", inexact_cap=" << inexact_cap << "." << std::endl;
     ATHENA_ERROR(msg);
   }
 }
