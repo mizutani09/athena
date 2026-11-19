@@ -113,6 +113,7 @@ void WriteMetric(std::ostream& output, const char* name, double x2, double wz,
                  bool trailing_comma) {
   output << "  \"" << name << "\": {\"rk2_x2\": " << x2
          << ", \"rk4_4wz\": " << wz
+         << ", \"absolute_difference\": " << wz-x2
          << ", \"symmetric_relative_difference\": "
          << SymmetricRelativeDifference(x2, wz) << "}"
          << (trailing_comma ? "," : "") << "\n";
