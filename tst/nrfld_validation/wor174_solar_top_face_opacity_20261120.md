@@ -144,13 +144,27 @@ remain small but nonzero: `1.33e-10` in density, `7.00e-11` in pressure,
 components.  This is a stability/default-isolation smoke, not the physical
 selection test.
 
-The mature-state same-restart A/B is XD job `343667`.  It starts at code time
-65,000 from the selected high-entropy HD2 state and evolves enabled/disabled
-paths concurrently to 66,000.  Its result is deliberately pending and is the
-remaining production-selection gate.  The versioned 36-column clean-history
-analyzer rejects the two advective-radiation columns that existed only in the
-historical dirty checkout, and reports 100/500/1000-time windows, energy
-storage/closure, mass drift, timestep, velocity RMS, Newton, and FGMRES work.
+The first mature-state submission, XD job `343667`, is excluded from physical
+results.  Both concurrent steps stopped in `MPI_Init` with
+`PMI2_Job_GetId returned 14`; Slurm reported exit `1:0` after 5 s and step
+MaxRSS values of 13.1 and 13.2 MiB.  The launcher exported Intel MPI's PMI2
+library but, unlike the passing single-step smoke, did not explicitly select
+Slurm's `pmi2` plugin.  No timestep was attempted.
+
+Commit `f6f65eab1` adds `srun --mpi=pmi2` and a launcher-only concurrent-step
+gate.  M-test job `343701` ran two simultaneous 32-rank one-node Athena
+invocations.  Athena initializes MPI before processing `-h`, so this tests the
+failed path without advancing a physical simulation.  Both steps exited zero,
+the job completed `0:0` in 4 s, and step MaxRSS was 52.3/54.7 MiB.  The long
+A/B was then resubmitted as job `343705`.
+
+The accepted mature-state same-restart A/B starts at code time 65,000 from the
+selected high-entropy HD2 state and evolves enabled/disabled paths concurrently
+to 66,000.  Its result is deliberately pending and is the remaining
+production-selection gate.  The versioned 36-column clean-history analyzer
+rejects the two advective-radiation columns that existed only in the historical
+dirty checkout, and reports 100/500/1000-time windows, energy storage/closure,
+mass drift, timestep, velocity RMS, Newton, and FGMRES work.
 
 ## Decision
 
