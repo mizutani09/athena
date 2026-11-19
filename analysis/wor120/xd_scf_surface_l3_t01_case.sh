@@ -61,7 +61,7 @@ sha256sum bin/athena "$restart" src/eos/eos_high_order.cpp \
   time/nlim=-1 time/tlim="$target_time" \
   gravity/mgmode=fmg gravity/threshold=-1.0 gravity/niteration=0 \
   output1/dcycle=100 output2/dt=-1 output3/dt=-1 \
-  output4/dt=-1 output5/dt=-1 \
+  output4/dt="$target_time" output4/next_time="$target_time" output5/dt=-1 \
   > "$run/stdout.log" 2> "$run/stderr.log"
 
 grep -q 'Terminating on time limit' "$run/stdout.log"

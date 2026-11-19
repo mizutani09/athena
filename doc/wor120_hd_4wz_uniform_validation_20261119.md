@@ -274,10 +274,19 @@ allocation. The dependent sustained jobs use the same seed and three nodes.
 The first sustained 4wz attempt (`343499`) was stopped by the Slurm memory cgroup at
 cycle zero; it was not a numerical failure.  Its 168 ranks averaged about 2.06 GB RSS
 and one rank reached 4.09 GB, exhausting the 110 GiB-per-node limit on three M nodes.
-The x2 job `343498` continues normally in the same allocation.  The replacement 4wz
-job `343525` keeps 168 ranks but spreads them over two 512 GB P nodes (84 ranks per
-node, 300 GiB requested per node).  This isolates the memory-capacity correction from
-the numerical A/B conditions; the restart, executable SHA-256
+The x2 evolution `343498` reached `0.1 t_dyn` in 2,282.78 s of wall time with 2,416
+MeshBlocks fixed throughout.  It passes all nine numeric gates: zero stellar-mass
+drift, maximum angular-momentum drift `1.64e-5`, maximum mechanical-energy drift
+`1.72e-6`, maximum radial Mach RMS `6.79e-3`, and maximum absolute virial residual
+`2.51e-3`.  Its Slurm batch status is `FAILED` only because the script disabled
+restart output and then required a final restart; the MPI evolution step completed
+normally and the history was analyzed separately.  The script now keeps one restart
+output active at the target time so subsequent sustained runs preserve their final
+state and reach postprocessing.
+
+The replacement baseline 4wz job `343525` keeps 168 ranks but spreads them over two
+512 GB P nodes (84 ranks per node, 300 GiB requested per node).  This isolates the
+memory-capacity correction from the numerical A/B conditions; the restart, executable SHA-256
 `675c9e7a1ee5c791b9bd35b2cc1a01749f90144758b830540c1e7d2b3b13c082`, target time,
 and runtime parameters are unchanged.  Comparison job `343526` waits for both
 sustained evolutions.
