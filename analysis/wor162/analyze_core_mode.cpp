@@ -1,5 +1,6 @@
 #include <glob.h>
 
+#include <algorithm>
 #include <array>
 #include <cmath>
 #include <fstream>
@@ -15,6 +16,8 @@ namespace {
 
 constexpr double kOmegaCode = 4.0e-8*2.19999657e4;
 constexpr int kMaximumMode = 4;
+constexpr double kAnnulusWidthRsun = 1.0;
+constexpr int kMaximumAnnuli = 20;
 
 struct Cell {
   double x;
@@ -93,6 +96,9 @@ struct Region {
   double radial_speed2_mass = 0.0;
   double tangential_perturbation2_mass = 0.0;
   double vertical_speed2_mass = 0.0;
+  std::array<double, kMaximumAnnuli> annular_mass{};
+  std::array<double, kMaximumAnnuli> annular_tangential_perturbation_mass{};
+  std::array<double, kMaximumAnnuli> annular_tangential_perturbation2_mass{};
   std::array<double, kMaximumMode+1> density_cos{};
   std::array<double, kMaximumMode+1> density_sin{};
   std::array<double, kMaximumMode+1> radial_cos{};
@@ -134,6 +140,14 @@ void Accumulate(Region* region, const Cell& cell) {
   region->tangential_perturbation2_mass +=
       weight*tangential_perturbation*tangential_perturbation;
   region->vertical_speed2_mass += weight*cell.vz*cell.vz;
+  const int annulus = static_cast<int>(r/kAnnulusWidthRsun);
+  if (annulus >= 0 && annulus < kMaximumAnnuli) {
+    region->annular_mass[annulus] += weight;
+    region->annular_tangential_perturbation_mass[annulus] +=
+        weight*tangential_perturbation;
+    region->annular_tangential_perturbation2_mass[annulus] +=
+        weight*tangential_perturbation*tangential_perturbation;
+  }
   const double theta = std::atan2(cell.y, cell.x);
   for (int mode = 1; mode <= kMaximumMode; ++mode) {
     const double c = std::cos(mode*theta);
@@ -152,8 +166,11 @@ void WriteHeader(std::ofstream* output) {
   *output << "snapshot,time_over_tdyn,radius_rsun,cells,slice_mass,"
       "com_x_rsun,com_y_rsun,mean_dvx,mean_dvy,mean_vz,"
       "omega_fit_code,omega_fit_over_target_minus_one,"
-      "translation_ke_fraction,radial_ke_fraction,"
-      "target_tangential_ke_fraction,best_fit_rotation_residual_ke_fraction,"
+      "in_plane_translation_ke_fraction,radial_ke_fraction,"
+      "target_tangential_ke_fraction,"
+      "axisymmetric_tangential_ke_fraction,"
+      "nonaxisymmetric_tangential_ke_fraction,"
+      "best_fit_rotation_residual_ke_fraction,"
       "vertical_ke_fraction";
   for (int mode = 1; mode <= kMaximumMode; ++mode) {
     *output << ",density_m" << mode << ",radial_velocity_m" << mode
@@ -170,11 +187,22 @@ void WriteRegion(std::ofstream* output, const std::string& snapshot,
   const double omega_fit = region.angular_momentum/region.moment;
   const double translation_speed2 =
       std::pow(region.dvx_mass/region.mass, 2)
-      +std::pow(region.dvy_mass/region.mass, 2)
-      +std::pow(region.vz_mass/region.mass, 2);
+      +std::pow(region.dvy_mass/region.mass, 2);
   const double best_fit_rotation_residual = std::max(
       0.0, region.vphi2_mass
       -region.angular_momentum*region.angular_momentum/region.moment);
+  double axisymmetric_tangential = 0.0;
+  double nonaxisymmetric_tangential = 0.0;
+  for (int annulus = 0; annulus < kMaximumAnnuli; ++annulus) {
+    const double mass = region.annular_mass[annulus];
+    if (mass <= 0.0) continue;
+    const double axisymmetric = std::pow(
+        region.annular_tangential_perturbation_mass[annulus], 2)/mass;
+    axisymmetric_tangential += axisymmetric;
+    nonaxisymmetric_tangential += std::max(
+        0.0, region.annular_tangential_perturbation2_mass[annulus]
+        -axisymmetric);
+  }
   const double total_perturbation2 = region.radial_speed2_mass
       +region.tangential_perturbation2_mass+region.vertical_speed2_mass;
   const int snapshot_number = std::stoi(snapshot);
@@ -187,6 +215,8 @@ void WriteRegion(std::ofstream* output, const std::string& snapshot,
           << region.mass*translation_speed2/total_perturbation2 << ','
           << region.radial_speed2_mass/total_perturbation2 << ','
           << region.tangential_perturbation2_mass/total_perturbation2 << ','
+          << axisymmetric_tangential/total_perturbation2 << ','
+          << nonaxisymmetric_tangential/total_perturbation2 << ','
           << best_fit_rotation_residual/total_perturbation2 << ','
           << region.vertical_speed2_mass/total_perturbation2;
   for (int mode = 1; mode <= kMaximumMode; ++mode) {
