@@ -6,8 +6,8 @@
 #SBATCH --hint=nomultithread
 #SBATCH --mem=2G
 #SBATCH --time=00:05:00
-#SBATCH --job-name=wor120_l3_t01cmp
-#SBATCH --output=/work/mizutaniks/wor120/hd4wz_scf_l3_t01_compare_%j.out
+#SBATCH --job-name=wor120_l3_m2cmp
+#SBATCH --output=/work/mizutaniks/wor120/hd4wz_scf_l3_memory2_t01_compare_%j.out
 
 set -euo pipefail
 source /etc/profile.d/modules.sh
@@ -16,10 +16,10 @@ module purge >/dev/null 2>&1
 module load tbb/2022.1 compiler-rt/2025.1.1 umf/0.10.0
 module load PrgEnv-oneapi/2025.1
 
-repository=$HOME/simulation/athena-wor120-hd4wz
+repository=$HOME/simulation/athena-wor120-hd4wz-memory2
 x2_history=${SCF_X2_HISTORY:?set SCF_X2_HISTORY}
 wz_history=${SCF_4WZ_HISTORY:?set SCF_4WZ_HISTORY}
-run=/work/mizutaniks/wor120/hd4wz_scf_l3_t01_compare_${SLURM_JOB_ID}
+run=/work/mizutaniks/wor120/hd4wz_scf_l3_memory2_t01_compare_${SLURM_JOB_ID}
 test -s "$x2_history"
 test -s "$wz_history"
 mkdir -p "$run"
