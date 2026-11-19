@@ -42,12 +42,30 @@ icpx -O2 -std=c++11 -Wall -Wextra -Werror -pedantic \
   analysis/wor120/compare_scf_cost.cpp -o "$run/compare_scf_cost"
 "$run/compare_scf_ab" "$x2_history" "$wz_history" \
   "$run/ab_comparison.json"
-sacct -j "${x2_job_id}.0" --units=K -n -P \
-  -o JobID,State,ElapsedRaw,AllocCPUS,NNodes,AveRSS,MaxRSS,MaxRSSNode,MaxRSSTask \
-  > "$run/x2_sacct.txt"
-sacct -j "${wz_job_id}.0" --units=K -n -P \
-  -o JobID,State,ElapsedRaw,AllocCPUS,NNodes,AveRSS,MaxRSS,MaxRSSNode,MaxRSSTask \
-  > "$run/4wz_sacct.txt"
+
+# A dependent job can become eligible a few seconds before slurmdbd publishes the
+# preceding step's RSS fields.  Retry briefly rather than losing an otherwise valid
+# multi-hour comparison to accounting propagation latency.
+capture_sacct() {
+  local job_id=$1
+  local output=$2
+  local attempt
+  for attempt in 1 2 3 4 5 6 7 8 9 10 11 12; do
+    sacct -j "${job_id}.0" --units=K -n -P \
+      -o JobID,State,ElapsedRaw,AllocCPUS,NNodes,AveRSS,MaxRSS,MaxRSSNode,MaxRSSTask \
+      > "$output"
+    if awk -F'|' '$2 == "COMPLETED" && $3 != "" && $4 != "" && $5 != "" \
+        && $6 != "" && $7 != "" {found=1} END {exit !found}' "$output"; then
+      return 0
+    fi
+    sleep 5
+  done
+  echo "Slurm accounting incomplete for job ${job_id}.0" >&2
+  return 1
+}
+
+capture_sacct "$x2_job_id" "$run/x2_sacct.txt"
+capture_sacct "$wz_job_id" "$run/4wz_sacct.txt"
 "$run/compare_scf_cost" \
   "$x2_run/stdout.log" "$x2_run/time.log" "$run/x2_sacct.txt" \
   "$wz_run/stdout.log" "$wz_run/time.log" "$run/4wz_sacct.txt" \
