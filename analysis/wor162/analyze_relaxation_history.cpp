@@ -104,6 +104,8 @@ int main(int argc, char** argv) {
     const std::size_t q_mass = Column(h, "stellar_ellipsoidal_radius_mass_g");
     const std::size_t q_max = Column(h, "stellar_ellipsoidal_radius_max");
     const std::size_t wenoz_cells = OptionalColumn(h, "wenoz_available_cells");
+    const std::size_t wenoz_sensor = OptionalColumn(h, "wenoz_sensor_fallback_cells");
+    const std::size_t wenoz_amr = OptionalColumn(h, "wenoz_amr_fallback_cells");
     const std::size_t wenoz_fallback = OptionalColumn(h, "wenoz_plm_fallback_cells");
     const bool has_wenoz = wenoz_cells < h.names.size()
         && wenoz_fallback < h.names.size();
@@ -119,7 +121,9 @@ int main(int argc, char** argv) {
            "mean_radius_cm,rms_radius_cm,virial_relative_residual,"
            "outside_initial_surface_mass_fraction,mean_ellipsoidal_radius,"
            "max_ellipsoidal_radius,wenoz_available_cells,"
-           "wenoz_plm_fallback_cells,wenoz_plm_fallback_fraction\n";
+           "wenoz_sensor_fallback_cells,wenoz_amr_fallback_cells,"
+           "wenoz_plm_fallback_cells,wenoz_sensor_fallback_fraction,"
+           "wenoz_amr_fallback_fraction,wenoz_plm_fallback_fraction\n";
     csv << std::scientific << std::setprecision(12);
 
     double maximum_mass_drift = 0.0;
@@ -128,6 +132,8 @@ int main(int argc, char** argv) {
     double maximum_mach_rms = 0.0;
     double maximum_mach = 0.0;
     double maximum_virial = 0.0;
+    double maximum_wenoz_sensor_fraction = 0.0;
+    double maximum_wenoz_amr_fraction = 0.0;
     double maximum_wenoz_fallback_fraction = 0.0;
     for (const std::vector<double>& row : h.rows) {
       const double mechanical = row[hydro_energy]+row[self_energy]+row[core_energy];
@@ -141,6 +147,10 @@ int main(int argc, char** argv) {
           /std::abs(gravity_virial);
       const double binding = std::abs(gravity_virial);
       const double available_cells = has_wenoz ? row[wenoz_cells] : 0.0;
+      const double sensor_cells = has_wenoz && wenoz_sensor < h.names.size()
+          ? row[wenoz_sensor] : 0.0;
+      const double amr_cells = has_wenoz && wenoz_amr < h.names.size()
+          ? row[wenoz_amr] : 0.0;
       const double fallback_cells = has_wenoz ? row[wenoz_fallback] : 0.0;
       const double fallback_fraction = available_cells > 0.0
           ? fallback_cells/available_cells : 0.0;
@@ -151,7 +161,10 @@ int main(int argc, char** argv) {
           << row[nonradial_ke]/binding << ',' << row[r_mass]/row[mass] << ','
           << std::sqrt(row[r2_mass]/row[mass]) << ',' << virial << ','
           << row[outside_mass]/row[mass] << ',' << row[q_mass]/row[mass] << ','
-          << row[q_max] << ',' << available_cells << ',' << fallback_cells << ','
+          << row[q_max] << ',' << available_cells << ',' << sensor_cells << ','
+          << amr_cells << ',' << fallback_cells << ','
+          << (available_cells > 0.0 ? sensor_cells/available_cells : 0.0) << ','
+          << (available_cells > 0.0 ? amr_cells/available_cells : 0.0) << ','
           << fallback_fraction << '\n';
       maximum_mass_drift = std::max(maximum_mass_drift, std::abs(mass_drift));
       maximum_j_drift = std::max(maximum_j_drift, std::abs(j_drift));
@@ -159,6 +172,12 @@ int main(int argc, char** argv) {
       maximum_mach_rms = std::max(maximum_mach_rms, mach_rms);
       maximum_mach = std::max(maximum_mach, row[mach_max]);
       maximum_virial = std::max(maximum_virial, std::abs(virial));
+      if (available_cells > 0.0) {
+        maximum_wenoz_sensor_fraction = std::max(
+            maximum_wenoz_sensor_fraction, sensor_cells/available_cells);
+        maximum_wenoz_amr_fraction = std::max(
+            maximum_wenoz_amr_fraction, amr_cells/available_cells);
+      }
       maximum_wenoz_fallback_fraction = std::max(
           maximum_wenoz_fallback_fraction, fallback_fraction);
     }
@@ -178,6 +197,10 @@ int main(int argc, char** argv) {
          << "  \"maximum_radial_mach_rms\": " << maximum_mach_rms << ",\n"
          << "  \"maximum_radial_mach\": " << maximum_mach << ",\n"
          << "  \"maximum_abs_virial_relative_residual\": " << maximum_virial << ",\n"
+         << "  \"maximum_wenoz_sensor_fallback_fraction\": "
+         << maximum_wenoz_sensor_fraction << ",\n"
+         << "  \"maximum_wenoz_amr_fallback_fraction\": "
+         << maximum_wenoz_amr_fraction << ",\n"
          << "  \"maximum_wenoz_plm_fallback_fraction\": "
          << maximum_wenoz_fallback_fraction << "\n"
          << "}\n";

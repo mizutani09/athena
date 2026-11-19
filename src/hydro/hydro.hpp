@@ -96,6 +96,8 @@ class Hydro {
   const TroubledCellMaskBounds& GetTroubledCellMaskBounds() const {
     return troubled_cell_mask_bounds_;
   }
+  int GetWenozSensorFallbackCells() const { return wenoz_sensor_fallback_cells_; }
+  int GetWenozAmrFallbackCells() const { return wenoz_amr_fallback_cells_; }
 
   // velocity vectors derived from the Riemann solver
   AthenaArray<Real> vf[3];
@@ -124,6 +126,8 @@ class Hydro {
   AthenaArray<Real> scr1_nkji_, scr2_nkji_;
   AthenaArray<int> troubled_cell_mask_;
   TroubledCellMaskBounds troubled_cell_mask_bounds_{1, 0, 1, 0, 1, 0};
+  int wenoz_sensor_fallback_cells_{0};
+  int wenoz_amr_fallback_cells_{0};
   AthenaArray<Real> wl3d_, wr3d_;
   // 1D scratch arrays
   AthenaArray<Real> laplacian_l_fc_, laplacian_r_fc_;

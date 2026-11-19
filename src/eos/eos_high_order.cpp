@@ -257,6 +257,16 @@ void EquationOfState::ConservedToPrimitivePointValue(
     }
   }
 
+  ph->wenoz_sensor_fallback_cells_ = 0;
+  ph->wenoz_amr_fallback_cells_ = 0;
+  for (int k=pmb->ks; k<=pmb->ke; ++k) {
+    for (int j=pmb->js; j<=pmb->je; ++j) {
+      for (int i=pmb->is; i<=pmb->ie; ++i) {
+        if (mask(k,j,i) != 0) ++ph->wenoz_sensor_fallback_cells_;
+      }
+    }
+  }
+
   // Prolongated coarse-fine data do not have the same high-order meaning as native
   // same-level point samples. Reduce the complete radius-three 4wz footprint on both
   // sides of every level transition; restriction and reflux remain authoritative.
@@ -297,7 +307,13 @@ void EquationOfState::ConservedToPrimitivePointValue(
               }
             }
           }
-          if (touches_cross_level_stencil) mask(k,j,i) = 1;
+          if (touches_cross_level_stencil) {
+            const bool active = i >= pmb->is && i <= pmb->ie
+                && j >= pmb->js && j <= pmb->je
+                && k >= pmb->ks && k <= pmb->ke;
+            if (active && mask(k,j,i) == 0) ++ph->wenoz_amr_fallback_cells_;
+            mask(k,j,i) = 1;
+          }
         }
       }
     }

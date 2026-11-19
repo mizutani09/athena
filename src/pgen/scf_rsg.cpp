@@ -59,8 +59,9 @@ scf_map::AtmosphereModel atmosphere_model;
 int root_logical_level, surface_refinement_level;
 Real surface_tracer_lower, surface_tracer_upper, surface_density_code;
 constexpr int kWenozHistoryStart = 29;
-constexpr int kMeshBlockHistoryStart = 31;
 constexpr int kTrackedMeshLevels = 7;
+constexpr int kWenozLevelHistoryStart = 33;
+constexpr int kMeshBlockHistoryStart = kWenozLevelHistoryStart+kTrackedMeshLevels;
 
 int SurfaceRefinementCondition(MeshBlock* block);
 
@@ -338,11 +339,20 @@ Real HistoryWenozCells(MeshBlock* block, int output) {
             && j >= bounds.jl && j <= bounds.ju
             && k >= bounds.kl && k <= bounds.ku;
         if (output == kWenozHistoryStart && available) total += 1.0;
-        if (output == kWenozHistoryStart+1 && available && mask(k,j,i) != 0) {
+        if (output == kWenozHistoryStart+3 && available && mask(k,j,i) != 0) {
           total += 1.0;
         }
+        const int relative_level = block->loc.level-root_logical_level;
+        if (output == kWenozLevelHistoryStart+relative_level
+            && available && mask(k,j,i) != 0) total += 1.0;
       }
     }
+  }
+  if (output == kWenozHistoryStart+1) {
+    return static_cast<Real>(block->phydro->GetWenozSensorFallbackCells());
+  }
+  if (output == kWenozHistoryStart+2) {
+    return static_cast<Real>(block->phydro->GetWenozAmrFallbackCells());
   }
   return total;
 }
@@ -687,7 +697,17 @@ void Mesh::InitUserMeshData(ParameterInput* pin) {
   EnrollUserHistoryOutput(kWenozHistoryStart, HistoryWenozCells,
                           "wenoz_available_cells");
   EnrollUserHistoryOutput(kWenozHistoryStart+1, HistoryWenozCells,
+                          "wenoz_sensor_fallback_cells");
+  EnrollUserHistoryOutput(kWenozHistoryStart+2, HistoryWenozCells,
+                          "wenoz_amr_fallback_cells");
+  EnrollUserHistoryOutput(kWenozHistoryStart+3, HistoryWenozCells,
                           "wenoz_plm_fallback_cells");
+  for (int level = 0; level < kTrackedMeshLevels; ++level) {
+    std::stringstream name;
+    name << "wenoz_plm_fallback_cells_L" << level;
+    EnrollUserHistoryOutput(kWenozLevelHistoryStart+level, HistoryWenozCells,
+                            name.str().c_str());
+  }
   for (int level = 0; level < kTrackedMeshLevels; ++level) {
     std::stringstream name;
     name << "meshblocks_L" << level;

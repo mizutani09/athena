@@ -36,6 +36,8 @@ sha256sum bin/athena "$input" src/eos/eos_high_order.cpp \
 icpx -O2 -std=c++11 -Wall -Wextra -Werror -pedantic \
   analysis/wor162/analyze_relaxation_history.cpp \
   -o "$run_root/analyze_relaxation_history"
+icpx -O2 -std=c++11 -Wall -Wextra -Werror -pedantic \
+  analysis/wor120/compare_scf_ab.cpp -o "$run_root/compare_scf_ab"
 
 # Build the expensive NGHOST=4, surface-L3 state once.  Delaying next_time suppresses
 # the redundant numbered restart at t=0; the forced final restart is still written.
@@ -93,3 +95,6 @@ run_case() {
 
 run_case rk2_x2 rk2 2
 run_case rk4_4wz rk4 4wz
+"$run_root/compare_scf_ab" "$run_root/rk2_x2/scf_rsg_relax.hst" \
+  "$run_root/rk4_4wz/scf_rsg_relax.hst" "$run_root/ab_comparison.json"
+cat "$run_root/ab_comparison.json"
