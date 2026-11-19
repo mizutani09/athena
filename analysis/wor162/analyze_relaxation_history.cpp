@@ -114,8 +114,17 @@ int main(int argc, char** argv) {
     const std::size_t wenoz_fallback = OptionalColumn(h, "wenoz_plm_fallback_cells");
     const std::size_t wenoz_fallback_mass = OptionalColumn(
         h, "wenoz_plm_fallback_stellar_mass_g");
+    std::vector<std::size_t> meshblocks;
+    for (int level = 0; level <= 6; ++level) {
+      meshblocks.push_back(OptionalColumn(
+          h, "meshblocks_L"+std::to_string(level)));
+    }
     const bool has_wenoz = wenoz_cells < h.names.size()
         && wenoz_fallback < h.names.size();
+    bool has_meshblocks = true;
+    for (const std::size_t column : meshblocks) {
+      has_meshblocks = has_meshblocks && column < h.names.size();
+    }
 
     const std::vector<double>& initial = h.rows.front();
     const double initial_mechanical = initial[hydro_energy]+initial[self_energy]
@@ -133,7 +142,9 @@ int main(int argc, char** argv) {
            "wenoz_sensor_fallback_cells,wenoz_amr_fallback_cells,"
            "wenoz_plm_fallback_cells,wenoz_sensor_fallback_fraction,"
            "wenoz_amr_fallback_fraction,wenoz_plm_fallback_fraction,"
-           "wenoz_plm_fallback_stellar_mass_fraction\n";
+           "wenoz_plm_fallback_stellar_mass_fraction,meshblocks_L0,"
+           "meshblocks_L1,meshblocks_L2,meshblocks_L3,meshblocks_L4,"
+           "meshblocks_L5,meshblocks_L6,meshblocks_total\n";
     csv << std::scientific << std::setprecision(12);
 
     double maximum_mass_drift = 0.0;
@@ -150,6 +161,7 @@ int main(int argc, char** argv) {
     double maximum_wenoz_amr_fraction = 0.0;
     double maximum_wenoz_fallback_fraction = 0.0;
     double maximum_wenoz_fallback_mass_fraction = 0.0;
+    double maximum_meshblocks = 0.0;
     for (const std::vector<double>& row : h.rows) {
       const double mechanical = row[hydro_energy]+row[self_energy]+row[core_energy];
       const double mass_drift = Relative(row[mass], initial[mass]);
@@ -178,6 +190,10 @@ int main(int argc, char** argv) {
       const double fallback_mass_fraction = has_wenoz
           && wenoz_fallback_mass < h.names.size() && row[mass] > 0.0
           ? row[wenoz_fallback_mass]/row[mass] : 0.0;
+      double meshblock_total = 0.0;
+      if (has_meshblocks) {
+        for (const std::size_t column : meshblocks) meshblock_total += row[column];
+      }
       csv << row[time] << ',' << row[time]*2.19999657e4/kDay << ','
           << row[time]*2.19999657e4/kDynamicalTime << ','
           << mass_drift << ',' << j_drift << ',' << energy_drift << ','
@@ -189,7 +205,11 @@ int main(int argc, char** argv) {
           << amr_cells << ',' << fallback_cells << ','
           << (available_cells > 0.0 ? sensor_cells/available_cells : 0.0) << ','
           << (available_cells > 0.0 ? amr_cells/available_cells : 0.0) << ','
-          << fallback_fraction << ',' << fallback_mass_fraction << '\n';
+          << fallback_fraction << ',' << fallback_mass_fraction;
+      for (const std::size_t column : meshblocks) {
+        csv << ',' << (has_meshblocks ? row[column] : 0.0);
+      }
+      csv << ',' << meshblock_total << '\n';
       maximum_mass_drift = std::max(maximum_mass_drift, std::abs(mass_drift));
       maximum_j_drift = std::max(maximum_j_drift, std::abs(j_drift));
       maximum_energy_drift = std::max(maximum_energy_drift, std::abs(energy_drift));
@@ -214,6 +234,7 @@ int main(int argc, char** argv) {
           maximum_wenoz_fallback_fraction, fallback_fraction);
       maximum_wenoz_fallback_mass_fraction = std::max(
           maximum_wenoz_fallback_mass_fraction, fallback_mass_fraction);
+      maximum_meshblocks = std::max(maximum_meshblocks, meshblock_total);
     }
 
     const std::vector<double>& final = h.rows.back();
@@ -227,6 +248,14 @@ int main(int argc, char** argv) {
     const double final_fallback_cells = has_wenoz ? final[wenoz_fallback] : 0.0;
     const double final_fallback_mass = has_wenoz
         && wenoz_fallback_mass < h.names.size() ? final[wenoz_fallback_mass] : 0.0;
+    double initial_meshblock_total = 0.0;
+    double final_meshblock_total = 0.0;
+    if (has_meshblocks) {
+      for (const std::size_t column : meshblocks) {
+        initial_meshblock_total += initial[column];
+        final_meshblock_total += final[column];
+      }
+    }
     std::ofstream json(argv[3]);
     if (!json) throw std::runtime_error("cannot create JSON output");
     json << std::scientific << std::setprecision(12)
@@ -261,6 +290,14 @@ int main(int argc, char** argv) {
              ? final_fallback_cells/final_available_cells : 0.0) << ",\n"
          << "  \"final_wenoz_plm_fallback_stellar_mass_fraction\": "
          << (final[mass] > 0.0 ? final_fallback_mass/final[mass] : 0.0) << ",\n"
+         << "  \"initial_meshblocks\": " << initial_meshblock_total << ",\n"
+         << "  \"final_meshblocks\": " << final_meshblock_total << ",\n"
+         << "  \"maximum_meshblocks\": " << maximum_meshblocks << ",\n";
+    for (int level = 0; level <= 6; ++level) {
+      json << "  \"final_meshblocks_L" << level << "\": "
+           << (has_meshblocks ? final[meshblocks[level]] : 0.0) << ",\n";
+    }
+    json
          << "  \"maximum_abs_mass_relative_drift\": " << maximum_mass_drift << ",\n"
          << "  \"maximum_abs_J_relative_drift\": " << maximum_j_drift << ",\n"
          << "  \"maximum_abs_mechanical_energy_relative_drift\": "
