@@ -364,6 +364,47 @@
         "partition": "M-large-a",
         "nodes": 5,
         "start_cycle": 920,
-        "status": "PENDING_RESOURCES"
-  }
+        "end_cycle": 930,
+        "status": "COMPLETED_SAFE_AUDIT_DEPENDENCY_STOP_CYCLE_930",
+        "start_jst": "2026-11-19T00:27:13+09:00",
+        "elapsed_seconds": 118,
+        "fgmres_solve_count": 20,
+        "fgmres_iteration_min": 30,
+        "fgmres_iteration_max": 36,
+        "fgmres_residual_max": 1.9985439229542022e-08,
+        "newton_step_count": 10,
+        "newton_iteration_max": 2,
+        "newton_final_l2_max": 1.4161190288262134e-09,
+        "newton_final_max_max": 8.46229574947079e-06,
+        "transient_opacity_out_of_domain": 16,
+        "transient_opacity_clamped": 16,
+        "accepted_temperature_min_K": 5.11276532547647,
+        "gas_mass_relative_change": 8.560965632379024e-09,
+        "angular_momentum_relative_change": 1.641334413236613e-07,
+        "max_step_rss_kib": 33225768,
+        "final_restart_sha256": "72a40625f144808b249f766f1b944e0c348e2ab549b556a12bba3a54d5d0ea53",
+        "stop_cause": "compute-node Python lacked h5py; solver and state remained valid"
+    },
+    "c930_hdf_audit": {
+        "active_cells": 2383872,
+        "rho_min_g_cm3": 2.8738671398444485e-20,
+        "rho_max_g_cm3": 8.501194675514592e-14,
+        "temperature_min_K": 8.384427070617676,
+        "temperature_max_K": 22.062734603881836,
+        "opacity_domain_outside_cells": 0,
+        "eos_outside_cells": 0,
+        "nonpositive_gas_energy_cells": 0,
+        "energy_closure_relative_median": 9.999536146760126e-08,
+        "energy_closure_relative_p99": 1.4353836076165519e-06,
+        "energy_closure_relative_max": 4.209897573904375e-06,
+        "hdf_sha256": "cabe8045da89763e4be902610353ed7b123c7c983979698579542ea2ba92a01a"
+    },
+    "c930_cfl015_resume": {
+        "job_id": 342848,
+        "partition": "M-large-a",
+        "nodes": 5,
+        "start_cycle": 930,
+        "status": "PENDING_RESOURCES",
+        "scheduler_estimated_start_jst": "2026-11-19T10:37:23+09:00"
+    }
 }

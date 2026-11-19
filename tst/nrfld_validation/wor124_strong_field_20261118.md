@@ -298,3 +298,27 @@ zero bad opacity results, ten accepted-state guard records per segment, and a
 new post-regrid HDF audit against both table axes.  Any accepted or post-regrid
 cell outside the table still stops the run.  Five-node resume job `342607` is
 submitted from c920 and is pending M-large-a resources.
+
+Job `342607` subsequently ran from 00:27:13 to 00:29:11 JST and advanced
+c920--930 normally.  All 20 strict FGMRES solves converged in 30--36
+iterations with maximum true relative residual `1.99854e-8`; all ten Newton
+steps converged in two corrections with maximum final L2 `1.41612e-9` and
+maximum component `8.46230e-6`.  Gas mass and angular momentum changed by
+only `+8.56e-9` and `+1.64e-7` relative.  Slurm maximum step RSS was
+33,225,768 KiB (31.7 GiB).  The complete c930 restart SHA-256 is
+`72a40625f144808b249f766f1b944e0c348e2ab549b556a12bba3a54d5d0ea53`.
+
+The wrapper stopped after the segment because XD compute-node Python lacks
+`h5py`, not because the accepted state failed its audit.  All ten in-solver
+accepted-state guards passed, the 16 transient out-of-domain lookups were all
+clamped, and no opacity result was negative, zero, or nonfinite.  Independent
+audit of the c930 HDF found all 2,383,872 cells inside the opacity and EOS
+domains, with positive gas energy.  Its ranges are
+`rho=2.874e-20--8.501e-14 g cm^-3` and `T=8.384--22.063 K`; energy closure is
+`1.00e-7` median, `1.44e-6` p99, and `4.21e-6` maximum.  HDF SHA-256 is
+`cabe8045da89763e4be902610353ed7b123c7c983979698579542ea2ba92a01a`.
+
+The audit now has an XD-native `h5dump` backend and no longer requires Python
+HDF5 packages on compute nodes.  It reproduced the `h5py` audit exactly on
+the c930 file.  Five-node M-large-a job `342848` resumes from c930 and is
+pending resources, with scheduler-estimated start at 10:37:23 JST.

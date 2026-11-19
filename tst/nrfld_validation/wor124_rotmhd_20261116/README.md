@@ -682,3 +682,10 @@ The production wrapper now permits fully clamped transient lookups only when
 all accepted-state checks pass and a new post-regrid HDF audit confirms every
 cell lies inside both opacity axes.  Resume job `342607` starts from the
 complete c920 checkpoint and is pending five M-large-a nodes.
+
+Resume `342607` completed c920--930 in 118 s with 20 strict FGMRES solves at
+30--36 iterations and ten two-correction Newton steps.  The apparent audit
+stop was only a missing `h5py` package on compute nodes.  Independent c930
+audit found zero opacity/EOS-domain and nonpositive-gas-energy cells, and the
+restart is complete.  The audit now uses XD's native `h5dump` backend; its
+result matches `h5py` exactly.  Five-node resume `342848` continues from c930.

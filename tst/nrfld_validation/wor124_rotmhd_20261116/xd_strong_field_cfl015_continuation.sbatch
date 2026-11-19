@@ -132,6 +132,7 @@ while true; do
   if [[ -n "$latest_hdf" ]] &&
      python3 "$opacity_audit" "$latest_hdf" \
        data/opacity/protostellar_semenov2003_nrm_c_a.h5 \
+       --backend h5dump \
        >> "$job/opacity_domain_audit.jsonl"; then
     opacity_state_ok=1
   fi
