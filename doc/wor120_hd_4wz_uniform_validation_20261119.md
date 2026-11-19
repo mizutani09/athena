@@ -161,12 +161,30 @@ solution and omits only the divergent polishing V-cycle. The repeated surface-L2
 | RK4 + 4wz | 8.23 s | 4.27e-12 | 1.46e-9 | 1.35e-7 | 1.707e-4 |
 
 The one-cycle runtime difference is only 3.4% and is too short for a production
-throughput conclusion. The 4wz fallback mask covered 5,940,960 of 10,125,312 active
-cells (58.7%). This high value is plausible for 16-cubed blocks because the radius-3
-coarse-fine safety band occupies 18.75% of a block width on every touching face, but
-the aggregate alone cannot separate the physical troubled-cell sensor from AMR
-geometry. Cause-separated and level-separated C++ telemetry has therefore been added
-before starting the expensive surface-L3 state.
+throughput conclusion. Cause-separated job `343467` shows that the 4wz fallback mask
+covers 5,940,960 of 10,125,312 active cells (58.67%): 46.80% comes from the Berta
+density/pressure curvature sensor and another disjoint 11.87% is added by the
+coarse-fine safety band. The counts sum exactly. Weighting by the stellar tracer gives
+a smaller fallback fraction of 37.76%, so 62.24% of the stellar mass remains on 4wz.
+
+The reference threshold is the intentionally conservative `1e-2`; it has not been
+relaxed for these acceptance runs. The radius-3 coarse-fine band occupies 18.75% of a
+16-cubed block width on every touching face. A 32-cubed comparison (`343471`) reduces
+that fraction to 9.375% and reduces ghost-inclusive cell-centered storage per active
+cell from `(24/16)^3=3.375` to `(40/32)^3=1.953`. Its coarser AMR decision granularity
+refines a wider physical shell, so the active-cell count grows rather than remaining
+fixed:
+
+| MeshBlock | blocks | active cells | x2 wall | 4wz wall | estimated x2/4wz aggregate RSS | sensor fallback | AMR-added fallback | total fallback | stellar-mass fallback |
+|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|
+| 16^3 | 2,472 | 10.13M | 8.08 s | 8.40 s | 48.9 / 64.1 GiB | 46.80% | 11.87% | 58.67% | 37.76% |
+| 32^3 | 680 | 22.28M | 7.86 s | 9.51 s | 53.3 / 74.7 GiB | 23.03% | 7.99% | 31.03% | 13.80% |
+
+Although 32-cubed blocks evolve 2.20 times as many active cells, one-cycle 4wz wall
+time rises by only 13% and aggregate memory by about 16%. They leave 86.2% of the
+stellar mass on the high-order path, versus 62.2% for 16-cubed blocks. The result is
+promising but not yet a production choice because initialization dominates these
+short timings; both layouts need the 100-cycle gate.
 
 The L3 workflow creates the expensive `NGHOST=4` state once with `nlim=0`, writes one
 forced final restart, and branches RK2+x2 and RK4+4wz from that byte-identical state.
@@ -176,12 +194,11 @@ fractions to JSON.
 
 ## Next gates
 
-1. Split the L2 fallback fraction into sensor and coarse-fine contributions and by
-   refinement level.
-2. Compare 16-cubed and 32-cubed MeshBlocks at surface L2; larger blocks reduce both
-   ghost overhead and the fractional width of the AMR safety band but may over-refine
-   a thicker physical shell.
-3. Generate the fresh central-L6 plus surface-L3 `NGHOST=4` state and run the
+1. Run 100-cycle surface-L2 A/B gates for both 16-cubed and 32-cubed blocks, including
+   several dynamic-AMR updates and steady-state throughput measurements.
+2. Rehearse the `nlim=0` seed/restart/A-B branch workflow at surface L2.
+3. Generate the fresh central-L6 plus surface-L3 `NGHOST=4` state with the selected
+   block size and run the
    same-restart HD A/B comparison.
 4. If the L3 one-cycle gate passes, extend the more promising configuration far enough
    to assess secular stability and production throughput.
