@@ -182,9 +182,8 @@ fixed:
 
 Although 32-cubed blocks evolve 2.20 times as many active cells, one-cycle 4wz wall
 time rises by only 13% and aggregate memory by about 16%. They leave 86.2% of the
-stellar mass on the high-order path, versus 62.2% for 16-cubed blocks. The result is
-promising but not yet a production choice because initialization dominates these
-short timings; both layouts need the 100-cycle gate.
+stellar mass on the high-order path, versus 62.2% for 16-cubed blocks. The sustained
+gates below make 32-cubed blocks the production choice.
 
 The B16 100-cycle gate (`343482`) completed both evolutions. Its batch status is
 `FAILED` only because the original postprocessor required identical final times to
@@ -212,6 +211,31 @@ of cells but only 9.92% of stellar mass, improved from 58.67% and 37.76% initial
 The B16 layout is therefore not the production choice unless a continuation proves
 that the regrid offset is bounded; the B32 100-cycle result is the deciding gate.
 
+The B32 100-cycle gate (`343484`) passes all nine HD acceptance gates for both
+methods. In contrast to B16, neither branch changes topology: both remain at 680
+MeshBlocks for all 100 cycles. The 4wz mechanical-energy error is smaller than the
+B16 value by a factor of about 1,007, so the B16 failure is a topology/granularity
+effect rather than secular instability of 4wz.
+
+| B32, 100 cycles | x2 | 4wz |
+|---|---:|---:|
+| wall time | 29.02 s | 99.17 s |
+| main-loop time | 20.92 s | 90.23 s |
+| zone-cycles/s | 1.065e8 | 2.469e7 |
+| approximate aggregate RSS | 53.8 GiB | 75.0 GiB |
+| initial/final/maximum MeshBlocks | 680 / 680 / 680 | 680 / 680 / 680 |
+| maximum mass drift | 0 | 4.62e-10 |
+| maximum mechanical-energy drift | 7.63e-8 | 1.68e-5 |
+| maximum radial Mach RMS | 2.47e-3 | 2.49e-3 |
+| final total/stellar-mass fallback | 0 / 0 | 31.25% / 13.84% |
+
+At fixed cycles, 4wz costs 3.42 times the wall time and 4.31 times the measured
+main-loop time of x2 in this gravity-dominated short run. Its aggregate RSS is about
+1.39 times larger. The two methods nevertheless agree to `4.62e-10` in stellar mass,
+`2.19e-8` in angular momentum, and `1.67e-5` in mechanical energy at the final time.
+The B32 layout combines the lower fallback coverage, lower block/ghost overhead, and
+stable AMR topology needed for the surface-L3 production gate.
+
 The seed/restart rehearsal (`343483`) also passes. Fresh initialization and the one
 forced restart took 63.38 s; the x2 and 4wz one-cycle branches took 11.26 and 11.72 s.
 Exactly one 1.913 GB restart was written, with SHA-256
@@ -227,11 +251,11 @@ fractions to JSON.
 
 ## Next gates
 
-1. Run 100-cycle surface-L2 A/B gates for both 16-cubed and 32-cubed blocks, including
-   several dynamic-AMR updates and steady-state throughput measurements.
-2. Rehearse the `nlim=0` seed/restart/A-B branch workflow at surface L2.
-3. Generate the fresh central-L6 plus surface-L3 `NGHOST=4` state with the selected
-   block size and run the
-   same-restart HD A/B comparison.
-4. If the L3 one-cycle gate passes, extend the more promising configuration far enough
-   to assess secular stability and production throughput.
+1. Generate the fresh central-L6 plus surface-L3, B32, `NGHOST=4` state and run the
+   same-restart one-cycle HD A/B gate.
+2. If the L3 one-cycle gate passes, evolve both branches for `0.1 t_dyn` from that
+   byte-identical restart and compare stability, accuracy, topology, memory, and
+   throughput.
+3. Keep the B16 scalar-transport experiment isolated: it diagnoses the sensitivity of
+   fine block boundaries and the tracer-driven AMR condition but is not a prerequisite
+   for the selected B32 production run.
