@@ -10,6 +10,8 @@
 
 // C++ headers
 #include <algorithm>
+#include <cmath>
+#include <sstream>
 #include <string>
 #include <vector>
 
@@ -56,6 +58,15 @@ Hydro::Hydro(MeshBlock *pmb, ParameterInput *pin) :
     hdif(this, pin) {
   int nc1 = pmb->ncells1, nc2 = pmb->ncells2, nc3 = pmb->ncells3;
   Mesh *pm = pmy_block->pmy_mesh;
+
+  berta_sensor_threshold_ = pin->GetOrAddReal(
+      "hydro", "berta_sensor_threshold", 1.0e-2);
+  if (!std::isfinite(berta_sensor_threshold_) || berta_sensor_threshold_ <= 0.0) {
+    std::stringstream msg;
+    msg << "### FATAL ERROR in Hydro::Hydro" << std::endl
+        << "hydro/berta_sensor_threshold must be finite and positive" << std::endl;
+    ATHENA_ERROR(msg);
+  }
 
   pmb->RegisterMeshBlockData(u);
 

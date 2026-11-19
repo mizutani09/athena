@@ -144,7 +144,7 @@ void EquationOfState::ConservedToPrimitivePointValue(
     }
   }
 
-  constexpr Real sensor_threshold = 1.0e-2;
+  const Real sensor_threshold = ph->GetBertaSensorThreshold();
 
   for (int k=mask_kl; k<=mask_ku; ++k) {
     for (int j=mask_jl; j<=mask_ju; ++j) {

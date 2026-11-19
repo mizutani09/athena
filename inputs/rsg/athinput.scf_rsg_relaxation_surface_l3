@@ -136,6 +136,7 @@ egas_unit = 1.0e5
 leng_unit = 6.957e10
 dfloor = 1.0e-8
 pfloor = 1.0e-9
+berta_sensor_threshold = 1.0e-2
 
 <problem>
 scf_profile_file = data/ic/rsg21_scf_omega4e-8.csv
