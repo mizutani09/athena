@@ -2,13 +2,15 @@
 import argparse
 import json
 from pathlib import Path
+import shutil
 import tempfile
 import unittest
 
 import h5py
 import numpy as np
 
-from performance import analyse, compare_fields, input_text, parse_linear_detail
+from performance import (analyse, compare_fields, input_text, meshblock_count,
+                         parse_linear_detail)
 
 
 class PerformanceAnalysisTests(unittest.TestCase):
@@ -18,7 +20,8 @@ class PerformanceAnalysisTests(unittest.TestCase):
         self.root = Path(self.tmp.name)
         self.args = argparse.Namespace(warmup=1, steps=2, dt=1e-4, mode="strong",
                                        resolution=32, block=16, linear_solver="mg",
-                                       coarse_operator="rediscretized", linear_detail=False)
+                                       coarse_operator="rediscretized", linear_detail=False,
+                                       layout="uniform", problem="benchmark")
         (self.root / "run.log").write_text("Terminating on cycle limit\n")
         (self.root / "benchmark.hst").write_text("0 0.0001 1\n0.0003 0.0001 1\n")
         for kind, names in (("prim", ["rho", "press"]), ("rad", ["Er"])):
@@ -80,6 +83,12 @@ class PerformanceAnalysisTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             self.read()
 
+    def test_scheduled_and_termination_final_outputs_are_accepted(self):
+        for kind in ("prim", "rad"):
+            shutil.copy2(self.root / f"benchmark.{kind}.00001.athdf",
+                         self.root / f"benchmark.{kind}.00002.athdf")
+        self.assertEqual(self.read()["newton_iterations_total"], 4)
+
     def test_cfl_reduced_step_rejected(self):
         self.raw[0]["steps"][0]["dt"] *= 0.5
         self.save()
@@ -93,6 +102,37 @@ class PerformanceAnalysisTests(unittest.TestCase):
         self.assertIn("nx2 = 64", text)
         self.assertIn("nx3 = 32", text)
         self.assertIn("x1max = 2", text)
+
+    def test_static_amr_is_centered_and_counts_replaced_blocks(self):
+        self.args.block = 8
+        self.args.layout = "static_amr"
+        self.args.problem = "test_c"
+        text = input_text(self.args, 4, True)
+        self.assertIn("refinement = static", text)
+        self.assertIn("<refinement1>", text)
+        self.assertIn("x1min = 0.25", text)
+        self.assertIn("x1max = 0.75", text)
+        self.assertEqual(meshblock_count(self.args, 4), 120)
+
+    def test_static_amr_weak_scaling_preserves_refined_fraction(self):
+        self.args.mode = "weak"
+        self.args.block = 8
+        self.args.layout = "static_amr"
+        self.args.problem = "test_c"
+        text = input_text(self.args, 4, True)
+        self.assertIn("x1min = 0.5", text)
+        self.assertIn("x1max = 1.5", text)
+        self.assertEqual(meshblock_count(self.args, 4), 480)
+
+    def test_test_c_selects_conservative_supported_physics(self):
+        self.args.problem = "test_c"
+        text = input_text(self.args, 1, True)
+        self.assertIn("active = fixed", text)
+        self.assertIn("is_couple = false", text)
+        self.assertIn("only_rad = true", text)
+        self.assertIn("fixed_flux_limiter = true", text)
+        self.assertIn("include_mixed_frame_terms = false", text)
+        self.assertIn("tlim = 0.00030000000000000003", text)
 
     def test_fgmres_galerkin_selects_variational_transfer(self):
         self.args.linear_solver = "fgmres"
@@ -124,7 +164,9 @@ class PerformanceAnalysisTests(unittest.TestCase):
         for _ in range(25):
             end += self.args.dt
         self.assertNotEqual(end, 25 * self.args.dt)
-        self.assertIn(f"tlim = {end}", input_text(self.args, 1, True))
+        text = input_text(self.args, 1, True)
+        self.assertIn(f"tlim = {end}", text)
+        self.assertEqual(text.count("dcycle = 25"), 3)
 
     def test_linear_detail_is_additive_and_aggregated(self):
         line = ("[LINEAR_FGMRES_TIMING] total_seconds=1.0 "

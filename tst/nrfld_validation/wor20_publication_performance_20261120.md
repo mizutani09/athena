@@ -140,6 +140,62 @@ global/coarse work is a large fraction of the calculation. The inexpensive
 smooth ideal-MHD control does not predict the conditioning difficulty of a
 strong-field collapse state.
 
+## Conservative static-AMR operator cost
+
+The performance harness was extended with a separate `test_c` problem mode.
+Static AMR is deliberately allowed only in this mode, so it selects the
+validated conservative common-face operator by default. An attempted generic
+performance-pgen AMR pilot stopped at the existing unvalidated-problem guard
+and was excluded; neither the guard nor the legacy nonconservative escape was
+used. The selected Test C binary SHA-256 is
+`bb6fe320ccc2fc4de5077f244588918bb1b0c8853c79553b02fe5238cf97010c`.
+
+The matched Test C control has a 32³ root grid with 8³ MeshBlocks. The AMR
+case replaces the eight centered root blocks with their 64 level-1 children,
+giving 120 MeshBlocks and 61,440 leaf cells versus 64 MeshBlocks and 32,768
+cells in the uniform case. All selected groups have three repeats and every
+measurement window exceeds ten seconds.
+
+| layout | ranks | median seconds/step | strong efficiency | maximum FGMRES iterations/solve | median max-rank RSS |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| uniform | 1 | 0.207448 | 1.000 | 3 | 221.0 MiB |
+| uniform | 2 | 0.146582 | 0.708 | 3 | 132.7 MiB |
+| uniform | 4 | 0.100195 | 0.518 | 3 | 90.8 MiB |
+| centered level-1 AMR | 1 | 1.967438 | 1.000 | 9 | 580.6 MiB |
+| centered level-1 AMR | 2 | 1.192895 | 0.825 | 9 | 314.7 MiB |
+| centered level-1 AMR | 4 | 0.822838 | 0.598 | 9 | 184.1 MiB |
+
+The AMR/uniform time ratios are 9.48, 8.14, and 8.21 at 1/2/4 ranks. Dividing
+by the 1.875 leaf-cell ratio still leaves factors 5.06, 4.34, and 4.38. This
+is not a pure interface-overhead measurement: the conservative AMR system
+requires nine rather than three FGMRES iterations, and each iteration also
+contains coarse/fine transfers, shared-face assembly, and a larger hierarchy.
+It does show directly that extrapolating uniform-cell throughput to a
+collapse AMR calculation would be misleading.
+
+The AMR FGMRES fractions at 1/2/4 ranks are respectively:
+
+| ranks | MG preconditioner | operator matvec | FGMRES reductions | vector/other |
+| ---: | ---: | ---: | ---: | ---: |
+| 1 | 35.3% | 60.5% | 0.01% | 4.1% |
+| 2 | 46.3% | 49.2% | 1.3% | 3.2% |
+| 4 | 44.5% | 47.2% | 5.3% | 2.9% |
+
+All nine selected AMR timer-on/off pairs have bitwise-identical final arrays
+and identical Newton status/iteration histories. All selected uniform and AMR
+runs have one converged Newton iteration per measured step, zero mass drift at
+history precision, positive finite states, and rank-invariant maximum FGMRES
+iteration counts. The smaller reduction fraction than in the 32³ smooth
+coupled benchmark is consistent with more useful AMR work per rank; it is not
+evidence for multi-node scaling.
+
+The harness now also handles both valid Athena output endings: one termination
+snapshot, or a scheduled final snapshot followed by a duplicate-time
+termination snapshot. It requires an initial and at least one final output and
+always validates the first and last arrays. The previous exact-two assumption
+was exposed only by the 120-step output cadence; the affected pilot suites are
+excluded.
+
 ## Interpretation and limits
 
 Standalone MG is the fastest choice for this easy, uniform, well-conditioned
@@ -180,8 +236,19 @@ Raw suites:
   `/home/kosuke/simulation/test/rad_nr/wor20_publication_baseline_20261120/physics_matrix_20261120`
 - Opt-in FGMRES detailed timing (JSON/CSV/PNG and timer-off controls):
   `/home/kosuke/simulation/test/rad_nr/wor20_publication_baseline_20261120/fgmres_detail_long_20261120/performance_run_20261120_030203_224241_JST`
+- Conservative Test C uniform long windows (1 rank and 2/4 ranks):
+  `/home/kosuke/simulation/test/rad_nr/wor20_publication_baseline_20261120/uniform_testc_long_20261120/performance_run_20261120_034418_279450_JST` and
+  `/home/kosuke/simulation/test/rad_nr/wor20_publication_baseline_20261120/uniform_testc_p24_long_v3_20261120/performance_run_20261120_034904_563900_JST`
+- Conservative Test C AMR long windows (1/2 ranks and extended 4 rank):
+  `/home/kosuke/simulation/test/rad_nr/wor20_publication_baseline_20261120/amr_testc_long_20261120/performance_run_20261120_033637_961591_JST` and
+  `/home/kosuke/simulation/test/rad_nr/wor20_publication_baseline_20261120/amr_testc_p4_long_20261120/performance_run_20261120_034212_554844_JST`
+- Conservative AMR comparison HTML/JSON/CSV/PNG:
+  `/home/kosuke/simulation/test/rad_nr/wor20_publication_baseline_20261120/amr_comparison_v2_20261120`
 
 `wor20_compare_solvers.py` validates matched options and suite PASS status,
 recomputes FGMRES counts and final-field differences, and regenerates the
 standalone report. `wor20_physics_matrix.py` selects only long-window
 aggregates, recomputes phase medians, and regenerates the eight-case report.
+`wor20_amr_performance.py` rejects short or failed selected windows, recomputes
+FGMRES counts and leaf-cell ratios, checks available timer controls, and
+regenerates the conservative AMR comparison report.

@@ -88,12 +88,26 @@ def input_text(args, ranks, enabled):
                   "diagnostic_verbosity": 0, "coarse_solver": "direct",
                   "coarse_direct_max_cells": 64, "coarse_diagnostics": "false"},
         "gravity": {"mgmode": "FMG", "threshold": 1e-10, "show_defect": "false"},
-        "output1": {"file_type": "hst", "dcycle": nlim + 1},
+        "output1": {"file_type": "hst", "dcycle": nlim},
         "output2": {"file_type": "hdf5", "variable": "prim", "id": "prim",
-                    "dcycle": nlim + 1},
+                    "dcycle": nlim},
         "output3": {"file_type": "hdf5", "variable": "uov", "id": "rad",
-                    "dcycle": nlim + 1},
+                    "dcycle": nlim},
     }
+    if args.problem == "test_c":
+        sections["hydro"] = {"gamma": 5/3, "rho_unit": 1.0e-7,
+                             "egas_unit": 1.0e7, "leng_unit": 4.0e10,
+                             "mu": 1.0, "active": "fixed"}
+        sections["problem"] = {"density_low": 1.0, "density_high": 1.15,
+                               "slab_left": 0.25, "slab_right": 0.75,
+                               "interface_width": 0.0, "erad_background": 1.0,
+                               "erad_amplitude": 0.1, "pulse_center": 0.25,
+                               "pulse_width": 0.08, "pressure": 100.0}
+        sections["fld"] = {"is_couple": "false", "only_rad": "true",
+                           "cut_diff": "false", "include_radiation_force": "false",
+                           "include_mixed_frame_terms": "false",
+                           "fixed_flux_limiter": "true", "const_opacity": 0.4,
+                           "stage_diagnostics": "false"}
     sections["performance"]["linear_detail"] = str(
         args.linear_detail and enabled).lower()
     for axis, factor in enumerate(shape, 1):
@@ -104,15 +118,35 @@ def input_text(args, ranks, enabled):
         for group in ("nrfld", "gravity"):
             for side in ("i", "o"):
                 sections[group][f"{side}x{axis}_bc"] = "periodic"
+    if args.layout == "static_amr":
+        sections["mesh"]["refinement"] = "static"
+        sections["refinement1"] = {"level": 1}
+        for axis, factor in enumerate(shape, 1):
+            sections["refinement1"].update({f"x{axis}min": 0.25*factor,
+                                             f"x{axis}max": 0.75*factor})
     return "\n".join(f"<{section}>\n" + "\n".join(f"{k} = {v}" for k, v in values.items())
                      + "\n" for section, values in sections.items())
+
+
+def meshblock_count(args, ranks):
+    """Return the exact static MeshBlock count used by the layout."""
+    factors = {1: (1, 1, 1), 2: (2, 1, 1), 4: (2, 2, 1), 8: (2, 2, 2)}
+    shape = factors[ranks] if args.mode == "weak" else (1, 1, 1)
+    per_axis = [(args.resolution // args.block)*factor for factor in shape]
+    root = int(np.prod(per_axis))
+    if args.layout == "uniform":
+        return root
+    if any(number % 2 for number in per_axis):
+        raise ValueError("Static-AMR central half-domain must align to MeshBlocks")
+    refined_root = int(np.prod([number // 2 for number in per_axis]))
+    return root + 7*refined_root
 
 
 def final_fields(directory):
     fields = {}
     for kind in ("prim", "rad"):
         paths = sorted(directory.glob(f"benchmark.{kind}.*.athdf"))
-        if len(paths) != 2:
+        if len(paths) < 2:
             raise ValueError(f"Expected initial and final {kind} snapshots: {directory}")
         with h5py.File(paths[-1]) as h:
             fields[f"{kind}_time"] = np.array(h.attrs["Time"])
@@ -223,8 +257,13 @@ def analyse(directory, args, ranks, case):
             raise ValueError("Invalid wall time")
         if any(not np.isfinite(v) or v < 0 for v in item["seconds"].values()):
             raise ValueError("Invalid component time")
+        if ([step["dt"] for step in item["steps"]] !=
+                [step["dt"] for step in raw[0]["steps"]]):
+            raise ValueError("Timesteps differ across ranks")
         for step in item["steps"]:
-            if not np.isclose(step["dt"], args.dt, rtol=1e-10, atol=1e-14):
+            if (not np.isfinite(step["dt"]) or step["dt"] <= 0 or
+                    (args.problem == "benchmark" and
+                     not np.isclose(step["dt"], args.dt, rtol=1e-10, atol=1e-14))):
                 raise ValueError("Timesteps do not match the controlled experiment")
             if "fld" in case and (step["newton_reason"] != "converged" or
                     not np.isfinite(step["newton_l2"]) or
@@ -335,7 +374,10 @@ def aggregate(root, runs, mode):
     for case, ranks in sorted({(r["case"], r["ranks"]) for r in good}):
         group = [r for r in good if r["case"] == case and r["ranks"] == ranks]
         times = [r["metrics"]["seconds_per_step"] for r in group]
-        rows.append({"case": case, "linear_solver": group[0]["linear_solver"],
+        rows.append({"case": case, "problem": group[0].get("problem", "benchmark"),
+                     "layout": group[0].get("layout", "uniform"),
+                     "meshblocks": group[0].get("meshblocks"),
+                     "linear_solver": group[0]["linear_solver"],
                      "coarse_operator": group[0]["coarse_operator"],
                      "ranks": ranks, "repeats": len(group),
                      "seconds_per_step_median": float(np.median(times)),
@@ -373,6 +415,10 @@ def main():
     p.add_argument("--repeat", type=int, default=3)
     p.add_argument("--dt", type=float, default=1e-4)
     p.add_argument("--mode", choices=["strong", "weak"], default="strong")
+    p.add_argument("--layout", choices=["uniform", "static_amr"], default="uniform",
+                   help="Centered level-1 static AMR region occupies half of each axis")
+    p.add_argument("--problem", choices=["benchmark", "test_c"], default="benchmark",
+                   help="test_c is the validated conservative AMR operator benchmark")
     p.add_argument("--linear-solver", choices=["mg", "fgmres"], default="mg")
     p.add_argument("--coarse-operator", choices=["rediscretized", "galerkin"],
                    default="rediscretized")
@@ -394,8 +440,15 @@ def main():
     if args.linear_detail and (args.linear_solver != "fgmres" or
                                any("fld" not in case for case in args.cases)):
         p.error("--linear-detail requires --linear-solver fgmres and only FLD cases")
+    if args.layout == "static_amr" and args.problem != "test_c":
+        p.error("Static AMR requires --problem test_c; other pgens are intentionally gated")
+    if args.problem == "test_c" and any(case != "hd_fld" for case in args.cases):
+        p.error("Test C supports only the hd_fld timing label")
     for ranks in args.ranks:
-        blocks = (args.resolution // args.block)**3 * (ranks if args.mode == "weak" else 1)
+        try:
+            blocks = meshblock_count(args, ranks)
+        except ValueError as error:
+            p.error(str(error))
         if blocks < ranks or blocks % ranks:
             p.error("Require at least one MeshBlock/rank and even block distribution")
     repo = Path(__file__).resolve().parents[2]
@@ -442,7 +495,9 @@ def main():
                         "git": manifest["git"]}
                 manifest["builds"][case] = info
                 write_manifest(root / "manifest.json", manifest)
-                command = [sys.executable, "configure.py", "--prob=nrfld_performance",
+                problem_generator = ("nrfld_diff_amr_interface"
+                                     if args.problem == "test_c" else "nrfld_performance")
+                command = [sys.executable, "configure.py", f"--prob={problem_generator}",
                            "-mpi", "-hdf5", "-h5double", "--cflag=-O3"]
                 if args.hdf5_path:
                     command.append(f"--hdf5_path={args.hdf5_path.resolve()}")
@@ -464,6 +519,8 @@ def main():
                     directory = root / f"{case}_p{ranks}_r{repeat}"
                     directory.mkdir()
                     run = {"case": case, "ranks": ranks, "repeat": repeat, "path": str(directory),
+                           "layout": args.layout, "problem": args.problem,
+                           "meshblocks": meshblock_count(args, ranks),
                            "linear_solver": args.linear_solver,
                            "coarse_operator": args.coarse_operator,
                            "measured_steps": args.steps, "commands": [], "status": "running"}
