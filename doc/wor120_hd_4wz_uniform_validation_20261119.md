@@ -249,6 +249,37 @@ Delaying the normal restart `next_time` avoids a redundant multi-gigabyte initia
 restart. A C++ comparison tool writes final A/B differences and the WENO-Z fallback
 fractions to JSON.
 
+The B32 surface-L3 seed and one-cycle A/B job (`343497`) passes. Initialization creates
+2,416 MeshBlocks (79,167,488 active cells), takes 144.04 s on three XD nodes, and
+writes one 8.659 GB restart. Both methods retain exactly the same topology:
+264 blocks at L2, 1,976 at L3, 56 each at L4 and L5, and 64 at L6.
+
+| B32 surface L3, one cycle | x2 | 4wz |
+|---|---:|---:|
+| wall time including restart read | 47.49 s | 40.71 s |
+| main-loop time | 1.029 s | 3.714 s |
+| zone-cycles/s | 7.691e7 | 2.132e7 |
+| approximate aggregate RSS | 128 GiB | 173 GiB |
+| maximum mass drift | 0 | 1.64e-12 |
+| maximum mechanical-energy drift | 8.28e-9 | 1.29e-7 |
+| maximum radial Mach RMS | 1.699e-4 | 1.707e-4 |
+| total/stellar-mass fallback | 0 / 0 | 21.69% / 18.75% |
+
+The wall values are dominated by the shared restart read and must not be used as a
+solver-speed ratio. Main-loop throughput makes 4wz about 3.61 times more expensive per
+cycle. At the initial `dt=0.01008`, a conservative constant-throughput estimate for
+`0.1 t_dyn = 47.006` is about 1.3 h for x2 and 4.8 h for 4wz, both within the 12 h
+allocation. The dependent sustained jobs use the same seed and three nodes.
+
+An isolated B16 experiment (`343506`) transports the stellar/radiative tracers with
+PLM while leaving Hydro 4wz unchanged. It eliminates the B16 topology growth: the 4wz
+branch remains at 2,472 blocks, its maximum energy drift falls from `1.69e-2` to
+`4.92e-4`, and wall time falls from 88.28 to 68.62 s. This confirms that the B16
+failure is driven primarily by the unrelated legacy fourth-order scalar path feeding
+the tracer AMR condition. The selected B32 baseline does not require this workaround,
+and the scalar-PLM branch remains separate because its smooth-tracer accuracy is
+explicitly second order.
+
 ## Next gates
 
 1. Generate the fresh central-L6 plus surface-L3, B32, `NGHOST=4` state and run the
