@@ -104,3 +104,12 @@ records both methods' cycle counts, Athena CPU and wall times, throughput, alloc
 core/node-hours, and Slurm per-rank RSS in a machine-readable
 `cost_comparison.json`; this avoids estimating the final 4wz/x2 cost ratio from the
 short memory gate.
+
+## Sustained production result
+
+Corrected job `343579` completed normally at `t=47.006`, cycle 4,753, in 8,804.15 s
+for the MPI step.  All nine HD gates pass, the 2,416-block topology remains fixed,
+stderr is empty, and the final continuation restart was written successfully.  The
+measured 4wz/x2 wall-time ratio is 3.857; average and maximum per-rank RSS ratios are
+1.048 and 1.090.  The complete acceptance decision and A/B tables are in
+`wor120_hd_4wz_production_decision_20261120.md`.

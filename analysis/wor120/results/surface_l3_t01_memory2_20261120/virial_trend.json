@@ -1,0 +1,26 @@
+{
+  "window_time_over_tdyn": {"lower": 5.000000000000e-02, "upper": 1.000000000000e-01},
+  "rk2_x2": {
+    "samples": 25,
+    "first_time_over_tdyn": 5.063471156250e-02,
+    "last_time_over_tdyn": 9.999993402130e-02,
+    "signed_residual_minimum": -6.833023886590e-04,
+    "signed_residual_maximum": -6.743251251020e-04,
+    "absolute_residual_minimum": 6.743251251020e-04,
+    "absolute_residual_maximum": 6.833023886590e-04,
+    "signed_fitted_change_over_window": -8.264113959780e-06,
+    "absolute_fitted_change_over_window": 8.264113959780e-06
+  },
+  "rk4_4wz": {
+    "samples": 25,
+    "first_time_over_tdyn": 5.063098885130e-02,
+    "last_time_over_tdyn": 9.999993402130e-02,
+    "signed_residual_minimum": -7.794776930370e-04,
+    "signed_residual_maximum": -7.719279597610e-04,
+    "absolute_residual_minimum": 7.719279597610e-04,
+    "absolute_residual_maximum": 7.794776930370e-04,
+    "signed_fitted_change_over_window": -5.836356307200e-06,
+    "absolute_fitted_change_over_window": 5.836356307200e-06
+  },
+  "review": "Both fitted changes are negligible relative to the 0.02 gate; 4wz is no more secular than x2."
+}

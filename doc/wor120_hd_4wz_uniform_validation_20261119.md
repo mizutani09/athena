@@ -303,11 +303,9 @@ fourth-order block storage.
 
 ## Next gates
 
-1. Complete memory2 job `343579` and its dependent comparison `343580`; compare
-   stability, accuracy, topology, restart integrity, memory, throughput, and allocated
-   node-hours against completed x2 job `343498`.
-2. If the sustained result passes, retain three 110 GiB M nodes as the minimum tested
-   4wz production layout and cancel the redundant pending P-node fallback `343525`.
-3. Record explicitly in production inputs that HD uses RK4+4wz while passive scalar
-   transport uses PLM; fourth-order tracer transport would require its own Berta mask
-   and convergence contract and is outside this HD acceptance gate.
+All three gates are complete.  Memory2 job `343579` and its direct comparison against
+x2 job `343498` pass; three 110 GiB M nodes are retained as the minimum tested 4wz
+layout; and the P-node fallback `343525` was cancelled.  The production contract is
+RK4+4wz for HD with conservative PLM for passive scalars.  See
+`wor120_hd_4wz_production_decision_20261120.md` for final stability, accuracy, cost,
+memory, virial-trend, and restart evidence.

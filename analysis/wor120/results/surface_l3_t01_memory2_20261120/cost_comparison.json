@@ -1,0 +1,45 @@
+{
+  "rk2_x2": {
+    "final_time_code": 4.700600000000e+01,
+    "cycles": 4752,
+    "meshblocks": 2416,
+    "zone_cycles": 3.762039029760e+11,
+    "athena_cpu_seconds": 2.219149486000e+03,
+    "wall_seconds": 2.282780000000e+03,
+    "slurm_step_elapsed_seconds": 2.283000000000e+03,
+    "slurm_allocated_cpus": 168,
+    "slurm_nodes": 3,
+    "allocated_cpu_hours": 1.065400000000e+02,
+    "allocated_node_hours": 1.902500000000e+00,
+    "zone_cycles_per_cpu_second": 1.695261654744e+08,
+    "slurm_average_rss_kib_per_rank": 1.736675450000e+06,
+    "slurm_maximum_rss_kib_per_rank": 4.441052000000e+06,
+    "launcher_maxrss_kib": 1.036800000000e+04
+  },
+  "rk4_4wz": {
+    "final_time_code": 4.700600000000e+01,
+    "cycles": 4753,
+    "meshblocks": 2416,
+    "zone_cycles": 3.762830704640e+11,
+    "athena_cpu_seconds": 8.630409196000e+03,
+    "wall_seconds": 8.804150000000e+03,
+    "slurm_step_elapsed_seconds": 8.804000000000e+03,
+    "slurm_allocated_cpus": 168,
+    "slurm_nodes": 3,
+    "allocated_cpu_hours": 4.108533333333e+02,
+    "allocated_node_hours": 7.336666666667e+00,
+    "zone_cycles_per_cpu_second": 4.359967898607e+07,
+    "slurm_average_rss_kib_per_rank": 1.819546790000e+06,
+    "slurm_maximum_rss_kib_per_rank": 4.840504000000e+06,
+    "launcher_maxrss_kib": 1.044800000000e+04
+  },
+  "rk4_4wz_over_rk2_x2": {
+    "cycle_count_ratio": 1.000210437710e+00,
+    "athena_cpu_time_ratio": 3.889061665493e+00,
+    "wall_time_ratio": 3.856766749314e+00,
+    "cost_per_zone_cycle_ratio": 3.888243432447e+00,
+    "throughput_ratio": 2.571855433883e-01,
+    "average_rss_ratio": 1.047718380541e+00,
+    "maximum_rss_ratio": 1.089945355290e+00
+  }
+}
