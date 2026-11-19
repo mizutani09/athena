@@ -2371,8 +2371,13 @@ TaskStatus TimeIntegratorTaskList::Primitives(MeshBlock *pmb, int stage) {
                                                    il, iu, jl, ju, kl, ku);
       }
       if (NSCALARS > 0) {
-        pmb->peos->PassiveScalarConservedToPrimitiveCellAverage(
-            ps->s, ps->r, ps->r, pmb->pcoord, il, iu, jl, ju, kl, ku);
+        if (pmb->precon->berta_wenoz) {
+          pmb->peos->PassiveScalarConservedToPrimitivePointValue(
+              ps->s, ps->r, pmb->pcoord, il, iu, jl, ju, kl, ku);
+        } else {
+          pmb->peos->PassiveScalarConservedToPrimitiveCellAverage(
+              ps->s, ps->r, ps->r, pmb->pcoord, il, iu, jl, ju, kl, ku);
+        }
       }
     }
     // swap AthenaArray data pointers so that w now contains the updated w_out

@@ -23,12 +23,14 @@
 
 class MeshBlock;
 class ParameterInput;
+class EquationOfState;
 
 //! \class PassiveScalars
 //! \brief
 //!
 //! \todo (felker): consider renaming to Scalars
 class PassiveScalars {
+  friend class EquationOfState;
  public:
   // TODO(felker): pin is currently only used for checking ssprk5_4, otherwise unused.
   // Leaving as ctor parameter in case of run-time "nscalars" option
@@ -117,6 +119,7 @@ class PassiveScalars {
                          AthenaArray<Real> &rl, AthenaArray<Real> &rr,
                          AthenaArray<Real> &mass_flx,
                          AthenaArray<Real> &flx_out);
+  void CalculateFluxesBerta(AthenaArray<Real> &r);
   void AddDiffusionFluxes();
   // TODO(felker): dedpulicate these arrays and the same named ones in HydroDiffusion
   AthenaArray<Real> dx1_, dx2_, dx3_;

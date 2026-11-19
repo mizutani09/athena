@@ -9,6 +9,7 @@
 // C headers
 
 // C++ headers
+#include <algorithm>  // max()
 #include <cmath>   // sqrt()
 
 // Athena++ headers
@@ -121,6 +122,48 @@ void EquationOfState::PassiveScalarConservedToPrimitiveCellAverage(
     }
   }
   return;
+}
+
+//----------------------------------------------------------------------------------------
+//! \brief Recover passive-scalar point concentrations from evolved volume averages.
+//!
+//! The Hydro Berta path has already built its final troubled-cell mask.  Smooth cells
+//! receive the same volume-average to point-value correction as Hydro; troubled and
+//! coarse-fine cells retain the conservative second-order concentration.  The evolved
+//! scalar mass is never modified by this point recovery.
+
+void EquationOfState::PassiveScalarConservedToPrimitivePointValue(
+    AthenaArray<Real> &s, AthenaArray<Real> &r, Coordinates *pco,
+    int il, int iu, int jl, int ju, int kl, int ku) {
+  MeshBlock *pmb = pmy_block_;
+  Hydro *ph = pmb->phydro;
+  PassiveScalars *ps = pmb->pscalars;
+  const Real h = pco->dx1f(il);
+  const Real C = (h*h)/24.0;
+  AthenaArray<Real> &laplacian = ps->scr1_nkji_;
+  AthenaArray<Real> &s_point = ps->s_cc;
+  const AthenaArray<int> &mask = ph->GetTroubledCellMask();
+  const Hydro::TroubledCellMaskBounds &bounds = ph->GetTroubledCellMaskBounds();
+
+  pco->Laplacian(s, laplacian, il, iu, jl, ju, kl, ku, 0, NSCALARS-1);
+  for (int n=0; n<NSCALARS; ++n) {
+    for (int k=kl; k<=ku; ++k) {
+      for (int j=jl; j<=ju; ++j) {
+#pragma omp simd
+        for (int i=il; i<=iu; ++i) {
+          const bool available = i >= bounds.il && i <= bounds.iu
+              && j >= bounds.jl && j <= bounds.ju
+              && k >= bounds.kl && k <= bounds.ku;
+          const bool smooth = available && mask(k,j,i) == 0;
+          const Real scalar = smooth
+              ? s(n,k,j,i) - C*laplacian(n,k,j,i) : s(n,k,j,i);
+          const Real density = smooth ? ph->u_cc(IDN,k,j,i) : ph->u(IDN,k,j,i);
+          s_point(n,k,j,i) = scalar;
+          r(n,k,j,i) = std::max(scalar_floor_, scalar/density);
+        }
+      }
+    }
+  }
 }
 
 

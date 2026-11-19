@@ -142,6 +142,12 @@ void Hydro::CalculateFluxes(AthenaArray<Real> &w, FaceField &b,
       // x1flux(IBZ) = (v1*b3 - v3*b1) =  EMFY
       RiemannSolver(k, j, is, ie+1, IVX, b1, wl_, wr_, x1flux, e3x1, e2x1, w_x1f, dxw_);
 #endif
+      if (berta_wenoz && NSCALARS > 0) {
+#pragma omp simd
+        for (int i=is; i<=ie+1; ++i) {
+          pmb->pscalars->mass_flux_fc[X1DIR](k,j,i) = x1flux(IDN,k,j,i);
+        }
+      }
 
       if (order == 4 && !berta_wenoz) {
         for (int n=0; n<NWAVE; n++) {
@@ -275,6 +281,12 @@ void Hydro::CalculateFluxes(AthenaArray<Real> &w, FaceField &b,
         // flx(IBZ) = (v2*b1 - v1*b2) =  EMFZ
         RiemannSolver(k, j, il, iu, IVY, b2, wl_, wr_, x2flux, e1x2, e3x2, w_x2f, dxw_);
 #endif
+        if (berta_wenoz && NSCALARS > 0) {
+#pragma omp simd
+          for (int i=il; i<=iu; ++i) {
+            pmb->pscalars->mass_flux_fc[X2DIR](k,j,i) = x2flux(IDN,k,j,i);
+          }
+        }
 
         if (order == 4 && !berta_wenoz) {
           for (int n=0; n<NWAVE; n++) {
@@ -403,6 +415,12 @@ void Hydro::CalculateFluxes(AthenaArray<Real> &w, FaceField &b,
         // flx(IBZ) = (v3*b2 - v2*b3) =  EMFX
         RiemannSolver(k, j, il, iu, IVZ, b3, wl_, wr_, x3flux, e2x3, e1x3, w_x3f, dxw_);
 #endif
+        if (berta_wenoz && NSCALARS > 0) {
+#pragma omp simd
+          for (int i=il; i<=iu; ++i) {
+            pmb->pscalars->mass_flux_fc[X3DIR](k,j,i) = x3flux(IDN,k,j,i);
+          }
+        }
         if (order == 4 && !berta_wenoz) {
           for (int n=0; n<NWAVE; n++) {
             for (int i=il; i<=iu; i++) {

@@ -65,6 +65,9 @@ class EquationOfState {
   void PassiveScalarConservedToPrimitiveCellAverage(
     AthenaArray<Real> &s, const AthenaArray<Real> &r_old, AthenaArray<Real> &r,
     Coordinates *pco, int il, int iu, int jl, int ju, int kl, int ku);
+  void PassiveScalarConservedToPrimitivePointValue(
+    AthenaArray<Real> &s, AthenaArray<Real> &r, Coordinates *pco,
+    int il, int iu, int jl, int ju, int kl, int ku);
 
   // pass k, j, i to following 2x functions even though x1-sliced input array is expected
   // in order to accomodate position-dependent floors

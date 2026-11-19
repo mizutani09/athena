@@ -10,7 +10,9 @@
 //! J. Comput. Phys. 499 (2024) 112701.
 
 // C++ headers
+#include <algorithm>
 #include <cmath>
+#include <limits>
 
 // Athena++ headers
 #include "../athena.hpp"
@@ -27,6 +29,30 @@ inline bool MaskTroubledOrUnavailable(const Hydro *ph, int k, int j, int i) {
   if (i<b.il || i>b.iu || j<b.jl || j>b.ju || k<b.kl || k>b.ku) return true;
   return ph->GetTroubledCellMask()(k,j,i) != 0;
 }
+
+inline bool ScalarCellTroubled(Real qm, Real q, Real qp) {
+  constexpr Real threshold = 1.0e-2;
+  const Real denominator = std::max(
+      std::abs(qp) + 2.0*std::abs(q) + std::abs(qm),
+      4.0*std::numeric_limits<Real>::min());
+  return std::abs(qp - 2.0*q + qm)/denominator >= threshold;
+}
+
+inline bool ScalarCellTroubledBase(const AthenaArray<Real> &q, int n,
+                                   int k, int j, int i, bool f2, bool f3) {
+  bool troubled = ScalarCellTroubled(
+      q(n,k,j,i-1), q(n,k,j,i), q(n,k,j,i+1));
+  if (f2) {
+    troubled = troubled || ScalarCellTroubled(
+        q(n,k,j-1,i), q(n,k,j,i), q(n,k,j+1,i));
+  }
+  if (f3) {
+    troubled = troubled || ScalarCellTroubled(
+        q(n,k-1,j,i), q(n,k,j,i), q(n,k+1,j,i));
+  }
+  return troubled;
+}
+
 }  // namespace
 
 //----------------------------------------------------------------------------------------
@@ -168,5 +194,143 @@ void Reconstruction::BertaWENOZX3(
   for (int i=il; i<=iu; ++i) {
     pmy_block_->peos->ApplyPrimitiveFloors(wl, k, j, i);
     pmy_block_->peos->ApplyPrimitiveFloors(wr, k, j, i);
+  }
+}
+
+//----------------------------------------------------------------------------------------
+//! \brief Component-wise point-value WENO-Z/PLM reconstruction for passive scalars.
+
+void Reconstruction::BertaWENOZX1(
+    const int k, const int j, const int il, const int iu,
+    const AthenaArray<Real> &q, AthenaArray<Real> &ql, AthenaArray<Real> &qr) {
+  for (int n=0; n<NSCALARS; ++n) {
+#pragma omp simd
+    for (int i=il; i<=iu; ++i) {
+      const bool right_troubled = MaskTroubledOrUnavailable(pmy_block_->phydro,k,j,i)
+          || MaskTroubledOrUnavailable(pmy_block_->phydro,k,j,i+1)
+          || ScalarCellTroubledBase(q,n,k,j,i,
+                                   pmy_block_->pmy_mesh->f2,
+                                   pmy_block_->pmy_mesh->f3)
+          || ScalarCellTroubledBase(q,n,k,j,i+1,
+                                   pmy_block_->pmy_mesh->f2,
+                                   pmy_block_->pmy_mesh->f3);
+      const bool left_troubled = MaskTroubledOrUnavailable(pmy_block_->phydro,k,j,i-1)
+          || MaskTroubledOrUnavailable(pmy_block_->phydro,k,j,i)
+          || ScalarCellTroubledBase(q,n,k,j,i-1,
+                                   pmy_block_->pmy_mesh->f2,
+                                   pmy_block_->pmy_mesh->f3)
+          || ScalarCellTroubledBase(q,n,k,j,i,
+                                   pmy_block_->pmy_mesh->f2,
+                                   pmy_block_->pmy_mesh->f3);
+      Real unused;
+      if (right_troubled) {
+        reconstruction::VanLeerPLM(q(n,k,j,i-1), q(n,k,j,i), q(n,k,j,i+1),
+                                   ql(n,i+1), unused);
+      } else {
+        BertaWENOZ(q(n,k,j,i-2), q(n,k,j,i-1), q(n,k,j,i),
+                   q(n,k,j,i+1), q(n,k,j,i+2), ql(n,i+1), unused);
+      }
+      if (left_troubled) {
+        reconstruction::VanLeerPLM(q(n,k,j,i-1), q(n,k,j,i), q(n,k,j,i+1),
+                                   unused, qr(n,i));
+      } else {
+        BertaWENOZ(q(n,k,j,i-2), q(n,k,j,i-1), q(n,k,j,i),
+                   q(n,k,j,i+1), q(n,k,j,i+2), unused, qr(n,i));
+      }
+    }
+    for (int i=il; i<=iu; ++i) {
+      pmy_block_->peos->ApplyPassiveScalarFloors(ql, n, k, j, i+1);
+      pmy_block_->peos->ApplyPassiveScalarFloors(qr, n, k, j, i);
+    }
+  }
+}
+
+void Reconstruction::BertaWENOZX2(
+    const int k, const int j, const int il, const int iu,
+    const AthenaArray<Real> &q, AthenaArray<Real> &ql, AthenaArray<Real> &qr) {
+  for (int n=0; n<NSCALARS; ++n) {
+#pragma omp simd
+    for (int i=il; i<=iu; ++i) {
+      const bool right_troubled = MaskTroubledOrUnavailable(pmy_block_->phydro,k,j,i)
+          || MaskTroubledOrUnavailable(pmy_block_->phydro,k,j+1,i)
+          || ScalarCellTroubledBase(q,n,k,j,i,
+                                   pmy_block_->pmy_mesh->f2,
+                                   pmy_block_->pmy_mesh->f3)
+          || ScalarCellTroubledBase(q,n,k,j+1,i,
+                                   pmy_block_->pmy_mesh->f2,
+                                   pmy_block_->pmy_mesh->f3);
+      const bool left_troubled = MaskTroubledOrUnavailable(pmy_block_->phydro,k,j-1,i)
+          || MaskTroubledOrUnavailable(pmy_block_->phydro,k,j,i)
+          || ScalarCellTroubledBase(q,n,k,j-1,i,
+                                   pmy_block_->pmy_mesh->f2,
+                                   pmy_block_->pmy_mesh->f3)
+          || ScalarCellTroubledBase(q,n,k,j,i,
+                                   pmy_block_->pmy_mesh->f2,
+                                   pmy_block_->pmy_mesh->f3);
+      Real unused;
+      if (right_troubled) {
+        reconstruction::VanLeerPLM(q(n,k,j-1,i), q(n,k,j,i), q(n,k,j+1,i),
+                                   ql(n,i), unused);
+      } else {
+        BertaWENOZ(q(n,k,j-2,i), q(n,k,j-1,i), q(n,k,j,i),
+                   q(n,k,j+1,i), q(n,k,j+2,i), ql(n,i), unused);
+      }
+      if (left_troubled) {
+        reconstruction::VanLeerPLM(q(n,k,j-1,i), q(n,k,j,i), q(n,k,j+1,i),
+                                   unused, qr(n,i));
+      } else {
+        BertaWENOZ(q(n,k,j-2,i), q(n,k,j-1,i), q(n,k,j,i),
+                   q(n,k,j+1,i), q(n,k,j+2,i), unused, qr(n,i));
+      }
+    }
+    for (int i=il; i<=iu; ++i) {
+      pmy_block_->peos->ApplyPassiveScalarFloors(ql, n, k, j, i);
+      pmy_block_->peos->ApplyPassiveScalarFloors(qr, n, k, j, i);
+    }
+  }
+}
+
+void Reconstruction::BertaWENOZX3(
+    const int k, const int j, const int il, const int iu,
+    const AthenaArray<Real> &q, AthenaArray<Real> &ql, AthenaArray<Real> &qr) {
+  for (int n=0; n<NSCALARS; ++n) {
+#pragma omp simd
+    for (int i=il; i<=iu; ++i) {
+      const bool right_troubled = MaskTroubledOrUnavailable(pmy_block_->phydro,k,j,i)
+          || MaskTroubledOrUnavailable(pmy_block_->phydro,k+1,j,i)
+          || ScalarCellTroubledBase(q,n,k,j,i,
+                                   pmy_block_->pmy_mesh->f2,
+                                   pmy_block_->pmy_mesh->f3)
+          || ScalarCellTroubledBase(q,n,k+1,j,i,
+                                   pmy_block_->pmy_mesh->f2,
+                                   pmy_block_->pmy_mesh->f3);
+      const bool left_troubled = MaskTroubledOrUnavailable(pmy_block_->phydro,k-1,j,i)
+          || MaskTroubledOrUnavailable(pmy_block_->phydro,k,j,i)
+          || ScalarCellTroubledBase(q,n,k-1,j,i,
+                                   pmy_block_->pmy_mesh->f2,
+                                   pmy_block_->pmy_mesh->f3)
+          || ScalarCellTroubledBase(q,n,k,j,i,
+                                   pmy_block_->pmy_mesh->f2,
+                                   pmy_block_->pmy_mesh->f3);
+      Real unused;
+      if (right_troubled) {
+        reconstruction::VanLeerPLM(q(n,k-1,j,i), q(n,k,j,i), q(n,k+1,j,i),
+                                   ql(n,i), unused);
+      } else {
+        BertaWENOZ(q(n,k-2,j,i), q(n,k-1,j,i), q(n,k,j,i),
+                   q(n,k+1,j,i), q(n,k+2,j,i), ql(n,i), unused);
+      }
+      if (left_troubled) {
+        reconstruction::VanLeerPLM(q(n,k-1,j,i), q(n,k,j,i), q(n,k+1,j,i),
+                                   unused, qr(n,i));
+      } else {
+        BertaWENOZ(q(n,k-2,j,i), q(n,k-1,j,i), q(n,k,j,i),
+                   q(n,k+1,j,i), q(n,k+2,j,i), unused, qr(n,i));
+      }
+    }
+    for (int i=il; i<=iu; ++i) {
+      pmy_block_->peos->ApplyPassiveScalarFloors(ql, n, k, j, i);
+      pmy_block_->peos->ApplyPassiveScalarFloors(qr, n, k, j, i);
+    }
   }
 }

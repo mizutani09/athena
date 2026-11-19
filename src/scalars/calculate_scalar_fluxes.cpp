@@ -10,6 +10,8 @@
 
 // C++ headers
 #include <algorithm>   // min,max
+#include <cmath>
+#include <limits>
 
 // Athena++ headers
 #include "../athena.hpp"
@@ -24,6 +26,165 @@
 #ifdef OPENMP_PARALLEL
 #include <omp.h>
 #endif
+
+namespace {
+inline bool ScalarBertaMaskTroubled(const Hydro *ph, int k, int j, int i) {
+  const Hydro::TroubledCellMaskBounds &b = ph->GetTroubledCellMaskBounds();
+  if (i<b.il || i>b.iu || j<b.jl || j>b.ju || k<b.kl || k>b.ku) return true;
+  return ph->GetTroubledCellMask()(k,j,i) != 0;
+}
+
+inline bool ScalarBertaTripletTroubled(Real qm, Real qc, Real qp) {
+  const Real denominator = std::max(
+      std::abs(qp) + 2.0*std::abs(qc) + std::abs(qm),
+      4.0*std::numeric_limits<Real>::min());
+  return std::abs(qp - 2.0*qc + qm)/denominator >= 1.0e-2;
+}
+
+inline bool ScalarBertaValueTroubled(const Hydro *ph,
+                                     const AthenaArray<Real> &q, int n,
+                                     int k, int j, int i) {
+  bool troubled = ScalarBertaTripletTroubled(
+      q(n,k,j,i-1), q(n,k,j,i), q(n,k,j,i+1));
+  if (ph->pmy_block->pmy_mesh->f2) {
+    troubled = troubled || ScalarBertaTripletTroubled(
+        q(n,k,j-1,i), q(n,k,j,i), q(n,k,j+1,i));
+  }
+  if (ph->pmy_block->pmy_mesh->f3) {
+    troubled = troubled || ScalarBertaTripletTroubled(
+        q(n,k-1,j,i), q(n,k,j,i), q(n,k+1,j,i));
+  }
+  return troubled;
+}
+
+inline bool ScalarBertaFaceTroubled(const Hydro *ph, const AthenaArray<Real> &q,
+                                    int n, int dir, int k, int j, int i) {
+  if (dir == X1DIR) {
+    return ScalarBertaMaskTroubled(ph,k,j,i-1)
+        || ScalarBertaMaskTroubled(ph,k,j,i)
+        || ScalarBertaValueTroubled(ph,q,n,k,j,i-1)
+        || ScalarBertaValueTroubled(ph,q,n,k,j,i);
+  }
+  if (dir == X2DIR) {
+    return ScalarBertaMaskTroubled(ph,k,j-1,i)
+        || ScalarBertaMaskTroubled(ph,k,j,i)
+        || ScalarBertaValueTroubled(ph,q,n,k,j-1,i)
+        || ScalarBertaValueTroubled(ph,q,n,k,j,i);
+  }
+  return ScalarBertaMaskTroubled(ph,k-1,j,i)
+      || ScalarBertaMaskTroubled(ph,k,j,i)
+      || ScalarBertaValueTroubled(ph,q,n,k-1,j,i)
+      || ScalarBertaValueTroubled(ph,q,n,k,j,i);
+}
+}  // namespace
+
+//----------------------------------------------------------------------------------------
+//! \brief Berta point-value scalar transport with the Hydro fallback mask.
+//!
+//! Hydro has already saved its pointwise density flux on the full transverse stencil.
+//! Reconstruct scalar point concentrations with WENO-Z (PLM on the exact same troubled
+//! faces), upwind them with that density flux, and convert the point scalar flux to a
+//! face average.  Troubled faces omit the transverse correction exactly as Hydro does.
+
+void PassiveScalars::CalculateFluxesBerta(AthenaArray<Real> &r) {
+  MeshBlock *pmb = pmy_block;
+  Hydro *ph = pmb->phydro;
+  const int is = pmb->is, js = pmb->js, ks = pmb->ks;
+  const int ie = pmb->ie, je = pmb->je, ke = pmb->ke;
+  int il, iu, jl, ju, kl, ku;
+  AthenaArray<Real> &laplacian = scr2_nkji_;
+
+  // x1 faces: populate the complete transverse point-flux stencil.
+  jl = js, ju = je, kl = ks, ku = ke;
+  if (pmb->block_size.nx2 > 1) {
+    jl = js-1, ju = je+1;
+    if (pmb->block_size.nx3 > 1) kl = ks-1, ku = ke+1;
+  }
+  for (int k=kl; k<=ku; ++k) {
+    for (int j=jl; j<=ju; ++j) {
+      pmb->precon->BertaWENOZX1(k, j, is-1, ie+1, r, rl_, rr_);
+      ComputeUpwindFlux(k, j, is, ie+1, rl_, rr_,
+                        mass_flux_fc[X1DIR], s_flux[X1DIR]);
+    }
+  }
+  Real h = pmb->pcoord->dx1f(is);
+  Real C = (h*h)/24.0;
+  pmb->pcoord->LaplacianX1All(s_flux[X1DIR], laplacian, 0, NSCALARS-1,
+                              ks, ke, js, je, is, ie+1);
+  for (int n=0; n<NSCALARS; ++n) {
+    for (int k=ks; k<=ke; ++k) {
+      for (int j=js; j<=je; ++j) {
+#pragma omp simd
+        for (int i=is; i<=ie+1; ++i) {
+          if (!ScalarBertaFaceTroubled(ph, r, n, X1DIR, k, j, i)) {
+            s_flux[X1DIR](n,k,j,i) += C*laplacian(n,k,j,i);
+          }
+        }
+      }
+    }
+  }
+
+  if (pmb->pmy_mesh->f2) {
+    il = is-1, iu = ie+1, kl = ks, ku = ke;
+    if (pmb->block_size.nx3 > 1) kl = ks-1, ku = ke+1;
+    for (int k=kl; k<=ku; ++k) {
+      pmb->precon->BertaWENOZX2(k, js-1, il, iu, r, rl_, rr_);
+      for (int j=js; j<=je+1; ++j) {
+        pmb->precon->BertaWENOZX2(k, j, il, iu, r, rlb_, rr_);
+        ComputeUpwindFlux(k, j, il, iu, rl_, rr_,
+                          mass_flux_fc[X2DIR], s_flux[X2DIR]);
+        rl_.SwapAthenaArray(rlb_);
+      }
+    }
+    h = pmb->pcoord->dx2f(js);
+    C = (h*h)/24.0;
+    pmb->pcoord->LaplacianX2All(s_flux[X2DIR], laplacian, 0, NSCALARS-1,
+                                ks, ke, js, je+1, is, ie);
+    for (int n=0; n<NSCALARS; ++n) {
+      for (int k=ks; k<=ke; ++k) {
+        for (int j=js; j<=je+1; ++j) {
+#pragma omp simd
+          for (int i=is; i<=ie; ++i) {
+            if (!ScalarBertaFaceTroubled(ph, r, n, X2DIR, k, j, i)) {
+              s_flux[X2DIR](n,k,j,i) += C*laplacian(n,k,j,i);
+            }
+          }
+        }
+      }
+    }
+  }
+
+  if (pmb->pmy_mesh->f3) {
+    il = is-1, iu = ie+1, jl = js-1, ju = je+1;
+    for (int j=jl; j<=ju; ++j) {
+      pmb->precon->BertaWENOZX3(ks-1, j, il, iu, r, rl_, rr_);
+      for (int k=ks; k<=ke+1; ++k) {
+        pmb->precon->BertaWENOZX3(k, j, il, iu, r, rlb_, rr_);
+        ComputeUpwindFlux(k, j, il, iu, rl_, rr_,
+                          mass_flux_fc[X3DIR], s_flux[X3DIR]);
+        rl_.SwapAthenaArray(rlb_);
+      }
+    }
+    h = pmb->pcoord->dx3f(ks);
+    C = (h*h)/24.0;
+    pmb->pcoord->LaplacianX3All(s_flux[X3DIR], laplacian, 0, NSCALARS-1,
+                                ks, ke+1, js, je, is, ie);
+    for (int n=0; n<NSCALARS; ++n) {
+      for (int k=ks; k<=ke+1; ++k) {
+        for (int j=js; j<=je; ++j) {
+#pragma omp simd
+          for (int i=is; i<=ie; ++i) {
+            if (!ScalarBertaFaceTroubled(ph, r, n, X3DIR, k, j, i)) {
+              s_flux[X3DIR](n,k,j,i) += C*laplacian(n,k,j,i);
+            }
+          }
+        }
+      }
+    }
+  }
+
+  if (!STS_ENABLED) AddDiffusionFluxes();
+}
 
 //----------------------------------------------------------------------------------------
 //! \fn  void PassiveScalars::CalculateFluxes
@@ -40,6 +201,11 @@
 //!   in Hydro class but each flux dir is temp. stored in 4D scratch array scr1_nkji_)
 void PassiveScalars::CalculateFluxes(AthenaArray<Real> &r, const int order) {
   MeshBlock *pmb = pmy_block;
+
+  if (order == 4 && pmb->precon->berta_wenoz) {
+    CalculateFluxesBerta(r);
+    return;
+  }
 
 
 

@@ -105,6 +105,17 @@ class Reconstruction {
                     const AthenaArray<Real> &w, const AthenaArray<Real> &bcc,
                     AthenaArray<Real> &wl, AthenaArray<Real> &wr);
 
+  // Component-wise Berta reconstruction for passive-scalar point concentrations.
+  void BertaWENOZX1(const int k, const int j, const int il, const int iu,
+                    const AthenaArray<Real> &q,
+                    AthenaArray<Real> &ql, AthenaArray<Real> &qr);
+  void BertaWENOZX2(const int k, const int j, const int il, const int iu,
+                    const AthenaArray<Real> &q,
+                    AthenaArray<Real> &ql, AthenaArray<Real> &qr);
+  void BertaWENOZX3(const int k, const int j, const int il, const int iu,
+                    const AthenaArray<Real> &q,
+                    AthenaArray<Real> &ql, AthenaArray<Real> &qr);
+
   inline void BertaWENOZ(const Real &q_im2, const Real &q_im1, const Real &q_i,
                          const Real &q_ip1, const Real &q_ip2,
                          Real &ql_ip1, Real &qr_i) noexcept;
