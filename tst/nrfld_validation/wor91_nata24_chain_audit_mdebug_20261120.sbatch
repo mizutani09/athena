@@ -13,5 +13,13 @@
 set -euo pipefail
 : "${SOURCE_RUN:?SOURCE_RUN is required}"
 root=/work/mizutaniks/wor91
-grep -qx 'validated=yes' "$SOURCE_RUN/result.txt"
-/usr/bin/python3 "$root/scripts/wor91_hd2_warm96_audit_20261119.py" "$SOURCE_RUN"
+source_run="$SOURCE_RUN"
+for _ in 1 2 3 4; do
+  grep -qx 'validated=yes' "$source_run/result.txt"
+  if ! grep -qx 'already_complete=yes' "$source_run/result.txt"; then break; fi
+  source_run=$(awk -F= '$1 == "source_run" {print substr($0, index($0, "=") + 1)}' \
+    "$source_run/result.txt")
+  test -n "$source_run"
+done
+test -s "$(find "$source_run/out" -maxdepth 1 -name '*.hst' -print -quit)"
+/usr/bin/python3 "$root/scripts/wor91_hd2_warm96_audit_20261119.py" "$source_run"
