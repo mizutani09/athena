@@ -53,6 +53,10 @@ run_case() {
     echo "$label produced a numeric or runtime failure" >&2
     exit 1
   fi
+  if grep -q 'Warning in MultigridDriver::SolveIterative' "$run/stdout.log"; then
+    echo "$label unexpectedly entered discarded multigrid polishing iterations" >&2
+    exit 1
+  fi
   grep -q 'Terminating on cycle limit' "$run/stdout.log"
   "$run_root/analyze_relaxation_history" "$run/scf_rsg_relax.hst" \
     "$run/relaxation_diagnostics.csv" "$run/relaxation_summary.json"

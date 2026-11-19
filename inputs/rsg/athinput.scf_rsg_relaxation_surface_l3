@@ -30,6 +30,7 @@ dt = 4.7
 <output4>
 file_type = rst
 dt = 47.0
+next_time = 0.0
 
 <output5>
 file_type = vtk
@@ -157,7 +158,8 @@ core_support_radius_cm = 3.541497158802513e11
 
 <gravity>
 mgmode = fmg
-threshold = 1.0e-12
+threshold = -1.0
+niteration = 0
 ix1_bc = multipole
 ox1_bc = multipole
 ix2_bc = multipole
