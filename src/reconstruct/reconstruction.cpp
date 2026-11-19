@@ -182,12 +182,21 @@ Reconstruction::Reconstruction(MeshBlock *pmb, ParameterInput *pin) :
           // ATHENA_ERROR(msg);
         }
       }
-      if (pmb->pmy_mesh->multilevel) {
+      if (pmb->pmy_mesh->multilevel && !berta_wenoz) {
         std::stringstream msg;
         msg << "### FATAL ERROR in Reconstruction constructor" << std::endl
             << "Selected time/xorder=" << input_recon << " flux calculations"
-            << " currently does not support SMR/AMR on the HD validation path. "
-            << "The coarse-fine troubled-face contract must be ported before enabling it."
+            << " currently does not support SMR/AMR. Use time/xorder=4wz, whose "
+            << "coarse-fine stencil footprint is locally order-reduced."
+            << std::endl;
+        ATHENA_ERROR(msg);
+      }
+      if (pmb->pmy_mesh->multilevel && berta_wenoz && correct_ic) {
+        std::stringstream msg;
+        msg << "### FATAL ERROR in Reconstruction constructor" << std::endl
+            << "time/correct_ic=true is not coarse-fine aware and corrupts the "
+            << "fourth-order midpoint correction on SMR/AMR meshes. Use "
+            << "time/correct_ic=false with time/xorder=4wz on multilevel meshes."
             << std::endl;
         ATHENA_ERROR(msg);
       }

@@ -35,8 +35,10 @@ sensor, one-cell dilation, and a local van-Leer PLM fallback. Troubled faces als
 the fourth-order transverse flux correction. A point-state quality gate rejects
 non-finite or large density/pressure excursions before they reach reconstruction.
 
-The coarse-fine footprint mask remains deferred. Consequently `xorder=4wz` is still
-rejected for SMR/AMR and is not yet ready for the central-L7 plus surface-L3 star.
+On SMR/AMR meshes, the complete radius-three footprint around every coarse-fine
+transition is forced onto the same local fallback. `time/correct_ic=true` is rejected
+on multilevel meshes because Athena++'s midpoint initial-condition correction is not
+coarse-fine aware; production SCF data use `time/correct_ic=false`.
 
 ## Validation
 
@@ -100,6 +102,22 @@ suite's exact hydrogen Riemann solver and all satisfy its existing tolerances.
 | 5 | 4.162444e-7 | 4.274404e-8 | 6.744184e-3 |
 | 6 | 3.411669e-7 | 3.145498e-8 | 4.890738e-3 |
 
+### Static refinement
+
+A 64 x 32 x 32 sound wave was evolved for one period through the five level-1 static
+refinement regions in `athinput.linear_wave3d`, using 16-cubed MeshBlocks and two MPI
+ranks. Both methods used midpoint initialization and the same 143 cycles.
+
+| method | RMS-L1 error | largest max/L1 |
+|---|---:|---:|
+| VL2 + `xorder=2` | 3.612619e-8 | 5.3560 |
+| RK4 + `xorder=4wz` | 2.439165e-8 | 6.3540 |
+
+The 4wz composite-grid error is about 1.48 times smaller. Total mass and total energy
+in the periodic history output remain unchanged at the printed precision from
+`6.75000` and `6.07500`; the existing conservative restriction and reflux paths are
+unchanged.
+
 ### Cost comparison
 
 For the 64 x 32 x 32 sound-wave case in the serial regression runner:
@@ -115,8 +133,6 @@ performance estimate.
 
 ## Next gates
 
-1. Mark the full three-cell footprint around coarse-fine interfaces as troubled so
-   existing conservative restriction and reflux remain authoritative.
-2. Validate static-refinement wave crossing and conservation.
-3. Build with the SCF table EOS and run positivity/domain smoke tests.
-4. Only then enable the central-L7 plus surface-L3 SCF input for a short HD A/B run.
+1. Build with the SCF table EOS and run positivity/domain smoke tests.
+2. Run an SCF-specific central-L7 plus surface-L3 short HD A/B comparison.
+3. Add sensor/fallback telemetry before using 4wz for production tuning.

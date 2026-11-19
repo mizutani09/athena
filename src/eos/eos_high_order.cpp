@@ -256,6 +256,53 @@ void EquationOfState::ConservedToPrimitivePointValue(
       }
     }
   }
+
+  // Prolongated coarse-fine data do not have the same high-order meaning as native
+  // same-level point samples. Reduce the complete radius-three 4wz footprint on both
+  // sides of every level transition; restriction and reflux remain authoritative.
+  if (pmb->pmy_mesh->multilevel) {
+    constexpr int amr_stencil_radius = 3;
+    const int level = pmb->loc.level;
+    bool different_level[3][3][3] = {};
+    for (int nk=0; nk<3; ++nk) {
+      for (int nj=0; nj<3; ++nj) {
+        for (int ni=0; ni<3; ++ni) {
+          const int neighbor_level = pmb->pbval->nblevel[nk][nj][ni];
+          different_level[nk][nj][ni] =
+              neighbor_level >= 0 && neighbor_level != level;
+        }
+      }
+    }
+    for (int k=mask_kl; k<=mask_ku; ++k) {
+      for (int j=mask_jl; j<=mask_ju; ++j) {
+        for (int i=mask_il; i<=mask_iu; ++i) {
+          bool touches_cross_level_stencil = false;
+          for (int nk=0; nk<3 && !touches_cross_level_stencil; ++nk) {
+            for (int nj=0; nj<3 && !touches_cross_level_stencil; ++nj) {
+              for (int ni=0; ni<3; ++ni) {
+                if (!different_level[nk][nj][ni]) continue;
+                const bool x1_band = ni == 1
+                    || (ni == 0 && i < pmb->is + amr_stencil_radius)
+                    || (ni == 2 && i > pmb->ie - amr_stencil_radius);
+                const bool x2_band = nj == 1
+                    || (nj == 0 && j < pmb->js + amr_stencil_radius)
+                    || (nj == 2 && j > pmb->je - amr_stencil_radius);
+                const bool x3_band = nk == 1
+                    || (nk == 0 && k < pmb->ks + amr_stencil_radius)
+                    || (nk == 2 && k > pmb->ke - amr_stencil_radius);
+                if (x1_band && x2_band && x3_band) {
+                  touches_cross_level_stencil = true;
+                  break;
+                }
+              }
+            }
+          }
+          if (touches_cross_level_stencil) mask(k,j,i) = 1;
+        }
+      }
+    }
+  }
+
   for (int k=kl; k<=ku; ++k) {
     for (int j=jl; j<=ju; ++j) {
       for (int i=il; i<=iu; ++i) {
