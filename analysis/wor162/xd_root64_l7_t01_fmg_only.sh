@@ -1,5 +1,5 @@
 #!/bin/bash
-#SBATCH --partition=M-large-t
+#SBATCH --partition=M-large-a
 #SBATCH --nodes=1
 #SBATCH --ntasks=56
 #SBATCH --ntasks-per-node=56
