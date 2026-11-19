@@ -284,6 +284,11 @@ normally and the history was analyzed separately.  The script now keeps one rest
 output active at the target time so subsequent sustained runs preserve their final
 state and reach postprocessing.
 
+The requested virial time-series review also passes.  Over the final half of the run
+(25 samples from `0.05` to `0.1 t_dyn`), the residual stays between `-6.74e-4` and
+`-6.83e-4`; its fitted change over that interval is only `-8.37e-6`.  It has settled
+after the initial positive `2.51e-3` transient rather than showing secular growth.
+
 The replacement baseline 4wz job `343525` keeps 168 ranks but spreads them over two
 512 GB P nodes (84 ranks per node, 300 GiB requested per node).  This isolates the
 memory-capacity correction from the numerical A/B conditions; the restart, executable SHA-256
