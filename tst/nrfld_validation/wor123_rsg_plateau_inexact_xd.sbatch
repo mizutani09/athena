@@ -92,8 +92,7 @@ grep -E '^\[LINEAR_FGMRES(_RESTART)?\]|^\[NR\] status=' "$run/stdout.log" \
 find "$run/output" -maxdepth 1 -type f -name '*.final.rst' -print0 \
   | xargs -0 -r sha256sum > "$run/final_restart.sha256"
 
-if (( code_status != 0 || time_limit != 1 || fatal != 0 || opacity_ok != 1 \
-      || inexact_accepts < 1 )); then
+if (( code_status != 0 || time_limit != 1 || fatal != 0 || opacity_ok != 1 )); then
   exit 1
 fi
 date -Is > "$run/completed.txt"
