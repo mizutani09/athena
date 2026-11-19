@@ -37,6 +37,12 @@ the seed. The normal-FLD restart smoke test from a no-diffusion preparation
 completed through t=8 with converged Newton solves, but its corrected
 surface convective flux remained ≈0.
 
+The opt-in shell-mean thermal relaxation passed a two-rank MPI startup
+smoke test through t=0.2 code units. It allocates extra meshblock restart
+data, so it cannot be enabled for the first time from a checkpoint written
+without that option; the restart layout check rejects that attempted
+toggle. Its matched fresh-start trial already showed no seed preservation.
+
 In the coherent-velocity trial, the imposed surface temperature mode fell
 to 1.12% of its initial amplitude by t=4 code units (1.02 days), while the
 density mode still retained 79.7%. At t=8 the temperature mode was 1.28%
