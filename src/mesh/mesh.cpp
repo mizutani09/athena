@@ -262,7 +262,8 @@ Mesh::Mesh(ParameterInput *pin, int mesh_test) :
       xorder = 2;
     } else if ((input_recon == "3") || (input_recon == "3c")) {
       xorder = 3;
-    } else if ((input_recon == "4") || (input_recon == "4c")) {
+    } else if ((input_recon == "4") || (input_recon == "4c")
+               || (input_recon == "4wz") || (input_recon == "4wzc")) {
       xorder = 4;
     }
     int slimit = std::max(2*(xorder-1), NGHOST);
@@ -1938,9 +1939,15 @@ void Mesh::Initialize(int res_flag, ParameterInput *pin) {
           }
           pbval->ApplyPhysicalBoundaries(time, 0.0, pbval->bvars_main_int);
           // Perform 4th order W(U)
-          pmb->peos->ConservedToPrimitiveCellAverage(ph->u, ph->w1, pf->b,
-                                                     ph->w, pf->bcc, pmb->pcoord,
-                                                     il, iu, jl, ju, kl, ku);
+          if (pmb->precon->berta_wenoz) {
+            pmb->peos->ConservedToPrimitivePointValue(ph->u, ph->w1, pf->b,
+                                                      ph->w, pf->bcc, pmb->pcoord,
+                                                      il, iu, jl, ju, kl, ku);
+          } else {
+            pmb->peos->ConservedToPrimitiveCellAverage(ph->u, ph->w1, pf->b,
+                                                       ph->w, pf->bcc, pmb->pcoord,
+                                                       il, iu, jl, ju, kl, ku);
+          }
           if (NSCALARS > 0) {
             pmb->peos->PassiveScalarConservedToPrimitiveCellAverage(
                 ps->s, ps->r, ps->r, pmb->pcoord, il, iu, jl, ju, kl, ku);

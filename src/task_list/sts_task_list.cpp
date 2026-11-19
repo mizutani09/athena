@@ -934,9 +934,15 @@ TaskStatus SuperTimeStepTaskList::Primitives_STS(MeshBlock *pmb, int stage) {
       pbval->ApplyPhysicalBoundaries(time, 0.0, pbval->bvars_sts);
       // Perform 4th order W(U)
       if (do_sts_hydro || do_sts_field) {
-        pmb->peos->ConservedToPrimitiveCellAverage(ph->u, ph->w, pf->b,
-                                                   ph->w, pf->bcc, pmb->pcoord,
-                                                   il, iu, jl, ju, kl, ku);
+        if (pmb->precon->berta_wenoz) {
+          pmb->peos->ConservedToPrimitivePointValue(ph->u, ph->w, pf->b,
+                                                    ph->w, pf->bcc, pmb->pcoord,
+                                                    il, iu, jl, ju, kl, ku);
+        } else {
+          pmb->peos->ConservedToPrimitiveCellAverage(ph->u, ph->w, pf->b,
+                                                     ph->w, pf->bcc, pmb->pcoord,
+                                                     il, iu, jl, ju, kl, ku);
+        }
       }
       if (do_sts_scalar) {
         pmb->peos->PassiveScalarConservedToPrimitiveCellAverage(

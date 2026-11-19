@@ -30,6 +30,7 @@ class Reconstruction {
   // data
   // switches for reconstruction method variants:
   int xorder;   // roughly the formal order of accuracy of overall reconstruction method
+  bool berta_wenoz;  // Berta et al. (2024) point-value primitive WENO-Z mode
   bool characteristic_projection; // reconstruct on characteristic or primitive hydro vars
   bool uniform[3], curvilinear[2];
   // (Cartesian reconstruction formulas are used for x3 azimuthal coordinate in both
@@ -91,6 +92,22 @@ class Reconstruction {
   void PiecewiseParabolicX3(const int k, const int j, const int il, const int iu,
                             const AthenaArray<Real> &w, const AthenaArray<Real> &bcc,
                             AthenaArray<Real> &wl, AthenaArray<Real> &wr);
+
+  void BertaWENOZX1(const int k, const int j, const int il, const int iu,
+                    const AthenaArray<Real> &w, const AthenaArray<Real> &bcc,
+                    AthenaArray<Real> &wl, AthenaArray<Real> &wr);
+
+  void BertaWENOZX2(const int k, const int j, const int il, const int iu,
+                    const AthenaArray<Real> &w, const AthenaArray<Real> &bcc,
+                    AthenaArray<Real> &wl, AthenaArray<Real> &wr);
+
+  void BertaWENOZX3(const int k, const int j, const int il, const int iu,
+                    const AthenaArray<Real> &w, const AthenaArray<Real> &bcc,
+                    AthenaArray<Real> &wl, AthenaArray<Real> &wr);
+
+  inline void BertaWENOZ(const Real &q_im2, const Real &q_im1, const Real &q_i,
+                         const Real &q_ip1, const Real &q_ip2,
+                         Real &ql_ip1, Real &qr_i) noexcept;
 
   // overloads for non-fluid (cell-centered Hydro prim. and magnetic field) reconstruction
   void DonorCellX1(const int k, const int j, const int il, const int iu,

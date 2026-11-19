@@ -17,16 +17,17 @@ athena_read.check_nan_flag = True
 logger = logging.getLogger('athena' + __name__[7:])  # set logger name based on module
 
 # List of time/integrator and time/xorder combinations to test:
-solvers = [('rk4', '4c'), ('ssprk5_4', '4')]
+solvers = [('rk4', '4c'), ('ssprk5_4', '4'), ('rk4', '4wz')]
 # Matching above list of solver configurations, provide bounds on error metrics:
 # for each tested resolution (excluding lowest Nx1=16) and wave_flag.
 # Upper bound on RMS-L1 errors:
 error_tols = [((5.6e-9, 3.6e-10), (4.05e-9, 2.65e-10)),
-              ((5.6e-9, 3.65e-10), (4.05e-9, 2.65e-10))
+              ((5.6e-9, 3.65e-10), (4.05e-9, 2.65e-10)),
+              ((2.5e-9, 1.4e-10), (1.8e-9, 1.0e-10))
               ]
 # for each wave_flag, lower bound on convergence rate at 64x32x32 asymptotic convergence
 # regime. Linear hydro waves stop converging around RMS-L1 error 1e-11 to 1e-12
-rate_tols = [(3.95, 3.94),  (3.95, 3.94)]
+rate_tols = [(3.95, 3.94), (3.95, 3.94), (4.0, 4.0)]
 # this metric is redundant with above error_tols, but it is simpler...
 
 # time/correct_err= time/correct_ic=false (slightly higher errors, but faster convergence)

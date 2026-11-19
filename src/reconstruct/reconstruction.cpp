@@ -37,7 +37,7 @@ void DoolittleLUPSolve(Real **lu, int *pivot, Real *b, int n, Real *x);
 //!constructor
 
 Reconstruction::Reconstruction(MeshBlock *pmb, ParameterInput *pin) :
-    characteristic_projection{false}, uniform{true, true, true},
+    berta_wenoz{false}, characteristic_projection{false}, uniform{true, true, true},
     curvilinear{false, false},
     // read fourth-order solver switches
     correct_ic{pin->GetOrAddBoolean("time", "correct_ic", false)},
@@ -62,6 +62,28 @@ Reconstruction::Reconstruction(MeshBlock *pmb, ParameterInput *pin) :
   } else if (input_recon == "3c") {
     xorder = 3;
     characteristic_projection = true;
+  } else if ((input_recon == "4wz") || (input_recon == "4wzc")) {
+    // Berta et al. (2024): reconstruct point-value primitive states with WENO-Z,
+    // then convert the pointwise Riemann flux to a fourth-order face average.
+    xorder = 4;
+    berta_wenoz = true;
+    if (input_recon == "4wzc") {
+      std::stringstream msg;
+      msg << "### FATAL ERROR in Reconstruction constructor" << std::endl
+          << "time/xorder=4wzc requests characteristic WENO-Z, but the "
+          << "Berta et al. implementation currently supports primitive WENO-Z only."
+          << std::endl;
+      ATHENA_ERROR(msg);
+    }
+    if (MAGNETIC_FIELDS_ENABLED || RELATIVISTIC_DYNAMICS || GENERAL_RELATIVITY
+        || NRMGFLD_ENABLED) {
+      std::stringstream msg;
+      msg << "### FATAL ERROR in Reconstruction constructor" << std::endl
+          << "time/xorder=4wz on this branch currently supports Newtonian HD only; "
+          << "MHD, relativity, and FLD remain isolated from this validation path."
+          << std::endl;
+      ATHENA_ERROR(msg);
+    }
   } else if ((input_recon == "4") || (input_recon == "4c")) {
     // Full 4th-order scheme for hydro or MHD on uniform Cartesian grids
     xorder = 4;
@@ -164,7 +186,9 @@ Reconstruction::Reconstruction(MeshBlock *pmb, ParameterInput *pin) :
         std::stringstream msg;
         msg << "### FATAL ERROR in Reconstruction constructor" << std::endl
             << "Selected time/xorder=" << input_recon << " flux calculations"
-            << " currently does not support SMR/AMR " << std::endl;
+            << " currently does not support SMR/AMR on the HD validation path. "
+            << "The coarse-fine troubled-face contract must be ported before enabling it."
+            << std::endl;
         ATHENA_ERROR(msg);
       }
     } else {

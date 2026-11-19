@@ -18,7 +18,7 @@ logger = logging.getLogger('athena' + __name__[7:])  # set logger name based on 
 
 # List of time/integrator and time/xorder combinations to test:
 solvers = [('vl2', '2c'), ('vl2', '3'), ('rk2', '3c'),
-           ('rk3', '4'), ('rk4', '4c'), ('ssprk5_4', '4')]
+           ('rk3', '4'), ('rk4', '4c'), ('ssprk5_4', '4'), ('rk4', '4wz')]
 # Matching above list of solver configurations, provide bounds on error metrics:
 # for each tested resolution (excluding lowest Nx1=16) and wave_flag
 # Upper bound on RMS-L1 errors:
@@ -27,12 +27,14 @@ error_tols = [((1.4e-7, 4.6e-8, 1.1e-8, 2.5e-9), (1.1e-7, 3.7e-8, 9.3e-9, 2.2e-9
               ((3.7e-8, 1.1e-8, 2.7e-9, 6.7e-10), (4.8e-9, 2.0e-9, 5.3e-10, 1.4e-10)),
               ((5.5e-9, 4.0e-10, 3.6e-11, 6.2e-12), (3.7e-9, 2.5e-10, 1.6e-11, 1.1e-12)),
               ((5.2e-9, 3.4e-10, 2.2e-11, 5.6e-12), (3.8e-9, 2.4e-10, 1.6e-11, 1.7e-12)),
-              ((5.2e-9, 3.4e-10, 2.1e-11, 5.6e-12), (3.8e-9, 2.4e-10, 1.6e-11, 1.1e-12))
+              ((5.2e-9, 3.4e-10, 2.1e-11, 5.6e-12), (3.8e-9, 2.4e-10, 1.6e-11, 1.1e-12)),
+              ((1.5e-9, 7.5e-11, 7.0e-12, 6.0e-12),
+               (1.1e-9, 5.5e-11, 3.5e-12, 2.0e-12))
               ]
 # for each wave_flag, lower bound on convergence rate at Nx1=128 asymptotic convergence
 # regime. Linear hydro waves stop converging around RMS-L1 error 1e-11 to 1e-12
 rate_tols = [(2.0, 1.9), (2.0, 2.0), (1.95, 1.85),
-             (3.4, 3.95), (3.95, 3.95),  (3.95, 3.95)]
+             (3.4, 3.95), (3.95, 3.95), (3.95, 3.95), (3.3, 3.8)]
 # this metric is redundant with above error_tols, but it is simpler...
 
 resolution_range = [16, 32, 64, 128, 256]  # , 512]

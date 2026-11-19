@@ -134,7 +134,8 @@ BoundaryValues::BoundaryValues(MeshBlock *pmb, BoundaryFlag *input_bcs,
       xorder_ = 2;
     } else if ((input_recon == "3") || (input_recon == "3c")) {
       xorder_ = 3;
-    } else if ((input_recon == "4") || (input_recon == "4c")) {
+    } else if ((input_recon == "4") || (input_recon == "4c")
+               || (input_recon == "4wz") || (input_recon == "4wzc")) {
       xorder_ = 4;
     }
     if (xorder_ <= 2) xgh_ = 1;

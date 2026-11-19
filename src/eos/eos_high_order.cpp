@@ -102,3 +102,40 @@ void EquationOfState::ConservedToPrimitiveCellAverage(
 
   return;
 }
+
+//---------------------------------------------------------------------------------------
+//! \brief Recover cell-center point primitive values from evolved volume averages.
+//!
+//! This is the HD subset of Berta et al. (2024), Eq. (16). The troubled-cell sensor and
+//! its order-reduction mask are added with the AMR/fallback milestone; this uniform-grid
+//! validation path deliberately exercises the smooth fourth-order operator only.
+
+void EquationOfState::ConservedToPrimitivePointValue(
+    AthenaArray<Real> &cons, const AthenaArray<Real> &prim_old, const FaceField &b,
+    AthenaArray<Real> &prim, AthenaArray<Real> &bcc,
+    Coordinates *pco, int il, int iu, int jl, int ju, int kl, int ku) {
+  MeshBlock *pmb = pmy_block_;
+  Hydro *ph = pmb->phydro;
+  const int nl = 0;
+  const int nu = NHYDRO - 1;
+  const Real h = pco->dx1f(il);
+  const Real C = (h*h)/24.0;
+
+  AthenaArray<Real> &u_cc = ph->u_cc;
+  AthenaArray<Real> &laplacian_cc = ph->scr1_nkji_;
+  pco->Laplacian(cons, laplacian_cc, il, iu, jl, ju, kl, ku, nl, nu);
+
+  for (int n=nl; n<=nu; ++n) {
+    for (int k=kl; k<=ku; ++k) {
+      for (int j=jl; j<=ju; ++j) {
+#pragma omp simd
+        for (int i=il; i<=iu; ++i) {
+          u_cc(n,k,j,i) = cons(n,k,j,i) - C*laplacian_cc(n,k,j,i);
+        }
+      }
+    }
+  }
+
+  ConservedToPrimitive(u_cc, prim_old, b, prim, bcc, pco,
+                       il, iu, jl, ju, kl, ku);
+}

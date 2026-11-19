@@ -2361,9 +2361,15 @@ TaskStatus TimeIntegratorTaskList::Primitives(MeshBlock *pmb, int stage) {
       }
       pbval->ApplyPhysicalBoundaries(t_end_stage, dt, pmb->pbval->bvars_main_int);
       // Perform 4th order W(U)
-      pmb->peos->ConservedToPrimitiveCellAverage(ph->u, ph->w, pf->b,
-                                                 ph->w1, pf->bcc, pmb->pcoord,
-                                                 il, iu, jl, ju, kl, ku);
+      if (pmb->precon->berta_wenoz) {
+        pmb->peos->ConservedToPrimitivePointValue(ph->u, ph->w, pf->b,
+                                                  ph->w1, pf->bcc, pmb->pcoord,
+                                                  il, iu, jl, ju, kl, ku);
+      } else {
+        pmb->peos->ConservedToPrimitiveCellAverage(ph->u, ph->w, pf->b,
+                                                   ph->w1, pf->bcc, pmb->pcoord,
+                                                   il, iu, jl, ju, kl, ku);
+      }
       if (NSCALARS > 0) {
         pmb->peos->PassiveScalarConservedToPrimitiveCellAverage(
             ps->s, ps->r, ps->r, pmb->pcoord, il, iu, jl, ju, kl, ku);
