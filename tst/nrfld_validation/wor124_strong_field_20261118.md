@@ -330,3 +330,51 @@ post-regrid cells are finite, positive, and inside both opacity axes
 automatically to c940--950.  This confirms that the c930 stop was solely the
 missing Python package and that the replacement audit works in the allocated
 compute environment.
+
+## c960 nonlinear localization and CFL recovery test
+
+Job `342848` safely completed and audited c930--960 before failing while
+attempting cycle 964.  The completed 30 steps used 60 strict FGMRES solves at
+32--718 iterations; no inexact result was accepted.  The run changed gas mass
+by `+2.66e-8` and angular momentum by `+3.02e-7` relative through c960.
+Maximum Slurm step RSS was 37,949,840 KiB (36.2 GiB).
+
+The c960 HDF has 2,412,544 cells and zero opacity-domain, EOS-domain, or
+nonpositive-gas-energy violations.  Its energy-closure relative error is
+`1.01e-7` median, `1.43e-6` p99, and `4.31e-6` maximum.  HDF SHA-256 is
+`28f41a17db08796233acb2039a3e2fa3085e78f630c7b1fbb69188f7d3574c6d`.
+The complete c960 restart SHA-256 is
+`d891265a29942c53e58b41daa079101c7a52fdb52cce9e6b98f42d65c3a32377`.
+
+At cycle 964, all four FGMRES corrections met the strict `2e-8` normwise
+target in 628, 605, 576, and 576 iterations.  Their local stencil backward
+errors nevertheless grew from `6.36e-6` through `5.43e-4` and `7.21e-2` to
+`1.0`.  Newton stopped after four corrections at L2 `6.41e-5`, with one
+total-energy component still at normalized residual `1.0`.  This is the same
+localized strong-field coarse/fine mode seen at c880, not an opacity-domain
+failure and not a license to use an inexact acceptance gate.
+
+Five-node M-test job `342919` replays the exact c960 checkpoint through c966
+at CFL 0.075 with strict FGMRES and per-cycle output.  It is pending the
+per-user M-test QOS slot; no duplicate recovery was submitted.
+
+Recovery `342919` passed c960--966 in 132 s solver time (138 s Slurm).  All
+12 strict FGMRES solves converged in 19--22 iterations, versus 296--628 near
+the CFL-0.15 failure, and all six Newton steps converged in two corrections.
+Maximum final L2 was `5.83e-10`, maximum final component `1.69e-8`, and
+maximum local stencil backward error `1.70e-6`.  Cycle 964 therefore passed
+cleanly instead of stagnating.  Maximum Slurm step RSS was 34,383,604 KiB
+(32.8 GiB).
+
+The c966 post-regrid HDF has zero opacity/EOS-domain and nonpositive-gas-energy
+cells.  Its energy-closure error is `1.01e-7` median, `1.43e-6` p99, and
+`4.23e-6` maximum.  HDF SHA-256 is
+`06787d4eb03ad931211de18ec6e3d1a56f7549d574237ef9bde2efd60a15f22c`;
+restart SHA-256 is
+`1d1ad46024b010eecd7b88b00d8dd0a4be640bf687a7d7000dcfb2c4fde0c690`.
+The smaller CFL is faster here because it restores a well-conditioned
+implicit solve; it is not merely paying twice as many equally expensive
+steps.
+
+Five-node M-large-a continuation `342930` starts from the verified c966
+checkpoint with CFL 0.075.  It is pending the per-user QOS slot.

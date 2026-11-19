@@ -19,6 +19,7 @@ gate_status="$gate/status.csv"
 initial_rst="${WOR124_INITIAL_RST:-$gate/output/wor124_B129_c880_cfl015_sustain.final.rst}"
 initial_cycle="${WOR124_INITIAL_CYCLE:-890}"
 label="${WOR124_LABEL:-combined_B129_strict_r2000m2500mg5_cfl015_amr12_5node}"
+cfl="${WOR124_CFL:-0.15}"
 job="$base/high_amr_long/${label}_job_${SLURM_JOB_ID}"
 mkdir -p "$job/output"
 rst="$job/output/$label.final.rst"
@@ -61,8 +62,8 @@ stop_epoch=$((started + 23*3600 + 30*60))
   printf 'source_dir=%s\n' "$source_dir"
   printf 'gate_job=%s gate_status=%s\n' "$gate_job" "$gate_status"
   cat "$gate_status"
-  printf 'label=%s ranks=%s initial_cycle=%s max_amr_level=12 cfl=0.15 fgmres=2000/2500_mg5 threshold=2e-8 inexact_cap=disabled backward_error=false\n' \
-    "$label" "$SLURM_NTASKS" "$initial_cycle"
+  printf 'label=%s ranks=%s initial_cycle=%s max_amr_level=12 cfl=%s fgmres=2000/2500_mg5 threshold=2e-8 inexact_cap=disabled backward_error=false\n' \
+    "$label" "$SLURM_NTASKS" "$initial_cycle" "$cfl"
   sha256sum "$initial_rst" "$reader" "$opacity_audit" bin/athena
   sha256sum data/eos/protostellar_tomida2015_material.tab \
             data/opacity/protostellar_semenov2003_nrm_c_a.h5
@@ -96,7 +97,7 @@ while true; do
   mpirun -np "$SLURM_NTASKS" bin/athena \
     -r "$input_rst" -d "$job/output" -t "$wallarg" \
     job/problem_id="$label" mesh/numlevel=12 \
-    time/cfl_number=0.15 time/tlim=10000.0 time/nlim="$target" \
+    time/cfl_number="$cfl" time/tlim=10000.0 time/nlim="$target" \
     time/ncycle_out=10 output2/dcycle=10 output2/variable=cons,prim,uov \
     output4/dcycle=10 nrfld/diagnostic_verbosity=0 \
     nrfld/jacobian_check=false nrfld/jacobian_check_each_cycle=false \

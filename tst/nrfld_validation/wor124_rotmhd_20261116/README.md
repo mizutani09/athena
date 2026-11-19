@@ -691,3 +691,16 @@ restart is complete.  The audit now uses XD's native `h5dump` backend; its
 result matches `h5py` exactly.  Five-node resume `342848` started from c930;
 its first c930--940 segment passed the new audit on the allocated compute
 nodes and continued automatically to c940--950.
+
+Job `342848` then completed c930--960 with valid post-regrid opacity audits
+before Newton stagnated at cycle 964.  Every linear correction was normwise
+strict, but the local stencil backward error grew to one and left a single
+total-energy component unresolved.  The c960 HDF remains valid and the
+complete c960 restart is preserved.  M-test recovery `342919` tests CFL 0.075
+through c966 from that exact checkpoint.
+
+Recovery `342919` passed c960--966 in 132 s.  All 12 strict FGMRES solves used
+19--22 iterations and every Newton step converged in two corrections, including
+cycle 964.  The c966 opacity/EOS/energy audit is clean.  Five-node M-large-a
+continuation `342930` resumes from c966 at CFL 0.075 and is pending its QOS
+slot.
