@@ -22,7 +22,10 @@ export OMP_NUM_THREADS=1
 ulimit -c 0
 
 repository=$HOME/simulation/athena-wor120-hd4wz
+tasks=${SLURM_NTASKS}
+tasks_per_node=56
 surface_level=${SCF_SURFACE_LEVEL:-3}
+meshblock_size=${SCF_MESHBLOCK_SIZE:-16}
 run_tag=${SCF_RUN_TAG:-l3}
 run_root=/work/mizutaniks/wor120/hd4wz_scf_${run_tag}_${SLURM_JOB_ID}
 input=inputs/rsg/athinput.scf_rsg_relaxation_surface_l3
@@ -44,7 +47,10 @@ icpx -O2 -std=c++11 -Wall -Wextra -Werror -pedantic \
 # Build the expensive NGHOST=4, surface-L3 state once.  Delaying next_time suppresses
 # the redundant numbered restart at t=0; the forced final restart is still written.
 /usr/bin/time -f 'wall_s=%e maxrss_kb=%M' -o "$seed/time.log" \
-  srun -n112 --ntasks-per-node=56 bin/athena -i "$input" -d "$seed" \
+  srun -n"$tasks" --ntasks-per-node="$tasks_per_node" \
+  bin/athena -i "$input" -d "$seed" \
+  meshblock/nx1="$meshblock_size" meshblock/nx2="$meshblock_size" \
+  meshblock/nx3="$meshblock_size" \
   time/nlim=0 time/tlim=1.0 time/integrator=rk2 time/xorder=2 \
   problem/surface_refinement_level="$surface_level" \
   output1/dcycle=1 output2/dt=-1 output3/dt=-1 \
@@ -73,7 +79,8 @@ run_case() {
   mkdir -p "$run"
   cp "$seed/scf_rsg_relax.hst" "$run/scf_rsg_relax.hst"
   /usr/bin/time -f 'wall_s=%e maxrss_kb=%M' -o "$run/time.log" \
-    srun -n112 --ntasks-per-node=56 bin/athena -r "$restart" -d "$run" \
+    srun -n"$tasks" --ntasks-per-node="$tasks_per_node" \
+    bin/athena -r "$restart" -d "$run" \
     time/integrator="$integrator" time/xorder="$xorder" \
     time/nlim=1 time/tlim=1.0 \
     output1/dcycle=1 output2/dt=-1 output3/dt=-1 \
