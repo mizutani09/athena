@@ -12,6 +12,7 @@ set -euo pipefail
 source /etc/profile.d/modules.sh
 export MODULEPATH=/work/opt/intel/modulefiles:/work/opt/local_oneapi/modulefiles:/work/opt/local/modulefiles
 module purge >/dev/null 2>&1
+module load umf/0.10.0
 module load PrgEnv-oneapi/2025.1
 
 repository=$HOME/simulation/athena-wor162
