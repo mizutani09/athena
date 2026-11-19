@@ -378,3 +378,44 @@ steps.
 
 Five-node M-large-a continuation `342930` starts from the verified c966
 checkpoint with CFL 0.075.  It is pending the per-user QOS slot.
+
+## Coarse/fine tangential-positivity resolution (2026-11-19)
+
+Subsequent exact-checkpoint diagnostics showed that the c964 failure was not
+fundamentally a timestep-size or floating-point expression-order problem.
+Twenty-seven level-10 cells crossed zero under the raw radiation correction
+and were clipped individually.  At the adjoining z+ level-9/10 face this
+destroyed the linear shared-face moment identity; the resulting discrepancy
+accounts for essentially the entire localized total-energy residual.
+Double and long-double evaluation agreed.  Global fraction-to-boundary trials
+preserved the identity but stalled geometrically and were rejected.
+
+Disabling tangential coarse/fine reconstruction on the exact c964 checkpoint
+was the decisive control.  Job `343387` reduced the two FGMRES solves from
+hundreds of iterations to 12 and 11 and converged Newton in two corrections.
+Job `343388` sustained this route through c970, and five-node M-large-a job
+`343393` continued c970--1000 in 207 s.  All 30 steps used two Newton
+corrections; all 60 FGMRES solves used 11--12 iterations and met the strict
+`2e-8` true-residual target.  The run included AMR/workspace changes.  The
+c1000 HDF has 2,469,888 positive finite cells through level 11 and no accepted
+or post-regrid opacity-domain violation.  Relative mass and z-angular-momentum
+changes over c970--1000 were `2.2635e-8` and `4.8088e-7`.  The final restart
+SHA-256 is
+`d82e5a442e786579c585438e33afdcc9fd000e9113f81d04d4b21726007f3c8c`.
+
+Re-enabling tangential reconstruction at c970 did pass one step, proving that
+the prior clip did not permanently corrupt the trajectory, but required 630
+and 645 FGMRES iterations.  It is therefore not a useful production route in
+this strong-field/high-AMR state.  Conversely, two-rank Test C controls show
+that tangential reconstruction improves the N64 coarse/fine-band accuracy
+metric by a factor of 24.3 while both forms conserve the diffusion integral to
+about `1e-21`.  The robust two-point form is thus validated as a
+problem-scoped strong-field configuration, not as a new global default.
+
+An opt-in prototype that switched to two-point faces after detecting an unsafe
+Newton direction was also rejected and fully reverted.  Although replacement
+linear solves took only 10--12 iterations, changing the discretization inside
+an already-started Newton solve retained a localized residual and exhausted
+backtracking.  A future automatic policy would need to restart the entire
+nonlinear solve from the saved pre-Newton state, including driver and MG
+caches; that broader change is not justified by this one trajectory.
