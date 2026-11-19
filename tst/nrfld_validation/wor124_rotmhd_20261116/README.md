@@ -701,6 +701,28 @@ through c966 from that exact checkpoint.
 
 Recovery `342919` passed c960--966 in 132 s.  All 12 strict FGMRES solves used
 19--22 iterations and every Newton step converged in two corrections, including
-cycle 964.  The c966 opacity/EOS/energy audit is clean.  Five-node M-large-a
-continuation `342930` resumes from c966 at CFL 0.075 and is pending its QOS
-slot.
+cycle 964.  The c966 opacity/EOS/energy audit is clean.  This demonstrates a
+bounded recovery but is not accepted as the root production fix: five-node
+M-large-a continuation `342930` was cancelled before execution rather than
+turning CFL 0.075 into the production policy.
+
+Two higher-order/symmetry root candidates were then tested from the identical
+c960 restart at CFL 0.15.  HLLD-FLD mirror symmetry (`60e054f5`, job `342990`)
+and signed/symmetric CT corner assembly (`91740e32`, job `343007`) both failed
+at attempted cycle 964.  Both retained the baseline 628/605/576/576 FGMRES
+iteration sequence; their true relative residuals were below `2e-8`, while
+local stencil backward error grew from about `6.36e-6` to one.  Final Newton
+L2 residual was `6.40878e-5`, almost entirely the total-energy component, in
+both cases.  The accepted c960--963 interval also had identical gas-mass and
+Lz relative changes (`2.37e-9` and `4.76e-8`).  These candidates are rejected
+and are not promoted to the production/collaboration branch.
+
+The first PPM trial (`343008`) was invalid before time integration because
+AMR requires an even ghost-cell count and the trial used `NGHOST=3`.  The
+corrected `xorder=3`, `NGHOST=4` configuration builds locally and is queued as
+M-test job `343308`, again from the immutable c960 checkpoint at CFL 0.15.
+This remains an isolated diagnostic because general/table EOS plus PPM has not
+yet passed the required shock and conservation regression set.  If it does
+not change the cycle-964 outcome, the next root candidate is selective
+iterative refinement triggered by the measured local backward error, rather
+than another global tolerance or CFL reduction.
