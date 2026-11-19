@@ -1,7 +1,7 @@
 #!/bin/bash
 #SBATCH --partition=M-test-a
-#SBATCH --nodes=1
-#SBATCH --ntasks=56
+#SBATCH --nodes=2
+#SBATCH --ntasks=112
 #SBATCH --ntasks-per-node=56
 #SBATCH --cpus-per-task=1
 #SBATCH --hint=nomultithread
@@ -43,7 +43,7 @@ run_case() {
   local run=$run_root/$label
   mkdir -p "$run"
   /usr/bin/time -f 'wall_s=%e maxrss_kb=%M' -o "$run/time.log" \
-    srun -n56 --ntasks-per-node=56 bin/athena -i "$input" -d "$run" \
+    srun -n112 --ntasks-per-node=56 bin/athena -i "$input" -d "$run" \
     time/integrator="$integrator" time/xorder="$xorder" \
     time/nlim=1 time/tlim=1.0 \
     output1/dcycle=1 output2/dt=-1 output3/dt=-1 \
