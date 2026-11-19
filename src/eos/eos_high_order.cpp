@@ -126,7 +126,9 @@ void EquationOfState::ConservedToPrimitivePointValue(
   AthenaArray<Real> &u_cc = ph->u_cc;
   AthenaArray<Real> &w_cc = ph->w_cc;
   AthenaArray<Real> &laplacian_cc = ph->scr1_nkji_;
-  AthenaArray<Real> &theta = ph->scr2_nkji_;
+  // The Laplacian is dead after u_cc has been formed. Reuse its storage for the
+  // one-component dilated mask instead of retaining another NHYDRO block array.
+  AthenaArray<Real> &theta = ph->scr1_nkji_;
   AthenaArray<int> &mask = ph->troubled_cell_mask_;
 
   // Publish exactly the point-recovery domain. Same-level/periodic ghost cells are

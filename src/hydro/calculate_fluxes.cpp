@@ -104,7 +104,10 @@ void Hydro::CalculateFluxes(AthenaArray<Real> &w, FaceField &b,
                   &e1x3 = pmb->pfield->e1_x3f, &e2x3 = pmb->pfield->e2_x3f;
 #endif
   AthenaArray<Real> &flux_fc = scr1_nkji_;
-  AthenaArray<Real> &laplacian_all_fc = scr2_nkji_;
+  // Point recovery and scalar primitive recovery are complete before this task.  The
+  // Berta path can reuse u_cc for its face-flux Laplacian; the legacy path still needs
+  // its dedicated second scratch array while flux_fc is live.
+  AthenaArray<Real> &laplacian_all_fc = berta_wenoz ? u_cc : scr2_nkji_;
 
   //--------------------------------------------------------------------------------------
   // i-direction

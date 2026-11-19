@@ -137,14 +137,22 @@ Hydro::Hydro(MeshBlock *pmb, ParameterInput *pin) :
 
   // fourth-order hydro integration scheme
   if (pmb->precon->xorder == 4) {
-    // 4D scratch arrays
-    wl3d_.NewAthenaArray(NWAVE, nc3, nc2, nc1);
-    wr3d_.NewAthenaArray(NWAVE, nc3, nc2, nc1);
+    // The legacy fourth-order path stores reconstructed face-average states before
+    // de-averaging them.  Berta WENO-Z reconstructs point states directly and never
+    // touches these two block-sized arrays.
+    if (!pmb->precon->berta_wenoz) {
+      wl3d_.NewAthenaArray(NWAVE, nc3, nc2, nc1);
+      wr3d_.NewAthenaArray(NWAVE, nc3, nc2, nc1);
+      laplacian_l_fc_.NewAthenaArray(nc1);
+      laplacian_r_fc_.NewAthenaArray(nc1);
+    }
+    // The cell-average-to-point conversion needs one block-sized Laplacian scratch in
+    // both paths.  The legacy path needs a second simultaneous array; Berta reuses
+    // u_cc for the face-flux Laplacian after primitive recovery has finished.
     scr1_nkji_.NewAthenaArray(NHYDRO, nc3, nc2, nc1);
-    scr2_nkji_.NewAthenaArray(NHYDRO, nc3, nc2, nc1);
-    // 1D scratch arrays
-    laplacian_l_fc_.NewAthenaArray(nc1);
-    laplacian_r_fc_.NewAthenaArray(nc1);
+    if (!pmb->precon->berta_wenoz) {
+      scr2_nkji_.NewAthenaArray(NHYDRO, nc3, nc2, nc1);
+    }
   }
 
   UserTimeStep_ = pmb->pmy_mesh->UserTimeStep_;
