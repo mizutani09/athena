@@ -196,6 +196,39 @@ always validates the first and last arrays. The previous exact-two assumption
 was exposed only by the 120-step output cadence; the affected pilot suites are
 excluded.
 
+## XD conservative-AMR scaling pilot
+
+The multi-node experiment uses a fixed 128³ root grid, centered level-1 static
+AMR, 8³ MeshBlocks, 7,680 leaf MeshBlocks, 3,932,160 active leaf cells, and 32
+MPI ranks per node. It reuses the same validated Test C path and detailed
+FGMRES timer. This is a strong-scaling test; the numerical problem and ten
+measured steps remain fixed.
+
+The accepted one-node job is XD job `343669` (M-test-a, one node / 32 ranks).
+It completed with exit `0:0` in 2:16. All 32 rank-resource records and all 32
+performance records are present. Every rank reports ten measured steps; all
+12 Newton solves converged, the 12 FGMRES solves used 132 iterations in total
+and at most 11 per solve, and no relaxed acceptance or breakdown occurred.
+Mass drift is zero at 16-digit history precision. The measured rate is
+10.64899 s/step, or 0.3692 million leaf-cell steps/s.
+
+| nodes | ranks | s/step | max FGMRES | MG prec. | matvec | reductions | vector/other | max-rank RSS |
+| ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| 1 | 32 | 10.64899 | 11 | 82.275% | 12.328% | 1.030% | 4.368% | 1,241.6 MiB |
+
+The sum of per-rank peak high-water marks is 38.52 GiB, but those independent
+peaks are not asserted to be simultaneous. The one-node point alone is not a
+scaling result. Job `343671` is the staged two-node pilot; a four-node job is
+submitted only after that result passes.
+
+Several earlier job attempts are retained but excluded from performance data:
+compute-node Python 3.6 could not parse the typed wrapper; a Python 3.11 path
+present only on the login node was unavailable on compute nodes; and the first
+shared-Python run closed Slurm's inherited PMI2 descriptor before the MPI
+payload. The accepted wrapper uses the shared Cray Python and explicitly
+preserves inherited descriptors. These were launcher failures before a valid
+Athena measurement, not solver, convergence, conservation, or memory failures.
+
 ## Interpretation and limits
 
 Standalone MG is the fastest choice for this easy, uniform, well-conditioned
@@ -244,6 +277,8 @@ Raw suites:
   `/home/kosuke/simulation/test/rad_nr/wor20_publication_baseline_20261120/amr_testc_p4_long_20261120/performance_run_20261120_034212_554844_JST`
 - Conservative AMR comparison HTML/JSON/CSV/PNG:
   `/home/kosuke/simulation/test/rad_nr/wor20_publication_baseline_20261120/amr_comparison_v2_20261120`
+- XD one-node raw copy and provisional HTML/JSON/CSV/PNG:
+  `/home/kosuke/simulation/test/rad_nr/wor20_publication_baseline_20261120/xd_scaling_20261120`
 
 `wor20_compare_solvers.py` validates matched options and suite PASS status,
 recomputes FGMRES counts and final-field differences, and regenerates the
