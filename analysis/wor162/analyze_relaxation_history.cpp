@@ -52,6 +52,11 @@ History ReadHistory(const std::string& filename) {
     if (row.size() != history.names.size()) {
       throw std::runtime_error("history row width does not match header");
     }
+    for (const double value : row) {
+      if (!std::isfinite(value)) {
+        throw std::runtime_error("history contains a non-finite value");
+      }
+    }
   }
   return history;
 }
@@ -115,6 +120,8 @@ int main(int argc, char** argv) {
     const std::vector<double>& initial = h.rows.front();
     const double initial_mechanical = initial[hydro_energy]+initial[self_energy]
         +initial[core_energy];
+    const double initial_mean_radius = initial[r_mass]/initial[mass];
+    const double initial_rms_radius = std::sqrt(initial[r2_mass]/initial[mass]);
     std::ofstream csv(argv[2]);
     if (!csv) throw std::runtime_error("cannot create CSV output");
     csv << "time_code,time_days,time_over_tdyn,mass_relative_drift,J_relative_drift,"
@@ -135,6 +142,10 @@ int main(int argc, char** argv) {
     double maximum_mach_rms = 0.0;
     double maximum_mach = 0.0;
     double maximum_virial = 0.0;
+    double maximum_radial_ke_fraction = 0.0;
+    double maximum_nonradial_ke_fraction = 0.0;
+    double maximum_mean_radius_drift = 0.0;
+    double maximum_rms_radius_drift = 0.0;
     double maximum_wenoz_sensor_fraction = 0.0;
     double maximum_wenoz_amr_fraction = 0.0;
     double maximum_wenoz_fallback_fraction = 0.0;
@@ -150,6 +161,12 @@ int main(int argc, char** argv) {
       const double virial = (2.0*row[kinetic]+row[pressure_virial]+gravity_virial)
           /std::abs(gravity_virial);
       const double binding = std::abs(gravity_virial);
+      const double radial_ke_fraction = row[radial_ke]/binding;
+      const double nonradial_ke_fraction = row[nonradial_ke]/binding;
+      const double mean_radius = row[r_mass]/row[mass];
+      const double rms_radius = std::sqrt(row[r2_mass]/row[mass]);
+      const double mean_radius_drift = Relative(mean_radius, initial_mean_radius);
+      const double rms_radius_drift = Relative(rms_radius, initial_rms_radius);
       const double available_cells = has_wenoz ? row[wenoz_cells] : 0.0;
       const double sensor_cells = has_wenoz && wenoz_sensor < h.names.size()
           ? row[wenoz_sensor] : 0.0;
@@ -164,9 +181,9 @@ int main(int argc, char** argv) {
       csv << row[time] << ',' << row[time]*2.19999657e4/kDay << ','
           << row[time]*2.19999657e4/kDynamicalTime << ','
           << mass_drift << ',' << j_drift << ',' << energy_drift << ','
-          << mach_rms << ',' << row[mach_max] << ',' << row[radial_ke]/binding << ','
-          << row[nonradial_ke]/binding << ',' << row[r_mass]/row[mass] << ','
-          << std::sqrt(row[r2_mass]/row[mass]) << ',' << virial << ','
+          << mach_rms << ',' << row[mach_max] << ',' << radial_ke_fraction << ','
+          << nonradial_ke_fraction << ',' << mean_radius << ','
+          << rms_radius << ',' << virial << ','
           << row[outside_mass]/row[mass] << ',' << row[q_mass]/row[mass] << ','
           << row[q_max] << ',' << available_cells << ',' << sensor_cells << ','
           << amr_cells << ',' << fallback_cells << ','
@@ -179,6 +196,14 @@ int main(int argc, char** argv) {
       maximum_mach_rms = std::max(maximum_mach_rms, mach_rms);
       maximum_mach = std::max(maximum_mach, row[mach_max]);
       maximum_virial = std::max(maximum_virial, std::abs(virial));
+      maximum_radial_ke_fraction = std::max(
+          maximum_radial_ke_fraction, radial_ke_fraction);
+      maximum_nonradial_ke_fraction = std::max(
+          maximum_nonradial_ke_fraction, nonradial_ke_fraction);
+      maximum_mean_radius_drift = std::max(
+          maximum_mean_radius_drift, std::abs(mean_radius_drift));
+      maximum_rms_radius_drift = std::max(
+          maximum_rms_radius_drift, std::abs(rms_radius_drift));
       if (available_cells > 0.0) {
         maximum_wenoz_sensor_fraction = std::max(
             maximum_wenoz_sensor_fraction, sensor_cells/available_cells);
@@ -191,6 +216,17 @@ int main(int argc, char** argv) {
           maximum_wenoz_fallback_mass_fraction, fallback_mass_fraction);
     }
 
+    const std::vector<double>& final = h.rows.back();
+    const double final_mechanical = final[hydro_energy]+final[self_energy]
+        +final[core_energy];
+    const double final_gravity_virial = final[self_virial]+final[core_virial];
+    const double final_binding = std::abs(final_gravity_virial);
+    const double final_mean_radius = final[r_mass]/final[mass];
+    const double final_rms_radius = std::sqrt(final[r2_mass]/final[mass]);
+    const double final_available_cells = has_wenoz ? final[wenoz_cells] : 0.0;
+    const double final_fallback_cells = has_wenoz ? final[wenoz_fallback] : 0.0;
+    const double final_fallback_mass = has_wenoz
+        && wenoz_fallback_mass < h.names.size() ? final[wenoz_fallback_mass] : 0.0;
     std::ofstream json(argv[3]);
     if (!json) throw std::runtime_error("cannot create JSON output");
     json << std::scientific << std::setprecision(12)
@@ -199,6 +235,32 @@ int main(int argc, char** argv) {
          << "  \"final_time_code\": " << h.rows.back()[time] << ",\n"
          << "  \"final_time_over_tdyn\": "
          << h.rows.back()[time]*2.19999657e4/kDynamicalTime << ",\n"
+         << "  \"final_mass_relative_drift\": "
+         << Relative(final[mass], initial[mass]) << ",\n"
+         << "  \"final_J_relative_drift\": "
+         << (initial[angular_momentum] != 0.0
+             ? Relative(final[angular_momentum], initial[angular_momentum]) : 0.0)
+         << ",\n"
+         << "  \"final_mechanical_energy_relative_drift\": "
+         << Relative(final_mechanical, initial_mechanical) << ",\n"
+         << "  \"final_radial_mach_rms\": "
+         << std::sqrt(std::max(0.0, final[mach2_mass]/final[mass])) << ",\n"
+         << "  \"final_radial_ke_over_abs_W\": "
+         << final[radial_ke]/final_binding << ",\n"
+         << "  \"final_nonradial_perturbation_ke_over_abs_W\": "
+         << final[nonradial_ke]/final_binding << ",\n"
+         << "  \"final_mean_radius_relative_drift\": "
+         << Relative(final_mean_radius, initial_mean_radius) << ",\n"
+         << "  \"final_rms_radius_relative_drift\": "
+         << Relative(final_rms_radius, initial_rms_radius) << ",\n"
+         << "  \"final_virial_relative_residual\": "
+         << (2.0*final[kinetic]+final[pressure_virial]+final_gravity_virial)
+             /final_binding << ",\n"
+         << "  \"final_wenoz_plm_fallback_fraction\": "
+         << (final_available_cells > 0.0
+             ? final_fallback_cells/final_available_cells : 0.0) << ",\n"
+         << "  \"final_wenoz_plm_fallback_stellar_mass_fraction\": "
+         << (final[mass] > 0.0 ? final_fallback_mass/final[mass] : 0.0) << ",\n"
          << "  \"maximum_abs_mass_relative_drift\": " << maximum_mass_drift << ",\n"
          << "  \"maximum_abs_J_relative_drift\": " << maximum_j_drift << ",\n"
          << "  \"maximum_abs_mechanical_energy_relative_drift\": "
@@ -206,6 +268,14 @@ int main(int argc, char** argv) {
          << "  \"maximum_radial_mach_rms\": " << maximum_mach_rms << ",\n"
          << "  \"maximum_radial_mach\": " << maximum_mach << ",\n"
          << "  \"maximum_abs_virial_relative_residual\": " << maximum_virial << ",\n"
+         << "  \"maximum_radial_ke_over_abs_W\": "
+         << maximum_radial_ke_fraction << ",\n"
+         << "  \"maximum_nonradial_perturbation_ke_over_abs_W\": "
+         << maximum_nonradial_ke_fraction << ",\n"
+         << "  \"maximum_abs_mean_radius_relative_drift\": "
+         << maximum_mean_radius_drift << ",\n"
+         << "  \"maximum_abs_rms_radius_relative_drift\": "
+         << maximum_rms_radius_drift << ",\n"
          << "  \"maximum_wenoz_sensor_fallback_fraction\": "
          << maximum_wenoz_sensor_fraction << ",\n"
          << "  \"maximum_wenoz_amr_fallback_fraction\": "
