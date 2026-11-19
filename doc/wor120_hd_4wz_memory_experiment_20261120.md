@@ -71,6 +71,10 @@ is 34.56 GiB.  In the local four-rank, 400-block SCF smoke, peak RSS changes fro
 scalar PLM), a cumulative 24.5% reduction.  The resulting history is byte-for-byte
 identical to the independently validated scalar-PLM branch.
 
+A separate `-fsanitize=address` debug build also completes a three-dimensional SCF
+4wz cycle with scalar PLM and no invalid access.  This specifically exercises the
+Berta path after the legacy fourth-order scalar arrays have been left unallocated.
+
 The committed gate now targets memory2 on the same three 110 GiB nodes.  This branch
 remains separate from production until that 100-cycle surface-L3 gate completes and
 the measured rank/node RSS confirms safe sustained headroom.
