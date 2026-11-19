@@ -1,0 +1,68 @@
+{
+  "wor122_coherent_heat_transfer_t160": [
+    {
+      "time_code": 164.02027893066406,
+      "shell": {
+        "mean_rho": 0.19662277134193573,
+        "rms_rho": 0.05737876816444206,
+        "mode_rho": 0.10935545272716994,
+        "rms_rho_fraction": 0.2918084404709489,
+        "mode_rho_fraction": 0.5560989069446429,
+        "mean_press": 0.010308855434118414,
+        "rms_press": 0.0011399312852497703,
+        "mode_press": 0.0017601807456383801,
+        "rms_press_fraction": 0.1240200546509169,
+        "mode_press_fraction": 0.1953661852699362,
+        "mean_temp": 7593.252248764038,
+        "rms_temp": 814.6838755432523,
+        "mode_temp": -1531.4381247102458,
+        "rms_temp_fraction": 0.10482622112066504,
+        "mode_temp_fraction": -0.19649336722086203,
+        "mean_sound": 811779.3246459961,
+        "rms_sound": 84314.05596089226,
+        "mode_sound": -144071.1346439085,
+        "mean_vz": 0.021730908693179174,
+        "rms_vz": 0.07849760554160741,
+        "mode_vz": -0.1514816544291742,
+        "gamma1": 1.2759102304722512,
+        "mode_adiabatic_residual": -0.5132131335499461,
+        "mode_temp_fraction_over_initial": 1.0,
+        "mode_rho_fraction_over_initial": 1.0,
+        "mode_press_fraction_over_initial": 1.0,
+        "mode_adiabatic_residual_over_initial": 1.0
+      }
+    },
+    {
+      "time_code": 168.0,
+      "shell": {
+        "mean_rho": 0.19025022503046785,
+        "rms_rho": 0.05829943328869168,
+        "mode_rho": 0.1113958272498589,
+        "rms_rho_fraction": 0.30694518045204816,
+        "mode_rho_fraction": 0.5866824504217345,
+        "mean_press": 0.009816789574188078,
+        "rms_press": 0.0017623189080583368,
+        "mode_press": 0.003240528755427492,
+        "rms_press_fraction": 0.19891232556673744,
+        "mode_press_fraction": 0.36806643546377815,
+        "mean_temp": 7448.721728682518,
+        "rms_temp": 437.0441840383736,
+        "mode_temp": -844.855080660142,
+        "rms_temp_fraction": 0.05268184334058553,
+        "mode_temp_fraction": -0.10182449023625004,
+        "mean_sound": 805970.673614502,
+        "rms_sound": 55283.60994483586,
+        "mode_sound": -96027.3664180332,
+        "mean_vz": 0.03684619933150879,
+        "rms_vz": 0.09076319700110003,
+        "mode_vz": -0.1731849945256898,
+        "gamma1": 1.2792483065457,
+        "mode_adiabatic_residual": -0.3791863871590132,
+        "mode_temp_fraction_over_initial": 0.518208281920262,
+        "mode_rho_fraction_over_initial": 1.0549965898065252,
+        "mode_press_fraction_over_initial": 1.8839823020305337,
+        "mode_adiabatic_residual_over_initial": 0.738847785395014
+      }
+    }
+  ]
+}

@@ -1,0 +1,36 @@
+{
+  "wor122_coherent_heat_above_t160": [
+    {
+      "time_code": 164.0,
+      "shell": {
+        "mean_rho": 0.1985000756540103,
+        "rms_rho": 0.05734812725213708,
+        "mode_rho": 0.10924126026492245,
+        "rms_rho_fraction": 0.28883931401769014,
+        "mode_rho_fraction": 0.5500927167810391,
+        "mean_press": 0.009745831455347798,
+        "rms_press": 0.0007537615169463838,
+        "mode_press": 0.000945300019830419,
+        "rms_press_fraction": 0.07886514491403257,
+        "mode_press_fraction": 0.09908514582236805,
+        "mean_temp": 7396.069922447205,
+        "rms_temp": 1116.108158940028,
+        "mode_temp": -2105.274054965365,
+        "rms_temp_fraction": 0.15087902396555797,
+        "mode_temp_fraction": -0.2843870803852509,
+        "mean_sound": 796157.6795654297,
+        "rms_sound": 88594.22396673285,
+        "mode_sound": -148509.08780415924,
+        "mean_vz": 0.015137336008592683,
+        "rms_vz": 0.07670870521458281,
+        "mode_vz": -0.14843732695808812,
+        "gamma1": 1.2933365193874231,
+        "mode_adiabatic_residual": -0.612051244031155,
+        "mode_temp_fraction_over_initial": 1.0,
+        "mode_rho_fraction_over_initial": 1.0,
+        "mode_press_fraction_over_initial": 1.0,
+        "mode_adiabatic_residual_over_initial": 1.0
+      }
+    }
+  ]
+}

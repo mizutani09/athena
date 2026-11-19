@@ -1,0 +1,36 @@
+{
+  "wor122_coherent_release_t60": [
+    {
+      "time_code": 64.04721069335938,
+      "shell": {
+        "mean_rho": 0.22713744104839861,
+        "rms_rho": 0.028154714090324266,
+        "mode_rho": 0.05623353152537932,
+        "rms_rho_fraction": 0.12396786274840241,
+        "mode_rho_fraction": 0.24760185578949814,
+        "mean_press": 0.007679147179260326,
+        "rms_press": 0.0007748227177901176,
+        "mode_press": 0.0015446768047301046,
+        "rms_press_fraction": 0.10140316020424281,
+        "mode_press_fraction": 0.2021798706510044,
+        "mean_temp": 5334.662651062012,
+        "rms_temp": 129.03155644791434,
+        "mode_temp": -252.8433984855217,
+        "rms_temp_fraction": 0.023372967508298467,
+        "mode_temp_fraction": -0.04584087448877296,
+        "mean_sound": 727625.6076660156,
+        "rms_sound": 2472.7087431432196,
+        "mode_sound": -1700.4356534035896,
+        "mean_vz": 0.0018501625616522688,
+        "rms_vz": 0.030518281605247704,
+        "mode_vz": -0.060760544562573904,
+        "gamma1": 1.5701461870571447,
+        "mode_adiabatic_residual": -0.18617631880994728,
+        "mode_temp_fraction_over_initial": 1.0,
+        "mode_rho_fraction_over_initial": 1.0,
+        "mode_press_fraction_over_initial": 1.0,
+        "mode_adiabatic_residual_over_initial": 1.0
+      }
+    }
+  ]
+}

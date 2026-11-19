@@ -100,10 +100,17 @@ namespace {
   Real surface_heat_zmin = 0.0;
   Real surface_heat_zmax = 0.0;
   Real surface_heat_rate = 0.0;
+  Real prep_shell_tau = -1.0;
+  Real prep_shell_rmin = 0.0;
+  Real prep_shell_rmax = 0.0;
+  Real prep_shell_ramp = 0.0;
+  Real prep_shell_taper_start = -1.0;
+  Real prep_shell_taper_end = -1.0;
   bool transfer_heat_to_bottom = false;
   Real heat_transfer_start = -1.0;
   Real heat_transfer_end = -1.0;
   Real density_perturb_frac = 0.0;
+  Real buoyancy_velocity_frac = 0.0;
   Real z_ref, rho_ref, T_ref, press_ref;
   Real T_ex;
   Real stellar_r_base, stellar_r_surface, stellar_r_photosphere;
@@ -1015,6 +1022,20 @@ Real SurfaceHeatFraction(Real time) {
   return 0.5*(1.0+std::cos(M_PI*x));
 }
 
+Real PrepShellWindow(Real z) {
+  const Real r=RadiusFromHeight(z);
+  if (r<=prep_shell_rmin || r>=prep_shell_rmax) return 0.0;
+  if (r<prep_shell_rmin+prep_shell_ramp) {
+    const Real x=(r-prep_shell_rmin)/prep_shell_ramp;
+    return x*x*(3.0-2.0*x);
+  }
+  if (r>prep_shell_rmax-prep_shell_ramp) {
+    const Real x=(prep_shell_rmax-r)/prep_shell_ramp;
+    return x*x*(3.0-2.0*x);
+  }
+  return 1.0;
+}
+
 void ProfileGravitySource(MeshBlock *pmb, Real time, Real dt,
                           const AthenaArray<Real> &w,
                           const AthenaArray<Real> &,
@@ -1071,6 +1092,10 @@ Real HistorySurfaceHeat(MeshBlock *pmb, int) {
         power += surface_heat_rate*pmb->pcoord->GetCellVolume(k,j,i);
   }
   return power*SurfaceHeatFraction(pmb->pmy_mesh->time);
+}
+
+Real HistoryPrepShellPower(MeshBlock *pmb, int) {
+  return prep_shell_tau > 0.0 ? pmb->ruser_meshblock_data[0](0) : 0.0;
 }
 
 //========================================================================================
@@ -1252,11 +1277,55 @@ void Mesh::InitUserMeshData(ParameterInput *pin) {
   vz_perturb_frac = pin->GetOrAddReal("problem", "vz_perturb_frac", 1.0e-3);
   density_perturb_frac = pin->GetOrAddReal(
       "problem", "density_perturb_frac", 0.0);
+  buoyancy_velocity_frac = pin->GetOrAddReal(
+      "problem", "buoyancy_velocity_frac", 0.0);
   if (!std::isfinite(density_perturb_frac)
       || density_perturb_frac < 0.0 || density_perturb_frac >= 0.5) {
     std::stringstream msg;
     msg << "problem/density_perturb_frac must be in [0, 0.5)";
     ATHENA_ERROR(msg);
+  }
+  if (!std::isfinite(buoyancy_velocity_frac)
+      || buoyancy_velocity_frac < 0.0 || buoyancy_velocity_frac >= 1.0) {
+    std::stringstream msg;
+    msg << "problem/buoyancy_velocity_frac must be in [0, 1)";
+    ATHENA_ERROR(msg);
+  }
+  prep_shell_tau=pin->GetOrAddReal("problem", "prep_shell_tau_code", -1.0);
+  if (!std::isfinite(prep_shell_tau) || prep_shell_tau == 0.0) {
+    std::stringstream msg;
+    msg << "problem/prep_shell_tau_code must be finite and nonzero";
+    ATHENA_ERROR(msg);
+  }
+  if (prep_shell_tau > 0.0) {
+    prep_shell_rmin=pin->GetReal("problem", "prep_shell_inner_rsun")
+        *6.957e10/leng_unit;
+    prep_shell_rmax=pin->GetReal("problem", "prep_shell_outer_rsun")
+        *6.957e10/leng_unit;
+    prep_shell_ramp=pin->GetReal("problem", "prep_shell_ramp_rsun")
+        *6.957e10/leng_unit;
+    prep_shell_taper_start=pin->GetOrAddReal(
+        "problem", "prep_shell_taper_start_code", -1.0);
+    prep_shell_taper_end=pin->GetOrAddReal(
+        "problem", "prep_shell_taper_end_code", -1.0);
+    const Real domain_rmin=RadiusFromHeight(mesh_size.x3min);
+    const Real domain_rmax=RadiusFromHeight(mesh_size.x3max);
+    if (multilevel || surface_heat_rate > 0.0
+        || !std::isfinite(prep_shell_rmin) || !std::isfinite(prep_shell_rmax)
+        || !std::isfinite(prep_shell_ramp)
+        || prep_shell_rmin < domain_rmin || prep_shell_rmax > domain_rmax
+        || prep_shell_rmax <= prep_shell_rmin
+        || prep_shell_ramp <= 0.0
+        || 2.0*prep_shell_ramp >= prep_shell_rmax-prep_shell_rmin
+        || (prep_shell_taper_start >= 0.0
+            && (!std::isfinite(prep_shell_taper_end)
+                || prep_shell_taper_end <= prep_shell_taper_start))) {
+      std::stringstream msg;
+      msg << "invalid prep shell: requires uniform mesh, no surface heater,"
+          << " inner<outer within the domain, 0<2*ramp<outer-inner, and"
+          << " an ordered optional taper";
+      ATHENA_ERROR(msg);
+    }
   }
   dt_min_factor = pin->GetOrAddReal("problem", "dt_min_factor", 1.0e-4);
   dt_max_factor = pin->GetOrAddReal("problem", "dt_max_factor", 1.0e2);
@@ -1294,8 +1363,9 @@ void Mesh::InitUserMeshData(ParameterInput *pin) {
     ATHENA_ERROR(msg);
   }
 
-  AllocateUserHistoryOutput(surface_heat_rate > 0.0 ? 16
-      : (bottom_heat_rate > 0.0 ? 15 : 14));
+  const int base_history_count=surface_heat_rate > 0.0 ? 16
+      : (bottom_heat_rate > 0.0 ? 15 : 14);
+  AllocateUserHistoryOutput(base_history_count+(prep_shell_tau > 0.0 ? 1 : 0));
   EnrollUserHistoryOutput(0, HistoryTg, "Tgas", UserHistoryOperation::max);
   EnrollUserHistoryOutput(1, HistoryTr, "Trad", UserHistoryOperation::max);
   EnrollUserHistoryOutput(2, HistoryEg, "egas", UserHistoryOperation::max);
@@ -1317,6 +1387,9 @@ void Mesh::InitUserMeshData(ParameterInput *pin) {
       EnrollUserHistoryOutput(14, HistoryBottomHeat, "Pheat_bottom", UserHistoryOperation::sum);
     EnrollUserHistoryOutput(15, HistorySurfaceHeat, "Pheat_surface", UserHistoryOperation::sum);
   }
+  if (prep_shell_tau > 0.0)
+    EnrollUserHistoryOutput(base_history_count, HistoryPrepShellPower,
+                           "Pprep_shell", UserHistoryOperation::sum);
 
 }
 
@@ -1333,6 +1406,11 @@ void MeshBlock::InitUserMeshBlockData(ParameterInput *pin) {
 
   iuser_meshblock_data[TSTEP_COUNTER].NewAthenaArray(1);
   iuser_meshblock_data[TSTEP_COUNTER](0) = 0;
+  if (prep_shell_tau > 0.0) {
+    AllocateRealUserMeshBlockDataField(1);
+    ruser_meshblock_data[0].NewAthenaArray(1);
+    ruser_meshblock_data[0](0)=0.0;
+  }
 
   // user output variables
   int iuov = 0; // initialize
@@ -1507,13 +1585,14 @@ void MeshBlock::ProblemGenerator(ParameterInput *pin) {
         // A coherent isobaric density/entropy seed can start large-scale
         // buoyancy without relying on cell-scale velocity noise alone.
         Real rho_seed=rho;
-        if (density_perturb_frac > 0.0) {
+        Real mode=0.0;
+        if (density_perturb_frac > 0.0 || buoyancy_velocity_frac > 0.0) {
           const Real phase_x=2.0*M_PI*(pcoord->x1v(i)-pmy_mesh->mesh_size.x1min)/
               (pmy_mesh->mesh_size.x1max-pmy_mesh->mesh_size.x1min);
           const Real phase_y=2.0*M_PI*(pcoord->x2v(j)-pmy_mesh->mesh_size.x2min)/
               (pmy_mesh->mesh_size.x2max-pmy_mesh->mesh_size.x2min);
-          rho_seed *= 1.0+density_perturb_frac*weight*
-              std::sin(phase_x)*std::sin(phase_y);
+          mode=std::sin(phase_x)*std::sin(phase_y);
+          rho_seed *= 1.0+density_perturb_frac*weight*mode;
         }
         const Real egas_seed=EgasFromRhoP(rho_seed, pres);
         const Real temp_seed=(density_perturb_frac > 0.0)
@@ -1521,9 +1600,11 @@ void MeshBlock::ProblemGenerator(ParameterInput *pin) {
         phydro->u(IDN,k,j,i) = rho_seed;
         phydro->u(IM1,k,j,i) = 0.0;
         phydro->u(IM2,k,j,i) = 0.0;
-        phydro->u(IM3,k,j,i) = rho_seed*vz_perturb_frac*weight*dist(rng)*cs_local;
+        const Real vz_seed=weight*cs_local*
+            (vz_perturb_frac*dist(rng)-buoyancy_velocity_frac*mode);
+        phydro->u(IM3,k,j,i) = rho_seed*vz_seed;
         if (NON_BAROTROPIC_EOS)
-          phydro->u(IEN,k,j,i) = egas_seed;
+          phydro->u(IEN,k,j,i) = egas_seed+0.5*rho_seed*vz_seed*vz_seed;
 
         // for FLD
         prfld->u_gas(k,j,i) = egas_seed;
@@ -1554,6 +1635,90 @@ void Mesh::UserWorkInLoop() {
                 << "Continuing because problem/abort_on_dt_excursion = false."
                 << std::endl;
       dt_excursion_reported = true;
+    }
+  }
+
+  if (prep_shell_tau > 0.0) {
+    for (int b=0; b<nblocal; ++b)
+      my_blocks(b)->ruser_meshblock_data[0](0)=0.0;
+    Real taper=1.0;
+    if (prep_shell_taper_start >= 0.0)
+      taper=std::max(0.0, std::min(1.0,
+          (prep_shell_taper_end-(time+dt))
+          /(prep_shell_taper_end-prep_shell_taper_start)));
+    if (taper > 0.0) {
+      const Real factor=-std::expm1(-taper*dt/prep_shell_tau);
+      const int nz=mesh_size.nx3;
+      const Real dz=(mesh_size.x3max-mesh_size.x3min)/nz;
+      std::vector<Real> target(nz,0.0),window(nz,0.0);
+      std::vector<Real> local(2*nz,0.0),global(2*nz,0.0);
+      for (int q=0; q<nz; ++q) {
+        const Real z=mesh_size.x3min+(q+0.5)*dz;
+        window[q]=PrepShellWindow(z);
+        if (window[q] <= 0.0) continue;
+        Real rho_profile,press_profile,temp_profile,grav_profile;
+        GetProfileAtHeight(z,rho_profile,press_profile,temp_profile,grav_profile);
+        target[q]=EgasFromRhoP(rho_profile,press_profile)/rho_profile;
+      }
+      for (int b=0; b<nblocal; ++b) {
+        MeshBlock *mb=my_blocks(b);
+        for (int k=mb->ks; k<=mb->ke; ++k) {
+          const int q=static_cast<int>((mb->pcoord->x3v(k)-mesh_size.x3min)/dz);
+          if (q<0 || q>=nz || window[q]<=0.0) continue;
+          for (int j=mb->js; j<=mb->je; ++j)
+            for (int i=mb->is; i<=mb->ie; ++i) {
+              const auto &u=mb->phydro->u;
+              const Real rho=u(IDN,k,j,i);
+              const Real kinetic=0.5*(SQR(u(IM1,k,j,i))+SQR(u(IM2,k,j,i))
+                  +SQR(u(IM3,k,j,i)))/rho;
+              const Real egas=u(IEN,k,j,i)-kinetic;
+              const Real volume=mb->pcoord->GetCellVolume(k,j,i);
+              local[2*q]+=rho*volume;
+              local[2*q+1]+=(rho*target[q]-egas)*volume;
+            }
+        }
+      }
+#ifdef MPI_PARALLEL
+      MPI_Allreduce(local.data(),global.data(),2*nz,MPI_ATHENA_REAL,
+                    MPI_SUM,MPI_COMM_WORLD);
+#else
+      global=local;
+#endif
+      for (int b=0; b<nblocal; ++b) {
+        MeshBlock *mb=my_blocks(b);
+        Real injected=0.0;
+        for (int k=mb->ks; k<=mb->ke; ++k) {
+          const int q=static_cast<int>((mb->pcoord->x3v(k)-mesh_size.x3min)/dz);
+          if (q<0 || q>=nz || window[q]<=0.0 || global[2*q]<=0.0) continue;
+          const Real delta_specific=factor*window[q]*global[2*q+1]/global[2*q];
+          for (int j=mb->js; j<=mb->je; ++j)
+            for (int i=mb->is; i<=mb->ie; ++i) {
+              auto &u=mb->phydro->u;
+              const Real rho=u(IDN,k,j,i);
+              const Real kinetic=0.5*(SQR(u(IM1,k,j,i))+SQR(u(IM2,k,j,i))
+                  +SQR(u(IM3,k,j,i)))/rho;
+              const Real delta=rho*delta_specific;
+              const Real new_egas=u(IEN,k,j,i)-kinetic+delta;
+              if (!(std::isfinite(new_egas) && new_egas>0.0)) {
+                std::stringstream msg;
+                msg << "prep shell produced nonpositive gas energy";
+                ATHENA_ERROR(msg);
+              }
+              const Real pressure=mb->peos->PresFromRhoEg(rho,new_egas);
+              if (!(std::isfinite(pressure) && pressure>0.0)) {
+                std::stringstream msg;
+                msg << "prep shell produced invalid gas pressure";
+                ATHENA_ERROR(msg);
+              }
+              u(IEN,k,j,i)+=delta;
+              mb->phydro->w(IPR,k,j,i)=pressure;
+              mb->prfld->u_gas(k,j,i)=new_egas;
+              injected+=delta*mb->pcoord->GetCellVolume(k,j,i);
+            }
+        }
+        mb->ruser_meshblock_data[0](0)=injected/dt;
+        mb->prfld->UpdateOpacity(mb,mb->prfld->u_rad,mb->phydro->w);
+      }
     }
   }
 

@@ -26,8 +26,8 @@ def history(run_dir):
              "top_Frad_over_Fstar": float(row[17] / FSTAR_CGS),
              "top_Ftotal_over_Fstar": float(row[18] / FSTAR_CGS),
              "mass_drift": float(row[21]),
-             "bottom_heat_power_code": float(row[24]),
-             "surface_heat_power_code": float(row[25]),
+             "bottom_heat_power_code": float(row[24]) if len(row) > 24 else 0.0,
+             "surface_heat_power_code": float(row[25]) if len(row) > 25 else 0.0,
              "total_energy_history_units": float(row[16])} for row in h]
 
 

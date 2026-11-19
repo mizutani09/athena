@@ -1,0 +1,515 @@
+{
+  "run_dir": "/tmp/wor122_coherent_nodiff_ext80_160",
+  "history": [
+    {
+      "time_code": 84.1072,
+      "top_Frad_over_Fstar": 0.4878185719394445,
+      "top_Ftotal_over_Fstar": 0.48780307545595425,
+      "mass_drift": 1.26733e-06,
+      "bottom_heat_power_code": 0.0,
+      "surface_heat_power_code": 0.0,
+      "total_energy_history_units": 370778000.0
+    },
+    {
+      "time_code": 88.1332,
+      "top_Frad_over_Fstar": 0.4878793658362141,
+      "top_Ftotal_over_Fstar": 0.4878638693527238,
+      "mass_drift": 2.52644e-06,
+      "bottom_heat_power_code": 0.0,
+      "surface_heat_power_code": 0.0,
+      "total_energy_history_units": 370747000.0
+    },
+    {
+      "time_code": 92.1249,
+      "top_Frad_over_Fstar": 0.4879306234354512,
+      "top_Ftotal_over_Fstar": 0.4879151269519609,
+      "mass_drift": 3.77552e-06,
+      "bottom_heat_power_code": 0.0,
+      "surface_heat_power_code": 0.0,
+      "total_energy_history_units": 370713000.0
+    },
+    {
+      "time_code": 96.0756,
+      "top_Frad_over_Fstar": 0.4879842651090714,
+      "top_Ftotal_over_Fstar": 0.48796876862558114,
+      "mass_drift": 5.01969e-06,
+      "bottom_heat_power_code": 0.0,
+      "surface_heat_power_code": 0.0,
+      "total_energy_history_units": 370675000.0
+    },
+    {
+      "time_code": 100.169,
+      "top_Frad_over_Fstar": 0.48804625104303256,
+      "top_Ftotal_over_Fstar": 0.48803075455954226,
+      "mass_drift": 6.31868e-06,
+      "bottom_heat_power_code": 0.0,
+      "surface_heat_power_code": 0.0,
+      "total_energy_history_units": 370631000.0
+    },
+    {
+      "time_code": 104.031,
+      "top_Frad_over_Fstar": 0.4881165812373346,
+      "top_Ftotal_over_Fstar": 0.48810108475384434,
+      "mass_drift": 7.5499e-06,
+      "bottom_heat_power_code": 0.0,
+      "surface_heat_power_code": 0.0,
+      "total_energy_history_units": 370584000.0
+    },
+    {
+      "time_code": 108.034,
+      "top_Frad_over_Fstar": 0.4882071760638932,
+      "top_Ftotal_over_Fstar": 0.4881916795804029,
+      "mass_drift": 8.82769e-06,
+      "bottom_heat_power_code": 0.0,
+      "surface_heat_power_code": 0.0,
+      "total_energy_history_units": 370530000.0
+    },
+    {
+      "time_code": 112.177,
+      "top_Frad_over_Fstar": 0.48832518774585765,
+      "top_Ftotal_over_Fstar": 0.4883096912623674,
+      "mass_drift": 1.01482e-05,
+      "bottom_heat_power_code": 0.0,
+      "surface_heat_power_code": 0.0,
+      "total_energy_history_units": 370469000.0
+    },
+    {
+      "time_code": 116.103,
+      "top_Frad_over_Fstar": 0.4884622720228871,
+      "top_Ftotal_over_Fstar": 0.4884467755393968,
+      "mass_drift": 1.13946e-05,
+      "bottom_heat_power_code": 0.0,
+      "surface_heat_power_code": 0.0,
+      "total_energy_history_units": 370405000.0
+    },
+    {
+      "time_code": 120.174,
+      "top_Frad_over_Fstar": 0.48863034926689713,
+      "top_Ftotal_over_Fstar": 0.48861485278340683,
+      "mass_drift": 1.2685e-05,
+      "bottom_heat_power_code": 0.0,
+      "surface_heat_power_code": 0.0,
+      "total_energy_history_units": 370334000.0
+    },
+    {
+      "time_code": 124.041,
+      "top_Frad_over_Fstar": 0.4888139229943974,
+      "top_Ftotal_over_Fstar": 0.4887996185480987,
+      "mass_drift": 1.39106e-05,
+      "bottom_heat_power_code": 0.0,
+      "surface_heat_power_code": 0.0,
+      "total_energy_history_units": 370261000.0
+    },
+    {
+      "time_code": 128.06,
+      "top_Frad_over_Fstar": 0.48903087376326143,
+      "top_Ftotal_over_Fstar": 0.4890153772797711,
+      "mass_drift": 1.51862e-05,
+      "bottom_heat_power_code": 0.0,
+      "surface_heat_power_code": 0.0,
+      "total_energy_history_units": 370179000.0
+    },
+    {
+      "time_code": 132.055,
+      "top_Frad_over_Fstar": 0.4892728573131482,
+      "top_Ftotal_over_Fstar": 0.48925855286684944,
+      "mass_drift": 1.64639e-05,
+      "bottom_heat_power_code": 0.0,
+      "surface_heat_power_code": 0.0,
+      "total_energy_history_units": 370091000.0
+    },
+    {
+      "time_code": 136.032,
+      "top_Frad_over_Fstar": 0.4895208010489927,
+      "top_Ftotal_over_Fstar": 0.489506496602694,
+      "mass_drift": 1.77252e-05,
+      "bottom_heat_power_code": 0.0,
+      "surface_heat_power_code": 0.0,
+      "total_energy_history_units": 369994000.0
+    },
+    {
+      "time_code": 140.135,
+      "top_Frad_over_Fstar": 0.4897556323757301,
+      "top_Ftotal_over_Fstar": 0.4897413279294314,
+      "mass_drift": 1.89806e-05,
+      "bottom_heat_power_code": 0.0,
+      "surface_heat_power_code": 0.0,
+      "total_energy_history_units": 369886000.0
+    },
+    {
+      "time_code": 144.008,
+      "top_Frad_over_Fstar": 0.48959232328048635,
+      "top_Ftotal_over_Fstar": 0.4895780188341876,
+      "mass_drift": 1.99018e-05,
+      "bottom_heat_power_code": 0.0,
+      "surface_heat_power_code": 0.0,
+      "total_energy_history_units": 369774000.0
+    },
+    {
+      "time_code": 148.159,
+      "top_Frad_over_Fstar": 0.4890642508046251,
+      "top_Ftotal_over_Fstar": 0.48905113839551795,
+      "mass_drift": 2.05581e-05,
+      "bottom_heat_power_code": 0.0,
+      "surface_heat_power_code": 0.0,
+      "total_energy_history_units": 369643000.0
+    },
+    {
+      "time_code": 152.085,
+      "top_Frad_over_Fstar": 0.4885945881511503,
+      "top_Ftotal_over_Fstar": 0.4885826677792347,
+      "mass_drift": 2.10016e-05,
+      "bottom_heat_power_code": 0.0,
+      "surface_heat_power_code": 0.0,
+      "total_energy_history_units": 369509000.0
+    },
+    {
+      "time_code": 156.12,
+      "top_Frad_over_Fstar": 0.48837763738228634,
+      "top_Ftotal_over_Fstar": 0.48836810108475387,
+      "mass_drift": 2.13988e-05,
+      "bottom_heat_power_code": 0.0,
+      "surface_heat_power_code": 0.0,
+      "total_energy_history_units": 369362000.0
+    },
+    {
+      "time_code": 160.0,
+      "top_Frad_over_Fstar": 0.48844319942782216,
+      "top_Ftotal_over_Fstar": 0.4884336631302897,
+      "mass_drift": 2.17698e-05,
+      "bottom_heat_power_code": 0.0,
+      "surface_heat_power_code": 0.0,
+      "total_energy_history_units": 369210000.0
+    }
+  ],
+  "snapshots": [
+    {
+      "time_code": 100.1685562133789,
+      "mass_code": 10076.36926829332,
+      "shells": {
+        "800-813": {
+          "Tgas_K": 9421.762060546875,
+          "Frad_over_Fstar": 0.013072272529825568,
+          "Fenth_over_Fstar": 0.00699151826556772,
+          "Fkin_over_Fstar": -7.485795183583832e-05,
+          "Ftotal_over_Fstar": 0.019988934736466034,
+          "Fenth_mass_corrected_over_Fstar": 0.02819560716399539,
+          "mean_vz_kms": 0.013165275296749412,
+          "rms_vz_kms": 0.8047469155769729,
+          "rms_horizontal_vz_kms": 0.7934143683808472,
+          "rms_horizontal_T_fraction": 0.05399407718796283,
+          "mean_rho_cgs": 1.8106957822006108e-09,
+          "max_mach": 0.3461175560951233,
+          "Tgas_over_initial": 1.0
+        },
+        "813-817": {
+          "Tgas_K": 6869.7877197265625,
+          "Frad_over_Fstar": 0.2192356027662754,
+          "Fenth_over_Fstar": 0.016660243272781372,
+          "Fkin_over_Fstar": 2.0092278873562464e-05,
+          "Ftotal_over_Fstar": 0.23591594770550728,
+          "Fenth_mass_corrected_over_Fstar": 0.02333213411253038,
+          "mean_vz_kms": 0.16991543192684835,
+          "rms_vz_kms": 1.352491179061635,
+          "rms_horizontal_vz_kms": 1.3412566747261288,
+          "rms_horizontal_T_fraction": 0.1445261873304844,
+          "mean_rho_cgs": 2.1879519862544328e-09,
+          "max_mach": 0.3536675274372101,
+          "Tgas_over_initial": 1.0
+        },
+        "817-830": {
+          "Tgas_K": 4360.158447265625,
+          "Frad_over_Fstar": 1.049209213256836,
+          "Fenth_over_Fstar": 0.010446477588266135,
+          "Fkin_over_Fstar": 8.909221298836201e-05,
+          "Ftotal_over_Fstar": 1.0597448170185089,
+          "Fenth_mass_corrected_over_Fstar": 0.0019445372359673796,
+          "mean_vz_kms": 0.2387356020615537,
+          "rms_vz_kms": 0.7488301586498941,
+          "rms_horizontal_vz_kms": 0.7019235614372981,
+          "rms_horizontal_T_fraction": 0.07074558604508638,
+          "mean_rho_cgs": 1.727660781103424e-09,
+          "max_mach": 0.3724956810474396,
+          "Tgas_over_initial": 1.0
+        },
+        "830-850": {
+          "Tgas_K": 2765.2024993896484,
+          "Frad_over_Fstar": 0.9934449642896652,
+          "Fenth_over_Fstar": 0.0006781292307778131,
+          "Fkin_over_Fstar": 2.652107744280201e-07,
+          "Ftotal_over_Fstar": 0.9941233806312084,
+          "Fenth_mass_corrected_over_Fstar": 4.316688802815386e-06,
+          "mean_vz_kms": 0.045320227096553596,
+          "rms_vz_kms": 0.12576860846718502,
+          "rms_horizontal_vz_kms": 0.10308244338406078,
+          "rms_horizontal_T_fraction": 0.008889215867384337,
+          "mean_rho_cgs": 3.7534495954047453e-10,
+          "max_mach": 0.1240067183971405,
+          "Tgas_over_initial": 1.0
+        },
+        "850-860": {
+          "Tgas_K": 2469.0169372558594,
+          "Frad_over_Fstar": 0.9484580084681511,
+          "Fenth_over_Fstar": -3.834639051092381e-05,
+          "Fkin_over_Fstar": -3.8108759811000814e-10,
+          "Ftotal_over_Fstar": 0.9484196305274963,
+          "Fenth_mass_corrected_over_Fstar": 4.087853353368331e-12,
+          "mean_vz_kms": -0.0610710568004063,
+          "rms_vz_kms": 0.06107329657279865,
+          "rms_horizontal_vz_kms": 0.00040415428285892394,
+          "rms_horizontal_T_fraction": 1.957550875886227e-05,
+          "mean_rho_cgs": 3.0119161830398367e-11,
+          "max_mach": 0.018625864759087563,
+          "Tgas_over_initial": 1.0
+        }
+      },
+      "mass_drift_from_hdf": 0.0
+    },
+    {
+      "time_code": 120.17408752441406,
+      "mass_code": 10076.43340545792,
+      "shells": {
+        "800-813": {
+          "Tgas_K": 9361.796484375,
+          "Frad_over_Fstar": 0.015327901230193675,
+          "Fenth_over_Fstar": 0.01793694377411157,
+          "Fkin_over_Fstar": -0.00015984369565558154,
+          "Ftotal_over_Fstar": 0.03310499838553369,
+          "Fenth_mass_corrected_over_Fstar": 0.04604645824938871,
+          "mean_vz_kms": 0.04090571071824338,
+          "rms_vz_kms": 1.037574289503973,
+          "rms_horizontal_vz_kms": 1.0274332596012556,
+          "rms_horizontal_T_fraction": 0.0727405066601932,
+          "mean_rho_cgs": 1.8316488326064473e-09,
+          "max_mach": 0.4119742512702942,
+          "Tgas_over_initial": 0.993635418111122
+        },
+        "813-817": {
+          "Tgas_K": 6953.4713134765625,
+          "Frad_over_Fstar": 0.20459905825555325,
+          "Fenth_over_Fstar": 0.025127878412604332,
+          "Fkin_over_Fstar": 8.446436186204664e-05,
+          "Ftotal_over_Fstar": 0.22981141693890095,
+          "Fenth_mass_corrected_over_Fstar": 0.03477634724299597,
+          "mean_vz_kms": 0.2187928833104994,
+          "rms_vz_kms": 1.5595015158524734,
+          "rms_horizontal_vz_kms": 1.543747809929473,
+          "rms_horizontal_T_fraction": 0.16429368779063225,
+          "mean_rho_cgs": 2.1322176801952253e-09,
+          "max_mach": 0.39300182461738586,
+          "Tgas_over_initial": 1.0121813944133533
+        },
+        "817-830": {
+          "Tgas_K": 4506.29130859375,
+          "Frad_over_Fstar": 1.0374873280525208,
+          "Fenth_over_Fstar": 0.01605339553207159,
+          "Fkin_over_Fstar": 0.00017412129363947315,
+          "Ftotal_over_Fstar": 1.053714895248413,
+          "Fenth_mass_corrected_over_Fstar": 0.003946276068545149,
+          "mean_vz_kms": 0.36176553181528015,
+          "rms_vz_kms": 1.023505445410258,
+          "rms_horizontal_vz_kms": 0.9436106137365845,
+          "rms_horizontal_T_fraction": 0.09725820804014802,
+          "mean_rho_cgs": 1.71900474965625e-09,
+          "max_mach": 0.42373815178871155,
+          "Tgas_over_initial": 1.0335154933233606
+        },
+        "830-850": {
+          "Tgas_K": 2774.1028442382812,
+          "Frad_over_Fstar": 1.0086568966507912,
+          "Fenth_over_Fstar": 0.001250306657539113,
+          "Fkin_over_Fstar": 6.276913096644673e-07,
+          "Ftotal_over_Fstar": 1.009907841682434,
+          "Fenth_mass_corrected_over_Fstar": 8.257583606551681e-06,
+          "mean_vz_kms": 0.0860556977903292,
+          "rms_vz_kms": 0.18759726253157571,
+          "rms_horizontal_vz_kms": 0.1492959111229618,
+          "rms_horizontal_T_fraction": 0.012878113815531833,
+          "mean_rho_cgs": 3.816552802959894e-10,
+          "max_mach": 0.14859026670455933,
+          "Tgas_over_initial": 1.003218695502625
+        },
+        "850-860": {
+          "Tgas_K": 2470.3399353027344,
+          "Frad_over_Fstar": 0.9501710459589958,
+          "Fenth_over_Fstar": -3.447828339631087e-05,
+          "Fkin_over_Fstar": -2.9860431141615074e-10,
+          "Ftotal_over_Fstar": 0.9501365423202515,
+          "Fenth_mass_corrected_over_Fstar": 4.957041414757725e-10,
+          "mean_vz_kms": -0.05616026894485657,
+          "rms_vz_kms": 0.05638288057807329,
+          "rms_horizontal_vz_kms": 0.002476302904784635,
+          "rms_horizontal_T_fraction": 0.00012237587361596525,
+          "mean_rho_cgs": 3.00345538370439e-11,
+          "max_mach": 0.018191151320934296,
+          "Tgas_over_initial": 1.0005358400045425
+        }
+      },
+      "mass_drift_from_hdf": 6.365106606454063e-06
+    },
+    {
+      "time_code": 140.13487243652344,
+      "mass_code": 10076.496845253132,
+      "shells": {
+        "800-813": {
+          "Tgas_K": 9273.75791015625,
+          "Frad_over_Fstar": 0.01916859964840114,
+          "Fenth_over_Fstar": 0.03174423896707594,
+          "Fkin_over_Fstar": -0.0003625231322075706,
+          "Ftotal_over_Fstar": 0.05055031189695001,
+          "Fenth_mass_corrected_over_Fstar": 0.07280281104469824,
+          "mean_vz_kms": 0.06218271137291405,
+          "rms_vz_kms": 1.3351256597228622,
+          "rms_horizontal_vz_kms": 1.325736000002656,
+          "rms_horizontal_T_fraction": 0.09719779444858431,
+          "mean_rho_cgs": 1.8548080071845164e-09,
+          "max_mach": 0.5077645778656006,
+          "Tgas_over_initial": 0.984291245157805
+        },
+        "813-817": {
+          "Tgas_K": 7053.7291259765625,
+          "Frad_over_Fstar": 0.18417895585298538,
+          "Fenth_over_Fstar": 0.04401942901313305,
+          "Fkin_over_Fstar": 0.00027325629480401403,
+          "Ftotal_over_Fstar": 0.22847162559628487,
+          "Fenth_mass_corrected_over_Fstar": 0.05398441615166286,
+          "mean_vz_kms": 0.34079584764288956,
+          "rms_vz_kms": 1.932243610362974,
+          "rms_horizontal_vz_kms": 1.9013324342582694,
+          "rms_horizontal_T_fraction": 0.18451587855815887,
+          "mean_rho_cgs": 2.0749081341975284e-09,
+          "max_mach": 0.465492844581604,
+          "Tgas_over_initial": 1.0267754134122389
+        },
+        "817-830": {
+          "Tgas_K": 4702.844091796875,
+          "Frad_over_Fstar": 1.0452770590782166,
+          "Fenth_over_Fstar": 0.023682400584220886,
+          "Fkin_over_Fstar": 0.00037035256245872007,
+          "Ftotal_over_Fstar": 1.0693298071622848,
+          "Fenth_mass_corrected_over_Fstar": 0.008330250200843737,
+          "mean_vz_kms": 0.503706040540369,
+          "rms_vz_kms": 1.3250869298884862,
+          "rms_horizontal_vz_kms": 1.20897698040902,
+          "rms_horizontal_T_fraction": 0.1380784260109067,
+          "mean_rho_cgs": 1.6935887803271043e-09,
+          "max_mach": 0.5040175318717957,
+          "Tgas_over_initial": 1.0785947686708857
+        },
+        "830-850": {
+          "Tgas_K": 2793.2537536621094,
+          "Frad_over_Fstar": 1.0225147120654583,
+          "Fenth_over_Fstar": 0.0029312474829623625,
+          "Fkin_over_Fstar": 5.295159357460166e-06,
+          "Ftotal_over_Fstar": 1.0254512280225754,
+          "Fenth_mass_corrected_over_Fstar": 1.301535850967835e-05,
+          "mean_vz_kms": 0.18682018667465114,
+          "rms_vz_kms": 0.32175826938908847,
+          "rms_horizontal_vz_kms": 0.24413311143633548,
+          "rms_horizontal_T_fraction": 0.012606647302163765,
+          "mean_rho_cgs": 3.974644016691009e-10,
+          "max_mach": 0.28513967990875244,
+          "Tgas_over_initial": 1.0101443761455635
+        },
+        "850-860": {
+          "Tgas_K": 2471.53369140625,
+          "Frad_over_Fstar": 0.9465261027216911,
+          "Fenth_over_Fstar": -3.20399396969151e-05,
+          "Fkin_over_Fstar": -2.803239767049104e-10,
+          "Ftotal_over_Fstar": 0.9464940428733826,
+          "Fenth_mass_corrected_over_Fstar": 3.913274539058672e-09,
+          "mean_vz_kms": -0.05150778685449017,
+          "rms_vz_kms": 0.05334720025042428,
+          "rms_horizontal_vz_kms": 0.009857540616764322,
+          "rms_horizontal_T_fraction": 0.0004491108900310792,
+          "mean_rho_cgs": 2.993160678078227e-11,
+          "max_mach": 0.020396577194333076,
+          "Tgas_over_initial": 1.0010193345020906
+        }
+      },
+      "mass_drift_from_hdf": 1.2661004813896426e-05
+    },
+    {
+      "time_code": 160.0,
+      "mass_code": 10076.524953299213,
+      "shells": {
+        "800-813": {
+          "Tgas_K": 9190.40908203125,
+          "Frad_over_Fstar": 0.02074753036722541,
+          "Fenth_over_Fstar": 0.04292899202555418,
+          "Fkin_over_Fstar": -0.0007037431780190673,
+          "Ftotal_over_Fstar": 0.06297277919948101,
+          "Fenth_mass_corrected_over_Fstar": 0.10327763530607333,
+          "mean_vz_kms": 0.1003206587896758,
+          "rms_vz_kms": 1.6187925665464977,
+          "rms_horizontal_vz_kms": 1.6086804431473969,
+          "rms_horizontal_T_fraction": 0.11913813576102257,
+          "mean_rho_cgs": 1.8826773917623994e-09,
+          "max_mach": 0.5843611359596252,
+          "Tgas_over_initial": 0.9754448290002565
+        },
+        "813-817": {
+          "Tgas_K": 7187.40576171875,
+          "Frad_over_Fstar": 0.158098466694355,
+          "Fenth_over_Fstar": 0.06322165671736002,
+          "Fkin_over_Fstar": 0.00045217087944138257,
+          "Ftotal_over_Fstar": 0.22177227959036827,
+          "Fenth_mass_corrected_over_Fstar": 0.07684070275796519,
+          "mean_vz_kms": 0.4830743423065872,
+          "rms_vz_kms": 2.35089680441677,
+          "rms_horizontal_vz_kms": 2.299390600384526,
+          "rms_horizontal_T_fraction": 0.20025945082306862,
+          "mean_rho_cgs": 2.0003512180011285e-09,
+          "max_mach": 0.5232445001602173,
+          "Tgas_over_initial": 1.04623404025719
+        },
+        "817-830": {
+          "Tgas_K": 5023.928515625,
+          "Frad_over_Fstar": 1.053159886598587,
+          "Fenth_over_Fstar": 0.03863903284072876,
+          "Fkin_over_Fstar": 0.0008195853064535185,
+          "Ftotal_over_Fstar": 1.0926185250282288,
+          "Fenth_mass_corrected_over_Fstar": 0.017482319169879135,
+          "mean_vz_kms": 0.7636812289473461,
+          "rms_vz_kms": 1.7911947782798758,
+          "rms_horizontal_vz_kms": 1.6013501716683671,
+          "rms_horizontal_T_fraction": 0.19117897860705851,
+          "mean_rho_cgs": 1.6564173477284782e-09,
+          "max_mach": 0.6008718013763428,
+          "Tgas_over_initial": 1.1522353089658113
+        },
+        "830-850": {
+          "Tgas_K": 2819.3489379882812,
+          "Frad_over_Fstar": 0.9984214641153812,
+          "Fenth_over_Fstar": 0.005396443006247864,
+          "Fkin_over_Fstar": 1.921349557409968e-05,
+          "Ftotal_over_Fstar": 1.0038371346890926,
+          "Fenth_mass_corrected_over_Fstar": 2.0827873423035864e-05,
+          "mean_vz_kms": 0.3347103108547701,
+          "rms_vz_kms": 0.4936173886162897,
+          "rms_horizontal_vz_kms": 0.33662377715469893,
+          "rms_horizontal_T_fraction": 0.01464015748933889,
+          "mean_rho_cgs": 4.2179295689850904e-10,
+          "max_mach": 0.38887253403663635,
+          "Tgas_over_initial": 1.0195813646959253
+        },
+        "850-860": {
+          "Tgas_K": 2475.121368408203,
+          "Frad_over_Fstar": 0.8555311113595963,
+          "Fenth_over_Fstar": 7.245096526276029e-06,
+          "Fkin_over_Fstar": 1.5295131738837092e-08,
+          "Ftotal_over_Fstar": 0.8555383682250977,
+          "Fenth_mass_corrected_over_Fstar": 3.099218450940127e-07,
+          "mean_vz_kms": -0.015395956147480405,
+          "rms_vz_kms": 0.09611124042732673,
+          "rms_horizontal_vz_kms": 0.07131027177102277,
+          "rms_horizontal_T_fraction": 0.003175064483002643,
+          "mean_rho_cgs": 3.019808632754445e-11,
+          "max_mach": 0.1326962113380432,
+          "Tgas_over_initial": 1.002472413639709
+        }
+      },
+      "mass_drift_from_hdf": 1.5450506203995573e-05
+    }
+  ]
+}
