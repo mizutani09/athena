@@ -271,6 +271,17 @@ cycle. At the initial `dt=0.01008`, a conservative constant-throughput estimate 
 `0.1 t_dyn = 47.006` is about 1.3 h for x2 and 4.8 h for 4wz, both within the 12 h
 allocation. The dependent sustained jobs use the same seed and three nodes.
 
+The first sustained 4wz attempt (`343499`) was stopped by the Slurm memory cgroup at
+cycle zero; it was not a numerical failure.  Its 168 ranks averaged about 2.06 GB RSS
+and one rank reached 4.09 GB, exhausting the 110 GiB-per-node limit on three M nodes.
+The x2 job `343498` continues normally in the same allocation.  The replacement 4wz
+job `343525` keeps 168 ranks but spreads them over two 512 GB P nodes (84 ranks per
+node, 300 GiB requested per node).  This isolates the memory-capacity correction from
+the numerical A/B conditions; the restart, executable SHA-256
+`675c9e7a1ee5c791b9bd35b2cc1a01749f90144758b830540c1e7d2b3b13c082`, target time,
+and runtime parameters are unchanged.  Comparison job `343526` waits for both
+sustained evolutions.
+
 An isolated B16 experiment (`343506`) transports the stellar/radiative tracers with
 PLM while leaving Hydro 4wz unchanged. It eliminates the B16 topology growth: the 4wz
 branch remains at 2,472 blocks, its maximum energy drift falls from `1.69e-2` to
@@ -282,11 +293,10 @@ explicitly second order.
 
 ## Next gates
 
-1. Generate the fresh central-L6 plus surface-L3, B32, `NGHOST=4` state and run the
-   same-restart one-cycle HD A/B gate.
-2. If the L3 one-cycle gate passes, evolve both branches for `0.1 t_dyn` from that
-   byte-identical restart and compare stability, accuracy, topology, memory, and
-   throughput.
+1. Complete the running surface-L3, B32, same-restart `0.1 t_dyn` A/B gate and compare
+   stability, accuracy, topology, memory, and throughput.
+2. Use the sustained memory measurements to choose the minimum safe production node
+   layout separately for x2 and 4wz.
 3. Keep the B16 scalar-transport experiment isolated: it diagnoses the sensitivity of
    fine block boundaries and the tracer-driven AMR condition but is not a prerequisite
    for the selected B32 production run.
