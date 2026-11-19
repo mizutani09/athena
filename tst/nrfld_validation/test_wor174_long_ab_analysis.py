@@ -48,6 +48,18 @@ class Wor174LongAbAnalysisTests(unittest.TestCase):
         history[:, analysis.COL["time"]] = np.linspace(0.0, 90.0, 11)
         self.assertIsNone(analysis.audit_window(history, 100))
 
+    def test_reconstruction_stats_separates_exact_and_positive_fallback(self):
+        # A modest outward decrease is exactly representable.  A slope below
+        # about -3.59 requires a negative arithmetic ghost and must fall back.
+        inward = np.asarray([2.0, np.exp(4.0)])
+        outer = np.asarray([1.0, 1.0])
+        result = analysis.reconstruction_stats(outer, inward)
+        self.assertEqual(result["samples"], 2)
+        self.assertEqual(result["fallback_cells"], 1)
+        self.assertAlmostEqual(result["fallback_fraction"], 0.5)
+        self.assertAlmostEqual(result["actual_to_target_min"], 1.0)
+        self.assertGreater(result["actual_to_target_max"], 1.0)
+
 
 if __name__ == "__main__":
     unittest.main()

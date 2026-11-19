@@ -15,9 +15,15 @@ problem/reconstruct_top_face_opacity = false
 At a physical global upper boundary, the option assumes `log(sigma_R)` is
 linear between the two outermost cell centres, integrates that extrapolation
 over the outer half cell, and supplies a positive ghost value whose arithmetic
-average with the outer cell is that integral average.  The arithmetic branch
-is the active branch of the capped FLD face-opacity rule in the optically thin
-solar upper atmosphere.  Internal z-MeshBlock faces are not modified.
+average with the outer cell is that integral average whenever the implied
+ghost is positive.  For an outward opacity decrease steeper than a positive
+arithmetic ghost can represent, the implementation uses `TINY_NUMBER`; the
+result then remains finite and positive but no longer exactly equals the
+log-linear integral.  The arithmetic branch is the active branch of the
+capped FLD face-opacity rule in the optically thin solar upper atmosphere.
+Internal z-MeshBlock faces are not modified.  The mature A/B analysis must
+therefore also check whether the selected solar state enters this fallback
+regime before interpreting a flux change as exact half-cell reconstruction.
 
 The Planck coefficient is deliberately unchanged: it is a cell-local
 matter-radiation coupling coefficient rather than a face diffusion
@@ -85,6 +91,26 @@ bitwise check.
 
 No non-finite opacity, table-domain violation, Newton failure, or FGMRES
 breakdown was reported in any accepted smoke case.
+
+### Mature-seed representability audit
+
+The exact t=65000 restart selected for the long XD A/B has paired full-volume
+primitive and user-output snapshots.  Re-evaluating the Rosseland table on
+the outermost two active planes gives 4,096 top-face samples.  Of these, 331
+(8.081%) imply a non-positive arithmetic ghost and therefore take the
+positive-floor fallback.  The median log opacity slope is `-2.39195`; the
+range is `-3.67655` to `-1.76872`.  The fallback makes the represented face
+opacity at most 1.09303 times the analytical log-linear target, while the
+remaining 91.919% are exact to floating-point precision.
+
+This does not make the option non-finite or unstable, but it narrows the
+claim: at the mature solar surface it is a positive approximation to the
+half-cell integral in a minority of columns, not an exact reconstruction in
+every column.  The long-run analyzer now repeats this count on the final
+snapshot of both A/B branches so a flux change can be interpreted together
+with any evolution of the fallback fraction.  Seed primitive/user snapshot
+SHA-256 values are `558eab12672816caf8a3e5d4481407786b9158b4f27ce08a5f2fc9120e6f529c`
+and `a88b970a33be161140f947d11c1e5bff915696ceb325231b80efaa8bd589baf8`.
 
 ### XD clean-source build and same-restart smoke
 

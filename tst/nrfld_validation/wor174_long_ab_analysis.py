@@ -9,6 +9,7 @@ import html
 import json
 import math
 import re
+import sys
 from pathlib import Path
 
 import numpy as np
@@ -165,6 +166,93 @@ def relative_change(enabled: float, baseline: float) -> float:
     return (enabled - baseline) / baseline if baseline != 0.0 else math.nan
 
 
+def reconstruction_stats(outer: np.ndarray, inward: np.ndarray,
+                         floor: float = 1.0e-20) -> dict:
+    """Measure where a positive arithmetic ghost can represent the target."""
+    outer = np.asarray(outer, dtype=float)
+    inward = np.asarray(inward, dtype=float)
+    if (outer.shape != inward.shape or np.any(~np.isfinite(outer))
+            or np.any(~np.isfinite(inward)) or np.any(outer <= 0.0)
+            or np.any(inward <= 0.0)):
+        raise ValueError("top two sigma_R planes must be matching, finite, and positive")
+    slope = np.log(outer / inward)
+    target = outer.copy()
+    changed = slope != 0.0
+    target[changed] = (2.0 * outer[changed]
+                       * np.expm1(0.5 * slope[changed]) / slope[changed])
+    implied_ghost = 2.0 * target - outer
+    fallback = (~np.isfinite(implied_ghost)) | (implied_ghost <= floor)
+    actual_ghost = np.where(fallback, floor, implied_ghost)
+    actual_face = 0.5 * (outer + actual_ghost)
+    ratio = actual_face / target
+    return {
+        "samples": int(outer.size),
+        "fallback_cells": int(np.count_nonzero(fallback)),
+        "fallback_fraction": float(np.mean(fallback)),
+        "slope_percentiles": {
+            str(percentile): float(np.percentile(slope, percentile))
+            for percentile in (0, 1, 50, 99, 100)
+        },
+        "outer_sigma_min": float(np.min(outer)),
+        "outer_sigma_median": float(np.median(outer)),
+        "outer_sigma_max": float(np.max(outer)),
+        "actual_to_target_min": float(np.min(ratio)),
+        "actual_to_target_median": float(np.median(ratio)),
+        "actual_to_target_max": float(np.max(ratio)),
+    }
+
+
+def audit_top_face_state(directory: Path, opacity_table: Path,
+                         rho_unit: float, length_unit: float) -> dict:
+    """Reconstruct sigma_R on the final two active planes of a solar run."""
+    repo = Path(__file__).resolve().parents[2]
+    sys.path.insert(0, str(repo / "vis" / "python"))
+    import athena_read  # pylint: disable=import-outside-toplevel
+    import h5py  # pylint: disable=import-outside-toplevel
+    from scipy.interpolate import RegularGridInterpolator
+
+    prim_files = sorted(directory.glob("*.prim_full.*.athdf"))
+    uov_files = sorted(directory.glob("*.uov_full.*.athdf"))
+    if not prim_files or not uov_files:
+        raise ValueError(f"No full primitive/user snapshots in {directory}")
+    prim_path, uov_path = prim_files[-1], uov_files[-1]
+    prim = athena_read.athdf(str(prim_path))
+    uov = athena_read.athdf(str(uov_path))
+    if float(prim["Time"]) != float(uov["Time"]):
+        raise ValueError("final primitive and user snapshots have different times")
+    rho = np.asarray(prim["rho"], dtype=float) * rho_unit
+    temperature = np.asarray(uov["T_gas"], dtype=float)
+    if rho.shape != temperature.shape or rho.shape[0] < 2:
+        raise ValueError("final rho/T arrays have incompatible shapes")
+    with h5py.File(opacity_table, "r") as handle:
+        log_rho = np.asarray(handle["axes/log10_density"], dtype=float)
+        log_temperature = np.asarray(
+            handle["axes/log10_temperature"], dtype=float)
+        log_rosseland = np.asarray(
+            handle["kappa/log10_rosseland"], dtype=float)
+    interpolate = RegularGridInterpolator(
+        (log_rho, log_temperature), log_rosseland, bounds_error=True)
+    two_rho = rho[-2:]
+    two_temperature = temperature[-2:]
+    points = np.column_stack((np.log10(two_rho.ravel()),
+                              np.log10(two_temperature.ravel())))
+    kappa = 10.0 ** interpolate(points).reshape(two_rho.shape)
+    sigma = kappa * two_rho * length_unit
+    stats = reconstruction_stats(sigma[1], sigma[0])
+    stats.update({
+        "time": float(prim["Time"]),
+        "primitive_file": prim_path.name,
+        "primitive_sha256": sha256(prim_path),
+        "user_file": uov_path.name,
+        "user_sha256": sha256(uov_path),
+        "opacity_table_sha256": sha256(opacity_table),
+        "rho_unit": rho_unit,
+        "length_unit": length_unit,
+        "floor": 1.0e-20,
+    })
+    return stats
+
+
 def compare_modes(false: dict, true: dict) -> dict:
     windows = {}
     for width in WINDOWS:
@@ -277,6 +365,16 @@ def write_html(summary: dict, output: Path) -> None:
             f"<td>{s['newton_iterations_total']}</td><td>{s['newton_final_l2_max']:.3e}</td>"
             f"<td>{s['fgmres_solves']}</td><td>{s['fgmres_iterations_total']}</td>"
             f"<td>{s['fgmres_iterations_mean']:.3f}</td><td>{s['fgmres_iterations_max']}</td></tr>")
+    opacity_rows = []
+    for mode in ("false", "true"):
+        value = summary.get("top_face_reconstruction", {}).get(mode)
+        if value is not None:
+            opacity_rows.append(
+                f"<tr><td>{mode}</td><td>{value['time']:.1f}</td>"
+                f"<td>{value['fallback_cells']}/{value['samples']}</td>"
+                f"<td>{100*value['fallback_fraction']:.3f}%</td>"
+                f"<td>{value['slope_percentiles']['50']:.4f}</td>"
+                f"<td>{value['actual_to_target_max']:.6f}</td></tr>")
     output.write_text(f"""<!doctype html><html lang='en'><meta charset='utf-8'>
 <title>WOR-174 mature clean-source A/B</title><style>
 body{{font:17px/1.5 system-ui;max-width:1200px;margin:2rem auto;padding:0 1rem;color:#172b3a}}
@@ -296,6 +394,12 @@ the table therefore compares like-for-like clean-source runs and does not silent
 <h2>Nonlinear and linear solves</h2><table><tr><th>mode</th><th>Newton solves</th>
 <th>Newton iters</th><th>max final L2</th><th>FGMRES solves</th><th>FGMRES iters</th>
 <th>FGMRES mean</th><th>FGMRES max</th></tr>{''.join(solver_rows)}</table>
+<h2>Top-face reconstruction representability</h2>
+<p>A positive arithmetic ghost cannot reproduce a target below half the outer-cell opacity.
+The fallback count identifies those cells; a nonzero count limits the interpretation to a
+positive approximation rather than an exact log-linear half-cell integral.</p>
+<table><tr><th>mode</th><th>snapshot time</th><th>fallback cells</th><th>fraction</th>
+<th>median log slope</th><th>max actual/target</th></tr>{''.join(opacity_rows)}</table>
 <h2>Provenance</h2><pre>{html.escape(json.dumps(summary['provenance'], indent=2))}</pre></html>""")
 
 
@@ -304,6 +408,9 @@ def main() -> int:
     parser.add_argument("run", type=Path, help="Directory containing false/ and true/")
     parser.add_argument("--output-dir", type=Path, required=True)
     parser.add_argument("--job-id", default="unknown")
+    parser.add_argument("--opacity-table", type=Path)
+    parser.add_argument("--rho-unit", type=float, default=1.0e-7)
+    parser.add_argument("--length-unit", type=float, default=5.0e7)
     args = parser.parse_args()
     run = args.run.resolve()
     output = args.output_dir.resolve()
@@ -331,6 +438,15 @@ def main() -> int:
                           "gravity_factor": GRAVITY_FACTOR},
         },
     }
+    if args.opacity_table is not None:
+        table = args.opacity_table.resolve()
+        summary["top_face_reconstruction"] = {
+            mode: audit_top_face_state(run / mode, table,
+                                       args.rho_unit, args.length_unit)
+            for mode in ("false", "true")
+        }
+        summary["provenance"]["opacity_table"] = str(table)
+        summary["provenance"]["opacity_table_sha256"] = sha256(table)
     (output / "summary.json").write_text(json.dumps(summary, indent=2) + "\n")
     write_csv(summary, output / "windows.csv")
     plot_histories(histories, output / "histories.png")
