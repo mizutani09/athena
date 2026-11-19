@@ -426,6 +426,38 @@ void NewtonRaphsonDriver::CheckBoundaryFunctions() {
 
 
 NewtonSolveResult NewtonRaphsonDriver::Solve_general(int stage, Real dt) {
+  const bool retry_enabled = dt > 0.0
+      && NRFLDPrototype::Flag("ATHENA_NRFLD_TANGENTIAL_FULL_SOLVE_RETRY")
+      && NRFLDPrototype::TangentialReconstruction();
+  NewtonSolveResult result = Solve_general_once(stage, dt);
+  if (!retry_enabled || result.IsSuccess()
+      || result.reason == NewtonSolveReason::initial_nonfinite
+      || result.reason == NewtonSolveReason::final_nonfinite) {
+    return result;
+  }
+
+  if (Globals::my_rank == 0) {
+    std::cout << "[NR_TANGENTIAL_FULL_RETRY] cycle=" << pmy_mesh_->ncycle
+              << " stage=" << stage << " dt=" << dt
+              << " primary_reason=" << NewtonSolveReasonName(result.reason)
+              << " primary_iterations=" << result.iterations
+              << " action=restart_without_tangential_reconstruction"
+              << std::endl;
+  }
+  NRFLDPrototype::SetTangentialOverride(0);
+  NewtonSolveResult retry = Solve_general_once(stage, dt);
+  NRFLDPrototype::SetTangentialOverride(-1);
+  if (Globals::my_rank == 0) {
+    std::cout << "[NR_TANGENTIAL_FULL_RETRY] cycle=" << pmy_mesh_->ncycle
+              << " stage=" << stage
+              << " retry_status=" << NewtonSolveReasonName(retry.reason)
+              << " retry_iterations=" << retry.iterations
+              << " committed=" << retry.committed << std::endl;
+  }
+  return retry;
+}
+
+NewtonSolveResult NewtonRaphsonDriver::Solve_general_once(int stage, Real dt) {
   // std::cout << "In NewtonRaphsonDriver::Solve_general" << std::endl;
   stage_ = stage;
   dt_ = dt;

@@ -250,6 +250,7 @@ class NewtonRaphsonDriver {
   // void SetupNewtonRaphson();
   // void SetupCoefficients();
   void SolveOneCycle(bool solve_direction);
+  NewtonSolveResult Solve_general_once(int step, Real dt);
   // void SolveIterative();
   // void SolveIterativeFixedTimes();
 

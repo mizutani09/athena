@@ -27,6 +27,19 @@ inline bool FlagOrDefault(const char *name, bool fallback) {
   return value == nullptr ? fallback : std::strcmp(value, "1") == 0;
 }
 
+// Runtime override used only while replaying a complete nonlinear solve.
+// -1 follows the configured/default mode, 0 disables, and 1 enables.  The
+// Newton driver changes this outside threaded regions and restores it before
+// returning, so ordinary calls retain the immutable environment semantics.
+inline int &TangentialOverride() {
+  static int value = -1;
+  return value;
+}
+
+inline void SetTangentialOverride(int value) {
+  TangentialOverride() = value;
+}
+
 inline void ConfigureDefault(bool enabled, bool test_c, bool mach5,
                              bool fixed_limiter) {
   DefaultMode &mode = Mode();
@@ -61,8 +74,9 @@ inline bool CenteredFaceTrial() {
 }
 
 inline bool TangentialReconstruction() {
-  return Enabled() && FlagOrDefault(
-      "ATHENA_NRFLD_EXPERIMENTAL_TANGENTIAL_RECONSTRUCTION", DefaultEnabled());
+  const int override = TangentialOverride();
+  return Enabled() && (override >= 0 ? override != 0 : FlagOrDefault(
+      "ATHENA_NRFLD_EXPERIMENTAL_TANGENTIAL_RECONSTRUCTION", DefaultEnabled()));
 }
 
 inline bool SeriesResistance() {
