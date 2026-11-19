@@ -2516,6 +2516,9 @@ TaskStatus TimeIntegratorTaskList::IntegrateScalars(MeshBlock *pmb, int stage) {
 
       const Real wght = stage_wghts[stage-1].beta*pmb->pmy_mesh->dt;
       ps->AddFluxDivergence(wght, ps->s);
+      if (pmb->precon->berta_wenoz) {
+        ps->RepairConservedPositivity(ps->s);
+      }
 
       // Hardcode an additional flux divergence weighted average for the penultimate
       // stage of SSPRK(5,4) since it cannot be expressed in a 3S* framework
@@ -2529,6 +2532,9 @@ TaskStatus TimeIntegratorTaskList::IntegrateScalars(MeshBlock *pmb, int stage) {
         // writing out to s2 register
         pmb->WeightedAve(ps->s2, ps->s1, ps->s2, ps->s0, ps->s_fl_div, ave_wghts);
         ps->AddFluxDivergence(wght_ssp, ps->s2);
+        if (pmb->precon->berta_wenoz) {
+          ps->RepairConservedPositivity(ps->s2);
+        }
       }
     }
     return TaskStatus::next;

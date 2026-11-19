@@ -98,6 +98,58 @@ void PassiveScalars::AddFluxDivergence(const Real wght, AthenaArray<Real> &s_out
   return;
 }
 
+//----------------------------------------------------------------------------------------
+//! \brief Remove scalar undershoots without changing the block-integrated scalar mass.
+//!
+//! The Berta scalar prototype can produce small negative cell averages next to a sharp
+//! tracer interface.  Conserved-to-primitive conversion would clip those values and add
+//! mass.  Instead, set undershoots to zero and pay for the correction by scaling the
+//! positive mass in the same MeshBlock.  The operation is inactive for an already
+//! positive solution, retains smooth convergence, and is conservative in physical cell
+//! volume even for curvilinear coordinates and multilevel meshes.
+//!
+//! A block with non-positive total scalar mass has no local conservative positive state.
+//! Leave it unchanged in that exceptional case rather than silently creating mass; the
+//! existing EOS floor remains the final safety net.
+
+void PassiveScalars::RepairConservedPositivity(AthenaArray<Real> &s_out) {
+  MeshBlock *pmb = pmy_block;
+  const int is = pmb->is, js = pmb->js, ks = pmb->ks;
+  const int ie = pmb->ie, je = pmb->je, ke = pmb->ke;
+  AthenaArray<Real> &vol = cell_volume_;
+
+  for (int n=0; n<NSCALARS; ++n) {
+    Real deficit = 0.0;
+    Real surplus = 0.0;
+    for (int k=ks; k<=ke; ++k) {
+      for (int j=js; j<=je; ++j) {
+        pmb->pcoord->CellVolume(k, j, is, ie, vol);
+        for (int i=is; i<=ie; ++i) {
+          const Real scalar_mass = s_out(n,k,j,i);
+          if (scalar_mass < 0.0) {
+            deficit -= scalar_mass*vol(i);
+          } else {
+            surplus += scalar_mass*vol(i);
+          }
+        }
+      }
+    }
+
+    if (deficit == 0.0 || !(surplus > deficit)) continue;
+    const Real positive_scale = 1.0 - deficit/surplus;
+    for (int k=ks; k<=ke; ++k) {
+      for (int j=js; j<=je; ++j) {
+#pragma omp simd
+        for (int i=is; i<=ie; ++i) {
+          const Real scalar_mass = s_out(n,k,j,i);
+          s_out(n,k,j,i) = scalar_mass < 0.0 ? 0.0
+                                             : positive_scale*scalar_mass;
+        }
+      }
+    }
+  }
+}
+
 
 //----------------------------------------------------------------------------------------
 //! \fn  void PassiveScalars::AddFluxDivergence_STS
