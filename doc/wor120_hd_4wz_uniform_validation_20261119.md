@@ -186,6 +186,39 @@ stellar mass on the high-order path, versus 62.2% for 16-cubed blocks. The resul
 promising but not yet a production choice because initialization dominates these
 short timings; both layouts need the 100-cycle gate.
 
+The B16 100-cycle gate (`343482`) completed both evolutions. Its batch status is
+`FAILED` only because the original postprocessor required identical final times to
+`1e-12`, while two fixed-cycle CFL runs ended at `0.99352325` and `0.99350330` code
+time (a relative difference of `2.01e-5`). Reprocessing with the corrected comparator
+passes and records both times explicitly.
+
+| B16, 100 cycles | x2 | 4wz |
+|---|---:|---:|
+| wall time | 34.71 s | 88.28 s |
+| main-loop time | 22.39 s | 79.98 s |
+| zone-cycles/s | 4.522e7 | 1.414e7 |
+| approximate aggregate RSS | 64.3 GiB | 76.8 GiB |
+| initial/final MeshBlocks | 2,472 / 2,472 | 2,472 / 2,808 |
+| maximum mechanical-energy drift | 4.87e-4 | 1.69e-2 |
+| maximum radial Mach RMS | 2.48e-3 | 2.49e-3 |
+
+The x2 case passes all nine HD gates. The 4wz case passes mass, angular momentum,
+Mach, perturbation-energy, radius, and virial gates, but fails the `1e-2` mechanical-
+energy gate. The energy changes are discrete rather than runaway: 4wz surface AMR
+grows through 2,640, 2,752, and 2,808 blocks in the first 40 cycles, while x2 remains
+at 2,472. The largest energy excursion coincides with the first topology change and
+the result settles near `-1.015e-2` after the last change. Final 4wz fallback is 48.10%
+of cells but only 9.92% of stellar mass, improved from 58.67% and 37.76% initially.
+The B16 layout is therefore not the production choice unless a continuation proves
+that the regrid offset is bounded; the B32 100-cycle result is the deciding gate.
+
+The seed/restart rehearsal (`343483`) also passes. Fresh initialization and the one
+forced restart took 63.38 s; the x2 and 4wz one-cycle branches took 11.26 and 11.72 s.
+Exactly one 1.913 GB restart was written, with SHA-256
+`2ab9a3dcd18de7bf211c57e9ffb0002d506afb51a6fa5276da37723032ba887a`.
+Both branches reproduce the earlier one-cycle diagnostics without multigrid warnings,
+NaNs, or runtime errors.
+
 The L3 workflow creates the expensive `NGHOST=4` state once with `nlim=0`, writes one
 forced final restart, and branches RK2+x2 and RK4+4wz from that byte-identical state.
 Delaying the normal restart `next_time` avoids a redundant multi-gigabyte initial
