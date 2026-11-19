@@ -15,7 +15,7 @@
       "bottom_total_over_fsun": 5.633716221214517e-06,
       "storage_over_fsun": 0.003526212090507441,
       "closure_or_input_error_over_fsun": -0.0016576912903035756,
-      "source": "/home/kosuke/simulation/athena-wor91/results/wor91_fld_solar_20261116/heatdepth/final_summary_topface_alpha056_60000.json",
+      "source": "external/wor91_fld_solar_20261116/heatdepth/final_summary_topface_alpha056_60000.json",
       "source_sha256": "9b6aa54dcd28ea9f559b0d89b580a8f9b5358f771aba11e8f66a782c93881127"
     },
     {
@@ -28,7 +28,7 @@
       "bottom_total_over_fsun": 5.633107223529958e-06,
       "storage_over_fsun": 0.0019831382594818186,
       "closure_or_input_error_over_fsun": -0.0008884876739797543,
-      "source": "/home/kosuke/simulation/athena-wor91/results/wor91_fld_solar_20261116/heatdepth/final_summary_topface_quadratic_55000.json",
+      "source": "external/wor91_fld_solar_20261116/heatdepth/final_summary_topface_quadratic_55000.json",
       "source_sha256": "ad331878c552777148a1422415b72e6c3c42216bd9489fc94597045dcae1657c"
     },
     {
@@ -42,7 +42,7 @@
       "storage_over_fsun": -1.5568632211252672e-06,
       "closure_or_input_error_over_fsun": -0.0007184303824357915,
       "mass_drift_fraction": 0.00363009,
-      "source": "/home/kosuke/simulation/athena-wor91/results/wor91_fld_solar_20261116/hd2_warm96_20261119/audit_342612.json",
+      "source": "external/wor91_fld_solar_20261116/hd2_warm96_20261119/audit_342612.json",
       "source_sha256": "4bd958a1862feb70510326ac630d93d07ad8975b5f863e290b1479690834cdc2"
     },
     {
@@ -56,7 +56,7 @@
       "storage_over_fsun": 0.0008606052675223803,
       "closure_or_input_error_over_fsun": -0.0001617260688168982,
       "mass_drift_fraction": 0.00362819,
-      "source": "/home/kosuke/simulation/athena-wor91/results/wor91_fld_solar_20261116/hd2_warm96_20261119/audit_342616.json",
+      "source": "external/wor91_fld_solar_20261116/hd2_warm96_20261119/audit_342616.json",
       "source_sha256": "f93ed2a0eb9825d2bfd7c4debbf7b9a8e7666216c25cb6018b06987b24b7816c"
     },
     {
@@ -69,7 +69,7 @@
       "bottom_total_over_fsun": 5.631494170378909e-06,
       "storage_over_fsun": -0.01848004831980422,
       "closure_or_input_error_over_fsun": -0.00022219143695656474,
-      "source": "/home/kosuke/simulation/athena-wor91/results/wor91_fld_solar_20261116/heatdepth/final_summary_amr48_alpha056_57500.json",
+      "source": "external/wor91_fld_solar_20261116/heatdepth/final_summary_amr48_alpha056_57500.json",
       "source_sha256": "0fca16efe5213e034a0985f8cf1f32db897c7123edddef74477b9c6d95e4ebac"
     },
     {
@@ -83,13 +83,13 @@
       "storage_over_fsun": -0.0025881056850867207,
       "closure_or_input_error_over_fsun": -0.0042045283511716845,
       "mass_drift_fraction": 0.00363584,
-      "source": "/home/kosuke/simulation/test/rad_nr/wor116_solar_gate_20261120/raw/hd2_nata48_audit_342923.json",
+      "source": "external/hd2_48_audit.json",
       "source_sha256": "df735f7cfee26d5540ed79374465d16176759ef8a19ffa4143bd62f19eeccebd"
     }
   ],
   "provenance": {
-    "results_root": "/home/kosuke/simulation/athena-wor91/results/wor91_fld_solar_20261116",
-    "hd2_48_audit": "/home/kosuke/simulation/test/rad_nr/wor116_solar_gate_20261120/raw/hd2_nata48_audit_342923.json",
-    "generator": "/home/kosuke/simulation/athena-wor114-collapse-candidate-20261116/tst/nrfld_validation/wor116_solar_application_gate.py"
+    "results_root": "external/wor91_fld_solar_20261116",
+    "hd2_48_audit": "external/hd2_48_audit.json",
+    "generator": "tst/nrfld_validation/wor116_solar_application_gate.py"
   }
 }

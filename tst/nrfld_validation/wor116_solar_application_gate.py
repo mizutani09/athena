@@ -81,6 +81,22 @@ def validate(rows: list[dict]) -> None:
         raise ValueError("The selected 96-km evidence does not bracket/meet the limited gate")
 
 
+def make_provenance_portable(rows: list[dict], root: Path,
+                             hd2_audit: Path) -> None:
+    """Replace workstation paths with stable logical external-asset labels."""
+    for row in rows:
+        source = Path(row["source"])
+        try:
+            relative = source.relative_to(root)
+        except ValueError:
+            if source == hd2_audit:
+                row["source"] = "external/hd2_48_audit.json"
+            else:
+                raise ValueError(f"Cannot make unexpected source portable: {source}")
+        else:
+            row["source"] = f"external/wor91_fld_solar_20261116/{relative.as_posix()}"
+
+
 def make_plot(rows: list[dict], output: Path) -> None:
     import matplotlib
     matplotlib.use("Agg")
@@ -150,6 +166,8 @@ def main() -> int:
     parser.add_argument("--results-root", type=Path, required=True)
     parser.add_argument("--hd2-48-audit", type=Path, required=True)
     parser.add_argument("--output-dir", type=Path, required=True)
+    parser.add_argument("--portable-provenance", action="store_true",
+                        help="replace local absolute paths with external asset labels")
     args = parser.parse_args()
     root = args.results_root.resolve()
     rows = [
@@ -166,6 +184,9 @@ def main() -> int:
         hd2_row("48 km HD2", 48, args.hd2_48_audit.resolve(), "500"),
     ]
     validate(rows)
+    hd2_audit = args.hd2_48_audit.resolve()
+    if args.portable_provenance:
+        make_provenance_portable(rows, root, hd2_audit)
     summary = {
         "decision": "include_as_limited_numerical_application",
         "supports_observational_solar_validation": False,
@@ -174,9 +195,12 @@ def main() -> int:
         "supports_96km_quasi_steady_near_solar_flux": True,
         "rows": rows,
         "provenance": {
-            "results_root": str(root),
-            "hd2_48_audit": str(args.hd2_48_audit.resolve()),
-            "generator": str(Path(__file__).resolve()),
+            "results_root": ("external/wor91_fld_solar_20261116"
+                             if args.portable_provenance else str(root)),
+            "hd2_48_audit": ("external/hd2_48_audit.json"
+                             if args.portable_provenance else str(hd2_audit)),
+            "generator": ("tst/nrfld_validation/wor116_solar_application_gate.py"
+                          if args.portable_provenance else str(Path(__file__).resolve())),
         },
     }
     output = args.output_dir.resolve()
