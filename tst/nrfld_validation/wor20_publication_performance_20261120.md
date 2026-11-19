@@ -83,6 +83,37 @@ MeshBlock from 16³ to 32³ reduces time and memory and raises the 4-rank
 efficiency from 54.3% to 57.2%, but does not reach the exploratory 70–80%
 target. Block-management overhead is a contributor, not the sole cause.
 
+## Opt-in FGMRES internal timing
+
+An off-by-default `performance/linear_detail` diagnostic measures four
+additive parts of each FGMRES solve on the rank with the largest solve wall
+time: the MG preconditioner, operator matvec, FGMRES global reductions, and
+vector/other work. It is deliberately not enabled by ordinary inputs. Each
+record is rejected by the analysis if its parts do not sum to its total.
+
+The diagnostic was run for ten warm-up plus 100 measured steps, three repeats,
+and 1/2/4 ranks. All nine runs and all timer-off controls passed. Every
+timer-on/off pair had bitwise-identical final arrays and identical Newton
+status/iteration histories. The median end-to-end on/off ratios were
+`0.990 / 0.977 / 0.995`; no diagnostic overhead is resolved above host noise.
+Every run performed 232 linear solves, while every measured window performed
+200 Newton corrections.
+
+| ranks | MG preconditioner | operator matvec | FGMRES reductions | vector/other |
+| ---: | ---: | ---: | ---: | ---: |
+| 1 | 29.7% | 62.5% | 0.02% | 7.8% |
+| 2 | 39.3% | 49.5% | 5.3% | 5.9% |
+| 4 | 40.8% | 40.8% | 12.6% | 5.0% |
+
+The matvec is the largest single-rank cost. With more local ranks, MG
+preconditioning becomes comparable and the explicit Krylov-reduction share
+grows from effectively zero to 12.6%. This directly supports the earlier
+inference that synchronization/communication, rather than increased Krylov
+iteration count, limits this small-grid scaling. The detailed suite happened
+to run during a slower host interval (especially at four ranks), so its
+absolute scaling rate does not replace the matched baseline above; only the
+within-solve fractions are used for attribution.
+
 ## HD/MHD/FLD/gravity cost matrix
 
 Eight current-source physics configurations were built independently. The
@@ -147,6 +178,8 @@ Raw suites:
   `/home/kosuke/simulation/test/rad_nr/wor20_publication_baseline_20261120/performance_run_20261120_023853_067722_JST`
 - Physics matrix HTML/JSON/PNG:
   `/home/kosuke/simulation/test/rad_nr/wor20_publication_baseline_20261120/physics_matrix_20261120`
+- Opt-in FGMRES detailed timing (JSON/CSV/PNG and timer-off controls):
+  `/home/kosuke/simulation/test/rad_nr/wor20_publication_baseline_20261120/fgmres_detail_long_20261120/performance_run_20261120_030203_224241_JST`
 
 `wor20_compare_solvers.py` validates matched options and suite PASS status,
 recomputes FGMRES counts and final-field differences, and regenerates the

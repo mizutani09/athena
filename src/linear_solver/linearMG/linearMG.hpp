@@ -132,6 +132,7 @@ class linearMGDriver: public MultigridDriver {
   bool fgmres_compact_basis_{true};
   bool fgmres_reuse_basis_{true};
   bool fgmres_batched_reductions_{true};
+  bool fgmres_performance_timing_{false};
   std::vector<FGMRESBlockVector> fgmres_v_cache_, fgmres_z_cache_;
   std::vector<int> fgmres_cache_gids_;
   bool fgmres_cache_compact_{true};

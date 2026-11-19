@@ -8,7 +8,7 @@ import unittest
 import h5py
 import numpy as np
 
-from performance import analyse, compare_fields, input_text
+from performance import analyse, compare_fields, input_text, parse_linear_detail
 
 
 class PerformanceAnalysisTests(unittest.TestCase):
@@ -18,7 +18,7 @@ class PerformanceAnalysisTests(unittest.TestCase):
         self.root = Path(self.tmp.name)
         self.args = argparse.Namespace(warmup=1, steps=2, dt=1e-4, mode="strong",
                                        resolution=32, block=16, linear_solver="mg",
-                                       coarse_operator="rediscretized")
+                                       coarse_operator="rediscretized", linear_detail=False)
         (self.root / "run.log").write_text("Terminating on cycle limit\n")
         (self.root / "benchmark.hst").write_text("0 0.0001 1\n0.0003 0.0001 1\n")
         for kind, names in (("prim", ["rho", "press"]), ("rad", ["Er"])):
@@ -103,6 +103,12 @@ class PerformanceAnalysisTests(unittest.TestCase):
         self.assertIn("coarse_operator = galerkin", text)
         self.assertIn("prolongation = constant", text)
 
+    def test_linear_detail_is_explicitly_opt_in(self):
+        self.assertIn("linear_detail = false", input_text(self.args, 1, True))
+        self.args.linear_detail = True
+        self.assertIn("linear_detail = true", input_text(self.args, 1, True))
+        self.assertIn("linear_detail = false", input_text(self.args, 1, False))
+
     def test_roundoff_is_distinguished_from_changed_solution(self):
         a = {"Bcc1": np.array([0.1])}
         b = {"Bcc1": np.nextafter(a["Bcc1"], np.inf)}
@@ -119,6 +125,26 @@ class PerformanceAnalysisTests(unittest.TestCase):
             end += self.args.dt
         self.assertNotEqual(end, 25 * self.args.dt)
         self.assertIn(f"tlim = {end}", input_text(self.args, 1, True))
+
+    def test_linear_detail_is_additive_and_aggregated(self):
+        line = ("[LINEAR_FGMRES_TIMING] total_seconds=1.0 "
+                "preconditioner_seconds=0.4 matvec_seconds=0.3 "
+                "reduction_seconds=0.2 vector_and_other_seconds=0.1 "
+                "preconditioner_calls=2 matvec_calls=3 reduction_calls=4 "
+                "critical_rank=1 additive_components=1")
+        result = parse_linear_detail(f"ignored\n{line}\n{line}\n")
+        self.assertEqual(result["linear_solves"], 2)
+        self.assertAlmostEqual(result["preconditioner_fraction"], 0.4)
+        self.assertEqual(result["critical_rank_counts"], {"1": 2})
+
+    def test_linear_detail_rejects_nonadditive_record(self):
+        line = ("[LINEAR_FGMRES_TIMING] total_seconds=1.0 "
+                "preconditioner_seconds=0.4 matvec_seconds=0.3 "
+                "reduction_seconds=0.2 vector_and_other_seconds=0.2 "
+                "preconditioner_calls=2 matvec_calls=3 reduction_calls=4 "
+                "critical_rank=0 additive_components=1")
+        with self.assertRaises(ValueError):
+            parse_linear_detail(line)
 
 
 if __name__ == "__main__":

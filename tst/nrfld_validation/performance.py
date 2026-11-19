@@ -94,6 +94,8 @@ def input_text(args, ranks, enabled):
         "output3": {"file_type": "hdf5", "variable": "uov", "id": "rad",
                     "dcycle": nlim + 1},
     }
+    sections["performance"]["linear_detail"] = str(
+        args.linear_detail and enabled).lower()
     for axis, factor in enumerate(shape, 1):
         sections["mesh"].update({f"nx{axis}": args.resolution * factor,
                                  f"x{axis}min": 0, f"x{axis}max": factor,
@@ -148,6 +150,49 @@ def compare_fields(left, right):
             "scaled_difference_limit": limit}
 
 
+def parse_linear_detail(log):
+    """Validate and aggregate opt-in, critical-rank FGMRES timing records."""
+    records = []
+    prefix = "[LINEAR_FGMRES_TIMING] "
+    for line in log.splitlines():
+        if not line.startswith(prefix):
+            continue
+        fields = dict(token.split("=", 1) for token in line[len(prefix):].split())
+        required = ("total_seconds", "preconditioner_seconds", "matvec_seconds",
+                    "reduction_seconds", "vector_and_other_seconds")
+        values = {key: float(fields[key]) for key in required}
+        counts = {key: int(fields[key]) for key in
+                  ("preconditioner_calls", "matvec_calls", "reduction_calls")}
+        if (not all(np.isfinite(value) and value >= 0 for value in values.values()) or
+                values["total_seconds"] <= 0 or
+                not all(value > 0 for value in counts.values()) or
+                int(fields["critical_rank"]) < 0 or
+                int(fields["additive_components"]) != 1):
+            raise ValueError("Invalid FGMRES detailed timing record")
+        component_sum = sum(values[key] for key in required[1:])
+        if not np.isclose(component_sum, values["total_seconds"], rtol=1e-9,
+                          atol=1e-12):
+            raise ValueError("Non-additive FGMRES detailed timing record")
+        records.append({**values, **counts,
+                        "critical_rank": int(fields["critical_rank"])})
+    if not records:
+        raise ValueError("No FGMRES detailed timing records")
+    total = sum(record["total_seconds"] for record in records)
+    result = {"linear_solves": len(records), "total_seconds": total,
+              "scope": "all solves, including warmup cycles; critical rank selected per solve"}
+    for key in ("preconditioner_seconds", "matvec_seconds", "reduction_seconds",
+                "vector_and_other_seconds"):
+        value = sum(record[key] for record in records)
+        result[key] = value
+        result[key.replace("_seconds", "_fraction")] = value / total
+    for key in ("preconditioner_calls", "matvec_calls", "reduction_calls"):
+        result[key] = sum(record[key] for record in records)
+    result["critical_rank_counts"] = {
+        str(rank): sum(record["critical_rank"] == rank for record in records)
+        for rank in sorted({record["critical_rank"] for record in records})}
+    return result
+
+
 def analyse(directory, args, ranks, case):
     log = (directory / "run.log").read_text()
     if "FATAL" in log or "### WARNING" in log:
@@ -200,7 +245,7 @@ def analyse(directory, args, ranks, case):
     mass_drift = float((history[-1, 2] - history[0, 2]) / history[0, 2])
     if not np.isfinite(history).all() or abs(mass_drift) > 1e-5:
         raise ValueError("Nonfinite history or excessive mass drift")
-    return {"wall_seconds": wall, "seconds_per_step": wall / args.steps,
+    result = {"wall_seconds": wall, "seconds_per_step": wall / args.steps,
             "zone_cycles_per_second": sum(s["global_cells"] for s in raw[0]["steps"]) / wall,
             "parts": seconds, "implicit_fld_fraction_rank_mean": implicit / mean_wall,
             "newton_iterations_mean": float(np.mean(iterations)) if "fld" in case else None,
@@ -214,6 +259,11 @@ def analyse(directory, args, ranks, case):
             "sum_rank_peak_rss_kib": sum(item["max_rss_kib"] for item in resources),
             "resource_note": "Per-rank child high-water marks; their sum is not a simultaneous node RSS measurement",
             "rank_mean_unassigned_seconds": mean_wall - sum(v["mean"] for v in seconds.values())}
+    if args.linear_detail:
+        if args.linear_solver != "fgmres" or "fld" not in case:
+            raise ValueError("Detailed linear timing requires an FLD FGMRES case")
+        result["fgmres_detail"] = parse_linear_detail(log)
+    return result
 
 
 def plot_summary(root, runs):
@@ -253,6 +303,30 @@ def plot_summary(root, runs):
     fig.tight_layout()
     fig.savefig(root / "scaling.png", dpi=150)
     plt.close(fig)
+    detailed = [r for r in good if "fgmres_detail" in r["metrics"]]
+    if detailed:
+        groups = sorted({(r["case"], r["ranks"]) for r in detailed})
+        fig, ax = plt.subplots(figsize=(max(7, len(groups)*0.8), 4.5))
+        bottom = np.zeros(len(groups))
+        components = (("preconditioner_fraction", "MG preconditioner"),
+                      ("matvec_fraction", "operator matvec"),
+                      ("reduction_fraction", "FGMRES reductions"),
+                      ("vector_and_other_fraction", "vectors / other"))
+        for key, label in components:
+            values = np.array([np.median([
+                r["metrics"]["fgmres_detail"][key] for r in detailed
+                if (r["case"], r["ranks"]) == group]) for group in groups])
+            ax.bar(np.arange(len(groups)), values, bottom=bottom, label=label)
+            bottom += values
+        ax.set_xticks(np.arange(len(groups)),
+                      [f"{case}\np={ranks}" for case, ranks in groups])
+        ax.set_ylabel("Fraction of FGMRES solve wall time")
+        ax.set_ylim(0, 1)
+        ax.set_title("Opt-in diagnostic; critical rank selected independently per solve")
+        ax.legend(fontsize=8)
+        fig.tight_layout()
+        fig.savefig(root / "fgmres_detail.png", dpi=150)
+        plt.close(fig)
 
 
 def aggregate(root, runs, mode):
@@ -268,6 +342,11 @@ def aggregate(root, runs, mode):
                      "seconds_per_step_min": min(times), "seconds_per_step_max": max(times),
                      "implicit_fld_fraction_mean": float(np.mean([
                          r["metrics"]["implicit_fld_fraction_rank_mean"] for r in group])),
+                     **({f"fgmres_{key}_mean": float(np.mean([
+                         r["metrics"]["fgmres_detail"][key] for r in group]))
+                        for key in ("preconditioner_fraction", "matvec_fraction",
+                                    "reduction_fraction", "vector_and_other_fraction")}
+                        if "fgmres_detail" in group[0]["metrics"] else {}),
                      "all_windows_at_least_10s": all(not r["metrics"]["short_window"] for r in group)})
     for row in rows:
         base = min((r for r in rows if r["case"] == row["case"]), key=lambda r: r["ranks"])
@@ -297,6 +376,8 @@ def main():
     p.add_argument("--linear-solver", choices=["mg", "fgmres"], default="mg")
     p.add_argument("--coarse-operator", choices=["rediscretized", "galerkin"],
                    default="rediscretized")
+    p.add_argument("--linear-detail", action="store_true",
+                   help="Opt in to max-rank FGMRES matvec/MG/reduction timing")
     p.add_argument("--build-jobs", type=int, default=4)
     p.add_argument("--timeout", type=float, default=900)
     p.add_argument("--hdf5-path", type=Path)
@@ -310,6 +391,9 @@ def main():
             args.repeat < 1 or not 1 <= args.build_jobs <= 8 or args.dt <= 0 or
             not np.isfinite(args.dt) or args.timeout <= 0):
         p.error("Invalid grid, steps, repeat, dt, timeout or build-jobs (1..8)")
+    if args.linear_detail and (args.linear_solver != "fgmres" or
+                               any("fld" not in case for case in args.cases)):
+        p.error("--linear-detail requires --linear-solver fgmres and only FLD cases")
     for ranks in args.ranks:
         blocks = (args.resolution // args.block)**3 * (ranks if args.mode == "weak" else 1)
         if blocks < ranks or blocks % ranks:

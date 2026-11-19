@@ -10,6 +10,7 @@
 
 // C++ headers
 #include <algorithm>
+#include <chrono>
 #include <cmath>
 #include <cstdint>
 #include <cstdlib>
@@ -44,6 +45,28 @@ class MeshBlock;
 
 namespace {
   AthenaArray<Real> *temp; // temporary data for the Jacobi iteration
+
+double LinearWallTime() {
+#ifdef MPI_PARALLEL
+  return MPI_Wtime();
+#else
+  return std::chrono::duration<double>(
+      std::chrono::steady_clock::now().time_since_epoch()).count();
+#endif
+}
+
+class OptionalScopedLinearTimer {
+ public:
+  OptionalScopedLinearTimer(double *accumulator, bool enabled)
+      : accumulator_(enabled ? accumulator : nullptr),
+        start_(enabled ? LinearWallTime() : 0.0) {}
+  ~OptionalScopedLinearTimer() {
+    if (accumulator_ != nullptr) *accumulator_ += LinearWallTime() - start_;
+  }
+ private:
+  double *accumulator_;
+  double start_;
+};
 
 Real RestrictFaceX1Minus(const AthenaArray<Real> &src, int v, int fi, int fj, int fk) {
   return 0.25*(src(v, fk,   fj,   fi) + src(v, fk,   fj+1, fi)
@@ -207,6 +230,8 @@ linearMGDriver::linearMGDriver(Mesh *pm, ParameterInput *pin, NewtonRaphsonDrive
       "nrfld", "fgmres_reuse_basis", true);
   fgmres_batched_reductions_ = pin->GetOrAddBoolean(
       "nrfld", "fgmres_batched_reductions", true);
+  fgmres_performance_timing_ = pin->DoesParameterExist("performance", "linear_detail")
+      && pin->GetBoolean("performance", "linear_detail");
   const std::string coarse_operator = pin->GetString("nrfld", "coarse_operator");
   if (coarse_operator == "rediscretized") {
     galerkin_coarse_operator_ = false;
@@ -1315,6 +1340,11 @@ void linearMGDriver::BuildGalerkinHierarchy() {
 //! nonsymmetric MG response is permitted.
 void linearMGDriver::SolveFGMRES(int stage) {
   using BlockVector = FGMRESBlockVector;
+  const double solve_wall_start = fgmres_performance_timing_ ? LinearWallTime() : 0.0;
+  double preconditioner_seconds = 0.0;
+  double matvec_seconds = 0.0;
+  double reduction_seconds = 0.0;
+  long long matvec_calls = 0;
   auto make_vector = [&]() {
     BlockVector value;
     value.reserve(vmg_.size());
@@ -1380,18 +1410,22 @@ void linearMGDriver::SolveFGMRES(int stage) {
   long long reduction_calls = 0;
   auto reduce = [&](long double &value) {
     ++reduction_calls;
+    const double start = fgmres_performance_timing_ ? LinearWallTime() : 0.0;
 #ifdef MPI_PARALLEL
     MPI_Allreduce(MPI_IN_PLACE, &value, 1, MPI_LONG_DOUBLE, MPI_SUM,
                   MPI_COMM_WORLD);
 #endif
+    if (fgmres_performance_timing_) reduction_seconds += LinearWallTime() - start;
   };
   auto reduce_many = [&](std::vector<long double> &values) {
     if (values.empty()) return;
     ++reduction_calls;
+    const double start = fgmres_performance_timing_ ? LinearWallTime() : 0.0;
 #ifdef MPI_PARALLEL
     MPI_Allreduce(MPI_IN_PLACE, values.data(), static_cast<int>(values.size()),
                   MPI_LONG_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
 #endif
+    if (fgmres_performance_timing_) reduction_seconds += LinearWallTime() - start;
   };
   auto dot = [&](const BlockVector &x, const BlockVector &y) {
     long double value = local_dot(x,y);
@@ -1415,6 +1449,8 @@ void linearMGDriver::SolveFGMRES(int stage) {
     linmgtlist_->DoTaskListOneStage(pmy_mesh_, stage);
   };
   auto apply_operator = [&](const BlockVector &x, BlockVector &y) {
+    OptionalScopedLinearTimer timer(&matvec_seconds, fgmres_performance_timing_);
+    if (fgmres_performance_timing_) ++matvec_calls;
     load_delta(x);
     if (NRFLDPrototype::CenteredFaceTrial())
       static_cast<NRFLDDriver*>(static_cast<linearMG*>(vmg_.front())
@@ -1592,6 +1628,8 @@ void linearMGDriver::SolveFGMRES(int stage) {
   }
   int preconditioner_calls = 0;
   auto apply_preconditioner = [&](const BlockVector &rhs, BlockVector &z) {
+    OptionalScopedLinearTimer timer(&preconditioner_seconds,
+                                    fgmres_performance_timing_);
     current_level_ = fmglevel_ = ntotallevel_ - 1;
     // The initial residual/operator setup can leave the root MG object at its
     // coarsest level.  A V-cycle starts from the finest root level; otherwise
@@ -1953,6 +1991,39 @@ void linearMGDriver::SolveFGMRES(int stage) {
       && std::isfinite(inexact_cap) && inexact_cap > fgmres_threshold_
       && inexact_cap <= 1.0e-6 && relative_residual <= inexact_cap;
   load_delta(x);
+  if (fgmres_performance_timing_) {
+    const double total_seconds = LinearWallTime() - solve_wall_start;
+    const double vector_and_other_seconds = std::max(
+        0.0, total_seconds - preconditioner_seconds - matvec_seconds
+                 - reduction_seconds);
+    double values[5] = {total_seconds,
+                        preconditioner_seconds, matvec_seconds,
+                        reduction_seconds,
+                        vector_and_other_seconds};
+    int critical_rank = Globals::my_rank;
+#ifdef MPI_PARALLEL
+    struct {
+      double value;
+      int rank;
+    } local_max = {total_seconds, Globals::my_rank}, global_max;
+    MPI_Allreduce(&local_max, &global_max, 1, MPI_DOUBLE_INT, MPI_MAXLOC,
+                  MPI_COMM_WORLD);
+    critical_rank = global_max.rank;
+    MPI_Bcast(values, 5, MPI_DOUBLE, critical_rank, MPI_COMM_WORLD);
+#endif
+    if (Globals::my_rank == 0) {
+      std::cout << "[LINEAR_FGMRES_TIMING] total_seconds=" << values[0]
+                << " preconditioner_seconds=" << values[1]
+                << " matvec_seconds=" << values[2]
+                << " reduction_seconds=" << values[3]
+                << " vector_and_other_seconds=" << values[4]
+                << " preconditioner_calls=" << preconditioner_calls
+                << " matvec_calls=" << matvec_calls
+                << " reduction_calls=" << reduction_calls
+                << " critical_rank=" << critical_rank
+                << " additive_components=1" << std::endl;
+    }
+  }
   if (Globals::my_rank == 0) {
     std::cout << "[LINEAR_FGMRES] iterations=" << total_iterations
               << " relative_residual=" << relative_residual
