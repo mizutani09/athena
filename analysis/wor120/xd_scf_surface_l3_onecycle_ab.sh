@@ -23,13 +23,16 @@ ulimit -c 0
 
 repository=$HOME/simulation/athena-wor120-hd4wz
 run_root=/work/mizutaniks/wor120/hd4wz_scf_ab_${SLURM_JOB_ID}
-input=inputs/rsg/athinput.scf_rsg_relaxation_surface_l3
+source_run=/work/mizutaniks/wor162/surface_l3_t01_342434
+restart=$source_run/scf_rsg_relax.final.rst
 mkdir -p "$run_root"
 cd "$repository"
+test -f "$restart"
+test -f "$source_run/scf_rsg_relax.hst"
 
 git rev-parse HEAD > "$run_root/git_commit.txt"
 git status --short > "$run_root/git_status.txt"
-sha256sum bin/athena "$input" src/eos/eos_high_order.cpp \
+sha256sum bin/athena "$restart" src/eos/eos_high_order.cpp \
   src/reconstruct/wenoz_berta.cpp > "$run_root/provenance.sha256"
 
 icpx -O2 -std=c++11 -Wall -Wextra -Werror -pedantic \
@@ -42,10 +45,11 @@ run_case() {
   local xorder=$3
   local run=$run_root/$label
   mkdir -p "$run"
+  cp "$source_run/scf_rsg_relax.hst" "$run/scf_rsg_relax.hst"
   /usr/bin/time -f 'wall_s=%e maxrss_kb=%M' -o "$run/time.log" \
-    srun -n112 --ntasks-per-node=56 bin/athena -i "$input" -d "$run" \
+    srun -n112 --ntasks-per-node=56 bin/athena -r "$restart" -d "$run" \
     time/integrator="$integrator" time/xorder="$xorder" \
-    time/nlim=1 time/tlim=1.0 \
+    time/nlim=4754 time/tlim=1000.0 \
     output1/dcycle=1 output2/dt=-1 output3/dt=-1 \
     output4/dt=-1 output5/dt=-1 \
     > "$run/stdout.log" 2> "$run/stderr.log"
