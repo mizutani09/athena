@@ -419,3 +419,20 @@ an already-started Newton solve retained a localized residual and exhausted
 backtracking.  A future automatic policy would need to restart the entire
 nonlinear solve from the saved pre-Newton state, including driver and MG
 caches; that broader change is not justified by this one trajectory.
+
+## Complete nonlinear replay follow-up (2026-11-20)
+
+The complete replay proposed above was subsequently implemented as an opt-in
+isolated experiment and passed.  Exact-checkpoint job `343472` detected the
+unsafe first direction before applying it (287 positivity-crossing cells),
+re-entered the entire nonlinear solve with the two-point face form, converged
+in FGMRES `12+11` and Newton 2, and latched that form through c970.  All later
+linear solves remained at 11--12 iterations.  The c970 state is positive,
+finite, inside the opacity table, and agrees with the explicit two-point
+control to `4.20e-11` relative after excluding reduction-scale divB noise.
+
+The gate is disabled by default and does not change the global tangential
+reconstruction default.  Full implementation, conservation, timing, hashes,
+and restart limitations are recorded in
+`wor124_full_solve_retry_20261120.md` and
+`wor124_full_solve_retry_results_20261120.json`.
