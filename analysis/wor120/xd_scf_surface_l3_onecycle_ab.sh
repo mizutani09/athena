@@ -46,7 +46,6 @@ run_case() {
     srun -n56 --ntasks-per-node=56 bin/athena -i "$input" -d "$run" \
     time/integrator="$integrator" time/xorder="$xorder" \
     time/nlim=1 time/tlim=1.0 \
-    gravity/mgmode=fmg gravity/threshold=-1.0 gravity/niteration=0 \
     output1/dcycle=1 output2/dt=-1 output3/dt=-1 \
     output4/dt=-1 output5/dt=-1 \
     > "$run/stdout.log" 2> "$run/stderr.log"
