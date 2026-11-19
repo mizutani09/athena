@@ -103,6 +103,11 @@ range is `-3.67655` to `-1.76872`.  The fallback makes the represented face
 opacity at most 1.09303 times the analytical log-linear target, while the
 remaining 91.919% are exact to floating-point precision.
 
+In contrast, the local t=0 smoke snapshots and the XD t=5.5 short A/B have
+zero fallback columns.  The limitation is therefore exposed by the evolved
+mature atmosphere and would not have been detected by repeating only the
+startup regression.
+
 This does not make the option non-finite or unstable, but it narrows the
 claim: at the mature solar surface it is a positive approximation to the
 half-cell integral in a minority of columns, not an exact reconstruction in
