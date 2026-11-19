@@ -107,8 +107,12 @@ Generate the dedicated HTML/JSON/PNG with:
 python3 tst/nrfld_validation/wor116_solar_application_gate.py \
   --results-root /path/to/wor91_fld_solar_20261116 \
   --hd2-48-audit /path/to/hd2_nata48_audit_342923.json \
-  --output-dir /path/to/wor116_solar_gate
+  --output-dir /path/to/wor116_solar_gate \
+  --portable-provenance
 ```
+
+The portable mode retains every input SHA-256 while replacing workstation
+absolute paths with stable `external/...` labels suitable for a shared report.
 
 The current standalone report is under
 `/home/kosuke/simulation/test/rad_nr/wor116_solar_gate_20261120/report`.
