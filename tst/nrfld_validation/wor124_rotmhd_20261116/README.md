@@ -719,10 +719,20 @@ and are not promoted to the production/collaboration branch.
 
 The first PPM trial (`343008`) was invalid before time integration because
 AMR requires an even ghost-cell count and the trial used `NGHOST=3`.  The
-corrected `xorder=3`, `NGHOST=4` configuration builds locally and is queued as
-M-test job `343308`, again from the immutable c960 checkpoint at CFL 0.15.
-This remains an isolated diagnostic because general/table EOS plus PPM has not
-yet passed the required shock and conservation regression set.  If it does
-not change the cycle-964 outcome, the next root candidate is selective
-iterative refinement triggered by the measured local backward error, rather
-than another global tolerance or CFL reduction.
+corrected `xorder=3`, `NGHOST=4` configuration built locally, but job `343308`
+also stopped before integration: the immutable c960 restart was written with
+`NGHOST=2` and cannot be read by the different array layout.  A meaningful PPM
+comparison would require replaying the complete collapse trajectory and would
+still carry the code's explicit general/table-EOS plus xorder-3 warning.  It is
+therefore not a justified root-fix experiment for this localized failure and
+is not promoted.
+
+The next isolated candidate instead performs one residual-equation solve only
+when the ordinary normwise-strict FGMRES result has a large measured local
+backward error.  This opt-in selective iterative refinement is disabled by
+default (`fgmres_refinement_steps=0`).  One- and two-rank AMR Test C smoke runs
+both passed; a forced refinement reduced local eta from `3.72475e-5` to
+`1.34160e-12` and produced a global relative residual of about `7.285e-16` in
+both decompositions.  Same-checkpoint CFL-0.15 M-test job `343321` is queued
+with one pass and eta trigger `1e-2`; it will determine whether exposing the
+localized row is sufficient at c964 without changing the timestep.
