@@ -93,6 +93,11 @@ than part of the fixed collapse source or a new global FLD default.
 
 The collapse application source and figure provenance are fixed, and the
 solar-convection scientific claim is now bounded by the limited WOR-116 gate.
+The application choice, selected collapse figure pair, and caption boundaries
+are fixed in `fld_application_selection_20261120.md`.  The audited figure
+artifacts and regeneration scripts are now present on this review branch as
+documentation-only descendants; the `src/` tree remains exactly
+`c4ab200383c7317a2feccc50aa9578d5cf71478d`.
 The corresponding execution, table, figure, and source hashes are collected
 in `tst/nrfld_validation/publication_application_manifest_20261120.json`.
 The broader FLD-paper baseline is not yet declared final because the author

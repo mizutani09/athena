@@ -1,0 +1,95 @@
+{
+  "decision": "include_as_limited_numerical_application",
+  "supports_observational_solar_validation": false,
+  "supports_resolution_convergence": false,
+  "supports_stable_3d_grey_fld_transport": true,
+  "supports_96km_quasi_steady_near_solar_flux": true,
+  "rows": [
+    {
+      "label": "96 km / 2-cell",
+      "resolution_km": 96,
+      "lower_boundary": "closed + volumetric heating",
+      "window_code_time": 1000,
+      "top_radiation_over_fsun": 0.9925757914693447,
+      "top_material_gravity_over_fsun": 0.0022459546801832627,
+      "bottom_total_over_fsun": 5.633716221214517e-06,
+      "storage_over_fsun": 0.003526212090507441,
+      "closure_or_input_error_over_fsun": -0.0016576912903035756,
+      "source": "/home/kosuke/simulation/athena-wor91/results/wor91_fld_solar_20261116/heatdepth/final_summary_topface_alpha056_60000.json",
+      "source_sha256": "9b6aa54dcd28ea9f559b0d89b580a8f9b5358f771aba11e8f66a782c93881127"
+    },
+    {
+      "label": "96 km / 3-cell",
+      "resolution_km": 96,
+      "lower_boundary": "closed + volumetric heating",
+      "window_code_time": 1000,
+      "top_radiation_over_fsun": 0.9940577044810929,
+      "top_material_gravity_over_fsun": 0.003076287592048155,
+      "bottom_total_over_fsun": 5.633107223529958e-06,
+      "storage_over_fsun": 0.0019831382594818186,
+      "closure_or_input_error_over_fsun": -0.0008884876739797543,
+      "source": "/home/kosuke/simulation/athena-wor91/results/wor91_fld_solar_20261116/heatdepth/final_summary_topface_quadratic_55000.json",
+      "source_sha256": "ad331878c552777148a1422415b72e6c3c42216bd9489fc94597045dcae1657c"
+    },
+    {
+      "label": "96 km HD2 / low s",
+      "resolution_km": 96,
+      "lower_boundary": "open HD2 inflow entropy",
+      "window_code_time": 2000,
+      "top_radiation_over_fsun": 0.9772972324379223,
+      "top_material_gravity_over_fsun": 0.0024999369631650897,
+      "bottom_total_over_fsun": 0.9790771821554305,
+      "storage_over_fsun": -1.5568632211252672e-06,
+      "closure_or_input_error_over_fsun": -0.0007184303824357915,
+      "mass_drift_fraction": 0.00363009,
+      "source": "/home/kosuke/simulation/athena-wor91/results/wor91_fld_solar_20261116/hd2_warm96_20261119/audit_342612.json",
+      "source_sha256": "4bd958a1862feb70510326ac630d93d07ad8975b5f863e290b1479690834cdc2"
+    },
+    {
+      "label": "96 km HD2 / high s",
+      "resolution_km": 96,
+      "lower_boundary": "open HD2 inflow entropy",
+      "window_code_time": 2000,
+      "top_radiation_over_fsun": 1.0142473254702196,
+      "top_material_gravity_over_fsun": 0.004407494937164808,
+      "bottom_total_over_fsun": 1.01935369960609,
+      "storage_over_fsun": 0.0008606052675223803,
+      "closure_or_input_error_over_fsun": -0.0001617260688168982,
+      "mass_drift_fraction": 0.00362819,
+      "source": "/home/kosuke/simulation/athena-wor91/results/wor91_fld_solar_20261116/hd2_warm96_20261119/audit_342616.json",
+      "source_sha256": "f93ed2a0eb9825d2bfd7c4debbf7b9a8e7666216c25cb6018b06987b24b7816c"
+    },
+    {
+      "label": "48 km refined",
+      "resolution_km": 48,
+      "lower_boundary": "closed + volumetric heating",
+      "window_code_time": 1000,
+      "top_radiation_over_fsun": 0.9583004156651829,
+      "top_material_gravity_over_fsun": 0.05996307181545724,
+      "bottom_total_over_fsun": 5.631494170378909e-06,
+      "storage_over_fsun": -0.01848004831980422,
+      "closure_or_input_error_over_fsun": -0.00022219143695656474,
+      "source": "/home/kosuke/simulation/athena-wor91/results/wor91_fld_solar_20261116/heatdepth/final_summary_amr48_alpha056_57500.json",
+      "source_sha256": "0fca16efe5213e034a0985f8cf1f32db897c7123edddef74477b9c6d95e4ebac"
+    },
+    {
+      "label": "48 km HD2",
+      "resolution_km": 48,
+      "lower_boundary": "open HD2 inflow entropy",
+      "window_code_time": 500,
+      "top_radiation_over_fsun": 0.86991724148867,
+      "top_material_gravity_over_fsun": 0.028151760372080517,
+      "bottom_total_over_fsun": 0.8912763678244922,
+      "storage_over_fsun": -0.0025881056850867207,
+      "closure_or_input_error_over_fsun": -0.0042045283511716845,
+      "mass_drift_fraction": 0.00363584,
+      "source": "/home/kosuke/simulation/test/rad_nr/wor116_solar_gate_20261120/raw/hd2_nata48_audit_342923.json",
+      "source_sha256": "df735f7cfee26d5540ed79374465d16176759ef8a19ffa4143bd62f19eeccebd"
+    }
+  ],
+  "provenance": {
+    "results_root": "/home/kosuke/simulation/athena-wor91/results/wor91_fld_solar_20261116",
+    "hd2_48_audit": "/home/kosuke/simulation/test/rad_nr/wor116_solar_gate_20261120/raw/hd2_nata48_audit_342923.json",
+    "generator": "/home/kosuke/simulation/athena-wor114-collapse-candidate-20261116/tst/nrfld_validation/wor116_solar_application_gate.py"
+  }
+}

@@ -1,0 +1,28 @@
+<!doctype html><html lang='en'><meta charset='utf-8'>
+<title>WOR-116 solar application gate</title><style>
+body{font:18px/1.5 system-ui;max-width:1200px;margin:2rem auto;padding:0 1rem;color:#172b3a}
+table{border-collapse:collapse;font-size:15px}th,td{padding:.45rem .6rem;border-bottom:1px solid #ddd;text-align:right}
+th:first-child,td:first-child,th:nth-child(3),td:nth-child(3){text-align:left}img{max-width:100%}
+.pass{color:#117347;font-weight:700}.limit{color:#9a5b00;font-weight:700}code{background:#f3f6f8;padding:.1rem .3rem}
+</style><h1>WOR-116: solar local-convection application gate</h1>
+<p class='pass'>Decision: INCLUDE AS A LIMITED NUMERICAL APPLICATION.</p>
+<p>The supported claim is stable 3D non-magnetic convection and radiative transport with grey FLD,
+including a quasi-steady near-solar-flux state at 96 km. This is not validation of the observed solar
+photosphere, a non-grey atmosphere, or grid-converged radiative flux.</p>
+<p class='limit'>The 48 km HD2 continuation emits about 0.87 Fsun, so 96-to-48 km flux convergence is not established.
+The currently running 24 km job is excluded from this decision.</p>
+<p><a href='summary.json'>Machine-readable summary</a> · <a href='flux_gate.png'>Figure</a></p>
+<img src='flux_gate.png' alt='Flux and storage comparison'>
+<h2>Fixed evidence windows</h2><table><tr><th>case</th><th>km</th><th>lower boundary</th><th>window</th>
+<th>top radiation</th><th>top material+gravity</th><th>bottom total</th><th>storage</th><th>closure/input error</th></tr>
+<tr><td>96 km / 2-cell</td><td>96</td><td>closed + volumetric heating</td><td>1000</td><td>0.9926</td><td>0.0022</td><td>0.0000</td><td>+0.0035</td><td>-0.0017</td></tr><tr><td>96 km / 3-cell</td><td>96</td><td>closed + volumetric heating</td><td>1000</td><td>0.9941</td><td>0.0031</td><td>0.0000</td><td>+0.0020</td><td>-0.0009</td></tr><tr><td>96 km HD2 / low s</td><td>96</td><td>open HD2 inflow entropy</td><td>2000</td><td>0.9773</td><td>0.0025</td><td>0.9791</td><td>-0.0000</td><td>-0.0007</td></tr><tr><td>96 km HD2 / high s</td><td>96</td><td>open HD2 inflow entropy</td><td>2000</td><td>1.0142</td><td>0.0044</td><td>1.0194</td><td>+0.0009</td><td>-0.0002</td></tr><tr><td>48 km refined</td><td>48</td><td>closed + volumetric heating</td><td>1000</td><td>0.9583</td><td>0.0600</td><td>0.0000</td><td>-0.0185</td><td>-0.0002</td></tr><tr><td>48 km HD2</td><td>48</td><td>open HD2 inflow entropy</td><td>500</td><td>0.8699</td><td>0.0282</td><td>0.8913</td><td>-0.0026</td><td>-0.0042</td></tr></table>
+<h2>Publication boundary</h2><ul>
+<li>Allowed: solver stability, sustained 3D convection, radiative/convective energy transport, and a controlled 96-km near-solar-flux state.</li>
+<li>Not allowed: observational solar agreement, spectral/limb-darkening validation, resolution convergence, or a unique asymptotic open-boundary equilibrium.</li>
+<li>The Optab/LTE snapshot post-processing is independent evidence about the saved atmosphere; it is not validation of the grey-FLD evolution equation.</li>
+<li>The top-face opacity reconstruction is application-boundary logic and must remain opt-in until its source integration and regression scope are reviewed.</li>
+</ul><h2>Provenance</h2><pre>{
+  &quot;results_root&quot;: &quot;/home/kosuke/simulation/athena-wor91/results/wor91_fld_solar_20261116&quot;,
+  &quot;hd2_48_audit&quot;: &quot;/home/kosuke/simulation/test/rad_nr/wor116_solar_gate_20261120/raw/hd2_nata48_audit_342923.json&quot;,
+  &quot;generator&quot;: &quot;/home/kosuke/simulation/athena-wor114-collapse-candidate-20261116/tst/nrfld_validation/wor116_solar_application_gate.py&quot;
+}</pre></html>

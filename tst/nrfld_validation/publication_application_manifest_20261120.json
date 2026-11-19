@@ -14,6 +14,7 @@
   "applications": {
     "protostellar_collapse": {
       "decision": "include_with_limited_claim",
+      "paper_role": "primary_application",
       "claim": "Stable three-dimensional Cartesian-AMR evolution with the specified tabulated EOS and variable opacity through a first-core candidate.",
       "execution_source_commit": "ff60f8f07842acb00e7753932bcfe30867e3a66e",
       "execution_src_tree": "c4ab200383c7317a2feccc50aa9578d5cf71478d",
@@ -22,6 +23,22 @@
       "collaborator_commit": "6e658312bb504a90b2e385604193213c2bb07702",
       "figure_branch": "paper/protostellar-collapse-figures-v1",
       "figure_commit": "59ff33be1f9352cd5fa33c0f25f85105f941550b",
+      "figures_integrated_into_review_branch": true,
+      "selected_figures": {
+        "final_radial_pdf": {
+          "path": "tst/nrfld_validation/collapse_paper_figures_v1/collapse_final_radial.pdf",
+          "sha256": "d397daa7f3af45cbf24e48f02f908739418fd435cf2618a60f99f3f6f8549ee6"
+        },
+        "evolution_pdf": {
+          "path": "tst/nrfld_validation/collapse_paper_figures_v1/collapse_evolution.pdf",
+          "sha256": "a5764dda106f07cf39d2eeaf5a7d07767c74df623113538393f4d583be2bcad5"
+        },
+        "diagnostic_xy_slice_pdf": {
+          "path": "tst/nrfld_validation/collapse_paper_figures_v1/collapse_final_xy_slice.pdf",
+          "sha256": "c32482e0966343d8e0f3e8956775ca0247b3cf022db73603872749da882a1b74",
+          "paper_role": "diagnostic_supplement_not_main_shape_accuracy_figure"
+        }
+      },
       "xd_jobs": [338469, 338485, 338486],
       "sha256": {
         "binary": "908d5def56faf5e0993526f1c709b2593eec814a2a26ffd83d4a0133b6ac0810",
@@ -39,9 +56,15 @@
     },
     "solar_local_convection": {
       "decision": "include_with_limited_claim",
+      "paper_role": "secondary_application_if_space_permits",
       "claim": "Stable non-magnetic three-dimensional radiative-convective transport with tabulated EOS, physical Rosseland opacity, and grey FLD, including controlled 96 km states bracketing one solar flux.",
       "gate_commit": "8dfaa1a2ab788287519778d9eead20fa723c7240",
       "gate_document": "doc/solar_application_gate_20261120.md",
+      "gate_report": {
+        "path": "tst/nrfld_validation/solar_application_gate_20261120/index.html",
+        "flux_figure": "tst/nrfld_validation/solar_application_gate_20261120/flux_gate.png",
+        "flux_figure_sha256": "23be4d2afe005a6fff5dc665d069684bad293fdbcf9b5b3b4f294a754e2f503a"
+      },
       "evidence_source": {
         "base_commit": "1924314e611eca8e89e451860032e4363dd0f9e3",
         "working_tree_state": "hashed_uncommitted_four_file_diff",
