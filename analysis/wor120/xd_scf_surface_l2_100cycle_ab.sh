@@ -22,7 +22,9 @@ export OMP_NUM_THREADS=1
 ulimit -c 0
 
 repository=$HOME/simulation/athena-wor120-hd4wz
-run_root=/work/mizutaniks/wor120/hd4wz_scf_l2_100_${SLURM_JOB_ID}
+meshblock_size=${SCF_MESHBLOCK_SIZE:-16}
+run_tag=${SCF_RUN_TAG:-l2_100_b16}
+run_root=/work/mizutaniks/wor120/hd4wz_scf_${run_tag}_${SLURM_JOB_ID}
 input=inputs/rsg/athinput.scf_rsg_relaxation_surface_l3
 mkdir -p "$run_root"
 cd "$repository"
@@ -46,6 +48,8 @@ run_case() {
   mkdir -p "$run"
   /usr/bin/time -f 'wall_s=%e maxrss_kb=%M' -o "$run/time.log" \
     srun -n112 --ntasks-per-node=56 bin/athena -i "$input" -d "$run" \
+    meshblock/nx1="$meshblock_size" meshblock/nx2="$meshblock_size" \
+    meshblock/nx3="$meshblock_size" \
     time/integrator="$integrator" time/xorder="$xorder" \
     time/nlim=100 time/tlim=1000.0 problem/surface_refinement_level=2 \
     output1/dcycle=10 output2/dt=-1 output3/dt=-1 \
