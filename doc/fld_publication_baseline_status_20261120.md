@@ -93,6 +93,8 @@ than part of the fixed collapse source or a new global FLD default.
 
 The collapse application source and figure provenance are fixed, and the
 solar-convection scientific claim is now bounded by the limited WOR-116 gate.
+The corresponding execution, table, figure, and source hashes are collected
+in `tst/nrfld_validation/publication_application_manifest_20261120.json`.
 The broader FLD-paper baseline is not yet declared final because the author
 must review the release candidate and decide whether the clean solar-boundary
 opt-in is included after its remaining long A/B check.  That source decision
