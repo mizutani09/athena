@@ -333,6 +333,16 @@ Real HistoryWenozCells(MeshBlock* block, int output) {
       block->phydro->GetTroubledCellMaskBounds();
   if (mask.GetDim1() == 0 || bounds.il > bounds.iu || bounds.jl > bounds.ju
       || bounds.kl > bounds.ku) return 0.0;
+  if (output == kWenozHistoryStart+1) {
+    return static_cast<Real>(block->phydro->GetWenozSensorFallbackCells());
+  }
+  if (output == kWenozHistoryStart+2) {
+    return static_cast<Real>(block->phydro->GetWenozAmrFallbackCells());
+  }
+  const int relative_level = block->loc.level-root_logical_level;
+  if (output >= kWenozLevelHistoryStart
+      && output < kWenozLevelHistoryStart+kTrackedMeshLevels
+      && output != kWenozLevelHistoryStart+relative_level) return 0.0;
   Real total = 0.0;
   for (int k = block->ks; k <= block->ke; ++k) {
     for (int j = block->js; j <= block->je; ++j) {
@@ -344,17 +354,10 @@ Real HistoryWenozCells(MeshBlock* block, int output) {
         if (output == kWenozHistoryStart+3 && available && mask(k,j,i) != 0) {
           total += 1.0;
         }
-        const int relative_level = block->loc.level-root_logical_level;
         if (output == kWenozLevelHistoryStart+relative_level
             && available && mask(k,j,i) != 0) total += 1.0;
       }
     }
-  }
-  if (output == kWenozHistoryStart+1) {
-    return static_cast<Real>(block->phydro->GetWenozSensorFallbackCells());
-  }
-  if (output == kWenozHistoryStart+2) {
-    return static_cast<Real>(block->phydro->GetWenozAmrFallbackCells());
   }
   return total;
 }
