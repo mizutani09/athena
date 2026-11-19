@@ -22,7 +22,9 @@ export OMP_NUM_THREADS=1
 ulimit -c 0
 
 repository=$HOME/simulation/athena-wor120-hd4wz
-run_root=/work/mizutaniks/wor120/hd4wz_scf_l3_${SLURM_JOB_ID}
+surface_level=${SCF_SURFACE_LEVEL:-3}
+run_tag=${SCF_RUN_TAG:-l3}
+run_root=/work/mizutaniks/wor120/hd4wz_scf_${run_tag}_${SLURM_JOB_ID}
 input=inputs/rsg/athinput.scf_rsg_relaxation_surface_l3
 seed=$run_root/seed
 mkdir -p "$seed"
@@ -44,6 +46,7 @@ icpx -O2 -std=c++11 -Wall -Wextra -Werror -pedantic \
 /usr/bin/time -f 'wall_s=%e maxrss_kb=%M' -o "$seed/time.log" \
   srun -n112 --ntasks-per-node=56 bin/athena -i "$input" -d "$seed" \
   time/nlim=0 time/tlim=1.0 time/integrator=rk2 time/xorder=2 \
+  problem/surface_refinement_level="$surface_level" \
   output1/dcycle=1 output2/dt=-1 output3/dt=-1 \
   output4/next_time=47.0 output5/dt=-1 \
   > "$seed/stdout.log" 2> "$seed/stderr.log"
