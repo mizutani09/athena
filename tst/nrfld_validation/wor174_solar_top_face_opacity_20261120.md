@@ -98,7 +98,9 @@ The exact t=65000 restart selected for the long XD A/B has paired full-volume
 primitive and user-output snapshots.  Re-evaluating the Rosseland table on
 the outermost two active planes gives 4,096 top-face samples.  Of these, 331
 (8.081%) imply a non-positive arithmetic ghost and therefore take the
-positive-floor fallback.  The median log opacity slope is `-2.39195`; the
+positive-floor fallback.  The zero-ghost representability threshold is a log
+opacity slope of approximately `-3.18725`; the nearest sampled slope is still
+`0.00106` away from that threshold.  The median slope is `-2.39195`; the
 range is `-3.67655` to `-1.76872`.  The fallback makes the represented face
 opacity at most 1.09303 times the analytical log-linear target, while the
 remaining 91.919% are exact to floating-point precision.

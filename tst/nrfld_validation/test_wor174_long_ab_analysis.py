@@ -50,7 +50,7 @@ class Wor174LongAbAnalysisTests(unittest.TestCase):
 
     def test_reconstruction_stats_separates_exact_and_positive_fallback(self):
         # A modest outward decrease is exactly representable.  A slope below
-        # about -3.59 requires a negative arithmetic ghost and must fall back.
+        # about -3.18725 requires a negative arithmetic ghost and must fall back.
         inward = np.asarray([2.0, np.exp(4.0)])
         outer = np.asarray([1.0, 1.0])
         result = analysis.reconstruction_stats(outer, inward)
