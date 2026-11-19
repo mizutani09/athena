@@ -158,18 +158,70 @@ failed path without advancing a physical simulation.  Both steps exited zero,
 the job completed `0:0` in 4 s, and step MaxRSS was 52.3/54.7 MiB.  The long
 A/B was then resubmitted as job `343705`.
 
-The accepted mature-state same-restart A/B starts at code time 65,000 from the
-selected high-entropy HD2 state and evolves enabled/disabled paths concurrently
-to 66,000.  Its result is deliberately pending and is the remaining
-production-selection gate.  The versioned 36-column clean-history analyzer
-rejects the two advective-radiation columns that existed only in the historical
-dirty checkout, and reports 100/500/1000-time windows, energy storage/closure,
-mass drift, timestep, velocity RMS, Newton, and FGMRES work.
+The accepted mature-state same-restart A/B, job `343705`, starts at code time
+65,000 from the selected high-entropy HD2 state and evolves enabled/disabled
+paths concurrently to 66,000.  Slurm completed `0:0` in 30:17.  The disabled
+and enabled steps took 20:24 and 30:15, respectively; their maximum per-rank
+RSS was 105,180 and 95,020 KiB.  Both final restarts independently validate at
+time 66,000.
+
+The versioned 36-column clean-history analyzer rejects the two
+advective-radiation columns that existed only in the historical dirty checkout,
+and reports 100/500/1000-time windows, energy storage/closure, mass drift,
+timestep, velocity RMS, Newton, and FGMRES work.  Its HTML, CSV, PNG, JSON, raw
+logs, final full-volume snapshots, restart metadata, accounting, and file
+hashes are under
+`test/rad_nr/wor174_solar_top_face_optin_20261120/xd_long_343705`.
+
+### Mature-state A/B result
+
+| final window | disabled top radiation | enabled top radiation | disabled/enabled mass drift | enabled dt change | enabled Vz RMS change |
+|---:|---:|---:|---:|---:|---:|
+| 100 | 0.12367 Fsun | 1.16746 Fsun | 0.3424% / 0.3593% | -16.24% | +177.36% |
+| 500 | 0.12685 Fsun | 1.16483 Fsun | 0.3424% / 0.3593% | -16.55% | +174.37% |
+| 1000 | 0.17652 Fsun | 1.16489 Fsun | 0.3424% / 0.3593% | -15.61% | +136.31% |
+
+The enabled top flux remains close to 1.165 Fsun for the full 1,000-time
+comparison, while the disabled atmosphere falls to approximately 0.124 Fsun
+in the final 100-time window.  The modification therefore repairs the intended
+upper-boundary radiative loss in this mature state; it is not merely a startup
+or diagnostic difference.  The flow responds dynamically: the 1,000-time
+mean RMS vertical velocity rises from 0.02525 to 0.05966 in code units, and the
+bottom hydro flux changes with it.
+
+All 13,571 disabled and 15,760 enabled Newton solves converged.  The maximum
+reported final nonlinear L2 values were `6.50e-8` and `2.17e-8`.  There were
+no FGMRES breakdowns, inexact accepts, opacity table-domain violations,
+clamps, non-finite results, or fatal messages.  The enabled mode is more
+expensive: Newton iterations rise from 30,508 to 48,983 (+60.6%), total
+FGMRES iterations from 38,587 to 165,045 (4.28 times), and wall time by about
+48.3%.  Individual FGMRES solves remain small (maximum 4 versus 5 iterations).
+
+The final representability audit is also part of the acceptance boundary.  The
+enabled atmosphere has 527/4,096 fallback columns (12.866%), up from 331/4,096
+(8.081%) in the common seed.  The positive fallback represents a face opacity
+up to 1.16656 times the analytical log-linear target.  The other 87.134% of
+columns remain exact to floating-point precision.  Thus the selected option is
+a stable and physically useful positive closure for this solar application,
+but it is not an exact half-cell reconstruction in every mature surface
+column.
+
+The clean history's available energy ledger gives 1,000-time closure errors of
+-0.2021 Fsun (disabled) and -0.2932 Fsun (enabled).  Because the two historical
+advective-radiation boundary terms are not present in the clean 36-column
+source, this comparison must not be promoted to a complete boundary-energy
+conservation proof.  The like-for-like difference is -0.0911 Fsun and remains
+a limitation for a future expanded diagnostic; it does not invalidate the
+solver, restart, opacity, or mass checks above.
 
 ## Decision
 
-PASS as an opt-in solar boundary closure and PASS for default-off regression.
-This is not evidence to enable the option globally or by default.  A long,
-same-restart solar A/B run remains necessary before selecting it for a
-production solar setup; the option is now reproducible and testable for that
-experiment.
+PASS as an opt-in solar boundary closure, PASS for default-off regression, and
+PASS for the mature same-restart production-selection gate.  The option is
+recommended for the tested `simple_convection_lhllc_fld` solar setup because it
+prevents the mature top flux from collapsing far below Fsun.  It must remain
+application-scoped and default-off: the fallback is approximate in a minority
+of mature columns, the flow state and cost change substantially, and this test
+does not establish a complete clean-source boundary-energy ledger.  No general
+FLD default, collapse source, or publication candidate is changed by this
+decision.
