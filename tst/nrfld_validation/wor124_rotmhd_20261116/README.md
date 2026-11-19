@@ -733,6 +733,29 @@ backward error.  This opt-in selective iterative refinement is disabled by
 default (`fgmres_refinement_steps=0`).  One- and two-rank AMR Test C smoke runs
 both passed; a forced refinement reduced local eta from `3.72475e-5` to
 `1.34160e-12` and produced a global relative residual of about `7.285e-16` in
-both decompositions.  Same-checkpoint CFL-0.15 M-test job `343321` is queued
-with one pass and eta trigger `1e-2`; it will determine whether exposing the
-localized row is sufficient at c964 without changing the timestep.
+both decompositions.  The first same-checkpoint gate (`343321`) was a setup-only
+failure because an old restart cannot accept new ParameterInput command-line
+keys.  A disabled-by-default environment fallback was verified locally before
+the corrected CFL-0.15 gate `343340` was run with one pass and eta trigger
+`1e-2`.
+
+The corrected gate provided a decisive negative result.  At attempted c964,
+ordinary local backward error grew from `6.36e-6` through `5.43e-4` to
+`7.205e-2`.  Three triggered residual-equation solves reduced it to
+`8.001e-10`, `8.775e-7`, and `7.156e-5`, with corresponding global true
+relative residuals of about `4e-16`.  Despite these essentially exact linear
+corrections, Newton total-energy L2 stalled at
+`6.52882e-5 -> 6.51168e-5 -> 6.37662e-5 -> 6.37592e-5 -> 6.37591e-5`, while
+the normalized maximum remained one.  The job was stopped after 23m31s and
+five nonconvergent corrections rather than spending more five-node time on the
+same limit.  The c964 accepted-state HDF has zero opacity-domain and positive-
+energy violations; c960--963 gas-mass and Lz changes remain `2.37e-9` and
+`4.76e-8`.
+
+Selective linear refinement is therefore rejected and not promoted.  The
+obstruction lies downstream of FGMRES: a tiny correction is lost when updating
+or reevaluating the much larger total-energy state, or by an equivalent state-
+representation roundoff floor.  Further global tolerance, Krylov-width, or MG
+work cannot address this instance.  Any future root fix must change the Newton
+state/update representation (for example a split or shifted energy unknown,
+with residual evaluation using the same representation).
