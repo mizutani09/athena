@@ -5,18 +5,18 @@
 #SBATCH --ntasks-per-node=64
 #SBATCH --mem=110G
 #SBATCH --time=00:30:00
-#SBATCH --job-name=wor124_retry_c970
+#SBATCH --job-name=wor124_early_retry
 #SBATCH --output=/work/mizutaniks/output/fld/collapse/wor124_rotmhd_20261116/slurm-%j.out
 
 set -euo pipefail
 base=/work/mizutaniks/output/fld/collapse/wor124_rotmhd_20261116
-source_dir="$base/source_full_solve_retry_20261119"
+source_dir="$base/source_full_solve_early_retry_20261119"
 reader="$base/scripts/read_restart.py"
 audit="$base/scripts/collapse_opacity_domain_audit.py"
 rst="$base/rootfix_fgmres_refinement/job_343340/output/wor124_refine_c960_cfl015.00120.rst"
 eos_table="$source_dir/data/eos/protostellar_tomida2015_material.tab"
 opacity_table="$source_dir/data/opacity/protostellar_semenov2003_nrm_c_a.h5"
-job="$base/rootfix_full_solve_retry_latched/job_${SLURM_JOB_ID}"
+job="$base/rootfix_full_solve_early_retry/job_${SLURM_JOB_ID}"
 mkdir -p "$job/output"
 
 module use /opt/modulefiles /work/opt/intel/modulefiles /work/opt/local_oneapi/modulefiles
@@ -57,8 +57,8 @@ make -j8 > "$job/build.log" 2>&1
 
 {
   date -Is
-  printf 'git_commit=%s ranks=%s restart_cycle=964 target=970 cfl=0.15 tangential_reconstruction=1 full_solve_retry=1 latch_after_success=1 nr_max_iterations=8\n' \
-    1a5ef599c "$SLURM_NTASKS"
+  printf 'git_commit=%s ranks=%s restart_cycle=964 target=970 cfl=0.15 tangential_reconstruction=1 early_direction_reject=1 full_solve_retry=1 latch_after_success=1 nr_max_iterations=8\n' \
+    496b80f0e "$SLURM_NTASKS"
   sha256sum "$rst" "$eos_table" "$opacity_table" "$source_dir/bin/athena" \
     "$source_dir/src/utils/nrfld_prototype_flags.hpp" \
     "$source_dir/src/newton_raphson/Newton_Raphson_driver.cpp"
@@ -71,7 +71,7 @@ set +e
 /usr/bin/time -v -o "$job/resources.txt" \
   mpirun -np "$SLURM_NTASKS" "$source_dir/bin/athena" \
     -r "$rst" -d "$job/output" \
-    job/problem_id=wor124_c964_full_solve_retry_latched \
+    job/problem_id=wor124_c964_full_solve_early_retry \
     time/nlim=970 time/ncycle_out=1 time/cfl_number=0.15 time/xorder=2 \
     mesh/numlevel=12 output2/dcycle=1 output4/dcycle=1 \
     nrfld/diagnostic_verbosity=1 nrfld/nr_max_iterations=8 \
@@ -86,18 +86,19 @@ elapsed=$(($(date +%s)-started))
 limit=0
 fatal=0
 retry_count=$(grep -c '^\[NR_TANGENTIAL_FULL_RETRY\].*retry_status=converged.*two_point_latched=1' "$job/run.log" || true)
+reject_count=$(grep -c '^\[NR_TANGENTIAL_DIRECTION_REJECTED\].*action=restart_full_solve' "$job/run.log" || true)
 if grep -q 'Terminating on cycle limit' "$job/run.log"; then limit=1; fi
 if grep -q 'FATAL ERROR' "$job/run.log"; then fatal=1; fi
-printf 'case,exit_code,cycle_limit,has_fatal,retry_success_count,elapsed_seconds\n' > "$job/status.csv"
-printf 'c964_c970_full_solve_retry_latched,%s,%s,%s,%s,%s\n' \
-  "$code" "$limit" "$fatal" "$retry_count" "$elapsed" >> "$job/status.csv"
-if (( code != 0 || limit != 1 || fatal != 0 || retry_count != 1 )); then exit 1; fi
+printf 'case,exit_code,cycle_limit,has_fatal,direction_reject_count,retry_success_count,elapsed_seconds\n' > "$job/status.csv"
+printf 'c964_c970_full_solve_early_retry,%s,%s,%s,%s,%s,%s\n' \
+  "$code" "$limit" "$fatal" "$reject_count" "$retry_count" "$elapsed" >> "$job/status.csv"
+if (( code != 0 || limit != 1 || fatal != 0 || reject_count != 1 || retry_count != 1 )); then exit 1; fi
 
 latest_hdf=$(find "$job/output" -maxdepth 1 -type f -name '*.prim.*.athdf' \
   -printf '%p\n' | sort | tail -n 1)
 python3 "$audit" "$latest_hdf" "$opacity_table" --backend h5dump \
   > "$job/opacity_domain_audit.json"
 sha256sum "$job/output"/*.final.rst > "$job/final_restart.sha256"
-grep -E '^\[NR_TANGENTIAL_FULL_RETRY\]|^\[NR\] status=|^\[LINEAR_FGMRES\]' \
+grep -E '^\[NR_TANGENTIAL_(DIRECTION_REJECTED|FULL_RETRY)\]|^\[NR\] status=|^\[LINEAR_FGMRES\]' \
   "$job/run.log" > "$job/iteration_summary.log" || true
 date -Is > "$job/completed.txt"
