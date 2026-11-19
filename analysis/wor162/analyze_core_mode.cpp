@@ -15,6 +15,7 @@
 namespace {
 
 constexpr double kOmegaCode = 4.0e-8*2.19999657e4;
+constexpr double kDynamicalTimeCode = 4.7006e2;
 constexpr int kMaximumMode = 4;
 constexpr double kAnnulusWidthRsun = 1.0;
 constexpr int kMaximumAnnuli = 20;
@@ -78,6 +79,22 @@ std::vector<Cell> ReadBlock(const std::string& filename) {
   const double dy = *std::next(ys.begin())-*ys.begin();
   for (Cell& cell : cells) cell.area = dx*dy;
   return cells;
+}
+
+double ReadTimeOverDynamicalTime(const std::string& filename) {
+  std::ifstream input(filename.c_str());
+  if (!input) throw std::runtime_error("cannot open " + filename);
+  std::string header;
+  std::getline(input, header);
+  const std::string marker = "time=";
+  const std::size_t begin = header.find(marker);
+  if (begin == std::string::npos) {
+    throw std::runtime_error("missing time in " + filename);
+  }
+  const std::size_t value_begin = begin+marker.size();
+  const std::size_t value_end = header.find_first_of(" \t", value_begin);
+  return std::stod(header.substr(value_begin, value_end-value_begin))
+      /kDynamicalTimeCode;
 }
 
 struct Region {
@@ -180,7 +197,7 @@ void WriteHeader(std::ofstream* output) {
 }
 
 void WriteRegion(std::ofstream* output, const std::string& snapshot,
-                 const Region& region) {
+                 double time_over_tdyn, const Region& region) {
   if (region.mass <= 0.0 || region.moment <= 0.0) {
     throw std::runtime_error("empty core region");
   }
@@ -205,8 +222,7 @@ void WriteRegion(std::ofstream* output, const std::string& snapshot,
   }
   const double total_perturbation2 = region.radial_speed2_mass
       +region.tangential_perturbation2_mass+region.vertical_speed2_mass;
-  const int snapshot_number = std::stoi(snapshot);
-  *output << snapshot << ',' << snapshot_number/100.0 << ',' << region.radius
+  *output << snapshot << ',' << time_over_tdyn << ',' << region.radius
           << ',' << region.cells << ',' << region.mass << ','
           << region.x_mass/region.mass << ',' << region.y_mass/region.mass << ','
           << region.dvx_mass/region.mass << ',' << region.dvy_mass/region.mass << ','
@@ -250,13 +266,16 @@ int main(int argc, char** argv) {
       const std::string pattern = std::string(argv[1])+"/*.out2."
           +snapshot+".tab";
       const std::vector<std::string> paths = Glob(pattern);
+      const double time_over_tdyn = ReadTimeOverDynamicalTime(paths.front());
       std::array<Region, 3> regions{{Region(5.0), Region(10.0), Region(20.0)}};
       for (const std::string& path : paths) {
         for (const Cell& cell : ReadBlock(path)) {
           for (Region& region : regions) Accumulate(&region, cell);
         }
       }
-      for (const Region& region : regions) WriteRegion(&output, snapshot, region);
+      for (const Region& region : regions) {
+        WriteRegion(&output, snapshot, time_over_tdyn, region);
+      }
     }
   } catch (const std::exception& error) {
     std::cerr << "analyze_core_mode: " << error.what() << '\n';
