@@ -78,6 +78,10 @@ struct Diagnostics {
   double mechanical_energy;
   double radial_mach_rms;
   double radial_mach_max;
+  double radial_ke_over_abs_W;
+  double nonradial_ke_over_abs_W;
+  double mean_radius_cm;
+  double rms_radius_cm;
   double virial_residual;
 };
 
@@ -97,6 +101,14 @@ Diagnostics GetDiagnostics(const History& history) {
   result.radial_mach_rms = std::sqrt(std::max(0.0,
       Value(history, row, "stellar_radial_mach2_mass_g")/mass));
   result.radial_mach_max = Value(history, row, "stellar_radial_mach_max");
+  result.radial_ke_over_abs_W =
+      Value(history, row, "stellar_radial_ke_erg")/std::abs(gravity_virial);
+  result.nonradial_ke_over_abs_W =
+      Value(history, row, "stellar_nonradial_perturbation_ke_erg")
+      /std::abs(gravity_virial);
+  result.mean_radius_cm = Value(history, row, "stellar_r_mass_g_cm")/mass;
+  result.rms_radius_cm = std::sqrt(
+      Value(history, row, "stellar_r2_mass_g_cm2")/mass);
   result.virial_residual = (2.0*Value(history, row, "stellar_kinetic_energy_erg")
       +Value(history, row, "stellar_pressure_virial_erg")+gravity_virial)
       /std::abs(gravity_virial);
@@ -175,6 +187,14 @@ int main(int argc, char** argv) {
                 wz.radial_mach_rms, true);
     WriteMetric(output, "stellar_radial_mach_max", x2.radial_mach_max,
                 wz.radial_mach_max, true);
+    WriteMetric(output, "stellar_radial_ke_over_abs_W", x2.radial_ke_over_abs_W,
+                wz.radial_ke_over_abs_W, true);
+    WriteMetric(output, "stellar_nonradial_perturbation_ke_over_abs_W",
+                x2.nonradial_ke_over_abs_W, wz.nonradial_ke_over_abs_W, true);
+    WriteMetric(output, "stellar_mean_radius_cm", x2.mean_radius_cm,
+                wz.mean_radius_cm, true);
+    WriteMetric(output, "stellar_rms_radius_cm", x2.rms_radius_cm,
+                wz.rms_radius_cm, true);
     WriteMetric(output, "virial_relative_residual", x2.virial_residual,
                 wz.virial_residual, false);
     output << "}\n";
