@@ -172,11 +172,11 @@ cp "$0" "$run/job.sbatch"
 cd "$run"
 set +e
 srun --mpi=pmi2 --ntasks="$SLURM_NTASKS" --cpu-bind=cores \
-  /usr/bin/python3 "$wrapper" "$run" "$binary" -i input.used > run.log 2>&1
+  /usr/bin/python3.11 "$wrapper" "$run" "$binary" -i input.used > run.log 2>&1
 raw_status=$?
 set -e
 
-/usr/bin/python3 - "$run" "$raw_status" <<'PY'
+/usr/bin/python3.11 - "$run" "$raw_status" <<'PY'
 import json, math, re, statistics, sys
 from pathlib import Path
 root=Path(sys.argv[1]); raw_status=int(sys.argv[2])
