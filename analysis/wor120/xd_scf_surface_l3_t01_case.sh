@@ -55,7 +55,7 @@ sha256sum bin/athena "$restart" src/eos/eos_high_order.cpp \
   > "$run/provenance.sha256"
 
 /usr/bin/time -f 'wall_s=%e maxrss_kb=%M' -o "$run/time.log" \
-  srun -n"$SLURM_NTASKS" --ntasks-per-node=56 \
+  srun -n"$SLURM_NTASKS" \
   bin/athena -r "$restart" -d "$run" \
   time/integrator="$integrator" time/xorder="$xorder" \
   time/nlim=-1 time/tlim="$target_time" \
