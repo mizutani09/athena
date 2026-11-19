@@ -21,7 +21,7 @@ export LD_LIBRARY_PATH=/lib64:${LD_LIBRARY_PATH:-}
 export OMP_NUM_THREADS=1
 ulimit -c 0
 
-repository=$HOME/simulation/athena-wor120-hd4wz
+repository=${SCF_REPOSITORY:-$HOME/simulation/athena-wor120-hd4wz}
 meshblock_size=${SCF_MESHBLOCK_SIZE:-16}
 run_tag=${SCF_RUN_TAG:-l2_100_b16}
 run_root=/work/mizutaniks/wor120/hd4wz_scf_${run_tag}_${SLURM_JOB_ID}
