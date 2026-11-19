@@ -26,7 +26,7 @@ coefficient.
 ## Provenance and isolation
 
 - branch: `exp/wor174-solar-top-face-optin-20261120`
-- base: `1193d9394bc1151077b0c5ad5c6dd32849bcf2ac`
+- base: `1193d9394bc002acb4410181e7e5b370de3f3441`
 - worktree: `/home/kosuke/simulation/athena-wor174-solar-top-face-optin-20261120`
 - results: `/home/kosuke/simulation/test/rad_nr/wor174_solar_top_face_optin_20261120`
 - local validation binary SHA-256:
