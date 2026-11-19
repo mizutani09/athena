@@ -117,7 +117,7 @@ Suggested caption boundary:
 | Collapse EOS / opacity | SHA-256 `742a3456...ba43` / `6c424454...2f94` |
 | Collapse figures | imported as documentation-only descendants; `src/` unchanged |
 | Solar scientific gate | WOR-116, limited inclusion, gate commit `8dfaa1a2a` |
-| Solar clean option | WOR-174, default off, pending its mature clean-source A/B decision |
+| Solar clean option | WOR-174, default off; mature clean-source A/B job `343705` PASS, application-scoped adoption recommended |
 
 The machine-readable mapping is
 `tst/nrfld_validation/publication_application_manifest_20261120.json`.

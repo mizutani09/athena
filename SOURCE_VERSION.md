@@ -64,7 +64,9 @@ restart, and the mixed-frame fast matrix, summarized in
 - Semenov Planck extinction is used as an absorption proxy.
 - The solar local-convection result is a secondary limited application.  Its
   historical evidence and the clean default-off WOR-174 option are tracked
-  separately; neither is silently part of this collapse source.
+  separately.  The clean option passed its mature same-restart A/B in XD job
+  343705, but neither it nor the historical solar diff is silently part of
+  this collapse source.
 - WOR-123 inexact-stagnation, WOR-124 table-MHD/strong-field work, and
   WOR-120/122 RSG high-order/SMR work are separate opt-in research lines and
   are not automatically integrated.
@@ -76,7 +78,8 @@ restart, and the mixed-frame fast matrix, summarized in
 ## Finalization checklist
 
 Before an official paper release, the author must review Draft PR #4, decide
-whether the clean WOR-174 solar option belongs in the release source after its
-mature same-restart A/B, select the full commit to tag, and approve the tag and
-any merge.  Future upstream patch preparation is WOR-117 and is not a paper
-release prerequisite.
+whether the now-qualified clean WOR-174 solar option belongs in the release
+source, select the full commit to tag, and approve the tag and any merge.  The
+WOR-174 result recommends the option only for the tested solar application,
+not as a global FLD default.  Future upstream patch preparation is WOR-117 and
+is not a paper release prerequisite.

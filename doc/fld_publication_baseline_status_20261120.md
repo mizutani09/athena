@@ -83,11 +83,15 @@ reconstruction as a default-off, solar-PGen option on branch
 `exp/wor174-solar-top-face-optin-20261120` (validated implementation commit
 `2670facd11ea872d45565d091ad8da8b8709c771`; provenance correction
 `f3bfffa4f`).  Its pure-math and 1/2-rank real-solver A/B tests pass, and the
-omitted and explicit-false settings are byte-identical.  It has not yet passed
-a long same-restart clean-source A/B equivalent to the selected XD evidence,
-and it does not automatically certify every other file in the historical
-detached diff.  It therefore remains a reviewable opt-in descendant rather
-than part of the fixed collapse source or a new global FLD default.
+omitted and explicit-false settings are byte-identical.  Its mature
+same-restart clean-source A/B also passes: XD job `343705` maintained
+1.16489 Fsun over the 1,000-time enabled window versus 0.17652 Fsun when
+disabled, with all Newton solves converged, zero FGMRES breakdowns, and final
+mass drift 0.359% versus 0.342%.  The option costs about 48% more wall time in
+this A/B and uses a positive approximation in 12.87% of final top columns.  It
+does not automatically certify every other file in the historical detached
+diff.  It therefore remains a qualified, reviewable solar opt-in descendant
+rather than part of the fixed collapse source or a new global FLD default.
 
 ## Remaining publication integration decisions
 
@@ -101,10 +105,10 @@ documentation-only descendants; the `src/` tree remains exactly
 The corresponding execution, table, figure, and source hashes are collected
 in `tst/nrfld_validation/publication_application_manifest_20261120.json`.
 The broader FLD-paper baseline is not yet declared final because the author
-must review the release candidate and decide whether the clean solar-boundary
-opt-in is included after its remaining long A/B check.  That source decision
-is distinct from accepting the already-audited solar result as a limited
-application.
+must review the release candidate and decide whether the now-qualified clean
+solar-boundary opt-in is included.  No solar validation gate remains; the
+remaining item is a release-scope decision.  That source decision is distinct
+from accepting the already-audited solar result as a limited application.
 Draft PR #3 remains a historical 2026-11-09 audit at `6ad84f78`; it predates
 the verified collapse-source alignment. It must not be merged or cited as the
 collaborator release. A successor review should use the clean `4f92c1fa`

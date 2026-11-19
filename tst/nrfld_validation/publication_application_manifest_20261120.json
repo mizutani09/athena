@@ -77,9 +77,23 @@
         "branch": "exp/wor174-solar-top-face-optin-20261120",
         "implementation_commit": "2670facd11ea872d45565d091ad8da8b8709c771",
         "provenance_fix_commit": "f3bfffa4f31d9589ebb2660bed30ba2da02304a8",
+        "mature_ab_report_commit": "2a75dcfae",
         "default_enabled": false,
         "adopted_into_publication_source": false,
-        "remaining_gate": "mature same-restart long true/false A/B"
+        "remaining_gate": null,
+        "mature_same_restart_ab": {
+          "xd_job": 343705,
+          "start_time": 65000.0,
+          "end_time": 66000.0,
+          "slurm_state": "COMPLETED",
+          "exit_code": "0:0",
+          "disabled_top_radiation_fsun_1000": 0.17652179357142858,
+          "enabled_top_radiation_fsun_1000": 1.1648905166666665,
+          "disabled_mass_drift_final": 0.00342365,
+          "enabled_mass_drift_final": 0.00359314,
+          "enabled_final_fallback_fraction": 0.128662109375,
+          "decision": "PASS as a default-off option for the tested solar application; not a global FLD default"
+        }
       },
       "excluded_claims": [
         "grid-converged emergent flux",
