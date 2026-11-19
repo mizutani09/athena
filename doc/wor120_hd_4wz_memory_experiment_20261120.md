@@ -95,7 +95,7 @@ The 100-cycle main-loop measurement is 180.16 s.  Scaling to the approximately 4
 cycles needed for `0.1 t_dyn` gives 2.38 h; allowing restart I/O, final output, and
 performance variation, the sustained script requests four hours.  Job `343567` uses
 the identical accepted restart and binary and keeps a final restart active for later
-continuation.  Its dependent A/B post-processing job `343568` compares the physical
+continuation.  Its dependent A/B post-processing job `343576` compares the physical
 histories and also compiles `compare_scf_cost.cpp`.  The latter records both methods'
 cycle counts, Athena CPU and wall times, throughput, allocated core/node-hours, and
 Slurm per-rank RSS in a machine-readable `cost_comparison.json`; this avoids

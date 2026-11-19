@@ -287,7 +287,7 @@ logical storage by 40.47 GiB over this 2,416-block mesh, keeps Hydro on RK4+WENO
 and transports passive scalars with conservative PLM.  The exact 100-cycle M-node
 gate `343554` completes with 1.28 GiB average RSS per rank and fixed topology.  The
 sustained replacement `343567` therefore uses the original three-node M allocation,
-the same accepted restart, and the same target time; dependent job `343568` performs
+the same accepted restart, and the same target time; dependent job `343576` performs
 the physical and measured-cost A/B comparison.  Its executable SHA-256 is
 `042fcd1701f4215c038a38ec80746ca7671163ba06472eb8c9aa8219b7e9811e`.
 
@@ -303,7 +303,7 @@ fourth-order block storage.
 
 ## Next gates
 
-1. Complete memory2 job `343567` and its dependent comparison `343568`; compare
+1. Complete memory2 job `343567` and its dependent comparison `343576`; compare
    stability, accuracy, topology, restart integrity, memory, throughput, and allocated
    node-hours against completed x2 job `343498`.
 2. If the sustained result passes, retain three 110 GiB M nodes as the minimum tested
