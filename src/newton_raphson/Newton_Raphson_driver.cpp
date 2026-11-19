@@ -51,6 +51,8 @@ const char *NewtonSolveReasonName(NewtonSolveReason reason) {
       return "dt_zero_initialization";
     case NewtonSolveReason::initial_nonfinite: return "initial_nonfinite";
     case NewtonSolveReason::final_nonfinite: return "final_nonfinite";
+    case NewtonSolveReason::operator_retry_requested:
+      return "operator_retry_requested";
     case NewtonSolveReason::stagnation: return "stagnation";
     case NewtonSolveReason::backtracking_exhausted:
       return "backtracking_exhausted";
@@ -168,7 +170,7 @@ NewtonRaphsonDriver::NewtonRaphsonDriver(Mesh *pm,
     // nrbx1_(pm->nrbx1), nrbx2_(pm->nrbx2), nrbx3_(pm->nrbx3),
     pmy_mesh_(pm),
     needinit_(true), fshowdef_(false), use_mg_smoothing_fallback_(false),
-    abort_on_failure_(true),
+    abort_on_failure_(true), full_solve_retry_requested_(false),
     diagnostic_verbosity_(0),
     eps_(-1.0), relaxed_l2_eps_(-1.0), relaxed_max_eps_(-1.0), dt_(0.0),
     step_scale_(1.0),
@@ -467,6 +469,7 @@ NewtonSolveResult NewtonRaphsonDriver::Solve_general_once(int stage, Real dt) {
   stage_ = stage;
   dt_ = dt;
   NewtonSolveResult result;
+  full_solve_retry_requested_ = false;
   const bool fixed_mode = (eps_ <= 0.0 && niter_ >= 0);
   const bool initialization_step = (pmy_mesh_->ncycle == 0 && dt_ == 0.0);
   // Construct the NewtonRaphson array
@@ -647,6 +650,13 @@ NewtonSolveResult NewtonRaphsonDriver::Solve_general_once(int stage, Real dt) {
       // solution (for example when the red/black starting color changes), so
       // only expert retries that alter the linear solver request a new one.
       SolveOneCycle(solve_direction);
+      if (full_solve_retry_requested_) {
+        norms = old_norms;
+        def = norms.l2_norm;
+        defmax = norms.max_norm;
+        result.reason = NewtonSolveReason::operator_retry_requested;
+        break;
+      }
       solve_direction = false;
 
       CalculateDefectNorms(norms);
@@ -854,6 +864,8 @@ NewtonSolveResult NewtonRaphsonDriver::Solve_general_once(int stage, Real dt) {
     plmgd_->SetSmoothingOnly(base_smoothing_only);
     plmgd_->SetCoarseCorrectionScale(base_coarse_corr_scale);
 
+    if (full_solve_retry_requested_) break;
+
     if (!accepted) {
       // Rejected line-search trials have already been rolled back.  The
       // retained iterate may still meet an explicitly requested, looser
@@ -923,7 +935,9 @@ NewtonSolveResult NewtonRaphsonDriver::Solve_general_once(int stage, Real dt) {
   // Keep the detailed per-rank failure dump for fatal failures.  In continuation
   // mode it can otherwise flood a large MPI job's log on every rejected step;
   // users can still request it explicitly with diagnostic_verbosity=2.
-  if (!result.committed && norms.finite && result.final_gas_max_norm > 0.0
+  if (!result.committed
+      && result.reason != NewtonSolveReason::operator_retry_requested
+      && norms.finite && result.final_gas_max_norm > 0.0
       && (abort_on_failure_ || diagnostic_verbosity_ >= 2)) {
     // A rejected trial leaves the defect arrays at the trial state even
     // after restoring the iterate. Reevaluate before reporting its physics.
@@ -1021,6 +1035,10 @@ void NewtonRaphsonDriver::SolveOneCycle(bool solve_direction) {
       (*itr)->delta_u_.ZeroClear();
     plmgd_->Solve(stage_, dt_);
     RunDirectionDiagnostic();
+    if (DirectionRequiresFullRetry()) {
+      full_solve_retry_requested_ = true;
+      return;
+    }
   }
   nrtlist_post_->DoTaskListOneStage(stage_);
   if (NRFLDPrototype::SharedCoeff())

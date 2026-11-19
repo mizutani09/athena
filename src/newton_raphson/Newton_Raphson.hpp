@@ -60,6 +60,7 @@ enum class NewtonSolveReason {
   dt_zero_initialization,
   initial_nonfinite,
   final_nonfinite,
+  operator_retry_requested,
   stagnation,
   backtracking_exhausted,
   max_iterations
@@ -257,6 +258,7 @@ class NewtonRaphsonDriver {
   void CalculateDefectNorms(NewtonResidualNorms &norms);
   virtual void RunJacobianDiagnostics();
   virtual void RunDirectionDiagnostic() {}
+  virtual bool DirectionRequiresFullRetry() { return false; }
   virtual void RunCommittedDiagnostic() {}
   virtual void SyncInterfaceFaceMoments() {}
   // void CalculateMatrix();
@@ -276,6 +278,7 @@ class NewtonRaphsonDriver {
 
   std::vector<NewtonRaphson*> vnr_;
   bool needinit_, fshowdef_, use_mg_smoothing_fallback_, abort_on_failure_;
+  bool full_solve_retry_requested_;
   int diagnostic_verbosity_;
   Real eps_, relaxed_l2_eps_, relaxed_max_eps_, dt_;
   Real mg_coarse_retry_factor_, mg_coarse_retry_min_scale_;

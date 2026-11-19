@@ -32,6 +32,10 @@
 #include "../utils/nrfld_prototype_flags.hpp"
 #include "NRFLD.hpp"
 
+#ifdef MPI_PARALLEL
+#include <mpi.h>
+#endif
+
 
 namespace {
 
@@ -361,6 +365,48 @@ NRFLDDriver::~NRFLDDriver() {
     if (trace_dtor) std::cout << "[DTOR] NRFLDDriver delete plmgd_" << std::endl;
     delete plmgd_;
   }
+}
+
+bool NRFLDDriver::DirectionRequiresFullRetry() {
+  if (!pmy_mesh_->multilevel
+      || !NRFLDPrototype::Flag("ATHENA_NRFLD_TANGENTIAL_FULL_SOLVE_RETRY")
+      || !NRFLDPrototype::TangentialReconstruction()) return false;
+
+  long long local_crossings = 0;
+  Real local_min_scale = std::numeric_limits<Real>::infinity();
+  for (NewtonRaphson *base : vnr_) {
+    NRFLD *nr = static_cast<NRFLD*>(base);
+    if (nr->pmy_block_->prfld->fixed_u_rad) continue;
+    MeshBlock *mb = nr->pmy_block_;
+    for (int k=mb->ks; k<=mb->ke; ++k)
+      for (int j=mb->js; j<=mb->je; ++j)
+        for (int i=mb->is; i<=mb->ie; ++i) {
+          const Real delta = LimitNewtonCorrection(
+              nr->delta_u_(k,j,i),
+              std::max(std::abs(nr->u_(k,j,i)), TINY_NUMBER),
+              nr->max_update_fraction_);
+          if (!(delta < 0.0) || !std::isfinite(delta)) continue;
+          const Real scale = (nr->u_(k,j,i)-TINY_NUMBER)/(-delta);
+          local_min_scale = std::min(local_min_scale, scale);
+          if (!(scale >= 1.0)) ++local_crossings;
+        }
+  }
+
+  long long global_crossings = local_crossings;
+  Real global_min_scale = local_min_scale;
+#ifdef MPI_PARALLEL
+  MPI_Allreduce(MPI_IN_PLACE, &global_crossings, 1, MPI_LONG_LONG_INT, MPI_SUM,
+                MPI_COMM_WORLD);
+  MPI_Allreduce(MPI_IN_PLACE, &global_min_scale, 1, MPI_ATHENA_REAL, MPI_MIN,
+                MPI_COMM_WORLD);
+#endif
+  if (global_crossings == 0) return false;
+  if (Globals::my_rank == 0) {
+    std::cout << "[NR_TANGENTIAL_DIRECTION_REJECTED] crossing_cells="
+              << global_crossings << " minimum_admissible_scale="
+              << global_min_scale << " action=restart_full_solve" << std::endl;
+  }
+  return true;
 }
 
 void NRFLDDriver::SyncInterfaceFaceMoments() {

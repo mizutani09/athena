@@ -237,6 +237,7 @@ class NRFLDDriver : public NewtonRaphsonDriver {
   ~NRFLDDriver();
   void RunJacobianDiagnostics() final;
   void RunDirectionDiagnostic() final;
+  bool DirectionRequiresFullRetry() final;
   void RunCommittedDiagnostic() final;
   void SyncInterfaceFaceMoments() final;
   void SyncCorrectionFaceMoments();
