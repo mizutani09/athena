@@ -24,6 +24,7 @@ root=/work/mizutaniks/wor20/xd_scaling_20261120
 repo=/work/mizutaniks/wor20/athena-performance-20261120
 binary=$repo/bin/athena
 wrapper=$repo/tst/nrfld_validation/rank_resource_wrapper.py
+python=/work/opt/cray/pe/python/3.11.7/bin/python3.11
 commit=6ff44924b64d955be27fd240269ca4cbd488b982
 binary_sha=f42869088d82a3294b35679380a06bac4140163bf0cdbc94df47f4779d38aca6
 run=$root/run_${SLURM_JOB_NUM_NODES}n_r${WOR20_REPEAT}_${SLURM_JOB_ID}
@@ -31,6 +32,7 @@ test ! -e "$run"
 mkdir -p "$run"
 test "$(git -C "$repo" rev-parse HEAD)" = "$commit"
 test "$(sha256sum "$binary" | awk '{print $1}')" = "$binary_sha"
+test -x "$python"
 
 source /etc/profile.d/modules.sh
 module use /work/opt/intel/modulefiles /work/opt/local_oneapi/modulefiles
@@ -172,11 +174,11 @@ cp "$0" "$run/job.sbatch"
 cd "$run"
 set +e
 srun --mpi=pmi2 --ntasks="$SLURM_NTASKS" --cpu-bind=cores \
-  /usr/bin/python3.11 "$wrapper" "$run" "$binary" -i input.used > run.log 2>&1
+  "$python" "$wrapper" "$run" "$binary" -i input.used > run.log 2>&1
 raw_status=$?
 set -e
 
-/usr/bin/python3.11 - "$run" "$raw_status" <<'PY'
+"$python" - "$run" "$raw_status" <<'PY'
 import json, math, re, statistics, sys
 from pathlib import Path
 root=Path(sys.argv[1]); raw_status=int(sys.argv[2])
