@@ -146,11 +146,11 @@ Hydro::Hydro(MeshBlock *pmb, ParameterInput *pin) :
       laplacian_l_fc_.NewAthenaArray(nc1);
       laplacian_r_fc_.NewAthenaArray(nc1);
     }
-    // The cell-average-to-point conversion needs one block-sized Laplacian scratch in
-    // both paths.  The legacy path needs a second simultaneous array; Berta reuses
-    // u_cc for the face-flux Laplacian after primitive recovery has finished.
-    scr1_nkji_.NewAthenaArray(NHYDRO, nc3, nc2, nc1);
+    // The legacy conversion needs two simultaneous scratch arrays. Berta reuses w_cc
+    // for its conserved Laplacian and u_cc for the face-flux Laplacian, after their
+    // respective contents are dead.
     if (!pmb->precon->berta_wenoz) {
+      scr1_nkji_.NewAthenaArray(NHYDRO, nc3, nc2, nc1);
       scr2_nkji_.NewAthenaArray(NHYDRO, nc3, nc2, nc1);
     }
   }

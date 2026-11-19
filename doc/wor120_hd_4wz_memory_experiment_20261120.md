@@ -40,6 +40,37 @@ identical, including both scalar masses and all WENO fallback counts.  A separat
 uniform-grid legacy `xorder=4` SCF smoke also completes, confirming that its
 conditionally retained arrays are allocated.
 
-The decisive gate is the committed 100-cycle surface-L3 script on three 110 GiB M
-nodes.  This branch remains separate from production until that gate completes and
-the measured rank/node RSS confirms safe headroom.
+## XD memory1 result
+
+The first reduced-storage gate (`343539`) used the exact 2,416-block surface-L3
+restart on 168 ranks and three 110 GiB M nodes.  It still exhausted the cgroup after
+134 seconds, before cycle 1, but its average rank RSS fell from about 2.16 GB in the
+original attempt (`343499`) to about 2.06 GB.  This agrees with the 17.28 GiB logical
+allocation reduction and confirms that the failure is capacity-only, not numerical.
+
+## Memory2 plus scalar PLM
+
+The follow-on branch `wor-120-hd-4wz-memory2` removes the remaining Berta Hydro
+scratch array.  It stores the conserved Laplacian in `w_cc` before that array becomes
+the primitive output, and dilates the integer troubled-cell mask in place using 1 for
+original trouble and 2 for newly marked neighbours.  The legacy fourth-order path is
+unchanged.  Scalar point recovery similarly reuses `r_cc` and then `s_cc`; its legacy
+one-cycle history is byte-for-byte identical.
+
+For Berta 4wz, passive scalars use the already validated conservative PLM path.  The
+code now also omits all storage used only by the inactive legacy fourth-order scalar
+path: `s_cc`, `r_cc`, four block scratch/state arrays, and three point-mass-flux
+arrays.  Hydro remains Berta WENO-Z plus RK4; only tracer transport is second order.
+This is the robustness contract tested by scalar-PLM job `343506`, which kept the B16
+topology fixed and reduced its energy excursion by a factor of about 34.
+
+Relative to memory1, memory2 removes another 10.24 MB per B32 block, or 23.04 GiB
+over 2,416 blocks.  The cumulative logical reduction from the original implementation
+is 34.56 GiB.  In the local four-rank, 400-block SCF smoke, peak RSS changes from
+1,551,276 KiB (original) to 1,389,120 KiB (memory1) and 1,170,804 KiB (memory2 plus
+scalar PLM), a cumulative 24.5% reduction.  The resulting history is byte-for-byte
+identical to the independently validated scalar-PLM branch.
+
+The committed gate now targets memory2 on the same three 110 GiB nodes.  This branch
+remains separate from production until that 100-cycle surface-L3 gate completes and
+the measured rank/node RSS confirms safe sustained headroom.

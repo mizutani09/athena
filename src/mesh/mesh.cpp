@@ -1948,7 +1948,7 @@ void Mesh::Initialize(int res_flag, ParameterInput *pin) {
                                                        ph->w, pf->bcc, pmb->pcoord,
                                                        il, iu, jl, ju, kl, ku);
           }
-          if (NSCALARS > 0) {
+          if (NSCALARS > 0 && !pmb->precon->berta_wenoz) {
             pmb->peos->PassiveScalarConservedToPrimitiveCellAverage(
                 ps->s, ps->r, ps->r, pmb->pcoord, il, iu, jl, ju, kl, ku);
           }

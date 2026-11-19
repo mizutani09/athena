@@ -125,10 +125,9 @@ void EquationOfState::ConservedToPrimitivePointValue(
 
   AthenaArray<Real> &u_cc = ph->u_cc;
   AthenaArray<Real> &w_cc = ph->w_cc;
-  AthenaArray<Real> &laplacian_cc = ph->scr1_nkji_;
-  // The Laplacian is dead after u_cc has been formed. Reuse its storage for the
-  // one-component dilated mask instead of retaining another NHYDRO block array.
-  AthenaArray<Real> &theta = ph->scr1_nkji_;
+  // ConservedToPrimitive() overwrites w_cc only after the conserved Laplacian has
+  // been consumed to form u_cc, so the two temporaries can share one block array.
+  AthenaArray<Real> &laplacian_cc = ph->w_cc;
   AthenaArray<int> &mask = ph->troubled_cell_mask_;
 
   // Publish exactly the point-recovery domain. Same-level/periodic ghost cells are
@@ -229,24 +228,29 @@ void EquationOfState::ConservedToPrimitivePointValue(
   // Berta et al. Sec. 3.4: also reduce direct neighbours of a troubled cell. Do not
   // manufacture trouble beyond this safe sensor domain: its outer ghost shell is still
   // part of a boundary-adjacent five-point WENO stencil on a uniform periodic mesh.
-  const auto is_troubled = [&mask, mask_il, mask_iu, mask_jl, mask_ju,
+  // Values marked 2 were added during this pass and must not seed another layer.
+  // Original troubled cells remain 1, so the in-place update is exactly a one-cell
+  // axial dilation independent of traversal order.
+  const auto mark_smooth = [&mask, mask_il, mask_iu, mask_jl, mask_ju,
                              mask_kl, mask_ku](int k, int j, int i) {
     if (i<mask_il || i>mask_iu || j<mask_jl || j>mask_ju
-        || k<mask_kl || k>mask_ku) return false;
-    return mask(k,j,i) != 0;
+        || k<mask_kl || k>mask_ku || mask(k,j,i) != 0) return;
+    mask(k,j,i) = 2;
   };
   for (int k=mask_kl; k<=mask_ku; ++k) {
     for (int j=mask_jl; j<=mask_ju; ++j) {
       for (int i=mask_il; i<=mask_iu; ++i) {
-        bool troubled = is_troubled(k,j,i) || is_troubled(k,j,i-1)
-                      || is_troubled(k,j,i+1);
+        if (mask(k,j,i) != 1) continue;
+        mark_smooth(k,j,i-1);
+        mark_smooth(k,j,i+1);
         if (pmb->block_size.nx2 > 1) {
-          troubled = troubled || is_troubled(k,j-1,i) || is_troubled(k,j+1,i);
+          mark_smooth(k,j-1,i);
+          mark_smooth(k,j+1,i);
         }
         if (pmb->block_size.nx3 > 1) {
-          troubled = troubled || is_troubled(k-1,j,i) || is_troubled(k+1,j,i);
+          mark_smooth(k-1,j,i);
+          mark_smooth(k+1,j,i);
         }
-        theta(1,k,j,i) = troubled ? 1.0 : 0.0;
       }
     }
   }
@@ -254,7 +258,7 @@ void EquationOfState::ConservedToPrimitivePointValue(
   for (int k=mask_kl; k<=mask_ku; ++k) {
     for (int j=mask_jl; j<=mask_ju; ++j) {
       for (int i=mask_il; i<=mask_iu; ++i) {
-        mask(k,j,i) = (theta(1,k,j,i) != 0.0) ? 1 : 0;
+        mask(k,j,i) = (mask(k,j,i) != 0) ? 1 : 0;
       }
     }
   }

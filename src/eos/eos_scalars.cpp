@@ -77,12 +77,11 @@ void EquationOfState::PassiveScalarConservedToPrimitiveCellAverage(
   AthenaArray<Real> &u_cc = ph->u_cc;
   // Passive scalrs
   AthenaArray<Real> &s_cc = ps->s_cc, &r_cc = ps->r_cc;
-  // Laplacians of cell-averaged conserved and 2nd order accurate primitive variables
-  // (reuse Hydro scratch arrays)
-  AthenaArray<Real> &laplacian_cc = ph->scr1_nkji_;  // ps->scr1_nkji_; // private
-
-  // Compute and store Laplacian of cell-averaged conserved variables
-  pco->Laplacian(s, laplacian_cc, il, iu, jl, ju, kl, ku, nl, nu);
+  // r_cc is not needed until the pointwise scalar conversion. Use it first for the
+  // conserved Laplacian; s_cc becomes free after that conversion and can then hold
+  // the primitive Laplacian. This avoids borrowing an NHYDRO-sized Hydro scratch.
+  AthenaArray<Real> &laplacian_s = r_cc;
+  pco->Laplacian(s, laplacian_s, il, iu, jl, ju, kl, ku, nl, nu);
 
   // Compute fourth-order approximation to cell-centered conserved variables
   for (int n=nl; n<=nu; ++n) {
@@ -92,18 +91,19 @@ void EquationOfState::PassiveScalarConservedToPrimitiveCellAverage(
         for (int i=il; i<=iu; ++i) {
           // We do not actually need to store all cell-centered conserved variables,
           // but the ConservedToPrimitive() implementation operates on 4D arrays
-          s_cc(n,k,j,i) = s(n,k,j,i) - C*laplacian_cc(n,k,j,i);
+          s_cc(n,k,j,i) = s(n,k,j,i) - C*laplacian_s(n,k,j,i);
         }
       }
     }
   }
 
-  // Compute Laplacian of 2nd-order approximation to cell-averaged primitive variables
-  pco->Laplacian(r, laplacian_cc, il, iu, jl, ju, kl, ku, nl, nu);
-
   // Convert cell-centered conserved values to cell-centered primitive values
   PassiveScalarConservedToPrimitive(s_cc, u_cc, r_cc, r_cc, pco, il, iu,
                                     jl, ju, kl, ku);
+
+  // s_cc is dead after the conversion, while r_cc now contains the point values.
+  AthenaArray<Real> &laplacian_r = s_cc;
+  pco->Laplacian(r, laplacian_r, il, iu, jl, ju, kl, ku, nl, nu);
 
   for (int n=nl; n<=nu; ++n) {
     for (int k=kl; k<=ku; ++k) {
@@ -111,7 +111,7 @@ void EquationOfState::PassiveScalarConservedToPrimitiveCellAverage(
 #pragma omp simd
         for (int i=il; i<=iu; ++i) {
           // Compute fourth-order approximation to cell-averaged primitive variables
-          r(n,k,j,i) = r_cc(n,k,j,i) + C*laplacian_cc(n,k,j,i);
+          r(n,k,j,i) = r_cc(n,k,j,i) + C*laplacian_r(n,k,j,i);
           // Reapply primitive variable floors to cell-average of (prim) dimensionless
           // concentration WITHOUT correcting cell-average of (cons) scalar mass
           ApplyPassiveScalarFloors(r, n, k, j, i);

@@ -56,7 +56,7 @@ PassiveScalars::PassiveScalars(MeshBlock *pmb, ParameterInput *pin)  :
   pmb->RegisterMeshBlockData(s);
 
   // Allocate optional passive scalar variable memory registers for time-integrator
-  if (pmb->precon->xorder == 4) {
+  if (pmb->precon->xorder == 4 && !pmb->precon->berta_wenoz) {
     // fourth-order cell-centered approximations
     s_cc.NewAthenaArray(NSCALARS, nc3, nc2, nc1);
     r_cc.NewAthenaArray(NSCALARS, nc3, nc2, nc1);
@@ -109,7 +109,7 @@ PassiveScalars::PassiveScalars(MeshBlock *pmb, ParameterInput *pin)  :
   dflx_.NewAthenaArray(NSCALARS, nc1);
 
   // fourth-order integration scheme
-  if (pmb->precon->xorder == 4) {
+  if (pmb->precon->xorder == 4 && !pmb->precon->berta_wenoz) {
     // 4D scratch arrays
     rl3d_.NewAthenaArray(NSCALARS, nc3, nc2, nc1);
     rr3d_.NewAthenaArray(NSCALARS, nc3, nc2, nc1);

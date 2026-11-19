@@ -222,7 +222,7 @@ void Hydro::CalculateFluxes(AthenaArray<Real> &w, FaceField &b,
                 && BertaFaceTroubled(this, X1DIR, k, j, i);
             x1flux(n,k,j,i) = point_flux
                             + (troubled ? 0.0 : C*laplacian_all_fc(n,k,j,i));
-            if (n == IDN && NSCALARS > 0) {
+            if (n == IDN && NSCALARS > 0 && !berta_wenoz) {
               pmb->pscalars->mass_flux_fc[X1DIR](k,j,i) = point_flux;
             }
           }
@@ -354,7 +354,7 @@ void Hydro::CalculateFluxes(AthenaArray<Real> &w, FaceField &b,
                   && BertaFaceTroubled(this, X2DIR, k, j, i);
               x2flux(n,k,j,i) = point_flux
                               + (troubled ? 0.0 : C*laplacian_all_fc(n,k,j,i));
-              if (n == IDN && NSCALARS > 0) {
+              if (n == IDN && NSCALARS > 0 && !berta_wenoz) {
                 pmb->pscalars->mass_flux_fc[X2DIR](k,j,i) = point_flux;
               }
             }
@@ -480,7 +480,7 @@ void Hydro::CalculateFluxes(AthenaArray<Real> &w, FaceField &b,
                   && BertaFaceTroubled(this, X3DIR, k, j, i);
               x3flux(n,k,j,i) = point_flux
                               + (troubled ? 0.0 : C*laplacian_all_fc(n,k,j,i));
-              if (n == IDN && NSCALARS > 0) {
+              if (n == IDN && NSCALARS > 0 && !berta_wenoz) {
                 pmb->pscalars->mass_flux_fc[X3DIR](k,j,i) = point_flux;
               }
             }

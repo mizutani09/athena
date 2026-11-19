@@ -7,8 +7,8 @@
 #SBATCH --hint=nomultithread
 #SBATCH --mem=110G
 #SBATCH --time=00:20:00
-#SBATCH --job-name=wor120_l3_mem
-#SBATCH --output=/work/mizutaniks/wor120/hd4wz_scf_l3_memory_%j.out
+#SBATCH --job-name=wor120_l3_mem2
+#SBATCH --output=/work/mizutaniks/wor120/hd4wz_scf_l3_memory2_%j.out
 
 set -euo pipefail
 source /etc/profile.d/modules.sh
@@ -21,10 +21,10 @@ export LD_LIBRARY_PATH=/lib64:${LD_LIBRARY_PATH:-}
 export OMP_NUM_THREADS=1
 ulimit -c 0
 
-repository=$HOME/simulation/athena-wor120-hd4wz-memory
+repository=$HOME/simulation/athena-wor120-hd4wz-memory2
 restart=${SCF_RESTART:?set SCF_RESTART to the accepted L3 seed restart}
 source_history=${SCF_HISTORY:-$(dirname "$restart")/scf_rsg_relax.hst}
-run=/work/mizutaniks/wor120/hd4wz_scf_l3_memory_${SLURM_JOB_ID}
+run=/work/mizutaniks/wor120/hd4wz_scf_l3_memory2_${SLURM_JOB_ID}
 test -s "$restart"
 test -s "$source_history"
 mkdir -p "$run"
@@ -36,6 +36,7 @@ git status --short > "$run/git_status.txt"
 test ! -s "$run/git_status.txt"
 sha256sum bin/athena "$restart" src/hydro/hydro.cpp \
   src/hydro/calculate_fluxes.cpp src/eos/eos_high_order.cpp \
+  src/scalars/scalars.cpp src/task_list/time_integrator.cpp \
   > "$run/provenance.sha256"
 
 /usr/bin/time -f 'wall_s=%e maxrss_kb=%M' -o "$run/time.log" \

@@ -2370,7 +2370,7 @@ TaskStatus TimeIntegratorTaskList::Primitives(MeshBlock *pmb, int stage) {
                                                    ph->w1, pf->bcc, pmb->pcoord,
                                                    il, iu, jl, ju, kl, ku);
       }
-      if (NSCALARS > 0) {
+      if (NSCALARS > 0 && !pmb->precon->berta_wenoz) {
         pmb->peos->PassiveScalarConservedToPrimitiveCellAverage(
             ps->s, ps->r, ps->r, pmb->pcoord, il, iu, jl, ju, kl, ku);
       }
@@ -2443,7 +2443,12 @@ TaskStatus TimeIntegratorTaskList::CalculateScalarFlux(MeshBlock *pmb, int stage
       if ((integrator == "vl2") && (stage-stage_wghts[0].orbital_stage == 1)) {
         ps->CalculateFluxes(ps->r, 1);
       } else {
-        ps->CalculateFluxes(ps->r, pmb->precon->xorder);
+        // The Berta Hydro fallback mask is not yet implemented for passive scalars.
+        // Transport tracers with conservative PLM instead of allocating and using the
+        // unrelated legacy fourth-order PPM/flux-correction path.
+        const int scalar_order = pmb->precon->berta_wenoz
+            ? 2 : pmb->precon->xorder;
+        ps->CalculateFluxes(ps->r, scalar_order);
       }
     }
     return TaskStatus::next;
