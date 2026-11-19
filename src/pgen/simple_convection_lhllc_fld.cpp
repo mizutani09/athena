@@ -40,6 +40,7 @@
 #include "../fld/fld.hpp"
 #include "../fld/opacity_table.hpp"
 #include "../globals.hpp"
+#include "solar_top_face_opacity.hpp"
 
 
 #if !NRMGFLD_ENABLED
@@ -87,6 +88,7 @@ namespace {
   bool top_impenetrable;
   std::string top_bc_mode;
   bool verify_opacity_temperature = false;
+  bool reconstruct_top_face_opacity = false;
   Real rad_flux_cgs;
   Real rad_top_alpha;
   Real rad_top_erad_ext;
@@ -1336,36 +1338,59 @@ void TableOpacity(MeshBlock *pmb, AthenaArray<Real> &u_fld,
   // Keep the production loop free of per-cell diagnostic branches.  This
   // opt-in pass is used by the focused regression test; a temperature-
   // dependent table makes the legacy P/rho expression fail this comparison.
-  if (!verify_opacity_temperature) return;
-  Real max_opacity_error = 0.0;
-  for (int k=kl; k<=ku; ++k) {
-    for (int j=jl; j<=ju; ++j) {
+  if (verify_opacity_temperature) {
+    Real max_opacity_error = 0.0;
+    for (int k=kl; k<=ku; ++k) {
+      for (int j=jl; j<=ju; ++j) {
 #pragma omp simd reduction(max:max_opacity_error)
-      for (int i=il; i<=iu; ++i) {
-        const Real rho_code = std::max(prim(IDN,k,j,i), TINY_NUMBER);
-        const Real pres_code = std::max(prim(IPR,k,j,i), TINY_NUMBER);
-        const Real temp_code = std::max(
-            GasTempFromRhoP(pmb->peos, rho_code, pres_code), TINY_NUMBER);
-        const Real rho_cgs = rho_code*rho_unit;
-        const Real scale = rho_cgs*leng_unit;
-        const Real ref_sigma_p = puser_table->GetOpacity(
-            RadFLD::SIGMA_P, rho_cgs, temp_code*T_unit)*scale;
-        const Real ref_sigma_r = puser_table->GetOpacity(
-            RadFLD::SIGMA_R, rho_cgs, temp_code*T_unit)*scale;
-        max_opacity_error = std::max(max_opacity_error,
-            std::max(std::abs(prfld->sigma_p(k,j,i)
-                              /std::max(ref_sigma_p, TINY_NUMBER) - 1.0),
-                     std::abs(prfld->sigma_r(k,j,i)
-                              /std::max(ref_sigma_r, TINY_NUMBER) - 1.0)));
+        for (int i=il; i<=iu; ++i) {
+          const Real rho_code = std::max(prim(IDN,k,j,i), TINY_NUMBER);
+          const Real pres_code = std::max(prim(IPR,k,j,i), TINY_NUMBER);
+          const Real temp_code = std::max(
+              GasTempFromRhoP(pmb->peos, rho_code, pres_code), TINY_NUMBER);
+          const Real rho_cgs = rho_code*rho_unit;
+          const Real scale = rho_cgs*leng_unit;
+          const Real ref_sigma_p = puser_table->GetOpacity(
+              RadFLD::SIGMA_P, rho_cgs, temp_code*T_unit)*scale;
+          const Real ref_sigma_r = puser_table->GetOpacity(
+              RadFLD::SIGMA_R, rho_cgs, temp_code*T_unit)*scale;
+          max_opacity_error = std::max(max_opacity_error,
+              std::max(std::abs(prfld->sigma_p(k,j,i)
+                                /std::max(ref_sigma_p, TINY_NUMBER) - 1.0),
+                       std::abs(prfld->sigma_r(k,j,i)
+                                /std::max(ref_sigma_r, TINY_NUMBER) - 1.0)));
+        }
       }
     }
+    if (!std::isfinite(max_opacity_error) || max_opacity_error > 1.0e-12) {
+      std::stringstream msg;
+      msg << "### FATAL ERROR: opacity temperature does not match the selected EOS"
+          << " for the current primitive state (max relative opacity error="
+          << max_opacity_error << ").";
+      ATHENA_ERROR(msg);
+    }
   }
-  if (!std::isfinite(max_opacity_error) || max_opacity_error > 1.0e-12) {
-    std::stringstream msg;
-    msg << "### FATAL ERROR: opacity temperature does not match the selected EOS"
-        << " for the current primitive state (max relative opacity error="
-        << max_opacity_error << ").";
-    ATHENA_ERROR(msg);
+
+  // At the physical upper face only, represent the log-linear half-cell
+  // integral of sigma_R with the ghost value expected by the thin-limit
+  // arithmetic branch of the FLD face-opacity rule.  This is opt-in because
+  // it changes the solar application boundary closure, not the general FLD
+  // discretization.
+  if (reconstruct_top_face_opacity && IsPhysicalUpperBoundary(pmb) &&
+      pmb->block_size.nx3 > 1) {
+    const int k_outer = pmb->ke;
+    const int k_inward = k_outer - 1;
+    for (int j=jl; j<=ju; ++j) {
+#pragma omp simd
+      for (int i=il; i<=iu; ++i) {
+        const Real ghost = solar_top_face_opacity::ArithmeticFaceGhost(
+            prfld->sigma_r(k_outer,j,i), prfld->sigma_r(k_inward,j,i),
+            TINY_NUMBER);
+        for (int k=k_outer+1; k<=ku; ++k) {
+          prfld->sigma_r(k,j,i) = ghost;
+        }
+      }
+    }
   }
 }
 
@@ -1455,6 +1480,8 @@ void Mesh::InitUserMeshData(ParameterInput *pin) {
   top_bc_mode = pin->GetOrAddString("problem", "top_bc_mode", "rempel_outflow");
   verify_opacity_temperature = pin->GetOrAddBoolean(
       "problem", "verify_opacity_temperature", false);
+  reconstruct_top_face_opacity = pin->GetOrAddBoolean(
+      "problem", "reconstruct_top_face_opacity", false);
   bottom_inflow_speed = pin->GetOrAddReal("problem", "bottom_inflow_speed", 0.0);
   bottom_bc_mode = pin->GetOrAddString("problem", "bottom_bc_mode", "rempel_hd2");
   profile_output = pin->GetOrAddString("problem", "profile_output",
