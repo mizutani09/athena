@@ -52,6 +52,24 @@ void LimitFourthOrderPointState(AthenaArray<Real> &point,
 }  // namespace
 #endif
 
+namespace {
+inline bool BertaMaskTroubled(const Hydro *ph, int k, int j, int i) {
+  const Hydro::TroubledCellMaskBounds &b = ph->GetTroubledCellMaskBounds();
+  if (i<b.il || i>b.iu || j<b.jl || j>b.ju || k<b.kl || k>b.ku) return true;
+  return ph->GetTroubledCellMask()(k,j,i) != 0;
+}
+
+inline bool BertaFaceTroubled(const Hydro *ph, int dir, int k, int j, int i) {
+  if (dir == X1DIR) {
+    return BertaMaskTroubled(ph,k,j,i-1) || BertaMaskTroubled(ph,k,j,i);
+  }
+  if (dir == X2DIR) {
+    return BertaMaskTroubled(ph,k,j-1,i) || BertaMaskTroubled(ph,k,j,i);
+  }
+  return BertaMaskTroubled(ph,k-1,j,i) || BertaMaskTroubled(ph,k,j,i);
+}
+}  // namespace
+
 //----------------------------------------------------------------------------------------
 //! \fn  void Hydro::CalculateFluxes
 //! \brief Calculate Hydrodynamic Fluxes using the Riemann solver
@@ -197,7 +215,10 @@ void Hydro::CalculateFluxes(AthenaArray<Real> &w, FaceField &b,
 #pragma omp simd
           for (int i=is; i<=ie+1; i++) {
             const Real point_flux = berta_wenoz ? x1flux(n,k,j,i) : flux_fc(n,k,j,i);
-            x1flux(n,k,j,i) = point_flux + C*laplacian_all_fc(n,k,j,i);
+            const bool troubled = berta_wenoz
+                && BertaFaceTroubled(this, X1DIR, k, j, i);
+            x1flux(n,k,j,i) = point_flux
+                            + (troubled ? 0.0 : C*laplacian_all_fc(n,k,j,i));
             if (n == IDN && NSCALARS > 0) {
               pmb->pscalars->mass_flux_fc[X1DIR](k,j,i) = point_flux;
             }
@@ -326,7 +347,10 @@ void Hydro::CalculateFluxes(AthenaArray<Real> &w, FaceField &b,
 #pragma omp simd
             for (int i=is; i<=ie; i++) {
               const Real point_flux = berta_wenoz ? x2flux(n,k,j,i) : flux_fc(n,k,j,i);
-              x2flux(n,k,j,i) = point_flux + C*laplacian_all_fc(n,k,j,i);
+              const bool troubled = berta_wenoz
+                  && BertaFaceTroubled(this, X2DIR, k, j, i);
+              x2flux(n,k,j,i) = point_flux
+                              + (troubled ? 0.0 : C*laplacian_all_fc(n,k,j,i));
               if (n == IDN && NSCALARS > 0) {
                 pmb->pscalars->mass_flux_fc[X2DIR](k,j,i) = point_flux;
               }
@@ -449,7 +473,10 @@ void Hydro::CalculateFluxes(AthenaArray<Real> &w, FaceField &b,
 #pragma omp simd
             for (int i=is; i<=ie; i++) {
               const Real point_flux = berta_wenoz ? x3flux(n,k,j,i) : flux_fc(n,k,j,i);
-              x3flux(n,k,j,i) = point_flux + C*laplacian_all_fc(n,k,j,i);
+              const bool troubled = berta_wenoz
+                  && BertaFaceTroubled(this, X3DIR, k, j, i);
+              x3flux(n,k,j,i) = point_flux
+                              + (troubled ? 0.0 : C*laplacian_all_fc(n,k,j,i));
               if (n == IDN && NSCALARS > 0) {
                 pmb->pscalars->mass_flux_fc[X3DIR](k,j,i) = point_flux;
               }

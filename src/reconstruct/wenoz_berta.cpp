@@ -16,8 +16,18 @@
 #include "../athena.hpp"
 #include "../athena_arrays.hpp"
 #include "../eos/eos.hpp"
+#include "../hydro/hydro.hpp"
 #include "../mesh/mesh.hpp"
 #include "reconstruction.hpp"
+#include "troubled_fallback.hpp"
+
+namespace {
+inline bool MaskTroubledOrUnavailable(const Hydro *ph, int k, int j, int i) {
+  const Hydro::TroubledCellMaskBounds &b = ph->GetTroubledCellMaskBounds();
+  if (i<b.il || i>b.iu || j<b.jl || j>b.ju || k<b.kl || k>b.ku) return true;
+  return ph->GetTroubledCellMask()(k,j,i) != 0;
+}
+}  // namespace
 
 //----------------------------------------------------------------------------------------
 //! \brief Point-value WENO-Z reconstruction, Berta et al. (2024), Eq. (24)-(26).
@@ -63,8 +73,25 @@ void Reconstruction::BertaWENOZX1(
   for (int n=0; n<NHYDRO; ++n) {
 #pragma omp simd
     for (int i=il; i<=iu; ++i) {
-      BertaWENOZ(w(n,k,j,i-2), w(n,k,j,i-1), w(n,k,j,i),
-                 w(n,k,j,i+1), w(n,k,j,i+2), wl(n,i+1), wr(n,i));
+      const bool right_troubled = MaskTroubledOrUnavailable(pmy_block_->phydro,k,j,i)
+          || MaskTroubledOrUnavailable(pmy_block_->phydro,k,j,i+1);
+      const bool left_troubled = MaskTroubledOrUnavailable(pmy_block_->phydro,k,j,i-1)
+          || MaskTroubledOrUnavailable(pmy_block_->phydro,k,j,i);
+      Real unused;
+      if (right_troubled) {
+        reconstruction::VanLeerPLM(w(n,k,j,i-1), w(n,k,j,i), w(n,k,j,i+1),
+                                   wl(n,i+1), unused);
+      } else {
+        BertaWENOZ(w(n,k,j,i-2), w(n,k,j,i-1), w(n,k,j,i),
+                   w(n,k,j,i+1), w(n,k,j,i+2), wl(n,i+1), unused);
+      }
+      if (left_troubled) {
+        reconstruction::VanLeerPLM(w(n,k,j,i-1), w(n,k,j,i), w(n,k,j,i+1),
+                                   unused, wr(n,i));
+      } else {
+        BertaWENOZ(w(n,k,j,i-2), w(n,k,j,i-1), w(n,k,j,i),
+                   w(n,k,j,i+1), w(n,k,j,i+2), unused, wr(n,i));
+      }
     }
   }
 #pragma omp simd
@@ -81,8 +108,25 @@ void Reconstruction::BertaWENOZX2(
   for (int n=0; n<NHYDRO; ++n) {
 #pragma omp simd
     for (int i=il; i<=iu; ++i) {
-      BertaWENOZ(w(n,k,j-2,i), w(n,k,j-1,i), w(n,k,j,i),
-                 w(n,k,j+1,i), w(n,k,j+2,i), wl(n,i), wr(n,i));
+      const bool right_troubled = MaskTroubledOrUnavailable(pmy_block_->phydro,k,j,i)
+          || MaskTroubledOrUnavailable(pmy_block_->phydro,k,j+1,i);
+      const bool left_troubled = MaskTroubledOrUnavailable(pmy_block_->phydro,k,j-1,i)
+          || MaskTroubledOrUnavailable(pmy_block_->phydro,k,j,i);
+      Real unused;
+      if (right_troubled) {
+        reconstruction::VanLeerPLM(w(n,k,j-1,i), w(n,k,j,i), w(n,k,j+1,i),
+                                   wl(n,i), unused);
+      } else {
+        BertaWENOZ(w(n,k,j-2,i), w(n,k,j-1,i), w(n,k,j,i),
+                   w(n,k,j+1,i), w(n,k,j+2,i), wl(n,i), unused);
+      }
+      if (left_troubled) {
+        reconstruction::VanLeerPLM(w(n,k,j-1,i), w(n,k,j,i), w(n,k,j+1,i),
+                                   unused, wr(n,i));
+      } else {
+        BertaWENOZ(w(n,k,j-2,i), w(n,k,j-1,i), w(n,k,j,i),
+                   w(n,k,j+1,i), w(n,k,j+2,i), unused, wr(n,i));
+      }
     }
   }
 #pragma omp simd
@@ -99,8 +143,25 @@ void Reconstruction::BertaWENOZX3(
   for (int n=0; n<NHYDRO; ++n) {
 #pragma omp simd
     for (int i=il; i<=iu; ++i) {
-      BertaWENOZ(w(n,k-2,j,i), w(n,k-1,j,i), w(n,k,j,i),
-                 w(n,k+1,j,i), w(n,k+2,j,i), wl(n,i), wr(n,i));
+      const bool right_troubled = MaskTroubledOrUnavailable(pmy_block_->phydro,k,j,i)
+          || MaskTroubledOrUnavailable(pmy_block_->phydro,k+1,j,i);
+      const bool left_troubled = MaskTroubledOrUnavailable(pmy_block_->phydro,k-1,j,i)
+          || MaskTroubledOrUnavailable(pmy_block_->phydro,k,j,i);
+      Real unused;
+      if (right_troubled) {
+        reconstruction::VanLeerPLM(w(n,k-1,j,i), w(n,k,j,i), w(n,k+1,j,i),
+                                   wl(n,i), unused);
+      } else {
+        BertaWENOZ(w(n,k-2,j,i), w(n,k-1,j,i), w(n,k,j,i),
+                   w(n,k+1,j,i), w(n,k+2,j,i), wl(n,i), unused);
+      }
+      if (left_troubled) {
+        reconstruction::VanLeerPLM(w(n,k-1,j,i), w(n,k,j,i), w(n,k+1,j,i),
+                                   unused, wr(n,i));
+      } else {
+        BertaWENOZ(w(n,k-2,j,i), w(n,k-1,j,i), w(n,k,j,i),
+                   w(n,k+1,j,i), w(n,k+2,j,i), unused, wr(n,i));
+      }
     }
   }
 #pragma omp simd

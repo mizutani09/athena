@@ -30,9 +30,13 @@ The legacy `xorder=4/4c` path is unchanged. It reconstructs face-average PPM sta
 de-averages those states, and performs a second Riemann solve. The 4wz path needs only
 one Riemann solve per face.
 
-The Berta troubled-cell sensor, local PLM/WENO3 fallback, and coarse-fine footprint
-mask are intentionally deferred to the next milestone. Without that protection the
-uniform smooth path is useful for convergence validation but not for a stellar surface.
+The uniform-grid path now includes the Berta/Jameson density-and-pressure curvature
+sensor, one-cell dilation, and a local van-Leer PLM fallback. Troubled faces also skip
+the fourth-order transverse flux correction. A point-state quality gate rejects
+non-finite or large density/pressure excursions before they reach reconstruction.
+
+The coarse-fine footprint mask remains deferred. Consequently `xorder=4wz` is still
+rejected for SMR/AMR and is not yet ready for the central-L7 plus surface-L3 star.
 
 ## Validation
 
@@ -75,6 +79,27 @@ The complete `hydro4/hydro_linwave_3d` regression, including the pre-existing
 `RK4+4c` and `SSPRK5_4+4` controls, passed. A 64 x 32 x 32 run split into 16-cubed
 MeshBlocks produced byte-identical error files with one and two MPI ranks.
 
+The smooth-wave convergence values above are unchanged after adding the troubled-cell
+path. In particular, the 64 x 32 x 32 RMS-L1 error remains `1.238193e-10`. The
+one-rank and two-rank, 16-cubed MeshBlock error files have the same SHA-256 digest:
+`110a44d09a148cde0305bfed844e50d8488e63937aab29cfc669cac02db57395`.
+
+### General-EOS discontinuities
+
+The six existing hydrogen general-EOS Riemann conditions were run with HLLC,
+`integrator=rk4`, `xorder=4wz`, and 256 cells. Every run completed with finite,
+positive density and pressure. Errors below are measured against the regression
+suite's exact hydrogen Riemann solver and all satisfy its existing tolerances.
+
+| case | density L1 | pressure L1 | velocity L1 |
+|---:|---:|---:|---:|
+| 1 | 3.390395e-10 | 4.471681e-11 | 2.685362e-3 |
+| 2 | 5.751343e-9 | 9.660648e-10 | 4.969766e-3 |
+| 3 | 6.483969e-8 | 1.253814e-8 | 5.253033e-3 |
+| 4 | 4.013655e-8 | 1.423257e-8 | 1.150833e-2 |
+| 5 | 4.162444e-7 | 4.274404e-8 | 6.744184e-3 |
+| 6 | 3.411669e-7 | 3.145498e-8 | 4.890738e-3 |
+
 ### Cost comparison
 
 For the 64 x 32 x 32 sound-wave case in the serial regression runner:
@@ -90,10 +115,8 @@ performance estimate.
 
 ## Next gates
 
-1. Port the stage-local troubled-cell sensor and bounded PLM fallback from the fixed
-   `38b4ea1` reference, specialized to HD and general EOS.
-2. Mark the full three-cell footprint around coarse-fine interfaces as troubled so
+1. Mark the full three-cell footprint around coarse-fine interfaces as troubled so
    existing conservative restriction and reflux remain authoritative.
-3. Validate static-refinement wave crossing, conservation, and MPI decomposition.
-4. Build with the SCF table EOS and run positivity/domain smoke tests.
-5. Only then enable the central-L7 plus surface-L3 SCF input for a short HD A/B run.
+2. Validate static-refinement wave crossing and conservation.
+3. Build with the SCF table EOS and run positivity/domain smoke tests.
+4. Only then enable the central-L7 plus surface-L3 SCF input for a short HD A/B run.

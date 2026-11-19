@@ -33,6 +33,10 @@ class Hydro {
   friend class Field;
   friend class EquationOfState;
  public:
+  struct TroubledCellMaskBounds {
+    int il, iu, jl, ju, kl, ku;
+  };
+
   Hydro(MeshBlock *pmb, ParameterInput *pin);
 
   // data
@@ -88,6 +92,10 @@ class Hydro {
 #endif
   void CalculateVelocityDifferences(const int k, const int j, const int il, const int iu,
     const int ivx, AthenaArray<Real> &dvn, AthenaArray<Real> &dvt);
+  const AthenaArray<int>& GetTroubledCellMask() const { return troubled_cell_mask_; }
+  const TroubledCellMaskBounds& GetTroubledCellMaskBounds() const {
+    return troubled_cell_mask_bounds_;
+  }
 
   // velocity vectors derived from the Riemann solver
   AthenaArray<Real> vf[3];
@@ -114,6 +122,8 @@ class Hydro {
   // fourth-order hydro
   // 4D scratch arrays
   AthenaArray<Real> scr1_nkji_, scr2_nkji_;
+  AthenaArray<int> troubled_cell_mask_;
+  TroubledCellMaskBounds troubled_cell_mask_bounds_{1, 0, 1, 0, 1, 0};
   AthenaArray<Real> wl3d_, wr3d_;
   // 1D scratch arrays
   AthenaArray<Real> laplacian_l_fc_, laplacian_r_fc_;

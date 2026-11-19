@@ -64,6 +64,9 @@ Hydro::Hydro(MeshBlock *pmb, ParameterInput *pin) :
     // fourth-order hydro cell-centered approximations
     u_cc.NewAthenaArray(NHYDRO, nc3, nc2, nc1);
     w_cc.NewAthenaArray(NHYDRO, nc3, nc2, nc1);
+    if (pmb->precon->berta_wenoz) {
+      troubled_cell_mask_.NewAthenaArray(nc3, nc2, nc1);
+    }
   }
 
   // If user-requested time integrator is type 3S*, allocate additional memory registers
