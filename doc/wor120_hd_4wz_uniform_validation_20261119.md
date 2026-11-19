@@ -272,31 +272,42 @@ cycle. At the initial `dt=0.01008`, a conservative constant-throughput estimate 
 allocation. The dependent sustained jobs use the same seed and three nodes.
 
 The first sustained 4wz attempt (`343499`) was stopped by the Slurm memory cgroup at
-cycle zero; it was not a numerical failure.  Its 168 ranks averaged about 2.06 GB RSS
-and one rank reached 4.09 GB, exhausting the 110 GiB-per-node limit on three M nodes.
-The x2 job `343498` continues normally in the same allocation.  The replacement 4wz
-job `343525` keeps 168 ranks but spreads them over two 512 GB P nodes (84 ranks per
-node, 300 GiB requested per node).  This isolates the memory-capacity correction from
-the numerical A/B conditions; the restart, executable SHA-256
-`675c9e7a1ee5c791b9bd35b2cc1a01749f90144758b830540c1e7d2b3b13c082`, target time,
-and runtime parameters are unchanged.  Comparison job `343526` waits for both
-sustained evolutions.
+cycle zero; it was not a numerical failure.  Its 168 ranks averaged about 2.01 GiB RSS
+and one rank reached about 3.90 GiB, exhausting the 110 GiB-per-node limit on three M
+nodes.  The x2 job `343498` completed normally at `t=47.006`, cycle 4,752, with fixed
+2,416-block topology and passes all nine HD gates.  Its batch state is `FAILED` only
+because that version disabled final restart output and then required the file in its
+postprocessor; the evolution step itself is `COMPLETED`, stderr is empty, and the
+history is intact.  The tentative P-node replacement `343525` remains only as a
+fallback until the reduced-storage M-node run starts.
+
+The selected memory2 implementation is documented separately in
+`wor120_hd_4wz_memory_experiment_20261120.md`.  It reduces the original Berta-path
+logical storage by 40.47 GiB over this 2,416-block mesh, keeps Hydro on RK4+WENO-Z,
+and transports passive scalars with conservative PLM.  The exact 100-cycle M-node
+gate `343554` completes with 1.28 GiB average RSS per rank and fixed topology.  The
+sustained replacement `343567` therefore uses the original three-node M allocation,
+the same accepted restart, and the same target time; dependent job `343568` performs
+the physical and measured-cost A/B comparison.  Its executable SHA-256 is
+`042fcd1701f4215c038a38ec80746ca7671163ba06472eb8c9aa8219b7e9811e`.
 
 An isolated B16 experiment (`343506`) transports the stellar/radiative tracers with
 PLM while leaving Hydro 4wz unchanged. It eliminates the B16 topology growth: the 4wz
 branch remains at 2,472 blocks, its maximum energy drift falls from `1.69e-2` to
 `4.92e-4`, and wall time falls from 88.28 to 68.62 s. This confirms that the B16
 failure is driven primarily by the unrelated legacy fourth-order scalar path feeding
-the tracer AMR condition. The selected B32 baseline does not require this workaround,
-and the scalar-PLM branch remains separate because its smooth-tracer accuracy is
-explicitly second order.
+the tracer AMR condition.  Memory2 adopts this conservative PLM scalar path: it is an
+explicitly second-order tracer contract, while the HD flux update remains fourth
+order in smooth regions, and it also permits omission of scalar-only legacy
+fourth-order block storage.
 
 ## Next gates
 
-1. Complete the running surface-L3, B32, same-restart `0.1 t_dyn` A/B gate and compare
-   stability, accuracy, topology, memory, and throughput.
-2. Use the sustained memory measurements to choose the minimum safe production node
-   layout separately for x2 and 4wz.
-3. Keep the B16 scalar-transport experiment isolated: it diagnoses the sensitivity of
-   fine block boundaries and the tracer-driven AMR condition but is not a prerequisite
-   for the selected B32 production run.
+1. Complete memory2 job `343567` and its dependent comparison `343568`; compare
+   stability, accuracy, topology, restart integrity, memory, throughput, and allocated
+   node-hours against completed x2 job `343498`.
+2. If the sustained result passes, retain three 110 GiB M nodes as the minimum tested
+   4wz production layout and cancel the redundant pending P-node fallback `343525`.
+3. Record explicitly in production inputs that HD uses RK4+4wz while passive scalar
+   transport uses PLM; fourth-order tracer transport would require its own Berta mask
+   and convergence contract and is outside this HD acceptance gate.
