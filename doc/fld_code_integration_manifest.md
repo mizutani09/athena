@@ -6,6 +6,10 @@ for the independent successor candidate aligned to the verified table-collapse
 source. The earlier pending table-AMR statements below apply only to the
 Draft PR #3 source.
 
+The current fixed collapse scope and the explicit exclusions of later RSG,
+inexact-FGMRES, and table-MHD experiments are summarized in
+[fld_publication_baseline_status_20261120.md](fld_publication_baseline_status_20261120.md).
+
 Audit date: 2026-11-09. This document distinguishes a candidate source tree from a validated publication release. No paper release tag has been made.
 
 ## Phase 0 decision

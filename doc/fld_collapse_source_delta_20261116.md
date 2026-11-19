@@ -1,5 +1,10 @@
 # WOR-114 collapse source candidate update (2026-11-16)
 
+The current release-scope decision and the relationship between this candidate,
+the collaborator tag, the paper figures, and later WOR-123/124 experiments are
+recorded in
+[fld_publication_baseline_status_20261120.md](fld_publication_baseline_status_20261120.md).
+
 This independent branch starts from the historical Draft PR #3 head
 `6ad84f78e57acc2f9e657970e329e2d814df8a6a`. It imports only three
 source files from the verified WOR-92/118 table-EOS first-core run commit
