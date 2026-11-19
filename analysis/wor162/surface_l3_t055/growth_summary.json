@@ -1,0 +1,16 @@
+{
+  "final_time_over_tdyn": 5.499996371174e-01,
+  "nonradial_energy_gate": 5.000000000000e-04,
+  "nonradial_energy_first_crossing_time_over_tdyn": 2.100176766203e-01,
+  "angular_momentum_gate": 1.000000000000e-03,
+  "angular_momentum_first_crossing_time_over_tdyn": 4.264504300655e-01,
+  "nonradial_energy_log_slope_per_tdyn": 2.391043819606e+01,
+  "nonradial_energy_efolding_time_over_tdyn": 4.182273832876e-02,
+  "nonradial_amplitude_efolding_time_over_tdyn": 8.364547665752e-02,
+  "log_fit_samples_between_1e-4_and_1e-2": 107,
+  "final_nonradial_energy_over_abs_W": 2.427629645782e-02,
+  "final_angular_momentum_relative_drift": 1.500871345256e-03,
+  "final_radial_mach_rms": 2.969126579478e-02,
+  "final_slice_nonradial_fraction_r_lt_20_rsun": 9.999991152484e-01,
+  "final_slice_radial_fraction_r_lt_20_rsun": 9.823121886897e-01
+}

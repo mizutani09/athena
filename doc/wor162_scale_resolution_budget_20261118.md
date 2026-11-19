@@ -39,6 +39,15 @@ Mach RMS is `6.81e-3`, and the virial residual remains below `2.05e-3`.
 Surface L3 therefore reduces the central-L6-only Mach RMS by a factor of 30
 while retaining its energy and angular-momentum quality.
 
+That short-time pass does not persist to `0.55 t_dyn`.  The undamped
+continuation conserves mass exactly and mechanical energy to `1.79e-4`, but
+nonradial perturbation energy grows to `2.43e-2 |W|` and angular-momentum
+drift reaches `1.50e-3`; both exceed their handoff gates.  The nonradial gate
+is first crossed at `0.210 t_dyn`, with an energy e-folding time of
+`0.0418 t_dyn`.  Equatorial slices place 99.9999% of this energy inside
+`20 Rsun`, so the next task is a compact-core coupling diagnosis, not more
+surface refinement or a longer production run.
+
 ## Physical scales
 
 The target rotating model has `M_gas=15.30 Msun`, `M_core=5.70 Msun`,
@@ -192,6 +201,14 @@ equivalent setting is therefore FMG with `threshold=-1` and `niteration=0`,
 which keeps the accepted FMG result and omits only the discarded polishing
 cycle.  A short restart gate precedes the long continuation with this setting.
 
+The FMG-only continuation confirms this interpretation: it reaches
+`0.55 t_dyn` with zero multigrid warnings or NaNs, increases throughput from
+`3.18e7` to `3.71e7` zone-cycles/s, and uses 187.57 GiB aggregate memory.
+Athena completes normally in 9.16 h; the batch is marked failed only because
+the post-run physical gate correctly rejects the core-dominated nonradial
+growth.  Removing the rejected polishing cycle therefore improves efficiency
+but does not remove the physical/numerical core mode.
+
 ### XD MPI calibration
 
 The XD2000 benchmark used one shared node, Intel oneAPI 2025.1, 1,409,024
@@ -324,10 +341,11 @@ puts only `6.90e-7` of radial and `9.18e-9` of nonradial slice energy outside
 `800 Rsun`; this confirms why the local maximum is not a rejection gate.
 The evolved virial residual stays near `-1.2e-3` without secular runaway.
 
-The resolution prescription is therefore:
+The short-time resolution prescription is therefore:
 
 - central L5 is sufficient for economical discriminators; central L6 is the
-  validated quality HD reference and L7 remains a short convergence check;
+  quality short-time HD reference and L7 remains a convergence check, but the
+  central-L6/core coupling is not yet validated beyond `0.21 t_dyn`;
 - add surface level 3 (`dx=4.30 Rsun`, 5.2 cells per
   `H_P` at `rho=1e-9 g cm^-3`) before a multi-dynamical-time reference;
 - use a surface-level-4 short run to require less than 10% change in RMS Mach,
@@ -338,9 +356,11 @@ The resolution prescription is therefore:
 1. Keep the validated face-mass-flux core-work update and central L6.
 2. The two-node tracer-following surface-L3 `0.1 t_dyn` stability gate is
    complete and passes all numeric criteria.
-3. Continue its final restart to at least `1 t_dyn` in two approximately
-   `0.45 t_dyn` stages, and to `3 t_dyn` if the diagnostics have not settled.
-4. Use a short surface-level-4 run only to establish convergence of the
+3. The FMG-only continuation stops at `0.55 t_dyn` after failing the
+   nonradial-energy and angular-momentum gates.  Preserve this restart and
+   diagnose the exponentially growing `r<20 Rsun` mode before extending it.
+4. Defer the surface-level-4 convergence run until the compact-core mode is
+   controlled; then use it to establish convergence of the
    level-3 result.
 5. Test the generated nonrotating and `Omega=2e-8 s^-1` SCF profiles in the
    same order.  No damping is part of the reference result.

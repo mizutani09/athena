@@ -6,3 +6,4 @@ surface_level,status,surface_dx_rsun,cells_per_hp_rho1e-9,blocks_l0,blocks_l1,bl
 3,measured_xd_1node_5cycle,4.296875,5.23,0,80,2408,8376,56,56,64,11040,45219840,109093527.76,76.91,56.058727,56-rank job 342212; five cycles; maxrss is AveRSS times ranks
 3,measured_xd_2node_5cycle,4.296875,5.23,0,80,2408,8376,56,56,64,11040,45219840,117290880,19.84,8.560531,112-rank job 342205; five cycles; maxrss is AveRSS times ranks
 3,measured_xd_2node_t01_final,4.296875,5.23,0,72,2416,8824,56,56,64,11488,47054848,188165632.48,7213.62,6949.301481,112-rank job 342434; 0.1 tdyn final topology; maxrss is AveRSS times ranks
+3,measured_xd_2node_t055_gate_failed,4.296875,5.23,0,72,2432,8696,56,56,64,11376,46596096,196676988.48,32987.24,32083.964907,112-rank job 342602; Athena completed but physical gate failed; maxrss is AveRSS times ranks

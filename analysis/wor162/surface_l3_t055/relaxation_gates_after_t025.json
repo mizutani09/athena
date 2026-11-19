@@ -1,0 +1,18 @@
+{
+  "start_time_over_tdyn": 2.500000000000e-01,
+  "final_time_over_tdyn": 5.499996371174e-01,
+  "evaluated_samples": 183,
+  "all_numeric_gates_pass": false,
+  "virial_non_growing_requires_time_series_review": true,
+  "gates": {
+    "stellar_mass_relative_drift": {"maximum": 0.000000000000e+00, "limit": 1.000000000000e-04, "pass": true},
+    "angular_momentum_relative_drift": {"maximum": 1.500871345256e-03, "limit": 1.000000000000e-03, "pass": false},
+    "mechanical_energy_relative_drift": {"maximum": 1.786244319589e-04, "limit": 1.000000000000e-02, "pass": true},
+    "radial_mach_rms": {"maximum": 2.969126579478e-02, "limit": 3.000000000000e-02, "pass": true},
+    "radial_ke_over_abs_W": {"maximum": 8.927272520712e-05, "limit": 5.000000000000e-04, "pass": true},
+    "nonradial_ke_over_abs_W": {"maximum": 2.427629645782e-02, "limit": 5.000000000000e-04, "pass": false},
+    "mean_radius_relative_drift": {"maximum": 1.110408315957e-03, "limit": 1.000000000000e-02, "pass": true},
+    "rms_radius_relative_drift": {"maximum": 1.150982641488e-03, "limit": 1.000000000000e-02, "pass": true},
+    "absolute_virial_relative_residual": {"maximum": 9.448014501208e-04, "limit": 2.000000000000e-02, "pass": true}
+  }
+}
