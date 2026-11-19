@@ -60,7 +60,7 @@ run_mode() {
   mode=$1
   out=$run/$mode
   set +e
-  srun --exclusive --nodes=1 --ntasks=32 --ntasks-per-node=32 --cpu-bind=cores \
+  srun --mpi=pmi2 --exclusive --nodes=1 --ntasks=32 --ntasks-per-node=32 --cpu-bind=cores \
     --job-name="wor174_$mode" \
     "$binary" -r "$seed" -i "$input" -d "$out" -t 01:55:00 \
     "job/problem_id=wor174_${mode}_${SLURM_JOB_ID}" \
