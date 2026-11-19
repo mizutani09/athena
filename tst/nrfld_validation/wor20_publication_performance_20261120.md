@@ -204,22 +204,51 @@ MPI ranks per node. It reuses the same validated Test C path and detailed
 FGMRES timer. This is a strong-scaling test; the numerical problem and ten
 measured steps remain fixed.
 
-The accepted one-node job is XD job `343669` (M-test-a, one node / 32 ranks).
-It completed with exit `0:0` in 2:16. All 32 rank-resource records and all 32
-performance records are present. Every rank reports ten measured steps; all
-12 Newton solves converged, the 12 FGMRES solves used 132 iterations in total
-and at most 11 per solve, and no relaxed acceptance or breakdown occurred.
-Mass drift is zero at 16-digit history precision. The measured rate is
-10.64899 s/step, or 0.3692 million leaf-cell steps/s.
+The XD checkout is clean at commit
+`6ff44924b64d955be27fd240269ca4cbd488b982`; binary SHA-256 is
+`f42869088d82a3294b35679380a06bac4140163bf0cdbc94df47f4779d38aca6`.
+The fixed input and separately deployed rank-resource wrapper have SHA-256
+`cfe44d6a597f16df7dc84f70bb4b42eb14074c4d678aac6eba668b5403c89b8c`
+and `d30afe06b6b70e72686051cc3479b82dcf43fc5468a2e0ead497877b38776d3c`.
 
-| nodes | ranks | s/step | max FGMRES | MG prec. | matvec | reductions | vector/other | max-rank RSS |
-| ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
-| 1 | 32 | 10.64899 | 11 | 82.275% | 12.328% | 1.030% | 4.368% | 1,241.6 MiB |
+The staged XD jobs are `343669`, `343671`, and `343685` (M-test-a, 1/2/4
+nodes and 32 MPI ranks/node).  They completed with exit `0:0` in 2:16, 0:57,
+and 0:31.  All 32/64/128 rank-resource and performance records are present.
+Every run reports the same ten measured steps; all 12 Newton solves converged,
+the 12 FGMRES solves used 132 iterations in total and at most 11 per solve,
+and no relaxed acceptance, breakdown, warning, or fatal event occurred.  Mass
+drift is zero at 16-digit history precision.
 
-The sum of per-rank peak high-water marks is 38.52 GiB, but those independent
-peaks are not asserted to be simultaneous. The one-node point alone is not a
-scaling result. Job `343671` is the staged two-node pilot; a four-node job is
-submitted only after that result passes.
+| nodes | ranks | s/step | speedup | efficiency | M leaf-cell steps/s | MG prec. | matvec | reductions | vector/other | max-rank RSS |
+| ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| 1 | 32 | 10.64899 | 1.000 | 1.000 | 0.369 | 82.275% | 12.328% | 1.030% | 4.368% | 1,241.6 MiB |
+| 2 | 64 | 4.05353 | 2.627 | 1.314 | 0.970 | 80.256% | 16.417% | 1.086% | 2.241% | 754.8 MiB |
+| 4 | 128 | 1.79601 | 5.929 | 1.482 | 2.189 | 74.581% | 20.124% | 2.658% | 2.637% | 479.2 MiB |
+
+The measured superlinear speedup is real for these three executions but is
+not generalized beyond this fixed problem and single repeat per node count.
+It is not caused by a convergence or rank-imbalance change: iteration counts
+are identical and max/mean measured-rank wall-time ratios are
+`1.00011 / 1.00018 / 1.00026`.  Instead, the per-rank active work, Krylov
+workspace (`44.24 / 22.12 / 11.06 MB`), and peak RSS all shrink with rank
+count.  The sum of rank user CPU time also falls from 4,126.5 to 3,187.1 to
+2,968.5 seconds, consistent with a working-set/cache or memory-bandwidth
+effect in addition to ordinary parallelism.  More repetitions would be
+required for a publication claim about the magnitude of superlinearity.
+
+The independent sums of per-rank peak high-water marks are 38.52, 46.48, and
+58.61 GiB.  They are not asserted to be simultaneous node memory.  The
+max-rank values in the table are the safer per-process requirement.  The
+FGMRES reduction fraction increases to 2.66% at four nodes but remains much
+smaller than the MG preconditioner and operator matvec; this problem has not
+yet reached a reduction-dominated scaling limit.
+
+The accepted 1/2/4-node `summary.json` SHA-256 values are respectively
+`4be4dbcfffefc1d4c2aa1eebdf44885f65e266cad28bdc3acb1e719bf6a40144`,
+`114b36c53f59d7dafde5046a73e25949066bf56e9aae925ad98b3231f7d13aae`,
+and `c242a5bdfb2f4f0eadffe8946a7a1fb3ac3a230d90e06e3145d3969a13963b2f`.
+The final aggregate JSON SHA-256 is
+`ada2b4631b05fd7c361fbd500344d9031d49158b0459d8c9333ea9cb7b2abf60`.
 
 Several earlier job attempts are retained but excluded from performance data:
 compute-node Python 3.6 could not parse the typed wrapper; a Python 3.11 path
@@ -241,9 +270,11 @@ The local machine is WSL on four physical cores/eight logical CPUs. Several
 long sequential runs show whole-kernel slowdowns without any change in Newton
 or FGMRES work (notably one MG and one rediscretized-FGMRES 4-rank repeat).
 Those values are retained in the ranges rather than discarded. Medians are
-more representative, but these are local engineering measurements, not final
-multi-node publication scaling. Rank peak RSS values are per-process high-water
-marks; summing them is not a simultaneous node RSS measurement.
+more representative.  The separate XD 1/2/4-node result is the multi-node
+engineering baseline for the fixed conservative-AMR case, but its single
+repeat per node count and one problem size do not establish broad publication
+scaling. Rank peak RSS values are per-process high-water marks; summing them
+is not a simultaneous node RSS measurement.
 
 Raw suites:
 
@@ -277,7 +308,7 @@ Raw suites:
   `/home/kosuke/simulation/test/rad_nr/wor20_publication_baseline_20261120/amr_testc_p4_long_20261120/performance_run_20261120_034212_554844_JST`
 - Conservative AMR comparison HTML/JSON/CSV/PNG:
   `/home/kosuke/simulation/test/rad_nr/wor20_publication_baseline_20261120/amr_comparison_v2_20261120`
-- XD one-node raw copy and provisional HTML/JSON/CSV/PNG:
+- XD 1/2/4-node raw copies and final HTML/JSON/CSV/PNG:
   `/home/kosuke/simulation/test/rad_nr/wor20_publication_baseline_20261120/xd_scaling_20261120`
 
 `wor20_compare_solvers.py` validates matched options and suite PASS status,
