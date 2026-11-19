@@ -45,16 +45,16 @@ run_case() {
   /usr/bin/time -f 'wall_s=%e maxrss_kb=%M' -o "$run/time.log" \
     srun -n56 --ntasks-per-node=56 bin/athena -i "$input" -d "$run" \
     time/integrator="$integrator" time/xorder="$xorder" \
-    time/correct_ic=false time/nlim=1 time/tlim=1.0 \
+    time/nlim=1 time/tlim=1.0 \
     gravity/mgmode=fmg gravity/threshold=-1.0 gravity/niteration=0 \
     output1/dcycle=1 output2/dt=-1 output3/dt=-1 \
     output4/dt=-1 output5/dt=-1 \
     > "$run/stdout.log" 2> "$run/stderr.log"
-  grep -q 'Terminating on cycle limit' "$run/stdout.log"
   if grep -Eiq 'nan|fatal error|segmentation fault' "$run/stdout.log" "$run/stderr.log"; then
     echo "$label produced a numeric or runtime failure" >&2
     exit 1
   fi
+  grep -q 'Terminating on cycle limit' "$run/stdout.log"
   "$run_root/analyze_relaxation_history" "$run/scf_rsg_relax.hst" \
     "$run/relaxation_diagnostics.csv" "$run/relaxation_summary.json"
   printf '%s ' "$label"
