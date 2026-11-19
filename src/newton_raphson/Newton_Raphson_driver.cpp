@@ -446,13 +446,18 @@ NewtonSolveResult NewtonRaphsonDriver::Solve_general(int stage, Real dt) {
   }
   NRFLDPrototype::SetTangentialOverride(0);
   NewtonSolveResult retry = Solve_general_once(stage, dt);
-  NRFLDPrototype::SetTangentialOverride(-1);
+  // A successful recovery establishes that the tangential form is unsafe for
+  // this trajectory and expensive even when it converges.  Retain the robust
+  // two-point form until process exit.  If recovery itself fails, restore the
+  // configured mode so the caller receives a failure without hidden state.
+  if (!retry.IsSuccess()) NRFLDPrototype::SetTangentialOverride(-1);
   if (Globals::my_rank == 0) {
     std::cout << "[NR_TANGENTIAL_FULL_RETRY] cycle=" << pmy_mesh_->ncycle
               << " stage=" << stage
               << " retry_status=" << NewtonSolveReasonName(retry.reason)
               << " retry_iterations=" << retry.iterations
-              << " committed=" << retry.committed << std::endl;
+              << " committed=" << retry.committed
+              << " two_point_latched=" << retry.IsSuccess() << std::endl;
   }
   return retry;
 }

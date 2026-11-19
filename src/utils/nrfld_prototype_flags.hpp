@@ -29,8 +29,9 @@ inline bool FlagOrDefault(const char *name, bool fallback) {
 
 // Runtime override used only while replaying a complete nonlinear solve.
 // -1 follows the configured/default mode, 0 disables, and 1 enables.  The
-// Newton driver changes this outside threaded regions and restores it before
-// returning, so ordinary calls retain the immutable environment semantics.
+// Newton driver changes this outside threaded regions.  A successful robust
+// retry may retain value 0 for the rest of that process; a fresh executable
+// starts from -1 and therefore follows the immutable environment semantics.
 inline int &TangentialOverride() {
   static int value = -1;
   return value;
