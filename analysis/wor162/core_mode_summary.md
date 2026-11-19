@@ -34,3 +34,25 @@ costly surface-refined L7 run.
 
 Raw decompositions are in `core_mode_342916/` and
 `core_resolution_342924/`.  Both analysis jobs completed successfully.
+
+## Root64 central-L7 extension to 0.1 dynamical time
+
+XD job 342926 completed normally in 43 minutes 21 seconds (9452 cycles),
+with no multigrid warnings and no NaN/Inf.  At 0.1 dynamical time, the fitted
+rotation within 20 Rsun is 0.9411 times the target, compared with 13.243 times
+the target for central L6.  The catastrophic axisymmetric spin-up is therefore
+absent at L7 through this time.
+
+Eight of nine relaxation gates pass.  The only failure is the global radial
+Mach RMS (0.204 versus a limit of 0.03), while radial and nonradial kinetic
+energies are only 4.43e-6 and 8.74e-7 of the binding energy.  The final
+equatorial-slice localization shows that 99.968% of the Mach-squared mass
+weight lies beyond 800 Rsun, dominated by the under-resolved 950--1000 Rsun
+surface bins.  In contrast, 91.1% of the radial kinetic energy and 99.0% of
+the nonradial kinetic energy lie inside 20 Rsun, but their absolute values are
+small.
+
+The discriminating run therefore supports combining central L7 (0.269 Rsun,
+18.96 cells per core support radius) with tracer-following surface L3.  The
+root64 grid is sufficient to validate central convergence but not surface
+Mach convergence.  Results are stored in `root64_l7_t01/`.
