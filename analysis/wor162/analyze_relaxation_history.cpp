@@ -63,6 +63,13 @@ std::size_t Column(const History& history, const std::string& name) {
   throw std::runtime_error("missing history column: " + name);
 }
 
+std::size_t OptionalColumn(const History& history, const std::string& name) {
+  for (std::size_t i = 0; i < history.names.size(); ++i) {
+    if (history.names[i] == name) return i;
+  }
+  return history.names.size();
+}
+
 double Relative(double value, double reference) {
   return (value-reference)/reference;
 }
@@ -96,6 +103,10 @@ int main(int argc, char** argv) {
     const std::size_t outside_mass = Column(h, "stellar_mass_outside_initial_surface_g");
     const std::size_t q_mass = Column(h, "stellar_ellipsoidal_radius_mass_g");
     const std::size_t q_max = Column(h, "stellar_ellipsoidal_radius_max");
+    const std::size_t wenoz_cells = OptionalColumn(h, "wenoz_available_cells");
+    const std::size_t wenoz_fallback = OptionalColumn(h, "wenoz_plm_fallback_cells");
+    const bool has_wenoz = wenoz_cells < h.names.size()
+        && wenoz_fallback < h.names.size();
 
     const std::vector<double>& initial = h.rows.front();
     const double initial_mechanical = initial[hydro_energy]+initial[self_energy]
@@ -107,7 +118,8 @@ int main(int argc, char** argv) {
            "radial_ke_over_abs_W,nonradial_perturbation_ke_over_abs_W,"
            "mean_radius_cm,rms_radius_cm,virial_relative_residual,"
            "outside_initial_surface_mass_fraction,mean_ellipsoidal_radius,"
-           "max_ellipsoidal_radius\n";
+           "max_ellipsoidal_radius,wenoz_available_cells,"
+           "wenoz_plm_fallback_cells,wenoz_plm_fallback_fraction\n";
     csv << std::scientific << std::setprecision(12);
 
     double maximum_mass_drift = 0.0;
@@ -116,6 +128,7 @@ int main(int argc, char** argv) {
     double maximum_mach_rms = 0.0;
     double maximum_mach = 0.0;
     double maximum_virial = 0.0;
+    double maximum_wenoz_fallback_fraction = 0.0;
     for (const std::vector<double>& row : h.rows) {
       const double mechanical = row[hydro_energy]+row[self_energy]+row[core_energy];
       const double mass_drift = Relative(row[mass], initial[mass]);
@@ -127,6 +140,10 @@ int main(int argc, char** argv) {
       const double virial = (2.0*row[kinetic]+row[pressure_virial]+gravity_virial)
           /std::abs(gravity_virial);
       const double binding = std::abs(gravity_virial);
+      const double available_cells = has_wenoz ? row[wenoz_cells] : 0.0;
+      const double fallback_cells = has_wenoz ? row[wenoz_fallback] : 0.0;
+      const double fallback_fraction = available_cells > 0.0
+          ? fallback_cells/available_cells : 0.0;
       csv << row[time] << ',' << row[time]*2.19999657e4/kDay << ','
           << row[time]*2.19999657e4/kDynamicalTime << ','
           << mass_drift << ',' << j_drift << ',' << energy_drift << ','
@@ -134,13 +151,16 @@ int main(int argc, char** argv) {
           << row[nonradial_ke]/binding << ',' << row[r_mass]/row[mass] << ','
           << std::sqrt(row[r2_mass]/row[mass]) << ',' << virial << ','
           << row[outside_mass]/row[mass] << ',' << row[q_mass]/row[mass] << ','
-          << row[q_max] << '\n';
+          << row[q_max] << ',' << available_cells << ',' << fallback_cells << ','
+          << fallback_fraction << '\n';
       maximum_mass_drift = std::max(maximum_mass_drift, std::abs(mass_drift));
       maximum_j_drift = std::max(maximum_j_drift, std::abs(j_drift));
       maximum_energy_drift = std::max(maximum_energy_drift, std::abs(energy_drift));
       maximum_mach_rms = std::max(maximum_mach_rms, mach_rms);
       maximum_mach = std::max(maximum_mach, row[mach_max]);
       maximum_virial = std::max(maximum_virial, std::abs(virial));
+      maximum_wenoz_fallback_fraction = std::max(
+          maximum_wenoz_fallback_fraction, fallback_fraction);
     }
 
     std::ofstream json(argv[3]);
@@ -157,7 +177,9 @@ int main(int argc, char** argv) {
          << maximum_energy_drift << ",\n"
          << "  \"maximum_radial_mach_rms\": " << maximum_mach_rms << ",\n"
          << "  \"maximum_radial_mach\": " << maximum_mach << ",\n"
-         << "  \"maximum_abs_virial_relative_residual\": " << maximum_virial << "\n"
+         << "  \"maximum_abs_virial_relative_residual\": " << maximum_virial << ",\n"
+         << "  \"maximum_wenoz_plm_fallback_fraction\": "
+         << maximum_wenoz_fallback_fraction << "\n"
          << "}\n";
   } catch (const std::exception& error) {
     std::cerr << "analyze_relaxation_history: " << error.what() << '\n';

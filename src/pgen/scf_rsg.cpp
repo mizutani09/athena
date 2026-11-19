@@ -58,7 +58,8 @@ bool rotate_atmosphere, isothermal_atmosphere;
 scf_map::AtmosphereModel atmosphere_model;
 int root_logical_level, surface_refinement_level;
 Real surface_tracer_lower, surface_tracer_upper, surface_density_code;
-constexpr int kMeshBlockHistoryStart = 29;
+constexpr int kWenozHistoryStart = 29;
+constexpr int kMeshBlockHistoryStart = 31;
 constexpr int kTrackedMeshLevels = 7;
 
 int SurfaceRefinementCondition(MeshBlock* block);
@@ -321,6 +322,29 @@ Real HistoryMass(MeshBlock* block, int) {
 Real HistoryMeshLevel(MeshBlock* block, int output) {
   const int relative_level = block->loc.level-root_logical_level;
   return relative_level == output-kMeshBlockHistoryStart ? 1.0 : 0.0;
+}
+
+Real HistoryWenozCells(MeshBlock* block, int output) {
+  const AthenaArray<int>& mask = block->phydro->GetTroubledCellMask();
+  const Hydro::TroubledCellMaskBounds& bounds =
+      block->phydro->GetTroubledCellMaskBounds();
+  if (mask.GetDim1() == 0 || bounds.il > bounds.iu || bounds.jl > bounds.ju
+      || bounds.kl > bounds.ku) return 0.0;
+  Real total = 0.0;
+  for (int k = block->ks; k <= block->ke; ++k) {
+    for (int j = block->js; j <= block->je; ++j) {
+      for (int i = block->is; i <= block->ie; ++i) {
+        const bool available = i >= bounds.il && i <= bounds.iu
+            && j >= bounds.jl && j <= bounds.ju
+            && k >= bounds.kl && k <= bounds.ku;
+        if (output == kWenozHistoryStart && available) total += 1.0;
+        if (output == kWenozHistoryStart+1 && available && mask(k,j,i) != 0) {
+          total += 1.0;
+        }
+      }
+    }
+  }
+  return total;
 }
 
 Real HistoryStellarMass(MeshBlock* block, int) {
@@ -660,6 +684,10 @@ void Mesh::InitUserMeshData(ParameterInput* pin) {
                           "stellar_ellipsoidal_radius_mass_g");
   EnrollUserHistoryOutput(28, HistoryRelaxationDiagnostic,
                           "stellar_ellipsoidal_radius_max", UserHistoryOperation::max);
+  EnrollUserHistoryOutput(kWenozHistoryStart, HistoryWenozCells,
+                          "wenoz_available_cells");
+  EnrollUserHistoryOutput(kWenozHistoryStart+1, HistoryWenozCells,
+                          "wenoz_plm_fallback_cells");
   for (int level = 0; level < kTrackedMeshLevels; ++level) {
     std::stringstream name;
     name << "meshblocks_L" << level;
