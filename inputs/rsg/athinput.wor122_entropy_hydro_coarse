@@ -1,0 +1,209 @@
+<comment>
+problem         = local RSG photospheric FLD patch; diagnostic, not a global star
+reference       = WOR-14 imported HSE profile; periodic horizontal box, profile gravity
+configure       = --prob=nrfld_conv_sun --coord=cartesian --eos=general/eos_table --flux=hllc -nrmgfld -hdf5 -mpi
+
+<job>
+problem_id      = wor122_entropy_hydro_coarse   # problem ID: basename of output filenames
+
+<output1>
+file_type       = hst         # History data dump
+# dcycle          = 1           # time increment between outputs
+dt              = 4.0
+
+<output2>
+file_type       = hdf5        # Binary data dump
+id              = prim_z_slice
+variable        = prim        # variables to be output
+# dcycle          = 1         # time increment between outputs
+dt              = 4.0
+x1_slice        = 1.6         # slice location in X1
+x2_slice        = 1.6         # slice location in X2
+ghost_zones     = true
+
+<output3>
+file_type       = hdf5
+id              = uov_z_slice
+variable        = uov
+# dcycle          = 1
+dt              = 4.0
+x1_slice        = 1.6
+x2_slice        = 1.6
+ghost_zones     = true
+
+# <output4>
+# file_type       = hdf5
+# id              = prim_xy_slice
+# variable        = prim
+# # dcycle          = 1
+# dt              = 0.05
+# x3_slice        = 0.8
+# # ghost_zones     = true
+
+# <output5>
+# file_type       = hdf5
+# id              = uov_xy_slice
+# variable        = uov
+# # dcycle          = 1
+# dt              = 0.05
+# x3_slice        = 0.8
+# # ghost_zones     = true
+
+<output6>
+file_type       = hdf5
+id              = prim_xz_slice
+variable        = prim
+# dcycle          = 1
+dt              = 4.0
+x2_slice        = 1.6
+# ghost_zones     = true
+
+<output7>
+file_type       = hdf5
+id              = uov_xz_slice
+variable        = uov
+# dcycle          = 1
+dt              = 4.0
+x2_slice        = 1.6
+# ghost_zones     = true
+
+# <output8>
+# file_type       = rst
+# dt              = 4.0
+
+<output8>
+file_type       = hdf5
+id              = uov_full
+variable        = uov
+dt              = 4.0
+
+<output9>
+file_type       = hdf5
+id              = prim_full
+variable        = prim
+dt              = 4.0
+
+<time>
+cfl_number      = 0.03         # The Courant, Friedrichs, & Lewy (CFL) Number
+nlim            = 500      # matched thermal-budget gate
+tlim            = 8.0      # 2.04 days
+integrator      = rk2         # time integration algorithm
+xorder          = 2           # order of spatial reconstruction
+ncycle_out      = 100            # interval for stdout summary info
+
+<mesh>
+nx1             = 16           # 10 Rsun / 16 = 0.625 Rsun
+x1min           = 0.0       # minimum value of X1
+x1max           = 10.0       # 10 Rsun total
+ix1_bc          = periodic     # inner-X1 boundary flag
+ox1_bc          = periodic     # outer-X1 boundary flag
+
+nx2             = 16           # 10 Rsun / 16 = 0.625 Rsun
+x2min           = 0.0       # minimum value of X2
+x2max           = 10.0       # 10 Rsun total
+ix2_bc          = periodic     # inner-X2 boundary flag
+ox2_bc          = periodic     # outer-X2 boundary flag
+
+nx3             = 96           # 60 Rsun / 96 = 0.625 Rsun
+x3min           = 0.0          # minimum value of X3
+x3max           = 60.0        # 60 Rsun total
+ix3_bc          = user         # inner-X3 boundary flag
+ox3_bc          = user         # outer-X3 boundary flag
+
+<meshblock>
+nx1             = 16
+nx2             = 16
+nx3             = 16
+
+<hydro>
+gamma           = 1.66666666666667 # gamma = C_p/C_v
+# RSG material EOS and imported profile units
+rho_unit        = 1.0e-8   # g cm^-3
+egas_unit       = 1.0e5   # erg cm^-3
+leng_unit       = 6.957e10                    # cm
+mu              = 1.3       # mean molecular weight
+dens_pow        = -1.0
+eos_file_name   = data/eos/rsg_tomida2013_material_eos.tab
+eos_file_type   = ascii
+eos_read_ratios = true
+eos_rho_unit    = 1.0e-8
+eos_egas_unit   = 1.0e5
+T_unit          = 1.0
+eos_temp_unit   = 1.0
+
+<nrfld>
+mgmode          = FMG
+smoother        = jacobi-rb
+npresmooth      = 2
+npostsmooth     = 2
+omega           = 1.0
+threshold       = 0.0
+niteration      = 10
+nr_threshold    = 1e-8
+backward_error_convergence = true
+exact_local_gas_solve = true
+nr_niteration   = 100
+ix1_bc          = periodic
+ox1_bc          = periodic
+ix2_bc          = periodic
+ox2_bc          = periodic
+ix3_bc          = user
+ox3_bc          = user
+
+<fld>
+cut_diff = true
+use_opacity_table = true
+opacity_table_file = data/opacity/rsg_gray_opacity_wor55.h5
+opacity_table_file_type = hdf5
+opacity_table_axis = trho
+opacity_table_domain_policy = clamp
+include_radiation_force = true
+opacity_table_temperature_dataset = axes/log10_temperature
+opacity_table_x2_dataset = axes/log10_density
+opacity_table_planck_dataset = kappa/log10_planck
+opacity_table_rosseland_dataset = kappa/log10_rosseland
+const_opacity_P  = 0.0
+const_opacity_R  = 1.0
+
+<problem>
+stellar_profile_file       = data/ic/wor122_surface_patch_830.dat
+stellar_profile_scale_file = data/ic/wor122_surface_patch_830.scales
+photosphere_radius_cgs    = 5.77431e13
+grav_acc                   = 3.96901573426643062e-01
+use_profile_gravity        = true
+nabla_eps                  = 1.0e-1
+vz_perturb_frac            = 0.0
+
+# local box extent relative to the photosphere; must satisfy
+# (photosphere_height_above_cgs + photosphere_depth_below_cgs)/leng_unit = x3max - x3min
+photosphere_height_above_cgs = 2.0871e12
+photosphere_depth_below_cgs  = 2.0871e12
+
+# Fixed-temperature control only; Marshak mode ignores this value
+top_radiation_temperature = 2431.18
+
+# bottom inflow control
+bottom_inflow_eint = -1.0
+flux_feedback_on   = false
+target_solar_flux_cgs = 8.389e9
+# code limitation: fixed relaxation time instead of dynamically computed Kelvin-Helmholtz time
+flux_relax_time_cgs   = 1.0e6
+
+# Bottom pressure feedback is disabled for the causal test
+mass_correction_on = false
+mass_relax_time_cgs = 30.0
+abort_on_dt_excursion = false
+dt_min_factor = 1.0e-4
+dt_max_factor = 1.0e2
+
+top_radiation_boundary = marshak_vacuum
+marshak_alpha = 0.5
+bottom_heat_flux_cgs = 0.000000000000e+00
+bottom_heat_depth_cgs = 3.4785e11
+
+# Preparation-only proxy for the missing initial convective transport
+surface_heat_flux_cgs = 0.0
+surface_heat_inner_rsun = 812.5
+surface_heat_outer_rsun = 817.5
+bottom_hydro_reflecting = true
+density_perturb_frac = 0.02
