@@ -141,6 +141,8 @@ int main(int argc, char** argv) {
     const double sensor = Value(wz_history, wz_final, "wenoz_sensor_fallback_cells");
     const double amr = Value(wz_history, wz_final, "wenoz_amr_fallback_cells");
     const double fallback = Value(wz_history, wz_final, "wenoz_plm_fallback_cells");
+    const double fallback_mass = Value(
+        wz_history, wz_final, "wenoz_plm_fallback_stellar_mass_g");
     if (available <= 0.0 || fallback < 0.0 || fallback > available) {
       throw std::runtime_error("invalid 4wz fallback cell counts");
     }
@@ -161,6 +163,8 @@ int main(int argc, char** argv) {
            << "  \"wenoz_sensor_fallback_fraction\": " << sensor/available << ",\n"
            << "  \"wenoz_amr_fallback_fraction\": " << amr/available << ",\n"
            << "  \"wenoz_plm_fallback_fraction\": " << fallback/available << ",\n";
+    output << "  \"wenoz_plm_fallback_stellar_mass_fraction\": "
+           << fallback_mass/wz.mass << ",\n";
     WriteMetric(output, "mapped_stellar_mass_g", x2.mass, wz.mass, true);
     WriteMetric(output, "mapped_Jz_g_cm2_s", x2.angular_momentum,
                 wz.angular_momentum, true);

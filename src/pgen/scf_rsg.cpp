@@ -61,7 +61,9 @@ Real surface_tracer_lower, surface_tracer_upper, surface_density_code;
 constexpr int kWenozHistoryStart = 29;
 constexpr int kTrackedMeshLevels = 7;
 constexpr int kWenozLevelHistoryStart = 33;
-constexpr int kMeshBlockHistoryStart = kWenozLevelHistoryStart+kTrackedMeshLevels;
+constexpr int kWenozFallbackMassHistory =
+    kWenozLevelHistoryStart+kTrackedMeshLevels;
+constexpr int kMeshBlockHistoryStart = kWenozFallbackMassHistory+1;
 
 int SurfaceRefinementCondition(MeshBlock* block);
 
@@ -353,6 +355,30 @@ Real HistoryWenozCells(MeshBlock* block, int output) {
   }
   if (output == kWenozHistoryStart+2) {
     return static_cast<Real>(block->phydro->GetWenozAmrFallbackCells());
+  }
+  return total;
+}
+
+Real HistoryWenozFallbackMass(MeshBlock* block, int) {
+  const AthenaArray<int>& mask = block->phydro->GetTroubledCellMask();
+  const Hydro::TroubledCellMaskBounds& bounds =
+      block->phydro->GetTroubledCellMaskBounds();
+  if (mask.GetDim1() == 0 || bounds.il > bounds.iu || bounds.jl > bounds.ju
+      || bounds.kl > bounds.ku) return 0.0;
+  Real total = 0.0;
+  const Real scale = rho_unit*std::pow(length_unit, 3);
+  for (int k = block->ks; k <= block->ke; ++k) {
+    for (int j = block->js; j <= block->je; ++j) {
+      for (int i = block->is; i <= block->ie; ++i) {
+        const bool available = i >= bounds.il && i <= bounds.iu
+            && j >= bounds.jl && j <= bounds.ju
+            && k >= bounds.kl && k <= bounds.ku;
+        if (available && mask(k,j,i) != 0) {
+          total += block->pscalars->s(0,k,j,i)
+              *block->pcoord->GetCellVolume(k,j,i)*scale;
+        }
+      }
+    }
   }
   return total;
 }
@@ -708,6 +734,8 @@ void Mesh::InitUserMeshData(ParameterInput* pin) {
     EnrollUserHistoryOutput(kWenozLevelHistoryStart+level, HistoryWenozCells,
                             name.str().c_str());
   }
+  EnrollUserHistoryOutput(kWenozFallbackMassHistory, HistoryWenozFallbackMass,
+                          "wenoz_plm_fallback_stellar_mass_g");
   for (int level = 0; level < kTrackedMeshLevels; ++level) {
     std::stringstream name;
     name << "meshblocks_L" << level;
