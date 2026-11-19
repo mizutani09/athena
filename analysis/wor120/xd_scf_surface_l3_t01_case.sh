@@ -6,7 +6,7 @@
 #SBATCH --cpus-per-task=1
 #SBATCH --hint=nomultithread
 #SBATCH --mem=110G
-#SBATCH --time=12:00:00
+#SBATCH --time=04:00:00
 #SBATCH --job-name=wor120_l3_m2t01
 #SBATCH --output=/work/mizutaniks/wor120/hd4wz_scf_l3_memory2_t01_%j.out
 

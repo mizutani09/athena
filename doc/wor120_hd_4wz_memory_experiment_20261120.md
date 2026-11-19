@@ -77,6 +77,22 @@ A separate `-fsanitize=address` debug build also completes a three-dimensional S
 4wz cycle with scalar PLM and no invalid access.  This specifically exercises the
 Berta path after the legacy fourth-order scalar arrays have been left unallocated.
 
-The committed gate now targets memory2 on the same three 110 GiB nodes.  This branch
-remains separate from production until that 100-cycle surface-L3 gate completes and
-the measured rank/node RSS confirms safe sustained headroom.
+## XD memory2 result
+
+The exact surface-L3 gate (`343554`) completed all 100 cycles on the same 168 ranks
+and three 110 GiB nodes.  The MPI step took 220.08 s, reported 1.28 GiB average RSS
+per rank and 4.25 GiB for the largest rank, and left stderr empty.  For comparison,
+Slurm reported 1.92 GiB average for memory1 and 2.01 GiB for the original storage.
+The new layout therefore passes the node cgroup with substantial sustained headroom.
+
+The mesh remains fixed at 2,416 blocks.  At 100 cycles the stellar-mass drift is
+`2.30e-12`; the maximum mechanical-energy drift is `1.27e-4`, radial Mach RMS
+`2.49e-3`, and absolute virial residual `2.51e-3`.  No NaN, multigrid warning, or
+runtime failure occurs.  Total and stellar-mass-weighted Hydro fallback fractions are
+22.0% and 18.8%.
+
+The 100-cycle main-loop measurement is 180.16 s.  Scaling to the approximately 4,752
+cycles needed for `0.1 t_dyn` gives 2.38 h; allowing restart I/O, final output, and
+performance variation, the sustained script requests four hours.  Job `343567` uses
+the identical accepted restart and binary and keeps a final restart active for later
+continuation.
