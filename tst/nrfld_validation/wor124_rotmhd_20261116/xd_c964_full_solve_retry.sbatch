@@ -14,6 +14,8 @@ source_dir="$base/source_full_solve_retry_20261119"
 reader="$base/scripts/read_restart.py"
 audit="$base/scripts/collapse_opacity_domain_audit.py"
 rst="$base/rootfix_fgmres_refinement/job_343340/output/wor124_refine_c960_cfl015.00120.rst"
+eos_table="$source_dir/data/eos/protostellar_tomida2015_material.tab"
+opacity_table="$source_dir/data/opacity/protostellar_semenov2003_nrm_c_a.h5"
 job="$base/rootfix_full_solve_retry/job_${SLURM_JOB_ID}"
 mkdir -p "$job/output"
 
@@ -40,6 +42,11 @@ if [[ ! -s "$rst" ]] || [[ $(python3 "$reader" "$rst" --field cycle) != 964 ]]; 
   printf 'FAIL_INVALID_CHECKPOINT path=%s\n' "$rst" > "$job/status.txt"
   exit 1
 fi
+if [[ ! -s "$eos_table" ]] || [[ ! -s "$opacity_table" ]]; then
+  printf 'FAIL_MISSING_TABLE eos=%s opacity=%s\n' "$eos_table" "$opacity_table" \
+    > "$job/status.txt"
+  exit 1
+fi
 
 cd "$source_dir"
 python3 configure.py --prob=protostellar_core_fld --coord=cartesian \
@@ -52,7 +59,7 @@ make -j8 > "$job/build.log" 2>&1
   date -Is
   printf 'git_commit=%s ranks=%s restart_cycle=964 target=965 cfl=0.15 tangential_reconstruction=1 full_solve_retry=1 nr_max_iterations=8\n' \
     99395a3e4 "$SLURM_NTASKS"
-  sha256sum "$rst" "$source_dir/bin/athena" \
+  sha256sum "$rst" "$eos_table" "$opacity_table" "$source_dir/bin/athena" \
     "$source_dir/src/utils/nrfld_prototype_flags.hpp" \
     "$source_dir/src/newton_raphson/Newton_Raphson_driver.cpp"
   module list 2>&1
