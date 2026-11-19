@@ -43,6 +43,11 @@ The smooth one-dimensional Gaussian remains identical to the parent prototype:
 The correction is inactive in these positive smooth solutions, so it does not hide a
 loss of asymptotic order.
 
+The exact MPI SCF configuration (self-gravity, two scalars, `NGHOST=4`) also builds.
+A four-rank, surface-level-0 RK4 + 4wz smoke advances one cycle on 400 MeshBlocks
+(1,638,400 zone-cycles) without a NaN, multigrid warning, or topology change.  Both
+integrated scalar masses are unchanged at the 12-digit history precision.
+
 ## Remaining limitation
 
 A MeshBlock whose total scalar mass is non-positive has no positive state with the
