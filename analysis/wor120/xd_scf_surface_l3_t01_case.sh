@@ -22,6 +22,15 @@ export OMP_NUM_THREADS=1
 ulimit -c 0
 
 repository=$HOME/simulation/athena-wor120-hd4wz-memory2
+expected_tasks=168
+expected_nodes=3
+tasks_per_node=56
+if [ "${SLURM_NTASKS:-0}" -ne "$expected_tasks" ] \
+    || [ "${SLURM_JOB_NUM_NODES:-0}" -ne "$expected_nodes" ]; then
+  echo "invalid allocation: expected ${expected_tasks} tasks on ${expected_nodes} nodes," \
+       "got ${SLURM_NTASKS:-unset} tasks on ${SLURM_JOB_NUM_NODES:-unset} nodes" >&2
+  exit 2
+fi
 method=${SCF_METHOD:?set SCF_METHOD to x2 or 4wz}
 restart=${SCF_RESTART:?set SCF_RESTART to the accepted L3 seed restart}
 source_history=${SCF_HISTORY:-$(dirname "$restart")/scf_rsg_relax.hst}
@@ -57,7 +66,7 @@ sha256sum bin/athena "$restart" src/eos/eos_high_order.cpp \
   > "$run/provenance.sha256"
 
 /usr/bin/time -f 'wall_s=%e maxrss_kb=%M' -o "$run/time.log" \
-  srun -n"$SLURM_NTASKS" \
+  srun -n"$expected_tasks" --ntasks-per-node="$tasks_per_node" \
   bin/athena -r "$restart" -d "$run" \
   time/integrator="$integrator" time/xorder="$xorder" \
   time/nlim=-1 time/tlim="$target_time" \
