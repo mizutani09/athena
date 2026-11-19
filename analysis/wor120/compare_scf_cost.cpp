@@ -20,6 +20,8 @@ struct Cost {
   double wall_seconds;
   double launcher_maxrss_kib;
   double slurm_elapsed_seconds;
+  long long slurm_allocated_cpus;
+  long long slurm_nodes;
   double slurm_average_rss_kib;
   double slurm_maximum_rss_kib;
 };
@@ -138,13 +140,15 @@ void ReadSacct(const std::string& filename, Cost* cost) {
   std::string line;
   while (std::getline(input, line)) {
     const std::vector<std::string> fields = Split(line, '|');
-    if (fields.size() < 7 || Trim(fields[0]).empty()) continue;
+    if (fields.size() < 9 || Trim(fields[0]).empty()) continue;
     if (Trim(fields[1]) != "COMPLETED") {
       throw std::runtime_error("MPI step did not complete: " + Trim(fields[1]));
     }
     cost->slurm_elapsed_seconds = ParseNumber(fields[2], "Slurm elapsed seconds");
-    cost->slurm_average_rss_kib = ParseMemoryKib(fields[3]);
-    cost->slurm_maximum_rss_kib = ParseMemoryKib(fields[4]);
+    cost->slurm_allocated_cpus = ParseInteger(fields[3], "Slurm allocated CPUs");
+    cost->slurm_nodes = ParseInteger(fields[4], "Slurm nodes");
+    cost->slurm_average_rss_kib = ParseMemoryKib(fields[5]);
+    cost->slurm_maximum_rss_kib = ParseMemoryKib(fields[6]);
     return;
   }
   throw std::runtime_error("no Slurm step accounting row: " + filename);
@@ -177,6 +181,12 @@ void WriteMethod(std::ostream& output, const char* name, const Cost& cost,
          << "    \"wall_seconds\": " << cost.wall_seconds << ",\n"
          << "    \"slurm_step_elapsed_seconds\": "
          << cost.slurm_elapsed_seconds << ",\n"
+         << "    \"slurm_allocated_cpus\": " << cost.slurm_allocated_cpus << ",\n"
+         << "    \"slurm_nodes\": " << cost.slurm_nodes << ",\n"
+         << "    \"allocated_cpu_hours\": "
+         << cost.slurm_elapsed_seconds*cost.slurm_allocated_cpus/3600.0 << ",\n"
+         << "    \"allocated_node_hours\": "
+         << cost.slurm_elapsed_seconds*cost.slurm_nodes/3600.0 << ",\n"
          << "    \"zone_cycles_per_cpu_second\": "
          << cost.zone_cycles_per_cpu_second << ",\n"
          << "    \"slurm_average_rss_kib_per_rank\": "

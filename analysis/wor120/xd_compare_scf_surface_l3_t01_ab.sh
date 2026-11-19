@@ -43,10 +43,10 @@ icpx -O2 -std=c++11 -Wall -Wextra -Werror -pedantic \
 "$run/compare_scf_ab" "$x2_history" "$wz_history" \
   "$run/ab_comparison.json"
 sacct -j "${x2_job_id}.0" --units=K -n -P \
-  -o JobID,State,ElapsedRaw,AveRSS,MaxRSS,MaxRSSNode,MaxRSSTask \
+  -o JobID,State,ElapsedRaw,AllocCPUS,NNodes,AveRSS,MaxRSS,MaxRSSNode,MaxRSSTask \
   > "$run/x2_sacct.txt"
 sacct -j "${wz_job_id}.0" --units=K -n -P \
-  -o JobID,State,ElapsedRaw,AveRSS,MaxRSS,MaxRSSNode,MaxRSSTask \
+  -o JobID,State,ElapsedRaw,AllocCPUS,NNodes,AveRSS,MaxRSS,MaxRSSNode,MaxRSSTask \
   > "$run/4wz_sacct.txt"
 "$run/compare_scf_cost" \
   "$x2_run/stdout.log" "$x2_run/time.log" "$run/x2_sacct.txt" \
