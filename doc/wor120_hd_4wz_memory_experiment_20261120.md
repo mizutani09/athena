@@ -64,9 +64,11 @@ arrays.  Hydro remains Berta WENO-Z plus RK4; only tracer transport is second or
 This is the robustness contract tested by scalar-PLM job `343506`, which kept the B16
 topology fixed and reduced its energy excursion by a factor of about 34.
 
-Relative to memory1, memory2 removes another 10.24 MB per B32 block, or 23.04 GiB
-over 2,416 blocks.  The cumulative logical reduction from the original implementation
-is 34.56 GiB.  In the local four-rank, 400-block SCF smoke, peak RSS changes from
+Relative to memory1, memory2 removes another 10.304 MB per B32 block: one NHYDRO
+array, six NSCALARS arrays, and the three directional point-mass-flux arrays.  This is
+23.19 GiB over 2,416 blocks.  The cumulative logical reduction from the original
+implementation is 40.47 GiB.  In the local four-rank, 400-block SCF smoke, peak RSS
+changes from
 1,551,276 KiB (original) to 1,389,120 KiB (memory1) and 1,170,804 KiB (memory2 plus
 scalar PLM), a cumulative 24.5% reduction.  The resulting history is byte-for-byte
 identical to the independently validated scalar-PLM branch.
