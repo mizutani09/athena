@@ -86,6 +86,39 @@ bitwise check.
 No non-finite opacity, table-domain violation, Newton failure, or FGMRES
 breakdown was reported in any accepted smoke case.
 
+### XD clean-source build and same-restart smoke
+
+The option was also built in an isolated XD worktree at clean source commit
+`f3bfffa4f31d9589ebb2660bed30ba2da02304a8`.  The executable SHA-256 is
+`473b9b6ef5eaf5d30783ca9e3a7ea731a69eb4fb02dcb30f89ee781d27a87c8f`.
+Build job `343649` completed `0:0` in 1:19.  The generated configuration was
+checked against the validated solar build; the validated Intel-MPI Makefile
+was used to avoid the current configure script's inappropriate
+`-qopenmp-simd` annotation of the table-EOS exception path.
+
+Job `343651` then ran enabled and disabled modes from the exact same restart
+on 32 ranks, from code time 5.0 to 5.5.  Both paths completed `0:0`; all nine
+Newton records per path converged (including the zero-dt initialization), all
+16 active linear solves used exactly the same FGMRES iteration sequence, 142
+iterations total and at most 11 per solve.  There was no fatal message,
+opacity anomaly, or changed timestep history.
+
+At the six-digit history precision, the enabled/disabled mean top-radiation
+difference over this very early transient is only `-1.58e-6` relative and the
+final values round to equality.  Float32 final HDF5 relative L2 differences
+remain small but nonzero: `1.33e-10` in density, `7.00e-11` in pressure,
+`1.68e-9` in radiation energy, and at most `1.30e-6` among velocity
+components.  This is a stability/default-isolation smoke, not the physical
+selection test.
+
+The mature-state same-restart A/B is XD job `343667`.  It starts at code time
+65,000 from the selected high-entropy HD2 state and evolves enabled/disabled
+paths concurrently to 66,000.  Its result is deliberately pending and is the
+remaining production-selection gate.  The versioned 36-column clean-history
+analyzer rejects the two advective-radiation columns that existed only in the
+historical dirty checkout, and reports 100/500/1000-time windows, energy
+storage/closure, mass drift, timestep, velocity RMS, Newton, and FGMRES work.
+
 ## Decision
 
 PASS as an opt-in solar boundary closure and PASS for default-off regression.
