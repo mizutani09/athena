@@ -1,0 +1,104 @@
+{
+  "source_profile": "tst/nrfld_validation/wor122_henyey_mlt_20261118/alpha2p366_fine_fld.dat",
+  "source_sha256": "9ec1fc90d2c0d6a73b96fe81d14a601c3771934d9eeaf49745770230a2212e6c",
+  "setup": "800–860 Rsun plane-parallel local patch; horizontal width 16 cells at each dx; no initial velocity, perturbation, or heating; full FLD; 4 MPI ranks; Tomida EOS and WOR-55 opacity",
+  "time_unit_hours": 6.111101578275392,
+  "rows": [
+    {
+      "dx_rsun": 0.625,
+      "cells": [
+        16,
+        16,
+        96
+      ],
+      "initial_diffusion_over_Erad_per_code": -34.17939,
+      "Egas_over_abs_diffusion_code": 6.52891,
+      "Egas_over_abs_diffusion_hours": 39.899,
+      "radiative_luminosity_813_817_over_Lstar": 0.26638,
+      "force_815_817_mean_abs_over_rhog": 0.011146,
+      "force_815_817_max_abs_over_rhog": 0.015754,
+      "snapshots": [
+        {
+          "time_code": 0.0,
+          "Tgas_K": 7470.8462,
+          "max_Mach": 0.0
+        },
+        {
+          "time_code": 0.2639165,
+          "Tgas_K": 7266.4331,
+          "max_Mach": 0.003334
+        },
+        {
+          "time_code": 0.5,
+          "Tgas_K": 7101.6191,
+          "max_Mach": 0.009745
+        }
+      ],
+      "Tfinal_over_initial": 0.950578
+    },
+    {
+      "dx_rsun": 0.3125,
+      "cells": [
+        16,
+        16,
+        192
+      ],
+      "initial_diffusion_over_Erad_per_code": -31.5736,
+      "Egas_over_abs_diffusion_code": 7.07548,
+      "Egas_over_abs_diffusion_hours": 43.239,
+      "radiative_luminosity_813_817_over_Lstar": 0.2372,
+      "force_815_817_mean_abs_over_rhog": 0.009779,
+      "force_815_817_max_abs_over_rhog": 0.02943,
+      "snapshots": [
+        {
+          "time_code": 0.0,
+          "Tgas_K": 7467.916,
+          "max_Mach": 0.0
+        },
+        {
+          "time_code": 0.2634307,
+          "Tgas_K": 7258.7817,
+          "max_Mach": 0.004359
+        },
+        {
+          "time_code": 0.5,
+          "Tgas_K": 7088.7271,
+          "max_Mach": 0.011127
+        }
+      ],
+      "Tfinal_over_initial": 0.949224
+    },
+    {
+      "dx_rsun": 0.15625,
+      "cells": [
+        16,
+        16,
+        384
+      ],
+      "initial_diffusion_over_Erad_per_code": -29.4946,
+      "Egas_over_abs_diffusion_code": 7.66385,
+      "Egas_over_abs_diffusion_hours": 46.835,
+      "radiative_luminosity_813_817_over_Lstar": 0.24833,
+      "force_815_817_mean_abs_over_rhog": 0.015404,
+      "force_815_817_max_abs_over_rhog": 0.062838,
+      "snapshots": [
+        {
+          "time_code": 0.0,
+          "Tgas_K": 7435.6084,
+          "max_Mach": 0.0
+        },
+        {
+          "time_code": 0.255904,
+          "Tgas_K": 7238.2261,
+          "max_Mach": 0.005064
+        },
+        {
+          "time_code": 0.5,
+          "Tgas_K": 7070.3179,
+          "max_Mach": 0.011909
+        }
+      ],
+      "Tfinal_over_initial": 0.950873
+    }
+  ]
+}

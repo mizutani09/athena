@@ -1,0 +1,14 @@
+{
+  "input": "tst/nrfld_validation/wor122_henyey_mlt_20261118/alpha2p366_fine_fld.dat",
+  "input_sha256": "9ec1fc90d2c0d6a73b96fe81d14a601c3771934d9eeaf49745770230a2212e6c",
+  "reference_rsun": 830.0,
+  "rho_ref_cgs": 1.0134659070039773e-09,
+  "pgas_ref_cgs": 207.03039713722083,
+  "gravity_ref_cgs": 0.39690157342664306,
+  "source_columns": [
+    "r_cm",
+    "rho_g_cm3",
+    "Pgas_dyn_cm2"
+  ],
+  "gravity": "WOR-14 fixed Freytag potential, Mpot=12 Msun, rcore=166 Rsun, router=996 Rsun"
+}
