@@ -92,6 +92,7 @@ namespace {
   Real nabla, nabla_eps;
   Real grav_acc;
   bool use_profile_gravity = false;
+  bool bottom_hydro_reflecting = false;
   bool marshak_vacuum_top = false;
   Real marshak_alpha = 0.5;
   Real bottom_heat_depth = 0.0;
@@ -102,6 +103,7 @@ namespace {
   bool transfer_heat_to_bottom = false;
   Real heat_transfer_start = -1.0;
   Real heat_transfer_end = -1.0;
+  Real density_perturb_frac = 0.0;
   Real z_ref, rho_ref, T_ref, press_ref;
   Real T_ex;
   Real stellar_r_base, stellar_r_surface, stellar_r_photosphere;
@@ -899,6 +901,26 @@ void HydroReflectInnerX3(MeshBlock *pmb, Coordinates *pco, AthenaArray<Real> &pr
   return;
 }
 
+// Closed gas boundary for a locally heated RSG patch.  The legacy
+// HydroReflectInnerX3 is an open inflow/outflow boundary despite its name.
+void HydroClosedInnerX3(MeshBlock *pmb, Coordinates *pco, AthenaArray<Real> &prim,
+                       FaceField &b, Real time, Real dt, int is, int ie,
+                       int js, int je, int ks, int ke, int ngh) {
+  for (int k=1; k<=ngh; ++k) {
+    const int src=ks+k-1;
+    const int dst=ks-k;
+    for (int j=js; j<=je; ++j) {
+      for (int i=is; i<=ie; ++i) {
+        prim(IDN,dst,j,i)=prim(IDN,src,j,i);
+        prim(IPR,dst,j,i)=prim(IPR,src,j,i);
+        prim(IVX,dst,j,i)=prim(IVX,src,j,i);
+        prim(IVY,dst,j,i)=prim(IVY,src,j,i);
+        prim(IVZ,dst,j,i)=-prim(IVZ,src,j,i);
+      }
+    }
+  }
+}
+
 void HydroFixedOuterX3(MeshBlock *pmb, Coordinates *pco, AthenaArray<Real> &prim, FaceField &b,
     Real time, Real dt, int is, int ie, int js, int je, int ks, int ke, int ngh) {
   for (int j=js; j<=je; j++) {
@@ -1109,6 +1131,8 @@ void Mesh::InitUserMeshData(ParameterInput *pin) {
   SetProfileWindow(pin, mesh_size);
   use_profile_gravity = pin->GetOrAddBoolean(
       "problem", "use_profile_gravity", false);
+  bottom_hydro_reflecting = pin->GetOrAddBoolean(
+      "problem", "bottom_hydro_reflecting", false);
   const Real bottom_heat_flux_cgs = pin->GetOrAddReal(
       "problem", "bottom_heat_flux_cgs", 0.0);
   bottom_heat_depth = pin->GetOrAddReal(
@@ -1226,6 +1250,14 @@ void Mesh::InitUserMeshData(ParameterInput *pin) {
   mass_correction_on = pin->GetOrAddBoolean("problem", "mass_correction_on", false);
   mass_relax_time = pin->GetOrAddReal("problem", "mass_relax_time_cgs", 30.0)/time_unit;
   vz_perturb_frac = pin->GetOrAddReal("problem", "vz_perturb_frac", 1.0e-3);
+  density_perturb_frac = pin->GetOrAddReal(
+      "problem", "density_perturb_frac", 0.0);
+  if (!std::isfinite(density_perturb_frac)
+      || density_perturb_frac < 0.0 || density_perturb_frac >= 0.5) {
+    std::stringstream msg;
+    msg << "problem/density_perturb_frac must be in [0, 0.5)";
+    ATHENA_ERROR(msg);
+  }
   dt_min_factor = pin->GetOrAddReal("problem", "dt_min_factor", 1.0e-4);
   dt_max_factor = pin->GetOrAddReal("problem", "dt_max_factor", 1.0e2);
   abort_on_dt_excursion = pin->GetOrAddBoolean("problem", "abort_on_dt_excursion", false);
@@ -1238,7 +1270,8 @@ void Mesh::InitUserMeshData(ParameterInput *pin) {
   std::string ix3_bc = pin->GetString("mesh", "ix3_bc");
   std::string ox3_bc = pin->GetString("mesh", "ox3_bc");
   if (ix3_bc == "user") {
-    EnrollUserBoundaryFunction(BoundaryFace::inner_x3, HydroReflectInnerX3);
+    EnrollUserBoundaryFunction(BoundaryFace::inner_x3,
+        bottom_hydro_reflecting ? HydroClosedInnerX3 : HydroReflectInnerX3);
     EnrollUserFLDBoundaryFunction(BoundaryFace::inner_x3, FLDFixedInnerX3);
     EnrollUserNRBoundaryFunction(BoundaryFace::inner_x3, NRInnerX3);
   }
@@ -1471,16 +1504,30 @@ void MeshBlock::ProblemGenerator(ParameterInput *pin) {
 
     for (int j=jl; j<=ju; ++j) {
       for (int i=il; i<=iu; ++i) {
-        phydro->u(IDN,k,j,i) = rho;
+        // A coherent isobaric density/entropy seed can start large-scale
+        // buoyancy without relying on cell-scale velocity noise alone.
+        Real rho_seed=rho;
+        if (density_perturb_frac > 0.0) {
+          const Real phase_x=2.0*M_PI*(pcoord->x1v(i)-pmy_mesh->mesh_size.x1min)/
+              (pmy_mesh->mesh_size.x1max-pmy_mesh->mesh_size.x1min);
+          const Real phase_y=2.0*M_PI*(pcoord->x2v(j)-pmy_mesh->mesh_size.x2min)/
+              (pmy_mesh->mesh_size.x2max-pmy_mesh->mesh_size.x2min);
+          rho_seed *= 1.0+density_perturb_frac*weight*
+              std::sin(phase_x)*std::sin(phase_y);
+        }
+        const Real egas_seed=EgasFromRhoP(rho_seed, pres);
+        const Real temp_seed=(density_perturb_frac > 0.0)
+            ? TempFromRhoP(rho_seed, pres) : T;
+        phydro->u(IDN,k,j,i) = rho_seed;
         phydro->u(IM1,k,j,i) = 0.0;
         phydro->u(IM2,k,j,i) = 0.0;
-        phydro->u(IM3,k,j,i) = rho*vz_perturb_frac*weight*dist(rng)*cs_local;
+        phydro->u(IM3,k,j,i) = rho_seed*vz_perturb_frac*weight*dist(rng)*cs_local;
         if (NON_BAROTROPIC_EOS)
-          phydro->u(IEN,k,j,i) = EgasFromRhoP(rho, pres);
+          phydro->u(IEN,k,j,i) = egas_seed;
 
         // for FLD
-        prfld->u_gas(k,j,i) = EgasFromRhoP(rho, pres);
-        prfld->u_rad(k,j,i) = a_r_sim*std::pow(T, 4);
+        prfld->u_gas(k,j,i) = egas_seed;
+        prfld->u_rad(k,j,i) = a_r_sim*std::pow(temp_seed, 4);
       }
     }
   }
