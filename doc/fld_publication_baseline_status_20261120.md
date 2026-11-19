@@ -63,11 +63,41 @@ changing the numerical method behind already qualified figures. A user who
 needs table-EOS MHD must use a separately identified WOR-124 descendant and
 its narrower validation record, not the `protostellar-firstcore-v1` tag.
 
+## Solar application evidence and source boundary
+
+WOR-116 has now closed the scientific application gate with **limited
+inclusion**.  The supported claim is stable non-magnetic three-dimensional
+radiative-convective transport with tabulated EOS, physical Rosseland
+opacity, and grey FLD, including controlled 96 km states that bracket one
+solar flux.  The completed 48 km branch does not reproduce the same flux, so
+resolution convergence, a quantitatively observed solar atmosphere, and
+non-grey spectral agreement are explicitly outside the claim.  The fixed
+numbers, proposed caption, and report generator are in
+`solar_application_gate_20261120.md` and
+`tst/nrfld_validation/wor116_solar_application_gate.py`.
+
+This scientific decision does not by itself qualify a solar release source.
+The XD evidence used a hashed detached checkout with an uncommitted four-file
+solar-boundary diff.  WOR-174 re-expresses the top-face Rosseland-opacity
+reconstruction as a default-off, solar-PGen option on branch
+`exp/wor174-solar-top-face-optin-20261120` (validated implementation commit
+`2670facd11ea872d45565d091ad8da8b8709c771`; provenance correction
+`f3bfffa4f`).  Its pure-math and 1/2-rank real-solver A/B tests pass, and the
+omitted and explicit-false settings are byte-identical.  It has not yet passed
+a long same-restart clean-source A/B equivalent to the selected XD evidence,
+and it does not automatically certify every other file in the historical
+detached diff.  It therefore remains a reviewable opt-in descendant rather
+than part of the fixed collapse source or a new global FLD default.
+
 ## Remaining publication integration decisions
 
-The collapse application source and figure provenance are fixed. The broader
-FLD-paper baseline is not yet declared final because the author must still
-choose the solar-convection claim scope and review the release candidate.
+The collapse application source and figure provenance are fixed, and the
+solar-convection scientific claim is now bounded by the limited WOR-116 gate.
+The broader FLD-paper baseline is not yet declared final because the author
+must review the release candidate and decide whether the clean solar-boundary
+opt-in is included after its remaining long A/B check.  That source decision
+is distinct from accepting the already-audited solar result as a limited
+application.
 Draft PR #3 remains a historical 2026-11-09 audit at `6ad84f78`; it predates
 the verified collapse-source alignment. It must not be merged or cited as the
 collaborator release. A successor review should use the clean `4f92c1fa`
