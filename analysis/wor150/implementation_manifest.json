@@ -1,0 +1,92 @@
+{
+  "schema_version": 1,
+  "audit_date": "2026-11-20",
+  "decision": {
+    "mechanism_status": "implemented_and_numerically_verified",
+    "production_structure_status": "blocked_on_mesa_fit_generalized_eos",
+    "next_critical_step": "implement a C++ monotone MESA-fit enthalpy/barotrope table and rerun spherical and rotating SCF gates"
+  },
+  "repositories": {
+    "legacy_bscf": {
+      "path": "/home/kosuke/simulation/mhd/BSCF",
+      "commit": "e67837574aca40ed172366118ed1c4d3255e3698",
+      "policy": "read_only",
+      "status_at_audit": "clean"
+    },
+    "bscf_rsg": {
+      "path": "/home/kosuke/simulation/mhd/BSCF-rsg",
+      "commit": "fe3f380ac45cff74c9b52eafd8fa65c4b9c2b279",
+      "branch": "wor-159-equilibrium-audits",
+      "remote": null,
+      "new_production_language": "C++"
+    },
+    "mesa_baseline": {
+      "athena_commit": "5a6f9dde7fabf6c1ffeda625dc8fde956133b544",
+      "branch": "wor-151-mesa-baseline",
+      "implementation_language": "C++17"
+    },
+    "accepted_hd_4wz": {
+      "athena_commit": "e3b071b9d3d5af5ee80d9cd2c7cc35898c433ad7",
+      "branch": "wor-120-hd-4wz-memory2",
+      "scope": "HD_only"
+    }
+  },
+  "mesa_baseline": {
+    "mesa_release": "r24.08.1",
+    "saved_model_sha256": "3396de468c09a788017d6ec16708e90d73c4fbd8f4afd9ada324a1e95cedeced",
+    "profile_sha256": "b2f40ff36c3cd54bdd1fb19d4d6d4187db65db185928b3d259481170270c371c",
+    "zones": 1625,
+    "star_mass_Msun": 21.0,
+    "star_radius_Rsun": 895.4891516260694,
+    "core_cut_mass_Msun": 5.703236125105857,
+    "radiative_convective_boundary_mass_Msun": 6.296636507949257,
+    "retained_radiative_layer_mass_Msun": 0.5934003828434005,
+    "inner_luminosity_Lsun": 116315.97957620978,
+    "planck_mean_opacity_available": false
+  },
+  "bscf_rsg_sequence": [
+    {"issue": "WOR-153", "commit": "ceddc9d", "component": "softened_core", "status": "pass"},
+    {"issue": "WOR-154", "commit": "89a5ebd", "component": "single_polytrope_modified_lane_emden", "status": "mechanical_pass_structural_reject"},
+    {"issue": "WOR-155", "commit": "e40073e", "component": "continuous_piecewise_eos", "status": "pass"},
+    {"issue": "WOR-156", "commit": "f7a12e4", "component": "fixed_index_two_layer_fit", "status": "mechanical_pass_mesa_fit_reject"},
+    {"issue": "WOR-157", "commit": "0b5d9b6", "component": "external_core_axisymmetric_scf", "status": "pass"},
+    {"issue": "WOR-158", "commits": ["f887bed", "c1eb395"], "component": "rotation_continuation", "status": "pass"},
+    {"issue": "WOR-159", "commit": "fe3f380", "component": "equilibrium_audits", "status": "pass"}
+  ],
+  "verification": {
+    "ordinary_tests": {"count": 32, "passed": 32},
+    "sanitized_executables": 6,
+    "sanitizer_flags": ["-Werror", "-fsanitize=address,undefined"],
+    "sanitized_tests": {"count": 32, "passed": 32},
+    "legacy_bscf_smoke": {
+      "grid": "120x120",
+      "iterations": 17,
+      "exit_code": 0,
+      "build_wall_s": 3.38,
+      "run_wall_s": 103.48,
+      "reported_cpu_min": 1.7183,
+      "final_d_c1": 8.054014069134456e-6,
+      "final_d_c2": 8.785687990138428e-6,
+      "final_d_omega_squared": 8.641814701496197e-4,
+      "final_virial_check": 1.5146794271378677e-4,
+      "note": "run in a temporary local clone; virial is diagnostic, not a termination gate"
+    }
+  },
+  "fixed_index_fit_assessment": {
+    "hydrostatic_residual_norm": 2.654572676584737e-10,
+    "surface_mass_relative_error": 1.847495489926132e-10,
+    "interface_mass_relative_error": 1.906139690532882e-10,
+    "virial_relative_error": 1.8537502340806405e-5,
+    "mesa_interface_radius_ratio": 13.626891054874521,
+    "mesa_interface_density_ratio": 0.003556857058500016,
+    "mesa_interface_pressure_ratio": 0.00041154383546651503,
+    "assessment": "numerically closed but rejected as a MESA structural match"
+  },
+  "scope_boundaries": {
+    "hd_4wz_accepted": true,
+    "fld_accepted_with_4wz": false,
+    "mhd_accepted_with_4wz": false,
+    "fourth_order_passive_scalars": false,
+    "thermal_equilibrium_established_by_scf": false
+  }
+}
