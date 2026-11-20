@@ -1,0 +1,21 @@
+{
+  "mesa_release": "r24.08.1",
+  "saved_model": {
+    "upstream_test_suite_path": "star/test_suite/gyre_in_mesa_rsg/rsg_21M.mod",
+    "sha256": "3396de468c09a788017d6ec16708e90d73c4fbd8f4afd9ada324a1e95cedeced"
+  },
+  "exported_profile": {
+    "relative_run_path": "LOGS/profile1.data",
+    "sha256": "b2f40ff36c3cd54bdd1fb19d4d6d4187db65db185928b3d259481170270c371c",
+    "zones": 1625
+  },
+  "run_recipe": {
+    "test_suite_case": "gyre_in_mesa_rsg",
+    "restart_steps": 20,
+    "environment": "MESA_SKIP_OPTIONAL=1, OMP_NUM_THREADS=8"
+  },
+  "notes": [
+    "The test inlist resets model number and age; those fields are not a calibrated ZAMS history.",
+    "The raw 9 MB profile is regenerated from the saved model and is identified by SHA-256 rather than committed here."
+  ]
+}
