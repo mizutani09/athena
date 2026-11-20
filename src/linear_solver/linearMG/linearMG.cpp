@@ -207,6 +207,20 @@ linearMGDriver::linearMGDriver(Mesh *pm, ParameterInput *pin, NewtonRaphsonDrive
       "nrfld", "fgmres_reuse_basis", true);
   fgmres_batched_reductions_ = pin->GetOrAddBoolean(
       "nrfld", "fgmres_batched_reductions", true);
+  const char *true_defect_text = std::getenv(
+      "ATHENA_NRFLD_FGMRES_TRUE_DEFECT_CORRECTIONS");
+  if (true_defect_text != nullptr) {
+    char *end = nullptr;
+    const long value = std::strtol(true_defect_text, &end, 10);
+    if (end == true_defect_text || *end != '\0' || value < 0 || value > 3) {
+      std::stringstream msg;
+      msg << "### FATAL ERROR in linearMGDriver::linearMGDriver" << std::endl
+          << "ATHENA_NRFLD_FGMRES_TRUE_DEFECT_CORRECTIONS must be an integer "
+          << "from 0 through 3." << std::endl;
+      ATHENA_ERROR(msg);
+    }
+    fgmres_true_defect_corrections_ = static_cast<int>(value);
+  }
   const std::string coarse_operator = pin->GetString("nrfld", "coarse_operator");
   if (coarse_operator == "rediscretized") {
     galerkin_coarse_operator_ = false;
@@ -385,6 +399,8 @@ linearMGDriver::linearMGDriver(Mesh *pm, ParameterInput *pin, NewtonRaphsonDrive
                 << " compact=" << fgmres_compact_basis_
                 << " reuse=" << fgmres_reuse_basis_
                 << " batched_reductions=" << fgmres_batched_reductions_
+                << " true_defect_corrections="
+                << fgmres_true_defect_corrections_
                 << std::endl;
     }
     if (experimental_27_point_galerkin_) {
@@ -1591,7 +1607,8 @@ void linearMGDriver::SolveFGMRES(int stage) {
     ++fgmres_linearity_check_count_;
   }
   int preconditioner_calls = 0;
-  auto apply_preconditioner = [&](const BlockVector &rhs, BlockVector &z) {
+  auto apply_mg_inverse = [&](const BlockVector &rhs, BlockVector &z,
+                              bool diagnose) {
     current_level_ = fmglevel_ = ntotallevel_ - 1;
     // The initial residual/operator setup can leave the root MG object at its
     // coarsest level.  A V-cycle starts from the finest root level; otherwise
@@ -1622,7 +1639,7 @@ void linearMGDriver::SolveFGMRES(int stage) {
     const Real scale_tol = 16.0*std::numeric_limits<Real>::epsilon()
                          * std::max(std::abs(stage_diagnostic_reference_scale_),
                                     static_cast<Real>(1.0));
-    const bool diagnose_first_call = stage_diagnostics_ && preconditioner_calls == 0
+    const bool diagnose_first_call = stage_diagnostics_ && diagnose
         && std::abs(coarse_corr_scale_ - stage_diagnostic_reference_scale_) <= scale_tol;
     for (int cycle = 0; cycle < fgmres_mg_vcycles_; ++cycle) {
       stage_diagnostic_vcycle_ = cycle;
@@ -1630,7 +1647,6 @@ void linearMGDriver::SolveFGMRES(int stage) {
       SolveVCycle(npresmooth_, npostsmooth_);
       stage_diagnostics_active_ = false;
     }
-    ++preconditioner_calls;
     for (std::size_t b = 0; b < z.size(); ++b) {
       linearMG *pmg = static_cast<linearMG*>(vmg_[b]);
       MeshBlock *pmb = pmg->pmy_block_;
@@ -1647,6 +1663,31 @@ void linearMGDriver::SolveFGMRES(int stage) {
         }
       }
     }
+  };
+  BlockVector pc_operator_value, pc_defect, pc_correction;
+  if (fgmres_true_defect_corrections_ > 0) {
+    pc_operator_value = make_vector();
+    pc_defect = make_vector();
+    pc_correction = make_vector();
+  }
+  auto apply_preconditioner = [&](const BlockVector &rhs, BlockVector &z) {
+    apply_mg_inverse(rhs, z, preconditioner_calls == 0);
+    for (int correction = 0;
+         correction < fgmres_true_defect_corrections_; ++correction) {
+      // The native AMR V-cycle is a robust approximation to the two-point
+      // interface operator.  When the FGMRES operator retains tangential
+      // reconstruction on most faces, use the true frozen operator to expose
+      // the interface defect, then apply the same inexpensive MG inverse to
+      // that defect.  This is a linear polynomial right preconditioner; the
+      // outer FGMRES matvec and its true-residual convergence test are
+      // unchanged.
+      apply_operator(z, pc_operator_value);
+      copy(pc_defect, rhs);
+      axpy(pc_defect, -1.0, pc_operator_value);
+      apply_mg_inverse(pc_defect, pc_correction, false);
+      axpy(z, 1.0, pc_correction);
+    }
+    ++preconditioner_calls;
   };
 
   std::vector<int> current_gids;
@@ -1696,6 +1737,9 @@ void linearMGDriver::SolveFGMRES(int stage) {
   for (const auto &block : x) work_slots += block.GetSize();
   for (const auto &block : r) work_slots += block.GetSize();
   for (const auto &block : ax) work_slots += block.GetSize();
+  for (const auto &block : pc_operator_value) work_slots += block.GetSize();
+  for (const auto &block : pc_defect) work_slots += block.GetSize();
+  for (const auto &block : pc_correction) work_slots += block.GetSize();
   for (std::size_t q = 0; q < b.size(); ++q) {
     linearMG *pmg = static_cast<linearMG*>(vmg_[q]);
     MeshBlock *pmb = pmg->pmy_block_;
@@ -1962,6 +2006,8 @@ void linearMGDriver::SolveFGMRES(int stage) {
               << " compact=" << fgmres_compact_basis_
               << " reuse=" << fgmres_reuse_basis_
               << " batched_reductions=" << fgmres_batched_reductions_
+              << " true_defect_corrections="
+              << fgmres_true_defect_corrections_
               << " reduction_calls=" << reduction_calls
               << " basis_bytes=" << basis_slots*sizeof(Real)
               << " workspace_bytes=" << (basis_slots + work_slots)*sizeof(Real)
