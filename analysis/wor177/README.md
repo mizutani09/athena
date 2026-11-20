@@ -191,6 +191,23 @@ the mass-weighted radius and geometric-mean density of the Mach>0.1 cells,
 and a cycle-1,000 restart.  This reaches approximately `0.00215 t_dyn` and is
 the next decision point before a dynamical-time production run.
 
+The 1,000-cycle gate (XD job 344410) completed in 1,339.59 seconds.  Mass and
+mechanical-energy drifts are `-5.78e-9` and `-5.31e-4`; radial Mach RMS falls
+from `0.0181` at cycle 100 to `0.0145`, radial kinetic energy falls to
+`7.94e-4 abs(W)`, and the virial residual remains bounded at `-0.00953`.
+The dense/interior maximum Mach peaks at `0.428` and falls to `0.210`.  Cells
+above Mach 0.1 contain 0.0866 Msun at the end and describe an inner pulse with
+mass-weighted radius 4.27 Rsun and geometric-mean density 0.157 g cm^-3.
+
+The formal maximum Mach of 4.32 is instead in the sub-`3e-9 g cm^-3` taper.
+Only `6.76e-8 Msun` is above Mach 0.3 at the end, so this is a negligible-mass
+surface cell rather than a global instability.  The 2,136-block topology and
+43.0% 4WZ-fallback stellar-mass fraction stay nearly fixed.  This accepts the
+mesh/model as a bounded short-HD baseline.  A continuation from the saved
+restart is still required to follow the outward-moving inner pulse before a
+full-dynamical-time production run; the measured one-node cost is about
+7.21 wall-days per dynamical time.
+
 This taper begins below the MESA photosphere and is deliberately an HD
 regularization.  It is not accepted as an FLD photospheric model.  Radiation
 work must instead restore a thermodynamically and optically controlled outer
