@@ -82,6 +82,15 @@ during serial initialization, so all further adaptive audits run as
 distributed-memory XD jobs; the local workstation is limited to compilation
 and small unit tests.
 
+The first two-node, 112-rank order-3 L3 gate (XD job 344217) reached the
+30-minute `M-test-a` limit during adaptive initialization.  It did not report
+a numerical or allocation failure.  Slurm measured at most 1.266 GiB RSS per
+rank (about 142 GiB summed over ranks), which fits the requested two-node
+220-GiB allocation, but no history row was produced before timeout.  The next
+gate therefore uses one cell-center sample only to determine the AMR topology
+and resource cost.  This is not an accepted map-quality run; order 3 remains
+required for the physical initialization once the mesh cost is known.
+
 ## Reproduction
 
 ```sh
