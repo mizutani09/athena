@@ -431,37 +431,60 @@ NewtonSolveResult NewtonRaphsonDriver::Solve_general(int stage, Real dt) {
   const bool retry_enabled = dt > 0.0
       && NRFLDPrototype::Flag("ATHENA_NRFLD_TANGENTIAL_FULL_SOLVE_RETRY")
       && NRFLDPrototype::TangentialReconstruction();
-  NewtonSolveResult result = Solve_general_once(stage, dt);
+  auto retry_without_tangential = [&](const char *primary_reason,
+                                      int primary_iterations) {
+    if (Globals::my_rank == 0) {
+      std::cout << "[NR_TANGENTIAL_FULL_RETRY] cycle=" << pmy_mesh_->ncycle
+                << " stage=" << stage << " dt=" << dt
+                << " primary_reason=" << primary_reason
+                << " primary_iterations=" << primary_iterations
+                << " action=restart_without_tangential_reconstruction"
+                << std::endl;
+    }
+    NRFLDPrototype::SetTangentialOverride(0);
+    NewtonSolveResult retry;
+    try {
+      retry = Solve_general_once(stage, dt);
+    } catch (...) {
+      NRFLDPrototype::SetTangentialOverride(-1);
+      throw;
+    }
+    // A successful recovery establishes that the tangential form is unsafe for
+    // this trajectory and expensive even when it converges.  Retain the robust
+    // two-point form until process exit.  If recovery itself fails, restore the
+    // configured mode so the caller receives a failure without hidden state.
+    if (!retry.IsSuccess()) NRFLDPrototype::SetTangentialOverride(-1);
+    if (Globals::my_rank == 0) {
+      std::cout << "[NR_TANGENTIAL_FULL_RETRY] cycle=" << pmy_mesh_->ncycle
+                << " stage=" << stage
+                << " retry_status=" << NewtonSolveReasonName(retry.reason)
+                << " retry_iterations=" << retry.iterations
+                << " committed=" << retry.committed
+                << " two_point_latched=" << retry.IsSuccess() << std::endl;
+    }
+    return retry;
+  };
+
+  NewtonSolveResult result;
+  try {
+    result = Solve_general_once(stage, dt);
+  } catch (const std::runtime_error &error) {
+    const bool fgmres_failure = std::string(error.what()).find(
+        "linearMGDriver::SolveFGMRES") != std::string::npos;
+    if (!retry_enabled || !fgmres_failure) throw;
+    // SolveFGMRES reports a strict/inexact-cap miss before Newton applies its
+    // correction.  Re-entering through Solve_general_once reloads the
+    // uncommitted hydro/radiation state and rebuilds the residual, coefficients,
+    // boundaries and MG caches with the robust two-point interface operator.
+    return retry_without_tangential("fgmres_failure", -1);
+  }
   if (!retry_enabled || result.IsSuccess()
       || result.reason == NewtonSolveReason::initial_nonfinite
       || result.reason == NewtonSolveReason::final_nonfinite) {
     return result;
   }
-
-  if (Globals::my_rank == 0) {
-    std::cout << "[NR_TANGENTIAL_FULL_RETRY] cycle=" << pmy_mesh_->ncycle
-              << " stage=" << stage << " dt=" << dt
-              << " primary_reason=" << NewtonSolveReasonName(result.reason)
-              << " primary_iterations=" << result.iterations
-              << " action=restart_without_tangential_reconstruction"
-              << std::endl;
-  }
-  NRFLDPrototype::SetTangentialOverride(0);
-  NewtonSolveResult retry = Solve_general_once(stage, dt);
-  // A successful recovery establishes that the tangential form is unsafe for
-  // this trajectory and expensive even when it converges.  Retain the robust
-  // two-point form until process exit.  If recovery itself fails, restore the
-  // configured mode so the caller receives a failure without hidden state.
-  if (!retry.IsSuccess()) NRFLDPrototype::SetTangentialOverride(-1);
-  if (Globals::my_rank == 0) {
-    std::cout << "[NR_TANGENTIAL_FULL_RETRY] cycle=" << pmy_mesh_->ncycle
-              << " stage=" << stage
-              << " retry_status=" << NewtonSolveReasonName(retry.reason)
-              << " retry_iterations=" << retry.iterations
-              << " committed=" << retry.committed
-              << " two_point_latched=" << retry.IsSuccess() << std::endl;
-  }
-  return retry;
+  return retry_without_tangential(NewtonSolveReasonName(result.reason),
+                                  result.iterations);
 }
 
 NewtonSolveResult NewtonRaphsonDriver::Solve_general_once(int stage, Real dt) {
