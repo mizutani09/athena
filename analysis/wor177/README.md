@@ -70,6 +70,18 @@ selected surface hierarchy or a controlled atmosphere match.  A longer HD
 job should not be submitted before that choice is tested, because central L8
 already implies roughly 451,000 cycles per dynamical time.
 
+The first adaptive audit exposed an additional implementation constraint.
+The legacy tracer criterion selects every block whose stellar mass fraction
+lies anywhere between `1e-6` and `0.999999`.  With a `1e-14 g cm^-3`
+atmosphere, that is a thick outer volume rather than a narrow surface.  Its
+serial L3 initialization consumed about 31 GiB of RAM plus 26 GiB of swap.
+WOR-177 therefore adds `surface_refinement_use_tracer=false`, which follows
+only the requested density isosurface while preserving the old behavior by
+default.  Even this narrow central-L8 plus surface-L3 mesh approached 29 GiB
+during serial initialization, so all further adaptive audits run as
+distributed-memory XD jobs; the local workstation is limited to compilation
+and small unit tests.
+
 ## Reproduction
 
 ```sh

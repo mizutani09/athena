@@ -54,7 +54,7 @@ Real atmosphere_reference_radius, surface_polar_radius, atmosphere_monopole_gm;
 Real mean_molecular_weight, core_mass, core_support_radius;
 Real core_mass_code, core_support_radius_code, core_gm_code;
 int quadrature_order;
-bool rotate_atmosphere, isothermal_atmosphere;
+bool rotate_atmosphere, isothermal_atmosphere, surface_refinement_use_tracer;
 scf_map::AtmosphereModel atmosphere_model;
 int root_logical_level, surface_refinement_level;
 Real surface_tracer_lower, surface_tracer_upper, surface_density_code;
@@ -649,6 +649,8 @@ void Mesh::InitUserMeshData(ParameterInput* pin) {
       "problem", "surface_tracer_lower", 1.0e-6);
   surface_tracer_upper = pin->GetOrAddReal(
       "problem", "surface_tracer_upper", 1.0-1.0e-6);
+  surface_refinement_use_tracer = pin->GetOrAddBoolean(
+      "problem", "surface_refinement_use_tracer", true);
   const Real surface_density = pin->GetOrAddReal(
       "problem", "surface_refinement_density_g_cm3", 1.0e-9);
   surface_density_code = surface_density/rho_unit;
@@ -760,6 +762,8 @@ void Mesh::InitUserMeshData(ParameterInput* pin) {
               << " core_mass_g=" << core_mass
               << " core_support_radius_cm=" << core_support_radius
               << " surface_refinement_level=" << surface_refinement_level
+              << " surface_refinement_use_tracer="
+              << surface_refinement_use_tracer
               << " surface_refinement_density_g_cm3=" << surface_density
               << " G_code=" << gravity_code
               << " frame=inertial\n";
@@ -798,7 +802,12 @@ int SurfaceRefinementCondition(MeshBlock* block) {
       }
     }
   }
-  const bool crosses_surface = maximum_fraction > surface_tracer_lower
+  // The tracer interval deliberately follows all partially mixed stellar
+  // material and can therefore select a thick volume when rho_atm/rho is not
+  // negligible.  MESA-fit models may instead request the much narrower
+  // density isosurface alone.
+  const bool crosses_surface = surface_refinement_use_tracer
+      && maximum_fraction > surface_tracer_lower
       && minimum_fraction < surface_tracer_upper;
   const bool crosses_density = density_below_target && density_above_target;
   const bool resolves_surface = crosses_surface || crosses_density;
