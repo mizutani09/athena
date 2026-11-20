@@ -70,6 +70,21 @@ identical at printed precision.  Derived extrema differed by at most
 `5.8e-7`.  The only larger relative change was an absolute `5.33e-14` change
 in near-zero divB.
 
+XD job `344245` repeated the same c964--970 gate with the production inexact
+policy (`true cap=1e-7`, stagnation ratio `0.9`).  It also passed: the first
+tangential solve reached the 300-iteration cap, the complete two-point replay
+converged, all six active Newton solves used two updates, and the opacity audit
+again found no invalid or out-of-domain cells.  It used the same 13 FGMRES
+solves and 430 total iterations as the strict gate; 12 short replay solves
+were marked as inexact accepts.  Thus the policy did not reduce iteration
+count on this particular trajectory, but neither did it weaken Newton or
+change the physical result materially.  Excluding near-zero divB, all history
+columns agreed with the strict gate to `8.3e-12` relative or better; divB
+differed by `3.64e-14` absolute.  Solver wall time was 136.6 s and Slurm-step
+RSS was 17,521,396 KiB.  The inexact stop remains useful on normal steps that
+stagnate below the Newton-adequate cap, while the replay remains the safety
+net when the cap is not reached.
+
 ## Local gates
 
 - Two-rank one-cycle table-EOS/MHD/AMR smoke: PASS.  The ordinary path did not
@@ -87,9 +102,17 @@ in near-zero divB.
 - Closed-box conservation suite: PASS for all five tolerance/CFL cases, with
   mass and total-energy drift of order `7e-15`.
 
-The full shock-tube backward-error regression is recorded separately by the
-validation harness; its final status must be PASS before the annotated release
-tag is created.
+- Full radiative shock-tube regression: PASS with strict backward-error
+  convergence.  N64 completed 1,331 cycles and N128 completed 2,666 cycles;
+  all 3,997 Newton solves converged strictly, with no relaxed acceptance or
+  collapse fallback.  Relative L1 error versus the N4096 Rad-EOS reference
+  improved from N64 to N128 for all six recorded fields: density
+  `0.1004 -> 0.0611`, velocity `0.0380 -> 0.0192`, temperature
+  `0.0147 -> 0.00820`, gas energy `0.0971 -> 0.0625`, radiation energy
+  `0.0214 -> 0.0130`, and total pressure `0.0168 -> 0.00906`.  The N64 and
+  N128 runs took 13 min 58 s and 32 min 17 s locally.  The browsable report,
+  profiles, CSV data, and movie are in
+  `/home/kosuke/simulation/test/rad_nr/collapse_solver_v2_shock_20261120/index.html`.
 
 ## Intended use and limits
 
