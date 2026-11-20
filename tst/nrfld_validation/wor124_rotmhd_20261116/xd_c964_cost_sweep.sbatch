@@ -61,7 +61,7 @@ make -j8 > "$job/build.log" 2>&1
 
 {
   date -Is
-  printf 'source_branch=release/protostellar-collapse-solver-v2-20261120 source_commit=67b2d3246 ranks=%s restart_cycle=964 target=965 cfl=0.15 full_solve_retry=1\n' \
+  printf 'source_branch=release/protostellar-collapse-solver-v2-20261120 source_commit=f00f17294 ranks=%s restart_cycle=964 target=965 cfl=0.15 full_solve_retry=1 linear_cap_retry=1\n' \
     "$SLURM_NTASKS"
   sha256sum "$rst" "$eos_table" "$opacity_table" "$source_dir/bin/athena" \
     "$source_dir/src/newton_raphson/Newton_Raphson_driver.cpp"
