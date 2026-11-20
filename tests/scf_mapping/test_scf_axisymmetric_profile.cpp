@@ -2,6 +2,7 @@
 #include <cmath>
 #include <iostream>
 #include <stdexcept>
+#include <string>
 
 #include "../../src/pgen/scf_axisymmetric_profile.hpp"
 
@@ -13,11 +14,18 @@ bool Close(double left, double right, double relative) {
 }
 
 int main(int argc, char** argv) {
-  if (argc != 2) throw std::runtime_error("usage: test_scf_profile PROFILE.csv");
+  if (argc != 2 && argc != 4) {
+    throw std::runtime_error(
+        "usage: test_scf_profile PROFILE.csv [EXPECTED_NR EXPECTED_NMU]");
+  }
   scf_map::AxisymmetricProfile profile;
   profile.Load(argv[1], 0.6353437771420501);
-  assert(profile.radial_points() == 2048);
-  assert(profile.angular_points() == 32);
+  const std::size_t expected_radial = argc == 4
+      ? static_cast<std::size_t>(std::stoul(argv[2])) : 2048;
+  const std::size_t expected_angular = argc == 4
+      ? static_cast<std::size_t>(std::stoul(argv[3])) : 32;
+  assert(profile.radial_points() == expected_radial);
+  assert(profile.angular_points() == expected_angular);
 
   const double radius = 2.5e13;
   const scf_map::State north = profile.Interpolate(1.8e13, radius);

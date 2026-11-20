@@ -83,10 +83,15 @@ double Relative(double value, double reference) {
 
 int main(int argc, char** argv) {
   try {
-    if (argc != 4) {
+    if (argc != 4 && argc != 5) {
       std::cerr << "usage: " << argv[0]
-                << " INPUT.hst OUTPUT.csv SUMMARY.json\n";
+                << " INPUT.hst OUTPUT.csv SUMMARY.json [TDYN_SECONDS]\n";
       return 2;
+    }
+    const double dynamical_time = argc == 5
+        ? std::stod(argv[4]) : kDynamicalTime;
+    if (!(dynamical_time > 0.0)) {
+      throw std::invalid_argument("dynamical time must be positive");
     }
     const History h = ReadHistory(argv[1]);
     const std::size_t time = Column(h, "time");
@@ -115,16 +120,15 @@ int main(int argc, char** argv) {
     const std::size_t wenoz_fallback_mass = OptionalColumn(
         h, "wenoz_plm_fallback_stellar_mass_g");
     std::vector<std::size_t> meshblocks;
-    for (int level = 0; level <= 6; ++level) {
-      meshblocks.push_back(OptionalColumn(
-          h, "meshblocks_L"+std::to_string(level)));
+    for (int level = 0; level < 32; ++level) {
+      const std::size_t column = OptionalColumn(
+          h, "meshblocks_L"+std::to_string(level));
+      if (column == h.names.size()) break;
+      meshblocks.push_back(column);
     }
     const bool has_wenoz = wenoz_cells < h.names.size()
         && wenoz_fallback < h.names.size();
-    bool has_meshblocks = true;
-    for (const std::size_t column : meshblocks) {
-      has_meshblocks = has_meshblocks && column < h.names.size();
-    }
+    const bool has_meshblocks = !meshblocks.empty();
 
     const std::vector<double>& initial = h.rows.front();
     const double initial_mechanical = initial[hydro_energy]+initial[self_energy]
@@ -142,9 +146,11 @@ int main(int argc, char** argv) {
            "wenoz_sensor_fallback_cells,wenoz_amr_fallback_cells,"
            "wenoz_plm_fallback_cells,wenoz_sensor_fallback_fraction,"
            "wenoz_amr_fallback_fraction,wenoz_plm_fallback_fraction,"
-           "wenoz_plm_fallback_stellar_mass_fraction,meshblocks_L0,"
-           "meshblocks_L1,meshblocks_L2,meshblocks_L3,meshblocks_L4,"
-           "meshblocks_L5,meshblocks_L6,meshblocks_total\n";
+           "wenoz_plm_fallback_stellar_mass_fraction";
+    for (std::size_t level = 0; level < meshblocks.size(); ++level) {
+      csv << ",meshblocks_L" << level;
+    }
+    csv << ",meshblocks_total\n";
     csv << std::scientific << std::setprecision(12);
 
     double maximum_mass_drift = 0.0;
@@ -195,7 +201,7 @@ int main(int argc, char** argv) {
         for (const std::size_t column : meshblocks) meshblock_total += row[column];
       }
       csv << row[time] << ',' << row[time]*2.19999657e4/kDay << ','
-          << row[time]*2.19999657e4/kDynamicalTime << ','
+          << row[time]*2.19999657e4/dynamical_time << ','
           << mass_drift << ',' << j_drift << ',' << energy_drift << ','
           << mach_rms << ',' << row[mach_max] << ',' << radial_ke_fraction << ','
           << nonradial_ke_fraction << ',' << mean_radius << ','
@@ -263,7 +269,7 @@ int main(int argc, char** argv) {
          << "  \"samples\": " << h.rows.size() << ",\n"
          << "  \"final_time_code\": " << h.rows.back()[time] << ",\n"
          << "  \"final_time_over_tdyn\": "
-         << h.rows.back()[time]*2.19999657e4/kDynamicalTime << ",\n"
+         << h.rows.back()[time]*2.19999657e4/dynamical_time << ",\n"
          << "  \"final_mass_relative_drift\": "
          << Relative(final[mass], initial[mass]) << ",\n"
          << "  \"final_J_relative_drift\": "
@@ -293,7 +299,7 @@ int main(int argc, char** argv) {
          << "  \"initial_meshblocks\": " << initial_meshblock_total << ",\n"
          << "  \"final_meshblocks\": " << final_meshblock_total << ",\n"
          << "  \"maximum_meshblocks\": " << maximum_meshblocks << ",\n";
-    for (int level = 0; level <= 6; ++level) {
+    for (std::size_t level = 0; level < meshblocks.size(); ++level) {
       json << "  \"final_meshblocks_L" << level << "\": "
            << (has_meshblocks ? final[meshblocks[level]] : 0.0) << ",\n";
     }

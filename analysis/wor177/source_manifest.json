@@ -1,0 +1,35 @@
+{
+  "schema_version": 1,
+  "upstream": {
+    "repository": "/home/kosuke/simulation/mhd/BSCF-rsg-wor175",
+    "branch": "wor-175-mesa-enthalpy-table",
+    "commit": "5ce57dd",
+    "mesa_profile_sha256": "b2f4b6e3df70aacfeea3d70b5eda49e0217e9380a6ee1879a7d1f0f954575a63"
+  },
+  "scf": {
+    "radial_points": 16384,
+    "angular_points": 16,
+    "maximum_multipole_order": 12,
+    "domain_radius_factor": 1.2,
+    "convergence_tolerance": 1e-6,
+    "spherical_fit_steps": 65536,
+    "spherical_fit_tolerance": 1e-5
+  },
+  "athena": {
+    "base_commit": "528d62dd6d2f4c64fb6948f65943595dc766c453",
+    "root_points": 64,
+    "central_level": 8,
+    "minimum_cell_width_cm": 9.3416748046875e9,
+    "core_support_cells": 5.487630248
+  },
+  "sha256": {
+    "data/ic/rsg21_mesa_scf_omega0_nr16384.csv": "51b1ffe5e272b150fa6150a5cea8e96fe0f47615d3ffdf992c6dd40d61920ff3",
+    "data/ic/rsg21_mesa_scf_omega0_nr16384.json": "9b253431d62b8397db6e424d5fc3ac98812031a36a8f10f9eed372546d77619c",
+    "analysis/wor177/rsg21_mesa_scf_omega0_nr16384_history.csv": "4b7d2fa48cefe8555367f48ab71be54742dcd5854c4a3e2ef94aa2dd5392f6e5",
+    "analysis/wor177/map_nr16384_root64_l8.csv": "7b9c681f905fd9d2e86c06976aaf2345254f7cf89848030ef234ccb7baceb5ef",
+    "inputs/rsg/athinput.mesa_scf_rsg_map": "15b4b0dd92774186ddf9a4ae69650ddd32be112a7e0da601ebe36ecfb9aa779f",
+    "analysis/wor177/athena_l8_map/mesa_scf_rsg_map.hst": "03e26c2cc67bc2f754829f0881dc8c91badbd83116c867edc5e277405e613197",
+    "analysis/wor177/smoke_x2/relaxation_summary.json": "edb1ca97c93959185f53b24bb81922f0ed3ae447065075220ff7da7c8e517c5f",
+    "analysis/wor177/smoke_4wz/relaxation_summary.json": "3647534124508aaca88222d6df2bdf135e64057c706d4408d4b140ada1a84f05"
+  }
+}

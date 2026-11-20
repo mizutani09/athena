@@ -15,6 +15,13 @@ namespace {
 double D(const char* text) { return std::stod(text); }
 int I(const char* text) { return std::stoi(text); }
 
+double AngularMomentumError(double value, double expected) {
+  // A nonrotating source has exactly zero angular momentum.  Preserve the
+  // historical relative-error columns for rotating models and report the
+  // absolute error (also exactly zero for a symmetric map) in that limit.
+  return expected != 0.0 ? value/expected-1.0 : value;
+}
+
 std::size_t Index(int i, int j, int k, int points) {
   return static_cast<std::size_t>((k*points+j)*points+i);
 }
@@ -234,8 +241,10 @@ int main(int argc, char** argv) {
           << minimum_dx << ',' << totals.mass << ',' << totals.stellar_mass << ','
           << totals.atmosphere_mass << ','
           << totals.stellar_mass/expected_mass-1.0 << ',' << totals.exact_j << ','
-          << totals.discrete_j << ',' << totals.exact_j/expected_j-1.0 << ','
-          << totals.discrete_j/expected_j-1.0 << ',' << totals.total_energy << ','
+          << totals.discrete_j << ','
+          << AngularMomentumError(totals.exact_j, expected_j) << ','
+          << AngularMomentumError(totals.discrete_j, expected_j) << ','
+          << totals.total_energy << ','
           << totals.internal_energy << ',' << totals.kinetic_energy << ','
           << (totals.internal_energy+totals.kinetic_energy)/expected_energy-1.0
           << ',' << totals.radiative_mass << ','
@@ -246,7 +255,8 @@ int main(int argc, char** argv) {
     std::cout << "root_points=" << points << " levels=" << levels
               << " min_dx_cm=" << minimum_dx
               << " mass_error=" << totals.stellar_mass/expected_mass-1.0
-              << " J_error=" << totals.discrete_j/expected_j-1.0
+              << " J_error="
+              << AngularMomentumError(totals.discrete_j, expected_j)
               << " energy_error="
               << (totals.internal_energy+totals.kinetic_energy)/expected_energy-1.0
               << " force_l2=" << force_l2 << '\n';
