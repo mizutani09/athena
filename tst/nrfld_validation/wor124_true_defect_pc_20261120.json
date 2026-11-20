@@ -1,0 +1,57 @@
+{
+  "date": "2026-11-20",
+  "branch": "exp/wor124-local-face-two-point-pc-20261120",
+  "base_commit": "aacb8a739",
+  "implementation_commit": "721566c29",
+  "selected_configuration": {
+    "ATHENA_NRFLD_FGMRES_TRUE_DEFECT_CORRECTIONS": 1,
+    "fgmres_mg_vcycles": 3,
+    "default_enabled": false
+  },
+  "local_test_c": [
+    {"corrections": 0, "iterations": 8, "relative_residual": 8.358153778e-11, "cpu_seconds": 4.4309},
+    {"corrections": 1, "iterations": 5, "relative_residual": 3.436876292e-12, "cpu_seconds": 5.0223},
+    {"corrections": 2, "iterations": 4, "relative_residual": 6.783459309e-13, "cpu_seconds": 5.5122}
+  ],
+  "xd_c965": [
+    {"job": 343897, "corrections": 0, "mg_vcycles": 5, "iterations": [628, 394, 407], "iteration_total": 1429, "solver_seconds": 221, "pass": true},
+    {"job": 343894, "corrections": 1, "mg_vcycles": 5, "iterations": [427, 267, 277], "iteration_total": 971, "solver_seconds": 258, "pass": true},
+    {"job": 343901, "corrections": 1, "mg_vcycles": 3, "iterations": [428, 267, 276], "iteration_total": 971, "solver_seconds": 188, "pass": true}
+  ],
+  "xd_c970": {
+    "job": 343904,
+    "iterations": [428, 267, 276, 283, 299, 173, 176, 280, 284, 173, 174, 267, 267],
+    "iteration_total": 3347,
+    "solver_seconds": 645,
+    "slurm_elapsed_seconds": 676,
+    "maxrss_kib": 34187636,
+    "newton_solves": 7,
+    "newton_updates": 12,
+    "max_final_true_residual_l2": 6.3880116203308134e-9,
+    "max_final_true_residual_max": 6.5333941163142207e-6,
+    "local_crossing_cells": 287,
+    "local_crossing_blocks": 28,
+    "local_face_cells_added": 1792,
+    "global_retry_count": 0,
+    "opacity_outside_cells": 0,
+    "nonfinite_or_nonpositive_cells": 0,
+    "pass": true
+  },
+  "uncorrected_local_c970": {
+    "job": 343876,
+    "iteration_total": 4936,
+    "solver_seconds": 720,
+    "slurm_elapsed_seconds": 755,
+    "maxrss_mib": 33507.5,
+    "max_final_true_residual_l2": 1.1456793480048986e-8,
+    "max_final_true_residual_max": 6.5333946060115562e-6,
+    "pass": true
+  },
+  "global_two_point_baseline": {
+    "job": 343472,
+    "iteration_total": 767,
+    "solver_seconds": 208,
+    "pass": true
+  },
+  "decision": "retain_opt_in_not_default"
+}
