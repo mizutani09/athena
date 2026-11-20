@@ -27,7 +27,8 @@ mkdir -p "$run"
 cd "$repository"
 
 python3 configure.py --prob=scf_rsg --coord=cartesian --eos=adiabatic \
-  --flux=hllc --nscalars=2 --grav=mg --nghost=4 -mpi --cxx=icpx
+  --flux=hllc --nscalars=2 --grav=mg --nghost=4 -mpi --cxx=icpx \
+  --mpiccmd=mpiicpx
 make -j16
 git rev-parse HEAD > "$run/git_commit.txt"
 git status --short > "$run/git_status.txt"
