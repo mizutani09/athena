@@ -40,7 +40,6 @@ icpx -O2 -std=c++11 -Wall -Wextra -Werror -pedantic \
 /usr/bin/time -f 'launcher_wall_s=%e launcher_maxrss_kb=%M' -o "$run/time.log" \
   srun -n56 --ntasks-per-node=56 bin/athena -i "$input" -d "$run" \
   time/nlim=1 time/tlim=1.0 output1/dcycle=1 \
-  output2/dt=-1 output3/dt=-1 output4/dt=-1 output5/dt=-1 \
   > "$run/stdout.log" 2> "$run/stderr.log"
 
 if grep -Eiq 'nan|fatal error|segmentation fault|bad_alloc|out of memory' \
