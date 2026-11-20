@@ -167,6 +167,17 @@ order-3 cell mapping, and RK4+4WZ evolution.  Surface L2 plus central L8 was
 already measured at 2,472 blocks and about 4.4 seconds for a one-point
 topology gate; the full quadrature/MG initialization remains the next XD gate.
 
+That gate completed as XD job 344387.  Full order-3 mapping, gravity MG, and
+one RK4+4WZ cycle took 7.28 seconds on 56 ranks.  The mesh has 2,136 blocks
+and the largest per-rank RSS was 977,700 KiB, corresponding to a conservative
+52.2-GiB summed upper bound on the 110-GiB node.  The mapped stellar-mass
+error is `9.02e-6`, ideal-gamma energy error is `-0.592%`, MG potential L2 is
+`0.00650`, mapped force L2 is `0.0726`, and maximum virial residual is
+`0.0308`; all accepted map gates remain satisfied.  The one-cycle 4WZ PLM
+fallback covers 42.8% of stellar mass, down from 50.0% on the central-only
+mesh, but a sustained gate is still needed to judge stability and fallback
+evolution.
+
 This taper begins below the MESA photosphere and is deliberately an HD
 regularization.  It is not accepted as an FLD photospheric model.  Radiation
 work must instead restore a thermodynamically and optically controlled outer
