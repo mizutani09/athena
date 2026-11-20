@@ -91,6 +91,13 @@ gate therefore uses one cell-center sample only to determine the AMR topology
 and resource cost.  This is not an accepted map-quality run; order 3 remains
 required for the physical initialization once the mesh cost is known.
 
+The one-point topology gate (XD job 344235) also timed out after 30 minutes
+at the same initialization stage and the same 1.267-GiB maximum RSS per rank.
+This rules out tensor-Gauss mapping as the dominant cost.  Before extending
+the queue limit, a one-node scaling gate measures central-L8-only and
+surface-L1/L2 initialization separately.  This identifies whether the cost
+jump is tied to a particular surface level or to the combined AMR/MG tree.
+
 ## Reproduction
 
 ```sh
