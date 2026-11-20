@@ -369,15 +369,20 @@ NRFLDDriver::~NRFLDDriver() {
 
 bool NRFLDDriver::DirectionRequiresFullRetry() {
   if (!pmy_mesh_->multilevel
-      || !NRFLDPrototype::Flag("ATHENA_NRFLD_TANGENTIAL_FULL_SOLVE_RETRY")
+      || (!NRFLDPrototype::Flag("ATHENA_NRFLD_TANGENTIAL_FULL_SOLVE_RETRY")
+          && !NRFLDPrototype::Flag(
+              "ATHENA_NRFLD_LOCAL_TANGENTIAL_FALLBACK"))
       || !NRFLDPrototype::TangentialReconstruction()) return false;
 
   long long local_crossings = 0;
+  long long local_crossing_blocks = 0;
+  long long local_faces_added = 0;
   Real local_min_scale = std::numeric_limits<Real>::infinity();
   for (NewtonRaphson *base : vnr_) {
     NRFLD *nr = static_cast<NRFLD*>(base);
     if (nr->pmy_block_->prfld->fixed_u_rad) continue;
     MeshBlock *mb = nr->pmy_block_;
+    bool block_crosses = false;
     for (int k=mb->ks; k<=mb->ke; ++k)
       for (int j=mb->js; j<=mb->je; ++j)
         for (int i=mb->is; i<=mb->ie; ++i) {
@@ -388,24 +393,78 @@ bool NRFLDDriver::DirectionRequiresFullRetry() {
           if (!(delta < 0.0) || !std::isfinite(delta)) continue;
           const Real scale = (nr->u_(k,j,i)-TINY_NUMBER)/(-delta);
           local_min_scale = std::min(local_min_scale, scale);
-          if (!(scale >= 1.0)) ++local_crossings;
+          if (!(scale >= 1.0)) {
+            ++local_crossings;
+            block_crosses = true;
+          }
         }
+    if (!block_crosses) continue;
+    ++local_crossing_blocks;
+    if (!NRFLDPrototype::Flag("ATHENA_NRFLD_LOCAL_TANGENTIAL_FALLBACK"))
+      continue;
+
+    // A tangential coarse/fine offset only enters through a fine block face
+    // adjoining a coarser neighbor.  If any cell in the block has an
+    // inadmissible direction, freeze every such face on that block to the
+    // monotone two-point form.  Marking the complete face keeps all four fine
+    // subfaces of each coarse face consistent and is still local to the
+    // troubled AMR interface rather than disabling reconstruction globally.
+    const int level = mb->loc.level;
+    const int neighbor_level[6] = {
+        mb->pbval->nblevel[1][1][0], mb->pbval->nblevel[1][1][2],
+        mb->pbval->nblevel[1][0][1], mb->pbval->nblevel[1][2][1],
+        mb->pbval->nblevel[0][1][1], mb->pbval->nblevel[2][1][1]};
+    for (int face=0; face<6; ++face) {
+      if (neighbor_level[face] < 0 || neighbor_level[face] >= level) continue;
+      for (int k=mb->ks; k<=mb->ke; ++k)
+        for (int j=mb->js; j<=mb->je; ++j)
+          for (int i=mb->is; i<=mb->ie; ++i) {
+            const bool at_face = face < 2
+                ? (face == 0 ? i == mb->is : i == mb->ie)
+                : face < 4
+                    ? (face == 2 ? j == mb->js : j == mb->je)
+                    : (face == 4 ? k == mb->ks : k == mb->ke);
+            if (!at_face
+                || nr->tangential_face_fallback_(face,k,j,i) >= 0.5)
+              continue;
+            nr->tangential_face_fallback_(face,k,j,i) = 1.0;
+            ++local_faces_added;
+          }
+    }
   }
 
   long long global_crossings = local_crossings;
+  long long global_crossing_blocks = local_crossing_blocks;
+  long long global_faces_added = local_faces_added;
   Real global_min_scale = local_min_scale;
 #ifdef MPI_PARALLEL
   MPI_Allreduce(MPI_IN_PLACE, &global_crossings, 1, MPI_LONG_LONG_INT, MPI_SUM,
                 MPI_COMM_WORLD);
+  MPI_Allreduce(MPI_IN_PLACE, &global_crossing_blocks, 1, MPI_LONG_LONG_INT,
+                MPI_SUM, MPI_COMM_WORLD);
+  MPI_Allreduce(MPI_IN_PLACE, &global_faces_added, 1, MPI_LONG_LONG_INT,
+                MPI_SUM, MPI_COMM_WORLD);
   MPI_Allreduce(MPI_IN_PLACE, &global_min_scale, 1, MPI_ATHENA_REAL, MPI_MIN,
                 MPI_COMM_WORLD);
 #endif
+  local_face_fallback_added_ = global_faces_added;
+  local_face_fallback_crossings_ = global_crossings;
   if (global_crossings == 0) return false;
   if (Globals::my_rank == 0) {
+    const bool local_mode = NRFLDPrototype::Flag(
+        "ATHENA_NRFLD_LOCAL_TANGENTIAL_FALLBACK");
     std::cout << "[NR_TANGENTIAL_DIRECTION_REJECTED] crossing_cells="
               << global_crossings << " minimum_admissible_scale="
-              << global_min_scale << " action=restart_full_solve" << std::endl;
+              << global_min_scale << " crossing_blocks="
+              << global_crossing_blocks << " local_face_cells_added="
+              << global_faces_added << " action="
+              << (local_mode ? "restart_with_local_two_point_faces"
+                             : "restart_full_solve") << std::endl;
   }
+  // In local mode a crossing with no newly markable coarse/fine face is a
+  // safe failure: reject the direction, but let the wrapper stop retrying
+  // when it observes that the mask made no progress.  Never apply the
+  // independently clipped correction after detecting this condition.
   return true;
 }
 
@@ -442,7 +501,7 @@ void NRFLDDriver::SyncInterfaceFaceMoments() {
             const bool at_face=(face<2 ? (face==0 ? i==mb->is : i==mb->ie)
                 : face<4 ? (face==2 ? j==mb->js : j==mb->je)
                 : (face==4 ? k==mb->ks : k==mb->ke));
-            const Real correction=(NRFLDPrototype::TangentialReconstruction()
+            const Real correction=(nr->UseTangentialFace(face,k,j,i)
                                    && coarser[face] && at_face)
                 ? NRFLDFaceReconstruction::TangentialOffset(
                     nr->u_,0,mb,face,k,j,i) : 0.0;
@@ -561,7 +620,7 @@ void NRFLDDriver::SyncCorrectionFaceMoments() {
                 : face<4 ? (face==2 ? j==mb->js : j==mb->je)
                 : (face==4 ? k==mb->ks : k==mb->ke));
             if (neighbor_level[face]>=0 && neighbor_level[face]<level && at_face) {
-              const Real offset=NRFLDPrototype::TangentialReconstruction()
+              const Real offset=nr->UseTangentialFace(face,k,j,i)
                   ? NRFLDFaceReconstruction::TangentialOffset(
                       delta,0,mb,face,k,j,i) : 0.0;
               const Real coarse_ref=NRFLDFaceReconstruction::CoarseReference(

@@ -369,10 +369,9 @@ int CellCenteredBoundaryVariable::LoadBoundaryBufferToCoarser(Real *buf,
   const bool weighted_delta = pmb->pnr != nullptr
       && var_cc == &pmb->pnr->delta_u_
       && NRFLDPrototype::SharedCoeff();
-  const bool tangential_delta=weighted_delta
-      && NRFLDPrototype::TangentialReconstruction();
   auto effective_delta=[&](int n,int face,int k,int j,int i) {
-    const Real correction=tangential_delta
+    const Real correction=(weighted_delta
+        && pmb->pnr->UseTangentialFace(face,k,j,i))
         ? NRFLDFaceReconstruction::TangentialOffset(var,n,pmb,face,k,j,i)
         : 0.0;
     return var(n,k,j,i)-correction;

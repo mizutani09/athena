@@ -428,11 +428,46 @@ void NewtonRaphsonDriver::CheckBoundaryFunctions() {
 
 
 NewtonSolveResult NewtonRaphsonDriver::Solve_general(int stage, Real dt) {
-  const bool retry_enabled = dt > 0.0
+  const bool local_retry_enabled = dt > 0.0
+      && NRFLDPrototype::Flag("ATHENA_NRFLD_LOCAL_TANGENTIAL_FALLBACK")
+      && NRFLDPrototype::TangentialReconstruction();
+  const bool full_retry_enabled = dt > 0.0
       && NRFLDPrototype::Flag("ATHENA_NRFLD_TANGENTIAL_FULL_SOLVE_RETRY")
       && NRFLDPrototype::TangentialReconstruction();
   NewtonSolveResult result = Solve_general_once(stage, dt);
-  if (!retry_enabled || result.IsSuccess()
+  if (local_retry_enabled) {
+    constexpr int max_local_retries = 8;
+    int retry_count = 0;
+    while (result.reason == NewtonSolveReason::operator_retry_requested
+           && retry_count < max_local_retries) {
+      if (LocalFaceFallbackAdded() <= 0) break;
+      ++retry_count;
+      if (Globals::my_rank == 0) {
+        std::cout << "[NR_LOCAL_TANGENTIAL_FULL_RETRY] cycle="
+                  << pmy_mesh_->ncycle << " stage=" << stage << " dt=" << dt
+                  << " retry=" << retry_count
+                  << " crossing_cells="
+                  << LocalFaceFallbackCrossings()
+                  << " local_face_cells_added="
+                  << LocalFaceFallbackAdded()
+                  << " action=restart_complete_nonlinear_solve" << std::endl;
+      }
+      result = Solve_general_once(stage, dt);
+    }
+    if (Globals::my_rank == 0 && retry_count > 0) {
+      std::cout << "[NR_LOCAL_TANGENTIAL_FULL_RETRY] cycle="
+                << pmy_mesh_->ncycle << " stage=" << stage
+                << " retry_count=" << retry_count
+                << " status=" << NewtonSolveReasonName(result.reason)
+                << " committed=" << result.committed << std::endl;
+    }
+    if (result.IsSuccess() || !full_retry_enabled
+        || result.reason == NewtonSolveReason::initial_nonfinite
+        || result.reason == NewtonSolveReason::final_nonfinite) {
+      return result;
+    }
+  }
+  if (!full_retry_enabled || result.IsSuccess()
       || result.reason == NewtonSolveReason::initial_nonfinite
       || result.reason == NewtonSolveReason::final_nonfinite) {
     return result;

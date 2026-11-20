@@ -211,7 +211,14 @@ class NewtonRaphson {
   CellCenteredBoundaryVariable delta_bvar;
   // Opt-in coarse/fine face coefficient moments (D and D*Er for six faces).
   AthenaArray<Real> interface_moments_, coarse_interface_moments_;
+  // Fine-side mask for coarse/fine faces where tangential reconstruction has
+  // produced an inadmissible Newton direction.  Zero keeps the high-order
+  // tangential offset; one selects the monotone two-point face locally.  The
+  // mask is frozen while a complete nonlinear solve is assembled and used by
+  // state ghosts, correction ghosts, interface moments, Jv, and MG alike.
+  AthenaArray<Real> tangential_face_fallback_;
   std::unique_ptr<CellCenteredBoundaryVariable> interface_bvar_;
+  bool UseTangentialFace(int face, int k, int j, int i) const;
   BoundaryFlag nr_block_bcs_[6];
   linearMG *plmg_; // to be set in derived class constructors
 protected:
@@ -259,6 +266,8 @@ class NewtonRaphsonDriver {
   virtual void RunJacobianDiagnostics();
   virtual void RunDirectionDiagnostic() {}
   virtual bool DirectionRequiresFullRetry() { return false; }
+  virtual long long LocalFaceFallbackAdded() const { return 0; }
+  virtual long long LocalFaceFallbackCrossings() const { return 0; }
   virtual void RunCommittedDiagnostic() {}
   virtual void SyncInterfaceFaceMoments() {}
   // void CalculateMatrix();

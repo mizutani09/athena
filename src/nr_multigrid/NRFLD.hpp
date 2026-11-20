@@ -238,6 +238,12 @@ class NRFLDDriver : public NewtonRaphsonDriver {
   void RunJacobianDiagnostics() final;
   void RunDirectionDiagnostic() final;
   bool DirectionRequiresFullRetry() final;
+  long long LocalFaceFallbackAdded() const final {
+    return local_face_fallback_added_;
+  }
+  long long LocalFaceFallbackCrossings() const final {
+    return local_face_fallback_crossings_;
+  }
   void RunCommittedDiagnostic() final;
   void SyncInterfaceFaceMoments() final;
   void SyncCorrectionFaceMoments();
@@ -257,6 +263,8 @@ class NRFLDDriver : public NewtonRaphsonDriver {
   int global_jv_iteration_{0}, global_jv_solve_{0};
   Real global_jv_epsilon_{1.e-4};
   int mixed_frame_ledger_count_{0};
+  long long local_face_fallback_added_{0};
+  long long local_face_fallback_crossings_{0};
 
  protected:
 };

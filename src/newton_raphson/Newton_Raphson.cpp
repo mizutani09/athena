@@ -125,6 +125,11 @@ NewtonRaphson::NewtonRaphson(NewtonRaphsonDriver *pmd, MeshBlock *pmb, int nghos
   delta_bvar.bvar_index = pmb->pbval->bvars.size();
   pmb->pbval->bvars.push_back(&delta_bvar); // this is needed for BoundaryVariable::CopyVariableBufferSameProcess in bvals_var.cpp
   pmb->pbval->pdeltabvar = &delta_bvar;
+  if (NRFLDPrototype::TangentialReconstruction()) {
+    tangential_face_fallback_.NewAthenaArray(6, pmb->ncells3, pmb->ncells2,
+                                            pmb->ncells1);
+    tangential_face_fallback_.ZeroClear();
+  }
   if (NRFLDPrototype::SharedCoeff()) {
     interface_moments_.NewAthenaArray(12, pmb->ncells3, pmb->ncells2,
                                     pmb->ncells1);
@@ -138,6 +143,12 @@ NewtonRaphson::NewtonRaphson(NewtonRaphsonDriver *pmd, MeshBlock *pmb, int nghos
     interface_bvar_->bvar_index = pmb->pbval->bvars.size();
     pmb->pbval->bvars.push_back(interface_bvar_.get());
   }
+}
+
+bool NewtonRaphson::UseTangentialFace(int face, int k, int j, int i) const {
+  return NRFLDPrototype::TangentialReconstruction()
+      && (tangential_face_fallback_.data() == nullptr
+          || tangential_face_fallback_(face,k,j,i) < 0.5);
 }
 
 
