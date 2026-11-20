@@ -93,7 +93,7 @@ while true; do
     time/cfl_number=0.3 time/tlim=10000.0 time/nlim="$target" \
     time/ncycle_out=10 time/xorder=2 \
     output2/dcycle=10 output2/variable=cons,prim,uov output4/dcycle=10 \
-    nrfld/diagnostic_verbosity=1 \
+    nrfld/diagnostic_verbosity=0 \
     nrfld/jacobian_check=false nrfld/jacobian_check_each_cycle=false \
     nrfld/fgmres_threshold=2e-8 nrfld/fgmres_restart=40 \
     nrfld/fgmres_max_iterations=300 nrfld/fgmres_mg_vcycles=2 \
