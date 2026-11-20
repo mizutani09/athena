@@ -113,6 +113,13 @@ the deeper compact-core hierarchy.  Central L7 is the next compromise: its
 0.2686-Rsun cell width gives 2.75 cells per 0.737-Rsun core-support radius,
 versus only 1.37 cells at L6 and 5.49 cells at L8.
 
+The root64 central-L7/surface-L3 control entered the same high-cost path as
+central L8 and was stopped after 5 minutes once its RSS and progress matched
+the two earlier 30-minute timeouts.  A shallower equivalent mesh is therefore
+tested next: root128, surface L2, and central L6.  It retains the same
+4.296875-Rsun surface spacing and 0.268555-Rsun central spacing as the
+root64/L3/L7 case while reducing the maximum relative AMR level from 7 to 6.
+
 ## Reproduction
 
 ```sh
