@@ -11,6 +11,11 @@ file_type = hst
 dcycle = 1
 data_format = %20.12e
 
+<output2>
+file_type = rst
+dt = 0.0
+dcycle = 0
+
 <time>
 cfl_number = 0.3
 nlim = 0
@@ -139,6 +144,7 @@ atmosphere_temperature_k = 1.0e4
 atmosphere_mode = isothermal_monopole
 atmosphere_reference_radius_cm = 6.4829478426547125e13
 surface_polar_radius_cm = 6.4829478426547125e13
+surface_match_radius_cm = 6.0540064072992234e13
 surface_refinement_level = 2
 surface_refinement_use_tracer = false
 surface_tracer_lower = 1.0e-6

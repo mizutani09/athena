@@ -178,6 +178,19 @@ fallback covers 42.8% of stellar mass, down from 50.0% on the central-only
 mesh, but a sustained gate is still needed to judge stability and fallback
 evolution.
 
+The 100-cycle sustained gate (XD job 344389) completed in 139.04 seconds with
+the same 2,136 blocks and 979,524-KiB maximum RSS per rank.  Mass drift stays
+below `8.23e-10`; the largest mechanical-energy drift is `5.59e-4`.  Radial
+Mach RMS peaks at `0.0214` by cycle 20 and declines to `0.0181`; radial
+kinetic energy similarly falls from `1.56e-3` to `9.57e-4` of `abs(W)`.
+The local maximum Mach rises to `0.308`, comparable to the `0.293` surface
+maximum in the earlier WOR-120 surface-L2 gate, but the old history columns
+cannot identify its mass or position.  The 1,000-cycle gate therefore adds
+interior/taper and density-binned maxima, the mass above Mach 0.1 and 0.3,
+the mass-weighted radius and geometric-mean density of the Mach>0.1 cells,
+and a cycle-1,000 restart.  This reaches approximately `0.00215 t_dyn` and is
+the next decision point before a dynamical-time production run.
+
 This taper begins below the MESA photosphere and is deliberately an HD
 regularization.  It is not accepted as an FLD photospheric model.  Radiation
 work must instead restore a thermodynamically and optically controlled outer

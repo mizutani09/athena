@@ -1,0 +1,29 @@
+{
+  "xd_job_id": 344389,
+  "state": "COMPLETED",
+  "elapsed_s": 146.0,
+  "launcher_wall_s": 139.04,
+  "ranks": 56,
+  "maximum_rank_rss_kib": 979524,
+  "meshblocks": 2136,
+  "cycles": 100,
+  "final_time_over_tdyn": 2.155203080014e-4,
+  "final_mass_relative_drift": -8.223433101263e-10,
+  "final_mechanical_energy_relative_drift": -4.491228758797e-4,
+  "maximum_abs_mechanical_energy_relative_drift": 5.590250180489e-4,
+  "final_radial_mach_rms": 1.810761363836e-2,
+  "maximum_radial_mach_rms": 2.139361596595e-2,
+  "maximum_radial_mach": 3.084412903989e-1,
+  "final_radial_ke_over_abs_W": 9.566584437603e-4,
+  "maximum_radial_ke_over_abs_W": 1.561724451680e-3,
+  "final_nonradial_perturbation_ke_over_abs_W": 4.646561670359e-4,
+  "final_virial_relative_residual": -8.816602110195e-3,
+  "maximum_abs_virial_relative_residual": 3.082673703861e-2,
+  "final_wenoz_plm_fallback_stellar_mass_fraction": 4.280764565803e-1,
+  "warnings": [
+    "MeshBlocks increased more than twice during adaptive initialization"
+  ],
+  "multigrid_iterative_warning": false,
+  "numeric_failure": false,
+  "git_commit": "867bfa9a3f844634c7cdd20bd5bef33809c61173"
+}

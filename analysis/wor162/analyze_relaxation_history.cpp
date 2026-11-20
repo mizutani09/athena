@@ -113,6 +113,22 @@ int main(int argc, char** argv) {
     const std::size_t outside_mass = Column(h, "stellar_mass_outside_initial_surface_g");
     const std::size_t q_mass = Column(h, "stellar_ellipsoidal_radius_mass_g");
     const std::size_t q_max = Column(h, "stellar_ellipsoidal_radius_max");
+    const std::size_t mach_max_interior = OptionalColumn(
+        h, "stellar_radial_mach_max_interior");
+    const std::size_t mach_max_surface_taper = OptionalColumn(
+        h, "stellar_radial_mach_max_surface_taper");
+    const std::size_t mach_max_dense = OptionalColumn(
+        h, "stellar_radial_mach_max_rho_ge_surface");
+    const std::size_t mach_max_thin = OptionalColumn(
+        h, "stellar_radial_mach_max_rho_lt_surface");
+    const std::size_t mach_gt_0p1_mass = OptionalColumn(
+        h, "stellar_mass_radial_mach_gt_0p1_g");
+    const std::size_t mach_gt_0p1_r_mass = OptionalColumn(
+        h, "stellar_r_mass_radial_mach_gt_0p1_g_cm");
+    const std::size_t mach_gt_0p1_logrho_mass = OptionalColumn(
+        h, "stellar_logrho_mass_radial_mach_gt_0p1_g");
+    const std::size_t mach_gt_0p3_mass = OptionalColumn(
+        h, "stellar_mass_radial_mach_gt_0p3_g");
     const std::size_t wenoz_cells = OptionalColumn(h, "wenoz_available_cells");
     const std::size_t wenoz_sensor = OptionalColumn(h, "wenoz_sensor_fallback_cells");
     const std::size_t wenoz_amr = OptionalColumn(h, "wenoz_amr_fallback_cells");
@@ -128,6 +144,13 @@ int main(int argc, char** argv) {
     }
     const bool has_wenoz = wenoz_cells < h.names.size()
         && wenoz_fallback < h.names.size();
+    const bool has_surface_mach = mach_max_interior < h.names.size()
+        && mach_max_surface_taper < h.names.size()
+        && mach_max_dense < h.names.size() && mach_max_thin < h.names.size()
+        && mach_gt_0p1_mass < h.names.size()
+        && mach_gt_0p1_r_mass < h.names.size()
+        && mach_gt_0p1_logrho_mass < h.names.size()
+        && mach_gt_0p3_mass < h.names.size();
     const bool has_meshblocks = !meshblocks.empty();
 
     const std::vector<double>& initial = h.rows.front();
@@ -142,7 +165,12 @@ int main(int argc, char** argv) {
            "radial_ke_over_abs_W,nonradial_perturbation_ke_over_abs_W,"
            "mean_radius_cm,rms_radius_cm,virial_relative_residual,"
            "outside_initial_surface_mass_fraction,mean_ellipsoidal_radius,"
-           "max_ellipsoidal_radius,wenoz_available_cells,"
+           "max_ellipsoidal_radius,radial_mach_max_interior,"
+           "radial_mach_max_surface_taper,radial_mach_max_rho_ge_surface,"
+           "radial_mach_max_rho_lt_surface,radial_mach_gt_0p1_mass_fraction,"
+           "radial_mach_gt_0p1_mean_radius_cm,"
+           "radial_mach_gt_0p1_geometric_mean_density_g_cm3,"
+           "radial_mach_gt_0p3_mass_fraction,wenoz_available_cells,"
            "wenoz_sensor_fallback_cells,wenoz_amr_fallback_cells,"
            "wenoz_plm_fallback_cells,wenoz_sensor_fallback_fraction,"
            "wenoz_amr_fallback_fraction,wenoz_plm_fallback_fraction,"
@@ -158,6 +186,12 @@ int main(int argc, char** argv) {
     double maximum_energy_drift = 0.0;
     double maximum_mach_rms = 0.0;
     double maximum_mach = 0.0;
+    double maximum_mach_interior = 0.0;
+    double maximum_mach_surface_taper = 0.0;
+    double maximum_mach_dense = 0.0;
+    double maximum_mach_thin = 0.0;
+    double maximum_mach_gt_0p1_mass_fraction = 0.0;
+    double maximum_mach_gt_0p3_mass_fraction = 0.0;
     double maximum_virial = 0.0;
     double maximum_radial_ke_fraction = 0.0;
     double maximum_nonradial_ke_fraction = 0.0;
@@ -196,6 +230,24 @@ int main(int argc, char** argv) {
       const double fallback_mass_fraction = has_wenoz
           && wenoz_fallback_mass < h.names.size() && row[mass] > 0.0
           ? row[wenoz_fallback_mass]/row[mass] : 0.0;
+      const double surface_mach_interior = has_surface_mach
+          ? row[mach_max_interior] : 0.0;
+      const double surface_mach_taper = has_surface_mach
+          ? row[mach_max_surface_taper] : 0.0;
+      const double surface_mach_dense = has_surface_mach
+          ? row[mach_max_dense] : 0.0;
+      const double surface_mach_thin = has_surface_mach
+          ? row[mach_max_thin] : 0.0;
+      const double high_mach_mass = has_surface_mach
+          ? row[mach_gt_0p1_mass] : 0.0;
+      const double high_mach_mass_fraction = row[mass] > 0.0
+          ? high_mach_mass/row[mass] : 0.0;
+      const double high_mach_mean_radius = high_mach_mass > 0.0
+          ? row[mach_gt_0p1_r_mass]/high_mach_mass : 0.0;
+      const double high_mach_mean_density = high_mach_mass > 0.0
+          ? std::exp(row[mach_gt_0p1_logrho_mass]/high_mach_mass) : 0.0;
+      const double very_high_mach_mass_fraction = has_surface_mach
+          && row[mass] > 0.0 ? row[mach_gt_0p3_mass]/row[mass] : 0.0;
       double meshblock_total = 0.0;
       if (has_meshblocks) {
         for (const std::size_t column : meshblocks) meshblock_total += row[column];
@@ -207,7 +259,12 @@ int main(int argc, char** argv) {
           << nonradial_ke_fraction << ',' << mean_radius << ','
           << rms_radius << ',' << virial << ','
           << row[outside_mass]/row[mass] << ',' << row[q_mass]/row[mass] << ','
-          << row[q_max] << ',' << available_cells << ',' << sensor_cells << ','
+          << row[q_max] << ',' << surface_mach_interior << ','
+          << surface_mach_taper << ',' << surface_mach_dense << ','
+          << surface_mach_thin << ',' << high_mach_mass_fraction << ','
+          << high_mach_mean_radius << ',' << high_mach_mean_density << ','
+          << very_high_mach_mass_fraction << ',' << available_cells << ','
+          << sensor_cells << ','
           << amr_cells << ',' << fallback_cells << ','
           << (available_cells > 0.0 ? sensor_cells/available_cells : 0.0) << ','
           << (available_cells > 0.0 ? amr_cells/available_cells : 0.0) << ','
@@ -221,6 +278,16 @@ int main(int argc, char** argv) {
       maximum_energy_drift = std::max(maximum_energy_drift, std::abs(energy_drift));
       maximum_mach_rms = std::max(maximum_mach_rms, mach_rms);
       maximum_mach = std::max(maximum_mach, row[mach_max]);
+      maximum_mach_interior = std::max(
+          maximum_mach_interior, surface_mach_interior);
+      maximum_mach_surface_taper = std::max(
+          maximum_mach_surface_taper, surface_mach_taper);
+      maximum_mach_dense = std::max(maximum_mach_dense, surface_mach_dense);
+      maximum_mach_thin = std::max(maximum_mach_thin, surface_mach_thin);
+      maximum_mach_gt_0p1_mass_fraction = std::max(
+          maximum_mach_gt_0p1_mass_fraction, high_mach_mass_fraction);
+      maximum_mach_gt_0p3_mass_fraction = std::max(
+          maximum_mach_gt_0p3_mass_fraction, very_high_mach_mass_fraction);
       maximum_virial = std::max(maximum_virial, std::abs(virial));
       maximum_radial_ke_fraction = std::max(
           maximum_radial_ke_fraction, radial_ke_fraction);
@@ -254,6 +321,8 @@ int main(int argc, char** argv) {
     const double final_fallback_cells = has_wenoz ? final[wenoz_fallback] : 0.0;
     const double final_fallback_mass = has_wenoz
         && wenoz_fallback_mass < h.names.size() ? final[wenoz_fallback_mass] : 0.0;
+    const double final_high_mach_mass = has_surface_mach
+        ? final[mach_gt_0p1_mass] : 0.0;
     double initial_meshblock_total = 0.0;
     double final_meshblock_total = 0.0;
     if (has_meshblocks) {
@@ -280,6 +349,27 @@ int main(int argc, char** argv) {
          << Relative(final_mechanical, initial_mechanical) << ",\n"
          << "  \"final_radial_mach_rms\": "
          << std::sqrt(std::max(0.0, final[mach2_mass]/final[mass])) << ",\n"
+         << "  \"final_radial_mach_max\": " << final[mach_max] << ",\n"
+         << "  \"final_radial_mach_max_interior\": "
+         << (has_surface_mach ? final[mach_max_interior] : 0.0) << ",\n"
+         << "  \"final_radial_mach_max_surface_taper\": "
+         << (has_surface_mach ? final[mach_max_surface_taper] : 0.0) << ",\n"
+         << "  \"final_radial_mach_max_rho_ge_surface\": "
+         << (has_surface_mach ? final[mach_max_dense] : 0.0) << ",\n"
+         << "  \"final_radial_mach_max_rho_lt_surface\": "
+         << (has_surface_mach ? final[mach_max_thin] : 0.0) << ",\n"
+         << "  \"final_radial_mach_gt_0p1_mass_fraction\": "
+         << (final[mass] > 0.0 ? final_high_mach_mass/final[mass] : 0.0) << ",\n"
+         << "  \"final_radial_mach_gt_0p1_mean_radius_cm\": "
+         << (final_high_mach_mass > 0.0
+             ? final[mach_gt_0p1_r_mass]/final_high_mach_mass : 0.0) << ",\n"
+         << "  \"final_radial_mach_gt_0p1_geometric_mean_density_g_cm3\": "
+         << (final_high_mach_mass > 0.0
+             ? std::exp(final[mach_gt_0p1_logrho_mass]/final_high_mach_mass)
+             : 0.0) << ",\n"
+         << "  \"final_radial_mach_gt_0p3_mass_fraction\": "
+         << (has_surface_mach && final[mass] > 0.0
+             ? final[mach_gt_0p3_mass]/final[mass] : 0.0) << ",\n"
          << "  \"final_radial_ke_over_abs_W\": "
          << final[radial_ke]/final_binding << ",\n"
          << "  \"final_nonradial_perturbation_ke_over_abs_W\": "
@@ -310,6 +400,18 @@ int main(int argc, char** argv) {
          << maximum_energy_drift << ",\n"
          << "  \"maximum_radial_mach_rms\": " << maximum_mach_rms << ",\n"
          << "  \"maximum_radial_mach\": " << maximum_mach << ",\n"
+         << "  \"maximum_radial_mach_interior\": "
+         << maximum_mach_interior << ",\n"
+         << "  \"maximum_radial_mach_surface_taper\": "
+         << maximum_mach_surface_taper << ",\n"
+         << "  \"maximum_radial_mach_rho_ge_surface\": "
+         << maximum_mach_dense << ",\n"
+         << "  \"maximum_radial_mach_rho_lt_surface\": "
+         << maximum_mach_thin << ",\n"
+         << "  \"maximum_radial_mach_gt_0p1_mass_fraction\": "
+         << maximum_mach_gt_0p1_mass_fraction << ",\n"
+         << "  \"maximum_radial_mach_gt_0p3_mass_fraction\": "
+         << maximum_mach_gt_0p3_mass_fraction << ",\n"
          << "  \"maximum_abs_virial_relative_residual\": " << maximum_virial << ",\n"
          << "  \"maximum_radial_ke_over_abs_W\": "
          << maximum_radial_ke_fraction << ",\n"

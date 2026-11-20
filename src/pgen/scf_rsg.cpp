@@ -12,6 +12,7 @@
 #include <cmath>
 #include <iomanip>
 #include <iostream>
+#include <limits>
 #include <sstream>
 #include <string>
 
@@ -51,6 +52,7 @@ Real angular_velocity, angular_velocity_code, gamma_gas;
 Real atmosphere_density, atmosphere_pressure, atmosphere_sound_speed_squared;
 Real atmosphere_density_floor, atmosphere_pressure_floor;
 Real atmosphere_reference_radius, surface_polar_radius, atmosphere_monopole_gm;
+Real surface_match_radius_code;
 Real mean_molecular_weight, core_mass, core_support_radius;
 Real core_mass_code, core_support_radius_code, core_gm_code;
 int quadrature_order;
@@ -66,6 +68,9 @@ constexpr int kWenozLevelHistoryStart = 33;
 constexpr int kWenozFallbackMassHistory =
     kWenozLevelHistoryStart+kTrackedMeshLevels;
 constexpr int kMeshBlockHistoryStart = kWenozFallbackMassHistory+1;
+constexpr int kSurfaceMachHistoryStart =
+    kMeshBlockHistoryStart+kTrackedMeshLevels;
+constexpr int kSurfaceMachHistoryCount = 8;
 
 int SurfaceRefinementCondition(MeshBlock* block);
 
@@ -561,6 +566,63 @@ Real HistoryRelaxationDiagnostic(MeshBlock* block, int output) {
   return total;
 }
 
+Real HistorySurfaceMachDiagnostic(MeshBlock* block, int output) {
+  const int diagnostic = output-kSurfaceMachHistoryStart;
+  Real total = 0.0;
+  for (int k = block->ks; k <= block->ke; ++k) {
+    const Real z = block->pcoord->x3v(k);
+    for (int j = block->js; j <= block->je; ++j) {
+      const Real y = block->pcoord->x2v(j);
+      for (int i = block->is; i <= block->ie; ++i) {
+        const Real x = block->pcoord->x1v(i);
+        const Real radius = std::sqrt(x*x+y*y+z*z);
+        const Real density = block->phydro->u(IDN,k,j,i);
+        const Real stellar_density = block->pscalars->s(0,k,j,i);
+        if (!(density > 0.0) || stellar_density/density <= 0.5) continue;
+        const Real pressure = block->phydro->w(IPR,k,j,i);
+        const Real sound_speed2 = gamma_gas*pressure/density;
+        if (!(sound_speed2 > 0.0)) continue;
+        const Real vx = block->phydro->u(IM1,k,j,i)/density;
+        const Real vy = block->phydro->u(IM2,k,j,i)/density;
+        const Real vz = block->phydro->u(IM3,k,j,i)/density;
+        const Real radial_velocity = radius > 0.0
+            ? (x*vx+y*vy+z*vz)/radius : 0.0;
+        const Real mach = std::abs(radial_velocity)/std::sqrt(sound_speed2);
+        const Real volume = block->pcoord->GetCellVolume(k,j,i);
+        if (diagnostic == 0 && radius <= surface_match_radius_code) {
+          total = std::max(total, mach);
+        }
+        if (diagnostic == 1 && radius > surface_match_radius_code) {
+          total = std::max(total, mach);
+        }
+        if (diagnostic == 2 && stellar_density >= surface_density_code) {
+          total = std::max(total, mach);
+        }
+        if (diagnostic == 3 && stellar_density < surface_density_code) {
+          total = std::max(total, mach);
+        }
+        if (mach > 0.1) {
+          if (diagnostic == 4) total += stellar_density*volume;
+          if (diagnostic == 5) total += stellar_density*radius*volume;
+          if (diagnostic == 6) {
+            const Real density_cgs = std::max(
+                stellar_density*rho_unit, std::numeric_limits<Real>::min());
+            total += stellar_density*std::log(density_cgs)*volume;
+          }
+        }
+        if (diagnostic == 7 && mach > 0.3) {
+          total += stellar_density*volume;
+        }
+      }
+    }
+  }
+  if (diagnostic == 4 || diagnostic == 6 || diagnostic == 7) {
+    return total*mass_unit;
+  }
+  if (diagnostic == 5) return total*mass_unit*length_unit;
+  return total;
+}
+
 }  // namespace
 
 void Mesh::InitUserMeshData(ParameterInput* pin) {
@@ -592,6 +654,8 @@ void Mesh::InitUserMeshData(ParameterInput* pin) {
       "problem", "atmosphere_reference_radius_cm");
   surface_polar_radius = pin->GetOrAddReal(
       "problem", "surface_polar_radius_cm", atmosphere_reference_radius);
+  const Real surface_match_radius = pin->GetOrAddReal(
+      "problem", "surface_match_radius_cm", atmosphere_reference_radius);
   quadrature_order = pin->GetOrAddInteger("problem", "cell_quadrature_order", 2);
   rotate_atmosphere = pin->GetOrAddBoolean(
       "problem", "rotate_atmosphere", false);
@@ -603,7 +667,8 @@ void Mesh::InitUserMeshData(ParameterInput* pin) {
           && atmosphere_temperature > 0.0,
           "rotation and atmosphere parameters must be nonnegative/positive");
   Require(core_mass > 0.0 && core_support_radius > 0.0 && gas_mass > 0.0
-          && atmosphere_reference_radius > 0.0 && surface_polar_radius > 0.0,
+          && atmosphere_reference_radius > 0.0 && surface_polar_radius > 0.0
+          && surface_match_radius > 0.0,
           "core, gas, and atmosphere reference parameters must be positive");
   Require(quadrature_order >= 1 && quadrature_order <= 3,
           "cell_quadrature_order must be 1, 2, or 3");
@@ -618,6 +683,7 @@ void Mesh::InitUserMeshData(ParameterInput* pin) {
   angular_velocity_code = angular_velocity*time_unit;
   core_mass_code = core_mass/mass_unit;
   core_support_radius_code = core_support_radius/length_unit;
+  surface_match_radius_code = surface_match_radius/length_unit;
   core_gm_code = gravity_code*core_mass_code;
   atmosphere_monopole_gm = 6.67430e-8*(gas_mass+core_mass);
   atmosphere_density_floor = pin->GetReal("hydro", "dfloor")*rho_unit;
@@ -679,7 +745,7 @@ void Mesh::InitUserMeshData(ParameterInput* pin) {
   Require(pin->GetOrAddBoolean("gravity", "fill_ghost", true),
           "gravity/fill_ghost must be true for force diagnostics");
 
-  AllocateUserHistoryOutput(kMeshBlockHistoryStart+kTrackedMeshLevels);
+  AllocateUserHistoryOutput(kSurfaceMachHistoryStart+kSurfaceMachHistoryCount);
   EnrollUserHistoryOutput(0, HistoryMass, "mapped_mass_g");
   EnrollUserHistoryOutput(1, HistoryStellarMass, "mapped_stellar_mass_g");
   EnrollUserHistoryOutput(2, HistoryAngularMomentum, "mapped_Jz_g_cm2_s");
@@ -749,6 +815,34 @@ void Mesh::InitUserMeshData(ParameterInput* pin) {
     EnrollUserHistoryOutput(kMeshBlockHistoryStart+level, HistoryMeshLevel,
                             name.str().c_str());
   }
+  EnrollUserHistoryOutput(kSurfaceMachHistoryStart,
+                          HistorySurfaceMachDiagnostic,
+                          "stellar_radial_mach_max_interior",
+                          UserHistoryOperation::max);
+  EnrollUserHistoryOutput(kSurfaceMachHistoryStart+1,
+                          HistorySurfaceMachDiagnostic,
+                          "stellar_radial_mach_max_surface_taper",
+                          UserHistoryOperation::max);
+  EnrollUserHistoryOutput(kSurfaceMachHistoryStart+2,
+                          HistorySurfaceMachDiagnostic,
+                          "stellar_radial_mach_max_rho_ge_surface",
+                          UserHistoryOperation::max);
+  EnrollUserHistoryOutput(kSurfaceMachHistoryStart+3,
+                          HistorySurfaceMachDiagnostic,
+                          "stellar_radial_mach_max_rho_lt_surface",
+                          UserHistoryOperation::max);
+  EnrollUserHistoryOutput(kSurfaceMachHistoryStart+4,
+                          HistorySurfaceMachDiagnostic,
+                          "stellar_mass_radial_mach_gt_0p1_g");
+  EnrollUserHistoryOutput(kSurfaceMachHistoryStart+5,
+                          HistorySurfaceMachDiagnostic,
+                          "stellar_r_mass_radial_mach_gt_0p1_g_cm");
+  EnrollUserHistoryOutput(kSurfaceMachHistoryStart+6,
+                          HistorySurfaceMachDiagnostic,
+                          "stellar_logrho_mass_radial_mach_gt_0p1_g");
+  EnrollUserHistoryOutput(kSurfaceMachHistoryStart+7,
+                          HistorySurfaceMachDiagnostic,
+                          "stellar_mass_radial_mach_gt_0p3_g");
   if (Globals::my_rank == 0) {
     std::cout << std::scientific << std::setprecision(8)
               << "scf_rsg profile=" << filename
