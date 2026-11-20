@@ -19,6 +19,7 @@ eos_table="$table_dir/data/eos/protostellar_tomida2015_material.tab"
 opacity_table="$table_dir/data/opacity/protostellar_semenov2003_nrm_c_a.h5"
 target_cycle=${TARGET_CYCLE:-965}
 defect_corrections=${DEFECT_CORRECTIONS:-1}
+mg_vcycles=${MG_VCYCLES:-5}
 job="$base/rootfix_local_face_true_defect_pc/job_${SLURM_JOB_ID}_c${target_cycle}"
 mkdir -p "$job/output"
 
@@ -65,8 +66,8 @@ make -j8 > "$job/build.log" 2>&1
 
 {
   date -Is
-  printf 'implementation_commit=721566c29 source_branch=exp/wor124-local-face-two-point-pc-20261120 ranks=%s restart_cycle=964 target=%s cfl=0.15 local_face_fallback=1 true_defect_corrections=%s global_full_solve_retry=0\n' \
-    "$SLURM_NTASKS" "$target_cycle" "$defect_corrections"
+  printf 'implementation_commit=721566c29 source_branch=exp/wor124-local-face-two-point-pc-20261120 ranks=%s restart_cycle=964 target=%s cfl=0.15 local_face_fallback=1 true_defect_corrections=%s mg_vcycles=%s global_full_solve_retry=0\n' \
+    "$SLURM_NTASKS" "$target_cycle" "$defect_corrections" "$mg_vcycles"
   sha256sum "$rst" "$eos_table" "$opacity_table" "$source_dir/bin/athena" \
     "$source_dir/src/linear_solver/linearMG/linearMG.cpp" \
     "$source_dir/src/nr_multigrid/NRFLD.cpp"
@@ -86,7 +87,7 @@ set +e
     nrfld/jacobian_check=false nrfld/jacobian_check_each_cycle=false \
     nrfld/backward_error_convergence=false \
     nrfld/fgmres_threshold=2e-8 nrfld/fgmres_restart=2000 \
-    nrfld/fgmres_max_iterations=2500 nrfld/fgmres_mg_vcycles=5 \
+    nrfld/fgmres_max_iterations=2500 nrfld/fgmres_mg_vcycles="$mg_vcycles" \
     > "$job/run.log" 2>&1
 code=$?
 set -e
