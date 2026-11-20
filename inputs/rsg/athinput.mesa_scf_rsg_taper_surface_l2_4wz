@@ -13,7 +13,7 @@ data_format = %20.12e
 
 <output2>
 file_type = rst
-dt = 0.0
+dt = 1.0e99
 dcycle = 0
 
 <time>
