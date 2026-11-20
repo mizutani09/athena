@@ -98,6 +98,14 @@ the queue limit, a one-node scaling gate measures central-L8-only and
 surface-L1/L2 initialization separately.  This identifies whether the cost
 jump is tied to a particular surface level or to the combined AMR/MG tree.
 
+XD job 344243 completed that scaling gate in 13 seconds.  Central L8 alone
+uses 512 blocks; surface L1 uses 848 blocks; surface L2 uses 2,472 blocks.
+Their launcher wall times are 3.47, 3.57, and 4.37 seconds respectively, and
+surface L2 uses at most 756,620 KiB RSS per rank (about 40 GiB summed over 56
+ranks).  The pathological transition is therefore specifically at surface
+L3.  A central-L6/surface-L3 control next distinguishes a surface-only cost
+from an interaction with the two additional compact-core levels.
+
 ## Reproduction
 
 ```sh
