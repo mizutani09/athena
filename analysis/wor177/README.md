@@ -120,6 +120,18 @@ tested next: root128, surface L2, and central L6.  It retains the same
 4.296875-Rsun surface spacing and 0.268555-Rsun central spacing as the
 root64/L3/L7 case while reducing the maximum relative AMR level from 7 to 6.
 
+Both follow-up controls entered the same high-cost path: root64/L3/L7 was
+stopped at 5:16 and root128/L2/L6 at 1:48 after their per-rank RSS and progress
+matched the prior timeouts.  Because the latter has the same physical surface
+and central spacings with a shallower relative tree, the bottleneck follows
+the simultaneous physical resolution range, not the relative AMR level or
+SCF quadrature.  The practical baseline is therefore root64 surface-L3 plus
+central-L6 (8,688 blocks, 11.94-second initialization).  Its 1.37 cells per
+current core-support radius are insufficient for production, so the next
+model-side task is to refit the BSCF equilibrium with a numerically resolved
+core softening radius and quantify the change in virial, force residual, mass,
+and binding energy before resuming Athena evolution.
+
 ## Reproduction
 
 ```sh
