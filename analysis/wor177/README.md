@@ -125,12 +125,52 @@ stopped at 5:16 and root128/L2/L6 at 1:48 after their per-rank RSS and progress
 matched the prior timeouts.  Because the latter has the same physical surface
 and central spacings with a shallower relative tree, the bottleneck follows
 the simultaneous physical resolution range, not the relative AMR level or
-SCF quadrature.  The practical baseline is therefore root64 surface-L3 plus
-central-L6 (8,688 blocks, 11.94-second initialization).  Its 1.37 cells per
-current core-support radius are insufficient for production, so the next
-model-side task is to refit the BSCF equilibrium with a numerically resolved
-core softening radius and quantify the change in virial, force residual, mass,
-and binding energy before resuming Athena evolution.
+SCF quadrature.  The practical mesh-only baseline is therefore root64
+surface-L3 plus central-L6 (8,688 blocks, 11.94-second initialization).  Its
+1.37 cells per current core-support radius are insufficient for production.
+A separate BSCF worktree therefore scanned larger core-softening supports
+before any Athena evolution was resumed.  Although a 3-Rsun support gives a
+very small SCF virial residual and 5.59 central-L6 cells per support, it
+retains only 24.7% of the accepted model's binding energy and increases the
+replacement particle mass from 4.861 to 5.880 Msun.  Even the 1-Rsun case
+loses 24.9% of the binding energy while remaining below two L6 cells.
+Enlarging the core support is rejected as a physical model change rather than
+a resolution fix.
+
+## HD surface match and selected mesh
+
+The accepted core must consequently retain central L8.  The affordable way
+to avoid the simultaneous central-L8/surface-L3 cost path is to regularize
+only the low-mass outer layer and use surface L2.  A density scan of the
+source profile gives:
+
+| match density (g cm^-3) | Hp (Rsun) | L2 cells/Hp | exterior gas mass |
+|---:|---:|---:|---:|
+| `4e-9` | 40.05 | 4.66 | 1.67% |
+| `3e-9` | 23.14 | 2.69 | 0.734% |
+| `2e-9` | 4.92 | 0.573 | 0.105% |
+| `1e-9` | 4.45 | 0.518 | 0.0480% |
+
+The sharp scale-height collapse occurs below `3e-9 g cm^-3`, so that density
+is the selected connection point.  `scf_surface_taper.cpp` preserves the SCF
+interior and all source potentials, then replaces the exterior with a finite
+`gamma=5/3` polytrope satisfying `h + Phi_eff = constant`.  Density and
+pressure are continuous at the connection.  The taper reaches zero at
+`6.48295e13 cm = 931.9 Rsun`, and changes the piecewise-linear gas mass by
+only `+1.297e-4` and the pressure-volume integral by `+3.606e-6`.
+
+The root32/L9 conservative-map audit (the same minimum spacing as root64/L8)
+has a `1.27e-5` mass error and `0.0611843` force L2 residual.  The latter is
+unchanged at the shown precision from the unmodified profile.  The selected
+HD candidate is therefore root64, original central L8, tapered surface L2,
+order-3 cell mapping, and RK4+4WZ evolution.  Surface L2 plus central L8 was
+already measured at 2,472 blocks and about 4.4 seconds for a one-point
+topology gate; the full quadrature/MG initialization remains the next XD gate.
+
+This taper begins below the MESA photosphere and is deliberately an HD
+regularization.  It is not accepted as an FLD photospheric model.  Radiation
+work must instead restore a thermodynamically and optically controlled outer
+layer and repeat its own resolution audit.
 
 ## Reproduction
 
@@ -139,7 +179,13 @@ python3 configure.py --prob=scf_rsg --coord=cartesian --eos=adiabatic \
   --flux=hllc --nscalars=2 --grav=mg --nghost=4 --cxx=g++
 make -j4
 python3 tests/scf_mapping/test_mesa_mapping.py --athena bin/athena
+g++ -O2 -std=c++11 -Wall -Wextra -Wpedantic -Werror \
+  tools/rsg/scf_surface_taper.cpp -o /tmp/scf_surface_taper
+/tmp/scf_surface_taper data/ic/rsg21_mesa_scf_omega0_nr16384.csv \
+  data/ic/rsg21_mesa_scf_omega0_nr16384_taper_rho3e-9_gamma5_3.csv \
+  analysis/wor177/surface_taper_audit.csv 3e-9 1.6666666666666667
 ```
 
-The upstream BSCF-rsg repository is unchanged; profile generation parameters
-and checksums are recorded in `source_manifest.json`.
+The original BSCF-rsg repository is unchanged.  Core-softening rejection was
+performed on the separate `wor-177-core-softening` worktree; source profile
+generation parameters and checksums remain recorded in `source_manifest.json`.

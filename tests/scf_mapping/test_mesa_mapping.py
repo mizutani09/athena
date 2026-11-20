@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import argparse
 import csv
+import hashlib
 import json
 import math
 import re
@@ -17,6 +18,10 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[2]
 PROFILE = ROOT/"data/ic/rsg21_mesa_scf_omega0_nr16384.csv"
 METADATA = ROOT/"data/ic/rsg21_mesa_scf_omega0_nr16384.json"
+TAPER_PROFILE = ROOT/(
+    "data/ic/rsg21_mesa_scf_omega0_nr16384_taper_rho3e-9_gamma5_3.csv")
+TAPER_METADATA = ROOT/(
+    "data/ic/rsg21_mesa_scf_omega0_nr16384_taper_rho3e-9_gamma5_3.json")
 INPUT = ROOT/"inputs/rsg/athinput.mesa_scf_rsg_map"
 N_MU = 16
 ROOT_HALF_WIDTH_CM = 7.6527e13
@@ -53,6 +58,7 @@ class MesaMappingTests(unittest.TestCase):
             cls.profile_rows = list(csv.DictReader(handle))
         cls.profile_unit = cls.directory/"test_profile"
         cls.audit = cls.directory/"audit"
+        cls.taper = cls.directory/"surface_taper"
         common = [
             "g++", "-O2", "-std=c++11", "-Wall", "-Wextra",
             "-Wpedantic", "-Werror",
@@ -63,6 +69,9 @@ class MesaMappingTests(unittest.TestCase):
         subprocess.run(common + [
             str(ROOT/"tools/rsg/scf_smr_map_audit.cpp"),
             "-o", str(cls.audit)], check=True)
+        subprocess.run(common + [
+            str(ROOT/"tools/rsg/scf_surface_taper.cpp"),
+            "-o", str(cls.taper)], check=True)
 
     @classmethod
     def tearDownClass(cls) -> None:
@@ -82,6 +91,31 @@ class MesaMappingTests(unittest.TestCase):
                             -1.0), 1.3e-2)
         self.assertLess(self.metadata["scalar_virial_relative_error"], 1.0e-3)
         self.assertLess(self.metadata["force_residual_max_relative"], 1.0e-6)
+
+    def test_hydrostatic_surface_taper_is_reproducible(self) -> None:
+        output = self.directory/"surface_taper.csv"
+        audit = self.directory/"surface_taper_audit.csv"
+        metadata = json.loads(TAPER_METADATA.read_text(encoding="utf-8"))
+        subprocess.run([
+            str(self.taper), str(PROFILE), str(output), str(audit),
+            str(metadata["match_density_g_cm3"]),
+            str(metadata["polytropic_gamma"]),
+        ], check=True, capture_output=True, text=True)
+        digest = hashlib.sha256()
+        with output.open("rb") as handle:
+            for chunk in iter(lambda: handle.read(1024*1024), b""):
+                digest.update(chunk)
+        self.assertEqual(digest.hexdigest(), metadata["profile_sha256"])
+        with audit.open(encoding="utf-8") as handle:
+            row = {key: float(value)
+                   for key, value in next(csv.DictReader(handle)).items()}
+        self.assertLess(abs(row["mass_relative_change"]), 2.0e-4)
+        self.assertLess(abs(row["pressure_volume_relative_change"]), 1.0e-5)
+        self.assertLess(row["maximum_anchor_density_relative_error"], 5.0e-4)
+        self.assertLess(row["maximum_anchor_enthalpy_relative_change"], 4.0e-2)
+        subprocess.run([
+            str(self.profile_unit), str(TAPER_PROFILE), "16384", str(N_MU),
+        ], check=True, capture_output=True, text=True)
 
     def test_root32_l9_conservative_map(self) -> None:
         output = self.directory/"audit.csv"

@@ -22,6 +22,18 @@
     "minimum_cell_width_cm": 9.3416748046875e9,
     "core_support_cells": 5.487630248
   },
+  "hd_surface_taper": {
+    "match_density_g_cm3": 3e-9,
+    "polytropic_gamma": 1.6666666666666667,
+    "match_radius_cm": 60540064072992.234,
+    "zero_density_radius_cm": 64829478426547.125,
+    "mass_relative_change": 0.00012968608056929121,
+    "pressure_volume_relative_change": 3.6058812524775163e-6,
+    "selected_surface_level": 2,
+    "surface_cell_width_rsun": 8.59375,
+    "cells_per_match_pressure_scale_height": 2.6925907170776546,
+    "scope": "HD only; the MESA photospheric layer is replaced"
+  },
   "sha256": {
     "data/ic/rsg21_mesa_scf_omega0_nr16384.csv": "51b1ffe5e272b150fa6150a5cea8e96fe0f47615d3ffdf992c6dd40d61920ff3",
     "data/ic/rsg21_mesa_scf_omega0_nr16384.json": "9b253431d62b8397db6e424d5fc3ac98812031a36a8f10f9eed372546d77619c",
@@ -30,6 +42,9 @@
     "inputs/rsg/athinput.mesa_scf_rsg_map": "15b4b0dd92774186ddf9a4ae69650ddd32be112a7e0da601ebe36ecfb9aa779f",
     "analysis/wor177/athena_l8_map/mesa_scf_rsg_map.hst": "03e26c2cc67bc2f754829f0881dc8c91badbd83116c867edc5e277405e613197",
     "analysis/wor177/smoke_x2/relaxation_summary.json": "edb1ca97c93959185f53b24bb81922f0ed3ae447065075220ff7da7c8e517c5f",
-    "analysis/wor177/smoke_4wz/relaxation_summary.json": "3647534124508aaca88222d6df2bdf135e64057c706d4408d4b140ada1a84f05"
+    "analysis/wor177/smoke_4wz/relaxation_summary.json": "3647534124508aaca88222d6df2bdf135e64057c706d4408d4b140ada1a84f05",
+    "data/ic/rsg21_mesa_scf_omega0_nr16384_taper_rho3e-9_gamma5_3.csv": "0f88b9882ea9cd7c0eaa0d532f307363bfd384ee8856aac5fc81820739642dff",
+    "tools/rsg/scf_surface_taper.cpp": "6b6012c8eddbcb6648a7c6de9b3f57e4cbf8779d55a890e992186bfe454dedad",
+    "analysis/wor177/surface_taper_audit.csv": "505cba807d68599c449e1abc5297aea95671c82d151667a4a4182b2367fe0a65"
   }
 }

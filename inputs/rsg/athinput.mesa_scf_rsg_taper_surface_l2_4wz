@@ -1,0 +1,168 @@
+<comment>
+problem = WOR-177 MESA-fit SCF with gamma=5/3 hydrostatic surface taper
+mesh = root64, density-isosurface L2, original central L8
+surface dx = 8.59375 Rsun; central dx = 0.13427734375 Rsun
+
+<job>
+problem_id = mesa_scf_rsg_taper_surface_l2_4wz
+
+<output1>
+file_type = hst
+dcycle = 1
+data_format = %20.12e
+
+<time>
+cfl_number = 0.3
+nlim = 0
+tlim = 1.0e-3
+integrator = rk4
+xorder = 4wz
+ncycle_out = 1
+
+<mesh>
+refinement = adaptive
+numlevel = 9
+nx1 = 64
+x1min = -1100.0
+x1max = 1100.0
+ix1_bc = user
+ox1_bc = user
+nx2 = 64
+x2min = -1100.0
+x2max = 1100.0
+ix2_bc = user
+ox2_bc = user
+nx3 = 64
+x3min = -1100.0
+x3max = 1100.0
+ix3_bc = user
+ox3_bc = user
+
+<meshblock>
+nx1 = 16
+nx2 = 16
+nx3 = 16
+
+<refinement1>
+level = 1
+x1min = -550.0
+x1max = 550.0
+x2min = -550.0
+x2max = 550.0
+x3min = -550.0
+x3max = 550.0
+
+<refinement2>
+level = 2
+x1min = -275.0
+x1max = 275.0
+x2min = -275.0
+x2max = 275.0
+x3min = -275.0
+x3max = 275.0
+
+<refinement3>
+level = 3
+x1min = -137.5
+x1max = 137.5
+x2min = -137.5
+x2max = 137.5
+x3min = -137.5
+x3max = 137.5
+
+<refinement4>
+level = 4
+x1min = -68.75
+x1max = 68.75
+x2min = -68.75
+x2max = 68.75
+x3min = -68.75
+x3max = 68.75
+
+<refinement5>
+level = 5
+x1min = -34.375
+x1max = 34.375
+x2min = -34.375
+x2max = 34.375
+x3min = -34.375
+x3max = 34.375
+
+<refinement6>
+level = 6
+x1min = -17.1875
+x1max = 17.1875
+x2min = -17.1875
+x2max = 17.1875
+x3min = -17.1875
+x3max = 17.1875
+
+<refinement7>
+level = 7
+x1min = -8.59375
+x1max = 8.59375
+x2min = -8.59375
+x2max = 8.59375
+x3min = -8.59375
+x3max = 8.59375
+
+<refinement8>
+level = 8
+x1min = -4.296875
+x1max = 4.296875
+x2min = -4.296875
+x2max = 4.296875
+x3min = -4.296875
+x3max = 4.296875
+
+<loadbalancing>
+balancer = automatic
+interval = 10
+tolerance = 0.5
+
+<hydro>
+gamma = 1.6666666666666667
+mu = 0.6353437771420501
+rho_unit = 1.0e-8
+egas_unit = 1.0e5
+leng_unit = 6.957e10
+dfloor = 1.0e-8
+pfloor = 1.0e-9
+
+<problem>
+scf_profile_file = data/ic/rsg21_mesa_scf_omega0_nr16384_taper_rho3e-9_gamma5_3.csv
+angular_velocity_rad_s = 0.0
+frame = inertial
+cell_quadrature_order = 3
+atmosphere_density_g_cm3 = 1.0e-14
+atmosphere_temperature_k = 1.0e4
+atmosphere_mode = isothermal_monopole
+atmosphere_reference_radius_cm = 6.4829478426547125e13
+surface_polar_radius_cm = 6.4829478426547125e13
+surface_refinement_level = 2
+surface_refinement_use_tracer = false
+surface_tracer_lower = 1.0e-6
+surface_tracer_upper = 0.999999
+surface_refinement_density_g_cm3 = 3.0e-9
+rotate_atmosphere = false
+gas_mass_g = 3.2115251718104691e34
+core_mass_g = 9.665283322407383e33
+core_support_radius_cm = 5.1263110134271515e10
+
+<gravity>
+mgmode = fmg
+threshold = -1.0
+niteration = 0
+ix1_bc = multipole
+ox1_bc = multipole
+ix2_bc = multipole
+ox2_bc = multipole
+ix3_bc = multipole
+ox3_bc = multipole
+mporder = 4
+auto_mporigin = false
+nodipole = true
+mporigin_x1 = 0.0
+mporigin_x2 = 0.0
+mporigin_x3 = 0.0
+fill_ghost = true

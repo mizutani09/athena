@@ -1,0 +1,21 @@
+{
+  "schema_version": 1,
+  "source_profile": "data/ic/rsg21_mesa_scf_omega0_nr16384.csv",
+  "source_sha256": "51b1ffe5e272b150fa6150a5cea8e96fe0f47615d3ffdf992c6dd40d61920ff3",
+  "profile_sha256": "0f88b9882ea9cd7c0eaa0d532f307363bfd384ee8856aac5fc81820739642dff",
+  "generator": "tools/rsg/scf_surface_taper.cpp",
+  "match_density_g_cm3": 3.0e-9,
+  "polytropic_gamma": 1.6666666666666667,
+  "match_radius_cm": 6.0540064072992234e13,
+  "zero_density_radius_cm": 6.4829478426547125e13,
+  "original_piecewise_linear_mass_g": 3.2111087357042538e34,
+  "tapered_piecewise_linear_mass_g": 3.2115251718104691e34,
+  "mass_relative_change": 1.2968608056929121e-4,
+  "original_piecewise_linear_pressure_volume_integral_erg": 1.3143353142200614e49,
+  "tapered_piecewise_linear_pressure_volume_integral_erg": 1.3143400535571305e49,
+  "pressure_volume_relative_change": 3.6058812524775163e-6,
+  "maximum_anchor_density_relative_error": 3.6338934803104017e-4,
+  "maximum_anchor_enthalpy_relative_change": 2.8036007882566216e-2,
+  "potential_policy": "retain source SCF gas, core, and rotational potentials for mapping audit",
+  "scope": "HD surface-resolution candidate; not an FLD photosphere model"
+}
