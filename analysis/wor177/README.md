@@ -106,6 +106,13 @@ ranks).  The pathological transition is therefore specifically at surface
 L3.  A central-L6/surface-L3 control next distinguishes a surface-only cost
 from an interaction with the two additional compact-core levels.
 
+The central-L6/surface-L3 control (XD job 344246) completes in 11.94 seconds
+with 8,688 blocks: L1=128, L2=2,312, L3=6,072, L4=56, L5=56, and L6=64.
+This confirms that surface L3 itself is healthy and isolates the slowdown to
+the deeper compact-core hierarchy.  Central L7 is the next compromise: its
+0.2686-Rsun cell width gives 2.75 cells per 0.737-Rsun core-support radius,
+versus only 1.37 cells at L6 and 5.49 cells at L8.
+
 ## Reproduction
 
 ```sh
