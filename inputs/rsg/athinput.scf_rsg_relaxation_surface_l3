@@ -148,6 +148,7 @@ atmosphere_mode = isothermal_monopole
 atmosphere_reference_radius_cm = 6.679783093541112e13
 surface_polar_radius_cm = 6.102720249750556e13
 surface_refinement_level = 3
+surface_refinement_use_tracer = true
 surface_tracer_lower = 1.0e-6
 surface_tracer_upper = 0.999999
 surface_refinement_density_g_cm3 = 1.0e-9
