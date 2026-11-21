@@ -67,7 +67,10 @@ localize_checkpoint() {
     output1/dcycle=-1 output2/dcycle=-1 \
     output3/dt=1.0e-12 output3/next_time=0.0 \
     > "$run/stdout.log" 2> "$run/stderr.log"
-  grep -q 'Terminating on cycle limit' "$run/stdout.log"
+  # nlim is an absolute cycle number.  Since these restarts are already at
+  # cycle 5,000/10,000, nlim=1 requests an output-only restart inspection and
+  # Athena++ reports the resulting immediate stop as a time-limit termination.
+  grep -q 'Terminating on time limit' "$run/stdout.log"
   if grep -Eiq 'nan|fatal error|segmentation fault|bad_alloc|out of memory' \
       "$run/stdout.log" "$run/stderr.log"; then
     echo "$label localization failed" >&2
