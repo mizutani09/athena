@@ -211,7 +211,7 @@ def write_html(output, manifest):
 <h2>Final envelope-scale magnetic field-line view</h2>
 <a href='final_magnetic_field_lines_envelope.svg'><img src='final_magnetic_field_lines_envelope.png' alt='Envelope-scale magnetic field lines'></a>
 <div class='note'><strong>Visualization scope.</strong> Each panel is centered on the fixed initial core origin; the separately recorded density-peak position remains within the manifest. AMR leaf-cell values are sampled piecewise-constantly onto a uniform display raster. Streamlines use the sampled cell-centred magnetic-field direction and are qualitative; quantitative values remain those in the original HDF files. The lower-AMR trajectory is followed by the AMR+1 trajectory near first-core density.</div>
-<p><a href='movie_manifest.json'>frame manifest and provenance</a> · <a href='../resolution_comparison/index.html'>resolution analysis</a> · <a href='../additional_core_analysis/index.html'>core diagnostics</a></p>
+<p><a href='movie_manifest.json'>frame manifest and provenance</a> · <a href='../three_d/index.html'>3-D density and magnetic field</a> · <a href='../resolution_comparison/index.html'>resolution analysis</a> · <a href='../additional_core_analysis/index.html'>core diagnostics</a></p>
 """
     (output/"index.html").write_text(page)
     (output/"movie_manifest.json").write_text(json.dumps(manifest, indent=2)+"\n")
