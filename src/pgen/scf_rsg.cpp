@@ -61,9 +61,9 @@ scf_map::AtmosphereModel atmosphere_model;
 int root_logical_level, surface_refinement_level;
 Real surface_tracer_lower, surface_tracer_upper, surface_density_code;
 constexpr int kWenozHistoryStart = 29;
-// WOR-177's 0.737-Rsun softened core requires central L8 on the root64
-// production mesh.  Keep one history slot for every level from L0 through L8.
-constexpr int kTrackedMeshLevels = 9;
+// WOR-177's compact softened core needs an L8/L9 resolution comparison on the
+// root64 mesh.  Keep one history slot for every level from L0 through L9.
+constexpr int kTrackedMeshLevels = 10;
 constexpr int kWenozLevelHistoryStart = 33;
 constexpr int kWenozFallbackMassHistory =
     kWenozLevelHistoryStart+kTrackedMeshLevels;

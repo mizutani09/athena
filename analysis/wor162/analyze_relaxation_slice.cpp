@@ -14,7 +14,7 @@
 namespace {
 
 constexpr double kGamma = 5.0/3.0;
-constexpr double kOmegaCode = 4.0e-8*2.19999657e4;
+constexpr double kDefaultOmegaCode = 4.0e-8*2.19999657e4;
 
 struct Cell {
   double x;
@@ -87,16 +87,23 @@ struct Bin {
   double maximum_mach = 0.0;
 };
 
+double SafeFraction(double numerator, double denominator) {
+  return denominator > 0.0 ? numerator/denominator : 0.0;
+}
+
 }  // namespace
 
 int main(int argc, char** argv) {
   try {
-    if (argc != 5) {
+    if (argc < 5 || argc > 7) {
       std::cerr << "usage: " << argv[0]
-                << " TAB_DIRECTORY SNAPSHOT OUTPUT.csv SUMMARY.json\n";
+                << " TAB_DIRECTORY SNAPSHOT OUTPUT.csv SUMMARY.json"
+                   " [OMEGA_CODE [OUTPUT_ID]]\n";
       return 2;
     }
-    const std::string pattern = std::string(argv[1])+"/*.out2."
+    const double omega_code = argc >= 6 ? std::stod(argv[5]) : kDefaultOmegaCode;
+    const std::string output_id = argc >= 7 ? argv[6] : "out2";
+    const std::string pattern = std::string(argv[1])+"/*."+output_id+"."
         +argv[2]+".tab";
     const std::vector<std::string> paths = Glob(pattern);
     const double bin_width = 25.0;
@@ -123,8 +130,8 @@ int main(int argc, char** argv) {
         if (index < 0 || index >= number_bins) continue;
         const double radial_velocity = radius > 0.0
             ? (cell.x*cell.vx+cell.y*cell.vy)/radius : 0.0;
-        const double target_vx = -kOmegaCode*cell.y;
-        const double target_vy = kOmegaCode*cell.x;
+        const double target_vx = -omega_code*cell.y;
+        const double target_vy = omega_code*cell.x;
         const double dvx = cell.vx-target_vx;
         const double dvy = cell.vy-target_vy;
         const double perturbation_speed2 = dvx*dvx+dvy*dvy+cell.vz*cell.vz;
@@ -158,10 +165,6 @@ int main(int argc, char** argv) {
         ++stellar_cells;
       }
     }
-    if (total_radial_ke <= 0.0 || total_nonradial_ke <= 0.0) {
-      throw std::runtime_error("zero perturbation energy");
-    }
-
     std::ofstream csv(argv[3]);
     if (!csv) throw std::runtime_error("cannot create CSV output");
     csv << "radius_left_rsun,radius_right_rsun,slice_mass_weight,"
@@ -173,8 +176,8 @@ int main(int argc, char** argv) {
       if (bin.mass <= 0.0) continue;
       csv << i*bin_width << ',' << (i+1)*bin_width << ',' << bin.mass << ','
           << std::sqrt(bin.mach2_mass/bin.mass) << ',' << bin.maximum_mach << ','
-          << bin.radial_ke/total_radial_ke << ','
-          << (bin.radial_ke > 0.0 ? bin.nonradial_ke/bin.radial_ke : 0.0) << '\n';
+          << SafeFraction(bin.radial_ke, total_radial_ke) << ','
+          << SafeFraction(bin.nonradial_ke, bin.radial_ke) << '\n';
     }
 
     std::ofstream json(argv[4]);
@@ -182,24 +185,26 @@ int main(int argc, char** argv) {
     json << std::scientific << std::setprecision(12)
          << "{\n"
          << "  \"snapshot\": \"" << argv[2] << "\",\n"
+         << "  \"omega_code\": " << omega_code << ",\n"
+         << "  \"output_id\": \"" << output_id << "\",\n"
          << "  \"tab_files\": " << paths.size() << ",\n"
          << "  \"stellar_slice_cells\": " << stellar_cells << ",\n"
          << "  \"radial_ke_fraction_r_lt_20_rsun\": "
-         << core_radial_ke/total_radial_ke << ",\n"
+         << SafeFraction(core_radial_ke, total_radial_ke) << ",\n"
          << "  \"radial_ke_fraction_20_to_100_rsun\": "
-         << inner_radial_ke/total_radial_ke << ",\n"
+         << SafeFraction(inner_radial_ke, total_radial_ke) << ",\n"
          << "  \"radial_ke_fraction_100_to_800_rsun\": "
-         << envelope_radial_ke/total_radial_ke << ",\n"
+         << SafeFraction(envelope_radial_ke, total_radial_ke) << ",\n"
          << "  \"radial_ke_fraction_r_gt_800_rsun\": "
-         << surface_radial_ke/total_radial_ke << ",\n"
+         << SafeFraction(surface_radial_ke, total_radial_ke) << ",\n"
          << "  \"nonradial_ke_fraction_r_lt_20_rsun\": "
-         << core_nonradial_ke/total_nonradial_ke << ",\n"
+         << SafeFraction(core_nonradial_ke, total_nonradial_ke) << ",\n"
          << "  \"nonradial_ke_fraction_20_to_100_rsun\": "
-         << inner_nonradial_ke/total_nonradial_ke << ",\n"
+         << SafeFraction(inner_nonradial_ke, total_nonradial_ke) << ",\n"
          << "  \"nonradial_ke_fraction_100_to_800_rsun\": "
-         << envelope_nonradial_ke/total_nonradial_ke << ",\n"
+         << SafeFraction(envelope_nonradial_ke, total_nonradial_ke) << ",\n"
          << "  \"nonradial_ke_fraction_r_gt_800_rsun\": "
-         << surface_nonradial_ke/total_nonradial_ke << "\n"
+         << SafeFraction(surface_nonradial_ke, total_nonradial_ke) << "\n"
          << "}\n";
   } catch (const std::exception& error) {
     std::cerr << "analyze_relaxation_slice: " << error.what() << '\n';

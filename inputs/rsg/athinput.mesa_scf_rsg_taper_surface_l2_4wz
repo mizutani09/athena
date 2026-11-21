@@ -15,6 +15,14 @@ data_format = %20.12e
 file_type = rst
 dcycle = 1000
 
+<output3>
+file_type = tab
+variable = prim
+data_format = %20.12e
+x3_slice = 0.0
+dt = -1
+next_time = 0.0
+
 <time>
 cfl_number = 0.3
 nlim = 0
