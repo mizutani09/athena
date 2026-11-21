@@ -256,6 +256,41 @@ compare fresh L9 and L10 through at least `0.025 t_dyn`; L10 provides about
 disabled restart output, so that comparison starts from fresh maps and must
 retain final restarts.
 
+## Diffuse core excision supersedes the L10 path
+
+The L10 comparison above is no longer the preferred next calculation.  A
+separate BSCF worktree, branch `wor-177-core-excision` at commit `44eaba0`,
+moves the MESA cut from `5.70324` to `6.27977 Msun`, immediately inside the
+`6.29664 Msun` radiative--convective boundary.  The excised burning shell and
+radiative core are represented by a `6.2112 Msun` softened particle.  Only
+the inward continuation beyond the last retained MESA state is replaced by a
+matched `gamma=5/3` law; the retained convective-envelope table is unchanged.
+
+This choice lowers the central gas density from `21.98` to
+`4.81e-3 g cm^-3` and expands the compact-spline support from `0.7369` to
+`4.0548 Rsun`.  The support is resolved by 7.55 L6 cells or 15.10 L7 cells,
+instead of 10.97 L9 cells in the old model.  The `nr=16384` source SCF has a
+`1.04e-4` scalar-virial residual and a photospheric-radius error of 0.0082%.
+The surface taper changes mass by `1.44e-4` and pressure volume by `4.85e-6`.
+This is an HD core/surface regularization, not an FLD photosphere.
+
+The standalone conservative mapper gives the following fresh-map results:
+
+| mesh | cells/support | mass error | ideal-gas energy error | force L2 |
+|---|---:|---:|---:|---:|
+| root64 + central L6 | 7.55 | -6.15e-7 | -1.46e-7 | 1.997e-2 |
+| root64 + central L7 | 15.10 | -6.73e-7 | 3.78e-7 | 5.232e-3 |
+
+Both maps are acceptable for an HD discriminator.  L6 is the production-cost
+target and L7 is the resolution control.  Relative to the old L9 hierarchy,
+their minimum cell widths are respectively 8 and 4 times larger.  Since the
+Athena++ timestep is global, a first conservative cost expectation is about
+one eighth and one quarter of the old L9 cycle count, with a small additional
+per-step saving from removing the innermost refinement shells.  The actual
+CFL and wall-time ratios must be measured by the same `0.025 t_dyn` L6/L7
+fresh-map run; no long binary calculation should be priced from geometry
+alone.
+
 This taper begins below the MESA photosphere and is deliberately an HD
 regularization.  It is not accepted as an FLD photospheric model.  Radiation
 work must instead restore a thermodynamically and optically controlled outer

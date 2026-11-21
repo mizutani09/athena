@@ -1,0 +1,39 @@
+{
+  "schema_version": 1,
+  "upstream": {
+    "repository": "/home/kosuke/simulation/mhd/BSCF-rsg-wor177-core-excision",
+    "branch": "wor-177-core-excision",
+    "commit": "44eaba0",
+    "source_profile_sha256": "1e140767f30d468cd05c1f52d431335e5b80aaa427916678477f214f7887cd0c"
+  },
+  "model": {
+    "core_cut_mass_Msun": 6.2797682073524186,
+    "radiative_convective_boundary_mass_Msun": 6.2966365079492572,
+    "inner_core_gamma": 1.6666666666666667,
+    "core_particle_mass_g": 1.2350805352977006e34,
+    "core_support_radius_cm": 2.8209063944239502e11,
+    "central_density_g_cm3": 4.8113219754514023e-3,
+    "scf_radial_points": 16384,
+    "scf_angular_points": 16
+  },
+  "athena": {
+    "root_points": 64,
+    "surface_level": 2,
+    "l6_minimum_cell_width_cm": 3.736669921875e10,
+    "l6_core_support_cells": 7.549254431889357,
+    "l7_minimum_cell_width_cm": 1.8683349609375e10,
+    "l7_core_support_cells": 15.098508863778714
+  },
+  "mapping": {
+    "l6_mass_relative_error": -6.1473171786285974e-7,
+    "l6_energy_relative_error": -1.4566526296277971e-7,
+    "l6_force_l2_relative": 1.9967982998960302e-2,
+    "l7_mass_relative_error": -6.7343138621112075e-7,
+    "l7_energy_relative_error": 3.7813423348076469e-7,
+    "l7_force_l2_relative": 5.2324537383847984e-3
+  },
+  "sha256": {
+    "data/ic/rsg21_mesa_scf_corecut6p28_g5p3_nr16384_taper_rho3e-9_gamma5_3.csv": "89b8af55be1a0447842366a80c74e042a926a8ecd123fa3398aa404aa7855eda",
+    "analysis/wor177/corecut6p28_surface_taper_audit.csv": "1e5dce0d3b1c3ecdb1977b6700265634a400ece0b2c77d29b2c72faa5fbb0674"
+  }
+}

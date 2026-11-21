@@ -22,6 +22,12 @@ TAPER_PROFILE = ROOT/(
     "data/ic/rsg21_mesa_scf_omega0_nr16384_taper_rho3e-9_gamma5_3.csv")
 TAPER_METADATA = ROOT/(
     "data/ic/rsg21_mesa_scf_omega0_nr16384_taper_rho3e-9_gamma5_3.json")
+DIFFUSE_TAPER_PROFILE = ROOT/(
+    "data/ic/rsg21_mesa_scf_corecut6p28_g5p3_nr16384_"
+    "taper_rho3e-9_gamma5_3.csv")
+DIFFUSE_TAPER_METADATA = ROOT/(
+    "data/ic/rsg21_mesa_scf_corecut6p28_g5p3_nr16384_"
+    "taper_rho3e-9_gamma5_3.json")
 INPUT = ROOT/"inputs/rsg/athinput.mesa_scf_rsg_map"
 N_MU = 16
 ROOT_HALF_WIDTH_CM = 7.6527e13
@@ -139,6 +145,39 @@ class MesaMappingTests(unittest.TestCase):
         self.assertLess(abs(value["energy_relative_error"]), 2.0e-2)
         self.assertLess(value["pressure_recovery_l1_relative"], 1.0e-5)
         self.assertLess(value["force_l2_relative"], 0.1)
+
+    def test_diffuse_core_root64_l6_l7_maps(self) -> None:
+        metadata = json.loads(
+            DIFFUSE_TAPER_METADATA.read_text(encoding="utf-8"))
+        subprocess.run([
+            str(self.profile_unit), str(DIFFUSE_TAPER_PROFILE),
+            "16384", str(N_MU),
+        ], check=True, capture_output=True, text=True)
+        force_l2: dict[int, float] = {}
+        for level in (6, 7):
+            output = self.directory/f"diffuse_l{level}_audit.csv"
+            slice_output = self.directory/f"diffuse_l{level}_slice.csv"
+            subprocess.run([
+                str(self.audit), str(DIFFUSE_TAPER_PROFILE),
+                str(output), str(slice_output),
+                "64", str(ROOT_HALF_WIDTH_CM), str(level), "3", "0",
+                str(GAMMA), "1e-14", "1e4", str(MEAN_MOLECULAR_WEIGHT),
+                str(metadata["tapered_piecewise_linear_mass_g"]), "0",
+                str(metadata[
+                    "tapered_piecewise_linear_pressure_volume_integral_erg"]),
+                "0", f"corecut6p28_root64_l{level}",
+            ], check=True, capture_output=True, text=True)
+            with output.open(encoding="utf-8") as handle:
+                row = next(csv.DictReader(handle))
+            value = {key: float(item) for key, item in row.items()
+                     if key != "label"}
+            self.assertLess(abs(value["mass_relative_error"]), 2.0e-6)
+            self.assertLess(abs(value["energy_relative_error"]), 2.0e-6)
+            self.assertLess(value["pressure_recovery_l1_relative"], 1.0e-12)
+            force_l2[level] = value["force_l2_relative"]
+        self.assertLess(force_l2[6], 0.025)
+        self.assertLess(force_l2[7], 0.007)
+        self.assertLess(force_l2[7], 0.3*force_l2[6])
 
     def test_athena_l8_initialization(self) -> None:
         if self.athena is None:
