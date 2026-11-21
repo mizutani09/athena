@@ -291,6 +291,31 @@ CFL and wall-time ratios must be measured by the same `0.025 t_dyn` L6/L7
 fresh-map run; no long binary calculation should be priced from geometry
 alone.
 
+That discriminator completed as XD job 344840.  Both resolutions reached
+`0.025 t_dyn` without NaNs, memory failures, or iterative-MG warnings and pass
+all nine numeric gates.  L6 used 2,024 blocks and 1,571 cycles in 698.96 s on
+three nodes; L7 used 2,080 blocks and 3,152 cycles in 1,477.71 s.  The
+measured costs are therefore 23.30 and 49.26 node-hours per dynamical time,
+and L7 costs 2.114 times L6 in wall time.  L6 is about 16.1 times faster than
+the old compact-core L9 measurement, while L7 is about 7.61 times faster.
+
+The L6 maxima are `6.81e-4` mechanical-energy drift, `3.14e-3` radial Mach
+RMS, `5.64e-5 |W|` radial kinetic energy, and `4.15e-5 |W|` nonradial kinetic
+energy.  The corresponding L7 maxima are `7.64e-4`, `4.16e-3`, `2.52e-5`,
+and `1.42e-5`.  At the endpoint the nonradial energies are `1.60e-5 |W|` and
+`3.57e-6 |W|`.  More than 99.4% of the nonradial energy remains inside
+`20 Rsun`; the high formal surface Mach belongs to negligible taper mass.
+L7 shows clear overall decay.  L6 also decays strongly from its early peak,
+but has a small late increase between about `0.020` and `0.025 t_dyn`.
+
+L6 is consequently the provisional production candidate, with L7 retained as
+the resolution control.  Before binary work, the accepted L6 restart is being
+continued to `1.0 t_dyn` to distinguish a harmless core transient from a
+slowly growing mode.  The measured estimate for the additional evolution is
+7.57 wall-hours on three nodes, within a 12-hour allocation.  A one-dynamical-
+time pass, bounded virial and energy histories, and no sustained nonradial
+growth are required for final HD acceptance.
+
 This taper begins below the MESA photosphere and is deliberately an HD
 regularization.  It is not accepted as an FLD photospheric model.  Radiation
 work must instead restore a thermodynamically and optically controlled outer

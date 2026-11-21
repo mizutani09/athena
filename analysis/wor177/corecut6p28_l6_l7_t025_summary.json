@@ -1,0 +1,34 @@
+{
+  "xd_job_id": 344840,
+  "target_t_dyn": 0.025,
+  "result": "both_pass",
+  "decision": "continue_l6_to_1_t_dyn_keep_l7_as_resolution_control",
+  "l6": {
+    "run_directory": "/work/mizutaniks/wor177/corecut6p28_l6_l7_344840/l6",
+    "meshblocks": 2024,
+    "cycles": 1571,
+    "wall_seconds": 698.96,
+    "node_hours_per_t_dyn": 23.2987,
+    "maximum_mass_drift": 1.080e-9,
+    "maximum_mechanical_energy_drift": 6.806e-4,
+    "maximum_radial_mach_rms": 3.136e-3,
+    "maximum_radial_kinetic_energy_over_abs_w": 5.635e-5,
+    "maximum_nonradial_kinetic_energy_over_abs_w": 4.147e-5,
+    "final_nonradial_kinetic_energy_over_abs_w": 1.595e-5,
+    "restart_sha256": "917b8d9b9ecb01c46439d76fbd4a6ce9b7a982a380fbfe9ba94af980d3abaa52"
+  },
+  "l7": {
+    "run_directory": "/work/mizutaniks/wor177/corecut6p28_l6_l7_344840/l7",
+    "meshblocks": 2080,
+    "cycles": 3152,
+    "wall_seconds": 1477.71,
+    "node_hours_per_t_dyn": 49.2570,
+    "maximum_mass_drift": 2.955e-9,
+    "maximum_mechanical_energy_drift": 7.635e-4,
+    "maximum_radial_mach_rms": 4.159e-3,
+    "maximum_radial_kinetic_energy_over_abs_w": 2.522e-5,
+    "maximum_nonradial_kinetic_energy_over_abs_w": 1.423e-5,
+    "final_nonradial_kinetic_energy_over_abs_w": 3.571e-6,
+    "restart_sha256": "d1080746dbec1bdbaecfe8cea52174ee3ff805021f10f1f94b97e1968f569350"
+  }
+}
