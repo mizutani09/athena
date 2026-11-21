@@ -65,8 +65,7 @@ run_case() {
     bin/athena -i "$input" -d "$run" \
     time/nlim=-1 time/tlim="$target_time" time/ncycle_out=100 \
     output1/dcycle=250 \
-    output2/dcycle=-1 output2/dt="$target_time" \
-    output2/next_time="$target_time" \
+    output2/dcycle=1000000 \
     output3/dt="$slice_dt" output3/next_time=0.0 \
     > "$run/stdout.log" 2> "$run/stderr.log"
   grep -q 'Terminating on time limit' "$run/stdout.log"
