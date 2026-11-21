@@ -141,3 +141,15 @@ central temperature differs by 0.68%, mass inside 5/10/20 au by
 This closes the resolution-sensitivity requirement for the scoped paper claim
 of reaching the first-core density regime.  Full evidence and interpretation
 are in `tst/nrfld_validation/wor124_paper_amr12_v2_20261121.md`.
+
+An additional snapshot diagnostic locates a volume-weighted sonic transition
+at 6.74 au enclosing 0.0205 Msun.  The mass-weighted inflow proxy there is only
+0.361, so the transition is explicitly interpreted as non-spherical.  In the
+inner 1--4 au, scalar support proxies provide a median 0.865 of monopole
+gravity.  Polar/equatorial temperature structure reaches a 36.8% contrast,
+whereas the equatorial Cartesian-axis/diagonal contrast remains below 0.83%.
+This supports a physically anisotropic, strongly decelerated first-core
+candidate without upgrading the claim to time-stationary hydrostatic balance.
+The matched-density lower-resolution diagnostic agrees to 0.079% in the
+transition radius, 1.14% in enclosed core mass, and 2.48% in the inner support
+proxy; its Cartesian temperature contrast is larger at 2.19%.
