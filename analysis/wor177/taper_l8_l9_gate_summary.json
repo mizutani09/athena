@@ -1,0 +1,62 @@
+{
+  "xd_job_id": 344576,
+  "state": "COMPLETED",
+  "exit_code": "0:0",
+  "elapsed_s": 8366,
+  "nodes": 3,
+  "ranks": 168,
+  "target_time_over_tdyn": 0.01199999208256,
+  "numeric_failure": false,
+  "multigrid_iterative_warning": false,
+  "forensic_localization": {
+    "cycle_5000_nonradial_ke_fraction_r_lt_20_rsun": 0.9999999984924,
+    "cycle_5000_radial_ke_fraction_r_lt_20_rsun": 0.9999932867600,
+    "cycle_10000_nonradial_ke_fraction_r_lt_20_rsun": 0.9999999980103,
+    "cycle_10000_radial_ke_fraction_r_lt_20_rsun": 0.9999967620692,
+    "conclusion": "the rejected L8 mode is localized to the compact-core region, not the surface-L2 taper"
+  },
+  "fresh_l8": {
+    "meshblocks": 2136,
+    "finest_core_support_cells": 5.49,
+    "cycles": 6340,
+    "launcher_wall_s": 2911.28,
+    "node_hours": 2.4260666667,
+    "maximum_rank_rss_kib": 632352,
+    "maximum_abs_mass_relative_drift": 4.053022142867e-8,
+    "maximum_abs_mechanical_energy_relative_drift": 1.827410678732e-2,
+    "maximum_radial_mach_rms": 2.722327373976e-2,
+    "maximum_radial_ke_over_abs_W": 1.810082589375e-3,
+    "maximum_nonradial_ke_over_abs_W": 2.126330544793e-1,
+    "maximum_abs_virial_relative_residual": 3.082673499821e-2,
+    "all_numeric_gates_pass": false
+  },
+  "fresh_l9": {
+    "meshblocks": 2192,
+    "finest_core_support_cells": 10.97,
+    "cycles": 11153,
+    "launcher_wall_s": 5398.85,
+    "node_hours": 4.4990416667,
+    "maximum_rank_rss_kib": 666240,
+    "maximum_abs_mass_relative_drift": 8.679832320041e-7,
+    "maximum_abs_mechanical_energy_relative_drift": 1.576960231308e-4,
+    "maximum_radial_mach_rms": 6.539205364021e-3,
+    "maximum_radial_ke_over_abs_W": 4.375370122499e-5,
+    "maximum_nonradial_ke_over_abs_W": 1.559801373465e-4,
+    "maximum_abs_virial_relative_residual": 8.403234601669e-3,
+    "all_numeric_gates_pass": true,
+    "nonradial_log_growth_fit_from_0p004_tdyn": {
+      "samples": 31,
+      "slope_per_tdyn": 211.0125508,
+      "efolding_time_over_tdyn": 0.004739054602,
+      "r_squared": 0.99198825,
+      "predicted_5e-4_gate_crossing_time_over_tdyn": 0.01735842932
+    }
+  },
+  "l9_over_l8_cost_ratio": 1.85446,
+  "l8_over_l9_final_nonradial_ke_ratio": 1363.21,
+  "decision": "L9 passes the 0.012-t_dyn discriminator but remains provisional because its central nonradial mode is still exponentially growing",
+  "next_gate": "fresh-map L9/L10 comparison to at least 0.025 t_dyn; retain final restarts",
+  "run_directory": "/work/mizutaniks/wor177/taper_l8_l9_gate_344576",
+  "run_directory_bytes_approx": 110100480,
+  "git_commit": "274023cb2c7b97bdf98ca96de59fc760eb15e2d5"
+}

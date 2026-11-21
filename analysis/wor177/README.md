@@ -229,8 +229,32 @@ term is ruled out.  The leading resolution hypothesis is instead the compact
 core: its 0.737-Rsun support radius spans only 5.49 finest cells at central L8,
 whereas the stable WOR-120 central-L6 model spans about 9.48 cells.  Central L9
 would provide 10.97 cells.  Spatial localization from the pre-catastrophe
-checkpoints and a short same-seed L8/L9 comparison are required before another
-long continuation.
+checkpoints and a short same-profile fresh-map L8/L9 comparison are required
+before another long continuation.
+
+The compact-core localization and L8/L9 discriminator (XD job 344576) confirms
+that diagnosis.  Equatorial slices at the rejected L8 cycle-5,000 and
+cycle-10,000 checkpoints place more than `99.9999998%` of nonradial kinetic
+energy and more than `99.9993%` of radial kinetic energy inside `20 Rsun`.
+The surface-L2 taper is therefore not the source of this failure.
+
+A fresh-map comparison evolved both core meshes to `0.012 t_dyn`.  L8
+reproduces the failure: nonradial energy reaches `0.213 |W|`, radial energy
+reaches `1.81e-3 |W|`, and mechanical-energy drift reaches `1.83e-2`.
+L9, with 10.97 cells across the core support radius, passes all nine short
+numeric gates.  Its corresponding maxima are `1.56e-4 |W|`, `4.38e-5 |W|`,
+and `1.58e-4`; radial Mach RMS remains below `0.00654`.  L9 costs 1.85 times
+L8 in wall time (89.98 versus 48.52 minutes on three nodes) while using only
+56 additional MeshBlocks.
+
+This is a successful short discriminator, not yet a production acceptance.
+For `t>=0.004 t_dyn`, the L9 nonradial energy follows an exponential fit with
+`R^2=0.992` and e-folding time `0.00474 t_dyn`.  Extrapolation predicts the
+`5e-4 |W|` gate crossing near `0.0174 t_dyn`.  The next gate must therefore
+compare fresh L9 and L10 through at least `0.025 t_dyn`; L10 provides about
+21.9 cells across the compact-core support radius.  Job 344576 deliberately
+disabled restart output, so that comparison starts from fresh maps and must
+retain final restarts.
 
 This taper begins below the MESA photosphere and is deliberately an HD
 regularization.  It is not accepted as an FLD photospheric model.  Radiation
