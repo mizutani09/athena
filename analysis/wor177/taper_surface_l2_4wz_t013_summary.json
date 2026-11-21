@@ -1,0 +1,93 @@
+{
+  "xd_job_id": 344423,
+  "state": "COMPLETED",
+  "exit_code": "0:0",
+  "elapsed_s": 43181,
+  "launcher_wall_s": 43170.37,
+  "nodes": 3,
+  "ranks": 168,
+  "maximum_rank_rss_kib": 2642908,
+  "meshblocks": 2136,
+  "cycles": 95776,
+  "final_time_code": 61.1078047,
+  "final_time_over_tdyn": 0.1299999242265,
+  "zone_cycles": 829200531456,
+  "zone_cycles_per_second": 19585021.972043924,
+  "numeric_failure": false,
+  "multigrid_iterative_warning": false,
+  "physical_gate_pass": false,
+  "failure_classification": "resolved-core nonradial instability followed by catastrophic state corruption",
+  "first_gate_crossings": {
+    "mechanical_energy_relative_drift_abs_gt_1e-3": {
+      "cycle": 2000,
+      "time_over_tdyn": 0.004288946018,
+      "value": -0.001038446787
+    },
+    "nonradial_ke_over_abs_W_gt_1e-3": {
+      "time_over_tdyn": 0.005342690275,
+      "value": 0.001480266274
+    },
+    "mechanical_energy_relative_drift_abs_gt_1e-2": {
+      "cycle": 4000,
+      "time_over_tdyn": 0.008417916588,
+      "value": -0.01281215592
+    },
+    "nonradial_ke_over_abs_W_gt_1e-1": {
+      "cycle": 5000,
+      "time_over_tdyn": 0.01011273331,
+      "value": 0.1130305828
+    },
+    "radial_mach_rms_gt_0p03": {
+      "cycle": 8000,
+      "time_over_tdyn": 0.01497616501,
+      "value": 0.03000802226
+    },
+    "mach_gt_0p3_mass_fraction_gt_1e-2": {
+      "cycle": 11250,
+      "time_over_tdyn": 0.02016460418,
+      "value": 0.01176250729
+    },
+    "interior_mach_catastrophe": {
+      "cycle": 11750,
+      "time_over_tdyn": 0.02090396573,
+      "radial_mach_rms": 6699470.492894,
+      "radial_mach_max_interior": 1032197475.871
+    },
+    "stellar_mass_relative_drift_abs_gt_1e-2": {
+      "cycle": 12500,
+      "time_over_tdyn": 0.02194420240,
+      "value": 0.03519606068
+    },
+    "stellar_mass_relative_drift_abs_gt_1": {
+      "cycle": 13750,
+      "time_over_tdyn": 0.02335069947,
+      "value": 1.910079928
+    }
+  },
+  "cycle_5000_checkpoint": {
+    "path": "/work/mizutaniks/wor177/taper_surface_l2_4wz_continue_t013_344423/continuation/mesa_scf_rsg_taper_surface_l2_4wz.00002.rst",
+    "time_over_tdyn": 0.01011273331,
+    "mechanical_energy_relative_drift": -0.02071,
+    "nonradial_ke_over_abs_W": 0.1130,
+    "accepted": false
+  },
+  "final_state": {
+    "stellar_mass_relative_drift": 3477.299764126,
+    "mechanical_energy_relative_drift": 8351.950869544,
+    "radial_mach_rms": 8135759.440178,
+    "nonradial_ke_over_abs_W": 0.4632533787454,
+    "mean_radius_relative_drift": -0.9823458568618,
+    "wenoz_plm_fallback_stellar_mass_fraction": 0.9996658254162,
+    "restart_path": "/work/mizutaniks/wor177/taper_surface_l2_4wz_continue_t013_344423/continuation/mesa_scf_rsg_taper_surface_l2_4wz.final.rst",
+    "restart_bytes": 1653666115,
+    "restart_sha256": "c43e663eda03af87c5067c3f1b7dc4a31d82f6af4d92972e59571307b046a6da",
+    "accepted": false
+  },
+  "last_accepted_restart": {
+    "path": "/work/mizutaniks/wor177/taper_surface_l2_4wz_1000cycle_344410/sustained_1000/mesa_scf_rsg_taper_surface_l2_4wz.final.rst",
+    "time_over_tdyn": 0.002150176492321,
+    "sha256": "689601729ea257d89dcc629a0d8225347b76f49b1dcbd6a426c426c88b170371"
+  },
+  "run_directory_bytes_approx": 33285996544,
+  "git_commit": "ceb4d371ded18ff3a29e474b0e70202ebfc14858"
+}

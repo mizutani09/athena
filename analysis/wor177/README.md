@@ -208,6 +208,30 @@ restart is still required to follow the outward-moving inner pulse before a
 full-dynamical-time production run; the measured one-node cost is about
 7.21 wall-days per dynamical time.
 
+The three-node continuation to `0.13 t_dyn` (XD job 344423) completed normally
+at the requested time, but decisively rejects this configuration as a
+long-time HD solution.  There were no NaNs, runtime failures, or multigrid
+iterative warnings; the failure is physical/numerical rather than a scheduler
+or solver crash.  Nonradial perturbation energy first exceeds `1e-3 |W|` at
+`0.00534 t_dyn`, reaches `0.113 |W|` by the cycle-5,000 checkpoint
+(`0.01011 t_dyn`), and the interior Mach diagnostic becomes catastrophic at
+`0.02090 t_dyn`.  Mass drift exceeds 1% at `0.02194 t_dyn` and unity at
+`0.02335 t_dyn`.  The final mass and mechanical-energy drifts are therefore
+not meaningful physical values (`3.48e3` and `8.35e3`, respectively).
+
+No continuation checkpoint is accepted: even the first saved checkpoint at
+cycle 5,000 already fails the nonradial-energy and mechanical-energy gates.
+The cycle-1,000 restart from job 344410 remains the last accepted seed.  The
+failed 31-GiB continuation directory is retained for forensic analysis and
+must not be used for production.  Relative to the stable WOR-120 reference,
+the conservative face-flux core-work update is present, so a missing source
+term is ruled out.  The leading resolution hypothesis is instead the compact
+core: its 0.737-Rsun support radius spans only 5.49 finest cells at central L8,
+whereas the stable WOR-120 central-L6 model spans about 9.48 cells.  Central L9
+would provide 10.97 cells.  Spatial localization from the pre-catastrophe
+checkpoints and a short same-seed L8/L9 comparison are required before another
+long continuation.
+
 This taper begins below the MESA photosphere and is deliberately an HD
 regularization.  It is not accepted as an FLD photospheric model.  Radiation
 work must instead restore a thermodynamically and optically controlled outer
