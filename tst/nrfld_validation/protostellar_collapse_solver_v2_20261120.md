@@ -153,3 +153,11 @@ candidate without upgrading the claim to time-stationary hydrostatic balance.
 The matched-density lower-resolution diagnostic agrees to 0.079% in the
 transition radius, 1.14% in enclosed core mass, and 2.48% in the inner support
 proxy; its Cartesian temperature contrast is larger at 2.19%.
+
+The paper-facing static package was completed on 2026-11-22 without changing
+the frozen solver.  It provides final xy/xz density and temperature slices at
+20 and 50 au, plus a 75-snapshot peak-cell temperature-density trajectory with
+CSV provenance.  The browsable local entry point is
+`paper_amr12_v2_job344378/paper_application/index.html`; reproduction and
+interpretation are recorded in
+`tst/nrfld_validation/wor124_paper_application_package_20261122.md`.
