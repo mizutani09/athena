@@ -127,3 +127,17 @@ The release does not claim second-core coverage, high-temperature EOS/opacity
 coverage beyond the pinned tables, or a universal strong-field stability
 boundary.  These are physics/application extensions rather than reasons to
 keep changing this first-core solver candidate.
+
+## Paper-application AMR follow-up (2026-11-21)
+
+The rotating 32.25 microG calculation was continued from c1780 with one
+additional AMR level using the exact `protostellar-firstcore-v2` source.
+XD jobs `344377` and `344378` reached `rho_max=1.00418e-10 g cm^-3` with a
+minimum segment-endpoint Jeans resolution of 31.98 cells.  All 610 active
+Newton solves and 1,839 FGMRES solves converged without invoking the fallback;
+all 61 accepted-state audits passed.  At matched peak density, the old/new
+central temperature differs by 0.68%, mass inside 5/10/20 au by
+1.43%/0.64%/0.52%, and the common-bin radial density profile by 1.01% L1.
+This closes the resolution-sensitivity requirement for the scoped paper claim
+of reaching the first-core density regime.  Full evidence and interpretation
+are in `tst/nrfld_validation/wor124_paper_amr12_v2_20261121.md`.
