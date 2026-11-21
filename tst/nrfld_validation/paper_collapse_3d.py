@@ -191,6 +191,11 @@ def render_isosurfaces(grid, surfaces, stream, extent, title, output, orbit_fram
                     "-i", str(frames/"%04d.png"), "-c:v", "libx264",
                     "-pix_fmt", "yuv420p", "-crf", "20", "-movflags", "+faststart",
                     str(output/"density_fieldlines_3d_orbit.mp4")], check=True)
+    subprocess.run(["ffmpeg", "-y", "-loglevel", "error", "-framerate",
+                    str(fps/4.0), "-i", str(frames/"%04d.png"), "-r", str(fps),
+                    "-c:v", "libx264", "-pix_fmt", "yuv420p", "-crf", "20",
+                    "-movflags", "+faststart",
+                    str(output/"density_fieldlines_3d_orbit_slow.mp4")], check=True)
     return tube
 
 
@@ -262,6 +267,7 @@ def write_index(output, results):
 <p>{samples}<sup>3</sup> display lattice; spacing {spacing:.5g} au.
 Sampled maxima: &rho;={rho:.5g} g cm<sup>-3</sup>, |B|={bmag:.5g} G.</p>
 <video controls preload='metadata'><source src='{label}/density_fieldlines_3d_orbit.mp4' type='video/mp4'></video>
+<p><a href='{label}/density_fieldlines_3d_orbit_slow.mp4'>slower 24 s orbit</a></p>
 <h3>Translucent density isosurfaces + magnetic trajectories</h3>
 <p><a href='{label}/density_fieldlines_3d_interactive.html'><img src='{label}/density_fieldlines_3d.png' alt='{label} 3D density and field lines'></a></p>
 <h3>Density volume rendering + magnetic trajectories</h3>
@@ -278,7 +284,7 @@ Sampled maxima: &rho;={rho:.5g} g cm<sup>-3</sup>, |B|={bmag:.5g} G.</p>
 zoom the self-contained interactive scene.</p>
 {}
 <div class='note'><strong>Visualization scope.</strong> Density surfaces and volumes are AMR leaf-cell values resampled onto a uniform display lattice. The envelope lattice is intentionally too coarse to recover the central maximum; use the core view for the inner object. Magnetic lines are Runge-Kutta integrations of the normalized sampled cell-centred B field. Use the native HDF/history audits—not these lines—for magnetic flux, divB, or topology claims.</div>
-<p><a href='../movies/index.html'>2D movies</a> · <a href='../additional_core_analysis/index.html'>core diagnostics</a> · <a href='../resolution_comparison/index.html'>resolution comparison</a></p>
+<p><a href='../three_d_evolution_v2/index.html'>3-D time evolution</a> · <a href='../movies/index.html'>2D movies</a> · <a href='../additional_core_analysis/index.html'>core diagnostics</a> · <a href='../resolution_comparison/index.html'>resolution comparison</a></p>
 """.format("\n".join(sections))
     (output/"index.html").write_text(page)
     (output/"summary.json").write_text(json.dumps(results, indent=2)+"\n")
