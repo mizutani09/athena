@@ -393,7 +393,7 @@ def main():
 <h2>Spherical support proxies and plasma beta</h2><img src='support_and_beta.svg' alt='Support proxies and beta'>
 <h2>Physical-axis and Cartesian-grid anisotropy</h2><img src='anisotropy.svg' alt='Anisotropy diagnostics'>
 <div class='note'><strong>Interpretation limit:</strong><ul>{}</ul></div>
-<p><a href='radial_diagnostics.csv'>radial CSV</a> · <a href='summary.json'>summary JSON</a> · <a href='../resolution_comparison/index.html'>resolution comparison</a></p>
+<p><a href='radial_diagnostics.csv'>radial CSV</a> · <a href='summary.json'>summary JSON</a> · <a href='../resolution_comparison/index.html'>resolution comparison</a> · <a href='../movies/index.html'>collapse movies</a></p>
 """.format(items, comparison_section, limitations)
     (args.output/"index.html").write_text(page)
     print(json.dumps(summary, indent=2))

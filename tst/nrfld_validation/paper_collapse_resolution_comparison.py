@@ -184,6 +184,7 @@ def main():
 <p><img src='resolution_profiles.svg' alt='Radial resolution comparison'></p>
 <p><a href='profiles.csv'>profiles.csv</a> · <a href='summary.json'>summary.json</a> ·
 <a href='../additional_core_analysis/index.html'>additional core diagnostics</a> ·
+<a href='../movies/index.html'>collapse movies</a> ·
 <a href='../solver_audit.json'>solver audit</a> ·
 <a href='../final_energy_audit.json'>energy audit</a> ·
 <a href='../progress.csv'>segment progress</a></p>""".format(rows)
