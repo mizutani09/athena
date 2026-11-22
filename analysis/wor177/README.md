@@ -349,6 +349,32 @@ The history analyzer now accepts an explicit seed-history schema for
 headerless restart output, and continuation scripts analyze each output index
 once rather than once per MeshBlock.
 
+The staged L7 continuation completed as XD job 344983 at `0.65 t_dyn` in
+33,902.53 s on three nodes.  Athena++ and all postprocessing completed normally
+with no NaN, memory failure, or iterative-MG warning.  Most importantly, the
+L6 core mode is absent: nonradial kinetic energy never exceeds
+`9.47e-6 |W|` and ends at `3.16e-6 |W|`.  At the endpoint 99.24% of that
+energy remains inside `20 Rsun`, but it is about four orders of magnitude
+below L6 at a comparable time.  Resolving the support radius with 15.10 L7
+cells therefore cures the nonradial core instability seen with 7.55 L6 cells.
+
+L7 is not yet accepted as a whole-star equilibrium.  Mass drift remains only
+`3.03e-5`, mechanical-energy drift stays below 0.255%, radial kinetic energy
+stays below `1.06e-4 |W|`, and the virial residual stays below 0.0111.  These
+are acceptable.  However, the mean and RMS radii contract monotonically by
+1.46% and 1.76%.  Radial Mach RMS peaks at 1.07 near `0.326 t_dyn`, where the
+formal Mach is dominated by the cool tapered envelope, then falls sharply and
+returns to 0.064 at `0.65 t_dyn`.  At the endpoint 6.26% of stellar mass is
+above radial Mach 0.1, centered near `5.54e13 cm` with geometric-mean density
+`4.44e-9 g cm^-3`; this is an outer-envelope relaxation rather than the old
+core mode.
+
+The final `0.65--1.0 t_dyn` stage must distinguish a bounded radial pulsation
+from continuing envelope contraction.  The observed L7 cost predicts about
+5.3 additional wall-hours on three nodes.  Its history analysis combines both
+continuation stages so that the acceptance gates retain the full evolution
+from `0.025 t_dyn`.
+
 This taper begins below the MESA photosphere and is deliberately an HD
 regularization.  It is not accepted as an FLD photospheric model.  Radiation
 work must instead restore a thermodynamically and optically controlled outer
