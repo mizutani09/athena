@@ -338,9 +338,12 @@ energy is still inside `20 Rsun`.  This independently rules out the tapered
 surface as the source.  The 7.55-cell L6 particle support is therefore
 insufficient over a dynamical time even though it passes the `0.025 t_dyn`
 gate.  The next discriminator continues L7, with 15.10 cells per support
-radius, to `1.0 t_dyn`.  Six nodes target a sub-12-hour wall time; L7 is
-accepted only if the core-localized mode remains bounded and all physical
-gates pass.
+radius, to `0.65 t_dyn`.  The XD bulk partition permits at most three nodes;
+the measured estimate is 10.3 hours on three nodes, leaving useful margin in
+its 12-hour limit.  This endpoint is well beyond the L6 gate crossing at
+`0.2903 t_dyn` and its nonlinear growth by `0.41 t_dyn`.  If L7 remains
+bounded, a second approximately 5.7-hour stage will complete `1.0 t_dyn`.
+L7 is accepted only after that full run and all physical gates pass.
 
 The history analyzer now accepts an explicit seed-history schema for
 headerless restart output, and continuation scripts analyze each output index

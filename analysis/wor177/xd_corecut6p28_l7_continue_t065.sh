@@ -1,14 +1,14 @@
 #!/bin/bash
 #SBATCH --partition=M-bulk-a
-#SBATCH --nodes=6
-#SBATCH --ntasks=336
+#SBATCH --nodes=3
+#SBATCH --ntasks=168
 #SBATCH --ntasks-per-node=56
 #SBATCH --cpus-per-task=1
 #SBATCH --hint=nomultithread
 #SBATCH --mem=110G
 #SBATCH --time=12:00:00
-#SBATCH --job-name=wor177_corecut_l7_t1
-#SBATCH --output=/work/mizutaniks/wor177/corecut6p28_l7_t1_%j.out
+#SBATCH --job-name=wor177_corecut_l7_t065
+#SBATCH --output=/work/mizutaniks/wor177/corecut6p28_l7_t065_%j.out
 
 set -euo pipefail
 source /etc/profile.d/modules.sh
@@ -25,9 +25,9 @@ repository=$HOME/simulation/athena-wor177-core-excision-hd4wz
 input=inputs/rsg/athinput.mesa_scf_rsg_corecut6p28_taper_surface_l2_l7_4wz
 restart=/work/mizutaniks/wor177/corecut6p28_l6_l7_344840/l7/mesa_scf_rsg_corecut6p28_l7_4wz.final.rst
 history_header=/work/mizutaniks/wor177/corecut6p28_l6_l7_344840/l7/mesa_scf_rsg_corecut6p28_l7_4wz.hst
-run_root=/work/mizutaniks/wor177/corecut6p28_l7_t1_${SLURM_JOB_ID}
+run_root=/work/mizutaniks/wor177/corecut6p28_l7_t065_${SLURM_JOB_ID}
 run=$run_root/continuation
-target_time=470.06
+target_time=305.539
 slice_dt=47.006
 
 test -s "$restart"

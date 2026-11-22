@@ -26,5 +26,5 @@
   "final_nonradial_ke_fraction_inside_20_rsun": 9.993410975413e-1,
   "restart_sha256": "d285a75a4d5ccb63d8f82275c4e3f4b76b3bb31d14f43353c4cb149ad960a547",
   "run_directory": "/work/mizutaniks/wor177/corecut6p28_l6_t1_344891/continuation",
-  "decision": "reject_l6_and_continue_l7_to_1_t_dyn"
+  "decision": "reject_l6_and_continue_l7_to_0p65_t_dyn_then_1_t_dyn_if_stable"
 }
