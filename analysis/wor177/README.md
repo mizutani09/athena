@@ -316,6 +316,36 @@ slowly growing mode.  The measured estimate for the additional evolution is
 time pass, bounded virial and energy histories, and no sustained nonradial
 growth are required for final HD acceptance.
 
+The L6 continuation reached `1.0 t_dyn` in XD job 344891, but rejects L6 for
+long-time HD use.  Athena++ completed all 69,114 cycles normally in 27,769.93 s
+on three nodes, wrote the final restart, and reported no NaN, memory, or
+iterative-MG failure.  Slurm marked the job failed only because restart history
+files contain data without a repeated column header and the original analysis
+driver rejected that format.  Supplying the seed history schema recovers all
+69 continuation samples.
+
+The physical failure is unambiguous.  Nonradial kinetic energy crosses the
+`5e-4 |W|` gate at `0.2903 t_dyn`, crosses `1e-3 |W|` at `0.3069 t_dyn`, and
+reaches `4.60e-2 |W|` at `1.0 t_dyn`.  Mechanical-energy drift first exceeds
+1% at `0.3528 t_dyn` and has a maximum magnitude of 1.55%.  Final radial Mach
+RMS is 0.119, radial kinetic energy is `1.37e-3 |W|`, and the mean and RMS
+radii contract by 1.56% and 1.77%.  Stellar mass remains well conserved, with
+a maximum relative drift of `2.77e-5`, and the virial residual remains below
+0.0121; those two successes do not compensate for the growing core mode.
+
+Equatorial slices show that at the endpoint 99.934% of nonradial kinetic
+energy is still inside `20 Rsun`.  This independently rules out the tapered
+surface as the source.  The 7.55-cell L6 particle support is therefore
+insufficient over a dynamical time even though it passes the `0.025 t_dyn`
+gate.  The next discriminator continues L7, with 15.10 cells per support
+radius, to `1.0 t_dyn`.  Six nodes target a sub-12-hour wall time; L7 is
+accepted only if the core-localized mode remains bounded and all physical
+gates pass.
+
+The history analyzer now accepts an explicit seed-history schema for
+headerless restart output, and continuation scripts analyze each output index
+once rather than once per MeshBlock.
+
 This taper begins below the MESA photosphere and is deliberately an HD
 regularization.  It is not accepted as an FLD photospheric model.  Radiation
 work must instead restore a thermodynamically and optically controlled outer

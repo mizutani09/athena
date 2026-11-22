@@ -18,19 +18,38 @@ struct History {
   std::vector<std::vector<double> > rows;
 };
 
-History ReadHistory(const std::string& filename) {
+void ParseHeader(const std::string& line, std::vector<std::string>* names) {
+  if (line.compare(0, 2, "# ") != 0 ||
+      line.find("[1]=") == std::string::npos) return;
+  std::stringstream fields(line.substr(2));
+  std::string field;
+  while (fields >> field) {
+    const std::size_t equal = field.find('=');
+    if (equal != std::string::npos) names->push_back(field.substr(equal+1));
+  }
+}
+
+std::vector<std::string> ReadHeader(const std::string& filename) {
+  std::ifstream input(filename.c_str());
+  if (!input) throw std::runtime_error("cannot open history header source " + filename);
+  std::vector<std::string> names;
+  std::string line;
+  while (std::getline(input, line)) ParseHeader(line, &names);
+  if (names.empty()) {
+    throw std::runtime_error("history header source has no column header");
+  }
+  return names;
+}
+
+History ReadHistory(const std::string& filename,
+                    const std::string& header_filename) {
   std::ifstream input(filename.c_str());
   if (!input) throw std::runtime_error("cannot open " + filename);
   History history;
   std::string line;
   while (std::getline(input, line)) {
-    if (line.compare(0, 2, "# ") == 0 && line.find("[1]=") != std::string::npos) {
-      std::stringstream fields(line.substr(2));
-      std::string field;
-      while (fields >> field) {
-        const std::size_t equal = field.find('=');
-        if (equal != std::string::npos) history.names.push_back(field.substr(equal+1));
-      }
+    if (line.compare(0, 2, "# ") == 0) {
+      ParseHeader(line, &history.names);
     } else if (!line.empty() && line[0] != '#') {
       std::stringstream values(line);
       std::vector<double> row;
@@ -44,6 +63,9 @@ History ReadHistory(const std::string& filename) {
         }
       }
     }
+  }
+  if (history.names.empty() && !header_filename.empty()) {
+    history.names = ReadHeader(header_filename);
   }
   if (history.names.empty() || history.rows.empty()) {
     throw std::runtime_error("history file has no header or data");
@@ -83,17 +105,18 @@ double Relative(double value, double reference) {
 
 int main(int argc, char** argv) {
   try {
-    if (argc != 4 && argc != 5) {
+    if (argc != 4 && argc != 5 && argc != 6) {
       std::cerr << "usage: " << argv[0]
-                << " INPUT.hst OUTPUT.csv SUMMARY.json [TDYN_SECONDS]\n";
+                << " INPUT.hst OUTPUT.csv SUMMARY.json [TDYN_SECONDS]"
+                   " [HEADER.hst]\n";
       return 2;
     }
-    const double dynamical_time = argc == 5
+    const double dynamical_time = argc >= 5
         ? std::stod(argv[4]) : kDynamicalTime;
     if (!(dynamical_time > 0.0)) {
       throw std::invalid_argument("dynamical time must be positive");
     }
-    const History h = ReadHistory(argv[1]);
+    const History h = ReadHistory(argv[1], argc == 6 ? argv[5] : "");
     const std::size_t time = Column(h, "time");
     const std::size_t mass = Column(h, "mapped_stellar_mass_g");
     const std::size_t angular_momentum = Column(h, "mapped_Jz_g_cm2_s");

@@ -24,19 +24,21 @@ ulimit -c 0
 repository=$HOME/simulation/athena-wor177-core-excision-hd4wz
 input=inputs/rsg/athinput.mesa_scf_rsg_corecut6p28_taper_surface_l2_l6_4wz
 restart=/work/mizutaniks/wor177/corecut6p28_l6_l7_344840/l6/mesa_scf_rsg_corecut6p28_l6_4wz.final.rst
+history_header=/work/mizutaniks/wor177/corecut6p28_l6_l7_344840/l6/mesa_scf_rsg_corecut6p28_l6_4wz.hst
 run_root=/work/mizutaniks/wor177/corecut6p28_l6_t1_${SLURM_JOB_ID}
 run=$run_root/continuation
 target_time=470.06
 slice_dt=47.006
 
 test -s "$restart"
+test -s "$history_header"
 mkdir -p "$run"
 cd "$repository"
 test -x bin/athena
 
 git rev-parse HEAD > "$run_root/git_commit.txt"
 git status --short > "$run_root/git_status.txt"
-sha256sum bin/athena "$input" "$restart" src/pgen/scf_rsg.cpp \
+sha256sum bin/athena "$input" "$restart" "$history_header" src/pgen/scf_rsg.cpp \
   analysis/wor162/analyze_relaxation_history.cpp \
   analysis/wor162/analyze_relaxation_slice.cpp \
   analysis/wor162/evaluate_relaxation_gates.cpp \
@@ -74,14 +76,13 @@ fi
 
 "$run_root/analyze_relaxation_history" \
   "$run/mesa_scf_rsg_corecut6p28_l6_4wz.hst" \
-  "$run/relaxation_diagnostics.csv" "$run/relaxation_summary.json"
-for table in "$run"/*.out3.*.tab; do
-  test -e "$table" || continue
-  snapshot=${table##*.out3.}
-  snapshot=${snapshot%.tab}
+  "$run/relaxation_diagnostics.csv" "$run/relaxation_summary.json" \
+  1.03413107e7 "$history_header"
+while IFS= read -r snapshot; do
   "$run_root/analyze_relaxation_slice" "$run" "$snapshot" \
     "$run/slice_${snapshot}.csv" "$run/slice_${snapshot}.json" 0.0 out3
-done
+done < <(find "$run" -maxdepth 1 -type f -name '*.out3.*.tab' -printf '%f\n' \
+  | sed -E 's/.*\.out3\.([0-9]+)\.tab/\1/' | sort -u)
 set +e
 "$run_root/evaluate_relaxation_gates" "$run/relaxation_diagnostics.csv" \
   "$run/relaxation_gates.json"
