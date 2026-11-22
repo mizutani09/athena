@@ -375,6 +375,32 @@ from continuing envelope contraction.  The observed L7 cost predicts about
 continuation stages so that the acceptance gates retain the full evolution
 from `0.025 t_dyn`.
 
+That stage completed as XD job 345249 at `1.0 t_dyn` in 18,257.41 s on three
+nodes.  The combined 124-sample history confirms the L7 core result:
+nonradial kinetic energy remains below `9.47e-6 |W|` and ends at
+`3.60e-6 |W|`.  Mass drift remains `3.05e-5`, mechanical-energy drift remains
+below 0.255%, radial kinetic energy remains below `1.08e-4 |W|`, and the
+virial residual has relaxed from about -0.011 to +0.00121.  No runtime,
+memory, or multigrid failure occurs.
+
+The envelope has not yet reached its first radial turning point.  Mean and RMS
+radii are 2.77% and 3.27% below their values at the beginning of the
+continuation.  This exceeds the original deliberately strict 1% radius gates,
+but is not accompanied by energy or nonradial growth.  Radial kinetic energy
+peaks near `0.71 t_dyn` and falls by 36% by `1.0 t_dyn`.  The mass-averaged
+radial velocity also becomes less negative, from about -1.17 km/s at
+`0.65 t_dyn` to -0.73 km/s at `1.0 t_dyn`.  The formal final radial Mach RMS
+of 0.141 and maximum Mach are dominated by the cool outer envelope: only 2.24%
+of stellar mass is above Mach 0.1, centered near `5.67e13 cm` at
+`3.61e-9 g cm^-3`; radial kinetic energy remains small.
+
+The appropriate final free-relaxation discriminator is therefore a continuation
+to `1.5 t_dyn`, not a change to the already stable L7 core.  The observed cost
+predicts about 7.3 wall-hours on three nodes.  Acceptance requires the radial
+momentum to approach or pass its first turning point without renewed radial or
+nonradial energy growth.  If it does, the relaxed restart rather than the raw
+mapped state becomes the point-source-binary seed.
+
 This taper begins below the MESA photosphere and is deliberately an HD
 regularization.  It is not accepted as an FLD photospheric model.  Radiation
 work must instead restore a thermodynamically and optically controlled outer
