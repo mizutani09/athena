@@ -1,0 +1,23 @@
+{
+  "status": "accepted",
+  "purpose": "isolated_primary_seed_for_point_source_companion_integration",
+  "model": "MESA_SCF_corecut6p28_gamma5_3_surface_taper_L7_RK4_4WZ",
+  "athena_git_commit": "9fc4dc9fcc209c685345a27a5ea83f29175e7422",
+  "source_job_id": 345480,
+  "relaxation_time_t_dyn": 1.5,
+  "restart_path": "/work/mizutaniks/wor177/corecut6p28_l7_t1p5_stage3_345480/continuation/mesa_scf_rsg_corecut6p28_l7_4wz.final.rst",
+  "restart_sha256": "62ee1c4b9c2ec4635d039b7e942108b944d90f6fd2211065256d76cfde90a50b",
+  "athena_binary_sha256": "f1898142f3d866cf40aed484c8939da9d4c835956858686c1a820e5314e5d6b3",
+  "input_sha256": "9f32bde446ee9553fbef53274e9c81e6ca212709192ed816c05a8b63674a6fa3",
+  "pgen_sha256": "a83e4902590b38c7aa4ac73569e9cb89d7d6e2ae450c4abbca459092d12d44b2",
+  "acceptance_basis": {
+    "l7_cells_per_core_support_radius": 15.10,
+    "radial_turning_point_observed": true,
+    "maximum_nonradial_kinetic_energy_over_abs_w": 9.470771890713e-6,
+    "final_radial_kinetic_energy_over_abs_w": 1.274161893004e-5,
+    "final_radial_mach_rms": 2.988228171927e-2,
+    "maximum_mass_relative_drift": 3.047670756209e-5,
+    "maximum_mechanical_energy_relative_drift": 2.541005729996e-3
+  },
+  "known_residual": "outer_envelope_bounded_radial_pulsation_after_3p26_percent_mean_radius_contraction"
+}

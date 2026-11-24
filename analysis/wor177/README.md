@@ -401,6 +401,31 @@ momentum to approach or pass its first turning point without renewed radial or
 nonradial energy growth.  If it does, the relaxed restart rather than the raw
 mapped state becomes the point-source-binary seed.
 
+XD job 345480 completes that discriminator at `1.5 t_dyn` in 23,051.08 s on
+three nodes.  The mass-weighted radial momentum crosses zero between
+`1.3652` and `1.3732 t_dyn`.  Mean and RMS radii reach minima of -3.256% and
+-3.918% at those same times, then recover to -3.190% and -3.840% at the
+endpoint.  The final mass-weighted radial velocity is outward at 0.242 km/s.
+Radial kinetic energy ends at `1.27e-5 |W|`, only 11.8% of its first-cycle
+maximum, while final radial Mach RMS returns to 0.0299.  Only 0.579% of stellar
+mass is above radial Mach 0.1 and 0.0597% is above Mach 0.3.
+
+The L7 core remains quiet through the turn: nonradial kinetic energy never
+exceeds `9.47e-6 |W|` and ends at `3.76e-6 |W|`.  Mass drift remains below
+`3.05e-5`, mechanical-energy drift below 0.255%, and the virial residual below
+0.0111.  The apparent angular-momentum relative error is not a valid metric
+for this nonrotating model: angular momentum normalized by
+`R_rms sqrt(M |W|)` is only `1.95e-7` at `1.5 t_dyn`.
+
+The original all-purpose numeric gate still reports failure because it retains
+the deliberately strict 1% radius-change limit, the historical maximum Mach
+from the cool taper, and relative angular momentum about a near-zero initial
+value.  Those flags do not represent growing energy or a core instability.
+Under the relaxed HD acceptance requested for this work, L7 is accepted.  The
+job-345480 final restart is the selected isolated-primary seed for subsequent
+point-source companion integration.  Further undamped isolated-star evolution
+is not required before that work.
+
 This taper begins below the MESA photosphere and is deliberately an HD
 regularization.  It is not accepted as an FLD photospheric model.  Radiation
 work must instead restore a thermodynamically and optically controlled outer
