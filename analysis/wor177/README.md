@@ -437,8 +437,10 @@ The separate `wor-177-aggressive-core` branch tests how much of the inner
 convective envelope must actually remain hydrodynamic for RLOF-to-contact
 calculations.  It moves the fluid-table cut from `6.27977 Msun` and
 `4.0548 Rsun` to `7.00261 Msun` and `64.9812 Rsun`.  This replaces an
-additional `0.72284 Msun` of inner convective-envelope material while leaving
-the MESA table outside that radius unchanged.  It is intentionally a stronger
+additional `0.72284 Msun` of the tabulated MESA profile by the fitted inward
+continuation while leaving the table outside that radius unchanged.  Gas is
+still present inside the support, so this is not a literal transfer of the
+whole `0.72284 Msun` to the particle.  It is intentionally a stronger
 approximation and does not supersede the accepted job-345480 seed.
 
 The new SCF solution lowers the central gas density from `4.811e-3` to
@@ -453,6 +455,10 @@ Their purpose is to test stability and resolution convergence; the subsequent
 binary sensitivity audit must separately test whether replacing the inner
 convective envelope changes the surface response, tidal quadrupole, mass
 transfer rate, or orbital torque.
+
+The physical scope, literature comparison, measured outer-profile difference,
+and A/B/C acceptance sequence are recorded in
+`analysis/wor177/core_approximation_assessment.md`.
 
 ## Reproduction
 
