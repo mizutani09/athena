@@ -1,0 +1,62 @@
+{
+  "report": "WOR-177 HD relaxation audit",
+  "accepted_restart_sha256": "62ee1c4b9c2ec4635d039b7e942108b944d90f6fd2211065256d76cfde90a50b",
+  "source_root_on_xd": "/work/mizutaniks/wor177",
+  "source_files": {
+    "l6_diag": {
+      "relative_path": "corecut6p28_l6_t1_344891/continuation/relaxation_diagnostics.csv",
+      "sha256": "c7d333a86bcaa63c395c89cc778ff5741d4b1d08b1b14ec343e830371938c384"
+    },
+    "l7_diag": {
+      "relative_path": "corecut6p28_l7_t1p5_stage3_345480/continuation/relaxation_diagnostics.csv",
+      "sha256": "7e0c97b36dd9e6a6b095dd4b46316443cc726b20e8f24449d9da571d9def18be"
+    },
+    "hist_065": {
+      "relative_path": "corecut6p28_l7_t065_344983/continuation/mesa_scf_rsg_corecut6p28_l7_4wz.hst",
+      "sha256": "edc6d6ef71f0dcffda4a5be514c9731b06f2193c4a6777206123d1faed5f6ded"
+    },
+    "hist_100": {
+      "relative_path": "corecut6p28_l7_t1_stage2_345249/continuation/mesa_scf_rsg_corecut6p28_l7_4wz.hst",
+      "sha256": "5163e81cd36b83746ad71c8a3b699198bc3c400b0333b5a02a2497d8cfa2fe26"
+    },
+    "hist_150": {
+      "relative_path": "corecut6p28_l7_t1p5_stage3_345480/continuation/mesa_scf_rsg_corecut6p28_l7_4wz.hst",
+      "sha256": "fe65575eb4e3992d201164ce53a857507d00da4b924a7a8511d828f30b6d5075"
+    }
+  },
+  "snapshot_groups": {
+    "0.025": {
+      "relative_directory": "corecut6p28_l6_l7_344840/l7",
+      "snapshot": "00005",
+      "file_count": 220,
+      "aggregate_sha256": "5c30bea9288889bea81215222d134563228cefcab4d5388e6b886a80aa9a1090"
+    },
+    "0.65": {
+      "relative_directory": "corecut6p28_l7_t065_344983/continuation",
+      "snapshot": "00011",
+      "file_count": 220,
+      "aggregate_sha256": "bbb82d1ce6a520679f45e5e7e7848d6d0eb08401019a660dbe77548bf92d7811"
+    },
+    "1.00": {
+      "relative_directory": "corecut6p28_l7_t1_stage2_345249/continuation",
+      "snapshot": "00015",
+      "file_count": 196,
+      "aggregate_sha256": "734f28bfca03425cc4d3683b34e8e9f648ea494ce3fd6d197499777e3df80ad0"
+    },
+    "1.50": {
+      "relative_directory": "corecut6p28_l7_t1p5_stage3_345480/continuation",
+      "snapshot": "00020",
+      "file_count": 196,
+      "aggregate_sha256": "d39fb7584b203804a4b2c62a035fe7a32160f4842d4e8ece3569b7150db27486"
+    }
+  },
+  "figures": {
+    "energy-localization.png": "a54e58409437a48854e154b01af1d6b54867aa01034073e59ddcba25f55bab77",
+    "equatorial-core-zoom.png": "34781461b3b3912107a182838099b477d648c2974ef016ee0886787a01018e47",
+    "equatorial-full-star.png": "8ae814ee2d1ba203b0a4681aabcef5d8961d9a9f51672e09fc51435fbb8097f8",
+    "global-evolution.png": "f8561984a6995e97eac223db20f993411fa4334e471e4002fc1c04ad863c8210",
+    "l6-l7-comparison.png": "ba537e0f77360215943c042de11458260956de29c9911b0a78c6b58da778e633",
+    "radial-profiles.png": "91f78ad1011fe9a42af4df734890672c7171ee2ec50b9913984feedaa788785a",
+    "radial-turning-point.png": "cfb95ed1c86951380e0f4295aa7b32983be513ca6579169055df05574da6bee7"
+  }
+}
