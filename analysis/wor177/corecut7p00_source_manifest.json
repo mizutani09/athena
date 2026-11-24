@@ -1,0 +1,44 @@
+{
+  "schema_version": 1,
+  "status": "experimental_aggressive_core_approximation",
+  "upstream": {
+    "repository": "/home/kosuke/simulation/mhd/BSCF-rsg-wor177-aggressive-core-excision",
+    "branch": "wor-177-aggressive-core-excision",
+    "commit": "f75e991",
+    "source_profile_sha256": "4c3693acf6cff519d80b3434ee6e169652032339372d057b5f5e0abc2315b9b1"
+  },
+  "model": {
+    "core_cut_mass_Msun": 7.0026122505391051,
+    "retained_envelope_inner_radius_Rsun": 64.98117947774728,
+    "inner_core_gamma": 1.6666666666666667,
+    "core_particle_mass_g": 1.2962446564904497e34,
+    "core_support_radius_cm": 4.5207406562668779e12,
+    "central_density_g_cm3": 6.5328823645609625e-6,
+    "scf_gas_mass_g": 2.8794158606022215e34,
+    "tapered_piecewise_linear_gas_mass_g": 2.8798328945271988e34,
+    "scf_scalar_virial_relative_error": 1.5234020508059583e-6,
+    "scf_binding_energy_erg": 1.0875307125055843e48
+  },
+  "athena": {
+    "root_points": 64,
+    "surface_level": 2,
+    "l3_minimum_cell_width_cm": 2.9893359375e11,
+    "l3_core_support_cells": 15.123,
+    "l4_minimum_cell_width_cm": 1.49466796875e11,
+    "l4_core_support_cells": 30.246
+  },
+  "mapping": {
+    "l3_mass_relative_error": -7.35903945114913e-7,
+    "l3_energy_relative_error": 4.13933147758172e-8,
+    "l3_force_l2_relative": 3.839403539047599e-3,
+    "l4_mass_relative_error": -7.353157723821724e-7,
+    "l4_energy_relative_error": 4.1945118045561e-8,
+    "l4_force_l2_relative": 9.915099392036308e-4
+  },
+  "sha256": {
+    "data/ic/rsg21_mesa_scf_corecut7p00_g5p3_nr16384_taper_rho3e-9_gamma5_3.csv": "9dac3cc5ed8fc392bf62411f2fdc9c2aad31659bf4a19a165db24e1a0c5b5c8c",
+    "analysis/wor177/corecut7p00_surface_taper_audit.csv": "ead9459cd45e0fead7e20c30188417ffa0b56c04ebd7c75ca502b2f23026bbad",
+    "analysis/wor177/corecut7p00_map_root64_l3.csv": "c2276280ce90133840bb8c7760d9da666402ed9af3e83c37a70c447a6f892413",
+    "analysis/wor177/corecut7p00_map_root64_l4.csv": "d13e44ec742768495786f21068914d85a98614f3536c4cdb2fe626b24c9ef504"
+  }
+}

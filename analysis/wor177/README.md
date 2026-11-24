@@ -431,6 +431,29 @@ regularization.  It is not accepted as an FLD photospheric model.  Radiation
 work must instead restore a thermodynamically and optically controlled outer
 layer and repeat its own resolution audit.
 
+## Experimental aggressive core excision
+
+The separate `wor-177-aggressive-core` branch tests how much of the inner
+convective envelope must actually remain hydrodynamic for RLOF-to-contact
+calculations.  It moves the fluid-table cut from `6.27977 Msun` and
+`4.0548 Rsun` to `7.00261 Msun` and `64.9812 Rsun`.  This replaces an
+additional `0.72284 Msun` of inner convective-envelope material while leaving
+the MESA table outside that radius unchanged.  It is intentionally a stronger
+approximation and does not supersede the accepted job-345480 seed.
+
+The new SCF solution lowers the central gas density from `4.811e-3` to
+`6.533e-6 g cm^-3`.  Its `64.98 Rsun` particle support has 15.12 central-L3
+cells or 30.25 central-L4 cells.  Standalone conservative maps give force-L2
+errors `0.00384` and `0.000992`, both better than the accepted compact-core L7
+map (`0.00523`).  The global timestep should therefore improve by about a
+factor of 16 for L3 or 8 for L4 before smaller MeshBlock savings are counted.
+
+The L3 and L4 fresh-map isolated-star gates run to `1.5 t_dyn` independently.
+Their purpose is to test stability and resolution convergence; the subsequent
+binary sensitivity audit must separately test whether replacing the inner
+convective envelope changes the surface response, tidal quadrupole, mass
+transfer rate, or orbital torque.
+
 ## Reproduction
 
 ```sh
