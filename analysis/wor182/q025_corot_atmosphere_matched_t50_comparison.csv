@@ -1,0 +1,9 @@
+diagnostic,original_347737,matched_rotating_347834
+interior_radial_mach_max,1.942876157463e-1,7.427036188848e-2
+surface_radial_mach_max,1.493245032832e2,6.396516007736e-1
+stellar_mass_mach_gt_0p1_g,3.830016398577e32,9.789150880527e31
+stellar_mass_mach_gt_0p3_g,8.073008182110e31,5.883161877262e28
+stellar_radial_ke_erg,1.273531202183e43,4.358803013015e42
+stellar_nonradial_perturbation_ke_erg,7.245647105013e41,6.623447835342e41
+full_force_relative_l2,1.59173e-3,1.206770990405e-3
+full_force_relative_max,6.67851e-1,5.383661934962e-1

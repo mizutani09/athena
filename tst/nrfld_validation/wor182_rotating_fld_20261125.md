@@ -243,3 +243,62 @@ force slices.  It must verify that the full local force residual and surface
 Mach improve without degrading the bulk-star L2 balance or implicit FGMRES
 convergence.  Only after that short gate should the candidate be continued to
 time 1 and then time 50.
+
+## Atmosphere-matched L4 evolution
+
+The fresh-map A/B and continuations completed on XD after connectivity was
+restored.  Job 347816 repeated the original rho_atm=1e-14 g cm^-3 mapping;
+job 347817 used the atmosphere-matched rho_atm=1.7e-11 g cm^-3 taper with a
+stationary atmosphere; and job 347825 used the same matched taper with the
+numerical atmosphere in synchronous rotation.
+
+At time 0.01, the matched stationary atmosphere reduced the surface radial
+Mach maximum from 0.0389 to 9.18e-4 and the full local force-residual maximum
+from 0.767 to 0.198.  It also changed the final two implicit steps from relaxed
+acceptance to ordinary convergence.  However, averaging stationary atmosphere
+and rotating stellar material in surface cells introduced an initial
+nonradial perturbation energy of 8.13e-8 |W|.  Synchronously rotating the
+atmosphere removed that mapping artifact: job 347825 retained surface Mach
+9.47e-4 while reducing nonradial perturbation energy to 4.70e-10 |W|, the same
+as the original model's 4.94e-10 |W|.  The rotating candidate is therefore the
+accepted member of this A/B.
+
+Successive restart gates reached time 0.1 at CFL=0.1 (347826), time 1.0 at
+CFL=0.1 (347829), time 1.3 at CFL=0.2 (347831), time 1.6 at CFL=0.3 (347832),
+time 10 at CFL=0.3 (347833), and time 50 at CFL=0.3 (347834).  No restart gate
+used a timestep cap.  All solves in these gates converged normally; there was
+no relaxed or fatal acceptance.
+
+The final time-50 comparison is:
+
+| diagnostic | original taper (347737) | matched rotating atmosphere (347834) |
+| --- | ---: | ---: |
+| interior radial Mach maximum | 0.194 | 0.0743 |
+| surface radial Mach maximum | 149 | 0.640 |
+| stellar mass with radial Mach > 0.1 | 3.83e32 g | 9.79e31 g |
+| stellar mass with radial Mach > 0.3 | 8.07e31 g | 5.88e28 g |
+| stellar radial kinetic energy | 1.27e43 erg | 4.36e42 erg |
+| stellar nonradial perturbation energy | 7.25e41 erg | 6.62e41 erg |
+| full-force relative L2 residual | 1.59e-3 | 1.21e-3 |
+| full-force local maximum | 0.668 | 0.538 |
+
+The Mach>0.3 mass is lower by a factor of approximately 1,370 and the radial
+kinetic energy by a factor of 2.9.  Some intermediate low-pressure cells reach
+large formal Mach numbers because their gas pressure is on the numerical
+floor; this does not correspond to a large kinetic-energy or stellar-mass
+excursion.  The final bulk and surface diagnostics are both substantially
+better than the original taper.
+
+Across the complete fresh-map candidate evolution, mapped stellar mass drift
+is -2.53e-10, angular-momentum drift is 9.49e-6, gas-plus-radiation energy
+change is -4.00e-4, and mean-radius change is 5.74e-5.  These are comparable
+to or smaller than the original run.  The denser numerical atmosphere contains
+5.64e30 g = 0.00284 Msun, or 1.96e-4 of the stellar gas mass.  It is excluded
+from self-gravity by the existing atmosphere mask.
+
+Job 347834 required 1,248 s on three nodes for time 10--50.  Its 333 implicit
+solves used a mean of 6.99 and maximum of 9 Newton iterations, with largest
+final nonlinear residual 1.31e-9.  The timestep remained approximately 0.122
+at CFL=0.3.  Thus the atmosphere regularization improves the physical
+stability diagnostics without increasing the production cost or weakening
+FGMRES convergence.
