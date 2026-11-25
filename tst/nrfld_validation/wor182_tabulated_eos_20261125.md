@@ -42,7 +42,9 @@ Configure:
 
 ## XD gates
 
-The launcher is `analysis/wor182/xd_q025_corot_tabulated_eos_gate.sh`.
+The fresh-map launcher is
+`analysis/wor182/xd_q025_corot_tabulated_eos_gate.sh`; continuations use
+`analysis/wor182/xd_q025_corot_tabulated_eos_restart_gate.sh`.
 
 ### Fresh map, job 347859
 
@@ -104,12 +106,58 @@ non-SIMD residual history in 79.18 s versus 101 s for job 347862.
 - interior/surface radial Mach: 4.67e-5 / 1.300e-3
 - full-force relative maximum: 0.174
 
+### CFL=0.2 nonlinear-floor diagnosis and gate
+
+The first continuations from t=0.01 (jobs 347886 and 347887) reached t=0.1,
+but the final `dt=0.04332` solve was accepted only at the relaxed tolerance:
+L2=3.96e-7 and max=1.72e-4.  Tightening FGMRES from 1e-4 to 1e-5 did not
+change that residual, ruling out linear-solve accuracy as the cause.
+
+The verbosity-2 reproduction, job 347889, localized the plateau to a
+total-energy row next to a radiation cell already clipped to `TINY_NUMBER`.
+The linear solve repeatedly requested a negative correction in that floor
+cell, while positivity clipping applied zero; neighbouring rows therefore
+used a correction that could never be realized.  Commit `9559f3ccb` treats
+this lower bound as a Newton active-set constraint (`delta_Er=0`) and uses a
+projected residual for the constrained radiation equation.
+
+Job 347891 repeated exactly the CFL=0.2 path after this change:
+
+- completed normally from t=0.01 to 0.1 in 64.35 s
+- all three timesteps converged normally; there was no relaxed acceptance
+- the previously stalled final timestep converged in 7 Newton iterations
+- final L2/max residual: 2.53e-12 / 1.48e-9
+- FGMRES retained its production 1e-4 relative threshold
+
+### CFL=0.3 and 4wz AMR ghost admissibility
+
+The first full CFL=0.3 timestep, `dt=0.1216300565`, converged in 7 Newton
+iterations.  Before the following step, jobs 347892 and 347895 exposed a
+separate explicit-stage issue: multidimensional coarse/fine interpolation
+made finite negative radiation-energy ghost values near -9.3e-10, although
+the owning active cells remained positive.  Commit `dc0f01759` bounds direct
+FLD prolongation, and commit `667fb5a2c` enforces ghost-stencil admissibility
+at the 4wz radiation reconstruction consumer while retaining fatal checks for
+all negative active cells and non-finite ghosts.
+
+Job 347897 then completed from t=0.1 to 0.3:
+
+- 3 M-test-a nodes, 168 MPI ranks, 47.89 s wall time
+- `dt=0.1216300565` and `dt=0.0783699435` both converged in 7 Newton iterations
+- final max residuals: 2.62e-9 and 1.27e-9
+- no negative-radiation, relaxed-Newton, or table-domain warning
+- the production CFL=0.3 gate is therefore passed through t=0.3
+
+Job 347898 continues this accepted CFL=0.3 state to t=3.0 as the next
+medium-duration gate.
+
 ## Open acceptance items
 
-1. Add a tabulated-EOS restart launcher and raise CFL 0.1 -> 0.2 -> 0.3
-   without repeating the 100-cycle startup cap.
+1. Complete the t=3 CFL=0.3 gate, then extend to a material fraction of a
+   dynamical time with periodic restarts.
 2. Compare L3/L4 and ideal/table force, Mach, Newton, and FGMRES histories.
 3. Add explicit runtime diagnostics for distance to EOS table boundaries.
 4. Replace cell-average closure with a derived, table-thermodynamic profile if
    the first A/B shows appreciable thermal projection noise.
-5. Extend the integrated general-EOS + 4wz combination beyond startup.
+5. Add a focused AMR regression for positivity-constrained FLD ghost
+   prolongation and the Newton radiation active set.
