@@ -308,12 +308,44 @@ At `t=30`, the interior and rho-at/above-surface Mach maxima were only
 The next physical gate must therefore address the outer taper/refinement rather
 than extend this configuration blindly.
 
+### Surface-refinement A/B: retain relative L2
+
+Jobs 347973 and 347981 restarted the same accepted `t=10` state and advanced
+to `t=11.5` with the surface density band held at relative levels L2 and L3,
+respectively.  The successful L3 layout used 324 ranks on 9 nodes (36 ranks
+per node).  An earlier 504-rank layout exceeded a safe per-node memory
+packing, and a 168-rank/9-node layout supplied too little compute per node.
+
+- L2 used 1688 MeshBlocks on 168 ranks/3 nodes and 99.24 s wall time.  Its
+  final interior, taper, and `rho >= rho_surface` radial Mach maxima were
+  `0.00735`, `0.2421`, and `0.00679`.  No stellar mass exceeded Mach 0.3.
+- L3 used 7904 MeshBlocks on 324 ranks/9 nodes and 301.53 s wall time.  Its
+  corresponding maxima were `0.00955`, `0.3115`, and `0.00955`; about
+  `1.78e27 g` exceeded Mach 0.3.
+- Both runs retained positive EOS margins and had no Newton or FGMRES failure.
+
+Jobs 347985 (L2) and 347984 (L3) then continued their fixed AMR topologies
+from `t=11.5` to 13.  L2 completed in 97.29 s with 14 Newton solves (at most
+7 iterations) and 81 FGMRES solves (at most 19 iterations).  L3 completed in
+322.87 s with 14 Newton solves (at most 8 iterations) and 91 FGMRES solves
+(at most 29 iterations).  At `t=13`, the taper Mach maximum was `0.2723` for
+L2 versus `0.3449` for L3, and the interior maximum was `0.00763` versus
+`0.01251`.
+
+Relative L3 therefore costs 4.68 times as many MeshBlocks and about 6.4 times
+as many rank-seconds over the controlled continuation without improving the
+stability metric.  Relative L2 is the production choice.  The worsening with
+resolution points to thermal/radiative adjustment of the mechanically
+matched low-density taper, rather than an under-resolved hydrodynamic mode.
+Longer table-EOS runs should first make that layer radiatively consistent or
+demonstrate that its negligible-mass motion remains dynamically decoupled.
+
 ## Open acceptance items
 
-1. Run an L3/L4 outer-density refinement A/B before any longer table-EOS
-   stability extension; the t=30 taper is already nearly sonic.
-2. Compare L3/L4 and ideal/table force, Mach, Newton, and FGMRES histories.
-3. Replace cell-average closure with a derived, table-thermodynamic profile if
-   the first A/B shows appreciable thermal projection noise.
-4. Add a focused AMR regression for positivity-constrained FLD ghost
+1. Quantify the initial FLD luminosity/divergence and thermal time through the
+   atmosphere-matched taper, then construct a radiatively consistent outer
+   profile if the adjustment is significant.
+2. Add a focused AMR regression for positivity-constrained FLD ghost
    prolongation and the Newton radiation active set.
+3. Keep relative L2 as the production surface-refinement level unless a new
+   outer profile changes the controlled A/B result.
