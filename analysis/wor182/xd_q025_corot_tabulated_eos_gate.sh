@@ -28,6 +28,7 @@ nlim=${WOR182_NLIM:-0}
 tlim=${WOR182_TLIM:-1.0e-3}
 integrator=${WOR182_INTEGRATOR:-rk4}
 cfl=${WOR182_CFL:-0.1}
+surface_mach_diagnostic_threshold=${WOR182_SURFACE_MACH_DIAGNOSTIC_THRESHOLD:--1.0}
 run=/work/mizutaniks/wor182/q025_corot_tabulated_eos_${SLURM_JOB_ID}
 
 mkdir -p "$run"
@@ -38,8 +39,9 @@ git rev-parse HEAD > "$run/git_commit.txt"
 git status --short > "$run/git_status.txt"
 sha256sum bin/athena "$input" data/eos/rsg_tomida2013_material_eos.tab \
   data/opacity/rsg_gray_opacity_t7.h5 > "$run/provenance.sha256"
-printf 'integrator=%s\nnlim=%s\ntlim=%s\ncfl=%s\n' \
-  "$integrator" "$nlim" "$tlim" "$cfl" > "$run/run_config.txt"
+printf 'integrator=%s\nnlim=%s\ntlim=%s\ncfl=%s\nsurface_mach_diagnostic_threshold=%s\n' \
+  "$integrator" "$nlim" "$tlim" "$cfl" \
+  "$surface_mach_diagnostic_threshold" > "$run/run_config.txt"
 
 set +e
 /usr/bin/time -f 'wall_s=%e maxrss_kb=%M' -o "$run/time.log" \
@@ -47,6 +49,7 @@ set +e
   bin/athena -i "$input" -d "$run" \
   time/integrator="$integrator" time/nlim="$nlim" time/tlim="$tlim" \
   time/cfl_number="$cfl" time/ncycle_out=1 \
+  problem/surface_mach_diagnostic_threshold="$surface_mach_diagnostic_threshold" \
   output1/dcycle=1 output2/dcycle=1000 \
   output3/dt=-1 output4/dt=-1 \
   > "$run/stdout.log" 2> "$run/stderr.log"
