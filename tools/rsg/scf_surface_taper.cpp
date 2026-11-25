@@ -155,6 +155,15 @@ double SegmentIntegral(double r0, double f0, double r1, double f1) {
       +intercept*(std::pow(r1, 3)-std::pow(r0, 3))/3.0;
 }
 
+// Exact integral of rho*r^4 when rho is linearly interpolated in radius.
+double SegmentMomentOfInertia(double r0, double rho0,
+                              double r1, double rho1) {
+  const double slope = (rho1-rho0)/(r1-r0);
+  const double intercept = rho0-slope*r0;
+  return slope*(std::pow(r1, 6)-std::pow(r0, 6))/6.0
+      +intercept*(std::pow(r1, 5)-std::pow(r0, 5))/5.0;
+}
+
 double VolumeIntegral(const Profile& profile, int column,
                       const std::vector<double>& weights) {
   double integral = 0.0;
@@ -169,6 +178,23 @@ double VolumeIntegral(const Profile& profile, int column,
     integral += 2.0*kPi*weights[angular]*radial_integral;
   }
   return integral;
+}
+
+double AxialMomentOfInertia(const Profile& profile,
+                            const std::vector<double>& weights) {
+  double moment = 0.0;
+  for (std::size_t angular = 0; angular < profile.angular_points; ++angular) {
+    double radial_integral = 0.0;
+    for (std::size_t radial = 1; radial < profile.radial_points; ++radial) {
+      const Row& lower = profile.rows[(radial-1)*profile.angular_points+angular];
+      const Row& upper = profile.rows[radial*profile.angular_points+angular];
+      radial_integral += SegmentMomentOfInertia(
+          lower[kRadius], lower[kDensity], upper[kRadius], upper[kDensity]);
+    }
+    const double mu = profile.rows[angular][kMu];
+    moment += 2.0*kPi*weights[angular]*(1.0-mu*mu)*radial_integral;
+  }
+  return moment;
 }
 
 struct TaperAudit {
@@ -271,7 +297,9 @@ void WriteProfile(const Profile& profile, const std::string& path) {
 void WriteAudit(const std::string& path, double match_density, double gamma,
                 const Profile& profile, const TaperAudit& taper,
                 double original_mass, double tapered_mass,
-                double original_pressure, double tapered_pressure) {
+                double original_pressure, double tapered_pressure,
+                double angular_velocity, double original_moment,
+                double tapered_moment) {
   std::ofstream output(path.c_str());
   if (!output) throw std::runtime_error("cannot open audit output "+path);
   output << "match_density_g_cm3,gamma,radial_points,angular_points,"
@@ -282,7 +310,12 @@ void WriteAudit(const std::string& path, double match_density, double gamma,
             "tapered_mass_g,mass_relative_change,"
             "original_pressure_volume_integral_erg,"
             "tapered_pressure_volume_integral_erg,"
-            "pressure_volume_relative_change\n"
+            "pressure_volume_relative_change,angular_velocity_rad_s,"
+            "original_axial_moment_g_cm2,tapered_axial_moment_g_cm2,"
+            "moment_relative_change,original_angular_momentum_g_cm2_s,"
+            "tapered_angular_momentum_g_cm2_s,"
+            "original_rotational_kinetic_energy_erg,"
+            "tapered_rotational_kinetic_energy_erg\n"
          << std::scientific << std::setprecision(16)
          << match_density << ',' << gamma << ',' << profile.radial_points << ','
          << profile.angular_points << ',' << taper.minimum_match_radius << ','
@@ -293,6 +326,12 @@ void WriteAudit(const std::string& path, double match_density, double gamma,
          << original_mass << ',' << tapered_mass << ','
          << tapered_mass/original_mass-1.0 << ',' << original_pressure << ','
          << tapered_pressure << ',' << tapered_pressure/original_pressure-1.0
+         << ',' << angular_velocity << ',' << original_moment << ','
+         << tapered_moment << ',' << tapered_moment/original_moment-1.0 << ','
+         << angular_velocity*original_moment << ','
+         << angular_velocity*tapered_moment << ','
+         << 0.5*angular_velocity*angular_velocity*original_moment << ','
+         << 0.5*angular_velocity*angular_velocity*tapered_moment
          << '\n';
 }
 
@@ -300,27 +339,35 @@ void WriteAudit(const std::string& path, double match_density, double gamma,
 
 int main(int argc, char** argv) {
   try {
-    if (argc != 6) {
+    if (argc != 6 && argc != 7) {
       std::cerr << "usage: scf_surface_taper INPUT.csv OUTPUT.csv AUDIT.csv "
-                   "MATCH_DENSITY_G_CM3 GAMMA\n";
+                   "MATCH_DENSITY_G_CM3 GAMMA [ANGULAR_VELOCITY_RAD_S]\n";
       return 2;
     }
     const double match_density = Parse(argv[4], "match density");
     const double gamma = Parse(argv[5], "polytropic gamma");
+    const double angular_velocity = argc == 7
+        ? Parse(argv[6], "angular velocity") : 0.0;
     if (!(match_density > 0.0) || !(gamma > 1.0)) {
       throw std::invalid_argument("match density and gamma must be valid");
+    }
+    if (angular_velocity < 0.0) {
+      throw std::invalid_argument("angular velocity must be nonnegative");
     }
     Profile profile = ReadProfile(argv[1]);
     const std::vector<double> weights = GaussLegendreWeights(profile);
     const double original_mass = VolumeIntegral(profile, kDensity, weights);
     const double original_pressure = VolumeIntegral(profile, kPressure, weights);
+    const double original_moment = AxialMomentOfInertia(profile, weights);
     const TaperAudit taper = ApplyTaper(&profile, match_density, gamma);
     const double tapered_mass = VolumeIntegral(profile, kDensity, weights);
     const double tapered_pressure = VolumeIntegral(profile, kPressure, weights);
+    const double tapered_moment = AxialMomentOfInertia(profile, weights);
     WriteProfile(profile, argv[2]);
     WriteAudit(argv[3], match_density, gamma, profile, taper,
                original_mass, tapered_mass, original_pressure,
-               tapered_pressure);
+               tapered_pressure, angular_velocity, original_moment,
+               tapered_moment);
     std::cout << std::scientific << std::setprecision(8)
               << "mass_relative_change=" << tapered_mass/original_mass-1.0
               << " pressure_volume_relative_change="
