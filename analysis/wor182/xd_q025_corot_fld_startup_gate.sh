@@ -26,6 +26,7 @@ ulimit -c 0
 repository=${WOR182_REPOSITORY:-$HOME/simulation/athena-wor182-rotating-fld}
 profile=${WOR182_PROFILE:-data/ic/rsg21_mesa_scf_corecut7p00_q025_corot_nr16384_taper_rho3e-9_gamma5_3.csv}
 atmosphere_density=${WOR182_ATMOSPHERE_DENSITY:-}
+rotate_atmosphere=${WOR182_ROTATE_ATMOSPHERE:-}
 nlim=${WOR182_NLIM:-110}
 tlim=${WOR182_TLIM:-1.0e-2}
 integrator=${WOR182_INTEGRATOR:-ssprk5_4}
@@ -54,9 +55,13 @@ if [[ -n "$atmosphere_density" ]]; then
   problem_arguments+=(
     problem/atmosphere_density_g_cm3="$atmosphere_density")
 fi
-printf 'core_level=%s\nintegrator=%s\nnlim=%s\ntlim=%s\nprofile=%s\natmosphere_density=%s\nslice_output_dt=%s\n' \
+if [[ -n "$rotate_atmosphere" ]]; then
+  problem_arguments+=(problem/rotate_atmosphere="$rotate_atmosphere")
+fi
+printf 'core_level=%s\nintegrator=%s\nnlim=%s\ntlim=%s\nprofile=%s\natmosphere_density=%s\nrotate_atmosphere=%s\nslice_output_dt=%s\n' \
   "${CORE_LEVEL:-l4}" "$integrator" "$nlim" "$tlim" "$profile" \
-  "$atmosphere_density" "$slice_output_dt" > "$run/run_config.txt"
+  "$atmosphere_density" "$rotate_atmosphere" "$slice_output_dt" \
+  > "$run/run_config.txt"
 
 set +e
 /usr/bin/time -f 'wall_s=%e maxrss_kb=%M' -o "$run/time.log" \
