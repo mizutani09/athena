@@ -164,8 +164,18 @@ FLD::FLD(MeshBlock *pmb, ParameterInput *pin) :
     ATHENA_ERROR(msg);
   }
   fixed_flux_limiter = pin->GetOrAddBoolean("fld", "fixed_flux_limiter", false);
+  const EnvironmentFlag explicit_positivity_diagnostics =
+      ReadEnvironmentFlag("ATHENA_FLD_EXPLICIT_POSITIVITY_DIAGNOSTICS");
+  if (!explicit_positivity_diagnostics.valid) {
+    std::stringstream msg;
+    msg << "### FATAL ERROR in function [FLD::FLD]" << std::endl
+        << "ATHENA_FLD_EXPLICIT_POSITIVITY_DIAGNOSTICS accepts 0/1 "
+        << "(also false/true, no/yes, off/on).";
+    ATHENA_ERROR(msg);
+  }
   explicit_positivity_diagnostics_ = pin->GetOrAddBoolean(
-      "fld", "explicit_positivity_diagnostics", false);
+      "fld", "explicit_positivity_diagnostics",
+      explicit_positivity_diagnostics.value);
   stage_diagnostics_ = pin->GetOrAddBoolean("fld", "stage_diagnostics", false);
   if (stage_diagnostics_) {
     stage_diagnostic_interval_ = pin->GetOrAddInteger(

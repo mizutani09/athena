@@ -20,6 +20,7 @@ module load hdf5-parallel/1.14.5
 export SLURM_MPI_TYPE=pmi2
 export LD_LIBRARY_PATH=/lib64:${LD_LIBRARY_PATH:-}
 export OMP_NUM_THREADS=1
+export ATHENA_FLD_EXPLICIT_POSITIVITY_DIAGNOSTICS=1
 ulimit -c 0
 
 repository=$HOME/simulation/athena-rsg-corecut7p00-fld4wz
@@ -49,7 +50,6 @@ sha256sum bin/athena "$restart" > "$run/provenance.sha256"
   time/integrator="$integrator" time/xorder=4wz \
   time/nlim=110 time/tlim=1.0e-2 time/ncycle_out=1 \
   problem/radiation_startup_dt_end=1.0e-3 \
-  fld/explicit_positivity_diagnostics=true \
   nrfld/max_update_fraction=1.0 nrfld/diagnostic_verbosity=1 \
   output1/dcycle=1 output2/dcycle=1000 \
   output3/dt=-1 output4/dt=-1 \
