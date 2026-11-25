@@ -19,9 +19,16 @@ support, LTE exchange, FLD diffusion, the Marshak boundary, and self-gravity
 before WOR-164 introduces a physically justified radiative luminosity.  It
 uses FGMRES and a `1e-5` code-time startup cap through `t=1e-3`; a coarse-grid
 test then grows the timestep normally and reaches `t=1e-2` in 110 cycles.
-At full L3 resolution, doubling beyond `dt=8e-5` exhausted Newton
-backtracking at `dt=1.6e-4`, so the production startup gate conservatively
-holds `dt=1e-5` through `t=1e-2`.
+An initial full-L3 run exhausted Newton backtracking at `dt=1.6e-4`, but a
+clean restart from cycle 100 converged through that step and reached
+`dt=1.28e-3`. Diagnostics localized the later failure to optically thin
+atmosphere cells at physical and L3/L4 boundaries, not the stellar interior:
+a Newton correction larger than the local radiation energy was clipped to the
+positivity floor and spoiled the global line-search direction. Restart tests
+therefore use `max_update_fraction=1.0`. The same L3 checkpoint then reached
+`t=1e-2` in 109 cycles without fixing the timestep; `0.5` was too restrictive,
+while `10.0` and an uncapped update failed at the larger step. This is a
+short solver gate, not yet a long-term stellar-stability result.
 
 The current `4wz` reconstruction has an explicit FLD guard.  This baseline
 therefore uses the supported second-order hydro path.  Combining 4WZ hydro
