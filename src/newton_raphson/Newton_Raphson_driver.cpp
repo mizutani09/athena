@@ -586,6 +586,12 @@ NewtonSolveResult NewtonRaphsonDriver::Solve_general(int stage, Real dt) {
       SolveOneCycle(solve_direction);
       solve_direction = false;
 
+      // Evaluate every line-search candidate with coefficients assembled at
+      // that candidate.  FLD's flux limiter can change sharply in optically
+      // thin cells, so comparing a trial residual formed with the base-state
+      // coefficients to a residual formed with refreshed coefficients on the
+      // next Newton iteration is not a consistent nonlinear merit function.
+      nrtlist_coeff_->DoTaskListOneStage(stage_);
       CalculateDefectNorms(norms);
       def = norms.l2_norm;
       defmax = norms.max_norm;
@@ -711,6 +717,10 @@ NewtonSolveResult NewtonRaphsonDriver::Solve_general(int stage, Real dt) {
         NewtonRaphson *pnr = *itr;
         pnr->RestoreIterate();
       }
+      // Restore the nonlinear operator as well as the iterate.  Subsequent
+      // backtracking trials reuse the same linear direction, but their
+      // correction must start from the base-state FLD coefficients.
+      nrtlist_coeff_->DoTaskListOneStage(stage_);
 
       // Optional coarse-correction damping is retained as an expert fallback.
       // It is disabled by default: changing the linear solve before trying a
@@ -803,19 +813,6 @@ NewtonSolveResult NewtonRaphsonDriver::Solve_general(int stage, Real dt) {
       result.committed = true;
       break;
     }
-    // The trial merit function above uses the coefficients frozen at the
-    // base of this Newton iteration.  Refresh both coefficients and residual
-    // at the accepted state before comparing it with the next iteration.
-    // Otherwise the next line search compares a trial evaluated with newly
-    // assembled nonlinear coefficients against an old norm evaluated with
-    // stale coefficients; in that case even a zero-length trial need not
-    // approach the recorded base norm.
-    if (!fixed_mode) {
-      nrtlist_coeff_->DoTaskListOneStage(stage_);
-      CalculateDefectNorms(norms);
-      def = norms.l2_norm;
-      defmax = norms.max_norm;
-    }
     if (fixed_mode) {
       if (n >= niter_) {
         result.reason = NewtonSolveReason::fixed_iterations_complete;
@@ -839,6 +836,7 @@ NewtonSolveResult NewtonRaphsonDriver::Solve_general(int stage, Real dt) {
         for (auto itr = vnr_.begin(); itr < vnr_.end(); itr++) {
           (*itr)->RestoreIterate();
         }
+        nrtlist_coeff_->DoTaskListOneStage(stage_);
         norms = old_norms;
         def = norms.l2_norm;
         defmax = norms.max_norm;
@@ -852,6 +850,7 @@ NewtonSolveResult NewtonRaphsonDriver::Solve_general(int stage, Real dt) {
       for (auto itr = vnr_.begin(); itr < vnr_.end(); itr++) {
         (*itr)->RestoreIterate();
       }
+      nrtlist_coeff_->DoTaskListOneStage(stage_);
       norms = old_norms;
       def = norms.l2_norm;
       defmax = norms.max_norm;
