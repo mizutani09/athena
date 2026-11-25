@@ -1253,10 +1253,10 @@ Real HistoryEosTableMargin(MeshBlock* block, int output) {
 #endif
 
 Real HistoryRelaxationDamping(MeshBlock* block, int output) {
-  const Real value = block->ruser_meshblock_data[0](
-      output-kRelaxationHistoryStart);
+  const int local_output = output-kRelaxationHistoryStart;
+  const Real value = block->ruser_meshblock_data[0](local_output);
   const Real energy_scale = pressure_unit*std::pow(length_unit, 3);
-  return output == kRelaxationHistoryStart
+  return local_output % 2 == 0
       ? value*energy_scale : value*energy_scale/time_unit;
 }
 }  // namespace
