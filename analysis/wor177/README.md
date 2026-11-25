@@ -460,6 +460,30 @@ The physical scope, literature comparison, measured outer-profile difference,
 and A/B/C acceptance sequence are recorded in
 `analysis/wor177/core_approximation_assessment.md`.
 
+Both isolated-star gates completed normally to `1.5 t_dyn`: XD job 347029
+(L3) in 1,262.50 s of Athena wall time and job 347030 (L4) in 2,665.06 s,
+each on three nodes.  There were no NaNs, OOM failures, runtime failures, or
+iterative-MG warnings.  All energy, mass, radius, virial, and nonradial-energy
+gates pass.  The generic radial-Mach gate fails because the low-density surface
+taper carries a recurrent pulse: the maximum mass above Mach 0.1 is only
+`4.77e-4` of the star at L3 and `1.71e-3` at L4, while the maximum radial KE is
+at most `3.30e-5 |W|`.  The final radial Mach RMS values are `0.0116` and
+`0.00864`.
+
+The final mean-radius changes are `-0.0873%` at L3 and `-0.364%` at L4; their
+maximum time-matched radius-drift difference is `0.277%`.  Maximum nonradial KE
+is `1.60e-5 |W|` at L3 and `1.51e-5 |W|` at L4 and is not growing.  The
+aggressive model is therefore accepted as an isolated-star model with L3 as
+the binary-gate production resolution and L4 as its resolution control.  This
+does not yet establish physical equivalence to the accepted compact-core L7
+model.
+
+Measured evolution costs are `0.701 node-hour/t_dyn` at L3 and
+`1.481 node-hour/t_dyn` at L4, including the three allocated nodes but excluding
+postprocessing.  These are factors of 70.2 and 33.3 below the accepted
+corecut6p28 L7 measurement.  Exact results and restart hashes are recorded in
+`analysis/wor177/corecut7p00_l3_l4_t1p5_summary.json`.
+
 ## Reproduction
 
 ```sh

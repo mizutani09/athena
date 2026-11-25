@@ -70,8 +70,23 @@ Long isolated-star runs were submitted on XD on 2026-11-24:
 - job `347029`: root64, surface L2, central L3, 3 nodes, target `1.5 t_dyn`;
 - job `347030`: root64, surface L2, central L4, 3 nodes, target `1.5 t_dyn`.
 
-At the last check both jobs were pending in the scheduler.  The launch commit is
-`3c93475e9` on branch `wor-177-aggressive-core`.
+Both jobs completed normally to `1.5 t_dyn`.  L3 used 1,262.50 s of Athena wall
+time and L4 used 2,665.06 s on three nodes, corresponding to measured evolution
+costs of `0.701` and `1.481 node-hour/t_dyn`.  This is 70.2 and 33.3 times less
+than the accepted corecut6p28 L7 measurement.  There were no NaNs, OOM failures,
+runtime failures, or iterative-MG warnings.  The launch commit is `3c93475e9`
+on branch `wor-177-aggressive-core`.
+
+All mass, energy, radius, virial, radial-KE, and nonradial-KE gates pass.  The
+generic radial-Mach gate is tripped by a recurrent low-density surface-taper
+pulse, but the maximum stellar-mass fractions above Mach 0.1 are only
+`4.77e-4` at L3 and `1.71e-3` at L4, and the maximum radial KE remains below
+`3.31e-5 |W|`.  Maximum nonradial KE is below `1.60e-5 |W|` at both levels and
+does not grow.  The maximum time-matched difference in mean-radius drift is
+0.277%.  The isolated-star gate therefore accepts L3 as the production
+resolution for the binary sensitivity test and retains L4 as the resolution
+control.  Exact values and restart hashes are in
+`corecut7p00_l3_l4_t1p5_summary.json`.
 
 ## Why this can be adequate for RLOF through contact
 
