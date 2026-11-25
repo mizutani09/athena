@@ -32,6 +32,7 @@ integrator=${WOR182_INTEGRATOR:-rk4}
 restart_dcycle=${WOR182_RESTART_DCYCLE:-100}
 slice_output_dt=${WOR182_SLICE_OUTPUT_DT:--1}
 fgmres_threshold=${WOR182_FGMRES_THRESHOLD:-1.0e-4}
+diagnostic_verbosity=${WOR182_DIAGNOSTIC_VERBOSITY:-0}
 cfl_tag=${cfl//./p}
 time_tag=${target_time//./p}
 run=/work/mizutaniks/wor182/q025_corot_tabulated_eos_cfl${cfl_tag}_t${time_tag}_${SLURM_JOB_ID}
@@ -46,9 +47,10 @@ git status --short > "$run/git_status.txt"
 sha256sum bin/athena "$restart" "$input" \
   data/eos/rsg_tomida2013_material_eos.tab \
   data/opacity/rsg_gray_opacity_t7.h5 > "$run/provenance.sha256"
-printf 'restart=%s\ninput=%s\ntarget_time=%s\ncfl=%s\nnlim=%s\nintegrator=%s\nrestart_dcycle=%s\nslice_output_dt=%s\nfgmres_threshold=%s\n' \
+printf 'restart=%s\ninput=%s\ntarget_time=%s\ncfl=%s\nnlim=%s\nintegrator=%s\nrestart_dcycle=%s\nslice_output_dt=%s\nfgmres_threshold=%s\ndiagnostic_verbosity=%s\n' \
   "$restart" "$input" "$target_time" "$cfl" "$nlim" "$integrator" \
   "$restart_dcycle" "$slice_output_dt" "$fgmres_threshold" \
+  "$diagnostic_verbosity" \
   > "$run/run_config.txt"
 
 set +e
@@ -60,6 +62,7 @@ set +e
   time/ncycle_out=1 \
   fld/include_mixed_frame_terms=true fld/mixed_frame_transport=true \
   nrfld/linear_solver=fgmres nrfld/fgmres_threshold="$fgmres_threshold" \
+  nrfld/diagnostic_verbosity="$diagnostic_verbosity" \
   output1/dcycle=1 output2/dcycle="$restart_dcycle" \
   output3/dt="$slice_output_dt" output4/dt="$slice_output_dt" \
   > "$run/stdout.log" 2> "$run/stderr.log"
