@@ -23,25 +23,41 @@ export OMP_NUM_THREADS=1
 ulimit -c 0
 
 repository=$HOME/simulation/athena-rsg-corecut7p00-fld
-restart=/work/mizutaniks/wor163/fld_norot_startup_347554/mesa_scf_rsg_corecut7p00_fld_norot_l3.final.rst
+input=inputs/rsg/athinput.mesa_scf_rsg_corecut7p00_fld_norot_l3
 run=/work/mizutaniks/wor163/fld_restart_debug_${SLURM_JOB_ID}
+checkpoint=$run/checkpoint
+restart=$checkpoint/mesa_scf_rsg_corecut7p00_fld_norot_l3.final.rst
 
-mkdir -p "$run"
+mkdir -p "$run" "$checkpoint"
 cd "$repository"
 test -x bin/athena
-test -s "$restart"
 git rev-parse HEAD > "$run/git_commit.txt"
-sha256sum bin/athena "$restart" > "$run/provenance.sha256"
+sha256sum bin/athena "$input" > "$run/provenance.sha256"
 
-# The restart is at t ~= 4.52e-3 with dt=1e-5. Releasing the user cap below
-# the restart time reproduces the native 2x timestep growth in only a few cycles.
+# First write a clean checkpoint exactly where the 1e-5 startup cap ends. A
+# signal-handler restart is intentionally not used because an interrupted
+# collective write can leave a correctly rejected, truncated file.
+/usr/bin/time -f 'checkpoint_wall_s=%e checkpoint_maxrss_kb=%M' \
+  -o "$run/checkpoint_time.log" \
+  srun -n"$SLURM_NTASKS" --ntasks-per-node=56 \
+  bin/athena -i "$input" -d "$checkpoint" \
+  time/nlim=100 time/tlim=1.0e-3 time/ncycle_out=10 \
+  problem/radiation_startup_dt_end=1.0e-3 \
+  output1/dcycle=10 output2/dcycle=1000 \
+  output3/dt=-1 output4/dt=-1 \
+  > "$run/checkpoint_stdout.log" 2> "$run/checkpoint_stderr.log"
+test -s "$restart"
+sha256sum "$restart" >> "$run/provenance.sha256"
+
+# Restart at cycle 100 and release the cap. This reproduces the native 2x
+# timestep growth and the localized nonlinear failure in only a few cycles.
 set +e
 /usr/bin/time -f 'launcher_wall_s=%e launcher_maxrss_kb=%M' \
   -o "$run/time.log" \
   srun -n"$SLURM_NTASKS" --ntasks-per-node=56 \
   bin/athena -r "$restart" -d "$run" \
-  time/nlim=470 time/tlim=1.0e-2 time/ncycle_out=1 \
-  problem/radiation_startup_dt_end=4.5e-3 \
+  time/nlim=110 time/tlim=1.0e-2 time/ncycle_out=1 \
+  problem/radiation_startup_dt_end=1.0e-3 \
   nrfld/diagnostic_verbosity=2 \
   output1/dcycle=1 output2/dcycle=1000 \
   output3/dt=-1 output4/dt=-1 \
@@ -51,7 +67,8 @@ set -e
 
 printf '%s\n' "$status" > "$run/srun_status.txt"
 grep -E 'cycle=|NR_INITIAL|NR_TRIAL|max_defect_loc|max_defect_stencil|face_neighbor_levels|diff_contrib|coeff center|src center|cell_physics|NR_GAS_FAILURE|NR.*status=|FATAL ERROR' \
-  "$run/stdout.log" > "$run/diagnostic_summary.log" || true
+  "$run/stdout.log" "$run/stderr.log" > "$run/diagnostic_summary.log" || true
+cat "$run/checkpoint_time.log"
 cat "$run/time.log"
 tail -n 40 "$run/stdout.log"
 tail -n 20 "$run/stderr.log"
