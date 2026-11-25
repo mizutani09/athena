@@ -454,10 +454,31 @@ schedule keeps full strength through time 50 and tapers linearly to zero from
 50 to 100; job 348057 tests the first interval.  Because both schedules have
 unit strength at time 20, changing the future taper introduces no force jump.
 
+Job 348057 continued with full strength from time 20 to 50 at CFL 0.3.  It
+completed in 1,192 s on three XD nodes.  All 248 Newton solves converged
+normally in at most seven iterations, FGMRES used at most 19 iterations, the
+minimum gas-energy EOS margin remained `+0.181 dex`, and there was no warning,
+relaxed acceptance, backtracking failure, or fatal error.
+
+The taper Mach maximum rose to 0.259 and then declined to 0.227; the interior
+maximum was only 0.00301, and no stellar material reached Mach 0.3.  At the
+end, `9.28e29 g` (`4.67e-4 Msun`) exceeded Mach 0.1, about 0.31 percent of the
+artificial taper mass.  The segment changed the mean and RMS stellar radii by
+only `1.20e-5` and `5.10e-6`, respectively.  It removed `6.46e41 erg` of
+corotating perturbation energy.  However, its final removal power was still
+`1.06e36 erg s^-1`, almost the segment maximum `1.07e36 erg s^-1`; the damping
+was still actively balancing the outer mismatch rather than becoming
+irrelevant.
+
+The zero-force acceptance criterion therefore overrides the earlier nominal
+taper date.  Job 348059 keeps full strength continuously to time 100 and moves
+the proposed linear taper to 100--150.  Again, both the old and new schedules
+have unit strength at the restart time, so this introduces no discontinuity.
+
 ## Open acceptance items
 
-1. Complete the extended time-50 strong-damping gate, taper the artificial
-   damping to zero by time 100, and require a subsequent undamped interval to
+1. Complete the extended time-100 strong-damping gate, taper the artificial
+   damping to zero by time 150, and require a subsequent undamped interval to
    remain stable.  A fully steady radiative/HSE outer-profile solve remains
    the preferred longer-term construction.
 2. Add a focused AMR regression for positivity-constrained FLD ghost
