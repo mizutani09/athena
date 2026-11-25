@@ -109,7 +109,12 @@ Reconstruction::Reconstruction(MeshBlock *pmb, ParameterInput *pin) :
         << "General EOS does not support characteristic reconstruction."<< std::endl;
     ATHENA_ERROR(msg);
   }
-  if (GENERAL_EOS && xorder > 2) {
+  // The legacy PPM and fourth-order paths still carry the original general-EOS
+  // qualification.  The newer 4wz path converts through the configured EOS and
+  // rejects invalid point states with its density/pressure quality gate before
+  // falling back to the cell-average reconstruction.
+  if (GENERAL_EOS && xorder > 2 && !berta_wenoz
+      && Globals::my_rank == 0 && pmb->gid == 0) {
     std::cout << "### Warning in Reconstruction constructor" << std::endl
               << "The combination of general EOS and xorder > 2 has documented bugs"
               << " in some cases." << std::endl;
