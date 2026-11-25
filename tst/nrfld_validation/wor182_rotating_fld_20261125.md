@@ -95,3 +95,109 @@ At time 1.6 the interior radial Mach maximum was 2.58e-3 and the mass above
 radial Mach 0.3 was 1.79e28 g.  The exterior pressure remained exactly at
 1.00e-4 dyn cm^-2.  Thus the earlier failure was not an intrinsic CFL=0.3
 limit; it was the inconsistent floor and constrained-residual treatment.
+
+## Long CFL=0.3 continuation
+
+XD job 347737 continued the repaired L4 model from time 1.6 to 50 at CFL=0.3.
+All 398 implicit solves converged without relaxed or fatal acceptance.  The
+mean and maximum Newton counts were 5.95 and 6, the mean and maximum FGMRES
+counts were 20.97 and 27, and the largest final nonlinear residual was
+8.10e-9.  This confirms that FGMRES with the multigrid preconditioner is
+robust for this nonsymmetric mixed-frame system.
+
+At time 50 the history diagnostics gave an apparent interior radial Mach
+maximum of 0.194 and a surface maximum of 149.  The stellar mass with radial
+Mach above 0.3 was 8.07e31 g, or 0.28% of the mapped stellar mass.  The mapped
+mass drift was 6.8e-10, the mapped angular-momentum drift was 1.16e-5, and the
+gas-plus-radiation energy change was -5.44e-4.  The mean stellar radius changed
+by 5.37e-5 and radial kinetic energy remained 5.68e-6 of the gravitational
+binding-energy magnitude.  The large maximum therefore did not describe a
+global expansion or loss of equilibrium.
+
+## Atmosphere radiation-force A/B test
+
+XD job 347743 repeated the continuation through time 20 while suppressing the
+explicit radiation force below 101 times the atmosphere density floor.  It was
+indistinguishable from the unmasked run at the reported precision:
+
+| time 20 diagnostic | unmasked | masked |
+| --- | ---: | ---: |
+| interior radial Mach maximum | 0.089903 | 0.090009 |
+| surface radial Mach maximum | 34.078 | 34.139 |
+| stellar mass with radial Mach > 0.3 | 9.24e28 g | 9.26e28 g |
+
+Consequently, direct radiation acceleration of the pure numerical atmosphere
+is not the source of the growing surface motion.
+
+## Full-force balance diagnostic
+
+The original force diagnostic contained gas pressure, gravity, core gravity,
+and centrifugal acceleration, but not the radiation acceleration.  It could
+not measure equilibrium for a radiation-supported model.  Commit `0985c1279`
+adds the acceleration computed by the exact face-gradient and flux-limiter
+discretization used by the explicit FLD source and reports the residual of all
+five forces.
+
+Short restart probes at the beginning (XD job 347761) and end (347762) of the
+long continuation gave:
+
+| time | old relative L2 residual | full relative L2 residual | full local maximum |
+| ---: | ---: | ---: | ---: |
+| 1.721688 | 0.35643 | 9.12e-4 | 0.776 |
+| 50.1217 | 0.35673 | 1.59e-3 | 0.668 |
+
+Thus the mass-weighted stellar force balance is accurate to 0.09% initially
+and 0.16% at time 50.  Radiation pressure supplies the roughly 36% force that
+was missing from the old diagnostic.  The high local maxima nevertheless show
+that a small subset of cells is poorly balanced.
+
+## Equatorial localization
+
+Equatorial primitive and force slices were generated immediately after the
+time-1.6 and time-50 checkpoints (XD jobs 347765 and 347766).  The match
+ellipsoid used by the history diagnostic has equatorial radius 927.5 code
+units.  It includes the innermost surface-transition cells, so its label
+"interior" must not be interpreted as the bulk stellar interior.
+
+At time 1.601, the largest radial Mach number at normalized equatorial radius
+q <= 1 was 2.59e-3.  Its full relative force residual was 1.03e-2.  In radial
+bins below q=0.95, local full-force imbalance stayed at approximately 2% or
+less.  A representative transition cell at q=1.097 instead had:
+
+- radial Mach number 0.0919;
+- density 2.23e-14 g cm^-3 and pressure 2.49e-2 dyn cm^-2;
+- outward gas-pressure acceleration 0.761 in code units;
+- inward gravity 0.00393, radiation acceleration 0.000407, and centrifugal
+  acceleration 0.000792;
+- full relative force residual 0.990.
+
+At time 50.001, the largest q <= 1 radial Mach number, 0.159, was at q=0.990:
+the innermost surface shell.  The maximum below q=0.9 was only 0.0041 (and was
+0.016 in the innermost q < 0.1 bin).  At q=1.099 the radial Mach number was
+0.389 and the outward gas-pressure acceleration was 0.212, versus 0.00392
+from gravity, 0.000164 from radiation, and 0.000794 from rotation.  The full
+relative residual there was 0.964.
+
+The disturbance is therefore launched by an excessive outward gas-pressure
+gradient in the partially stellar surface-matching layer and propagates
+inward from the surface.  It is not a deep-core instability, an implicit FLD
+solver failure, or direct acceleration of pure atmosphere cells.
+
+## Initialization inconsistency exposed by the slices
+
+`scf_map::CellAverage` already evaluates the LTE gas/radiation split at every
+quadrature point and separately averages `gas_internal_energy` and
+`radiation_energy`.  However, the FLD branch of `scf_rsg.cpp` ignores those
+averages whenever a cell contains any stellar quadrature weight.  It instead
+computes a new temperature and LTE split from the cell-averaged density and
+total pressure.  This operation is nonlinear and treats a cut cell containing
+mostly atmosphere as wholly stellar for the split.  The resulting gas
+pressure need not equal the volume average of the locally balanced gas
+pressure, exactly where the slices find the order-unity error.
+
+The next controlled change should initialize the FLD state from the already
+averaged `mapped.gas_internal_energy` and `mapped.radiation_energy`, adding the
+external radiation bath only to the atmosphere fraction.  That change should
+first be tested as an initial force-slice A/B and a short debug-queue evolution
+before another long continuation.  No change to the implicit FLD order is
+required for this test.
