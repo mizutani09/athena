@@ -24,24 +24,16 @@ export ATHENA_FLD_EXPLICIT_POSITIVITY_DIAGNOSTICS=1
 ulimit -c 0
 
 repository=${WOR182_REPOSITORY:-$HOME/simulation/athena-wor182-rotating-fld}
-input=inputs/rsg/athinput.mesa_scf_rsg_corecut7p00_q025_corot_fld4wz_l3
 profile=data/ic/rsg21_mesa_scf_corecut7p00_q025_corot_nr16384_taper_rho3e-9_gamma5_3.csv
 nlim=${WOR182_NLIM:-110}
 tlim=${WOR182_TLIM:-1.0e-2}
 integrator=${WOR182_INTEGRATOR:-ssprk5_4}
 case ${CORE_LEVEL:-l4} in
   l3)
-    level_arguments=()
+    input=inputs/rsg/athinput.mesa_scf_rsg_corecut7p00_q025_corot_fld4wz_l3
     ;;
   l4)
-    level_arguments=(
-      job/problem_id=mesa_scf_rsg_corecut7p00_q025_corot_fld4wz_l4
-      mesh/numlevel=5
-      refinement4/level=4
-      refinement4/x1min=-75.0 refinement4/x1max=75.0
-      refinement4/x2min=-75.0 refinement4/x2max=75.0
-      refinement4/x3min=-75.0 refinement4/x3max=75.0
-    )
+    input=inputs/rsg/athinput.mesa_scf_rsg_corecut7p00_q025_corot_fld4wz_l4
     ;;
   *) echo "CORE_LEVEL must be l3 or l4" >&2; exit 2 ;;
 esac
@@ -65,7 +57,6 @@ set +e
   time/integrator="$integrator" time/nlim="$nlim" time/tlim="$tlim" \
   time/ncycle_out=1 \
   output1/dcycle=1 output2/dcycle=1000 output3/dt=-1 output4/dt=-1 \
-  "${level_arguments[@]}" \
   > "$run/stdout.log" 2> "$run/stderr.log"
 status=$?
 set -e
