@@ -27,6 +27,7 @@ repository=$HOME/simulation/athena-rsg-corecut7p00-fld4wz
 restart=/work/mizutaniks/wor163/fld_restart_debug_347568/checkpoint/mesa_scf_rsg_corecut7p00_fld_norot_l3.final.rst
 integrator=${FLD4WZ_INTEGRATOR:-rk4}
 mixed_frame_transport=${FLD_MIXED_FRAME_TRANSPORT:-false}
+nr_diagnostic_verbosity=${FLD_NR_DIAGNOSTIC_VERBOSITY:-1}
 case $integrator in
   rk4|ssprk5_4) ;;
   *) echo "unsupported FLD4WZ_INTEGRATOR=$integrator" >&2; exit 2 ;;
@@ -34,6 +35,10 @@ esac
 case $mixed_frame_transport in
   true|false) ;;
   *) echo "unsupported FLD_MIXED_FRAME_TRANSPORT=$mixed_frame_transport" >&2; exit 2 ;;
+esac
+case $nr_diagnostic_verbosity in
+  0|1|2) ;;
+  *) echo "unsupported FLD_NR_DIAGNOSTIC_VERBOSITY=$nr_diagnostic_verbosity" >&2; exit 2 ;;
 esac
 run=/work/mizutaniks/wor163/fld4wz_${integrator}_restart_gate_${SLURM_JOB_ID}
 
@@ -56,7 +61,8 @@ sha256sum bin/athena "$restart" > "$run/provenance.sha256"
   time/nlim=110 time/tlim=1.0e-2 time/ncycle_out=1 \
   problem/radiation_startup_dt_end=1.0e-3 \
   fld/mixed_frame_transport="$mixed_frame_transport" \
-  nrfld/max_update_fraction=1.0 nrfld/diagnostic_verbosity=1 \
+  nrfld/max_update_fraction=1.0 \
+  nrfld/diagnostic_verbosity="$nr_diagnostic_verbosity" \
   output1/dcycle=1 output2/dcycle=1000 \
   output3/dt=-1 output4/dt=-1 \
   > "$run/stdout.log" 2> "$run/stderr.log"
