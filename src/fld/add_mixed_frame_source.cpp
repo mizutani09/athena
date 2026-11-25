@@ -126,12 +126,14 @@ void FLD::EmitForceDiagnostic(const Real dt, const AthenaArray<Real> &prim,
 }
 
 void FLD::AddExplicitSourceTerms(const Real dt, const AthenaArray<Real> &prim,
-                                 AthenaArray<Real> &hydro_u) {
+                                 AthenaArray<Real> &hydro_u,
+                                 AthenaArray<Real> *radiation_u) {
   if (!is_couple || only_rad) return;
   MeshBlock *pmb = pmy_block;
   const bool do_force = PressureCoupled();
   const bool do_mixed = MixedFrameCoupled();
   if (!do_force && !do_mixed) return;
+  AthenaArray<Real> &rad_u = radiation_u == nullptr ? u_rad : *radiation_u;
 
   // Keep optional work out of the production cell loop.  State belongs to
   // this block rather than a process-wide gid set, so AMR gid reuse is safe;
@@ -191,7 +193,7 @@ void FLD::AddExplicitSourceTerms(const Real dt, const AthenaArray<Real> &prim,
               ? 0.5*(pmb->phydro->vf[X3DIR](k,j,i)
                      + pmb->phydro->vf[X3DIR](k+1,j,i)) : prim(IVZ,k,j,i);
           const Real source = -lambda*(vx*ex + vy*ey + vz*ez);
-          const Real old_rad = u_rad(k,j,i);
+          const Real old_rad = rad_u(k,j,i);
           const Real next_rad = old_rad-dt*source;
           if (explicit_positivity_diagnostics_
               && (!std::isfinite(old_rad) || old_rad < 0.0
@@ -214,7 +216,7 @@ void FLD::AddExplicitSourceTerms(const Real dt, const AthenaArray<Real> &prim,
             ATHENA_ERROR(msg);
           }
           if (NON_BAROTROPIC_EOS) hydro_u(IEN,k,j,i) += dt*source;
-          u_rad(k,j,i) = std::max(next_rad, TINY_NUMBER);
+          rad_u(k,j,i) = std::max(next_rad, TINY_NUMBER);
         }
       }
     }

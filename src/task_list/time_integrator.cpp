@@ -2003,6 +2003,20 @@ TaskStatus TimeIntegratorTaskList::AddSourceTerms(MeshBlock *pmb, int stage) {
       pmb->prfld->AddExplicitSourceTerms(dt,ph->w,ph->u);
       pmb->prfld->DumpStageDiagnostics("after_source", stage, dt);
 #endif
+      // The SSPRK(5,4) fourth stage also builds a saved partial sum from
+      // F(u^(3)). Apply the same explicit sources used by the main RHS to the
+      // corresponding hydro, scalar, and FLD registers.
+      if (stage == 4 && integrator == "ssprk5_4") {
+        const Real dt_ssp = 0.063692468666290*pmb->pmy_mesh->dt;
+        if (ph->hsrc.hydro_sourceterms_defined) {
+          ph->hsrc.AddSourceTerms(t_start_stage, dt_ssp, ph->flux, ph->w,
+                                  ps->r, pf->bcc, ph->u2, ps->s2);
+        }
+#if NRMGFLD_ENABLED
+        pmb->prfld->AddExplicitSourceTerms(
+            dt_ssp, ph->w, ph->u2, &pmb->prfld->u_rad2);
+#endif
+      }
     }
     return TaskStatus::next;
   }
@@ -3363,19 +3377,18 @@ TaskStatus TimeIntegratorTaskList::IntegrateRADFLD(MeshBlock *pmb, int stage) {
       prfld->DumpStageDiagnostics("after_transport", stage, wght);
 
 
-      // // Hardcode an additional flux divergence weighted average for the penultimate
-      // // stage of SSPRK(5,4) since it cannot be expressed in a 3S* framework
-      // if (stage == 4 && integrator == "ssprk5_4") {
-      //   // From Gottlieb (2009), u^(n+1) partial calculation
-      //   ave_wghts[0] = -1.0; // -u^(n) coeff.
-      //   ave_wghts[1] = 0.0;
-      //   ave_wghts[2] = 0.0;
-      //   const Real beta = 0.063692468666290; // F(u^(3)) coeff.
-      //   const Real wght_ssp = beta*pmb->pmy_mesh->dt;
-      //   // writing out to s2 register
-      //   pmb->WeightedAve(prfld>s2, prfld->s1, prfld->s2, prfld->s0, prfld->s_fl_div, ave_wghts);
-      //   prfld->AddFluxDivergence(wght_ssp, prfld->s2);
-      // }
+      // Hardcode the additional penultimate-stage contribution required by
+      // SSPRK(5,4), matching hydro, scalars, and angular radiation.
+      if (stage == 4 && integrator == "ssprk5_4") {
+        ave_wghts[0] = -1.0;  // -u^(n) coefficient
+        ave_wghts[1] = 0.0;
+        ave_wghts[2] = 0.0;
+        const Real beta = 0.063692468666290;  // F(u^(3)) coefficient
+        const Real wght_ssp = beta*pmb->pmy_mesh->dt;
+        pmb->WeightedAve(prfld->u_rad2, prfld->u_rad1, prfld->u_rad2,
+                         prfld->u_rad0, prfld->u_rad_fl_div, ave_wghts);
+        prfld->AddFluxDivergence(wght_ssp, prfld->u_rad2, stage);
+      }
     }
     return TaskStatus::next;
   }
