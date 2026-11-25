@@ -28,7 +28,23 @@ input=inputs/rsg/athinput.mesa_scf_rsg_corecut7p00_q025_corot_fld4wz_l3
 profile=data/ic/rsg21_mesa_scf_corecut7p00_q025_corot_nr16384_taper_rho3e-9_gamma5_3.csv
 nlim=${WOR182_NLIM:-110}
 tlim=${WOR182_TLIM:-1.0e-2}
-run=/work/mizutaniks/wor182/q025_corot_fld_startup_${SLURM_JOB_ID}
+case ${CORE_LEVEL:-l4} in
+  l3)
+    level_arguments=()
+    ;;
+  l4)
+    level_arguments=(
+      job/problem_id=mesa_scf_rsg_corecut7p00_q025_corot_fld4wz_l4
+      mesh/numlevel=5
+      refinement4/level=4
+      refinement4/x1min=-75.0 refinement4/x1max=75.0
+      refinement4/x2min=-75.0 refinement4/x2max=75.0
+      refinement4/x3min=-75.0 refinement4/x3max=75.0
+    )
+    ;;
+  *) echo "CORE_LEVEL must be l3 or l4" >&2; exit 2 ;;
+esac
+run=/work/mizutaniks/wor182/q025_corot_fld_${CORE_LEVEL:-l4}_${SLURM_JOB_ID}
 
 mkdir -p "$run"
 cd "$repository"
@@ -38,7 +54,8 @@ test -s "$profile"
 git rev-parse HEAD > "$run/git_commit.txt"
 git status --short > "$run/git_status.txt"
 sha256sum bin/athena "$input" "$profile" > "$run/provenance.sha256"
-printf 'nlim=%s\ntlim=%s\n' "$nlim" "$tlim" > "$run/run_config.txt"
+printf 'core_level=%s\nnlim=%s\ntlim=%s\n' \
+  "${CORE_LEVEL:-l4}" "$nlim" "$tlim" > "$run/run_config.txt"
 
 set +e
 /usr/bin/time -f 'wall_s=%e maxrss_kb=%M' -o "$run/time.log" \
@@ -46,6 +63,7 @@ set +e
   bin/athena -i "$input" -d "$run" \
   time/nlim="$nlim" time/tlim="$tlim" time/ncycle_out=1 \
   output1/dcycle=1 output2/dcycle=1000 output3/dt=-1 output4/dt=-1 \
+  "${level_arguments[@]}" \
   > "$run/stdout.log" 2> "$run/stderr.log"
 status=$?
 set -e
