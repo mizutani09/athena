@@ -403,6 +403,8 @@ NRFLD::NRFLD(MeshBlock *pmb, ParameterInput *pin) :
     u_gas_iter_backup_(pmb->ncells3, pmb->ncells2, pmb->ncells1),
     gas_defect_(pmb->ncells3, pmb->ncells2, pmb->ncells1),
     radiation_floor_active_(pmb->ncells3, pmb->ncells2, pmb->ncells1),
+    radiation_floor_active_iter_backup_(pmb->ncells3, pmb->ncells2,
+                                        pmb->ncells1),
     mixed_drift_(6, pmb->ncells3, pmb->ncells2, pmb->ncells1),
     ngh_(NGHOST),
     // The optional per-cell cap can alter the multigrid correction, especially
@@ -423,6 +425,7 @@ NRFLD::NRFLD(MeshBlock *pmb, ParameterInput *pin) :
     last_delta_rad_.NewAthenaArray(2, pmb->ncells3, pmb->ncells2, pmb->ncells1);
     last_delta_rad_.ZeroClear();
     radiation_floor_active_.ZeroClear();
+    radiation_floor_active_iter_backup_.ZeroClear();
     mixed_drift_.ZeroClear();
 
     // check pointer
@@ -605,6 +608,7 @@ void NRFLD::RunJacobianDiagnostic(Real dt) {
 void NRFLD::LoadVariables() {
   FLD *pfld = pmy_block_->prfld;
   fixed_linear_coefficients_initialized_ = false;
+  radiation_floor_active_.ZeroClear();
   pfld->LoadHydroVariables(pmy_block_->phydro->w,
                           pmy_block_->phydro->u, pfld->u_gas);
   if (last_delta_rad_.data() == nullptr) {
@@ -651,6 +655,7 @@ void NRFLD::UpdateHydroVariables() {
 void NRFLD::StoreIterate() {
   NewtonRaphson::StoreIterate();
   u_gas_iter_backup_ = u_gas_;
+  radiation_floor_active_iter_backup_ = radiation_floor_active_;
   user_diagnostic_counters_iter_backup_ =
       pmy_block_->prfld->user_diagnostic_counters;
 }
@@ -658,6 +663,7 @@ void NRFLD::StoreIterate() {
 void NRFLD::RestoreIterate() {
   NewtonRaphson::RestoreIterate();
   u_gas_ = u_gas_iter_backup_;
+  radiation_floor_active_ = radiation_floor_active_iter_backup_;
   pmy_block_->prfld->user_diagnostic_counters =
       user_diagnostic_counters_iter_backup_;
 }
@@ -1091,10 +1097,12 @@ void NRFLD::CalculateCoefficients(const AthenaArray<Real> &u_rad_old,
           // applied correction is zero, leaving an otherwise solved neighbour
           // residual unchanged.  Treat that lower bound as an active-set row
           // in the linear system so every row uses the correction that will
-          // actually be applied.  A positive reduced right-hand side releases
-          // the constraint and allows the radiation energy to recover.
+          // actually be applied.  A mask set by an accepted clipped trial is
+          // retained for the rest of this timestep and released by the next
+          // LoadVariables call.
           const bool radiation_floor_active =
-              u_rad_new(k,j,i) <= TINY_NUMBER && src(k,j,i) < 0.0;
+              radiation_floor_active_(k,j,i) > 0.5
+              || (u_rad_new(k,j,i) <= TINY_NUMBER && src(k,j,i) < 0.0);
           radiation_floor_active_(k,j,i) = radiation_floor_active ? 1.0 : 0.0;
           if (radiation_floor_active) {
             coeff(linearSolver::DCCF,k,j,i) = 0.0;
@@ -1435,6 +1443,13 @@ void NRFLD::AddDifference(AthenaArray<Real> &u_rad,
         const Real u_rad_before = u_rad(k,j,i);
         if (!pfld->fixed_u_rad) {
           const Real ur_next = u_rad(k,j,i) + scaled_delta_ur;
+          if (!(std::isfinite(ur_next) && ur_next > TINY_NUMBER)) {
+            // Preserve the active lower bound for the remaining Newton
+            // iterations in this timestep.  StoreIterate/RestoreIterate rolls
+            // this mask back with a rejected line-search trial, and
+            // LoadVariables releases it at the next hydro timestep.
+            radiation_floor_active_(k,j,i) = 1.0;
+          }
           u_rad(k,j,i) = (std::isfinite(ur_next) && ur_next > TINY_NUMBER)
                          ? ur_next : TINY_NUMBER;
         } else {

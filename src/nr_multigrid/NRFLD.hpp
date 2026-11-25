@@ -208,7 +208,7 @@ class NRFLD : public NewtonRaphson {
   // Active lower-bound constraint for radiation energy.  A value of one
   // replaces the Newton row by delta_Er=0 when Er is already at its
   // positivity floor and the unconstrained reduced equation asks to lower it.
-  AthenaArray<Real> radiation_floor_active_;
+  AthenaArray<Real> radiation_floor_active_, radiation_floor_active_iter_backup_;
   // Frozen face-centered q*v coefficients (x-, x+, y-, y+, z-, z+).
   AthenaArray<Real> mixed_drift_;
   AthenaArray<Real> last_delta_rad_;
