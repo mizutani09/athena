@@ -13,6 +13,7 @@
 namespace {
 
 constexpr double kPi = 3.14159265358979323846;
+constexpr double kGasConstantCgs = 8.31446261815324e7;
 
 enum Column {
   kRadius = 0,
@@ -206,7 +207,9 @@ struct TaperAudit {
   double maximum_anchor_enthalpy_relative_change = 0.0;
 };
 
-TaperAudit ApplyTaper(Profile* profile, double match_density, double gamma) {
+TaperAudit ApplyTaper(Profile* profile, double match_density, double gamma,
+                      double atmosphere_density,
+                      double atmosphere_pressure) {
   TaperAudit audit;
   for (std::size_t angular = 0; angular < profile->angular_points; ++angular) {
     std::size_t anchor = profile->radial_points;
@@ -228,8 +231,21 @@ TaperAudit ApplyTaper(Profile* profile, double match_density, double gamma) {
     if (!(density > 0.0) || !(pressure > 0.0)) {
       throw std::runtime_error("nonpositive surface-taper anchor state");
     }
+    if (!(density > atmosphere_density)
+        || !(pressure > atmosphere_pressure)) {
+      throw std::runtime_error(
+          "surface-taper anchor must exceed the atmosphere state");
+    }
+    const double polytropic_index = 1.0/(gamma-1.0);
     const double polytropic_constant = pressure/std::pow(density, gamma);
-    const double match_enthalpy = gamma/(gamma-1.0)*pressure/density;
+    const double density_excess = density-atmosphere_density;
+    const double match_enthalpy = atmosphere_density > 0.0
+        ? (pressure-atmosphere_pressure)
+            /(atmosphere_density
+              +density_excess/(polytropic_index+1.0))
+        : gamma/(gamma-1.0)*pressure/density;
+    const double density_coefficient = atmosphere_density > 0.0
+        ? density_excess/std::pow(match_enthalpy, polytropic_index) : 0.0;
     const double original_enthalpy = match[kEnthalpy];
     const double match_potential = EffectivePotential(match);
     audit.minimum_match_radius = std::min(audit.minimum_match_radius,
@@ -252,11 +268,25 @@ TaperAudit ApplyTaper(Profile* profile, double match_density, double gamma) {
       const double enthalpy = match_enthalpy
           -(EffectivePotential(row)-match_potential);
       if (enthalpy > 0.0) {
-        const double tapered_density = std::pow(
-            enthalpy*(gamma-1.0)/(gamma*polytropic_constant),
-            1.0/(gamma-1.0));
+        double tapered_density, tapered_pressure;
+        if (atmosphere_density > 0.0) {
+          const double enthalpy_power = std::pow(
+              enthalpy, polytropic_index);
+          tapered_density = atmosphere_density
+              +density_coefficient*enthalpy_power;
+          tapered_pressure = atmosphere_pressure
+              +atmosphere_density*enthalpy
+              +density_coefficient*enthalpy_power*enthalpy
+                  /(polytropic_index+1.0);
+        } else {
+          tapered_density = std::pow(
+              enthalpy*(gamma-1.0)/(gamma*polytropic_constant),
+              1.0/(gamma-1.0));
+          tapered_pressure = polytropic_constant
+              *std::pow(tapered_density, gamma);
+        }
         row[kDensity] = tapered_density;
-        row[kPressure] = polytropic_constant*std::pow(tapered_density, gamma);
+        row[kPressure] = tapered_pressure;
         row[kEnthalpy] = enthalpy;
         row[kLayer] = 1.0;
       } else {
@@ -295,6 +325,7 @@ void WriteProfile(const Profile& profile, const std::string& path) {
 }
 
 void WriteAudit(const std::string& path, double match_density, double gamma,
+                double atmosphere_density, double atmosphere_pressure,
                 const Profile& profile, const TaperAudit& taper,
                 double original_mass, double tapered_mass,
                 double original_pressure, double tapered_pressure,
@@ -302,7 +333,8 @@ void WriteAudit(const std::string& path, double match_density, double gamma,
                 double tapered_moment) {
   std::ofstream output(path.c_str());
   if (!output) throw std::runtime_error("cannot open audit output "+path);
-  output << "match_density_g_cm3,gamma,radial_points,angular_points,"
+  output << "match_density_g_cm3,gamma,atmosphere_density_g_cm3,"
+            "atmosphere_pressure_dyn_cm2,radial_points,angular_points,"
             "minimum_match_radius_cm,maximum_match_radius_cm,"
             "minimum_zero_radius_cm,maximum_zero_radius_cm,"
             "maximum_anchor_density_relative_error,"
@@ -317,7 +349,8 @@ void WriteAudit(const std::string& path, double match_density, double gamma,
             "original_rotational_kinetic_energy_erg,"
             "tapered_rotational_kinetic_energy_erg\n"
          << std::scientific << std::setprecision(16)
-         << match_density << ',' << gamma << ',' << profile.radial_points << ','
+         << match_density << ',' << gamma << ',' << atmosphere_density << ','
+         << atmosphere_pressure << ',' << profile.radial_points << ','
          << profile.angular_points << ',' << taper.minimum_match_radius << ','
          << taper.maximum_match_radius << ',' << taper.minimum_zero_radius << ','
          << taper.maximum_zero_radius << ','
@@ -339,32 +372,51 @@ void WriteAudit(const std::string& path, double match_density, double gamma,
 
 int main(int argc, char** argv) {
   try {
-    if (argc != 6 && argc != 7) {
+    if (argc != 6 && argc != 7 && argc != 10) {
       std::cerr << "usage: scf_surface_taper INPUT.csv OUTPUT.csv AUDIT.csv "
-                   "MATCH_DENSITY_G_CM3 GAMMA [ANGULAR_VELOCITY_RAD_S]\n";
+                   "MATCH_DENSITY_G_CM3 GAMMA [ANGULAR_VELOCITY_RAD_S "
+                   "ATMOSPHERE_DENSITY_G_CM3 ATMOSPHERE_TEMPERATURE_K "
+                   "MEAN_MOLECULAR_WEIGHT]\n";
       return 2;
     }
     const double match_density = Parse(argv[4], "match density");
     const double gamma = Parse(argv[5], "polytropic gamma");
-    const double angular_velocity = argc == 7
+    const double angular_velocity = argc >= 7
         ? Parse(argv[6], "angular velocity") : 0.0;
+    const double atmosphere_density = argc == 10
+        ? Parse(argv[7], "atmosphere density") : 0.0;
+    const double atmosphere_temperature = argc == 10
+        ? Parse(argv[8], "atmosphere temperature") : 0.0;
+    const double mean_molecular_weight = argc == 10
+        ? Parse(argv[9], "mean molecular weight") : 1.0;
+    const double atmosphere_pressure = atmosphere_density
+        *kGasConstantCgs*atmosphere_temperature/mean_molecular_weight;
     if (!(match_density > 0.0) || !(gamma > 1.0)) {
       throw std::invalid_argument("match density and gamma must be valid");
     }
     if (angular_velocity < 0.0) {
       throw std::invalid_argument("angular velocity must be nonnegative");
     }
+    if (atmosphere_density < 0.0 || atmosphere_temperature < 0.0
+        || !(mean_molecular_weight > 0.0)
+        || ((atmosphere_density > 0.0)
+            != (atmosphere_temperature > 0.0))) {
+      throw std::invalid_argument("invalid atmosphere matching state");
+    }
     Profile profile = ReadProfile(argv[1]);
     const std::vector<double> weights = GaussLegendreWeights(profile);
     const double original_mass = VolumeIntegral(profile, kDensity, weights);
     const double original_pressure = VolumeIntegral(profile, kPressure, weights);
     const double original_moment = AxialMomentOfInertia(profile, weights);
-    const TaperAudit taper = ApplyTaper(&profile, match_density, gamma);
+    const TaperAudit taper = ApplyTaper(
+        &profile, match_density, gamma,
+        atmosphere_density, atmosphere_pressure);
     const double tapered_mass = VolumeIntegral(profile, kDensity, weights);
     const double tapered_pressure = VolumeIntegral(profile, kPressure, weights);
     const double tapered_moment = AxialMomentOfInertia(profile, weights);
     WriteProfile(profile, argv[2]);
-    WriteAudit(argv[3], match_density, gamma, profile, taper,
+    WriteAudit(argv[3], match_density, gamma,
+               atmosphere_density, atmosphere_pressure, profile, taper,
                original_mass, tapered_mass, original_pressure,
                tapered_pressure, angular_velocity, original_moment,
                tapered_moment);
