@@ -161,6 +161,14 @@ int main(int argc, char** argv) {
     const std::size_t wenoz_fallback = OptionalColumn(h, "wenoz_plm_fallback_cells");
     const std::size_t wenoz_fallback_mass = OptionalColumn(
         h, "wenoz_plm_fallback_stellar_mass_g");
+    const std::size_t relaxation_inertial_delta = OptionalColumn(
+        h, "relaxation_inertial_ke_delta_erg");
+    const std::size_t relaxation_inertial_power = OptionalColumn(
+        h, "relaxation_inertial_power_erg_s");
+    const std::size_t relaxation_corot_removed = OptionalColumn(
+        h, "relaxation_corot_ke_removed_erg");
+    const std::size_t relaxation_corot_power = OptionalColumn(
+        h, "relaxation_corot_power_erg_s");
     std::vector<std::size_t> meshblocks;
     for (int level = 0; level < 32; ++level) {
       const std::size_t column = OptionalColumn(
@@ -177,6 +185,10 @@ int main(int argc, char** argv) {
         && mach_gt_0p1_r_mass < h.names.size()
         && mach_gt_0p1_logrho_mass < h.names.size()
         && mach_gt_0p3_mass < h.names.size();
+    const bool has_relaxation = relaxation_inertial_delta < h.names.size()
+        && relaxation_inertial_power < h.names.size()
+        && relaxation_corot_removed < h.names.size()
+        && relaxation_corot_power < h.names.size();
     const bool has_meshblocks = !meshblocks.empty();
 
     const std::vector<double>& initial = h.rows.front();
@@ -212,7 +224,10 @@ int main(int argc, char** argv) {
     for (std::size_t level = 0; level < meshblocks.size(); ++level) {
       csv << ",meshblocks_L" << level;
     }
-    csv << ",meshblocks_total\n";
+    csv << ",meshblocks_total,relaxation_inertial_ke_delta_erg,"
+           "relaxation_inertial_power_erg_s,"
+           "relaxation_corot_ke_removed_erg,"
+           "relaxation_corot_power_erg_s\n";
     csv << std::scientific << std::setprecision(12);
 
     double maximum_mass_drift = 0.0;
@@ -237,6 +252,10 @@ int main(int argc, char** argv) {
     double maximum_wenoz_fallback_fraction = 0.0;
     double maximum_wenoz_fallback_mass_fraction = 0.0;
     double maximum_meshblocks = 0.0;
+    double cumulative_relaxation_inertial_work = 0.0;
+    double cumulative_relaxation_corot_removed = 0.0;
+    double maximum_abs_relaxation_inertial_power = 0.0;
+    double maximum_relaxation_corot_power = 0.0;
     for (const std::vector<double>& row : h.rows) {
       const double mechanical = row[hydro_energy]+row[self_energy]+row[core_energy];
       const double mass_drift = Relative(row[mass], initial[mass]);
@@ -292,6 +311,14 @@ int main(int argc, char** argv) {
       if (has_meshblocks) {
         for (const std::size_t column : meshblocks) meshblock_total += row[column];
       }
+      const double relaxation_delta = has_relaxation
+          ? row[relaxation_inertial_delta] : 0.0;
+      const double relaxation_power = has_relaxation
+          ? row[relaxation_inertial_power] : 0.0;
+      const double corot_removed = has_relaxation
+          ? row[relaxation_corot_removed] : 0.0;
+      const double corot_power = has_relaxation
+          ? row[relaxation_corot_power] : 0.0;
       csv << row[time] << ',' << row[time]*2.19999657e4/kDay << ','
           << row[time]*2.19999657e4/dynamical_time << ','
           << mass_drift << ',' << j_drift << ',' << energy_drift << ','
@@ -315,7 +342,9 @@ int main(int argc, char** argv) {
       for (const std::size_t column : meshblocks) {
         csv << ',' << (has_meshblocks ? row[column] : 0.0);
       }
-      csv << ',' << meshblock_total << '\n';
+      csv << ',' << meshblock_total << ',' << relaxation_delta << ','
+          << relaxation_power << ',' << corot_removed << ',' << corot_power
+          << '\n';
       maximum_mass_drift = std::max(maximum_mass_drift, std::abs(mass_drift));
       maximum_j_drift = std::max(maximum_j_drift, std::abs(j_drift));
       maximum_energy_drift = std::max(maximum_energy_drift, std::abs(energy_drift));
@@ -354,6 +383,15 @@ int main(int argc, char** argv) {
       maximum_wenoz_fallback_mass_fraction = std::max(
           maximum_wenoz_fallback_mass_fraction, fallback_mass_fraction);
       maximum_meshblocks = std::max(maximum_meshblocks, meshblock_total);
+      // Each history row reports the artificial update from that completed
+      // step.  Fresh runs start with a zero-valued time-zero row, whereas
+      // restart histories begin with the first newly completed step.
+      cumulative_relaxation_inertial_work += relaxation_delta;
+      cumulative_relaxation_corot_removed += corot_removed;
+      maximum_abs_relaxation_inertial_power = std::max(
+          maximum_abs_relaxation_inertial_power, std::abs(relaxation_power));
+      maximum_relaxation_corot_power = std::max(
+          maximum_relaxation_corot_power, corot_power);
     }
 
     const std::vector<double>& final = h.rows.back();
@@ -453,6 +491,16 @@ int main(int argc, char** argv) {
            << (has_meshblocks ? final[meshblocks[level]] : 0.0) << ",\n";
     }
     json
+         << "  \"has_relaxation_diagnostics\": "
+         << (has_relaxation ? "true" : "false") << ",\n"
+         << "  \"cumulative_relaxation_inertial_work_erg\": "
+         << cumulative_relaxation_inertial_work << ",\n"
+         << "  \"cumulative_relaxation_corot_ke_removed_erg\": "
+         << cumulative_relaxation_corot_removed << ",\n"
+         << "  \"maximum_abs_relaxation_inertial_power_erg_s\": "
+         << maximum_abs_relaxation_inertial_power << ",\n"
+         << "  \"maximum_relaxation_corot_power_erg_s\": "
+         << maximum_relaxation_corot_power << ",\n"
          << "  \"maximum_abs_mass_relative_drift\": " << maximum_mass_drift << ",\n"
          << "  \"maximum_abs_J_relative_drift\": " << maximum_j_drift << ",\n"
          << "  \"maximum_abs_mechanical_energy_relative_drift\": "
