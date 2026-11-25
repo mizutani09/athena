@@ -195,9 +195,51 @@ mostly atmosphere as wholly stellar for the split.  The resulting gas
 pressure need not equal the volume average of the locally balanced gas
 pressure, exactly where the slices find the order-unity error.
 
-The next controlled change should initialize the FLD state from the already
-averaged `mapped.gas_internal_energy` and `mapped.radiation_energy`, adding the
-external radiation bath only to the atmosphere fraction.  That change should
-first be tested as an initial force-slice A/B and a short debug-queue evolution
-before another long continuation.  No change to the implicit FLD order is
-required for this test.
+This suggested a controlled test using the already averaged
+`mapped.gas_internal_energy` and `mapped.radiation_energy`.  A low-memory C++
+mapping audit subsequently falsified that explanation: the offending cells
+on the surface-L2 mesh have stellar quadrature volume fractions of exactly
+zero or one, and pointwise versus post-average LTE splitting changes their
+pressure acceleration by less than 1e-5 relative.  Commits `36f93ac4d` and
+`b2ee32ecf` therefore revert the trial production change rather than retaining
+an ineffective extra code path.
+
+## Atmosphere-interface resolution
+
+The same mapping audit identifies the actual discrete mismatch.  Along the
+equator, the last stellar cell has density 4.23e-11 g cm^-3 and gas pressure
+3.83 dyn cm^-2, while the next cell is the 1e-14 g cm^-3 numerical atmosphere
+at 1.16e-2 dyn cm^-2.  The stellar cell itself has a pressure acceleration of
+0.662 cm s^-2, comparable to gravity, but the centered pressure gradient
+divided by the atmosphere density gives 330 cm s^-2 in the first atmosphere
+cell.  The polar value is 45.3 cm s^-2.  The finite gamma=5/3 taper is
+continuous analytically but its scale height collapses to zero at its outer
+edge, so surface L2 cannot represent the final pressure drop.
+
+Commit `4c49de19d` extends `scf_surface_taper.cpp` with an optional nonzero
+atmosphere-matched endpoint.  It uses the hydrostatic family
+
+```
+rho(h) = rho_atm + C h^n
+P(h)   = P_atm + rho_atm h + C h^(n+1)/(n+1),  n = 1/(gamma-1),
+```
+
+which preserves `dP/dh = rho`, exactly matches the original SCF state at
+rho=3e-9 g cm^-3, and approaches the numerical atmosphere continuously at
+h=0.  With zero endpoint density the old generator remains bit-for-bit
+identical (SHA-256 `3accd919...` for the accepted rotating profile).
+
+A scan selected rho_atm=1.7e-11 g cm^-3 at 10,000 K as the first candidate.
+On the surface-L2 mapping it reduces the first-atmosphere-cell pressure
+acceleration from 330 to 0.550 cm s^-2 at the equator and from 45.3 to 0.147
+cm s^-2 in magnitude at the pole.  Its taper changes the original SCF mass by
+1.82e-4, versus 2.53e-4 for the previous zero-endpoint taper; the difference
+between the two tapered models is only 7.1e-5 of the gas mass.  This is a
+numerical-atmosphere regularization, not a claim that the physical stellar
+photosphere has this density.
+
+The next acceptance test is a fresh-map L4 startup A/B with initial and final
+force slices.  It must verify that the full local force residual and surface
+Mach improve without degrading the bulk-star L2 balance or implicit FGMRES
+convergence.  Only after that short gate should the candidate be continued to
+time 1 and then time 50.
