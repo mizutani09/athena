@@ -168,6 +168,31 @@ inline Real LimitRadiationCorrection(Real delta, Real scale,
   return std::max(delta, -max_fraction*scale);
 }
 
+inline Real GasEnergyFloor(const MeshBlock *pmb, const Real rho) {
+  Real floor = TINY_NUMBER;
+#if GENERAL_EOS
+  if (std::isfinite(rho) && rho > pmb->peos->GetDensityFloor()) {
+    floor = std::max(floor,
+        pmb->peos->EgasFromRhoP(rho, pmb->peos->GetPressureFloor()));
+  }
+#else
+  const Real gm1 = pmb->peos->GetGamma() - 1.0;
+  floor = std::max(floor, pmb->peos->GetPressureFloor()/gm1);
+#endif
+  return floor;
+}
+
+inline bool GasFloorConstraintActive(const Real egas, const Real floor,
+                                     const Real residual,
+                                     const Real jacobian) {
+  const Real tolerance = 64.0*std::numeric_limits<Real>::epsilon()
+      *std::max(floor, TINY_NUMBER);
+  // For dFg/deg > 0, Fg > 0 gives an unconstrained Newton correction toward
+  // smaller egas.  At the lower bound this is the complementary (KKT) branch.
+  return egas <= floor + tolerance && std::isfinite(jacobian)
+      && jacobian > 0.0 && residual > 0.0;
+}
+
 }  // namespace
 
 //----------------------------------------------------------------------------------------
@@ -962,6 +987,14 @@ void NRFLD::CalculateCoefficients(const AthenaArray<Real> &u_rad_old,
             1.0 + dt*(c_sigma_p + idx2*(boundary_coeff
                 + dx*marshak_dflux_sum));
 
+        const Real egas_floor = GasEnergyFloor(
+            pmy_block_, def_coeff(NewtonRaphsonFLD::DRHO,k,j,i));
+        const bool gas_floor_active = pfld->is_couple && !pfld->only_rad
+            && GasFloorConstraintActive(
+                u_gas_new(k,j,i), egas_floor,
+                derivetive(NewtonRaphsonFLD::Fg,k,j,i),
+                derivetive(NewtonRaphsonFLD::dFg_deg,k,j,i));
+
 
         if (pfld->fixed_u_rad) {
           // Erad is prescribed rather than an NR unknown.  Leave the linear
@@ -1015,8 +1048,8 @@ void NRFLD::CalculateCoefficients(const AthenaArray<Real> &u_rad_old,
           // for the local diagonal and reduced right-hand side.  These also
           // preserve the exact cancellation of equal-and-opposite exchange
           // residuals without subtracting two O(C) quantities.
-          const Real inv_dFg_deg =
-              1.0/derivetive(NewtonRaphsonFLD::dFg_deg,k,j,i);
+          const Real inv_dFg_deg = gas_floor_active ? 1.0
+              : 1.0/derivetive(NewtonRaphsonFLD::dFg_deg,k,j,i);
           // The face drift has a center contribution when its two face
           // coefficients differ.  Keep it in the unscaled diagonal slot.
           const Real drift_fac = 0.5*dt*std::sqrt(idx2)*inv_dFg_deg;
@@ -1042,10 +1075,17 @@ void NRFLD::CalculateCoefficients(const AthenaArray<Real> &u_rad_old,
           coeff(linearSolver::DYPS,k,j,i) =  drift_fac*mixed_drift_(YPlus,k,j,i);
           coeff(linearSolver::DZMS,k,j,i) = -drift_fac*mixed_drift_(ZMinus,k,j,i);
           coeff(linearSolver::DZPS,k,j,i) =  drift_fac*mixed_drift_(ZPlus,k,j,i);
-          src(k,j,i) =
-              -(derivetive(NewtonRaphsonFLD::Fr,k,j,i)
-                + derivetive(NewtonRaphsonFLD::Fg,k,j,i))
-              + derivetive(NewtonRaphsonFLD::Fg,k,j,i)*inv_dFg_deg;
+          if (gas_floor_active) {
+            // The gas energy is fixed at its lower bound.  Do not eliminate
+            // an inadmissible gas correction: solve the radiation equation
+            // directly, including its full mixed-frame drift Jacobian.
+            src(k,j,i) = -derivetive(NewtonRaphsonFLD::Fr,k,j,i);
+          } else {
+            src(k,j,i) =
+                -(derivetive(NewtonRaphsonFLD::Fr,k,j,i)
+                  + derivetive(NewtonRaphsonFLD::Fg,k,j,i))
+                + derivetive(NewtonRaphsonFLD::Fg,k,j,i)*inv_dFg_deg;
+          }
         }
 
       }
@@ -1166,22 +1206,14 @@ void NRFLD::CalculateDefect(AthenaArray<Real> &def, const AthenaArray<Real> &u,
         // for the constrained local solve).  Keeping the raw residual in the
         // convergence norm would make every floor cell fail forever even
         // though AddDifference correctly refuses the inadmissible update.
-        Real egas_lower_bound = TINY_NUMBER;
-#if GENERAL_EOS
-        const Real rho = def_coeff(NewtonRaphsonFLD::DRHO,k,j,i);
-        if (std::isfinite(rho) && rho > pmy_block_->peos->GetDensityFloor()) {
-          egas_lower_bound = std::max(egas_lower_bound,
-              pmy_block_->peos->EgasFromRhoP(
-                  rho, pmy_block_->peos->GetPressureFloor()));
-        }
-#endif
+        const Real egas_lower_bound = GasEnergyFloor(
+            pmy_block_, def_coeff(NewtonRaphsonFLD::DRHO,k,j,i));
         const Real gas_jacobian =
             derivetive_(NewtonRaphsonFLD::dFg_deg,k,j,i);
-        const Real bound_tol = 64.0*std::numeric_limits<Real>::epsilon()
-            *std::max(egas_lower_bound, TINY_NUMBER);
-        if (u_gas(k,j,i) <= egas_lower_bound + bound_tol
-            && std::isfinite(gas_jacobian)
-            && gas_jacobian > 0.0 && Fg > 0.0) {
+        const bool gas_floor_active = pfld->is_couple && !pfld->only_rad
+            && GasFloorConstraintActive(
+                u_gas(k,j,i), egas_lower_bound, Fg, gas_jacobian);
+        if (gas_floor_active) {
           gas_defect_(k,j,i) = 0.0;
         }
         Real radiation_matrix_scale = 0.0;
@@ -1217,6 +1249,18 @@ void NRFLD::CalculateDefect(AthenaArray<Real> &def, const AthenaArray<Real> &u,
             // error of the assembled discrete row, including the unscaled
             // directed (*S) terms.  This is the radiation analogue of the
             // local gas-equation backward error above.
+            const Real backward_error = std::abs(Fr)/radiation_matrix_scale;
+            def(k,j,i) = std::copysign(
+                std::min(std::abs(def(k,j,i)), backward_error), Fr);
+          }
+        } else if (gas_floor_active) {
+          // A pressure-floor cell is a constrained gas solve.  The floor may
+          // inject gas energy, so Fg+Fr is not the physical radiation row on
+          // this branch; convergence is determined by Fr itself.
+          def(k,j,i) = Fr/scale;
+          if (backward_error_convergence_
+              && std::isfinite(radiation_matrix_scale)
+              && radiation_matrix_scale > TINY_NUMBER) {
             const Real backward_error = std::abs(Fr)/radiation_matrix_scale;
             def(k,j,i) = std::copysign(
                 std::min(std::abs(def(k,j,i)), backward_error), Fr);
@@ -1384,22 +1428,12 @@ void NRFLD::AddDifference(AthenaArray<Real> &u_rad,
         const Real egas_delta = -(derivetive(NewtonRaphsonFLD::Fg,k,j,i)
             + derivetive(NewtonRaphsonFLD::dFg_dEr,k,j,i)*coupled_delta_ur
             - pmy_driver_->dt_*mixed_delta)/denom;
-        Real egas_floor = TINY_NUMBER;
-#if GENERAL_EOS
         const Real rho = pmy_block_->phydro->w(IDN,k,j,i);
-        if (std::isfinite(rho) && rho > pmy_block_->peos->GetDensityFloor()) {
-          egas_floor = std::max(egas_floor,
-              pmy_block_->peos->EgasFromRhoP(rho, pmy_block_->peos->GetPressureFloor()));
-        }
-#else
-        // The ideal-gas implicit update evolves internal-energy density
-        // directly.  Keep its lower bound consistent with the EOS pressure
-        // floor; TINY_NUMBER alone permits a post-NR primitive pressure many
-        // orders of magnitude below hydro/pfloor.
-        const Real gm1 = pmy_block_->peos->GetGamma() - 1.0;
-        egas_floor = std::max(
-            egas_floor, pmy_block_->peos->GetPressureFloor()/gm1);
-#endif
+        const Real egas_floor = GasEnergyFloor(pmy_block_, rho);
+        const bool gas_floor_active = pfld->is_couple && !pfld->only_rad
+            && GasFloorConstraintActive(
+                u_gas_(k,j,i), egas_floor,
+                derivetive(NewtonRaphsonFLD::Fg,k,j,i), denom);
         bool local_gas_solved = false;
 #if GENERAL_EOS && EOS_TABLE_ENABLED
         // In the optically stiff limit a global radiation correction can move
@@ -1450,7 +1484,11 @@ void NRFLD::AddDifference(AthenaArray<Real> &u_rad,
           }
         }
 #endif
-        if (!local_gas_solved) {
+        if (gas_floor_active) {
+          // The radiation correction was assembled from Fr with egas fixed.
+          // Preserve that active constraint exactly for this Newton step.
+          u_gas_(k,j,i) = egas_floor;
+        } else if (!local_gas_solved) {
           Real limited_egas_delta = LimitNewtonCorrection(
               egas_delta, std::max(std::abs(u_gas_(k,j,i)), egas_floor),
               max_update_fraction_);
@@ -1536,19 +1574,13 @@ void NRFLD::PrintFailurePhysicsDebug(Real gas_max) {
         // attaining that global maximum, not one diagnostic per MPI rank.
         if (std::abs(gas_defect_(k,j,i)) != gas_max) continue;
         const Real rho = def_coeff_(NewtonRaphsonFLD::DRHO,k,j,i);
-        Real egas_floor = TINY_NUMBER;
+        const Real egas_floor = GasEnergyFloor(mb, rho);
         Real dT_deg = def_coeff_(NewtonRaphsonFLD::DCOUPLE,k,j,i);
 #if GENERAL_EOS
         const Real temperature = mb->peos->TempFromRhoEg(rho, u_gas_(k,j,i));
         dT_deg = temperature/u_gas_(k,j,i)
             *mb->peos->DlnTDlnEgasFromRhoEg(rho, u_gas_(k,j,i));
-        if (rho > mb->peos->GetDensityFloor()) {
-          egas_floor = std::max(egas_floor,
-              mb->peos->EgasFromRhoP(rho, mb->peos->GetPressureFloor()));
-        }
 #else
-        const Real gm1 = mb->peos->GetGamma() - 1.0;
-        egas_floor = std::max(egas_floor, mb->peos->GetPressureFloor()/gm1);
         const Real temperature = def_coeff_(NewtonRaphsonFLD::DCOUPLE,k,j,i)
                                  *u_gas_(k,j,i);
 #endif
