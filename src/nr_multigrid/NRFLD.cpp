@@ -1391,6 +1391,14 @@ void NRFLD::AddDifference(AthenaArray<Real> &u_rad,
           egas_floor = std::max(egas_floor,
               pmy_block_->peos->EgasFromRhoP(rho, pmy_block_->peos->GetPressureFloor()));
         }
+#else
+        // The ideal-gas implicit update evolves internal-energy density
+        // directly.  Keep its lower bound consistent with the EOS pressure
+        // floor; TINY_NUMBER alone permits a post-NR primitive pressure many
+        // orders of magnitude below hydro/pfloor.
+        const Real gm1 = pmy_block_->peos->GetGamma() - 1.0;
+        egas_floor = std::max(
+            egas_floor, pmy_block_->peos->GetPressureFloor()/gm1);
 #endif
         bool local_gas_solved = false;
 #if GENERAL_EOS && EOS_TABLE_ENABLED
@@ -1539,6 +1547,8 @@ void NRFLD::PrintFailurePhysicsDebug(Real gas_max) {
               mb->peos->EgasFromRhoP(rho, mb->peos->GetPressureFloor()));
         }
 #else
+        const Real gm1 = mb->peos->GetGamma() - 1.0;
+        egas_floor = std::max(egas_floor, mb->peos->GetPressureFloor()/gm1);
         const Real temperature = def_coeff_(NewtonRaphsonFLD::DCOUPLE,k,j,i)
                                  *u_gas_(k,j,i);
 #endif
