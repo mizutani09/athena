@@ -4,6 +4,7 @@
 
 #include <algorithm>
 #include <cmath>
+#include <limits>
 #include <sstream>
 
 #include "../athena.hpp"
@@ -37,6 +38,22 @@ void ReconstructX3(Reconstruction *precon, int order, int k, int j, int il, int 
   if (order == 1) precon->DonorCellX3(k, j, il, iu, q, ql, qr);
   else if (order == 2) precon->PiecewiseLinearX3(k, j, il, iu, q, ql, qr);
   else precon->PiecewiseParabolicX3(k, j, il, iu, q, ql, qr);
+}
+
+bool PhysicalRadiationFaceState(const AthenaArray<Real> &state, int i) {
+  const Real tolerance = 64.0*std::numeric_limits<Real>::epsilon();
+  const Real er = state(RadFLD::ERAD, i);
+  const Real lambda = state(RadFLD::LAMBDA, i);
+  const Real ar = state(RadFLD::ARAD, i);
+  return er > 0.0 && std::isfinite(er) && std::isfinite(lambda)
+      && lambda >= -tolerance && lambda <= 1.0/3.0+tolerance
+      && std::isfinite(ar) && ar >= 1.0-tolerance && ar <= 4.0/3.0+tolerance;
+}
+
+Real BoundedRadiationFaceValue(int n, Real value) {
+  if (n == RadFLD::ERAD) return std::max(value, TINY_NUMBER);
+  if (n == RadFLD::LAMBDA) return std::max(0.0, std::min(value, 1.0/3.0));
+  return std::max(1.0, std::min(value, 4.0/3.0));
 }
 
 RadFLD::ClosureValues RequireClosure(const Real gradient, const Real opacity,
@@ -140,9 +157,20 @@ void FLD::PrepareFourthOrderFaceLaplacian(int dir, int kl, int ku, int jl,
 void FLD::CorrectFourthOrderFaceRow(int dir, int k, int j, int il, int iu,
                                     Real c) {
   for (int i = il; i <= iu; ++i) {
-    u_rad_flux[dir](k,j,i) += c*rad_flux_lap_[dir](k,j,i);
-    rad_face_g[dir](k,j,i) = std::max(
-        rad_face_g[dir](k,j,i) + c*rad_g_lap_[dir](k,j,i), TINY_NUMBER);
+    CorrectFourthOrderFace(dir, k, j, i, c);
+  }
+}
+
+void FLD::CorrectFourthOrderFace(int dir, int k, int j, int i, Real c) {
+  u_rad_flux[dir](k,j,i) += c*rad_flux_lap_[dir](k,j,i);
+  rad_face_g[dir](k,j,i) = std::max(
+      rad_face_g[dir](k,j,i) + c*rad_g_lap_[dir](k,j,i), TINY_NUMBER);
+}
+
+void FLD::ReduceFourthOrderPointFace(int dir, int k, int j, int i) {
+  for (int n = 0; n < RadFLD::NRAD_FACE_STATE; ++n) {
+    rad_point_l_(n,i) = rad_face_l[dir](n,k,j,i);
+    rad_point_r_(n,i) = rad_face_r[dir](n,k,j,i);
   }
 }
 
@@ -226,9 +254,15 @@ void FLD::CalculateRadiationFaceStates(const int order) {
                     rad_state_cc_,
                     rad_statel_, rad_stater_);
       for (int i = pmb->is; i <= pmb->ie + 1; ++i) {
+        const bool left_physical = !pmb->precon->berta_wenoz
+            || PhysicalRadiationFaceState(rad_statel_, i);
+        const bool right_physical = !pmb->precon->berta_wenoz
+            || PhysicalRadiationFaceState(rad_stater_, i);
         for (int n = 0; n < RadFLD::NRAD_FACE_STATE; ++n) {
-          rad_face_l[X1DIR](n, k, j, i) = rad_statel_(n, i);
-          rad_face_r[X1DIR](n, k, j, i) = rad_stater_(n, i);
+          rad_face_l[X1DIR](n, k, j, i) = BoundedRadiationFaceValue(
+              n, left_physical ? rad_statel_(n, i) : rad_state_cc_(n, k, j, i-1));
+          rad_face_r[X1DIR](n, k, j, i) = BoundedRadiationFaceValue(
+              n, right_physical ? rad_stater_(n, i) : rad_state_cc_(n, k, j, i));
         }
       }
     }
@@ -245,9 +279,15 @@ void FLD::CalculateRadiationFaceStates(const int order) {
         ReconstructX2(pmb->precon, order, k, j, pmb->is - 1, pmb->ie + 1,
                       rad_state_cc_, rad_statelb_, rad_stater_);
         for (int i = pmb->is - transverse; i <= pmb->ie + transverse; ++i) {
+          const bool left_physical = !pmb->precon->berta_wenoz
+              || PhysicalRadiationFaceState(rad_statel_, i);
+          const bool right_physical = !pmb->precon->berta_wenoz
+              || PhysicalRadiationFaceState(rad_stater_, i);
           for (int n = 0; n < RadFLD::NRAD_FACE_STATE; ++n) {
-            rad_face_l[X2DIR](n, k, j, i) = rad_statel_(n, i);
-            rad_face_r[X2DIR](n, k, j, i) = rad_stater_(n, i);
+            rad_face_l[X2DIR](n, k, j, i) = BoundedRadiationFaceValue(
+                n, left_physical ? rad_statel_(n, i) : rad_state_cc_(n, k, j-1, i));
+            rad_face_r[X2DIR](n, k, j, i) = BoundedRadiationFaceValue(
+                n, right_physical ? rad_stater_(n, i) : rad_state_cc_(n, k, j, i));
           }
         }
         rad_statel_.SwapAthenaArray(rad_statelb_);
@@ -266,9 +306,15 @@ void FLD::CalculateRadiationFaceStates(const int order) {
         ReconstructX3(pmb->precon, order, k, j, pmb->is - 1, pmb->ie + 1,
                       rad_state_cc_, rad_statelb_, rad_stater_);
         for (int i = pmb->is - transverse; i <= pmb->ie + transverse; ++i) {
+          const bool left_physical = !pmb->precon->berta_wenoz
+              || PhysicalRadiationFaceState(rad_statel_, i);
+          const bool right_physical = !pmb->precon->berta_wenoz
+              || PhysicalRadiationFaceState(rad_stater_, i);
           for (int n = 0; n < RadFLD::NRAD_FACE_STATE; ++n) {
-            rad_face_l[X3DIR](n, k, j, i) = rad_statel_(n, i);
-            rad_face_r[X3DIR](n, k, j, i) = rad_stater_(n, i);
+            rad_face_l[X3DIR](n, k, j, i) = BoundedRadiationFaceValue(
+                n, left_physical ? rad_statel_(n, i) : rad_state_cc_(n, k-1, j, i));
+            rad_face_r[X3DIR](n, k, j, i) = BoundedRadiationFaceValue(
+                n, right_physical ? rad_stater_(n, i) : rad_state_cc_(n, k, j, i));
           }
         }
         rad_statel_.SwapAthenaArray(rad_statelb_);

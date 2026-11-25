@@ -104,7 +104,10 @@ void Hydro::CalculateFluxes(AthenaArray<Real> &w, FaceField &b,
                   &e1x3 = pmb->pfield->e1_x3f, &e2x3 = pmb->pfield->e2_x3f;
 #endif
   AthenaArray<Real> &flux_fc = scr1_nkji_;
-  AthenaArray<Real> &laplacian_all_fc = scr2_nkji_;
+  // Point recovery is complete before flux construction. Berta can reuse the now-dead
+  // point-value register for the face-flux Laplacian instead of retaining a dedicated
+  // NHYDRO block scratch array. flux_fc is only touched by the legacy two-sweep path.
+  AthenaArray<Real> &laplacian_all_fc = berta_wenoz ? u_cc : scr2_nkji_;
 
   //--------------------------------------------------------------------------------------
   // i-direction
@@ -135,12 +138,28 @@ void Hydro::CalculateFluxes(AthenaArray<Real> &w, FaceField &b,
       }
 
       pmb->pcoord->CenterWidth1(k, j, is, ie+1, dxw_);
+#if NRMGFLD_ENABLED
+      if (berta_wenoz) {
+        const Real h = pmb->pcoord->dx1f(is);
+        pmb->prfld->PrepareFourthOrderPointFaces(
+            X1DIR, k, j, is, ie+1, h*h/24.0);
+        for (int i=is; i<=ie+1; ++i) {
+          if (BertaFaceTroubled(this, X1DIR, k, j, i)) {
+            pmb->prfld->ReduceFourthOrderPointFace(X1DIR, k, j, i);
+          }
+        }
+        pmb->prfld->UseFourthOrderPointFaces(true);
+      }
+#endif
 #if !MAGNETIC_FIELDS_ENABLED  // Hydro:
       RiemannSolver(k, j, is, ie+1, IVX, wl_, wr_, x1flux, dxw_);
 #else  // MHD:
       // x1flux(IBY) = (v1*b2 - v2*b1) = -EMFZ
       // x1flux(IBZ) = (v1*b3 - v3*b1) =  EMFY
       RiemannSolver(k, j, is, ie+1, IVX, b1, wl_, wr_, x1flux, e3x1, e2x1, w_x1f, dxw_);
+#endif
+#if NRMGFLD_ENABLED
+      if (berta_wenoz) pmb->prfld->UseFourthOrderPointFaces(false);
 #endif
 
       if (order == 4 && !berta_wenoz) {
@@ -209,6 +228,15 @@ void Hydro::CalculateFluxes(AthenaArray<Real> &w, FaceField &b,
           pmb->prfld->CorrectFourthOrderFaceRow(X1DIR, k, j, is, ie+1, C);
 #endif
         }
+#if NRMGFLD_ENABLED
+        if (berta_wenoz) {
+          for (int i=is; i<=ie+1; ++i) {
+            if (!BertaFaceTroubled(this, X1DIR, k, j, i)) {
+              pmb->prfld->CorrectFourthOrderFace(X1DIR, k, j, i, C);
+            }
+          }
+        }
+#endif
         // Berta et al. Eq. (30): WENO-Z already supplied point-value states and the
         // first Riemann solve supplied pointwise fluxes. Convert them to face averages.
         for (int n=0; n<NHYDRO; ++n) {
@@ -219,7 +247,7 @@ void Hydro::CalculateFluxes(AthenaArray<Real> &w, FaceField &b,
                 && BertaFaceTroubled(this, X1DIR, k, j, i);
             x1flux(n,k,j,i) = point_flux
                             + (troubled ? 0.0 : C*laplacian_all_fc(n,k,j,i));
-            if (n == IDN && NSCALARS > 0) {
+            if (n == IDN && NSCALARS > 0 && !berta_wenoz) {
               pmb->pscalars->mass_flux_fc[X1DIR](k,j,i) = point_flux;
             }
           }
@@ -268,12 +296,28 @@ void Hydro::CalculateFluxes(AthenaArray<Real> &w, FaceField &b,
         }
 
         pmb->pcoord->CenterWidth2(k, j, il, iu, dxw_);
+#if NRMGFLD_ENABLED
+        if (berta_wenoz) {
+          const Real h = pmb->pcoord->dx2f(js);
+          pmb->prfld->PrepareFourthOrderPointFaces(
+              X2DIR, k, j, il, iu, h*h/24.0);
+          for (int i=il; i<=iu; ++i) {
+            if (BertaFaceTroubled(this, X2DIR, k, j, i)) {
+              pmb->prfld->ReduceFourthOrderPointFace(X2DIR, k, j, i);
+            }
+          }
+          pmb->prfld->UseFourthOrderPointFaces(true);
+        }
+#endif
 #if !MAGNETIC_FIELDS_ENABLED  // Hydro:
         RiemannSolver(k, j, il, iu, IVY, wl_, wr_, x2flux, dxw_);
 #else  // MHD:
         // flx(IBY) = (v2*b3 - v3*b2) = -EMFX
         // flx(IBZ) = (v2*b1 - v1*b2) =  EMFZ
         RiemannSolver(k, j, il, iu, IVY, b2, wl_, wr_, x2flux, e1x2, e3x2, w_x2f, dxw_);
+#endif
+#if NRMGFLD_ENABLED
+        if (berta_wenoz) pmb->prfld->UseFourthOrderPointFaces(false);
 #endif
 
         if (order == 4 && !berta_wenoz) {
@@ -342,6 +386,15 @@ void Hydro::CalculateFluxes(AthenaArray<Real> &w, FaceField &b,
             pmb->prfld->CorrectFourthOrderFaceRow(X2DIR, k, j, is, ie, C);
 #endif
           }
+#if NRMGFLD_ENABLED
+          if (berta_wenoz) {
+            for (int i=is; i<=ie; ++i) {
+              if (!BertaFaceTroubled(this, X2DIR, k, j, i)) {
+                pmb->prfld->CorrectFourthOrderFace(X2DIR, k, j, i, C);
+              }
+            }
+          }
+#endif
 
           for (int n=0; n<NHYDRO; ++n) {
 #pragma omp simd
@@ -351,7 +404,7 @@ void Hydro::CalculateFluxes(AthenaArray<Real> &w, FaceField &b,
                   && BertaFaceTroubled(this, X2DIR, k, j, i);
               x2flux(n,k,j,i) = point_flux
                               + (troubled ? 0.0 : C*laplacian_all_fc(n,k,j,i));
-              if (n == IDN && NSCALARS > 0) {
+              if (n == IDN && NSCALARS > 0 && !berta_wenoz) {
                 pmb->pscalars->mass_flux_fc[X2DIR](k,j,i) = point_flux;
               }
             }
@@ -396,12 +449,28 @@ void Hydro::CalculateFluxes(AthenaArray<Real> &w, FaceField &b,
         }
 
         pmb->pcoord->CenterWidth3(k, j, il, iu, dxw_);
+#if NRMGFLD_ENABLED
+        if (berta_wenoz) {
+          const Real h = pmb->pcoord->dx3f(ks);
+          pmb->prfld->PrepareFourthOrderPointFaces(
+              X3DIR, k, j, il, iu, h*h/24.0);
+          for (int i=il; i<=iu; ++i) {
+            if (BertaFaceTroubled(this, X3DIR, k, j, i)) {
+              pmb->prfld->ReduceFourthOrderPointFace(X3DIR, k, j, i);
+            }
+          }
+          pmb->prfld->UseFourthOrderPointFaces(true);
+        }
+#endif
 #if !MAGNETIC_FIELDS_ENABLED  // Hydro:
         RiemannSolver(k, j, il, iu, IVZ, wl_, wr_, x3flux, dxw_);
 #else  // MHD:
         // flx(IBY) = (v3*b1 - v1*b3) = -EMFY
         // flx(IBZ) = (v3*b2 - v2*b3) =  EMFX
         RiemannSolver(k, j, il, iu, IVZ, b3, wl_, wr_, x3flux, e2x3, e1x3, w_x3f, dxw_);
+#endif
+#if NRMGFLD_ENABLED
+        if (berta_wenoz) pmb->prfld->UseFourthOrderPointFaces(false);
 #endif
         if (order == 4 && !berta_wenoz) {
           for (int n=0; n<NWAVE; n++) {
@@ -469,6 +538,15 @@ void Hydro::CalculateFluxes(AthenaArray<Real> &w, FaceField &b,
             pmb->prfld->CorrectFourthOrderFaceRow(X3DIR, k, j, is, ie, C);
 #endif
           }
+#if NRMGFLD_ENABLED
+          if (berta_wenoz) {
+            for (int i=is; i<=ie; ++i) {
+              if (!BertaFaceTroubled(this, X3DIR, k, j, i)) {
+                pmb->prfld->CorrectFourthOrderFace(X3DIR, k, j, i, C);
+              }
+            }
+          }
+#endif
           for (int n=0; n<NHYDRO; ++n) {
 #pragma omp simd
             for (int i=is; i<=ie; i++) {
@@ -477,7 +555,7 @@ void Hydro::CalculateFluxes(AthenaArray<Real> &w, FaceField &b,
                   && BertaFaceTroubled(this, X3DIR, k, j, i);
               x3flux(n,k,j,i) = point_flux
                               + (troubled ? 0.0 : C*laplacian_all_fc(n,k,j,i));
-              if (n == IDN && NSCALARS > 0) {
+              if (n == IDN && NSCALARS > 0 && !berta_wenoz) {
                 pmb->pscalars->mass_flux_fc[X3DIR](k,j,i) = point_flux;
               }
             }

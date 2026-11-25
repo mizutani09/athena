@@ -294,7 +294,9 @@ class FLD {
   void PrepareFourthOrderPointFaces(int dir, int k, int j, int il, int iu, Real c);
   void PrepareFourthOrderFaceLaplacian(int dir, int kl, int ku, int jl, int ju,
                                       int il, int iu);
+  void CorrectFourthOrderFace(int dir, int k, int j, int i, Real c);
   void CorrectFourthOrderFaceRow(int dir, int k, int j, int il, int iu, Real c);
+  void ReduceFourthOrderPointFace(int dir, int k, int j, int i);
   void UseFourthOrderPointFaces(bool active) { fourth_order_point_faces_ = active; }
   Real RadiationFaceState(int dir, bool left, int n, int k, int j, int i) const {
     if (fourth_order_point_faces_)

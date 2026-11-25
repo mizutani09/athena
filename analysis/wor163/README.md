@@ -20,6 +20,24 @@ before WOR-164 introduces a physically justified radiative luminosity.  It
 uses FGMRES and a `1e-5` code-time startup cap through `t=1e-3`; a coarse-grid
 test then grows the timestep normally and reaches `t=1e-2` in 110 cycles.
 
-The current `4wz` reconstruction has an explicit FLD guard.  This baseline
-therefore uses the supported second-order hydro path.  Combining 4WZ hydro
-with FLD remains a separate validation task.
+## Berta 4wz hydrodynamics with FLD
+
+This branch removes the former FLD guard after separating the numerical
+roles cleanly. Berta WENO-Z supplies the hydrodynamic point states, while the
+existing fourth-order explicit FLD face-average-to-point construction supplies
+the radiation state used by HLLC and the explicit radiation force. The
+implicit diffusion, Newton solve, and FGMRES/MG preconditioner retain their
+established order.
+
+On smooth single-block radiation transport, the 32-cubed and 64-cubed L1
+errors are `6.47306e-8` and `4.17637e-9`, an observed order of 3.95.
+Fixed-size multi-block tests show order reduction at block interfaces, so this
+is a local explicit-operator check rather than a claim that the complete FLD
+scheme is fourth order.
+
+For memory control, 4wz does not allocate the legacy PPM face-state and scalar
+scratch arrays. The two refinement tracers use conservative PLM; density,
+momentum, and gas energy retain 4wz. A two-rank, 120-MeshBlock AMR smoke test
+completed one RK4 step with FGMRES in 2--4 iterations per Newton iteration.
+AMR requires `coarse_operator=rediscretized`; the Galerkin hierarchy is
+uniform-topology only.

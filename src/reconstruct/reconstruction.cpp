@@ -75,12 +75,11 @@ Reconstruction::Reconstruction(MeshBlock *pmb, ParameterInput *pin) :
           << std::endl;
       ATHENA_ERROR(msg);
     }
-    if (MAGNETIC_FIELDS_ENABLED || RELATIVISTIC_DYNAMICS || GENERAL_RELATIVITY
-        || NRMGFLD_ENABLED) {
+    if (MAGNETIC_FIELDS_ENABLED || RELATIVISTIC_DYNAMICS || GENERAL_RELATIVITY) {
       std::stringstream msg;
       msg << "### FATAL ERROR in Reconstruction constructor" << std::endl
           << "time/xorder=4wz on this branch currently supports Newtonian HD only; "
-          << "MHD, relativity, and FLD remain isolated from this validation path."
+          << "MHD and relativity remain isolated from this validation path."
           << std::endl;
       ATHENA_ERROR(msg);
     }
