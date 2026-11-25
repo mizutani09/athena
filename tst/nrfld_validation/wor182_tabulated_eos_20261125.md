@@ -74,15 +74,31 @@ The launcher is `analysis/wor182/xd_q025_corot_tabulated_eos_gate.sh`.
 - interior/surface radial Mach at t=1e-4: 3.60e-6 / 1.24085e-3
 - full-force relative maximum: 0.1393
 
-Job 347863 extends the fresh-map gate to 100 steps and t=1e-3.
+### One hundred steps, job 347863
+
+- fresh map, CFL=0.1, 100 steps to t=1e-3
+- completed normally in 209.87 s
+- all Newton solves converged; final max residual 4.06e-11
+- relative drift: mass -4.68e-13, angular momentum +1.76e-10,
+  gas+radiation energy +1.55e-9
+- interior/surface radial Mach: 4.70e-6 / 1.245e-3
+- full-force relative maximum: 0.144
+
+Commit `dfcb9836c` moves the table-temperature-floor fatal report outside the
+OpenMP SIMD row, allowing the production Intel SIMD build without weakening
+the failure contract.  Commit `83ea88750` limits the 2019 legacy general-EOS
+high-order warning to the old PPM/4 paths; 4wz has EOS-aware point conversion
+and an explicit density/pressure quality fallback.  Intel SIMD build job
+347865 completed, and its 10-step numerical gate 347868 reproduced the
+non-SIMD residual history in 79.18 s versus 101 s for job 347862.
+
+Job 347871 extends the SIMD build through the startup release to t=1e-2.
 
 ## Open acceptance items
 
-1. Complete 10/100-step startup gates, then raise CFL 0.1 -> 0.2 -> 0.3.
+1. Complete the t=1e-2 release gate, then raise CFL 0.1 -> 0.2 -> 0.3.
 2. Compare L3/L4 and ideal/table force, Mach, Newton, and FGMRES histories.
 3. Add explicit runtime diagnostics for distance to EOS table boundaries.
 4. Replace cell-average closure with a derived, table-thermodynamic profile if
    the first A/B shows appreciable thermal projection noise.
-5. Resolve or narrowly qualify the legacy general-EOS + xorder>2 warning;
-   WOR-120's density-cliff fallback is present, but this integrated combination
-   still needs a longer gate.
+5. Extend the integrated general-EOS + 4wz combination beyond startup.
