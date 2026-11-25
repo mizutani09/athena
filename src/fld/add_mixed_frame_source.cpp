@@ -17,6 +17,31 @@
 #include "../mesh/mesh.hpp"
 #include "fld.hpp"
 
+void FLD::RadiationAcceleration(int k, int j, int i, Real density,
+                                Real *ax, Real *ay, Real *az) const {
+  *ax = 0.0;
+  *ay = 0.0;
+  *az = 0.0;
+  if (!PressureCoupled()
+      || !RadiationForceActiveAtDensity(
+          density, pmy_block->peos->GetDensityFloor())
+      || !std::isfinite(density) || density <= 0.0) {
+    return;
+  }
+  const Real ex = (rad_face_g[X1DIR](k,j,i+1)-rad_face_g[X1DIR](k,j,i))
+      /pmy_block->pcoord->dx1f(i);
+  const Real ey = pmy_block->block_size.nx2 > 1
+      ? (rad_face_g[X2DIR](k,j+1,i)-rad_face_g[X2DIR](k,j,i))
+          /pmy_block->pcoord->dx2f(j) : 0.0;
+  const Real ez = pmy_block->block_size.nx3 > 1
+      ? (rad_face_g[X3DIR](k+1,j,i)-rad_face_g[X3DIR](k,j,i))
+          /pmy_block->pcoord->dx3f(k) : 0.0;
+  const Real lambda = rad_state_cc_(RadFLD::LAMBDA,k,j,i);
+  *ax = -lambda*ex/density;
+  *ay = -lambda*ey/density;
+  *az = -lambda*ez/density;
+}
+
 void FLD::EmitForceDiagnostic(const Real dt, const AthenaArray<Real> &prim,
                               const AthenaArray<Real> &hydro_u) {
   MeshBlock *pmb = pmy_block;

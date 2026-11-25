@@ -436,6 +436,20 @@ void UpdateGravityDiagnostics(MeshBlock* block) {
             SQR(asx+acx)+SQR(asy+acy)+SQR(asz+acz));
         const Real centrifugal_acceleration = std::sqrt(
             centrifugal_x*centrifugal_x+centrifugal_y*centrifugal_y);
+#if NRMGFLD_ENABLED
+        Real arx = 0.0, ary = 0.0, arz = 0.0;
+        block->prfld->RadiationAcceleration(
+            k, j, i, density, &arx, &ary, &arz);
+        const Real radiation_acceleration =
+            std::sqrt(arx*arx+ary*ary+arz*arz);
+        const Real full_residual_x = residual_x+arx;
+        const Real full_residual_y = residual_y+ary;
+        const Real full_residual_z = residual_z+arz;
+        const Real full_force_residual = std::sqrt(
+            full_residual_x*full_residual_x
+            +full_residual_y*full_residual_y
+            +full_residual_z*full_residual_z);
+#endif
         const scf_map::State source = profile.Interpolate(
             std::hypot(x,y)*length_unit, z*length_unit);
         block->user_out_var(3,k,j,i) = block->pgrav->phi(k,j,i);
@@ -453,6 +467,13 @@ void UpdateGravityDiagnostics(MeshBlock* block) {
         block->user_out_var(11,k,j,i) = density*(block->phydro->w(IVX,k,j,i)*acx
             +block->phydro->w(IVY,k,j,i)*acy+block->phydro->w(IVZ,k,j,i)*acz);
         block->user_out_var(12,k,j,i) = density*(x*(asy+acy)-y*(asx+acx));
+#if NRMGFLD_ENABLED
+        block->user_out_var(16,k,j,i) = radiation_acceleration;
+        block->user_out_var(17,k,j,i) = full_force_residual;
+        block->user_out_var(18,k,j,i) = pressure_acceleration
+            +radiation_acceleration+gravity_acceleration
+            +centrifugal_acceleration;
+#endif
       }
     }
   }
@@ -635,6 +656,17 @@ Real HistoryGravityDiagnostic(MeshBlock* block, int output) {
             *block->user_out_var(4,k,j,i)*volume;
         if (output == 13) total += 0.5*stellar_density
             *block->user_out_var(3,k,j,i)*volume;
+#if NRMGFLD_ENABLED
+        if (output == kBaseHistoryCount+2) total += stellar_density
+            *SQR(block->user_out_var(17,k,j,i))*volume;
+        if (output == kBaseHistoryCount+3) total += stellar_density
+            *SQR(block->user_out_var(18,k,j,i))*volume;
+        if (output == kBaseHistoryCount+4 && stellar_density/density > 0.999
+            && block->user_out_var(18,k,j,i) > 0.0) {
+          total = std::max(total, block->user_out_var(17,k,j,i)
+                                    /block->user_out_var(18,k,j,i));
+        }
+#endif
       }
     }
   }
@@ -1030,7 +1062,7 @@ void Mesh::InitUserMeshData(ParameterInput* pin) {
           "gravity/fill_ghost must be true for force diagnostics");
 
 #if NRMGFLD_ENABLED
-  AllocateUserHistoryOutput(kBaseHistoryCount+2);
+  AllocateUserHistoryOutput(kBaseHistoryCount+5);
 #else
   AllocateUserHistoryOutput(kBaseHistoryCount);
 #endif
@@ -1136,6 +1168,13 @@ void Mesh::InitUserMeshData(ParameterInput* pin) {
                           "radiation_energy_erg");
   EnrollUserHistoryOutput(kBaseHistoryCount+1, HistoryGasInternalEnergy,
                           "gas_internal_energy_erg");
+  EnrollUserHistoryOutput(kBaseHistoryCount+2, HistoryGravityDiagnostic,
+                          "full_force_error2");
+  EnrollUserHistoryOutput(kBaseHistoryCount+3, HistoryGravityDiagnostic,
+                          "full_force_norm2");
+  EnrollUserHistoryOutput(kBaseHistoryCount+4, HistoryGravityDiagnostic,
+                          "full_force_relative_max",
+                          UserHistoryOperation::max);
 #endif
   if (Globals::my_rank == 0) {
     std::cout << std::scientific << std::setprecision(8)
@@ -1214,7 +1253,7 @@ void MeshBlock::InitUserMeshBlockData(ParameterInput*) {
   }
   prfld->marshak_top_alpha = marshak_alpha;
   prfld->marshak_top_erad_ext = external_radiation_energy_code;
-  AllocateUserOutputVariables(16);
+  AllocateUserOutputVariables(19);
 #else
   AllocateUserOutputVariables(13);
 #endif
@@ -1235,6 +1274,9 @@ void MeshBlock::InitUserMeshBlockData(ParameterInput*) {
   SetUserOutputVariableName(13, "Erad_cgs");
   SetUserOutputVariableName(14, "Tgas_fld");
   SetUserOutputVariableName(15, "Trad_fld");
+  SetUserOutputVariableName(16, "radiation_accel");
+  SetUserOutputVariableName(17, "full_force_residual");
+  SetUserOutputVariableName(18, "full_force_scale");
 #endif
 }
 

@@ -304,6 +304,11 @@ class FLD {
     return left ? rad_face_l[dir](n,k,j,i) : rad_face_r[dir](n,k,j,i);
   }
   Real RadiationSoundSpeedSquared(int k, int j, int i, int dir) const;
+  // Return the acceleration used by the explicit FLD momentum source at the
+  // most recently reconstructed Godunov state.  Problem generators use this
+  // read-only hook to diagnose the complete discrete force balance.
+  void RadiationAcceleration(int k, int j, int i, Real density,
+                             Real *ax, Real *ay, Real *az) const;
   void AddFluxDivergence(const Real wght, AthenaArray<Real> &u_out,
                          int stage = 0, bool physical_state = true);
   void AddExplicitSourceTerms(const Real dt, const AthenaArray<Real> &prim,
