@@ -126,13 +126,26 @@ inline Real MixedDriftStencil(const AthenaArray<Real> &drift,
                               const EnergyAt &energy_at,
                               int k, int j, int i, Real half_idx) {
   const Real center = energy_at(k,j,i);
-  return half_idx*(
-      drift(XPlus,k,j,i)*(energy_at(k,j,i+1)-center)
-    + drift(XMinus,k,j,i)*(center-energy_at(k,j,i-1))
-    + drift(YPlus,k,j,i)*(energy_at(k,j+1,i)-center)
-    + drift(YMinus,k,j,i)*(center-energy_at(k,j-1,i))
-    + drift(ZPlus,k,j,i)*(energy_at(k+1,j,i)-center)
-    + drift(ZMinus,k,j,i)*(center-energy_at(k-1,j,i)));
+  // q*v.grad(Er) is an advection-like, nonconservative source.  A centered
+  // gradient is not monotone: next to a steep radiation front it can demand
+  // more energy from an Er-floor cell than the cell contains, leaving the
+  // constrained gas/radiation Newton system without a feasible descent
+  // direction.  Use the cell-centered average of the two face drift speeds
+  // with a first-order upwind derivative.  The matching Jacobian below is an
+  // M-matrix contribution, so the implicit update preserves the lower bound.
+  const Real ax = 0.5*(drift(XMinus,k,j,i) + drift(XPlus,k,j,i));
+  const Real ay = 0.5*(drift(YMinus,k,j,i) + drift(YPlus,k,j,i));
+  const Real az = 0.5*(drift(ZMinus,k,j,i) + drift(ZPlus,k,j,i));
+  const Real dx_term = ax >= 0.0
+      ? ax*(center-energy_at(k,j,i-1))
+      : ax*(energy_at(k,j,i+1)-center);
+  const Real dy_term = ay >= 0.0
+      ? ay*(center-energy_at(k,j-1,i))
+      : ay*(energy_at(k,j+1,i)-center);
+  const Real dz_term = az >= 0.0
+      ? az*(center-energy_at(k-1,j,i))
+      : az*(energy_at(k+1,j,i)-center);
+  return 2.0*half_idx*(dx_term + dy_term + dz_term);
 }
 
 inline Real MixedDriftTerm(const AthenaArray<Real> &drift,
@@ -1096,13 +1109,17 @@ void NRFLD::CalculateCoefficients(const AthenaArray<Real> &u_rad_old,
           // residuals without subtracting two O(C) quantities.
           const Real inv_dFg_deg = gas_floor_active ? 1.0
               : 1.0/derivetive(NewtonRaphsonFLD::dFg_deg,k,j,i);
-          // The face drift has a center contribution when its two face
-          // coefficients differ.  Keep it in the unscaled diagonal slot.
-          const Real drift_fac = 0.5*dt*std::sqrt(idx2)*inv_dFg_deg;
+          // The upwind drift has a positive center contribution and
+          // non-positive off-diagonals.  Keep it in the unscaled slots.
+          const Real drift_fac = dt*std::sqrt(idx2)*inv_dFg_deg;
+          const Real drift_x = 0.5*(mixed_drift_(XMinus,k,j,i)
+                                   + mixed_drift_(XPlus,k,j,i));
+          const Real drift_y = 0.5*(mixed_drift_(YMinus,k,j,i)
+                                   + mixed_drift_(YPlus,k,j,i));
+          const Real drift_z = 0.5*(mixed_drift_(ZMinus,k,j,i)
+                                   + mixed_drift_(ZPlus,k,j,i));
           const Real drift_center = drift_fac*(
-              mixed_drift_(XMinus,k,j,i)-mixed_drift_(XPlus,k,j,i)
-            + mixed_drift_(YMinus,k,j,i)-mixed_drift_(YPlus,k,j,i)
-            + mixed_drift_(ZMinus,k,j,i)-mixed_drift_(ZPlus,k,j,i));
+              std::abs(drift_x) + std::abs(drift_y) + std::abs(drift_z));
           coeff(linearSolver::DCCS,k,j,i) =
               1.0 - derivetive(NewtonRaphsonFLD::dFg_dEr,k,j,i)*inv_dFg_deg
               + drift_center
@@ -1115,12 +1132,18 @@ void NRFLD::CalculateCoefficients(const AthenaArray<Real> &u_rad_old,
           // Elimination of the local gas correction leaves a directed,
           // nonsymmetric nearest-neighbour term in the radiation matrix.
           // The *S slots are not multiplied by dt/dx^2 by linearMG.
-          coeff(linearSolver::DXMS,k,j,i) = -drift_fac*mixed_drift_(XMinus,k,j,i);
-          coeff(linearSolver::DXPS,k,j,i) =  drift_fac*mixed_drift_(XPlus,k,j,i);
-          coeff(linearSolver::DYMS,k,j,i) = -drift_fac*mixed_drift_(YMinus,k,j,i);
-          coeff(linearSolver::DYPS,k,j,i) =  drift_fac*mixed_drift_(YPlus,k,j,i);
-          coeff(linearSolver::DZMS,k,j,i) = -drift_fac*mixed_drift_(ZMinus,k,j,i);
-          coeff(linearSolver::DZPS,k,j,i) =  drift_fac*mixed_drift_(ZPlus,k,j,i);
+          coeff(linearSolver::DXMS,k,j,i) =
+              -drift_fac*std::max(drift_x, static_cast<Real>(0.0));
+          coeff(linearSolver::DXPS,k,j,i) =
+               drift_fac*std::min(drift_x, static_cast<Real>(0.0));
+          coeff(linearSolver::DYMS,k,j,i) =
+              -drift_fac*std::max(drift_y, static_cast<Real>(0.0));
+          coeff(linearSolver::DYPS,k,j,i) =
+               drift_fac*std::min(drift_y, static_cast<Real>(0.0));
+          coeff(linearSolver::DZMS,k,j,i) =
+              -drift_fac*std::max(drift_z, static_cast<Real>(0.0));
+          coeff(linearSolver::DZPS,k,j,i) =
+               drift_fac*std::min(drift_z, static_cast<Real>(0.0));
           if (gas_floor_active) {
             // The gas energy is fixed at its lower bound.  Do not eliminate
             // an inadmissible gas correction: solve the radiation equation
@@ -1676,6 +1699,8 @@ void NRFLD::PrintFailurePhysicsDebug(Real gas_max) {
         const Real t2 = temperature*temperature;
         const Real equilibrium = fld->a_r*t2*t2;
         const Real thermal = ResolvableThermalDifference(equilibrium, u_(k,j,i));
+        const Real mixed_term = MixedDriftTerm(
+            mixed_drift_, u_, k,j,i, 0.5/mb->pcoord->dx1f(i));
         std::cout << "[NR_GAS_FAILURE] rank=" << Globals::my_rank
                   << " gid=" << mb->gid
                   << " cycle=" << mb->pmy_mesh->ncycle
@@ -1696,6 +1721,17 @@ void NRFLD::PrintFailurePhysicsDebug(Real gas_max) {
                   << " raw_thermal_difference=" << equilibrium-u_(k,j,i)
                   << " dt_source=" << pmy_driver_->dt_*fld->c_ph
                                      *fld->sigma_p(k,j,i)*thermal
+                  << " dt_mixed=" << pmy_driver_->dt_*mixed_term
+                  << " raw_Fg="
+                  << derivetive_(NewtonRaphsonFLD::Fg,k,j,i)
+                  << " dFg_deg="
+                  << derivetive_(NewtonRaphsonFLD::dFg_deg,k,j,i)
+                  << " erad_xm=" << u_(k,j,i-1)
+                  << " erad_xp=" << u_(k,j,i+1)
+                  << " erad_ym=" << u_(k,j-1,i)
+                  << " erad_yp=" << u_(k,j+1,i)
+                  << " erad_zm=" << u_(k-1,j,i)
+                  << " erad_zp=" << u_(k+1,j,i)
                   << std::endl;
         return;  // At most one tied maximum per MeshBlock.
       }

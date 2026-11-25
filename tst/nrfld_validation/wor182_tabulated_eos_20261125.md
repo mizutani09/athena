@@ -243,12 +243,63 @@ the low-density taper rather than asymmetric ejection.  Job 347923 therefore
 continues to t=30; persistent growth will trigger an A/B that extends L4
 surface refinement into this density band.
 
+### t=30 mixed-drift failure and monotone implicit stencil
+
+The original centered mixed-frame continuation, job 347923, reached
+`t=28.001433492` and failed at cycle 346 with
+`backtracking_exhausted`.  Its 149 earlier solves converged normally.  The
+resolved interior remained quiet (Mach `0.00803`), but the low-density taper
+had reached Mach `0.891`.
+
+Job 347939 reproduced the exact failing step from a newly materialized restart.
+Tightening FGMRES from `1e-4` to `1e-6` (job 347940) did not change the failed
+Newton direction, and permitting line-search scales down to `1/512` (job
+347943) only delayed the failure by one iteration.  This rules out the linear
+tolerance and the default backtracking range as the cause.
+
+The failure cell was on an L3/L4 interface.  It had
+`Egas=1.0611e-3`, `Er=1e-20`, and one radiation neighbour at
+`Er=1.6955e-4`.  Its timestep-integrated thermal exchange was only
+`8.73e-25`, whereas the centered `q v.grad(Er)` term was `4.03e-2`, about
+38 times the cell gas energy.  Thus the centered advection-like source asked
+an already floor-bound radiation cell for an inadmissible update.  Turning off
+both mixed-frame source and transport passed the one-step control, while
+retaining transport without its matched source produced negative radiation
+states and is not an admissible production mode.
+
+The implicit mixed drift now uses a first-order upwind derivative of the
+cell-centred average face speed.  Its Schur contribution uses the identical
+positive diagonal and non-positive off-diagonals.  This is intentionally
+low-order: the implicit FLD source needs monotonicity rather than the 4wz
+hydrodynamic reconstruction order.
+
+- Job 347956 passed the exact formerly failing step in seven full Newton
+  iterations, with no backtracking.  Final L2/max residuals were
+  `2.23e-12/1.70e-9`; FGMRES used at most 18 iterations.
+- Job 347958 repeated that step with a finite-difference Jacobian check.  At
+  perturbation `1e-4`, gas and radiation relative L2 errors were
+  `1.05e-12` and `4.87e-11`, respectively.
+- Job 347957 continued from `t=28.0014` to 30.  All 17 solves converged in
+  6--7 Newton iterations with no backtracking; 103 FGMRES solves used 4--18
+  iterations.  Segment drifts were mass `-4.08e-10`, angular momentum
+  `+3.18e-7`, and gas+radiation energy `-8.18e-6`.  Every EOS margin remained
+  positive.
+
+This resolves the nonlinear failure but not the outer-layer stability gate.
+At `t=30`, the interior and rho-at/above-surface Mach maxima were only
+`0.00785` and `0.00760`, while the low-density taper maximum had grown to
+`0.942`; `1.94e30 g` exceeded radial Mach 0.1 and `2.61e29 g` exceeded 0.3.
+The next physical gate must therefore address the outer taper/refinement rather
+than extend this configuration blindly.
+
 ## Open acceptance items
 
-1. Complete the t=30 taper-contraction gate, then either extend to a material
-   fraction of a dynamical time or run an L3/L4 outer-density refinement A/B.
-2. Compare L3/L4 and ideal/table force, Mach, Newton, and FGMRES histories.
-3. Replace cell-average closure with a derived, table-thermodynamic profile if
+1. Add a focused moving-radiation-pulse regression for the upwind implicit
+   mixed drift, including transport speed and numerical diffusion.
+2. Run an L3/L4 outer-density refinement A/B before any longer table-EOS
+   stability extension; the t=30 taper is already nearly sonic.
+3. Compare L3/L4 and ideal/table force, Mach, Newton, and FGMRES histories.
+4. Replace cell-average closure with a derived, table-thermodynamic profile if
    the first A/B shows appreciable thermal projection noise.
-4. Add a focused AMR regression for positivity-constrained FLD ghost
+5. Add a focused AMR regression for positivity-constrained FLD ghost
    prolongation and the Newton radiation active set.
