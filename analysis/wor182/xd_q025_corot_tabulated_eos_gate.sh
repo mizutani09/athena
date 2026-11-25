@@ -36,7 +36,7 @@ test -x bin/athena
 test -s "$input"
 git rev-parse HEAD > "$run/git_commit.txt"
 git status --short > "$run/git_status.txt"
-sha256sum bin/athena "$input" data/eos/rsg_nata_eos.tab \
+sha256sum bin/athena "$input" data/eos/rsg_tomida2013_material_eos.tab \
   data/opacity/rsg_gray_opacity_t7.h5 > "$run/provenance.sha256"
 printf 'integrator=%s\nnlim=%s\ntlim=%s\ncfl=%s\n' \
   "$integrator" "$nlim" "$tlim" "$cfl" > "$run/run_config.txt"

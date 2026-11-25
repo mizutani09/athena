@@ -112,9 +112,9 @@ egas_unit = 1.0e5
 leng_unit = 6.957e10
 dfloor = 1.0e-8
 pfloor = 1.0e-9
-tfloor = 1.0e2
+tfloor = 1.0e3
 T_unit = 1.0
-eos_file_name = data/eos/rsg_nata_eos.tab
+eos_file_name = data/eos/rsg_tomida2013_material_eos.tab
 eos_file_type = ascii
 eos_read_ratios = true
 eos_rho_unit = 1.0e-8
@@ -190,12 +190,15 @@ linearMG_ix3_bc = user
 linearMG_ox3_bc = user
 
 <problem>
-scf_profile_file = data/ic/rsg21_mesa_scf_corecut7p00_q025_corot_nr16384_taper_rho3e-9_gamma5_3.csv
+scf_profile_file = data/ic/rsg21_mesa_scf_corecut7p00_q025_corot_nr16384_taper_rho3e-9_gamma5_3_atm1p7e-11_t1e4.csv
 angular_velocity_rad_s = 4.0100850320255668e-8
 frame = inertial
 cell_quadrature_order = 3
-atmosphere_density_g_cm3 = 1.0e-14
+atmosphere_density_g_cm3 = 1.7e-11
 atmosphere_temperature_k = 1.0e4
+# Preserve the accepted matched-profile endpoint pressure.  With the Tomida
+# material EOS this pressure corresponds to Tgas about 1.08e4 K.
+atmosphere_pressure_dyn_cm2 = 2.224714707e1
 atmosphere_mode = isothermal_monopole
 atmosphere_reference_radius_cm = 7.0479108661544016e13
 surface_polar_radius_cm = 6.3573075498874664e13
@@ -207,12 +210,12 @@ surface_tracer_lower = 1.0e-6
 surface_tracer_upper = 0.999999
 surface_refinement_density_g_cm3 = 3.0e-9
 surface_mach_diagnostic_threshold = -1.0
-rotate_atmosphere = false
+rotate_atmosphere = true
 gas_mass_g = 2.8801452052462170e34
 core_mass_g = 1.2962446564904497e34
 core_support_radius_cm = 4.5207406562668779e12
 radiation_external_temperature = 1.0e2
-lte_temperature_min_k = 1.0e2
+lte_temperature_min_k = 3.1622776601683795e2
 lte_temperature_max_k = 1.0e9
 marshak_alpha = 0.5
 atmosphere_planck_taper_radius_cm = 6.4517279030778633e13
