@@ -184,7 +184,6 @@ scf_profile_file = data/ic/rsg21_mesa_scf_corecut7p00_q025_corot_nr16384_taper_r
 angular_velocity_rad_s = 4.0100850320255668e-8
 frame = inertial
 cell_quadrature_order = 3
-pointwise_fld_cell_average = true
 atmosphere_density_g_cm3 = 1.0e-14
 atmosphere_temperature_k = 1.0e4
 atmosphere_mode = isothermal_monopole
