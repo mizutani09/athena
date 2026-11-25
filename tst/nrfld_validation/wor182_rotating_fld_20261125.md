@@ -50,8 +50,31 @@ surface Mach maximum from 1.216e6 to 3.237 without changing the interior Mach.
 The mass with radial Mach above 0.3 was 1.74e28 g (8.8e-6 Msun), so the
 remaining supersonic motion was confined to a very small exterior mass.
 
-The floor-constrained Newton solve still ended by relaxed acceptance with a
-gas maximum residual of 0.148 (configured relaxed maximum: 0.2).  Longer-term
-acceptance therefore requires both a fixed-code continuation and an audit of
-whether the constrained residual should be treated explicitly rather than as
-an unconstrained Newton residual.
+The pressure-floor-only repair exposed a second issue.  The cycle-131 solve
+ended by relaxed acceptance with a gas maximum residual of 0.148 (configured
+relaxed maximum: 0.2), and cycle 132 failed with a gas residual of 0.942.  The
+offending cell was exactly at the gas-energy lower bound, while the
+unconstrained Newton direction pointed below that bound.  This is a
+complementarity condition, not a failed unconstrained root.
+
+Commit `690256155` implements the lower-bound active set consistently in the
+residual, Jacobian, and state update.  An active cell keeps gas energy at the
+pressure floor and solves the radiation equation directly; if its residual
+later points back into the feasible region, it leaves the active set.  This is
+important for mixed-frame FLD because the direct radiation row must retain the
+full nonsymmetric drift stencil.
+
+The exact restart and timestep that previously failed completed in XD job
+347731.  FGMRES/Newton converged in five iterations, with final maximum
+residual 5.23e-9 and gas maximum residual 1.00e-14.  The pressure remained
+1.00e-4 dyn cm^-2.  Job 347732 then continued from time 0.868 to 1.0 at
+CFL=0.1; all four implicit solves converged in five iterations without relaxed
+acceptance, with final maximum residuals between 5.21e-9 and 5.34e-9.
+
+At time 1.0 the interior radial Mach maximum was 2.37e-3.  The low-density
+surface-taper maximum was 3.74, but it occurred in the pressure-floor exterior;
+the stellar mass with radial Mach above 0.3 was 1.75e28 g (8.8e-6 Msun).
+Relative to time zero, mapped mass changed by 3.47e-12, mapped angular momentum
+by 1.75e-7, and the volume-integrated gas-plus-radiation energy by -1.26e-5.
+The latter is a state change rather than a closed-system conservation residual,
+because this setup includes radiation transport and boundary fluxes.
