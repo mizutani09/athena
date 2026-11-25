@@ -189,11 +189,22 @@ void FLD::CalculateRadiationFaceStates(const int order) {
 
   // Check the complete reconstruction stencil before taking differences.
   // Otherwise a negative/non-finite neighbor could be hidden by a finite
-  // face average and only appear much later in the Riemann solve.
+  // face average and only appear much later in the Riemann solve.  Finite
+  // negative ghost values can be produced by multidimensional AMR
+  // prolongation or high-order boundary interpolation even though all active
+  // cells are admissible.  Bound those interpolation values at the point of
+  // use; retain a strict failure for every active cell and for non-finite
+  // ghosts.  If a same-level neighbour supplied a genuinely negative active
+  // value, that value is independently checked on its owning MeshBlock.
   for (int k = kl; k <= ku; ++k) {
     for (int j = jl; j <= ju; ++j) {
       for (int i = il; i <= iu; ++i) {
-        if (!std::isfinite(u_rad(k,j,i)) || u_rad(k,j,i) < 0.0) {
+        const bool active = i >= pmb->is && i <= pmb->ie
+                         && j >= pmb->js && j <= pmb->je
+                         && k >= pmb->ks && k <= pmb->ke;
+        if (std::isfinite(u_rad(k,j,i)) && u_rad(k,j,i) < 0.0 && !active) {
+          u_rad(k,j,i) = TINY_NUMBER;
+        } else if (!std::isfinite(u_rad(k,j,i)) || u_rad(k,j,i) < 0.0) {
           std::stringstream msg;
           msg << "### FATAL ERROR in FLD radiation energy" << std::endl
               << "Er at (k,j,i)=(" << k << "," << j << "," << i << ") is "
