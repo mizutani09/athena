@@ -36,6 +36,7 @@
 #endif
 #include "scf_axisymmetric_profile.hpp"
 #include "scf_core_softening.hpp"
+#include "scf_fld_diagnostic.hpp"
 
 #if MAGNETIC_FIELDS_ENABLED
 #error "scf_rsg is a hydrodynamic problem and must be built without -b"
@@ -109,6 +110,14 @@ constexpr int kEosTableHistoryCount = 0;
 #endif
 constexpr int kTotalHistoryCount =
     kBaseHistoryCount+kRadiationHistoryCount+kEosTableHistoryCount;
+constexpr int kTaperRadiationHistoryStart = kTotalHistoryCount;
+#if NRMGFLD_ENABLED
+constexpr int kTaperRadiationHistoryCount = 8;
+#else
+constexpr int kTaperRadiationHistoryCount = 0;
+#endif
+constexpr int kFinalHistoryCount =
+    kTotalHistoryCount+kTaperRadiationHistoryCount;
 
 int SurfaceRefinementCondition(MeshBlock* block);
 
@@ -732,6 +741,59 @@ Real HistoryTotalEnergy(MeshBlock* block, int) {
 }
 
 #if NRMGFLD_ENABLED
+void UpdateTaperRadiationDiagnostics(MeshBlock* block) {
+  constexpr int kDiffusionHeating = 19;
+  constexpr int kThermalExchange = 20;
+  const AthenaArray<Real>& radiation = block->prfld->u_rad;
+  const AthenaArray<Real>& diffusion = block->prfld->marshak_dface_all;
+  for (int k = block->ks; k <= block->ke; ++k) {
+    const Real dz = block->pcoord->dx3f(k);
+    for (int j = block->js; j <= block->je; ++j) {
+      const Real dy = block->pcoord->dx2f(j);
+      for (int i = block->is; i <= block->ie; ++i) {
+        const Real dx = block->pcoord->dx1f(i);
+        const Real center = radiation(k,j,i);
+        Require(std::isfinite(center) && center >= 0.0,
+                "taper diagnostic requires nonnegative active radiation energy");
+        Real dface[6];
+        for (int face = 0; face < 6; ++face) {
+          dface[face] = diffusion(face,k,j,i);
+          Require(std::isfinite(dface[face]) && dface[face] >= 0.0,
+                  "taper diagnostic requires nonnegative FLD diffusion coefficients");
+        }
+        // The implicit solve bounds finite AMR interpolation undershoots in
+        // its private ghost stencil.  Reproduce that exact admissibility rule
+        // here while retaining the active-cell hard check above.
+        const auto bounded_ghost = [](Real value) {
+          Require(std::isfinite(value),
+                  "taper diagnostic requires finite radiation ghosts");
+          return std::max(value, TINY_NUMBER);
+        };
+        const Real xm = bounded_ghost(radiation(k,j,i-1));
+        const Real xp = bounded_ghost(radiation(k,j,i+1));
+        const Real ym = bounded_ghost(radiation(k,j-1,i));
+        const Real yp = bounded_ghost(radiation(k,j+1,i));
+        const Real zm = bounded_ghost(radiation(k-1,j,i));
+        const Real zp = bounded_ghost(radiation(k+1,j,i));
+        block->user_out_var(kDiffusionHeating,k,j,i) =
+            scf_fld_diagnostic::DiffusionHeating(
+                center, xm, xp, ym, yp, zm, zp,
+                dface[0], dface[1], dface[2], dface[3], dface[4], dface[5],
+                dx, dy, dz);
+
+        const Real density = block->phydro->w(IDN,k,j,i);
+        const Real pressure = block->phydro->w(IPR,k,j,i);
+        const Real temperature = GasTemperatureCgs(block, density, pressure);
+        const Real equilibrium = scf_map::kRadiationConstantCgs
+            *std::pow(temperature, 4)/pressure_unit;
+        block->user_out_var(kThermalExchange,k,j,i) =
+            block->prfld->c_ph*block->prfld->sigma_p(k,j,i)
+            *(equilibrium-center);
+      }
+    }
+  }
+}
+
 Real HistoryRadiationEnergy(MeshBlock* block, int) {
   Real total = 0.0;
   const Real scale = pressure_unit*std::pow(length_unit, 3);
@@ -757,6 +819,68 @@ Real HistoryGasInternalEnergy(MeshBlock* block, int) {
             /std::max(density, TINY_NUMBER);
         total += (block->phydro->u(IEN,k,j,i)-kinetic)
             *block->pcoord->GetCellVolume(k,j,i)*scale;
+      }
+    }
+  }
+  return total;
+}
+
+Real HistoryTaperRadiationDiagnostic(MeshBlock* block, int output) {
+  constexpr int kDiffusionHeating = 19;
+  constexpr int kThermalExchange = 20;
+  const int diagnostic = output-kTaperRadiationHistoryStart;
+  const Real energy_scale = pressure_unit*std::pow(length_unit, 3);
+  const Real power_scale = energy_scale/time_unit;
+  Real total = (diagnostic == 6 || diagnostic == 7)
+      ? std::numeric_limits<Real>::infinity() : 0.0;
+  for (int k = block->ks; k <= block->ke; ++k) {
+    const Real z = block->pcoord->x3v(k);
+    for (int j = block->js; j <= block->je; ++j) {
+      const Real y = block->pcoord->x2v(j);
+      for (int i = block->is; i <= block->ie; ++i) {
+        const Real x = block->pcoord->x1v(i);
+        const Real cylindrical_radius = std::hypot(x,y);
+        const Real ellipsoidal_radius = std::sqrt(
+            SQR(cylindrical_radius*length_unit/surface_match_equatorial_radius)
+            +SQR(z*length_unit/surface_match_polar_radius));
+        const Real density = block->phydro->u(IDN,k,j,i);
+        const Real stellar_density = block->pscalars->s(0,k,j,i);
+        if (!(density > 0.0) || stellar_density/density <= 0.5
+            || ellipsoidal_radius <= 1.0) continue;
+        const Real volume = block->pcoord->GetCellVolume(k,j,i);
+        const Real mx = block->phydro->u(IM1,k,j,i);
+        const Real my = block->phydro->u(IM2,k,j,i);
+        const Real mz = block->phydro->u(IM3,k,j,i);
+        const Real kinetic = 0.5*(mx*mx+my*my+mz*mz)/density;
+        const Real gas_energy = std::max(
+            block->phydro->u(IEN,k,j,i)-kinetic, TINY_NUMBER);
+        const Real radiation_energy = std::max(
+            block->prfld->u_rad(k,j,i), TINY_NUMBER);
+        const Real diffusion_heating =
+            block->user_out_var(kDiffusionHeating,k,j,i);
+        const Real thermal_exchange =
+            block->user_out_var(kThermalExchange,k,j,i);
+        if (diagnostic == 0) total += stellar_density*volume*mass_unit;
+        if (diagnostic == 1) total += radiation_energy*volume*energy_scale;
+        if (diagnostic == 2) total += gas_energy*volume*energy_scale;
+        if (diagnostic == 3) {
+          total += diffusion_heating*volume*power_scale;
+        }
+        if (diagnostic == 4) {
+          total += std::abs(diffusion_heating)*volume*power_scale;
+        }
+        if (diagnostic == 5) {
+          total += std::abs(thermal_exchange)*volume*power_scale;
+        }
+        const Real total_energy = gas_energy+radiation_energy;
+        if (diagnostic == 6 && std::abs(diffusion_heating) > 0.0) {
+          total = std::min(total,
+              total_energy/std::abs(diffusion_heating)*time_unit);
+        }
+        if (diagnostic == 7 && std::abs(thermal_exchange) > 0.0) {
+          total = std::min(total,
+              total_energy/std::abs(thermal_exchange)*time_unit);
+        }
       }
     }
   }
@@ -1057,7 +1181,6 @@ Real HistoryEosTableMargin(MeshBlock* block, int output) {
   return minimum_margin;
 }
 #endif
-
 }  // namespace
 
 void Mesh::InitUserMeshData(ParameterInput* pin) {
@@ -1259,7 +1382,7 @@ void Mesh::InitUserMeshData(ParameterInput* pin) {
   Require(pin->GetOrAddBoolean("gravity", "fill_ghost", true),
           "gravity/fill_ghost must be true for force diagnostics");
 
-  AllocateUserHistoryOutput(kTotalHistoryCount);
+  AllocateUserHistoryOutput(kFinalHistoryCount);
   EnrollUserHistoryOutput(0, HistoryMass, "mapped_mass_g");
   EnrollUserHistoryOutput(1, HistoryStellarMass, "mapped_stellar_mass_g");
   EnrollUserHistoryOutput(2, HistoryAngularMomentum, "mapped_Jz_g_cm2_s");
@@ -1384,6 +1507,34 @@ void Mesh::InitUserMeshData(ParameterInput* pin) {
                           "eos_logu_upper_margin_dex",
                           UserHistoryOperation::min);
 #endif
+#if NRMGFLD_ENABLED
+  EnrollUserHistoryOutput(kTaperRadiationHistoryStart,
+                          HistoryTaperRadiationDiagnostic,
+                          "taper_stellar_mass_g");
+  EnrollUserHistoryOutput(kTaperRadiationHistoryStart+1,
+                          HistoryTaperRadiationDiagnostic,
+                          "taper_radiation_energy_erg");
+  EnrollUserHistoryOutput(kTaperRadiationHistoryStart+2,
+                          HistoryTaperRadiationDiagnostic,
+                          "taper_gas_internal_energy_erg");
+  EnrollUserHistoryOutput(kTaperRadiationHistoryStart+3,
+                          HistoryTaperRadiationDiagnostic,
+                          "taper_diffusion_power_erg_s");
+  EnrollUserHistoryOutput(kTaperRadiationHistoryStart+4,
+                          HistoryTaperRadiationDiagnostic,
+                          "taper_abs_diffusion_power_erg_s");
+  EnrollUserHistoryOutput(kTaperRadiationHistoryStart+5,
+                          HistoryTaperRadiationDiagnostic,
+                          "taper_abs_exchange_power_erg_s");
+  EnrollUserHistoryOutput(kTaperRadiationHistoryStart+6,
+                          HistoryTaperRadiationDiagnostic,
+                          "taper_diffusion_time_min_s",
+                          UserHistoryOperation::min);
+  EnrollUserHistoryOutput(kTaperRadiationHistoryStart+7,
+                          HistoryTaperRadiationDiagnostic,
+                          "taper_exchange_time_min_s",
+                          UserHistoryOperation::min);
+#endif
   if (Globals::my_rank == 0) {
     std::cout << std::scientific << std::setprecision(8)
               << "scf_rsg profile=" << filename
@@ -1461,7 +1612,7 @@ void MeshBlock::InitUserMeshBlockData(ParameterInput*) {
   }
   prfld->marshak_top_alpha = marshak_alpha;
   prfld->marshak_top_erad_ext = external_radiation_energy_code;
-  AllocateUserOutputVariables(19);
+  AllocateUserOutputVariables(21);
 #else
   AllocateUserOutputVariables(13);
 #endif
@@ -1485,6 +1636,8 @@ void MeshBlock::InitUserMeshBlockData(ParameterInput*) {
   SetUserOutputVariableName(16, "radiation_accel");
   SetUserOutputVariableName(17, "full_force_residual");
   SetUserOutputVariableName(18, "full_force_scale");
+  SetUserOutputVariableName(19, "fld_diffusion_heating");
+  SetUserOutputVariableName(20, "fld_thermal_exchange");
 #endif
 }
 
@@ -1577,4 +1730,7 @@ void MeshBlock::ProblemGenerator(ParameterInput*) {
 
 void MeshBlock::UserWorkBeforeOutput(ParameterInput*) {
   UpdateGravityDiagnostics(this);
+#if NRMGFLD_ENABLED
+  UpdateTaperRadiationDiagnostics(this);
+#endif
 }
