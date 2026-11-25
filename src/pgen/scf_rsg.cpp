@@ -1256,7 +1256,7 @@ void MeshBlock::InitUserMeshBlockData(ParameterInput*) {
   }
   prfld->marshak_top_alpha = marshak_alpha;
   prfld->marshak_top_erad_ext = external_radiation_energy_code;
-  AllocateUserOutputVariables(20);
+  AllocateUserOutputVariables(19);
 #else
   AllocateUserOutputVariables(13);
 #endif
@@ -1280,7 +1280,6 @@ void MeshBlock::InitUserMeshBlockData(ParameterInput*) {
   SetUserOutputVariableName(16, "radiation_accel");
   SetUserOutputVariableName(17, "full_force_residual");
   SetUserOutputVariableName(18, "full_force_scale");
-  SetUserOutputVariableName(19, "stellar_volume_frac");
 #endif
 }
 
@@ -1375,7 +1374,6 @@ void MeshBlock::ProblemGenerator(ParameterInput*) {
         user_out_var(15,k,j,i) = std::pow(
             std::max(user_out_var(13,k,j,i), TINY_NUMBER)
               /scf_map::kRadiationConstantCgs, 0.25);
-        user_out_var(19,k,j,i) = mapped.stellar_volume_fraction;
 #endif
       }
     }
