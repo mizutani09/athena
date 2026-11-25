@@ -43,6 +43,9 @@ jacobian_check=${WOR182_JACOBIAN_CHECK:-false}
 jacobian_check_epsilon=${WOR182_JACOBIAN_CHECK_EPSILON:-1.0e-4}
 surface_refinement_level=${WOR182_SURFACE_REFINEMENT_LEVEL:-2}
 surface_refinement_density=${WOR182_SURFACE_REFINEMENT_DENSITY:-3.0e-9}
+relaxation_velocity_tau=${WOR182_RELAXATION_VELOCITY_TAU:--1.0}
+relaxation_taper_start=${WOR182_RELAXATION_TAPER_START:--1.0}
+relaxation_taper_end=${WOR182_RELAXATION_TAPER_END:--1.0}
 tasks_per_node=${WOR182_TASKS_PER_NODE:-56}
 cfl_tag=${cfl//./p}
 time_tag=${target_time//./p}
@@ -58,7 +61,7 @@ git status --short > "$run/git_status.txt"
 sha256sum bin/athena "$restart" "$input" \
   data/eos/rsg_tomida2013_material_eos.tab \
   data/opacity/rsg_gray_opacity_t7.h5 > "$run/provenance.sha256"
-printf 'restart=%s\ninput=%s\ntarget_time=%s\ncfl=%s\nnlim=%s\nintegrator=%s\nrestart_dcycle=%s\nhistory_dcycle=%s\nslice_output_dt=%s\nfgmres_threshold=%s\ndiagnostic_verbosity=%s\nsurface_mach_diagnostic_threshold=%s\nnr_backtrack_max=%s\nnr_min_step_scale=%s\nmixed_frame_terms=%s\nmixed_frame_transport=%s\njacobian_check=%s\njacobian_check_epsilon=%s\nsurface_refinement_level=%s\nsurface_refinement_density=%s\ntasks_per_node=%s\n' \
+printf 'restart=%s\ninput=%s\ntarget_time=%s\ncfl=%s\nnlim=%s\nintegrator=%s\nrestart_dcycle=%s\nhistory_dcycle=%s\nslice_output_dt=%s\nfgmres_threshold=%s\ndiagnostic_verbosity=%s\nsurface_mach_diagnostic_threshold=%s\nnr_backtrack_max=%s\nnr_min_step_scale=%s\nmixed_frame_terms=%s\nmixed_frame_transport=%s\njacobian_check=%s\njacobian_check_epsilon=%s\nsurface_refinement_level=%s\nsurface_refinement_density=%s\nrelaxation_velocity_tau=%s\nrelaxation_taper_start=%s\nrelaxation_taper_end=%s\ntasks_per_node=%s\n' \
   "$restart" "$input" "$target_time" "$cfl" "$nlim" "$integrator" \
   "$restart_dcycle" "$history_dcycle" "$slice_output_dt" "$fgmres_threshold" \
   "$diagnostic_verbosity" "$surface_mach_diagnostic_threshold" \
@@ -66,6 +69,8 @@ printf 'restart=%s\ninput=%s\ntarget_time=%s\ncfl=%s\nnlim=%s\nintegrator=%s\nre
   "$mixed_frame_terms" "$mixed_frame_transport" \
   "$jacobian_check" "$jacobian_check_epsilon" \
   "$surface_refinement_level" "$surface_refinement_density" \
+  "$relaxation_velocity_tau" "$relaxation_taper_start" \
+  "$relaxation_taper_end" \
   "$tasks_per_node" \
   > "$run/run_config.txt"
 
@@ -87,6 +92,9 @@ set +e
   problem/surface_refinement_level="$surface_refinement_level" \
   problem/surface_refinement_density_g_cm3="$surface_refinement_density" \
   problem/surface_mach_diagnostic_threshold="$surface_mach_diagnostic_threshold" \
+  problem/relaxation_velocity_tau="$relaxation_velocity_tau" \
+  problem/relaxation_taper_start="$relaxation_taper_start" \
+  problem/relaxation_taper_end="$relaxation_taper_end" \
   output1/dcycle="$history_dcycle" output2/dcycle="$restart_dcycle" \
   output3/dt="$slice_output_dt" output4/dt="$slice_output_dt" \
   > "$run/stdout.log" 2> "$run/stderr.log"

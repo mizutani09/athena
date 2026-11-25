@@ -37,6 +37,7 @@
 #include "scf_axisymmetric_profile.hpp"
 #include "scf_core_softening.hpp"
 #include "scf_fld_diagnostic.hpp"
+#include "scf_relaxation.hpp"
 
 #if MAGNETIC_FIELDS_ENABLED
 #error "scf_rsg is a hydrodynamic problem and must be built without -b"
@@ -66,6 +67,7 @@ Real atmosphere_density_floor, atmosphere_pressure_floor;
 Real atmosphere_reference_radius, surface_polar_radius, atmosphere_monopole_gm;
 Real surface_match_equatorial_radius, surface_match_polar_radius;
 Real surface_mach_diagnostic_threshold;
+Real relaxation_velocity_tau, relaxation_taper_start, relaxation_taper_end;
 #if EOS_TABLE_ENABLED
 Real eos_dens_pow;
 #endif
@@ -118,6 +120,9 @@ constexpr int kTaperRadiationHistoryCount = 0;
 #endif
 constexpr int kFinalHistoryCount =
     kTotalHistoryCount+kTaperRadiationHistoryCount;
+constexpr int kRelaxationHistoryStart = kFinalHistoryCount;
+constexpr int kRelaxationHistoryCount = 4;
+constexpr int kAllHistoryCount = kFinalHistoryCount+kRelaxationHistoryCount;
 
 int SurfaceRefinementCondition(MeshBlock* block);
 
@@ -1246,6 +1251,14 @@ Real HistoryEosTableMargin(MeshBlock* block, int output) {
   return minimum_margin;
 }
 #endif
+
+Real HistoryRelaxationDamping(MeshBlock* block, int output) {
+  const Real value = block->ruser_meshblock_data[0](
+      output-kRelaxationHistoryStart);
+  const Real energy_scale = pressure_unit*std::pow(length_unit, 3);
+  return output == kRelaxationHistoryStart
+      ? value*energy_scale : value*energy_scale/time_unit;
+}
 }  // namespace
 
 void Mesh::InitUserMeshData(ParameterInput* pin) {
@@ -1274,6 +1287,12 @@ void Mesh::InitUserMeshData(ParameterInput* pin) {
   lte_temperature_max = pin->GetOrAddReal(
       "problem", "lte_temperature_max_k", 1.0e9);
   angular_velocity = pin->GetReal("problem", "angular_velocity_rad_s");
+  relaxation_velocity_tau = pin->GetOrAddReal(
+      "problem", "relaxation_velocity_tau", -1.0);
+  relaxation_taper_start = pin->GetOrAddReal(
+      "problem", "relaxation_taper_start", -1.0);
+  relaxation_taper_end = pin->GetOrAddReal(
+      "problem", "relaxation_taper_end", -1.0);
   atmosphere_density = pin->GetReal("problem", "atmosphere_density_g_cm3");
   const Real atmosphere_temperature =
       pin->GetReal("problem", "atmosphere_temperature_k");
@@ -1308,6 +1327,13 @@ void Mesh::InitUserMeshData(ParameterInput* pin) {
   Require(angular_velocity >= 0.0 && atmosphere_density > 0.0
           && atmosphere_temperature > 0.0,
           "rotation and atmosphere parameters must be nonnegative/positive");
+  Require((relaxation_velocity_tau < 0.0
+              && relaxation_taper_start < 0.0
+              && relaxation_taper_end < 0.0)
+          || (relaxation_velocity_tau > 0.0
+              && relaxation_taper_start >= 0.0
+              && relaxation_taper_end > relaxation_taper_start),
+          "velocity relaxation must be disabled or have tau>0 and 0<=start<end");
   Require(core_mass > 0.0 && core_support_radius > 0.0 && gas_mass > 0.0
           && atmosphere_reference_radius > 0.0 && surface_polar_radius > 0.0
           && surface_match_equatorial_radius > 0.0
@@ -1447,7 +1473,7 @@ void Mesh::InitUserMeshData(ParameterInput* pin) {
   Require(pin->GetOrAddBoolean("gravity", "fill_ghost", true),
           "gravity/fill_ghost must be true for force diagnostics");
 
-  AllocateUserHistoryOutput(kFinalHistoryCount);
+  AllocateUserHistoryOutput(kAllHistoryCount);
   EnrollUserHistoryOutput(0, HistoryMass, "mapped_mass_g");
   EnrollUserHistoryOutput(1, HistoryStellarMass, "mapped_stellar_mass_g");
   EnrollUserHistoryOutput(2, HistoryAngularMomentum, "mapped_Jz_g_cm2_s");
@@ -1603,6 +1629,18 @@ void Mesh::InitUserMeshData(ParameterInput* pin) {
                           "taper_exchange_time_min_s",
                           UserHistoryOperation::min);
 #endif
+  EnrollUserHistoryOutput(kRelaxationHistoryStart,
+                          HistoryRelaxationDamping,
+                          "relaxation_inertial_ke_delta_erg");
+  EnrollUserHistoryOutput(kRelaxationHistoryStart+1,
+                          HistoryRelaxationDamping,
+                          "relaxation_inertial_power_erg_s");
+  EnrollUserHistoryOutput(kRelaxationHistoryStart+2,
+                          HistoryRelaxationDamping,
+                          "relaxation_corot_ke_removed_erg");
+  EnrollUserHistoryOutput(kRelaxationHistoryStart+3,
+                          HistoryRelaxationDamping,
+                          "relaxation_corot_power_erg_s");
   if (Globals::my_rank == 0) {
     std::cout << std::scientific << std::setprecision(8)
               << "scf_rsg profile=" << filename
@@ -1619,6 +1657,9 @@ void Mesh::InitUserMeshData(ParameterInput* pin) {
               << " surface_refinement_use_tracer="
               << surface_refinement_use_tracer
               << " surface_refinement_density_g_cm3=" << surface_density
+              << " relaxation_velocity_tau=" << relaxation_velocity_tau
+              << " relaxation_taper_start=" << relaxation_taper_start
+              << " relaxation_taper_end=" << relaxation_taper_end
               << " G_code=" << gravity_code
               << " frame=inertial\n";
   }
@@ -1673,6 +1714,9 @@ int SurfaceRefinementCondition(MeshBlock* block) {
 }  // namespace
 
 void MeshBlock::InitUserMeshBlockData(ParameterInput*) {
+  AllocateRealUserMeshBlockDataField(1);
+  ruser_meshblock_data[0].NewAthenaArray(kRelaxationHistoryCount);
+  ruser_meshblock_data[0].ZeroClear();
 #if NRMGFLD_ENABLED
   prfld->EnrollOpacityFunction(Opacity);
   for (int face = 0; face < 6; ++face) {
@@ -1791,6 +1835,59 @@ void MeshBlock::ProblemGenerator(ParameterInput*) {
             std::max(user_out_var(13,k,j,i), TINY_NUMBER)
               /scf_map::kRadiationConstantCgs, 0.25);
 #endif
+      }
+    }
+  }
+}
+
+void MeshBlock::UserWorkInLoop() {
+  ruser_meshblock_data[0].ZeroClear();
+  if (relaxation_velocity_tau <= 0.0) return;
+  const Real strength = scf_relaxation::TaperStrength(
+      pmy_mesh->time, relaxation_taper_start, relaxation_taper_end);
+  if (strength <= 0.0) return;
+  const Real dt = pmy_mesh->dt;
+  for (int k = ks; k <= ke; ++k) {
+    for (int j = js; j <= je; ++j) {
+      const Real y = pcoord->x2v(j);
+      for (int i = is; i <= ie; ++i) {
+        const Real density = phydro->u(IDN,k,j,i);
+        if (!(density > 0.0)) continue;
+        const Real stellar_fraction = std::max(static_cast<Real>(0.0),
+            std::min(static_cast<Real>(1.0),
+                     pscalars->s(0,k,j,i)/density));
+        if (stellar_fraction <= 0.0) continue;
+        const Real vx = phydro->u(IM1,k,j,i)/density;
+        const Real vy = phydro->u(IM2,k,j,i)/density;
+        const Real vz = phydro->u(IM3,k,j,i)/density;
+        const Real dvx = vx+angular_velocity_code*y;
+        const Real dvy = vy-angular_velocity_code*pcoord->x1v(i);
+        const Real corot_kinetic = 0.5*density*(dvx*dvx+dvy*dvy+vz*vz);
+        const Real factor = std::exp(
+            -strength*stellar_fraction*dt/relaxation_velocity_tau);
+        const auto velocity = scf_relaxation::DampTowardCorotation(
+            vx, vy, vz, pcoord->x1v(i), y, angular_velocity_code, factor);
+        const Real old_kinetic = 0.5*density*(vx*vx+vy*vy+vz*vz);
+        const Real new_kinetic = 0.5*density*(velocity.x*velocity.x
+            +velocity.y*velocity.y+velocity.z*velocity.z);
+        const Real kinetic_delta = new_kinetic-old_kinetic;
+        phydro->u(IM1,k,j,i) = density*velocity.x;
+        phydro->u(IM2,k,j,i) = density*velocity.y;
+        phydro->u(IM3,k,j,i) = density*velocity.z;
+        // Change total energy by exactly the kinetic-energy change so the
+        // gas internal energy and the implicit FLD cache remain untouched.
+        phydro->u(IEN,k,j,i) += kinetic_delta;
+        phydro->w(IVX,k,j,i) = velocity.x;
+        phydro->w(IVY,k,j,i) = velocity.y;
+        phydro->w(IVZ,k,j,i) = velocity.z;
+        const Real volume = pcoord->GetCellVolume(k,j,i);
+        const Real corot_kinetic_removed = corot_kinetic*(1.0-factor*factor);
+        ruser_meshblock_data[0](0) += kinetic_delta*volume;
+        ruser_meshblock_data[0](1) += kinetic_delta*volume
+            /std::max(dt, TINY_NUMBER);
+        ruser_meshblock_data[0](2) += corot_kinetic_removed*volume;
+        ruser_meshblock_data[0](3) += corot_kinetic_removed*volume
+            /std::max(dt, TINY_NUMBER);
       }
     }
   }

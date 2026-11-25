@@ -29,6 +29,9 @@ tlim=${WOR182_TLIM:-1.0e-3}
 integrator=${WOR182_INTEGRATOR:-rk4}
 cfl=${WOR182_CFL:-0.1}
 surface_mach_diagnostic_threshold=${WOR182_SURFACE_MACH_DIAGNOSTIC_THRESHOLD:--1.0}
+relaxation_velocity_tau=${WOR182_RELAXATION_VELOCITY_TAU:--1.0}
+relaxation_taper_start=${WOR182_RELAXATION_TAPER_START:--1.0}
+relaxation_taper_end=${WOR182_RELAXATION_TAPER_END:--1.0}
 run=/work/mizutaniks/wor182/q025_corot_tabulated_eos_${SLURM_JOB_ID}
 
 mkdir -p "$run"
@@ -39,9 +42,11 @@ git rev-parse HEAD > "$run/git_commit.txt"
 git status --short > "$run/git_status.txt"
 sha256sum bin/athena "$input" data/eos/rsg_tomida2013_material_eos.tab \
   data/opacity/rsg_gray_opacity_t7.h5 > "$run/provenance.sha256"
-printf 'integrator=%s\nnlim=%s\ntlim=%s\ncfl=%s\nsurface_mach_diagnostic_threshold=%s\n' \
+printf 'integrator=%s\nnlim=%s\ntlim=%s\ncfl=%s\nsurface_mach_diagnostic_threshold=%s\nrelaxation_velocity_tau=%s\nrelaxation_taper_start=%s\nrelaxation_taper_end=%s\n' \
   "$integrator" "$nlim" "$tlim" "$cfl" \
-  "$surface_mach_diagnostic_threshold" > "$run/run_config.txt"
+  "$surface_mach_diagnostic_threshold" "$relaxation_velocity_tau" \
+  "$relaxation_taper_start" "$relaxation_taper_end" \
+  > "$run/run_config.txt"
 
 set +e
 /usr/bin/time -f 'wall_s=%e maxrss_kb=%M' -o "$run/time.log" \
@@ -50,6 +55,9 @@ set +e
   time/integrator="$integrator" time/nlim="$nlim" time/tlim="$tlim" \
   time/cfl_number="$cfl" time/ncycle_out=1 \
   problem/surface_mach_diagnostic_threshold="$surface_mach_diagnostic_threshold" \
+  problem/relaxation_velocity_tau="$relaxation_velocity_tau" \
+  problem/relaxation_taper_start="$relaxation_taper_start" \
+  problem/relaxation_taper_end="$relaxation_taper_end" \
   output1/dcycle=1 output2/dcycle=1000 \
   output3/dt=-1 output4/dt=-1 \
   > "$run/stdout.log" 2> "$run/stderr.log"
