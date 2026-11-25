@@ -340,11 +340,65 @@ matched low-density taper, rather than an under-resolved hydrodynamic mode.
 Longer table-EOS runs should first make that layer radiatively consistent or
 demonstrate that its negligible-mass motion remains dynamically decoupled.
 
+### Taper radiation-balance localization
+
+Experimental branch `exp/wor182-rad-taper-diagnostic-20261126` reconstructs
+the cell-centred diffusion term from the same six lagged NR-FLD face
+coefficients and records both signed and absolute diffusion and thermal
+exchange powers.  The thermal term uses the conserved gas energy, the same
+tabulated-EOS temperature inversion as NR-FLD, and the solver's exact
+floating-point LTE resolvability guard.  This last detail is essential:
+without it, multiplication by `c*sigma_P` turns an adjacent-ULP LTE difference
+into a spurious subsecond exchange time.
+
+After the first normal `dt=1e-5` startup step (XD job 348047), the taper
+contained `3.012e32 g` (`0.1515 Msun`).  Its signed/absolute diffusion powers
+were `+1.793e39/+1.305e40 erg s^-1`, and its signed/absolute material-to-
+radiation exchange powers were `+4.432e38/+5.403e38 erg s^-1`.  The shortest
+local total-energy times were 259 s for diffusion and 12,617 s for exchange.
+The positive integrated signs mean that the taper radiation field initially
+gains energy, but substantial cell-to-cell cancellation is present.
+
+The initial surface-Mach maximum was instead in a cell at ellipsoidal radius
+1.08485 and density `4.40e-11 g cm^-3`.  That cell was locally *losing*
+radiation by diffusion at `4.45e-2 erg cm^-3 s^-1`, with a 3,681 s local
+energy time; its material-radiation exchange was at the LTE roundoff floor.
+Its pressure, gravity, and radiation acceleration magnitudes were 0.891,
+0.590, and 0.0433 cm s^-2, and the full discrete force residual was
+0.445 cm s^-2 (relative residual 0.273).  Thus the fresh outermost layer has
+both an hour-scale radiative divergence and a sizeable mechanical mismatch.
+
+Job 348034 repeated one production-CFL step from the accepted time-10 restart.
+At time 10.1217, the signed/absolute taper diffusion powers were
+`-1.012e38/+1.258e38 erg s^-1`, while the signed/absolute exchange powers were
+`-5.062e38/+7.469e38 erg s^-1`.  The shortest local diffusion and exchange
+times were 400 and 1,382 s, respectively; the hydrodynamic step was 2,677 s
+in physical units, so these stiff terms are appropriately handled by the
+implicit solve.
+
+The time-10 surface-Mach maximum (job 348043) had moved inward to ellipsoidal
+radius 1.07690 and density `1.89e-10 g cm^-3`.  It was contracting at Mach
+0.211, but its local diffusion term was weak heating with a `4.34e7 s` time,
+and its thermal exchange again vanished at the LTE roundoff threshold.  Its
+pressure, gravity, and radiation accelerations were 0.0932, 0.587, and
+0.00287 cm s^-2; the full force residual was 0.442 cm s^-2 (relative 0.556)
+and pointed predominantly inward once centrifugal support is included.
+
+The spatial correlation therefore distinguishes cause from response.  Rapid
+radiative and mechanical adjustment begins in the outermost matched cells,
+while the later Mach maximum is a deeper, mechanically under-supported layer
+reached by the resulting contraction.  Direct local radiation cooling at the
+time-10 Mach maximum is ruled out.  Surface L3 cannot repair this physical
+initial-data mismatch, consistent with its worse and much more expensive A/B
+result.
+
 ## Open acceptance items
 
-1. Quantify the initial FLD luminosity/divergence and thermal time through the
-   atmosphere-matched taper, then construct a radiatively consistent outer
-   profile if the adjustment is significant.
+1. Use a controlled corotation-relative velocity relaxation to let the
+   hour-scale outer radiative transient and force mismatch settle, taper the
+   artificial damping to zero, and require a subsequent undamped interval to
+   remain stable.  A fully steady radiative/HSE outer-profile solve remains
+   the preferred longer-term construction.
 2. Add a focused AMR regression for positivity-constrained FLD ghost
    prolongation and the Newton radiation active set.
 3. Keep relative L2 as the production surface-refinement level unless a new
