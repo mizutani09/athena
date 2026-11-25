@@ -19,6 +19,9 @@ support, LTE exchange, FLD diffusion, the Marshak boundary, and self-gravity
 before WOR-164 introduces a physically justified radiative luminosity.  It
 uses FGMRES and a `1e-5` code-time startup cap through `t=1e-3`; a coarse-grid
 test then grows the timestep normally and reaches `t=1e-2` in 110 cycles.
+At full L3 resolution, doubling beyond `dt=8e-5` exhausted Newton
+backtracking at `dt=1.6e-4`, so the production startup gate conservatively
+holds `dt=1e-5` through `t=1e-2`.
 
 ## Berta 4wz hydrodynamics with FLD
 
