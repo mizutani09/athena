@@ -52,7 +52,7 @@ Real angular_velocity, angular_velocity_code, gamma_gas;
 Real atmosphere_density, atmosphere_pressure, atmosphere_sound_speed_squared;
 Real atmosphere_density_floor, atmosphere_pressure_floor;
 Real atmosphere_reference_radius, surface_polar_radius, atmosphere_monopole_gm;
-Real surface_match_radius_code;
+Real surface_match_equatorial_radius, surface_match_polar_radius;
 Real mean_molecular_weight, core_mass, core_support_radius;
 Real core_mass_code, core_support_radius_code, core_gm_code;
 int quadrature_order;
@@ -576,6 +576,7 @@ Real HistorySurfaceMachDiagnostic(MeshBlock* block, int output) {
       for (int i = block->is; i <= block->ie; ++i) {
         const Real x = block->pcoord->x1v(i);
         const Real radius = std::sqrt(x*x+y*y+z*z);
+        const Real cylindrical_radius = std::hypot(x,y);
         const Real density = block->phydro->u(IDN,k,j,i);
         const Real stellar_density = block->pscalars->s(0,k,j,i);
         if (!(density > 0.0) || stellar_density/density <= 0.5) continue;
@@ -589,10 +590,13 @@ Real HistorySurfaceMachDiagnostic(MeshBlock* block, int output) {
             ? (x*vx+y*vy+z*vz)/radius : 0.0;
         const Real mach = std::abs(radial_velocity)/std::sqrt(sound_speed2);
         const Real volume = block->pcoord->GetCellVolume(k,j,i);
-        if (diagnostic == 0 && radius <= surface_match_radius_code) {
+        const Real match_ellipsoidal_radius = std::sqrt(
+            SQR(cylindrical_radius*length_unit/surface_match_equatorial_radius)
+            +SQR(z*length_unit/surface_match_polar_radius));
+        if (diagnostic == 0 && match_ellipsoidal_radius <= 1.0) {
           total = std::max(total, mach);
         }
-        if (diagnostic == 1 && radius > surface_match_radius_code) {
+        if (diagnostic == 1 && match_ellipsoidal_radius > 1.0) {
           total = std::max(total, mach);
         }
         if (diagnostic == 2 && stellar_density >= surface_density_code) {
@@ -654,8 +658,11 @@ void Mesh::InitUserMeshData(ParameterInput* pin) {
       "problem", "atmosphere_reference_radius_cm");
   surface_polar_radius = pin->GetOrAddReal(
       "problem", "surface_polar_radius_cm", atmosphere_reference_radius);
-  const Real surface_match_radius = pin->GetOrAddReal(
+  surface_match_equatorial_radius = pin->GetOrAddReal(
       "problem", "surface_match_radius_cm", atmosphere_reference_radius);
+  surface_match_polar_radius = pin->GetOrAddReal(
+      "problem", "surface_match_polar_radius_cm",
+      surface_match_equatorial_radius);
   quadrature_order = pin->GetOrAddInteger("problem", "cell_quadrature_order", 2);
   rotate_atmosphere = pin->GetOrAddBoolean(
       "problem", "rotate_atmosphere", false);
@@ -668,7 +675,8 @@ void Mesh::InitUserMeshData(ParameterInput* pin) {
           "rotation and atmosphere parameters must be nonnegative/positive");
   Require(core_mass > 0.0 && core_support_radius > 0.0 && gas_mass > 0.0
           && atmosphere_reference_radius > 0.0 && surface_polar_radius > 0.0
-          && surface_match_radius > 0.0,
+          && surface_match_equatorial_radius > 0.0
+          && surface_match_polar_radius > 0.0,
           "core, gas, and atmosphere reference parameters must be positive");
   Require(quadrature_order >= 1 && quadrature_order <= 3,
           "cell_quadrature_order must be 1, 2, or 3");
@@ -683,7 +691,6 @@ void Mesh::InitUserMeshData(ParameterInput* pin) {
   angular_velocity_code = angular_velocity*time_unit;
   core_mass_code = core_mass/mass_unit;
   core_support_radius_code = core_support_radius/length_unit;
-  surface_match_radius_code = surface_match_radius/length_unit;
   core_gm_code = gravity_code*core_mass_code;
   atmosphere_monopole_gm = 6.67430e-8*(gas_mass+core_mass);
   atmosphere_density_floor = pin->GetReal("hydro", "dfloor")*rho_unit;
