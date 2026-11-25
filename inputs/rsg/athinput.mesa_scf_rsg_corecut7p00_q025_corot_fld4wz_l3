@@ -1,0 +1,218 @@
+<comment>
+problem = q=0.25 RLOF-corotating LTE gas+radiation split with Berta 4wz hydrodynamics
+scope = isolated rotating-star full mixed-frame FLD stability gate before adding companion gravity
+configure = --prob=scf_rsg --coord=cartesian --eos=adiabatic --flux=hllc --nscalars=2 --grav=mg --nghost=4 -nrmgfld -hdf5 -mpi
+
+<job>
+problem_id = mesa_scf_rsg_corecut7p00_q025_corot_fld4wz_l3
+
+<output1>
+file_type = hst
+dcycle = 1
+data_format = %20.12e
+
+<output2>
+file_type = rst
+dcycle = 1000
+
+<output3>
+file_type = tab
+variable = prim
+data_format = %20.12e
+x3_slice = 0.0
+dt = -1
+next_time = 0.0
+
+<output4>
+file_type = tab
+variable = uov
+data_format = %20.12e
+x3_slice = 0.0
+dt = -1
+next_time = 0.0
+
+<time>
+cfl_number = 0.1
+nlim = 0
+tlim = 1.0e-3
+integrator = rk4
+xorder = 4wz
+ncycle_out = 1
+
+<mesh>
+refinement = adaptive
+numlevel = 4
+nx1 = 64
+x1min = -1200.0
+x1max = 1200.0
+ix1_bc = user
+ox1_bc = user
+nx2 = 64
+x2min = -1200.0
+x2max = 1200.0
+ix2_bc = user
+ox2_bc = user
+nx3 = 64
+x3min = -1200.0
+x3max = 1200.0
+ix3_bc = user
+ox3_bc = user
+
+<meshblock>
+nx1 = 16
+nx2 = 16
+nx3 = 16
+
+<refinement1>
+level = 1
+x1min = -600.0
+x1max = 600.0
+x2min = -600.0
+x2max = 600.0
+x3min = -600.0
+x3max = 600.0
+
+<refinement2>
+level = 2
+x1min = -300.0
+x1max = 300.0
+x2min = -300.0
+x2max = 300.0
+x3min = -300.0
+x3max = 300.0
+
+<refinement3>
+level = 3
+x1min = -150.0
+x1max = 150.0
+x2min = -150.0
+x2max = 150.0
+x3min = -150.0
+x3max = 150.0
+
+<loadbalancing>
+balancer = automatic
+interval = 10
+tolerance = 0.5
+
+<hydro>
+gamma = 1.6666666666666667
+mu = 0.6353437771420501
+rho_unit = 1.0e-8
+egas_unit = 1.0e5
+leng_unit = 6.957e10
+dfloor = 1.0e-8
+pfloor = 1.0e-9
+
+<fld>
+is_couple = true
+only_rad = false
+cut_diff = false
+include_radiation_force = true
+radiation_pressure_in_riemann = false
+radiation_force_density_floor_factor = 1.01
+include_mixed_frame_terms = true
+mixed_frame_transport = true
+fixed_flux_limiter = false
+fixed_u_rad = false
+use_opacity_table = true
+opacity_table_file = data/opacity/rsg_gray_opacity_t7.h5
+opacity_table_file_type = hdf5
+opacity_table_axis = trho
+# Only the artificial polytropic taper reaches below the table's 316 K edge.
+# The solver reports every clamped lookup for the acceptance audit.
+opacity_table_domain_policy = clamp
+const_opacity_P = 0.0
+const_opacity_R = 1.0
+
+<nrfld>
+show_defect = false
+diagnostic_verbosity = 0
+linear_solver = fgmres
+coarse_operator = rediscretized
+galerkin_zero_physical_boundaries = true
+fgmres_threshold = 1.0e-4
+fgmres_restart = 20
+fgmres_max_iterations = 200
+fgmres_mg_vcycles = 1
+fgmres_linearity_check = false
+fgmres_compact_basis = true
+fgmres_reuse_basis = true
+fgmres_batched_reductions = true
+mgmode = MGI
+smoother = jacobi
+prolongation = constant
+npresmooth = 2
+npostsmooth = 2
+cache_coefficient_hierarchy = true
+omega = 0.7
+threshold = 0.1
+niteration = 30
+nr_threshold = 1.0e-8
+nr_niteration = 60
+nr_accept_l2_threshold = 5.0e-3
+nr_accept_max_threshold = 2.0e-1
+backward_error_convergence = true
+exact_local_gas_solve = true
+max_update_fraction = 1.0
+jacobian_check = false
+jacobian_check_epsilon = 1.0e-4
+ix1_bc = user
+ox1_bc = user
+ix2_bc = user
+ox2_bc = user
+ix3_bc = user
+ox3_bc = user
+linearMG_ix1_bc = user
+linearMG_ox1_bc = user
+linearMG_ix2_bc = user
+linearMG_ox2_bc = user
+linearMG_ix3_bc = user
+linearMG_ox3_bc = user
+
+<problem>
+scf_profile_file = data/ic/rsg21_mesa_scf_corecut7p00_q025_corot_nr16384_taper_rho3e-9_gamma5_3.csv
+angular_velocity_rad_s = 4.0100850320255668e-8
+frame = inertial
+cell_quadrature_order = 3
+atmosphere_density_g_cm3 = 1.0e-14
+atmosphere_temperature_k = 1.0e4
+atmosphere_mode = isothermal_monopole
+atmosphere_reference_radius_cm = 7.0479108661544016e13
+surface_polar_radius_cm = 6.3573075498874664e13
+surface_match_radius_cm = 6.4517279030778633e13
+surface_match_polar_radius_cm = 5.9356292186235469e13
+surface_refinement_level = 2
+surface_refinement_use_tracer = false
+surface_tracer_lower = 1.0e-6
+surface_tracer_upper = 0.999999
+surface_refinement_density_g_cm3 = 3.0e-9
+rotate_atmosphere = false
+gas_mass_g = 2.8801452052462170e34
+core_mass_g = 1.2962446564904497e34
+core_support_radius_cm = 4.5207406562668779e12
+radiation_external_temperature = 1.0e2
+marshak_alpha = 0.5
+atmosphere_planck_taper_radius_cm = 6.4517279030778633e13
+atmosphere_planck_taper_polar_radius_cm = 5.9356292186235469e13
+atmosphere_planck_taper_width_cm = 3.0e12
+radiation_startup_dt_cap = 1.0e-5
+radiation_startup_dt_end = 1.0e-3
+
+<gravity>
+mgmode = fmg
+threshold = -1.0
+niteration = 0
+ix1_bc = multipole
+ox1_bc = multipole
+ix2_bc = multipole
+ox2_bc = multipole
+ix3_bc = multipole
+ox3_bc = multipole
+mporder = 4
+auto_mporigin = false
+nodipole = true
+mporigin_x1 = 0.0
+mporigin_x2 = 0.0
+mporigin_x3 = 0.0
+fill_ghost = true

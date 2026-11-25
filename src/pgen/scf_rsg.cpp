@@ -66,7 +66,8 @@ int root_logical_level, surface_refinement_level;
 Real surface_tracer_lower, surface_tracer_upper, surface_density_code;
 #if NRMGFLD_ENABLED
 UserOpacityTable* opacity_table = nullptr;
-Real external_radiation_energy_code, planck_taper_radius, planck_taper_width;
+Real external_radiation_energy_code, planck_taper_radius;
+Real planck_taper_polar_radius, planck_taper_width;
 Real marshak_alpha;
 Real radiation_startup_dt_cap, radiation_startup_dt_end;
 #endif
@@ -357,13 +358,21 @@ void Opacity(MeshBlock* block, AthenaArray<Real>& radiation,
         const Real x = block->pcoord->x1v(i)*length_unit;
         const Real y = block->pcoord->x2v(j)*length_unit;
         const Real z = block->pcoord->x3v(k)*length_unit;
-        const Real radius = std::sqrt(x*x+y*y+z*z);
+        const Real cylindrical_radius = std::hypot(x,y);
+        const Real radius = std::hypot(cylindrical_radius,z);
+        const Real ellipsoidal_radius = std::sqrt(
+            SQR(cylindrical_radius/planck_taper_radius)
+            +SQR(z/planck_taper_polar_radius));
+        const Real surface_radius_along_ray = ellipsoidal_radius > 0.0
+            ? radius/ellipsoidal_radius : planck_taper_radius;
+        const Real taper_distance =
+            (ellipsoidal_radius-1.0)*surface_radius_along_ray;
         Real planck_weight = 1.0;
-        if (radius > planck_taper_radius) {
+        if (taper_distance > 0.0) {
           planck_weight = 0.0;
           if (planck_taper_width > 0.0
-              && radius < planck_taper_radius+planck_taper_width) {
-            const Real fraction = (radius-planck_taper_radius)/planck_taper_width;
+              && taper_distance < planck_taper_width) {
+            const Real fraction = taper_distance/planck_taper_width;
             planck_weight = 0.5*(1.0+std::cos(PI*fraction));
           }
         }
@@ -890,7 +899,11 @@ void Mesh::InitUserMeshData(ParameterInput* pin) {
   external_radiation_energy_code = scf_map::kRadiationConstantCgs
       *std::pow(external_temperature, 4)/pressure_unit;
   planck_taper_radius = pin->GetOrAddReal(
-      "problem", "atmosphere_planck_taper_radius_cm", surface_match_radius);
+      "problem", "atmosphere_planck_taper_radius_cm",
+      surface_match_equatorial_radius);
+  planck_taper_polar_radius = pin->GetOrAddReal(
+      "problem", "atmosphere_planck_taper_polar_radius_cm",
+      planck_taper_radius);
   planck_taper_width = pin->GetOrAddReal(
       "problem", "atmosphere_planck_taper_width_cm", 0.0);
   marshak_alpha = pin->GetOrAddReal("problem", "marshak_alpha", 0.5);
@@ -898,7 +911,8 @@ void Mesh::InitUserMeshData(ParameterInput* pin) {
       "problem", "radiation_startup_dt_cap", -1.0);
   radiation_startup_dt_end = pin->GetOrAddReal(
       "problem", "radiation_startup_dt_end", 0.0);
-  Require(planck_taper_radius > 0.0 && planck_taper_width >= 0.0
+  Require(planck_taper_radius > 0.0 && planck_taper_polar_radius > 0.0
+              && planck_taper_width >= 0.0
               && marshak_alpha > 0.0 && radiation_startup_dt_end >= 0.0,
           "invalid Planck taper or Marshak boundary parameter");
   if (radiation_startup_dt_cap > 0.0) {
