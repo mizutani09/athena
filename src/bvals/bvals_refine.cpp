@@ -922,6 +922,30 @@ void BoundaryValues::ProlongateFLDGhostCells(const NeighborBlock& nb,
     int nu = var_cc->GetDim4() - 1;
     pmr->ProlongateCellCenteredValues(*coarse_cc, *var_cc, 0, nu,
                                       si, ei, sj, ej, sk, ek);
+
+    // Multidimensional piecewise-linear prolongation limits each directional
+    // slope separately.  The sum of otherwise monotone slopes can still
+    // undershoot a positive scalar at a coarse/fine corner.  Radiation energy
+    // is positive and these interpolated values are ghost cells (interface
+    // conservation is enforced by flux correction), so apply the admissible
+    // lower bound before the fourth-order FLD reconstruction consumes its
+    // three-cell ghost stencil.
+    const int fsi = (si - pmb->cis)*2 + pmb->is;
+    const int fei = (ei - pmb->cis)*2 + pmb->is + 1;
+    const int fsj = pmb->block_size.nx2 > 1
+        ? (sj - pmb->cjs)*2 + pmb->js : pmb->js;
+    const int fej = pmb->block_size.nx2 > 1
+        ? (ej - pmb->cjs)*2 + pmb->js + 1 : pmb->js;
+    const int fsk = pmb->block_size.nx3 > 1
+        ? (sk - pmb->cks)*2 + pmb->ks : pmb->ks;
+    const int fek = pmb->block_size.nx3 > 1
+        ? (ek - pmb->cks)*2 + pmb->ks + 1 : pmb->ks;
+    for (int k=fsk; k<=fek; ++k)
+      for (int j=fsj; j<=fej; ++j)
+        for (int i=fsi; i<=fei; ++i)
+          if (std::isfinite((*var_cc)(k,j,i))
+              && (*var_cc)(k,j,i) < TINY_NUMBER)
+            (*var_cc)(k,j,i) = TINY_NUMBER;
   // }
 
   if (NRMGFLD_ENABLED) {
