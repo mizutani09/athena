@@ -28,6 +28,7 @@ input=inputs/rsg/athinput.mesa_scf_rsg_corecut7p00_q025_corot_fld4wz_l3
 profile=data/ic/rsg21_mesa_scf_corecut7p00_q025_corot_nr16384_taper_rho3e-9_gamma5_3.csv
 nlim=${WOR182_NLIM:-110}
 tlim=${WOR182_TLIM:-1.0e-2}
+integrator=${WOR182_INTEGRATOR:-ssprk5_4}
 case ${CORE_LEVEL:-l4} in
   l3)
     level_arguments=()
@@ -54,14 +55,15 @@ test -s "$profile"
 git rev-parse HEAD > "$run/git_commit.txt"
 git status --short > "$run/git_status.txt"
 sha256sum bin/athena "$input" "$profile" > "$run/provenance.sha256"
-printf 'core_level=%s\nnlim=%s\ntlim=%s\n' \
-  "${CORE_LEVEL:-l4}" "$nlim" "$tlim" > "$run/run_config.txt"
+printf 'core_level=%s\nintegrator=%s\nnlim=%s\ntlim=%s\n' \
+  "${CORE_LEVEL:-l4}" "$integrator" "$nlim" "$tlim" > "$run/run_config.txt"
 
 set +e
 /usr/bin/time -f 'wall_s=%e maxrss_kb=%M' -o "$run/time.log" \
   srun -n"$SLURM_NTASKS" --ntasks-per-node=56 \
   bin/athena -i "$input" -d "$run" \
-  time/nlim="$nlim" time/tlim="$tlim" time/ncycle_out=1 \
+  time/integrator="$integrator" time/nlim="$nlim" time/tlim="$tlim" \
+  time/ncycle_out=1 \
   output1/dcycle=1 output2/dcycle=1000 output3/dt=-1 output4/dt=-1 \
   "${level_arguments[@]}" \
   > "$run/stdout.log" 2> "$run/stderr.log"
