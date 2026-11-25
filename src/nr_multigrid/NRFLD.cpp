@@ -633,8 +633,29 @@ void NRFLD::LoadVariables() {
     for (int j = jl; j <= ju; ++j) {
       for (int i = il; i <= iu; ++i) {
         u_gas_(k,j,i) = pfld->u_gas(k,j,i);
-        u_(k,j,i) = pfld->u_rad(k,j,i);
-        uold_(k,j,i) = pfld->u_rad(k,j,i);
+        const Real radiation_energy = pfld->u_rad(k,j,i);
+        const bool active = i >= pmy_block_->is && i <= pmy_block_->ie
+                         && j >= pmy_block_->js && j <= pmy_block_->je
+                         && k >= pmy_block_->ks && k <= pmy_block_->ke;
+        if (!std::isfinite(radiation_energy)
+            || (active && radiation_energy < 0.0)) {
+          std::stringstream msg;
+          msg << "### FATAL ERROR in NR-FLD radiation energy" << std::endl
+              << "Er at (k,j,i)=(" << k << "," << j << "," << i << ") is "
+              << radiation_energy
+              << "; active radiation energy must be finite and non-negative,"
+                 " and ghost radiation energy must be finite.\n";
+          ATHENA_ERROR(msg);
+        }
+        // Multidimensional AMR interpolation may undershoot in a finite
+        // ghost value even when every owning active cell is admissible.  The
+        // Newton diffusion stencil consumes only this private copy, so bound
+        // the interpolation artifact here without altering the conserved
+        // FLD state.  Active-cell negativity remains a hard failure above.
+        const Real bounded_radiation_energy =
+            std::max(radiation_energy, TINY_NUMBER);
+        u_(k,j,i) = bounded_radiation_energy;
+        uold_(k,j,i) = bounded_radiation_energy;
         last_delta_rad_(0,k,j,i) = 0.0;
         last_delta_rad_(1,k,j,i) = 0.0;
 
