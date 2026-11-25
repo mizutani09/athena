@@ -78,3 +78,20 @@ Relative to time zero, mapped mass changed by 3.47e-12, mapped angular momentum
 by 1.75e-7, and the volume-integrated gas-plus-radiation energy by -1.26e-5.
 The latter is a state change rather than a closed-system conservation residual,
 because this setup includes radiation transport and boundary fluxes.
+
+## CFL ramp
+
+After the constrained solve passed at CFL=0.1, two short restart gates tested
+the requested production CFL without imposing a timestep cap:
+
+- job 347734, CFL=0.2, time 1.0--1.3: five Newton solves, all converged in
+  five iterations; maximum FGMRES count 23 and final nonlinear maximum
+  residual 5.96e-9;
+- job 347736, CFL=0.3, time 1.3--1.6: three Newton solves, all converged in
+  five iterations; maximum FGMRES count 22 and final nonlinear maximum
+  residual 6.26e-9.
+
+At time 1.6 the interior radial Mach maximum was 2.58e-3 and the mass above
+radial Mach 0.3 was 1.79e28 g.  The exterior pressure remained exactly at
+1.00e-4 dyn cm^-2.  Thus the earlier failure was not an intrinsic CFL=0.3
+limit; it was the inconsistent floor and constrained-residual treatment.
