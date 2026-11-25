@@ -84,7 +84,12 @@ void EquationOfState::ConservedToPrimitive(
     Coordinates *pco, int il,int iu, int jl,int ju, int kl,int ku) {
   for (int k=kl; k<=ku; ++k) {
     for (int j=jl; j<=ju; ++j) {
+#if EOS_TABLE_ENABLED
+      bool invalid_temperature_floor = false;
+#pragma omp simd reduction(||:invalid_temperature_floor)
+#else
 #pragma omp simd
+#endif
       for (int i=il; i<=iu; ++i) {
         Real& u_d  = cons(IDN,k,j,i);
         Real& u_m1 = cons(IM1,k,j,i);
@@ -143,19 +148,27 @@ void EquationOfState::ConservedToPrimitive(
           if (!std::isfinite(temperature) || temperature < temperature_floor_) {
             const Real floor_egas = EgasFromRhoT(u_d, temperature_floor_);
             if (!std::isfinite(floor_egas) || floor_egas <= 0.0) {
-              std::stringstream msg;
-              msg << "### FATAL ERROR in EquationOfState::ConservedToPrimitive"
-                  << std::endl
-                  << "hydro/tfloor lies outside the EOS table at rho=" << u_d
-                  << ", Tfloor=" << temperature_floor_ << std::endl;
-              ATHENA_ERROR(msg);
+              // Throwing from an OpenMP SIMD region is forbidden.  Record the
+              // invalid table lookup and report it after this vector row.
+              invalid_temperature_floor = true;
+            } else {
+              u_e = floor_egas+ke;
+              w_p = PresFromRhoEg(u_d, floor_egas);
             }
-            u_e = floor_egas+ke;
-            w_p = PresFromRhoEg(u_d, floor_egas);
           }
         }
 #endif
       }
+#if EOS_TABLE_ENABLED
+      if (invalid_temperature_floor) {
+        std::stringstream msg;
+        msg << "### FATAL ERROR in EquationOfState::ConservedToPrimitive"
+            << std::endl
+            << "hydro/tfloor lies outside the EOS table for at least one cell"
+            << ", Tfloor=" << temperature_floor_ << std::endl;
+        ATHENA_ERROR(msg);
+      }
+#endif
     }
   }
 
