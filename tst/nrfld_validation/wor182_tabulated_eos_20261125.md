@@ -148,16 +148,107 @@ Job 347897 then completed from t=0.1 to 0.3:
 - no negative-radiation, relaxed-Newton, or table-domain warning
 - the production CFL=0.3 gate is therefore passed through t=0.3
 
-Job 347898 continues this accepted CFL=0.3 state to t=3.0 as the next
-medium-duration gate.
+### CFL=0.3 medium gate and lower-bound active set
+
+Job 347898 completed the continuation from t=0.3 to t=3.0:
+
+- 3 M-test-a nodes, 168 MPI ranks, 24 timesteps, 129.70 s wall time
+- 23 solves converged normally; one solve at cycle 121 was accepted at the
+  relaxed nonlinear tolerance
+- relative drift over the recorded continuation was mass `-2.94e-9`, angular
+  momentum `+4.59e-7`, and gas+radiation energy `-1.19e-5`
+- at t=3 the interior and rho-at/above-surface radial Mach maxima were
+  `3.17e-3` and `2.94e-3`
+- the low-density surface/taper maximum was 660, but only `8.97e28 g` of
+  stellar material had radial Mach above 0.1; the table-margin gate below
+  subsequently identified this as a thermodynamic-domain artifact
+
+The verbosity-2 reproduction showed why the single solve stalled.  Once a
+trial clipped a radiation cell to its lower bound, later unconstrained linear
+directions could still point below the bound even with a positive local
+reduced right-hand side because of strong neighbour coupling.  Commit
+`48ca4a67f` therefore retains cells that were actually clipped as active
+constraints for the remainder of that timestep, rolls the mask back with a
+rejected line-search trial, and releases it at the next timestep.
+
+The first reproduction with that change, job 347902, exposed finite negative
+values only in the first AMR ghost layer of the following Newton stencil.
+These were interpolation undershoots, not negative owning active cells.
+Commit `949b5a5cf` bounds those values only when they are copied into the
+private Newton stencil; non-finite ghosts and every negative active value
+remain fatal.
+
+Job 347912 repeated the exact two-step interval containing the old relaxed
+solve:
+
+- completed normally in 42.83 s
+- both solves converged normally in 7 Newton iterations
+- final max residuals were `9.44e-9` and `4.14e-9`
+- no relaxed acceptance, fatal error, or warning occurred
+
+Commit `1a17ccea2` appends four history diagnostics giving the minimum distance
+in dex to the lower and upper density and gas-energy coordinates of the EOS
+table.  A negative value unambiguously signals table extrapolation.
+
+### EOS-domain and outer-Mach diagnosis
+
+Job 347913 advanced the old t=3 restart by one short `dt=0.01` step with the
+new history fields.  It showed density lower/upper margins of `+6.00/+2.19`
+dex and a gas-energy upper margin of `+1.083` dex, but the lower gas-energy
+margin was `-0.265` dex.  The explicit hydro conversion restored its configured
+`tfloor=1000 K` before this step, reducing the low-density surface Mach maximum
+from 660 to 0.078.  Together these results identify the old huge Mach as an
+EOS-extrapolated sound-speed artifact after the implicit update, not a
+resolved mass ejection.
+
+Commit `aed3eed02` makes the implicit FLD gas lower bound honor the same
+general-EOS temperature floor as the explicit hydro conversion, including
+when density equals the configured density floor.  It also bounds the private
+Newton starting iterate before any table temperature or derivative is
+evaluated.
+
+Job 347915 repeated the same t=3 to 3.01 step with this fix:
+
+- completed normally in 29.72 s; Newton converged in 6 iterations with final
+  max residual `1.04e-9`
+- EOS margins (lower/upper) were `+6.00/+2.19` dex in density and
+  `+0.181/+1.083` dex in gas energy, so every active cell was in-table
+- interior, resolved-surface-density, and low-density-surface radial Mach
+  maxima were `0.00318`, `0.00295`, and `0.0533`
+- no stellar mass had radial Mach above 0.1, and there was no relaxed solve,
+  fatal error, or warning
+
+Job 347916 continued the corrected restart from t=3.01 to t=10 at CFL=0.3:
+
+- 3 M-test-a nodes, 168 MPI ranks, 60 normal Newton solves, 381.71 s wall
+  time; there was no relaxed solve, fatal error, or warning
+- maximum Newton iteration count was 7 and maximum final nonlinear residual
+  was `6.31e-9`; 411 FGMRES solves used at most 22 iterations
+- relative drift was mass `-9.13e-10`, angular momentum `+1.35e-6`, and
+  gas+radiation energy `-6.26e-5`
+- the minimum EOS margins remained positive: density lower/upper
+  `+6.00/+2.190` dex and gas-energy lower/upper `+0.181/+1.083` dex
+- final interior and rho-at/above-surface Mach maxima were `0.00696` and
+  `0.00645`
+- the low-density taper maximum increased monotonically to `0.209`; the
+  stellar-tracer mass above Mach 0.1 was `1.86e29 g` (`9.4e-5 Msun`), while
+  no stellar material exceeded Mach 0.3
+
+Job 347920 read the t=10 restart without advancing it and localized the maximum
+to symmetric L3 cells at ellipsoidal radius 1.077, just outside the initial
+surface.  The maximum cell had `rho=1.89e-10 g cm^-3`, almost entirely stellar
+tracer, `vr=-0.918 km s^-1`, `cs=4.40 km s^-1`, and Mach 0.209.  The negative
+radial velocity and multi-quadrant symmetry identify a subsonic contraction of
+the low-density taper rather than asymmetric ejection.  Job 347923 therefore
+continues to t=30; persistent growth will trigger an A/B that extends L4
+surface refinement into this density band.
 
 ## Open acceptance items
 
-1. Complete the t=3 CFL=0.3 gate, then extend to a material fraction of a
-   dynamical time with periodic restarts.
+1. Complete the t=30 taper-contraction gate, then either extend to a material
+   fraction of a dynamical time or run an L3/L4 outer-density refinement A/B.
 2. Compare L3/L4 and ideal/table force, Mach, Newton, and FGMRES histories.
-3. Add explicit runtime diagnostics for distance to EOS table boundaries.
-4. Replace cell-average closure with a derived, table-thermodynamic profile if
+3. Replace cell-average closure with a derived, table-thermodynamic profile if
    the first A/B shows appreciable thermal projection noise.
-5. Add a focused AMR regression for positivity-constrained FLD ghost
+4. Add a focused AMR regression for positivity-constrained FLD ghost
    prolongation and the Newton radiation active set.
