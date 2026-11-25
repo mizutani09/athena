@@ -121,6 +121,9 @@ int main(int argc, char** argv) {
     const std::size_t mass = Column(h, "mapped_stellar_mass_g");
     const std::size_t angular_momentum = Column(h, "mapped_Jz_g_cm2_s");
     const std::size_t hydro_energy = Column(h, "mapped_E_erg");
+    const std::size_t radiation_energy = OptionalColumn(h, "radiation_energy_erg");
+    const std::size_t gas_internal_energy = OptionalColumn(
+        h, "gas_internal_energy_erg");
     const std::size_t self_energy = Column(h, "self_potential_energy_erg");
     const std::size_t core_energy = Column(h, "core_potential_energy_erg");
     const std::size_t radial_ke = Column(h, "stellar_radial_ke_erg");
@@ -179,12 +182,20 @@ int main(int argc, char** argv) {
     const std::vector<double>& initial = h.rows.front();
     const double initial_mechanical = initial[hydro_energy]+initial[self_energy]
         +initial[core_energy];
+    const bool has_radiation_energy = radiation_energy < h.names.size();
+    const bool has_gas_internal_energy = gas_internal_energy < h.names.size();
+    const double initial_radiation = has_radiation_energy
+        ? initial[radiation_energy] : 0.0;
+    const double initial_total_with_radiation = initial_mechanical+initial_radiation;
     const double initial_mean_radius = initial[r_mass]/initial[mass];
     const double initial_rms_radius = std::sqrt(initial[r2_mass]/initial[mass]);
     std::ofstream csv(argv[2]);
     if (!csv) throw std::runtime_error("cannot create CSV output");
     csv << "time_code,time_days,time_over_tdyn,mass_relative_drift,J_relative_drift,"
-           "mechanical_energy_relative_drift,radial_mach_rms,radial_mach_max,"
+           "mechanical_energy_relative_drift,"
+           "total_energy_with_radiation_relative_drift,radiation_energy_erg,"
+           "gas_internal_energy_erg,radiation_to_gas_internal_energy,"
+           "radial_mach_rms,radial_mach_max,"
            "radial_ke_over_abs_W,nonradial_perturbation_ke_over_abs_W,"
            "mean_radius_cm,rms_radius_cm,virial_relative_residual,"
            "outside_initial_surface_mass_fraction,mean_ellipsoidal_radius,"
@@ -207,6 +218,7 @@ int main(int argc, char** argv) {
     double maximum_mass_drift = 0.0;
     double maximum_j_drift = 0.0;
     double maximum_energy_drift = 0.0;
+    double maximum_total_with_radiation_drift = 0.0;
     double maximum_mach_rms = 0.0;
     double maximum_mach = 0.0;
     double maximum_mach_interior = 0.0;
@@ -231,6 +243,11 @@ int main(int argc, char** argv) {
       const double j_drift = initial[angular_momentum] != 0.0
           ? Relative(row[angular_momentum], initial[angular_momentum]) : 0.0;
       const double energy_drift = Relative(mechanical, initial_mechanical);
+      const double radiation = has_radiation_energy ? row[radiation_energy] : 0.0;
+      const double gas_internal = has_gas_internal_energy
+          ? row[gas_internal_energy] : 0.0;
+      const double total_with_radiation_drift = Relative(
+          mechanical+radiation, initial_total_with_radiation);
       const double mach_rms = std::sqrt(std::max(0.0, row[mach2_mass]/row[mass]));
       const double gravity_virial = row[self_virial]+row[core_virial];
       const double virial = (2.0*row[kinetic]+row[pressure_virial]+gravity_virial)
@@ -278,6 +295,9 @@ int main(int argc, char** argv) {
       csv << row[time] << ',' << row[time]*2.19999657e4/kDay << ','
           << row[time]*2.19999657e4/dynamical_time << ','
           << mass_drift << ',' << j_drift << ',' << energy_drift << ','
+          << total_with_radiation_drift << ',' << radiation << ','
+          << gas_internal << ','
+          << (gas_internal != 0.0 ? radiation/gas_internal : 0.0) << ','
           << mach_rms << ',' << row[mach_max] << ',' << radial_ke_fraction << ','
           << nonradial_ke_fraction << ',' << mean_radius << ','
           << rms_radius << ',' << virial << ','
@@ -299,6 +319,9 @@ int main(int argc, char** argv) {
       maximum_mass_drift = std::max(maximum_mass_drift, std::abs(mass_drift));
       maximum_j_drift = std::max(maximum_j_drift, std::abs(j_drift));
       maximum_energy_drift = std::max(maximum_energy_drift, std::abs(energy_drift));
+      maximum_total_with_radiation_drift = std::max(
+          maximum_total_with_radiation_drift,
+          std::abs(total_with_radiation_drift));
       maximum_mach_rms = std::max(maximum_mach_rms, mach_rms);
       maximum_mach = std::max(maximum_mach, row[mach_max]);
       maximum_mach_interior = std::max(
@@ -336,6 +359,10 @@ int main(int argc, char** argv) {
     const std::vector<double>& final = h.rows.back();
     const double final_mechanical = final[hydro_energy]+final[self_energy]
         +final[core_energy];
+    const double final_radiation = has_radiation_energy
+        ? final[radiation_energy] : 0.0;
+    const double final_gas_internal = has_gas_internal_energy
+        ? final[gas_internal_energy] : 0.0;
     const double final_gravity_virial = final[self_virial]+final[core_virial];
     const double final_binding = std::abs(final_gravity_virial);
     const double final_mean_radius = final[r_mass]/final[mass];
@@ -370,6 +397,15 @@ int main(int argc, char** argv) {
          << ",\n"
          << "  \"final_mechanical_energy_relative_drift\": "
          << Relative(final_mechanical, initial_mechanical) << ",\n"
+         << "  \"final_total_energy_with_radiation_relative_drift\": "
+         << Relative(final_mechanical+final_radiation,
+                     initial_total_with_radiation) << ",\n"
+         << "  \"initial_radiation_energy_erg\": " << initial_radiation << ",\n"
+         << "  \"final_radiation_energy_erg\": " << final_radiation << ",\n"
+         << "  \"final_gas_internal_energy_erg\": " << final_gas_internal << ",\n"
+         << "  \"final_radiation_to_gas_internal_energy\": "
+         << (final_gas_internal != 0.0
+             ? final_radiation/final_gas_internal : 0.0) << ",\n"
          << "  \"final_radial_mach_rms\": "
          << std::sqrt(std::max(0.0, final[mach2_mass]/final[mass])) << ",\n"
          << "  \"final_radial_mach_max\": " << final[mach_max] << ",\n"
@@ -421,6 +457,8 @@ int main(int argc, char** argv) {
          << "  \"maximum_abs_J_relative_drift\": " << maximum_j_drift << ",\n"
          << "  \"maximum_abs_mechanical_energy_relative_drift\": "
          << maximum_energy_drift << ",\n"
+         << "  \"maximum_abs_total_energy_with_radiation_relative_drift\": "
+         << maximum_total_with_radiation_drift << ",\n"
          << "  \"maximum_radial_mach_rms\": " << maximum_mach_rms << ",\n"
          << "  \"maximum_radial_mach\": " << maximum_mach << ",\n"
          << "  \"maximum_radial_mach_interior\": "
