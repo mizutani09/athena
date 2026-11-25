@@ -803,6 +803,19 @@ NewtonSolveResult NewtonRaphsonDriver::Solve_general(int stage, Real dt) {
       result.committed = true;
       break;
     }
+    // The trial merit function above uses the coefficients frozen at the
+    // base of this Newton iteration.  Refresh both coefficients and residual
+    // at the accepted state before comparing it with the next iteration.
+    // Otherwise the next line search compares a trial evaluated with newly
+    // assembled nonlinear coefficients against an old norm evaluated with
+    // stale coefficients; in that case even a zero-length trial need not
+    // approach the recorded base norm.
+    if (!fixed_mode) {
+      nrtlist_coeff_->DoTaskListOneStage(stage_);
+      CalculateDefectNorms(norms);
+      def = norms.l2_norm;
+      defmax = norms.max_norm;
+    }
     if (fixed_mode) {
       if (n >= niter_) {
         result.reason = NewtonSolveReason::fixed_iterations_complete;
