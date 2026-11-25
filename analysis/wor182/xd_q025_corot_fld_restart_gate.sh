@@ -34,6 +34,7 @@ integrator=${WOR182_INTEGRATOR:-ssprk5_4}
 restart_dcycle=${WOR182_RESTART_DCYCLE:-100}
 diagnostic_verbosity=${WOR182_DIAGNOSTIC_VERBOSITY:-0}
 radiation_force_floor_factor=${WOR182_RADIATION_FORCE_DENSITY_FLOOR_FACTOR:-}
+slice_output_dt=${WOR182_SLICE_OUTPUT_DT:--1}
 cfl_tag=${cfl//./p}
 run=/work/mizutaniks/wor182/q025_corot_fld_l4_cfl${cfl_tag}_t${target_time}_${SLURM_JOB_ID}
 
@@ -61,9 +62,9 @@ if [[ -n "$radiation_force_floor_factor" ]]; then
 fi
 git rev-parse HEAD > "$run/git_commit.txt"
 git status --short > "$run/git_status.txt"
-printf 'restart=%s\ninput=%s\nsurface_mach_threshold=%s\nradiation_force_density_floor_factor=%s\ntarget_time=%s\ncfl=%s\nnlim=%s\nintegrator=%s\nrestart_dcycle=%s\ndiagnostic_verbosity=%s\n' \
+printf 'restart=%s\ninput=%s\nsurface_mach_threshold=%s\nradiation_force_density_floor_factor=%s\nslice_output_dt=%s\ntarget_time=%s\ncfl=%s\nnlim=%s\nintegrator=%s\nrestart_dcycle=%s\ndiagnostic_verbosity=%s\n' \
   "$restart" "$input" "$surface_mach_threshold" \
-  "$radiation_force_floor_factor" \
+  "$radiation_force_floor_factor" "$slice_output_dt" \
   "$target_time" "$cfl" "$nlim" "$integrator" \
   "$restart_dcycle" "$diagnostic_verbosity" > "$run/run_config.txt"
 sha256sum bin/athena "$restart" > "$run/provenance.sha256"
@@ -80,7 +81,7 @@ set +e
   fld/include_mixed_frame_terms=true fld/mixed_frame_transport=true \
   nrfld/linear_solver=fgmres nrfld/diagnostic_verbosity="$diagnostic_verbosity" \
   output1/dcycle=1 output2/dcycle="$restart_dcycle" \
-  output3/dt=-1 output4/dt=-1 \
+  output3/dt="$slice_output_dt" output4/dt="$slice_output_dt" \
   "${mach_arguments[@]}" \
   "${force_mask_arguments[@]}" \
   > "$run/stdout.log" 2> "$run/stderr.log"
