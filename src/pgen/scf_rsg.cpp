@@ -40,6 +40,9 @@
 #if !NON_BAROTROPIC_EOS
 #error "scf_rsg requires an energy equation (--eos=adiabatic)"
 #endif
+#if GENERAL_EOS && !EOS_TABLE_ENABLED
+#error "scf_rsg general-EOS support currently requires --eos=general/eos_table"
+#endif
 #if NSCALARS < 2
 #error "scf_rsg requires --nscalars=2 (stellar and radiative-layer tracers)"
 #endif
@@ -53,6 +56,7 @@ scf_map::AxisymmetricProfile profile;
 Real rho_unit, pressure_unit, length_unit, velocity_unit;
 Real time_unit, mass_unit, gravity_code, four_pi_gravity_code;
 Real angular_velocity, angular_velocity_code, gamma_gas;
+Real temperature_unit, lte_temperature_min, lte_temperature_max;
 Real atmosphere_density, atmosphere_pressure, atmosphere_sound_speed_squared;
 Real atmosphere_density_floor, atmosphere_pressure_floor;
 Real atmosphere_reference_radius, surface_polar_radius, atmosphere_monopole_gm;
@@ -95,6 +99,129 @@ void Require(bool condition, const std::string& message) {
     ATHENA_ERROR(error);
   }
 }
+
+Real AdiabaticSoundSpeedSquared(MeshBlock* block, Real density,
+                                Real pressure) {
+#if GENERAL_EOS
+  return block->peos->AsqFromRhoP(density, pressure);
+#else
+  (void) block;
+  return gamma_gas*pressure/density;
+#endif
+}
+
+#if NRMGFLD_ENABLED
+Real GasTemperatureCgs(MeshBlock* block, Real density_code,
+                       Real pressure_code) {
+#if GENERAL_EOS
+  const Real gas_energy = block->peos->EgasFromRhoP(
+      density_code, pressure_code);
+  const Real temperature = block->peos->TempFromRhoEg(
+      density_code, gas_energy)*temperature_unit;
+  Require(std::isfinite(gas_energy) && gas_energy > 0.0
+              && std::isfinite(temperature) && temperature > 0.0,
+          "tabulated EOS returned an invalid gas temperature");
+  return temperature;
+#else
+  (void) block;
+  return pressure_code*pressure_unit*mean_molecular_weight
+      /(density_code*rho_unit*scf_map::kGasConstantCgs);
+#endif
+}
+
+struct LteSplit {
+  Real temperature;
+  Real gas_energy;
+  Real gas_pressure;
+  Real radiation_energy;
+};
+
+LteSplit SplitTotalPressureLte(MeshBlock* block, Real density_cgs,
+                               Real total_pressure_cgs) {
+  const Real density = density_cgs/rho_unit;
+  const Real total_pressure = total_pressure_cgs/pressure_unit;
+#if GENERAL_EOS
+  auto evaluate = [block, density](Real temperature_cgs, LteSplit* state) {
+    const Real gas_energy = block->peos->EgasFromRhoT(
+        density, temperature_cgs/temperature_unit);
+    if (!std::isfinite(gas_energy) || gas_energy <= 0.0) return false;
+    const Real gas_pressure = block->peos->PresFromRhoEg(density, gas_energy);
+    const Real radiation_energy = scf_map::kRadiationConstantCgs
+        *std::pow(temperature_cgs, 4)/pressure_unit;
+    if (!std::isfinite(gas_pressure) || gas_pressure <= 0.0
+        || !std::isfinite(radiation_energy)) return false;
+    state->temperature = temperature_cgs;
+    state->gas_energy = gas_energy;
+    state->gas_pressure = gas_pressure;
+    state->radiation_energy = radiation_energy;
+    return true;
+  };
+
+  LteSplit upper_state{};
+  Real lower_temperature = 0.0;
+  Real lower_residual = 0.0;
+  bool have_lower = false;
+  bool bracketed = false;
+  const int samples = 160;
+  const Real log_min = std::log(lte_temperature_min);
+  const Real log_max = std::log(lte_temperature_max);
+  for (int sample = 0; sample <= samples; ++sample) {
+    const Real fraction = static_cast<Real>(sample)/samples;
+    const Real temperature = std::exp(log_min+fraction*(log_max-log_min));
+    LteSplit candidate{};
+    if (!evaluate(temperature, &candidate)) continue;
+    const Real residual = candidate.gas_pressure
+        +candidate.radiation_energy/3.0-total_pressure;
+    if (residual == 0.0) return candidate;
+    if (have_lower && lower_residual < 0.0 && residual > 0.0) {
+      upper_state = candidate;
+      bracketed = true;
+      break;
+    }
+    lower_temperature = temperature;
+    lower_residual = residual;
+    have_lower = true;
+  }
+  if (!bracketed) {
+    std::stringstream message;
+    message << std::scientific << std::setprecision(16)
+            << "unable to split tabulated-EOS LTE pressure: rho_cgs="
+            << density_cgs << " Ptot_cgs=" << total_pressure_cgs
+            << " Tmin=" << lte_temperature_min
+            << " Tmax=" << lte_temperature_max;
+    Require(false, message.str());
+  }
+  Real upper_temperature = upper_state.temperature;
+  for (int iteration = 0; iteration < 80; ++iteration) {
+    const Real middle_temperature = std::sqrt(
+        lower_temperature*upper_temperature);
+    LteSplit middle_state{};
+    Require(evaluate(middle_temperature, &middle_state),
+            "tabulated EOS became invalid inside an LTE pressure bracket");
+    const Real residual = middle_state.gas_pressure
+        +middle_state.radiation_energy/3.0-total_pressure;
+    if (residual < 0.0) {
+      lower_temperature = middle_temperature;
+    } else {
+      upper_temperature = middle_temperature;
+      upper_state = middle_state;
+    }
+  }
+  return upper_state;
+#else
+  const Real temperature = scf_map::GasRadiationTemperature(
+      density_cgs, total_pressure_cgs, mean_molecular_weight);
+  const Real radiation_energy_cgs = scf_map::kRadiationConstantCgs
+      *std::pow(temperature, 4);
+  const Real gas_pressure_cgs = std::max(
+      total_pressure_cgs-radiation_energy_cgs/3.0,
+      atmosphere_pressure_floor);
+  return {temperature, gas_pressure_cgs/(gamma_gas-1.0)/pressure_unit,
+          gas_pressure_cgs/pressure_unit,
+          radiation_energy_cgs/pressure_unit};
+#endif
+}
+#endif
 
 Real MonopolePotentialCode(Real x, Real y, Real z) {
   const Real radius = std::sqrt(x*x+y*y+z*z);
@@ -350,8 +477,8 @@ void Opacity(MeshBlock* block, AthenaArray<Real>& radiation,
             primitive(IDN,k,j,i)*rho_unit, atmosphere_density_floor);
         const Real gas_pressure = std::max(
             primitive(IPR,k,j,i)*pressure_unit, atmosphere_pressure_floor);
-        const Real temperature = gas_pressure*mean_molecular_weight
-            /(density*scf_map::kGasConstantCgs);
+        const Real temperature = GasTemperatureCgs(
+            block, density/rho_unit, gas_pressure/pressure_unit);
         const Real planck = opacity_table->GetOpacity(
             RadFLD::SIGMA_P, density, temperature);
         const Real rosseland = opacity_table->GetOpacity(
@@ -711,7 +838,8 @@ Real HistoryRelaxationDiagnostic(MeshBlock* block, int output) {
         const Real dvz = vz;
         const Real perturbation_speed2 = dvx*dvx+dvy*dvy+dvz*dvz;
         const Real pressure = block->phydro->w(IPR,k,j,i);
-        const Real sound_speed2 = gamma_gas*pressure/density;
+        const Real sound_speed2 = AdiabaticSoundSpeedSquared(
+            block, density, pressure);
         const Real stellar_fraction = std::min(
             static_cast<Real>(1.0), std::max(static_cast<Real>(0.0),
             stellar_density/density));
@@ -791,7 +919,8 @@ Real HistorySurfaceMachDiagnostic(MeshBlock* block, int output) {
         const Real stellar_density = block->pscalars->s(0,k,j,i);
         if (!(density > 0.0) || stellar_density/density <= 0.5) continue;
         const Real pressure = block->phydro->w(IPR,k,j,i);
-        const Real sound_speed2 = gamma_gas*pressure/density;
+        const Real sound_speed2 = AdiabaticSoundSpeedSquared(
+            block, density, pressure);
         if (!(sound_speed2 > 0.0)) continue;
         const Real vx = block->phydro->u(IM1,k,j,i)/density;
         const Real vy = block->phydro->u(IM2,k,j,i)/density;
@@ -894,6 +1023,15 @@ void Mesh::InitUserMeshData(ParameterInput* pin) {
   length_unit = pin->GetReal("hydro", "leng_unit");
   gamma_gas = pin->GetReal("hydro", "gamma");
   mean_molecular_weight = pin->GetReal("hydro", "mu");
+#if GENERAL_EOS
+  temperature_unit = pin->GetReal("hydro", "T_unit");
+#else
+  temperature_unit = 1.0;
+#endif
+  lte_temperature_min = pin->GetOrAddReal(
+      "problem", "lte_temperature_min_k", 1.0e2);
+  lte_temperature_max = pin->GetOrAddReal(
+      "problem", "lte_temperature_max_k", 1.0e9);
   angular_velocity = pin->GetReal("problem", "angular_velocity_rad_s");
   atmosphere_density = pin->GetReal("problem", "atmosphere_density_g_cm3");
   const Real atmosphere_temperature =
@@ -920,8 +1058,12 @@ void Mesh::InitUserMeshData(ParameterInput* pin) {
       "problem", "rotate_atmosphere", false);
   Require(rho_unit > 0.0 && pressure_unit > 0.0 && length_unit > 0.0,
           "hydro units must be positive");
-  Require(gamma_gas > 1.0 && mean_molecular_weight > 0.0,
-          "gamma and mean molecular weight must be valid");
+  Require(gamma_gas > 1.0 && mean_molecular_weight > 0.0
+              && temperature_unit > 0.0,
+          "gamma, mean molecular weight, and temperature unit must be valid");
+  Require(lte_temperature_min > 0.0
+              && lte_temperature_max > lte_temperature_min,
+          "LTE temperature bracket must be positive and ordered");
   Require(angular_velocity >= 0.0 && atmosphere_density > 0.0
           && atmosphere_temperature > 0.0,
           "rotation and atmosphere parameters must be nonnegative/positive");
@@ -932,8 +1074,11 @@ void Mesh::InitUserMeshData(ParameterInput* pin) {
           "core, gas, and atmosphere reference parameters must be positive");
   Require(quadrature_order >= 1 && quadrature_order <= 3,
           "cell_quadrature_order must be 1, 2, or 3");
-  atmosphere_pressure = atmosphere_density*scf_map::kGasConstantCgs
-      *atmosphere_temperature/mean_molecular_weight;
+  const Real ideal_atmosphere_pressure = atmosphere_density
+      *scf_map::kGasConstantCgs*atmosphere_temperature
+      /mean_molecular_weight;
+  atmosphere_pressure = pin->GetOrAddReal(
+      "problem", "atmosphere_pressure_dyn_cm2", ideal_atmosphere_pressure);
   atmosphere_sound_speed_squared = atmosphere_pressure/atmosphere_density;
   velocity_unit = std::sqrt(pressure_unit/rho_unit);
   time_unit = length_unit/velocity_unit;
@@ -1302,23 +1447,34 @@ void MeshBlock::ProblemGenerator(ParameterInput*) {
         phydro->u(IM2,k,j,i) = mapped.momentum_y/momentum_scale;
         phydro->u(IM3,k,j,i) = mapped.momentum_z/momentum_scale;
 #if NRMGFLD_ENABLED
-        const Real cell_temperature = mapped.stellar_density > 0.0
-            ? scf_map::GasRadiationTemperature(
-                mapped.density, mapped.pressure, mean_molecular_weight)
-            : atmosphere_pressure*mean_molecular_weight
-                /(atmosphere_density*scf_map::kGasConstantCgs);
-        const Real cell_radiation_energy = mapped.stellar_density > 0.0
-            ? scf_map::kRadiationConstantCgs*std::pow(cell_temperature, 4)
-            : external_radiation_energy_code*energy_scale;
-        const Real cell_gas_pressure = mapped.stellar_density > 0.0
-            ? std::max(mapped.pressure-cell_radiation_energy/3.0,
-                       atmosphere_pressure_floor)
-            : mapped.pressure;
-        const Real cell_gas_internal = cell_gas_pressure/(gamma_gas-1.0);
+        Real cell_temperature = 0.0;
+        Real cell_gas_internal_code = 0.0;
+        Real cell_radiation_energy_code = external_radiation_energy_code;
+        if (mapped.stellar_density > 0.0) {
+          const LteSplit split = SplitTotalPressureLte(
+              this, mapped.density, mapped.pressure);
+          cell_temperature = split.temperature;
+          cell_gas_internal_code = split.gas_energy;
+          cell_radiation_energy_code = split.radiation_energy;
+        } else {
+          const Real density_code = mapped.density/density_scale;
+          const Real pressure_code = mapped.pressure/energy_scale;
+#if GENERAL_EOS
+          cell_gas_internal_code = peos->EgasFromRhoP(
+              density_code, pressure_code);
+#else
+          cell_gas_internal_code = pressure_code/(gamma_gas-1.0);
+#endif
+          cell_temperature = GasTemperatureCgs(
+              this, density_code, pressure_code);
+        }
+        Require(std::isfinite(cell_gas_internal_code)
+                    && cell_gas_internal_code > 0.0,
+                "EOS returned invalid initial gas energy");
         phydro->u(IEN,k,j,i) =
-            (cell_gas_internal+mapped.kinetic_energy)/energy_scale;
-        prfld->u_gas(k,j,i) = cell_gas_internal/energy_scale;
-        prfld->u_rad(k,j,i) = cell_radiation_energy/energy_scale;
+            cell_gas_internal_code+mapped.kinetic_energy/energy_scale;
+        prfld->u_gas(k,j,i) = cell_gas_internal_code;
+        prfld->u_rad(k,j,i) = cell_radiation_energy_code;
 #else
         phydro->u(IEN,k,j,i) = mapped.total_energy/energy_scale;
 #endif
@@ -1329,7 +1485,11 @@ void MeshBlock::ProblemGenerator(ParameterInput*) {
         pscalars->s(1,k,j,i) = mapped.radiative_density/density_scale;
 #endif
         const Real rho = std::max(mapped.density, TINY_NUMBER);
+#if NRMGFLD_ENABLED
+        user_out_var(0,k,j,i) = cell_temperature;
+#else
         user_out_var(0,k,j,i) = mapped.density_temperature/rho;
+#endif
         user_out_var(1,k,j,i) = mapped.stellar_density/rho;
         user_out_var(2,k,j,i) = mapped.radiative_density/rho;
         const Real x = pcoord->x1v(i)*length_unit;
@@ -1341,13 +1501,8 @@ void MeshBlock::ProblemGenerator(ParameterInput*) {
         user_out_var(5,k,j,i) = center.gas_potential
             /(velocity_unit*velocity_unit);
 #if NRMGFLD_ENABLED
-        const Real density_cgs = mapped.density;
-        const Real gas_pressure_cgs = (gamma_gas-1.0)
-            *prfld->u_gas(k,j,i)*energy_scale;
         user_out_var(13,k,j,i) = prfld->u_rad(k,j,i)*energy_scale;
-        user_out_var(14,k,j,i) = gas_pressure_cgs*mean_molecular_weight
-            /(std::max(density_cgs, TINY_NUMBER)
-              *scf_map::kGasConstantCgs);
+        user_out_var(14,k,j,i) = cell_temperature;
         user_out_var(15,k,j,i) = std::pow(
             std::max(user_out_var(13,k,j,i), TINY_NUMBER)
               /scf_map::kRadiationConstantCgs, 0.25);
