@@ -62,6 +62,7 @@ sha256sum bin/athena "$restart" > "$run/provenance.sha256"
   problem/radiation_startup_dt_end=1.0e-3 \
   fld/mixed_frame_transport="$mixed_frame_transport" \
   nrfld/max_update_fraction=1.0 \
+  nrfld/nr_backtrack_max=10 nrfld/nr_min_step_scale=1.0e-3 \
   nrfld/diagnostic_verbosity="$nr_diagnostic_verbosity" \
   output1/dcycle=1 output2/dcycle=1000 \
   output3/dt=-1 output4/dt=-1 \
