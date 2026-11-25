@@ -224,6 +224,19 @@ atmosphere_planck_taper_width_cm = 3.0e12
 radiation_startup_dt_cap = 1.0e-5
 radiation_startup_dt_end = 1.0e-3
 
+# Optional prescribed companion.  The isolated-star baseline keeps this
+# disabled; analysis/wor183/xd_q025_binary_smoke.sh overrides these values.
+companion_enabled = false
+companion_mass_ratio = 0.25
+companion_separation_cm = 1.2939385270211592e14
+companion_softening_cm = 3.0e12
+companion_start_time = 0.0
+companion_ramp_time = 0.0
+companion_angular_velocity_rad_s = 4.0100850320255668e-8
+companion_phase = 0.0
+companion_indirect_acceleration = true
+companion_gravity_cfl = 0.3
+
 <gravity>
 mgmode = fmg
 threshold = -1.0
