@@ -31,6 +31,9 @@
 #include "../multigrid/multigrid.hpp"
 #include "../parameter_input.hpp"
 #include "../scalars/scalars.hpp"
+#if EOS_TABLE_ENABLED
+#include "../utils/interp_table.hpp"
+#endif
 #include "scf_axisymmetric_profile.hpp"
 #include "scf_core_softening.hpp"
 
@@ -62,6 +65,9 @@ Real atmosphere_density_floor, atmosphere_pressure_floor;
 Real atmosphere_reference_radius, surface_polar_radius, atmosphere_monopole_gm;
 Real surface_match_equatorial_radius, surface_match_polar_radius;
 Real surface_mach_diagnostic_threshold;
+#if EOS_TABLE_ENABLED
+Real eos_dens_pow;
+#endif
 Real mean_molecular_weight, core_mass, core_support_radius;
 Real core_mass_code, core_support_radius_code, core_gm_code;
 int quadrature_order;
@@ -89,6 +95,20 @@ constexpr int kSurfaceMachHistoryStart =
 constexpr int kSurfaceMachHistoryCount = 8;
 constexpr int kBaseHistoryCount =
     kSurfaceMachHistoryStart+kSurfaceMachHistoryCount;
+#if NRMGFLD_ENABLED
+constexpr int kRadiationHistoryCount = 5;
+#else
+constexpr int kRadiationHistoryCount = 0;
+#endif
+#if EOS_TABLE_ENABLED
+constexpr int kEosTableHistoryStart =
+    kBaseHistoryCount+kRadiationHistoryCount;
+constexpr int kEosTableHistoryCount = 4;
+#else
+constexpr int kEosTableHistoryCount = 0;
+#endif
+constexpr int kTotalHistoryCount =
+    kBaseHistoryCount+kRadiationHistoryCount+kEosTableHistoryCount;
 
 int SurfaceRefinementCondition(MeshBlock* block);
 
@@ -999,6 +1019,45 @@ Real HistorySurfaceMachDiagnostic(MeshBlock* block, int output) {
   return total;
 }
 
+#if EOS_TABLE_ENABLED
+Real HistoryEosTableMargin(MeshBlock* block, int output) {
+  const int diagnostic = output-kEosTableHistoryStart;
+  EosTable *table = block->peos->ptable;
+  Require(table != nullptr && table->nVar > 3,
+          "EOS table margin diagnostic requires a temperature field");
+  Real minimum_margin = std::numeric_limits<Real>::infinity();
+  for (int k = block->ks; k <= block->ke; ++k) {
+    for (int j = block->js; j <= block->je; ++j) {
+      for (int i = block->is; i <= block->ie; ++i) {
+        const Real density = block->phydro->u(IDN,k,j,i);
+        const Real mx = block->phydro->u(IM1,k,j,i);
+        const Real my = block->phydro->u(IM2,k,j,i);
+        const Real mz = block->phydro->u(IM3,k,j,i);
+        const Real kinetic = 0.5*(mx*mx+my*my+mz*mz)
+            /std::max(density, TINY_NUMBER);
+        const Real gas_energy = block->phydro->u(IEN,k,j,i)-kinetic;
+        if (!(density > 0.0) || !(gas_energy > 0.0)
+            || !std::isfinite(density) || !std::isfinite(gas_energy)) {
+          return -std::numeric_limits<Real>::infinity();
+        }
+        const Real x1 = std::log10(density*table->rhoUnit);
+        // The temperature field uses the gas-energy table coordinate.  Its
+        // EosRatios entry is index 3 in the standard Athena EOS table layout.
+        const Real x2 = std::log10(gas_energy*table->EosRatios(3)*table->eUnit)
+            +eos_dens_pow*x1;
+        Real margin = 0.0;
+        if (diagnostic == 0) margin = x1-table->logRhoMin;
+        if (diagnostic == 1) margin = table->logRhoMax-x1;
+        if (diagnostic == 2) margin = x2-table->logEgasMin;
+        if (diagnostic == 3) margin = table->logEgasMax-x2;
+        minimum_margin = std::min(minimum_margin, margin);
+      }
+    }
+  }
+  return minimum_margin;
+}
+#endif
+
 }  // namespace
 
 void Mesh::InitUserMeshData(ParameterInput* pin) {
@@ -1013,6 +1072,9 @@ void Mesh::InitUserMeshData(ParameterInput* pin) {
   pressure_unit = pin->GetReal("hydro", "egas_unit");
   length_unit = pin->GetReal("hydro", "leng_unit");
   gamma_gas = pin->GetReal("hydro", "gamma");
+#if EOS_TABLE_ENABLED
+  eos_dens_pow = pin->GetOrAddReal("hydro", "dens_pow", -1.0);
+#endif
   mean_molecular_weight = pin->GetReal("hydro", "mu");
 #if GENERAL_EOS
   temperature_unit = pin->GetReal("hydro", "T_unit");
@@ -1197,11 +1259,7 @@ void Mesh::InitUserMeshData(ParameterInput* pin) {
   Require(pin->GetOrAddBoolean("gravity", "fill_ghost", true),
           "gravity/fill_ghost must be true for force diagnostics");
 
-#if NRMGFLD_ENABLED
-  AllocateUserHistoryOutput(kBaseHistoryCount+5);
-#else
-  AllocateUserHistoryOutput(kBaseHistoryCount);
-#endif
+  AllocateUserHistoryOutput(kTotalHistoryCount);
   EnrollUserHistoryOutput(0, HistoryMass, "mapped_mass_g");
   EnrollUserHistoryOutput(1, HistoryStellarMass, "mapped_stellar_mass_g");
   EnrollUserHistoryOutput(2, HistoryAngularMomentum, "mapped_Jz_g_cm2_s");
@@ -1311,6 +1369,20 @@ void Mesh::InitUserMeshData(ParameterInput* pin) {
   EnrollUserHistoryOutput(kBaseHistoryCount+4, HistoryGravityDiagnostic,
                           "full_force_relative_max",
                           UserHistoryOperation::max);
+#endif
+#if EOS_TABLE_ENABLED
+  EnrollUserHistoryOutput(kEosTableHistoryStart, HistoryEosTableMargin,
+                          "eos_logrho_lower_margin_dex",
+                          UserHistoryOperation::min);
+  EnrollUserHistoryOutput(kEosTableHistoryStart+1, HistoryEosTableMargin,
+                          "eos_logrho_upper_margin_dex",
+                          UserHistoryOperation::min);
+  EnrollUserHistoryOutput(kEosTableHistoryStart+2, HistoryEosTableMargin,
+                          "eos_logu_lower_margin_dex",
+                          UserHistoryOperation::min);
+  EnrollUserHistoryOutput(kEosTableHistoryStart+3, HistoryEosTableMargin,
+                          "eos_logu_upper_margin_dex",
+                          UserHistoryOperation::min);
 #endif
   if (Globals::my_rank == 0) {
     std::cout << std::scientific << std::setprecision(8)
