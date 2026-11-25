@@ -285,6 +285,22 @@ hydrodynamic reconstruction order.
   `+3.18e-7`, and gas+radiation energy `-8.18e-6`.  Every EOS margin remained
   positive.
 
+The dedicated Zhang et al. moving-radiation-pulse regression used the separate
+ideal-EOS build and `analysis/wor182/xd_upwind_pulse_regression.sh`:
+
+- At the reference CFL=0.03, static job 347964 completed 4482 steps and moving
+  job 347965 completed 4571 steps to code time 100.  Every nonlinear solve
+  converged normally with no backtracking.
+- The expected Galilean displacement was `v0*t=5.2942344`; the measured
+  radiation-excess centroid displacement was `5.2938828`, a relative speed
+  error of `6.64e-5`.
+- After translating the static final profile and fitting only its amplitude,
+  the moving/static relative shape errors were L1 `4.40e-4` and L2 `3.62e-4`.
+  The excess-profile widths were `33.44264` (static) and `33.44331` (moving).
+
+The monotone stencil therefore retains the established Galilean pulse
+transport while removing the non-positive centered update at a sharp front.
+
 This resolves the nonlinear failure but not the outer-layer stability gate.
 At `t=30`, the interior and rho-at/above-surface Mach maxima were only
 `0.00785` and `0.00760`, while the low-density taper maximum had grown to
@@ -294,12 +310,10 @@ than extend this configuration blindly.
 
 ## Open acceptance items
 
-1. Add a focused moving-radiation-pulse regression for the upwind implicit
-   mixed drift, including transport speed and numerical diffusion.
-2. Run an L3/L4 outer-density refinement A/B before any longer table-EOS
+1. Run an L3/L4 outer-density refinement A/B before any longer table-EOS
    stability extension; the t=30 taper is already nearly sonic.
-3. Compare L3/L4 and ideal/table force, Mach, Newton, and FGMRES histories.
-4. Replace cell-average closure with a derived, table-thermodynamic profile if
+2. Compare L3/L4 and ideal/table force, Mach, Newton, and FGMRES histories.
+3. Replace cell-average closure with a derived, table-thermodynamic profile if
    the first A/B shows appreciable thermal projection noise.
-5. Add a focused AMR regression for positivity-constrained FLD ghost
+4. Add a focused AMR regression for positivity-constrained FLD ghost
    prolongation and the Newton radiation active set.
