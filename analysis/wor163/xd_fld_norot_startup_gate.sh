@@ -16,6 +16,7 @@ export MODULEPATH=/work/opt/intel/modulefiles:/work/opt/local_oneapi/modulefiles
 module purge >/dev/null 2>&1
 module load tbb/2022.1 compiler-rt/2025.1.1 umf/0.10.0
 module load PrgEnv-oneapi/2025.1
+module load hdf5-parallel/1.14.5
 export SLURM_MPI_TYPE=pmi2
 export LD_LIBRARY_PATH=/lib64:${LD_LIBRARY_PATH:-}
 export OMP_NUM_THREADS=1
