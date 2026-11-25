@@ -35,6 +35,7 @@
 #include "../utils/interp_table.hpp"
 #endif
 #include "scf_axisymmetric_profile.hpp"
+#include "scf_companion.hpp"
 #include "scf_core_softening.hpp"
 
 #if MAGNETIC_FIELDS_ENABLED
@@ -70,6 +71,11 @@ Real eos_dens_pow;
 #endif
 Real mean_molecular_weight, core_mass, core_support_radius;
 Real core_mass_code, core_support_radius_code, core_gm_code;
+bool companion_enabled, companion_indirect_acceleration;
+Real companion_mass_ratio, companion_separation_code;
+Real companion_softening_code, companion_start_time, companion_ramp_time;
+Real companion_omega_code, companion_phase, companion_gm_code;
+Real companion_gravity_cfl;
 int quadrature_order;
 bool rotate_atmosphere, isothermal_atmosphere, surface_refinement_use_tracer;
 scf_map::AtmosphereModel atmosphere_model;
@@ -109,6 +115,9 @@ constexpr int kEosTableHistoryCount = 0;
 #endif
 constexpr int kTotalHistoryCount =
     kBaseHistoryCount+kRadiationHistoryCount+kEosTableHistoryCount;
+constexpr int kCompanionHistoryStart = kTotalHistoryCount;
+constexpr int kCompanionHistoryCount = 6;
+constexpr int kFinalHistoryCount = kTotalHistoryCount+kCompanionHistoryCount;
 
 int SurfaceRefinementCondition(MeshBlock* block);
 
@@ -281,7 +290,50 @@ void AtmosphereGravityMask(AthenaArray<Real>& source,
   }
 }
 
-void CoreGravitySource(MeshBlock* block, const Real, const Real dt,
+Real CompanionRamp(Real time) {
+  if (!companion_enabled) return 0.0;
+  return scf_companion::Ramp(time, companion_start_time,
+                             companion_ramp_time);
+}
+
+void CompanionPosition(Real time, Real* x, Real* y, Real* z) {
+  scf_companion::CircularPosition(time, companion_start_time,
+      companion_separation_code, companion_omega_code, companion_phase,
+      x, y, z);
+}
+
+Real CompanionPotentialCode(Real x, Real y, Real z, Real time) {
+  const Real ramp = CompanionRamp(time);
+  if (ramp <= 0.0) return 0.0;
+  Real companion_x = 0.0, companion_y = 0.0, companion_z = 0.0;
+  CompanionPosition(time, &companion_x, &companion_y, &companion_z);
+  return ramp*scf_companion::Potential(x, y, z, companion_x, companion_y,
+      companion_z, companion_gm_code, companion_softening_code,
+      companion_indirect_acceleration);
+}
+
+Real ExternalPotentialCode(Real x, Real y, Real z, Real time) {
+  return CorePotentialCode(x,y,z)+CompanionPotentialCode(x,y,z,time);
+}
+
+Real CompanionTimeStep(MeshBlock* block) {
+  const Real ramp = CompanionRamp(block->pmy_mesh->time);
+  if (ramp <= 0.0) return std::numeric_limits<Real>::max();
+  const Real dx = std::min(block->pcoord->dx1f(block->is),
+      std::min(block->pcoord->dx2f(block->js),
+               block->pcoord->dx3f(block->ks)));
+  const Real direct_acceleration = companion_gm_code
+      /SQR(companion_softening_code);
+  const Real indirect_acceleration = companion_gm_code
+      /SQR(companion_separation_code);
+  const Real acceleration_dt = std::sqrt(
+      dx/(ramp*(direct_acceleration+indirect_acceleration)));
+  const Real orbit_speed = companion_omega_code*companion_separation_code;
+  const Real orbit_dt = dx/std::max(orbit_speed, TINY_NUMBER);
+  return companion_gravity_cfl*std::min(acceleration_dt, orbit_dt);
+}
+
+void CoreGravitySource(MeshBlock* block, const Real time, const Real dt,
                        const AthenaArray<Real>& primitive,
                        const AthenaArray<Real>&, const AthenaArray<Real>&,
                        AthenaArray<Real>& conserved, AthenaArray<Real>&) {
@@ -291,13 +343,19 @@ void CoreGravitySource(MeshBlock* block, const Real, const Real dt,
         const Real x = block->pcoord->x1v(i);
         const Real y = block->pcoord->x2v(j);
         const Real z = block->pcoord->x3v(k);
-        const Real phi = CorePotentialCode(x,y,z);
-        const Real phi1_l = CorePotentialCode(block->pcoord->x1v(i-1),y,z);
-        const Real phi1_r = CorePotentialCode(block->pcoord->x1v(i+1),y,z);
-        const Real phi2_l = CorePotentialCode(x,block->pcoord->x2v(j-1),z);
-        const Real phi2_r = CorePotentialCode(x,block->pcoord->x2v(j+1),z);
-        const Real phi3_l = CorePotentialCode(x,y,block->pcoord->x3v(k-1));
-        const Real phi3_r = CorePotentialCode(x,y,block->pcoord->x3v(k+1));
+        const Real phi = ExternalPotentialCode(x,y,z,time);
+        const Real phi1_l = ExternalPotentialCode(
+            block->pcoord->x1v(i-1),y,z,time);
+        const Real phi1_r = ExternalPotentialCode(
+            block->pcoord->x1v(i+1),y,z,time);
+        const Real phi2_l = ExternalPotentialCode(
+            x,block->pcoord->x2v(j-1),z,time);
+        const Real phi2_r = ExternalPotentialCode(
+            x,block->pcoord->x2v(j+1),z,time);
+        const Real phi3_l = ExternalPotentialCode(
+            x,y,block->pcoord->x3v(k-1),time);
+        const Real phi3_r = ExternalPotentialCode(
+            x,y,block->pcoord->x3v(k+1),time);
         const Real ax = -(phi1_r-phi1_l)
             /(block->pcoord->x1v(i+1)-block->pcoord->x1v(i-1));
         const Real ay = -(phi2_r-phi2_l)
@@ -312,9 +370,9 @@ void CoreGravitySource(MeshBlock* block, const Real, const Real dt,
         conserved(IM2,k,j,i) += dpy;
         conserved(IM3,k,j,i) += dpz;
         // Use the same face-mass-flux work discretization as Athena++
-        // self-gravity.  For this static potential it makes the exchange
-        // between gas energy and integral(rho*Phi_core) conservative apart
-        // from boundary and AMR reflux errors.
+        // self-gravity.  It is conservative for the static core potential.
+        // The prescribed moving companion can exchange energy with the gas;
+        // companion_power_erg_s records that external work.
         const Real dphi1_l = -(phi-phi1_l);
         const Real dphi1_r = -(phi1_r-phi);
         conserved(IEN,k,j,i) += 0.5*dt/block->pcoord->dx1v(i)
@@ -1019,6 +1077,59 @@ Real HistorySurfaceMachDiagnostic(MeshBlock* block, int output) {
   return total;
 }
 
+Real HistoryCompanion(MeshBlock* block, int output) {
+  const int diagnostic = output-kCompanionHistoryStart;
+  const Real time = block->pmy_mesh->time;
+  Real companion_x = 0.0, companion_y = 0.0, companion_z = 0.0;
+  CompanionPosition(time, &companion_x, &companion_y, &companion_z);
+  if (diagnostic == 0) return companion_x*length_unit;
+  if (diagnostic == 1) return companion_y*length_unit;
+  if (diagnostic == 2) return CompanionRamp(time);
+  if (diagnostic == 3) return companion_separation_code*length_unit;
+  if (!companion_enabled || CompanionRamp(time) <= 0.0) return 0.0;
+
+  Real total = 0.0;
+  const Real ramp = CompanionRamp(time);
+  for (int k = block->ks; k <= block->ke; ++k) {
+    for (int j = block->js; j <= block->je; ++j) {
+      for (int i = block->is; i <= block->ie; ++i) {
+        const Real stellar_density = block->pscalars->s(0,k,j,i);
+        if (!(stellar_density > 0.0)) continue;
+        const Real x = block->pcoord->x1v(i);
+        const Real y = block->pcoord->x2v(j);
+        const Real z = block->pcoord->x3v(k);
+        Real ax = 0.0, ay = 0.0, az = 0.0;
+        scf_companion::Acceleration(x, y, z, companion_x, companion_y,
+            companion_z, companion_gm_code, companion_softening_code,
+            companion_indirect_acceleration, &ax, &ay, &az);
+        ax *= ramp;
+        ay *= ramp;
+        az *= ramp;
+        if (diagnostic == 4) {
+          const Real acceleration = std::sqrt(ax*ax+ay*ay+az*az)
+              *length_unit/(time_unit*time_unit);
+          total = std::max(total, acceleration);
+        }
+        if (diagnostic == 5) {
+          const Real density = block->phydro->u(IDN,k,j,i);
+          const Real vx = block->phydro->u(IM1,k,j,i)
+              /std::max(density, TINY_NUMBER);
+          const Real vy = block->phydro->u(IM2,k,j,i)
+              /std::max(density, TINY_NUMBER);
+          const Real vz = block->phydro->u(IM3,k,j,i)
+              /std::max(density, TINY_NUMBER);
+          total += stellar_density*(vx*ax+vy*ay+vz*az)
+              *block->pcoord->GetCellVolume(k,j,i);
+        }
+      }
+    }
+  }
+  if (diagnostic == 5) {
+    return total*mass_unit*velocity_unit*velocity_unit/time_unit;
+  }
+  return total;
+}
+
 #if EOS_TABLE_ENABLED
 Real HistoryEosTableMargin(MeshBlock* block, int output) {
   const int diagnostic = output-kEosTableHistoryStart;
@@ -1142,6 +1253,35 @@ void Mesh::InitUserMeshData(ParameterInput* pin) {
   core_mass_code = core_mass/mass_unit;
   core_support_radius_code = core_support_radius/length_unit;
   core_gm_code = gravity_code*core_mass_code;
+  companion_enabled = pin->GetOrAddBoolean(
+      "problem", "companion_enabled", false);
+  companion_indirect_acceleration = pin->GetOrAddBoolean(
+      "problem", "companion_indirect_acceleration", true);
+  companion_mass_ratio = pin->GetOrAddReal(
+      "problem", "companion_mass_ratio", 0.25);
+  companion_separation_code = pin->GetOrAddReal(
+      "problem", "companion_separation_cm",
+      2.0*atmosphere_reference_radius)/length_unit;
+  companion_softening_code = pin->GetOrAddReal(
+      "problem", "companion_softening_cm", core_support_radius)/length_unit;
+  companion_start_time = pin->GetOrAddReal(
+      "problem", "companion_start_time", 0.0);
+  companion_ramp_time = pin->GetOrAddReal(
+      "problem", "companion_ramp_time", 0.0);
+  companion_phase = pin->GetOrAddReal(
+      "problem", "companion_phase", 0.0);
+  companion_gravity_cfl = pin->GetOrAddReal(
+      "problem", "companion_gravity_cfl", 0.3);
+  const Real companion_omega = pin->GetOrAddReal(
+      "problem", "companion_angular_velocity_rad_s", angular_velocity);
+  companion_omega_code = companion_omega*time_unit;
+  companion_gm_code = gravity_code
+      *(gas_mass+core_mass)*companion_mass_ratio/mass_unit;
+  Require(companion_mass_ratio > 0.0 && companion_separation_code > 0.0
+              && companion_softening_code > 0.0
+              && companion_ramp_time >= 0.0 && companion_omega >= 0.0
+              && companion_gravity_cfl > 0.0,
+          "invalid prescribed-companion parameters");
   atmosphere_monopole_gm = 6.67430e-8*(gas_mass+core_mass);
   atmosphere_density_floor = pin->GetReal("hydro", "dfloor")*rho_unit;
   atmosphere_pressure_floor = pin->GetReal("hydro", "pfloor")*pressure_unit;
@@ -1201,6 +1341,7 @@ void Mesh::InitUserMeshData(ParameterInput* pin) {
   SetGravitationalConstant(gravity_code);
   EnrollUserMGGravitySourceMaskFunction(AtmosphereGravityMask);
   EnrollUserExplicitSourceFunction(CoreGravitySource);
+  if (companion_enabled) EnrollUserTimeStepFunction(CompanionTimeStep);
   surface_refinement_level = pin->GetOrAddInteger(
       "problem", "surface_refinement_level", 3);
   surface_tracer_lower = pin->GetOrAddReal(
@@ -1259,7 +1400,7 @@ void Mesh::InitUserMeshData(ParameterInput* pin) {
   Require(pin->GetOrAddBoolean("gravity", "fill_ghost", true),
           "gravity/fill_ghost must be true for force diagnostics");
 
-  AllocateUserHistoryOutput(kTotalHistoryCount);
+  AllocateUserHistoryOutput(kFinalHistoryCount);
   EnrollUserHistoryOutput(0, HistoryMass, "mapped_mass_g");
   EnrollUserHistoryOutput(1, HistoryStellarMass, "mapped_stellar_mass_g");
   EnrollUserHistoryOutput(2, HistoryAngularMomentum, "mapped_Jz_g_cm2_s");
@@ -1384,6 +1525,19 @@ void Mesh::InitUserMeshData(ParameterInput* pin) {
                           "eos_logu_upper_margin_dex",
                           UserHistoryOperation::min);
 #endif
+  EnrollUserHistoryOutput(kCompanionHistoryStart, HistoryCompanion,
+                          "companion_x_cm", UserHistoryOperation::max);
+  EnrollUserHistoryOutput(kCompanionHistoryStart+1, HistoryCompanion,
+                          "companion_y_cm", UserHistoryOperation::max);
+  EnrollUserHistoryOutput(kCompanionHistoryStart+2, HistoryCompanion,
+                          "companion_ramp", UserHistoryOperation::max);
+  EnrollUserHistoryOutput(kCompanionHistoryStart+3, HistoryCompanion,
+                          "companion_separation_cm", UserHistoryOperation::max);
+  EnrollUserHistoryOutput(kCompanionHistoryStart+4, HistoryCompanion,
+                          "companion_tidal_accel_max_cm_s2",
+                          UserHistoryOperation::max);
+  EnrollUserHistoryOutput(kCompanionHistoryStart+5, HistoryCompanion,
+                          "companion_power_erg_s");
   if (Globals::my_rank == 0) {
     std::cout << std::scientific << std::setprecision(8)
               << "scf_rsg profile=" << filename
@@ -1401,7 +1555,17 @@ void Mesh::InitUserMeshData(ParameterInput* pin) {
               << surface_refinement_use_tracer
               << " surface_refinement_density_g_cm3=" << surface_density
               << " G_code=" << gravity_code
-              << " frame=inertial\n";
+              << " frame=inertial"
+              << " companion_enabled=" << companion_enabled
+              << " companion_mass_ratio=" << companion_mass_ratio
+              << " companion_separation_cm="
+              << companion_separation_code*length_unit
+              << " companion_softening_cm="
+              << companion_softening_code*length_unit
+              << " companion_omega_rad_s="
+              << companion_omega_code/time_unit
+              << " companion_indirect_acceleration="
+              << companion_indirect_acceleration << "\n";
   }
 }
 
