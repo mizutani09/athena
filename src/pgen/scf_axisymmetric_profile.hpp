@@ -35,6 +35,7 @@ struct Conserved {
   double momentum_z;
   double total_energy;
   double pressure;
+  double stellar_volume_fraction;
   double stellar_density;
   double atmosphere_density;
   double radiative_density;
@@ -367,6 +368,7 @@ inline Conserved Sample(const AxisymmetricProfile& profile,
   result.kinetic_energy = 0.5*density*(vx*vx+vy*vy);
   result.angular_momentum_z = x*result.momentum_y-y*result.momentum_x;
   result.pressure = pressure;
+  result.stellar_volume_fraction = stellar ? 1.0 : 0.0;
   result.stellar_density = stellar ? density : 0.0;
   result.atmosphere_density = stellar ? 0.0 : density;
   result.radiative_density = stellar
@@ -438,6 +440,8 @@ inline Conserved CellAverage(const AxisymmetricProfile& profile,
         average.momentum_z += weight*point.momentum_z;
         average.total_energy += weight*point.total_energy;
         average.pressure += weight*point.pressure;
+        average.stellar_volume_fraction +=
+            weight*point.stellar_volume_fraction;
         average.stellar_density += weight*point.stellar_density;
         average.atmosphere_density += weight*point.atmosphere_density;
         average.radiative_density += weight*point.radiative_density;

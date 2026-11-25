@@ -71,6 +71,7 @@ Real external_radiation_energy_code, planck_taper_radius;
 Real planck_taper_polar_radius, planck_taper_width;
 Real marshak_alpha;
 Real radiation_startup_dt_cap, radiation_startup_dt_end;
+bool pointwise_fld_cell_average;
 #endif
 constexpr int kWenozHistoryStart = 29;
 // WOR-177's compact softened core needs an L8/L9 resolution comparison on the
@@ -978,6 +979,8 @@ void Mesh::InitUserMeshData(ParameterInput* pin) {
           "radiation_external_temperature must be nonnegative");
   external_radiation_energy_code = scf_map::kRadiationConstantCgs
       *std::pow(external_temperature, 4)/pressure_unit;
+  pointwise_fld_cell_average = pin->GetOrAddBoolean(
+      "problem", "pointwise_fld_cell_average", true);
   planck_taper_radius = pin->GetOrAddReal(
       "problem", "atmosphere_planck_taper_radius_cm",
       surface_match_equatorial_radius);
@@ -1302,19 +1305,39 @@ void MeshBlock::ProblemGenerator(ParameterInput*) {
         phydro->u(IM2,k,j,i) = mapped.momentum_y/momentum_scale;
         phydro->u(IM3,k,j,i) = mapped.momentum_z/momentum_scale;
 #if NRMGFLD_ENABLED
-        const Real cell_temperature = mapped.stellar_density > 0.0
-            ? scf_map::GasRadiationTemperature(
-                mapped.density, mapped.pressure, mean_molecular_weight)
-            : atmosphere_pressure*mean_molecular_weight
-                /(atmosphere_density*scf_map::kGasConstantCgs);
-        const Real cell_radiation_energy = mapped.stellar_density > 0.0
-            ? scf_map::kRadiationConstantCgs*std::pow(cell_temperature, 4)
-            : external_radiation_energy_code*energy_scale;
-        const Real cell_gas_pressure = mapped.stellar_density > 0.0
-            ? std::max(mapped.pressure-cell_radiation_energy/3.0,
-                       atmosphere_pressure_floor)
-            : mapped.pressure;
-        const Real cell_gas_internal = cell_gas_pressure/(gamma_gas-1.0);
+        // Preserve the pointwise LTE split across stellar/atmosphere cut
+        // cells.  Reconstructing it from the averaged density and total
+        // pressure is nonlinear and treats a cell with any stellar quadrature
+        // weight as entirely stellar, creating a spurious surface pressure
+        // gradient.  CellAverage has already averaged both components.
+        Real cell_radiation_energy, cell_gas_internal;
+        if (pointwise_fld_cell_average) {
+          const Real stellar_volume_fraction = std::max(
+              static_cast<Real>(0.0), std::min(static_cast<Real>(1.0),
+              static_cast<Real>(mapped.stellar_volume_fraction)));
+          const Real atmosphere_volume_fraction =
+              1.0-stellar_volume_fraction;
+          cell_radiation_energy = mapped.radiation_energy
+              +atmosphere_volume_fraction
+                  *external_radiation_energy_code*energy_scale;
+          cell_gas_internal = std::max(
+              static_cast<Real>(mapped.gas_internal_energy),
+              atmosphere_pressure_floor/(gamma_gas-1.0));
+        } else {
+          const Real cell_temperature = mapped.stellar_density > 0.0
+              ? scf_map::GasRadiationTemperature(
+                  mapped.density, mapped.pressure, mean_molecular_weight)
+              : atmosphere_pressure*mean_molecular_weight
+                  /(atmosphere_density*scf_map::kGasConstantCgs);
+          cell_radiation_energy = mapped.stellar_density > 0.0
+              ? scf_map::kRadiationConstantCgs*std::pow(cell_temperature, 4)
+              : external_radiation_energy_code*energy_scale;
+          const Real cell_gas_pressure = mapped.stellar_density > 0.0
+              ? std::max(mapped.pressure-cell_radiation_energy/3.0,
+                         atmosphere_pressure_floor)
+              : mapped.pressure;
+          cell_gas_internal = cell_gas_pressure/(gamma_gas-1.0);
+        }
         phydro->u(IEN,k,j,i) =
             (cell_gas_internal+mapped.kinetic_energy)/energy_scale;
         prfld->u_gas(k,j,i) = cell_gas_internal/energy_scale;
