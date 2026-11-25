@@ -1135,6 +1135,7 @@ Real HistorySurfaceMachDiagnostic(MeshBlock* block, int output) {
     // surface mismatch from radiative cooling/heating at the same cell.
     // Refresh the lagged FLD terms here because surface histories precede the
     // aggregate taper histories in the output ordering.
+    UpdateGravityDiagnostics(block);
     UpdateTaperRadiationDiagnostics(block);
     const Real diffusion_heating = block->user_out_var(19,max_k,max_j,max_i);
     const Real thermal_exchange = block->user_out_var(20,max_k,max_j,max_i);
@@ -1152,6 +1153,17 @@ Real HistorySurfaceMachDiagnostic(MeshBlock* block, int output) {
     const Real exchange_time = std::abs(thermal_exchange) > 0.0
         ? local_energy/std::abs(thermal_exchange)*time_unit
         : std::numeric_limits<Real>::infinity();
+    const Real acceleration_scale = velocity_unit*velocity_unit/length_unit;
+    const Real pressure_acceleration =
+        block->user_out_var(9,max_k,max_j,max_i)*acceleration_scale;
+    const Real gravity_acceleration =
+        block->user_out_var(10,max_k,max_j,max_i)*acceleration_scale;
+    const Real radiation_acceleration =
+        block->user_out_var(16,max_k,max_j,max_i)*acceleration_scale;
+    const Real full_force_residual =
+        block->user_out_var(17,max_k,max_j,max_i)*acceleration_scale;
+    const Real full_force_scale =
+        block->user_out_var(18,max_k,max_j,max_i)*acceleration_scale;
 #endif
     std::stringstream message;
     message << std::scientific << std::setprecision(16)
@@ -1183,6 +1195,12 @@ Real HistorySurfaceMachDiagnostic(MeshBlock* block, int output) {
             << thermal_exchange*pressure_unit/time_unit
             << " fld_diffusion_time_s=" << diffusion_time
             << " fld_exchange_time_s=" << exchange_time
+            << " pressure_accel_cgs=" << pressure_acceleration
+            << " gravity_accel_cgs=" << gravity_acceleration
+            << " radiation_accel_cgs=" << radiation_acceleration
+            << " full_force_residual_cgs=" << full_force_residual
+            << " full_force_relative="
+            << full_force_residual/std::max(full_force_scale, TINY_NUMBER)
 #endif
             << std::endl;
     std::cout << message.str();
