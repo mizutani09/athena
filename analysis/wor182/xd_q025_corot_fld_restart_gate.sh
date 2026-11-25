@@ -25,6 +25,8 @@ ulimit -c 0
 
 repository=${WOR182_REPOSITORY:-$HOME/simulation/athena-wor182-rotating-fld}
 restart=${WOR182_RESTART:-/work/mizutaniks/wor182/q025_corot_fld_l4_347695/mesa_scf_rsg_corecut7p00_q025_corot_fld4wz_l4.final.rst}
+input=${WOR182_INPUT:-}
+surface_mach_threshold=${WOR182_SURFACE_MACH_THRESHOLD:-}
 target_time=${WOR182_TARGET_TIME:-1.0}
 cfl=${WOR182_CFL:-0.1}
 nlim=${WOR182_NLIM:--1}
@@ -38,10 +40,24 @@ mkdir -p "$run"
 cd "$repository"
 test -x bin/athena
 test -s "$restart"
+input_arguments=()
+mach_arguments=()
+if [[ -n "$input" ]]; then
+  test -s "$input"
+  input_arguments=(-i "$input")
+fi
+if [[ -n "$surface_mach_threshold" ]]; then
+  if [[ -z "$input" ]]; then
+    echo "WOR182_INPUT is required with WOR182_SURFACE_MACH_THRESHOLD" >&2
+    exit 2
+  fi
+  mach_arguments=(problem/surface_mach_diagnostic_threshold="$surface_mach_threshold")
+fi
 git rev-parse HEAD > "$run/git_commit.txt"
 git status --short > "$run/git_status.txt"
-printf 'restart=%s\ntarget_time=%s\ncfl=%s\nnlim=%s\nintegrator=%s\nrestart_dcycle=%s\ndiagnostic_verbosity=%s\n' \
-  "$restart" "$target_time" "$cfl" "$nlim" "$integrator" \
+printf 'restart=%s\ninput=%s\nsurface_mach_threshold=%s\ntarget_time=%s\ncfl=%s\nnlim=%s\nintegrator=%s\nrestart_dcycle=%s\ndiagnostic_verbosity=%s\n' \
+  "$restart" "$input" "$surface_mach_threshold" \
+  "$target_time" "$cfl" "$nlim" "$integrator" \
   "$restart_dcycle" "$diagnostic_verbosity" > "$run/run_config.txt"
 sha256sum bin/athena "$restart" > "$run/provenance.sha256"
 
@@ -50,7 +66,7 @@ sha256sum bin/athena "$restart" > "$run/provenance.sha256"
 set +e
 /usr/bin/time -f 'wall_s=%e maxrss_kb=%M' -o "$run/time.log" \
   srun -n"$SLURM_NTASKS" --ntasks-per-node=56 \
-  bin/athena -r "$restart" -d "$run" \
+  bin/athena -r "$restart" "${input_arguments[@]}" -d "$run" \
   time/integrator="$integrator" time/xorder=4wz \
   time/cfl_number="$cfl" time/nlim="$nlim" time/tlim="$target_time" \
   time/ncycle_out=1 \
@@ -58,6 +74,7 @@ set +e
   nrfld/linear_solver=fgmres nrfld/diagnostic_verbosity="$diagnostic_verbosity" \
   output1/dcycle=1 output2/dcycle="$restart_dcycle" \
   output3/dt=-1 output4/dt=-1 \
+  "${mach_arguments[@]}" \
   > "$run/stdout.log" 2> "$run/stderr.log"
 status=$?
 set -e
