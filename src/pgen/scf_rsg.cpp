@@ -141,14 +141,15 @@ LteSplit SplitTotalPressureLte(MeshBlock* block, Real density_cgs,
   const Real density = density_cgs/rho_unit;
   const Real total_pressure = total_pressure_cgs/pressure_unit;
 #if GENERAL_EOS
-  auto evaluate = [block, density](Real temperature_cgs, LteSplit* state) {
-    const Real gas_energy = block->peos->EgasFromRhoT(
-        density, temperature_cgs/temperature_unit);
+  auto evaluate = [block, density](Real gas_energy, LteSplit* state) {
     if (!std::isfinite(gas_energy) || gas_energy <= 0.0) return false;
     const Real gas_pressure = block->peos->PresFromRhoEg(density, gas_energy);
+    const Real temperature_cgs = block->peos->TempFromRhoEg(
+        density, gas_energy)*temperature_unit;
     const Real radiation_energy = scf_map::kRadiationConstantCgs
         *std::pow(temperature_cgs, 4)/pressure_unit;
     if (!std::isfinite(gas_pressure) || gas_pressure <= 0.0
+        || !std::isfinite(temperature_cgs) || temperature_cgs <= 0.0
         || !std::isfinite(radiation_energy)) return false;
     state->temperature = temperature_cgs;
     state->gas_energy = gas_energy;
@@ -157,56 +158,46 @@ LteSplit SplitTotalPressureLte(MeshBlock* block, Real density_cgs,
     return true;
   };
 
-  LteSplit upper_state{};
-  Real lower_temperature = 0.0;
-  Real lower_residual = 0.0;
-  bool have_lower = false;
-  bool bracketed = false;
-  const int samples = 160;
-  const Real log_min = std::log(lte_temperature_min);
-  const Real log_max = std::log(lte_temperature_max);
-  for (int sample = 0; sample <= samples; ++sample) {
-    const Real fraction = static_cast<Real>(sample)/samples;
-    const Real temperature = std::exp(log_min+fraction*(log_max-log_min));
-    LteSplit candidate{};
-    if (!evaluate(temperature, &candidate)) continue;
-    const Real residual = candidate.gas_pressure
-        +candidate.radiation_energy/3.0-total_pressure;
-    if (residual == 0.0) return candidate;
-    if (have_lower && lower_residual < 0.0 && residual > 0.0) {
-      upper_state = candidate;
-      bracketed = true;
-      break;
-    }
-    lower_temperature = temperature;
-    lower_residual = residual;
-    have_lower = true;
-  }
+  Real lower_energy = block->peos->EgasFromRhoT(
+      density, lte_temperature_min/temperature_unit);
+  Real upper_energy = block->peos->EgasFromRhoP(density, total_pressure);
+  LteSplit lower_state{}, upper_state{};
+  bool bracketed = evaluate(lower_energy, &lower_state)
+      && evaluate(upper_energy, &upper_state);
+  Real lower_residual = bracketed ? lower_state.gas_pressure
+      +lower_state.radiation_energy/3.0-total_pressure : 0.0;
+  Real upper_residual = bracketed ? upper_state.gas_pressure
+      +upper_state.radiation_energy/3.0-total_pressure : 0.0;
+  bracketed = bracketed && lower_residual <= 0.0 && upper_residual >= 0.0;
   if (!bracketed) {
     std::stringstream message;
     message << std::scientific << std::setprecision(16)
             << "unable to split tabulated-EOS LTE pressure: rho_cgs="
             << density_cgs << " Ptot_cgs=" << total_pressure_cgs
             << " Tmin=" << lte_temperature_min
-            << " Tmax=" << lte_temperature_max;
+            << " Tmax=" << lte_temperature_max
+            << " lower_energy=" << lower_energy
+            << " upper_energy=" << upper_energy
+            << " lower_residual=" << lower_residual
+            << " upper_residual=" << upper_residual;
     Require(false, message.str());
   }
-  Real upper_temperature = upper_state.temperature;
-  for (int iteration = 0; iteration < 80; ++iteration) {
-    const Real middle_temperature = std::sqrt(
-        lower_temperature*upper_temperature);
+  for (int iteration = 0; iteration < 64; ++iteration) {
+    const Real middle_energy = std::sqrt(lower_energy*upper_energy);
     LteSplit middle_state{};
-    Require(evaluate(middle_temperature, &middle_state),
+    Require(evaluate(middle_energy, &middle_state),
             "tabulated EOS became invalid inside an LTE pressure bracket");
     const Real residual = middle_state.gas_pressure
         +middle_state.radiation_energy/3.0-total_pressure;
     if (residual < 0.0) {
-      lower_temperature = middle_temperature;
+      lower_energy = middle_energy;
     } else {
-      upper_temperature = middle_temperature;
+      upper_energy = middle_energy;
       upper_state = middle_state;
     }
   }
+  Require(upper_state.temperature <= lte_temperature_max,
+          "tabulated-EOS LTE solution exceeds lte_temperature_max_k");
   return upper_state;
 #else
   const Real temperature = scf_map::GasRadiationTemperature(
