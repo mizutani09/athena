@@ -171,9 +171,28 @@ inline Real LimitRadiationCorrection(Real delta, Real scale,
 inline Real GasEnergyFloor(const MeshBlock *pmb, const Real rho) {
   Real floor = TINY_NUMBER;
 #if GENERAL_EOS
-  if (std::isfinite(rho) && rho > pmb->peos->GetDensityFloor()) {
-    floor = std::max(floor,
-        pmb->peos->EgasFromRhoP(rho, pmb->peos->GetPressureFloor()));
+  if (std::isfinite(rho) && rho > 0.0) {
+    const Real rho_safe = std::max(rho, pmb->peos->GetDensityFloor());
+    const Real pressure_floor_energy = pmb->peos->EgasFromRhoP(
+        rho_safe, pmb->peos->GetPressureFloor());
+    if (std::isfinite(pressure_floor_energy) && pressure_floor_energy > 0.0) {
+      floor = std::max(floor, pressure_floor_energy);
+    }
+#if EOS_TABLE_ENABLED
+    // ConservedToPrimitive enforces hydro/tfloor on explicit stages.  The
+    // implicit matter-radiation solve must use the same lower bound or its
+    // accepted gas state can lie below the EOS table before the next explicit
+    // conversion repairs it.
+    const Real temperature_floor = pmb->peos->GetTemperatureFloor();
+    if (temperature_floor > 0.0) {
+      const Real temperature_floor_energy = pmb->peos->EgasFromRhoT(
+          rho_safe, temperature_floor);
+      if (std::isfinite(temperature_floor_energy)
+          && temperature_floor_energy > 0.0) {
+        floor = std::max(floor, temperature_floor_energy);
+      }
+    }
+#endif
   }
 #else
   const Real gm1 = pmb->peos->GetGamma() - 1.0;
@@ -632,11 +651,13 @@ void NRFLD::LoadVariables() {
   for (int k = kl; k <= ku; ++k) {
     for (int j = jl; j <= ju; ++j) {
       for (int i = il; i <= iu; ++i) {
-        u_gas_(k,j,i) = pfld->u_gas(k,j,i);
-        const Real radiation_energy = pfld->u_rad(k,j,i);
         const bool active = i >= pmy_block_->is && i <= pmy_block_->ie
                          && j >= pmy_block_->js && j <= pmy_block_->je
                          && k >= pmy_block_->ks && k <= pmy_block_->ke;
+        const Real gas_energy_floor = active ? GasEnergyFloor(
+            pmy_block_, pmy_block_->phydro->w(IDN,k,j,i)) : TINY_NUMBER;
+        u_gas_(k,j,i) = std::max(pfld->u_gas(k,j,i), gas_energy_floor);
+        const Real radiation_energy = pfld->u_rad(k,j,i);
         if (!std::isfinite(radiation_energy)
             || (active && radiation_energy < 0.0)) {
           std::stringstream msg;
