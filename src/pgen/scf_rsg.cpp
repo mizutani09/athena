@@ -829,6 +829,11 @@ Real HistoryTaperRadiationDiagnostic(MeshBlock* block, int output) {
   constexpr int kDiffusionHeating = 19;
   constexpr int kThermalExchange = 20;
   const int diagnostic = output-kTaperRadiationHistoryStart;
+  // HistoryOutput visits user fields in ascending order for each MeshBlock.
+  // Unlike regular data outputs it does not call UserWorkBeforeOutput, so the
+  // first taper field refreshes the two cell diagnostics exactly once and the
+  // remaining seven fields consume that same snapshot.
+  if (diagnostic == 0) UpdateTaperRadiationDiagnostics(block);
   const Real energy_scale = pressure_unit*std::pow(length_unit, 3);
   const Real power_scale = energy_scale/time_unit;
   Real total = (diagnostic == 6 || diagnostic == 7)
