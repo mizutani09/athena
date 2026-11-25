@@ -55,17 +55,16 @@ run_variant() {
     "$run/stdout.log" "$run/stderr.log" > "$run/summary.log" || true
 }
 
-# Preserve the existing cell-wise update cap, but permit smaller line-search steps.
-run_variant deeper_backtracking \
+# Keep every full trial positive without touching the implementation: unlike the
+# previous factor of 10, these caps cannot drive a positive Er through zero.
+run_variant cap_0p5 \
+  nrfld/max_update_fraction=0.5 \
+  nrfld/nr_backtrack_max=10 nrfld/nr_min_step_scale=1.0e-3
+run_variant cap_1p0 \
+  nrfld/max_update_fraction=1.0 \
   nrfld/nr_backtrack_max=10 nrfld/nr_min_step_scale=1.0e-3
 
-# Preserve the raw global Newton direction and let the global line search enforce
-# a sufficiently small step instead of distorting it with independent cell caps.
-run_variant uncapped_global_line_search \
-  nrfld/max_update_fraction=-1 \
-  nrfld/nr_backtrack_max=20 nrfld/nr_min_step_scale=1.0e-6
-
-for label in deeper_backtracking uncapped_global_line_search; do
+for label in cap_0p5 cap_1p0; do
   echo "===== $label ====="
   cat "$root/$label/time.log"
   cat "$root/$label/srun_status.txt"
