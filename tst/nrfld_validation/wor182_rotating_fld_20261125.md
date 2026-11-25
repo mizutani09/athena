@@ -302,3 +302,34 @@ final nonlinear residual 1.31e-9.  The timestep remained approximately 0.122
 at CFL=0.3.  Thus the atmosphere regularization improves the physical
 stability diagnostics without increasing the production cost or weakening
 FGMRES convergence.
+
+## Dynamical-time continuation
+
+XD job 347851 continued the accepted ideal-EOS state from time 50 to 470 at
+CFL=0.3.  This spans approximately 1.04 donor dynamical times from the fresh
+map.  The numerical solve remained robust for the full 3 h 33 min wall time:
+all 3,946 Newton solves converged normally (mean 6.30, maximum 7 iterations),
+and 24,848 FGMRES solves used a mean of 21.09 and maximum of 52 iterations.
+There was no relaxed acceptance, linear breakdown, NaN, or fatal error.
+
+The star is nevertheless not dynamically stationary on this interval.  The
+interior radial Mach maximum first exceeded 0.1 at time 85.17 and 0.3 at time
+109.33.  Representative interior/taper maxima were 0.211/0.691 at time 100,
+0.789/0.918 at time 200, 0.794/1.302 at time 300, 0.758/1.366 at time 400,
+and 0.625/1.430 at time 470.  The peak interior value was 0.893 at time
+168.91.  At the endpoint, 7.97e33 g (4.01 Msun) of stellar-tracer material
+had radial Mach above 0.1 and 1.05e33 g (0.527 Msun) exceeded 0.3.
+
+The relative changes between the first recorded continuation sample at
+time 50.12 and time 470 were -7.42e-7 in total mapped mass, -1.89e-7 in
+stellar-tracer mass, +1.70e-4 in angular momentum, -7.08e-3 in hydro energy,
+-5.11e-2 in radiation energy, and -2.49e-2 in gas internal energy.  The
+gas-plus-radiation energy changed by -3.80e-2; boundary radiation transport
+means this is not by itself a closed-system conservation residual.
+
+This gate separates solver robustness from physical stability: the accepted
+ideal-EOS rotating FLD implementation advances reliably through a dynamical
+time, but the mapped star does not satisfy the long-term stability criterion.
+Longer production or binary evolution should therefore use the tabulated-EOS
+path and diagnose the outer taper's radiation-energy balance before being
+accepted, rather than treating job 347851 as a stable-star result.
