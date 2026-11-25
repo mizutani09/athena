@@ -42,8 +42,7 @@ sha256sum bin/athena "$input" "$profile" data/opacity/rsg_gray_opacity_t7.h5 \
   -o "$run/time.log" \
   srun -n"$SLURM_NTASKS" --ntasks-per-node=56 \
   bin/athena -i "$input" -d "$run" \
-  time/nlim=1200 time/tlim=1.0e-2 time/ncycle_out=10 \
-  problem/radiation_startup_dt_end=1.0e-2 \
+  time/nlim=300 time/tlim=1.0e-2 time/ncycle_out=10 \
   output1/dcycle=10 output2/dcycle=1000 \
   output3/dt=-1 output4/dt=-1 \
   > "$run/stdout.log" 2> "$run/stderr.log"
