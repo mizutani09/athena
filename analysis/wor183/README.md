@@ -39,3 +39,47 @@ The q=0.25 RLOF parameters come from
 `xd_q025_binary_smoke.sh` ramps the companion after the t=10 isolated-star
 restart and advances only a few CFL=0.3 steps.  Passing this gate establishes
 source-term and solver compatibility, not binary stability.
+
+## XD validation, 2026-11-25/26
+
+The mass used by the companion source is intentionally
+`q*(gas_mass_g+core_mass_g)`.  Here the grid gas is 14.49 Msun and the
+excised core particle is 6.52 Msun, so their sum is the manifest's 21.00-Msun
+donor and q=0.25 gives a 5.25-Msun companion.  The history `mapped_mass_g`
+contains only grid gas and must not be used by itself to set the companion
+mass.
+
+Job 348001 first advanced the accepted isolated-star `t=10` restart to
+`t=10.25` on 168 ranks/3 M-test-a nodes.  The smooth ramp reached 0.15625,
+exactly its analytic value, and the recorded separation agreed with the input
+to about 1e-11 relatively.  All three timesteps converged in 6--7 Newton
+iterations; 19 FGMRES solves used at most 19 iterations.  There was no NaN,
+failure, backtracking, relaxed acceptance, or Krylov breakdown.
+
+Job 348002 repeated the restart through the complete ramp and stopped at
+`t=11.5`.  It completed in 99.8 s with 13 normal Newton solves (at most 7
+iterations) and 79 FGMRES solves (mean 14.81, maximum 20).  Against the
+companion-free L2 job 347973 at the same time:
+
+- interior radial Mach was 0.00751 versus 0.00735;
+- `rho >= rho_surface` radial Mach was 0.00697 versus 0.00679;
+- taper radial Mach was 0.2414 versus 0.2421;
+- no stellar mass exceeded radial Mach 0.3; and
+- all four EOS-table margins remained positive.
+
+Job 348003 continued the fully enabled companion from `t=11.5` to 13.  It
+completed in 114.94 s with 13 normal Newton solves (at most 7 iterations) and
+81 FGMRES solves (mean 14.57, maximum 19).  Against companion-free L2 job
+347985 at `t=13`, interior and resolved-surface Mach increased by only 5.5%
+and 6.2%, to 0.00805 and 0.00748; taper Mach changed by 0.4%, to 0.2734.
+No stellar material exceeded Mach 0.3, and the EOS margins remained positive.
+
+This is an intentionally short numerical gate.  One code time is 0.2546 d,
+whereas the donor dynamical time is about 450 code times and the orbit is
+7122 code times (1813.5 d).  The tested `t=10` to 13 interval is only 0.0067
+donor dynamical times.  It proves that the prescribed companion is compatible
+with tabulated EOS, 4wz, mixed-frame FLD, AMR, and FGMRES; it does not prove a
+tidally relaxed RLOF initial condition.  A physical onset calculation should
+ramp or relax the tide over a substantial fraction of a dynamical time, or
+construct a non-axisymmetric binary equilibrium, before measuring mass
+transfer.
