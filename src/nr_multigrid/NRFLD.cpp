@@ -402,6 +402,7 @@ NRFLD::NRFLD(MeshBlock *pmb, ParameterInput *pin) :
     u_gas_(pmb->ncells3, pmb->ncells2, pmb->ncells1),
     u_gas_iter_backup_(pmb->ncells3, pmb->ncells2, pmb->ncells1),
     gas_defect_(pmb->ncells3, pmb->ncells2, pmb->ncells1),
+    radiation_floor_active_(pmb->ncells3, pmb->ncells2, pmb->ncells1),
     mixed_drift_(6, pmb->ncells3, pmb->ncells2, pmb->ncells1),
     ngh_(NGHOST),
     // The optional per-cell cap can alter the multigrid correction, especially
@@ -421,6 +422,7 @@ NRFLD::NRFLD(MeshBlock *pmb, ParameterInput *pin) :
     {
     last_delta_rad_.NewAthenaArray(2, pmb->ncells3, pmb->ncells2, pmb->ncells1);
     last_delta_rad_.ZeroClear();
+    radiation_floor_active_.ZeroClear();
     mixed_drift_.ZeroClear();
 
     // check pointer
@@ -902,17 +904,17 @@ void NRFLD::CalculateCoefficients(const AthenaArray<Real> &u_rad_old,
       for (int i=is; i<=ie; i++) {
         Real c_sigma_p = pfld->c_ph*pfld->sigma_p(k,j,i);
 
+        // Reconstruct the frozen diffusion row from its face derivatives on
+        // every nonlinear assembly.  This is algebraically unchanged for an
+        // unconstrained cell and permits a radiation-floor row that was made
+        // active on one iteration to become an ordinary diffusion row again.
         Real sum_dcp = 0.0;
-        if (fixed_linear_coefficients_initialized_) {
-          sum_dcp = coeff(linearSolver::DCCF,k,j,i);
-        } else {
-          sum_dcp += derivetive(NewtonRaphsonFLD::dFr_dEr_xm,k,j,i);
-          sum_dcp += derivetive(NewtonRaphsonFLD::dFr_dEr_xp,k,j,i);
-          sum_dcp += derivetive(NewtonRaphsonFLD::dFr_dEr_ym,k,j,i);
-          sum_dcp += derivetive(NewtonRaphsonFLD::dFr_dEr_yp,k,j,i);
-          sum_dcp += derivetive(NewtonRaphsonFLD::dFr_dEr_zm,k,j,i);
-          sum_dcp += derivetive(NewtonRaphsonFLD::dFr_dEr_zp,k,j,i);
-        }
+        sum_dcp += derivetive(NewtonRaphsonFLD::dFr_dEr_xm,k,j,i);
+        sum_dcp += derivetive(NewtonRaphsonFLD::dFr_dEr_xp,k,j,i);
+        sum_dcp += derivetive(NewtonRaphsonFLD::dFr_dEr_ym,k,j,i);
+        sum_dcp += derivetive(NewtonRaphsonFLD::dFr_dEr_yp,k,j,i);
+        sum_dcp += derivetive(NewtonRaphsonFLD::dFr_dEr_zm,k,j,i);
+        sum_dcp += derivetive(NewtonRaphsonFLD::dFr_dEr_zp,k,j,i);
 
         Real T_gas_new;
 #if GENERAL_EOS
@@ -979,10 +981,8 @@ void NRFLD::CalculateCoefficients(const AthenaArray<Real> &u_rad_old,
         derivetive(NewtonRaphsonFLD::dFg_dEr,k,j,i) = -dt*c_sigma_p;
         derivetive(NewtonRaphsonFLD::dFr_deg,k,j,i) = -exchange_jacobian;
         Real boundary_coeff = sum_dcp;
-        if (!fixed_linear_coefficients_initialized_) {
-          for (int face=0; face<6; ++face)
-            if (marshak[face]) boundary_coeff -= face_coeff[face];
-        }
+        for (int face=0; face<6; ++face)
+          if (marshak[face]) boundary_coeff -= face_coeff[face];
         derivetive(NewtonRaphsonFLD::dFr_dEr,k,j,i) =
             1.0 + dt*(c_sigma_p + idx2*(boundary_coeff
                 + dx*marshak_dflux_sum));
@@ -1016,15 +1016,13 @@ void NRFLD::CalculateCoefficients(const AthenaArray<Real> &u_rad_old,
           coeff(linearSolver::DZPS,k,j,i) = 0.0;
           src(k,j,i) = 0.0;
         } else {
-          if (!fixed_linear_coefficients_initialized_) {
-            coeff(linearSolver::DCCF,k,j,i) = boundary_coeff;
-            coeff(linearSolver::DXMF,k,j,i) = marshak[XMinus] ? 0.0 : -face_coeff[XMinus];
-            coeff(linearSolver::DXPF,k,j,i) = marshak[XPlus]  ? 0.0 : -face_coeff[XPlus];
-            coeff(linearSolver::DYMF,k,j,i) = marshak[YMinus] ? 0.0 : -face_coeff[YMinus];
-            coeff(linearSolver::DYPF,k,j,i) = marshak[YPlus]  ? 0.0 : -face_coeff[YPlus];
-            coeff(linearSolver::DZMF,k,j,i) = marshak[ZMinus] ? 0.0 : -face_coeff[ZMinus];
-            coeff(linearSolver::DZPF,k,j,i) = marshak[ZPlus]  ? 0.0 : -face_coeff[ZPlus];
-          }
+          coeff(linearSolver::DCCF,k,j,i) = boundary_coeff;
+          coeff(linearSolver::DXMF,k,j,i) = marshak[XMinus] ? 0.0 : -face_coeff[XMinus];
+          coeff(linearSolver::DXPF,k,j,i) = marshak[XPlus]  ? 0.0 : -face_coeff[XPlus];
+          coeff(linearSolver::DYMF,k,j,i) = marshak[YMinus] ? 0.0 : -face_coeff[YMinus];
+          coeff(linearSolver::DYPF,k,j,i) = marshak[YPlus]  ? 0.0 : -face_coeff[YPlus];
+          coeff(linearSolver::DZMF,k,j,i) = marshak[ZMinus] ? 0.0 : -face_coeff[ZMinus];
+          coeff(linearSolver::DZPF,k,j,i) = marshak[ZPlus]  ? 0.0 : -face_coeff[ZPlus];
           // Eliminate the gas-energy correction from the two-equation
           // Newton system.  Since thermal exchange enters the gas and
           // radiation equations with equal and opposite signs,
@@ -1085,6 +1083,35 @@ void NRFLD::CalculateCoefficients(const AthenaArray<Real> &u_rad_old,
                 -(derivetive(NewtonRaphsonFLD::Fr,k,j,i)
                   + derivetive(NewtonRaphsonFLD::Fg,k,j,i))
                 + derivetive(NewtonRaphsonFLD::Fg,k,j,i)*inv_dFg_deg;
+          }
+
+          // Positivity clipping after the linear solve changes the correction
+          // seen by neighbouring rows.  In particular, an already floor-bound
+          // cell can repeatedly receive a negative raw correction while the
+          // applied correction is zero, leaving an otherwise solved neighbour
+          // residual unchanged.  Treat that lower bound as an active-set row
+          // in the linear system so every row uses the correction that will
+          // actually be applied.  A positive reduced right-hand side releases
+          // the constraint and allows the radiation energy to recover.
+          const bool radiation_floor_active =
+              u_rad_new(k,j,i) <= TINY_NUMBER && src(k,j,i) < 0.0;
+          radiation_floor_active_(k,j,i) = radiation_floor_active ? 1.0 : 0.0;
+          if (radiation_floor_active) {
+            coeff(linearSolver::DCCF,k,j,i) = 0.0;
+            coeff(linearSolver::DCCS,k,j,i) = 1.0;
+            coeff(linearSolver::DXMF,k,j,i) = 0.0;
+            coeff(linearSolver::DXPF,k,j,i) = 0.0;
+            coeff(linearSolver::DYMF,k,j,i) = 0.0;
+            coeff(linearSolver::DYPF,k,j,i) = 0.0;
+            coeff(linearSolver::DZMF,k,j,i) = 0.0;
+            coeff(linearSolver::DZPF,k,j,i) = 0.0;
+            coeff(linearSolver::DXMS,k,j,i) = 0.0;
+            coeff(linearSolver::DXPS,k,j,i) = 0.0;
+            coeff(linearSolver::DYMS,k,j,i) = 0.0;
+            coeff(linearSolver::DYPS,k,j,i) = 0.0;
+            coeff(linearSolver::DZMS,k,j,i) = 0.0;
+            coeff(linearSolver::DZPS,k,j,i) = 0.0;
+            src(k,j,i) = 0.0;
           }
         }
 
@@ -1238,6 +1265,11 @@ void NRFLD::CalculateDefect(AthenaArray<Real> &def, const AthenaArray<Real> &u,
         }
         if (pfld->fixed_u_rad) {
           def(k,j,i) = gas_defect_(k,j,i);
+        } else if (radiation_floor_active_(k,j,i) > 0.5) {
+          // The radiation equation is an inequality at its lower bound.  The
+          // gas equation remains in gas_defect_ and must still converge, while
+          // a residual asking Er to decrease is a satisfied KKT condition.
+          def(k,j,i) = 0.0;
         } else if (pfld->only_rad) {
           def(k,j,i) = Fr/scale;
           if (backward_error_convergence_
