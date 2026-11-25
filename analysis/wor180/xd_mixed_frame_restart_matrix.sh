@@ -27,6 +27,8 @@ repository=${WOR180_REPOSITORY:-$HOME/simulation/athena-wor180-mixed-frame}
 restart=${WOR180_RESTART:-/work/mizutaniks/wor163/fld_restart_debug_347568/checkpoint/mesa_scf_rsg_corecut7p00_fld_norot_l3.final.rst}
 mixed_source=${WOR180_MIXED_SOURCE:-true}
 mixed_transport=${WOR180_MIXED_TRANSPORT:-true}
+nlim=${WOR180_NLIM:-110}
+tlim=${WOR180_TLIM:-1.0e-2}
 case $mixed_source:$mixed_transport in
   true:true|false:true|false:false) ;;
   true:false)
@@ -48,6 +50,8 @@ sha256sum bin/athena "$restart" > "$run/provenance.sha256"
   echo "mixed_source=$mixed_source"
   echo "mixed_transport=$mixed_transport"
   echo "restart=$restart"
+  echo "nlim=$nlim"
+  echo "tlim=$tlim"
 } > "$run/run_config.txt"
 
 set +e
@@ -55,7 +59,7 @@ set +e
   srun -n"$SLURM_NTASKS" --ntasks-per-node=56 \
   bin/athena -r "$restart" -d "$run" \
   time/integrator=rk4 time/xorder=4wz \
-  time/nlim=110 time/tlim=1.0e-2 time/ncycle_out=1 \
+  time/nlim="$nlim" time/tlim="$tlim" time/ncycle_out=1 \
   problem/radiation_startup_dt_end=1.0e-3 \
   fld/include_mixed_frame_terms="$mixed_source" \
   fld/mixed_frame_transport="$mixed_transport" \
