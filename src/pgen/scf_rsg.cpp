@@ -57,6 +57,7 @@ Real atmosphere_density, atmosphere_pressure, atmosphere_sound_speed_squared;
 Real atmosphere_density_floor, atmosphere_pressure_floor;
 Real atmosphere_reference_radius, surface_polar_radius, atmosphere_monopole_gm;
 Real surface_match_equatorial_radius, surface_match_polar_radius;
+Real surface_mach_diagnostic_threshold;
 Real mean_molecular_weight, core_mass, core_support_radius;
 Real core_mass_code, core_support_radius_code, core_gm_code;
 int quadrature_order;
@@ -741,6 +742,11 @@ Real HistoryRelaxationDiagnostic(MeshBlock* block, int output) {
 Real HistorySurfaceMachDiagnostic(MeshBlock* block, int output) {
   const int diagnostic = output-kSurfaceMachHistoryStart;
   Real total = 0.0;
+  Real max_x = 0.0, max_y = 0.0, max_z = 0.0;
+  Real max_density = 0.0, max_stellar_density = 0.0, max_pressure = 0.0;
+  Real max_radial_velocity = 0.0, max_sound_speed = 0.0;
+  Real max_ellipsoidal_radius = 0.0;
+  int max_i = 0, max_j = 0, max_k = 0;
   for (int k = block->ks; k <= block->ke; ++k) {
     const Real z = block->pcoord->x3v(k);
     for (int j = block->js; j <= block->je; ++j) {
@@ -775,7 +781,21 @@ Real HistorySurfaceMachDiagnostic(MeshBlock* block, int output) {
           total = std::max(total, mach);
         }
         if (diagnostic == 3 && stellar_density < surface_density_code) {
-          total = std::max(total, mach);
+          if (mach > total) {
+            total = mach;
+            max_x = x;
+            max_y = y;
+            max_z = z;
+            max_density = density;
+            max_stellar_density = stellar_density;
+            max_pressure = pressure;
+            max_radial_velocity = radial_velocity;
+            max_sound_speed = std::sqrt(sound_speed2);
+            max_ellipsoidal_radius = match_ellipsoidal_radius;
+            max_i = i;
+            max_j = j;
+            max_k = k;
+          }
         }
         if (mach > 0.1) {
           if (diagnostic == 4) total += stellar_density*volume;
@@ -796,6 +816,34 @@ Real HistorySurfaceMachDiagnostic(MeshBlock* block, int output) {
     return total*mass_unit;
   }
   if (diagnostic == 5) return total*mass_unit*length_unit;
+  if (diagnostic == 3 && surface_mach_diagnostic_threshold > 0.0
+      && total >= surface_mach_diagnostic_threshold) {
+    std::stringstream message;
+    message << std::scientific << std::setprecision(16)
+            << "[SCF_SURFACE_MACH_CELL] rank=" << Globals::my_rank
+            << " cycle=" << block->pmy_mesh->ncycle
+            << " time=" << block->pmy_mesh->time
+            << " gid=" << block->gid
+            << " level=" << block->loc.level
+            << " i=" << max_i << " j=" << max_j << " k=" << max_k
+            << " x_code=" << max_x
+            << " y_code=" << max_y
+            << " z_code=" << max_z
+            << " rho_code=" << max_density
+            << " stellar_rho_code=" << max_stellar_density
+            << " pressure_code=" << max_pressure
+            << " vr_code=" << max_radial_velocity
+            << " cs_code=" << max_sound_speed
+            << " mach=" << total
+            << " ellipsoidal_radius=" << max_ellipsoidal_radius
+            << " rho_cgs=" << max_density*rho_unit
+            << " stellar_rho_cgs=" << max_stellar_density*rho_unit
+            << " pressure_cgs=" << max_pressure*pressure_unit
+            << " vr_cgs=" << max_radial_velocity*velocity_unit
+            << " cs_cgs=" << max_sound_speed*velocity_unit
+            << std::endl;
+    std::cout << message.str();
+  }
   return total;
 }
 
@@ -934,6 +982,8 @@ void Mesh::InitUserMeshData(ParameterInput* pin) {
   const Real surface_density = pin->GetOrAddReal(
       "problem", "surface_refinement_density_g_cm3", 1.0e-9);
   surface_density_code = surface_density/rho_unit;
+  surface_mach_diagnostic_threshold = pin->GetOrAddReal(
+      "problem", "surface_mach_diagnostic_threshold", -1.0);
   Require(surface_refinement_level >= 0
               && surface_refinement_level <= max_level-root_level,
           "surface_refinement_level must lie within the configured mesh levels");
