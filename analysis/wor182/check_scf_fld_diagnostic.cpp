@@ -2,6 +2,7 @@
 #include <cmath>
 #include <cstdlib>
 #include <iostream>
+#include <limits>
 
 #include "../../src/pgen/scf_fld_diagnostic.hpp"
 
@@ -37,6 +38,12 @@ int main() {
   ok = ok && Close(left, 2.0);
   ok = ok && Close(right, -2.0);
   ok = ok && Close(left+right, 0.0);
+
+  const double epsilon = std::numeric_limits<double>::epsilon();
+  ok = ok && Close(scf_fld_diagnostic::ResolvableThermalDifference(
+      1.0, 1.0-epsilon), 0.0);
+  ok = ok && Close(scf_fld_diagnostic::ResolvableThermalDifference(
+      1.0, 1.0-64.0*epsilon), 64.0*epsilon);
 
   if (!ok) return EXIT_FAILURE;
   std::cout << "scf FLD diagnostic checks passed\n";

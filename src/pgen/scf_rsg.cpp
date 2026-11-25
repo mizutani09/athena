@@ -112,7 +112,7 @@ constexpr int kTotalHistoryCount =
     kBaseHistoryCount+kRadiationHistoryCount+kEosTableHistoryCount;
 constexpr int kTaperRadiationHistoryStart = kTotalHistoryCount;
 #if NRMGFLD_ENABLED
-constexpr int kTaperRadiationHistoryCount = 8;
+constexpr int kTaperRadiationHistoryCount = 9;
 #else
 constexpr int kTaperRadiationHistoryCount = 0;
 #endif
@@ -781,14 +781,22 @@ void UpdateTaperRadiationDiagnostics(MeshBlock* block) {
                 dface[0], dface[1], dface[2], dface[3], dface[4], dface[5],
                 dx, dy, dz);
 
-        const Real density = block->phydro->w(IDN,k,j,i);
-        const Real pressure = block->phydro->w(IPR,k,j,i);
-        const Real temperature = GasTemperatureCgs(block, density, pressure);
-        const Real equilibrium = scf_map::kRadiationConstantCgs
-            *std::pow(temperature, 4)/pressure_unit;
+        const Real density = block->phydro->u(IDN,k,j,i);
+        const Real mx = block->phydro->u(IM1,k,j,i);
+        const Real my = block->phydro->u(IM2,k,j,i);
+        const Real mz = block->phydro->u(IM3,k,j,i);
+        const Real gas_energy = block->phydro->u(IEN,k,j,i)
+            -0.5*(mx*mx+my*my+mz*mz)/density;
+#if GENERAL_EOS
+        const Real temperature = block->peos->TempFromRhoEg(density, gas_energy);
+#else
+        const Real temperature = (gamma_gas-1.0)*gas_energy/density;
+#endif
+        const Real equilibrium = block->prfld->a_r*std::pow(temperature, 4);
         block->user_out_var(kThermalExchange,k,j,i) =
             block->prfld->c_ph*block->prfld->sigma_p(k,j,i)
-            *(equilibrium-center);
+            *scf_fld_diagnostic::ResolvableThermalDifference(
+                equilibrium, center);
       }
     }
   }
@@ -836,7 +844,7 @@ Real HistoryTaperRadiationDiagnostic(MeshBlock* block, int output) {
   if (diagnostic == 0) UpdateTaperRadiationDiagnostics(block);
   const Real energy_scale = pressure_unit*std::pow(length_unit, 3);
   const Real power_scale = energy_scale/time_unit;
-  Real total = (diagnostic == 6 || diagnostic == 7)
+  Real total = (diagnostic == 7 || diagnostic == 8)
       ? std::numeric_limits<Real>::infinity() : 0.0;
   for (int k = block->ks; k <= block->ke; ++k) {
     const Real z = block->pcoord->x3v(k);
@@ -875,14 +883,17 @@ Real HistoryTaperRadiationDiagnostic(MeshBlock* block, int output) {
           total += std::abs(diffusion_heating)*volume*power_scale;
         }
         if (diagnostic == 5) {
+          total += thermal_exchange*volume*power_scale;
+        }
+        if (diagnostic == 6) {
           total += std::abs(thermal_exchange)*volume*power_scale;
         }
         const Real total_energy = gas_energy+radiation_energy;
-        if (diagnostic == 6 && std::abs(diffusion_heating) > 0.0) {
+        if (diagnostic == 7 && std::abs(diffusion_heating) > 0.0) {
           total = std::min(total,
               total_energy/std::abs(diffusion_heating)*time_unit);
         }
-        if (diagnostic == 7 && std::abs(thermal_exchange) > 0.0) {
+        if (diagnostic == 8 && std::abs(thermal_exchange) > 0.0) {
           total = std::min(total,
               total_energy/std::abs(thermal_exchange)*time_unit);
         }
@@ -1530,12 +1541,15 @@ void Mesh::InitUserMeshData(ParameterInput* pin) {
                           "taper_abs_diffusion_power_erg_s");
   EnrollUserHistoryOutput(kTaperRadiationHistoryStart+5,
                           HistoryTaperRadiationDiagnostic,
-                          "taper_abs_exchange_power_erg_s");
+                          "taper_exchange_power_erg_s");
   EnrollUserHistoryOutput(kTaperRadiationHistoryStart+6,
+                          HistoryTaperRadiationDiagnostic,
+                          "taper_abs_exchange_power_erg_s");
+  EnrollUserHistoryOutput(kTaperRadiationHistoryStart+7,
                           HistoryTaperRadiationDiagnostic,
                           "taper_diffusion_time_min_s",
                           UserHistoryOperation::min);
-  EnrollUserHistoryOutput(kTaperRadiationHistoryStart+7,
+  EnrollUserHistoryOutput(kTaperRadiationHistoryStart+8,
                           HistoryTaperRadiationDiagnostic,
                           "taper_exchange_time_min_s",
                           UserHistoryOperation::min);
