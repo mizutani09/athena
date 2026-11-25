@@ -10,6 +10,8 @@
 // C headers
 
 // C++ headers
+#include <cmath>
+#include <sstream>
 
 // Athena++ headers
 #include "../athena.hpp"
@@ -39,7 +41,8 @@
 //! \todo (felker): remove the following unnecessary private class member?
 //! field_diffusion.cpp:66:    cell_volume_.NewAthenaArray(nc1);
 
-void FLD::AddFluxDivergence(const Real wght, AthenaArray<Real> &u_rad_out) {
+void FLD::AddFluxDivergence(const Real wght, AthenaArray<Real> &u_rad_out,
+                            int stage) {
   MeshBlock *pmb = pmy_block;
   AthenaArray<Real> &x1flux = u_rad_flux[X1DIR];
   AthenaArray<Real> &x2flux = u_rad_flux[X2DIR];
@@ -81,9 +84,41 @@ void FLD::AddFluxDivergence(const Real wght, AthenaArray<Real> &u_rad_out) {
 
       // update conserved variables
       pmb->pcoord->CellVolume(k, j, is, ie, vol);
+      if (!explicit_positivity_diagnostics_) {
 #pragma omp simd
+        for (int i=is; i<=ie; ++i) {
+          u_rad_out(k,j,i) -= wght*dflx(i)/vol(i);
+        }
+        continue;
+      }
       for (int i=is; i<=ie; ++i) {
-        u_rad_out(k,j,i) -= wght*dflx(i)/vol(i); // caution
+        const Real old_er = u_rad_out(k,j,i);
+        const Real delta_er = -wght*dflx(i)/vol(i);
+        const Real next_er = old_er + delta_er;
+        if (!std::isfinite(old_er) || old_er < 0.0
+            || !std::isfinite(next_er) || next_er < 0.0) {
+          std::stringstream msg;
+          msg << "### FATAL ERROR in explicit FLD radiation update\n"
+              << "phase=" << ((!std::isfinite(old_er) || old_er < 0.0)
+                                  ? "before_transport" : "after_transport")
+              << " cycle=" << pmb->pmy_mesh->ncycle
+              << " time=" << pmb->pmy_mesh->time
+              << " dt=" << pmb->pmy_mesh->dt << " stage=" << stage
+              << " gid=" << pmb->gid << " level=" << pmb->loc.level
+              << " logical=(" << pmb->loc.lx1 << ',' << pmb->loc.lx2 << ','
+              << pmb->loc.lx3 << ") cell=(" << k << ',' << j << ',' << i
+              << ") xyz=(" << pmb->pcoord->x1v(i) << ','
+              << pmb->pcoord->x2v(j) << ',' << pmb->pcoord->x3v(k) << ")\n"
+              << "Er_old=" << old_er << " delta_Er=" << delta_er
+              << " Er_next=" << next_er << " subdt=" << wght
+              << " flux_divergence=" << dflx(i)/vol(i) << '\n'
+              << "F1m=" << x1flux(k,j,i) << " F1p=" << x1flux(k,j,i+1)
+              << " F2m=" << x2flux(k,j,i) << " F2p=" << x2flux(k,j+1,i)
+              << " F3m=" << x3flux(k,j,i) << " F3p=" << x3flux(k+1,j,i)
+              << '\n';
+          ATHENA_ERROR(msg);
+        }
+        u_rad_out(k,j,i) = next_er;
       }
     }
   }

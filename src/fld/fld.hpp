@@ -304,7 +304,8 @@ class FLD {
     return left ? rad_face_l[dir](n,k,j,i) : rad_face_r[dir](n,k,j,i);
   }
   Real RadiationSoundSpeedSquared(int k, int j, int i, int dir) const;
-  void AddFluxDivergence(const Real wght, AthenaArray<Real> &u_out);
+  void AddFluxDivergence(const Real wght, AthenaArray<Real> &u_out,
+                         int stage = 0);
   void AddExplicitSourceTerms(const Real dt, const AthenaArray<Real> &prim,
                               AthenaArray<Real> &hydro_u);
 
@@ -352,6 +353,7 @@ class FLD {
   int force_diagnostic_gid_{0};
   Real radiation_force_density_floor_factor_{0.0};
   bool stage_diagnostics_{false};
+  bool explicit_positivity_diagnostics_{false};
   int stage_diagnostic_interval_{1000};
   int stage_diagnostic_first_cycles_{3};
   Real stage_diagnostic_start_{0.0};

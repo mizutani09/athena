@@ -3359,7 +3359,7 @@ TaskStatus TimeIntegratorTaskList::IntegrateRADFLD(MeshBlock *pmb, int stage) {
 
       const Real wght = stage_wghts[stage-1].beta*pmb->pmy_mesh->dt;
       prfld->DumpStageDiagnostics("before_transport", stage, wght);
-      prfld->AddFluxDivergence(wght, prfld->u_rad);
+      prfld->AddFluxDivergence(wght, prfld->u_rad, stage);
       prfld->DumpStageDiagnostics("after_transport", stage, wght);
 
 

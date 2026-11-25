@@ -49,6 +49,7 @@ sha256sum bin/athena "$restart" > "$run/provenance.sha256"
   time/integrator="$integrator" time/xorder=4wz \
   time/nlim=110 time/tlim=1.0e-2 time/ncycle_out=1 \
   problem/radiation_startup_dt_end=1.0e-3 \
+  fld/explicit_positivity_diagnostics=true \
   nrfld/max_update_fraction=1.0 nrfld/diagnostic_verbosity=1 \
   output1/dcycle=1 output2/dcycle=1000 \
   output3/dt=-1 output4/dt=-1 \

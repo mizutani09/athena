@@ -164,6 +164,8 @@ FLD::FLD(MeshBlock *pmb, ParameterInput *pin) :
     ATHENA_ERROR(msg);
   }
   fixed_flux_limiter = pin->GetOrAddBoolean("fld", "fixed_flux_limiter", false);
+  explicit_positivity_diagnostics_ = pin->GetOrAddBoolean(
+      "fld", "explicit_positivity_diagnostics", false);
   stage_diagnostics_ = pin->GetOrAddBoolean("fld", "stage_diagnostics", false);
   if (stage_diagnostics_) {
     stage_diagnostic_interval_ = pin->GetOrAddInteger(
