@@ -392,11 +392,72 @@ time-10 Mach maximum is ruled out.  Surface L3 cannot repair this physical
 initial-data mismatch, consistent with its worse and much more expensive A/B
 result.
 
+### Controlled corotation-relative relaxation
+
+Experimental branch `exp/wor182-radiative-relaxation-20261126` adds an
+initialization-only velocity relaxation for the radiative star.  It damps the
+stellar-tracer-weighted velocity perturbation relative to rigid corotation,
+not the inertial velocity or the atmosphere.  The exponential update changes
+the conserved total energy by exactly the kinetic-energy difference, so gas
+internal energy and the implicit FLD state are not artificially cooled.  A
+linear time taper removes the damping completely before the subsequent
+acceptance interval.  All three input parameters default to negative values,
+which leaves the production baseline bitwise on the old path.
+
+The history output separately records inertial-frame work and the positive
+corotating perturbation energy removed in each step, along with their powers.
+The helper algebra and taper endpoints have a standalone C++ check.  Both the
+local GNU/MPI/HDF5 table-EOS build and the XD Intel/MPI/IPO build passed.  A
+one-step XD gate (job 348049) converged in three Newton iterations; every
+FGMRES solve took two iterations and the final nonlinear maximum residual was
+`7.64e-9`.
+
+Jobs 348051 (relaxation time 5, taper from time 20 to 50) and 348052 (disabled)
+then formed a controlled fresh-map A/B to time 1 at CFL 0.1.  Both completed
+136 normal implicit solves, retained positive EOS-table margins, used at most
+18 FGMRES iterations, and had no stellar mass above radial Mach 0.1.  At time
+1 the relaxed/control results were:
+
+- low-density taper Mach maximum `0.01820/0.01919`
+- interior Mach maximum `0.002164/0.002352`
+- stellar perturbation kinetic energy `9.51e39/1.17e40 erg`
+
+Thus the operator already reduces the mapped transient without changing
+solver robustness.  The relaxed run applied `1.29e42 erg` of inertial-frame
+work while removing `1.85e39 erg` of corotating perturbation energy.  The
+large distinction is expected: correcting a small velocity error on top of
+the bulk corotation changes inertial energy by approximately `Omega dJ`.
+Audit of this gate exposed a units-only error in the new corotating-energy
+history column; commit `e4195901d` corrects its scaling before the longer
+relaxation run.  The evolved conserved state was unaffected.
+
+Job 348055 then continued the relaxed time-1 state to time 20 at CFL 0.3,
+with full damping strength throughout.  It completed in 877 s on three XD
+nodes.  All 158 Newton solves converged normally in at most seven iterations,
+FGMRES used at most 21 iterations, and there was no backtracking, relaxed
+acceptance, warning, or fatal error.  The minimum gas-energy EOS margin was
+`+0.181 dex`, and no stellar material reached radial Mach 0.3.
+
+At time 9.96 the taper Mach maximum was 0.102 and only `1.85e28 g` exceeded
+Mach 0.1.  The unrelaxed time-10 reference had corresponding values 0.209 and
+`1.86e29 g`, so damping reduced the maximum by about a factor two and the
+affected mass by about a factor ten.  Over the full segment the taper maximum
+peaked at 0.205 and ended at 0.186, while the interior maximum stayed below
+0.00355.  The artificial operator supplied `5.45e42 erg` of inertial work and
+removed `3.48e41 erg` of corotating perturbation energy.  Segment mass drift
+was `+1.32e-9`; angular momentum changed by `+1.68e-4`, as expected for the
+controlled return toward rigid corotation.
+
+The outer maximum had begun to decline by time 20 but was not yet quiescent.
+Reducing the damping there would therefore be premature.  The next continuous
+schedule keeps full strength through time 50 and tapers linearly to zero from
+50 to 100; job 348057 tests the first interval.  Because both schedules have
+unit strength at time 20, changing the future taper introduces no force jump.
+
 ## Open acceptance items
 
-1. Use a controlled corotation-relative velocity relaxation to let the
-   hour-scale outer radiative transient and force mismatch settle, taper the
-   artificial damping to zero, and require a subsequent undamped interval to
+1. Complete the extended time-50 strong-damping gate, taper the artificial
+   damping to zero by time 100, and require a subsequent undamped interval to
    remain stable.  A fully steady radiative/HSE outer-profile solve remains
    the preferred longer-term construction.
 2. Add a focused AMR regression for positivity-constrained FLD ghost
