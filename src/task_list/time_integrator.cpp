@@ -2014,7 +2014,7 @@ TaskStatus TimeIntegratorTaskList::AddSourceTerms(MeshBlock *pmb, int stage) {
         }
 #if NRMGFLD_ENABLED
         pmb->prfld->AddExplicitSourceTerms(
-            dt_ssp, ph->w, ph->u2, &pmb->prfld->u_rad2);
+            dt_ssp, ph->w, ph->u2, &pmb->prfld->u_rad2, false);
 #endif
       }
     }
@@ -3387,7 +3387,7 @@ TaskStatus TimeIntegratorTaskList::IntegrateRADFLD(MeshBlock *pmb, int stage) {
         const Real wght_ssp = beta*pmb->pmy_mesh->dt;
         pmb->WeightedAve(prfld->u_rad2, prfld->u_rad1, prfld->u_rad2,
                          prfld->u_rad0, prfld->u_rad_fl_div, ave_wghts);
-        prfld->AddFluxDivergence(wght_ssp, prfld->u_rad2, stage);
+        prfld->AddFluxDivergence(wght_ssp, prfld->u_rad2, stage, false);
       }
     }
     return TaskStatus::next;

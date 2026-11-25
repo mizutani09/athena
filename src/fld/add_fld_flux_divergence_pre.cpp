@@ -43,7 +43,7 @@
 //! field_diffusion.cpp:66:    cell_volume_.NewAthenaArray(nc1);
 
 void FLD::AddFluxDivergence(const Real wght, AthenaArray<Real> &u_rad_out,
-                            int stage) {
+                            int stage, bool physical_state) {
   MeshBlock *pmb = pmy_block;
   AthenaArray<Real> &x1flux = u_rad_flux[X1DIR];
   AthenaArray<Real> &x2flux = u_rad_flux[X2DIR];
@@ -85,7 +85,7 @@ void FLD::AddFluxDivergence(const Real wght, AthenaArray<Real> &u_rad_out,
 
       // update conserved variables
       pmb->pcoord->CellVolume(k, j, is, ie, vol);
-      if (!explicit_positivity_diagnostics_) {
+      if (!explicit_positivity_diagnostics_ || !physical_state) {
 #pragma omp simd
         for (int i=is; i<=ie; ++i) {
           u_rad_out(k,j,i) -= wght*dflx(i)/vol(i);

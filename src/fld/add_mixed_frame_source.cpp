@@ -127,7 +127,8 @@ void FLD::EmitForceDiagnostic(const Real dt, const AthenaArray<Real> &prim,
 
 void FLD::AddExplicitSourceTerms(const Real dt, const AthenaArray<Real> &prim,
                                  AthenaArray<Real> &hydro_u,
-                                 AthenaArray<Real> *radiation_u) {
+                                 AthenaArray<Real> *radiation_u,
+                                 bool physical_state) {
   if (!is_couple || only_rad) return;
   MeshBlock *pmb = pmy_block;
   const bool do_force = PressureCoupled();
@@ -195,7 +196,7 @@ void FLD::AddExplicitSourceTerms(const Real dt, const AthenaArray<Real> &prim,
           const Real source = -lambda*(vx*ex + vy*ey + vz*ez);
           const Real old_rad = rad_u(k,j,i);
           const Real next_rad = old_rad-dt*source;
-          if (explicit_positivity_diagnostics_
+          if (physical_state && explicit_positivity_diagnostics_
               && (!std::isfinite(old_rad) || old_rad < 0.0
                   || !std::isfinite(next_rad) || next_rad < 0.0)) {
             std::stringstream msg;
@@ -216,7 +217,8 @@ void FLD::AddExplicitSourceTerms(const Real dt, const AthenaArray<Real> &prim,
             ATHENA_ERROR(msg);
           }
           if (NON_BAROTROPIC_EOS) hydro_u(IEN,k,j,i) += dt*source;
-          rad_u(k,j,i) = std::max(next_rad, TINY_NUMBER);
+          rad_u(k,j,i) = physical_state
+              ? std::max(next_rad, TINY_NUMBER) : next_rad;
         }
       }
     }

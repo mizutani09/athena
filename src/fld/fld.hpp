@@ -305,10 +305,11 @@ class FLD {
   }
   Real RadiationSoundSpeedSquared(int k, int j, int i, int dir) const;
   void AddFluxDivergence(const Real wght, AthenaArray<Real> &u_out,
-                         int stage = 0);
+                         int stage = 0, bool physical_state = true);
   void AddExplicitSourceTerms(const Real dt, const AthenaArray<Real> &prim,
                               AthenaArray<Real> &hydro_u,
-                              AthenaArray<Real> *radiation_u = nullptr);
+                              AthenaArray<Real> *radiation_u = nullptr,
+                              bool physical_state = true);
 
   // Opt-in, read-only diagnostics for a uniform Cartesian ideal-gas slab.
   void DumpStageDiagnostics(const char *phase, int stage = 0, Real subdt = 0.0);
