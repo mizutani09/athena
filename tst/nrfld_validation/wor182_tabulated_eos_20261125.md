@@ -92,11 +92,22 @@ and an explicit density/pressure quality fallback.  Intel SIMD build job
 347865 completed, and its 10-step numerical gate 347868 reproduced the
 non-SIMD residual history in 79.18 s versus 101 s for job 347862.
 
-Job 347871 extends the SIMD build through the startup release to t=1e-2.
+### Startup release, job 347871
+
+- Intel SIMD build, fresh map, CFL=0.1
+- completed 110 steps to t=1e-2 in 209.81 s
+- after the t=1e-3 cap, dt increased through the normal Athena factor-of-two
+  growth limiter; every solve converged in 3--5 Newton iterations
+- final Newton max residual: 5.68e-9
+- relative drift from t=0: mass -1.40e-12, angular momentum +1.76e-9,
+  gas+radiation energy +4.09e-9
+- interior/surface radial Mach: 4.67e-5 / 1.300e-3
+- full-force relative maximum: 0.174
 
 ## Open acceptance items
 
-1. Complete the t=1e-2 release gate, then raise CFL 0.1 -> 0.2 -> 0.3.
+1. Add a tabulated-EOS restart launcher and raise CFL 0.1 -> 0.2 -> 0.3
+   without repeating the 100-cycle startup cap.
 2. Compare L3/L4 and ideal/table force, Mach, Newton, and FGMRES histories.
 3. Add explicit runtime diagnostics for distance to EOS table boundaries.
 4. Replace cell-average closure with a derived, table-thermodynamic profile if
