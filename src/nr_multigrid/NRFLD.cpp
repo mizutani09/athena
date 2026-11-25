@@ -156,6 +156,18 @@ inline Real LimitNewtonCorrection(Real delta, Real scale, Real max_fraction) {
   return std::max(-limit, std::min(limit, delta));
 }
 
+// Radiation positivity constrains only a downward Newton correction.  Capping
+// positive corrections by the current Er traps cells near TINY_NUMBER: a cell
+// next to a finite diffusion reservoir can then require dozens of artificial
+// doublings before it reaches the Newton basin.  The global line search already
+// controls positive overshoots, while this one-sided cap prevents a full trial
+// from crossing zero.
+inline Real LimitRadiationCorrection(Real delta, Real scale,
+                                     Real max_fraction) {
+  if (max_fraction <= 0.0 || delta >= 0.0) return delta;
+  return std::max(delta, -max_fraction*scale);
+}
+
 }  // namespace
 
 //----------------------------------------------------------------------------------------
@@ -1322,7 +1334,7 @@ void NRFLD::AddDifference(AthenaArray<Real> &u_rad,
       for (int j = 0; j < delta_u.GetDim2(); ++j) {
         for (int i = 0; i < delta_u.GetDim1(); ++i) {
           Real delta = pfld->fixed_u_rad ? 0.0 : delta_u(k,j,i);
-          delta = LimitNewtonCorrection(delta,
+          delta = LimitRadiationCorrection(delta,
               std::max(std::abs(u_rad(k,j,i)), TINY_NUMBER),
               max_update_fraction_);
           const Real next = u_rad(k,j,i) + step_scale*delta;
@@ -1340,7 +1352,7 @@ void NRFLD::AddDifference(AthenaArray<Real> &u_rad,
       for (int i=is; i<=ie; ++i) {
         const Real raw_delta_ur = delta_u(k,j,i);
         Real delta_ur = pfld->fixed_u_rad ? 0.0 : raw_delta_ur;
-        delta_ur = LimitNewtonCorrection(delta_ur,
+        delta_ur = LimitRadiationCorrection(delta_ur,
             std::max(std::abs(u_rad(k,j,i)), TINY_NUMBER),
             max_update_fraction_);
         const Real scaled_delta_ur = step_scale*delta_ur;
