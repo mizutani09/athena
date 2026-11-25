@@ -47,6 +47,11 @@ int main(int argc, char** argv) {
   assert(Close(point.momentum_y/point.density, 8.0e5, 2.0e-14));
   assert(point.momentum_z == 0.0);
   assert(point.total_energy > point.pressure/(5.0/3.0-1.0));
+  assert(point.radiation_energy > 0.0);
+  assert(point.gas_internal_energy > 0.0);
+  assert(Close(point.pressure,
+               (5.0/3.0-1.0)*point.gas_internal_energy
+                   +point.radiation_energy/3.0, 2.0e-14));
 
   const scf_map::Conserved outside = scf_map::Sample(
       profile, 2.0*profile.maximum_radius(), 0.0, 0.0,
@@ -67,6 +72,9 @@ int main(int argc, char** argv) {
   assert(average.radiative_density <= average.stellar_density);
   assert(Close(average.density,
                average.stellar_density+average.atmosphere_density, 1.0e-14));
+  assert(Close(average.pressure,
+               (5.0/3.0-1.0)*average.gas_internal_energy
+                   +average.radiation_energy/3.0, 2.0e-14));
 
   std::cout << "radial_points=" << profile.radial_points()
             << " angular_points=" << profile.angular_points()

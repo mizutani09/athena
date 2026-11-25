@@ -41,6 +41,8 @@ struct Conserved {
   double density_temperature;
   double angular_momentum_z;
   double internal_energy;
+  double gas_internal_energy;
+  double radiation_energy;
   double kinetic_energy;
 };
 
@@ -340,6 +342,15 @@ inline Conserved Sample(const AxisymmetricProfile& profile,
       && source.pressure > atmosphere_pressure;
   const double density = stellar ? source.density : atmosphere_density;
   const double pressure = stellar ? source.pressure : atmosphere_pressure;
+  const double temperature = stellar ? source.temperature
+      : pressure*profile.mean_molecular_weight()
+          /(density*kGasConstantCgs);
+  // The numerical atmosphere is not part of the LTE stellar model.  Its
+  // radiation bath is supplied separately by the FLD problem generator.
+  const double radiation_energy = stellar ? kRadiationConstantCgs
+      *std::pow(temperature, 4) : 0.0;
+  const double gas_pressure = stellar
+      ? std::max(pressure-radiation_energy/3.0, 0.0) : pressure;
   const double omega = stellar || atmosphere.rotate ? angular_velocity : 0.0;
   const double vx = -omega*y;
   const double vy = omega*x;
@@ -351,6 +362,8 @@ inline Conserved Sample(const AxisymmetricProfile& profile,
   result.total_energy = pressure/(gamma-1.0)
       +0.5*density*(vx*vx+vy*vy);
   result.internal_energy = pressure/(gamma-1.0);
+  result.gas_internal_energy = gas_pressure/(gamma-1.0);
+  result.radiation_energy = radiation_energy;
   result.kinetic_energy = 0.5*density*(vx*vx+vy*vy);
   result.angular_momentum_z = x*result.momentum_y-y*result.momentum_x;
   result.pressure = pressure;
@@ -358,9 +371,7 @@ inline Conserved Sample(const AxisymmetricProfile& profile,
   result.atmosphere_density = stellar ? 0.0 : density;
   result.radiative_density = stellar
       ? density*source.radiative_fraction : 0.0;
-  result.density_temperature = stellar
-      ? density*source.temperature : density*pressure
-          *profile.mean_molecular_weight()/(density*kGasConstantCgs);
+  result.density_temperature = density*temperature;
   return result;
 }
 
@@ -433,6 +444,8 @@ inline Conserved CellAverage(const AxisymmetricProfile& profile,
         average.density_temperature += weight*point.density_temperature;
         average.angular_momentum_z += weight*point.angular_momentum_z;
         average.internal_energy += weight*point.internal_energy;
+        average.gas_internal_energy += weight*point.gas_internal_energy;
+        average.radiation_energy += weight*point.radiation_energy;
         average.kinetic_energy += weight*point.kinetic_energy;
       }
     }

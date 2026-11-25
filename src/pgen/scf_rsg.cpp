@@ -20,6 +20,10 @@
 #include "../athena_arrays.hpp"
 #include "../coordinates/coordinates.hpp"
 #include "../eos/eos.hpp"
+#if NRMGFLD_ENABLED
+#include "../fld/fld.hpp"
+#include "../fld/opacity_table.hpp"
+#endif
 #include "../globals.hpp"
 #include "../gravity/gravity.hpp"
 #include "../hydro/hydro.hpp"
@@ -60,6 +64,12 @@ bool rotate_atmosphere, isothermal_atmosphere, surface_refinement_use_tracer;
 scf_map::AtmosphereModel atmosphere_model;
 int root_logical_level, surface_refinement_level;
 Real surface_tracer_lower, surface_tracer_upper, surface_density_code;
+#if NRMGFLD_ENABLED
+UserOpacityTable* opacity_table = nullptr;
+Real external_radiation_energy_code, planck_taper_radius, planck_taper_width;
+Real marshak_alpha;
+Real radiation_startup_dt_cap, radiation_startup_dt_end;
+#endif
 constexpr int kWenozHistoryStart = 29;
 // WOR-177's compact softened core needs an L8/L9 resolution comparison on the
 // root64 mesh.  Keep one history slot for every level from L0 through L9.
@@ -71,6 +81,8 @@ constexpr int kMeshBlockHistoryStart = kWenozFallbackMassHistory+1;
 constexpr int kSurfaceMachHistoryStart =
     kMeshBlockHistoryStart+kTrackedMeshLevels;
 constexpr int kSurfaceMachHistoryCount = 8;
+constexpr int kBaseHistoryCount =
+    kSurfaceMachHistoryStart+kSurfaceMachHistoryCount;
 
 int SurfaceRefinementCondition(MeshBlock* block);
 
@@ -255,6 +267,124 @@ SCF_HYDRO_BOUNDARY(InnerX3, 2, true)
 SCF_HYDRO_BOUNDARY(OuterX3, 2, false)
 #undef SCF_HYDRO_BOUNDARY
 
+#if NRMGFLD_ENABLED
+void RadiationBoundary(AthenaArray<Real>& radiation,
+                       AthenaArray<Real>* gas_energy, int axis, bool inner,
+                       int is, int ie, int js, int je,
+                       int ks, int ke, int ngh) {
+  int lower[3] = {is, js, ks};
+  int upper[3] = {ie, je, ke};
+  const int reference = inner ? lower[axis] : upper[axis];
+  lower[axis] = inner ? reference-ngh : reference+1;
+  upper[axis] = inner ? reference-1 : reference+ngh;
+  for (int k = lower[2]; k <= upper[2]; ++k) {
+    for (int j = lower[1]; j <= upper[1]; ++j) {
+      for (int i = lower[0]; i <= upper[0]; ++i) {
+        int q[3] = {i, j, k};
+        q[axis] = reference;
+        radiation(k,j,i) = radiation(q[2],q[1],q[0]);
+        if (gas_energy != nullptr) {
+          (*gas_energy)(k,j,i) = (*gas_energy)(q[2],q[1],q[0]);
+        }
+      }
+    }
+  }
+}
+
+void CorrectionBoundary(AthenaArray<Real>& correction, int variables,
+                        int axis, bool inner, int is, int ie, int js, int je,
+                        int ks, int ke, int ngh) {
+  int lower[3] = {is, js, ks};
+  int upper[3] = {ie, je, ke};
+  const int reference = inner ? lower[axis] : upper[axis];
+  lower[axis] = inner ? reference-ngh : reference+1;
+  upper[axis] = inner ? reference-1 : reference+ngh;
+  for (int n = 0; n < variables; ++n) {
+    for (int k = lower[2]; k <= upper[2]; ++k) {
+      for (int j = lower[1]; j <= upper[1]; ++j) {
+        for (int i = lower[0]; i <= upper[0]; ++i) {
+          correction(n,k,j,i) = 0.0;
+        }
+      }
+    }
+  }
+}
+
+#define SCF_RADIATION_BOUNDARIES(TAG, AXIS, INNER) \
+void FLD##TAG(MeshBlock*, Coordinates*, FLD*, const AthenaArray<Real>&, \
+              AthenaArray<Real>& radiation, Real, Real, \
+              int is, int ie, int js, int je, int ks, int ke, int ngh) { \
+  RadiationBoundary(radiation, nullptr, AXIS, INNER, \
+                    is, ie, js, je, ks, ke, ngh); \
+} \
+void NR##TAG(MeshBlock*, AthenaArray<Real>& radiation, \
+             AthenaArray<Real>& gas_energy, Coordinates*, \
+             const AthenaArray<Real>&, Real, Real, \
+             int is, int ie, int js, int je, int ks, int ke, int ngh) { \
+  RadiationBoundary(radiation, &gas_energy, AXIS, INNER, \
+                    is, ie, js, je, ks, ke, ngh); \
+} \
+void MG##TAG(AthenaArray<Real>& correction, Real, int variables, \
+             int is, int ie, int js, int je, int ks, int ke, int ngh, \
+             const MGCoordinates&) { \
+  CorrectionBoundary(correction, variables, AXIS, INNER, \
+                     is, ie, js, je, ks, ke, ngh); \
+}
+SCF_RADIATION_BOUNDARIES(IX1, 0, true)
+SCF_RADIATION_BOUNDARIES(OX1, 0, false)
+SCF_RADIATION_BOUNDARIES(IX2, 1, true)
+SCF_RADIATION_BOUNDARIES(OX2, 1, false)
+SCF_RADIATION_BOUNDARIES(IX3, 2, true)
+SCF_RADIATION_BOUNDARIES(OX3, 2, false)
+#undef SCF_RADIATION_BOUNDARIES
+
+void Opacity(MeshBlock* block, AthenaArray<Real>& radiation,
+             AthenaArray<Real>& primitive) {
+  (void) radiation;
+  for (int k = block->ks-NGHOST; k <= block->ke+NGHOST; ++k) {
+    for (int j = block->js-NGHOST; j <= block->je+NGHOST; ++j) {
+      for (int i = block->is-NGHOST; i <= block->ie+NGHOST; ++i) {
+        const Real density = std::max(
+            primitive(IDN,k,j,i)*rho_unit, atmosphere_density_floor);
+        const Real gas_pressure = std::max(
+            primitive(IPR,k,j,i)*pressure_unit, atmosphere_pressure_floor);
+        const Real temperature = gas_pressure*mean_molecular_weight
+            /(density*scf_map::kGasConstantCgs);
+        const Real planck = opacity_table->GetOpacity(
+            RadFLD::SIGMA_P, density, temperature);
+        const Real rosseland = opacity_table->GetOpacity(
+            RadFLD::SIGMA_R, density, temperature);
+        const Real x = block->pcoord->x1v(i)*length_unit;
+        const Real y = block->pcoord->x2v(j)*length_unit;
+        const Real z = block->pcoord->x3v(k)*length_unit;
+        const Real radius = std::sqrt(x*x+y*y+z*z);
+        Real planck_weight = 1.0;
+        if (radius > planck_taper_radius) {
+          planck_weight = 0.0;
+          if (planck_taper_width > 0.0
+              && radius < planck_taper_radius+planck_taper_width) {
+            const Real fraction = (radius-planck_taper_radius)/planck_taper_width;
+            planck_weight = 0.5*(1.0+std::cos(PI*fraction));
+          }
+        }
+        block->prfld->sigma_p(k,j,i) = std::max(
+            planck_weight*planck*density*length_unit, TINY_NUMBER);
+        block->prfld->sigma_r(k,j,i) = std::max(
+            rosseland*density*length_unit, TINY_NUMBER);
+      }
+    }
+  }
+}
+
+Real RadiationStartupTimeStep(MeshBlock* block) {
+  if (radiation_startup_dt_cap > 0.0
+      && block->pmy_mesh->time < radiation_startup_dt_end) {
+    return radiation_startup_dt_cap;
+  }
+  return std::numeric_limits<Real>::max();
+}
+#endif
+
 void UpdateGravityDiagnostics(MeshBlock* block) {
   for (int k = block->ks; k <= block->ke; ++k) {
     for (int j = block->js; j <= block->je; ++j) {
@@ -431,6 +561,39 @@ Real HistoryTotalEnergy(MeshBlock* block, int) {
             *block->pcoord->GetCellVolume(k,j,i)*scale;
   return total;
 }
+
+#if NRMGFLD_ENABLED
+Real HistoryRadiationEnergy(MeshBlock* block, int) {
+  Real total = 0.0;
+  const Real scale = pressure_unit*std::pow(length_unit, 3);
+  for (int k = block->ks; k <= block->ke; ++k)
+    for (int j = block->js; j <= block->je; ++j)
+      for (int i = block->is; i <= block->ie; ++i)
+        total += block->prfld->u_rad(k,j,i)
+            *block->pcoord->GetCellVolume(k,j,i)*scale;
+  return total;
+}
+
+Real HistoryGasInternalEnergy(MeshBlock* block, int) {
+  Real total = 0.0;
+  const Real scale = pressure_unit*std::pow(length_unit, 3);
+  for (int k = block->ks; k <= block->ke; ++k) {
+    for (int j = block->js; j <= block->je; ++j) {
+      for (int i = block->is; i <= block->ie; ++i) {
+        const Real density = block->phydro->u(IDN,k,j,i);
+        const Real mx = block->phydro->u(IM1,k,j,i);
+        const Real my = block->phydro->u(IM2,k,j,i);
+        const Real mz = block->phydro->u(IM3,k,j,i);
+        const Real kinetic = 0.5*(mx*mx+my*my+mz*mz)
+            /std::max(density, TINY_NUMBER);
+        total += (block->phydro->u(IEN,k,j,i)-kinetic)
+            *block->pcoord->GetCellVolume(k,j,i)*scale;
+      }
+    }
+  }
+  return total;
+}
+#endif
 
 Real HistoryGravityDiagnostic(MeshBlock* block, int output) {
   if (output == 4) UpdateGravityDiagnostics(block);
@@ -705,6 +868,36 @@ void Mesh::InitUserMeshData(ParameterInput* pin) {
   atmosphere_model.isothermal_monopole = isothermal_atmosphere;
   atmosphere_model.rotate = rotate_atmosphere;
   profile.Load(filename, mean_molecular_weight);
+#if NRMGFLD_ENABLED
+  Require(pin->GetOrAddBoolean("fld", "is_couple", true),
+          "FLD gas-radiation coupling must be enabled");
+  Require(pin->GetOrAddBoolean("fld", "include_radiation_force", true),
+          "FLD radiation force must be enabled for the pressure split");
+  Require(pin->GetOrAddBoolean("fld", "use_opacity_table", true),
+          "the radiation-supported model requires an opacity table");
+  opacity_table = new UserOpacityTable(pin);
+  const Real external_temperature = pin->GetOrAddReal(
+      "problem", "radiation_external_temperature", 0.0);
+  Require(external_temperature >= 0.0,
+          "radiation_external_temperature must be nonnegative");
+  external_radiation_energy_code = scf_map::kRadiationConstantCgs
+      *std::pow(external_temperature, 4)/pressure_unit;
+  planck_taper_radius = pin->GetOrAddReal(
+      "problem", "atmosphere_planck_taper_radius_cm", surface_match_radius);
+  planck_taper_width = pin->GetOrAddReal(
+      "problem", "atmosphere_planck_taper_width_cm", 0.0);
+  marshak_alpha = pin->GetOrAddReal("problem", "marshak_alpha", 0.5);
+  radiation_startup_dt_cap = pin->GetOrAddReal(
+      "problem", "radiation_startup_dt_cap", -1.0);
+  radiation_startup_dt_end = pin->GetOrAddReal(
+      "problem", "radiation_startup_dt_end", 0.0);
+  Require(planck_taper_radius > 0.0 && planck_taper_width >= 0.0
+              && marshak_alpha > 0.0 && radiation_startup_dt_end >= 0.0,
+          "invalid Planck taper or Marshak boundary parameter");
+  if (radiation_startup_dt_cap > 0.0) {
+    EnrollUserTimeStepFunction(RadiationStartupTimeStep);
+  }
+#endif
 
   SetGravitationalConstant(gravity_code);
   EnrollUserMGGravitySourceMaskFunction(AtmosphereGravityMask);
@@ -734,6 +927,14 @@ void Mesh::InitUserMeshData(ParameterInput* pin) {
       "ix1_bc", "ox1_bc", "ix2_bc", "ox2_bc", "ix3_bc", "ox3_bc"};
   BValFunc boundary_functions[6] = {
       InnerX1, OuterX1, InnerX2, OuterX2, InnerX3, OuterX3};
+#if NRMGFLD_ENABLED
+  FLDBoundaryFunc fld_boundaries[6] = {
+      FLDIX1, FLDOX1, FLDIX2, FLDOX2, FLDIX3, FLDOX3};
+  NRBoundaryFunc nr_boundaries[6] = {
+      NRIX1, NROX1, NRIX2, NROX2, NRIX3, NROX3};
+  MGBoundaryFunc linear_boundaries[6] = {
+      MGIX1, MGOX1, MGIX2, MGOX2, MGIX3, MGOX3};
+#endif
   for (int face = 0; face < 6; ++face) {
     Require(pin->GetString("mesh", boundary_names[face]) == "user",
             "all hydrodynamic boundaries must be user");
@@ -741,11 +942,27 @@ void Mesh::InitUserMeshData(ParameterInput* pin) {
             "all gravity boundaries must be isolated multipole");
     EnrollUserBoundaryFunction(static_cast<BoundaryFace>(face),
                                boundary_functions[face]);
+#if NRMGFLD_ENABLED
+    Require(pin->GetString("nrfld", boundary_names[face]) == "user"
+                && pin->GetString(
+                    "nrfld", std::string("linearMG_")+boundary_names[face])
+                    == "user",
+            "all NR-FLD and linear-MG boundaries must be user");
+    const BoundaryFace boundary_face = static_cast<BoundaryFace>(face);
+    EnrollUserFLDBoundaryFunction(boundary_face, fld_boundaries[face]);
+    EnrollUserNRBoundaryFunction(boundary_face, nr_boundaries[face]);
+    EnrollUserLinearMGBoundaryFunction(boundary_face,
+                                       linear_boundaries[face]);
+#endif
   }
   Require(pin->GetOrAddBoolean("gravity", "fill_ghost", true),
           "gravity/fill_ghost must be true for force diagnostics");
 
-  AllocateUserHistoryOutput(kSurfaceMachHistoryStart+kSurfaceMachHistoryCount);
+#if NRMGFLD_ENABLED
+  AllocateUserHistoryOutput(kBaseHistoryCount+2);
+#else
+  AllocateUserHistoryOutput(kBaseHistoryCount);
+#endif
   EnrollUserHistoryOutput(0, HistoryMass, "mapped_mass_g");
   EnrollUserHistoryOutput(1, HistoryStellarMass, "mapped_stellar_mass_g");
   EnrollUserHistoryOutput(2, HistoryAngularMomentum, "mapped_Jz_g_cm2_s");
@@ -843,6 +1060,12 @@ void Mesh::InitUserMeshData(ParameterInput* pin) {
   EnrollUserHistoryOutput(kSurfaceMachHistoryStart+7,
                           HistorySurfaceMachDiagnostic,
                           "stellar_mass_radial_mach_gt_0p3_g");
+#if NRMGFLD_ENABLED
+  EnrollUserHistoryOutput(kBaseHistoryCount, HistoryRadiationEnergy,
+                          "radiation_energy_erg");
+  EnrollUserHistoryOutput(kBaseHistoryCount+1, HistoryGasInternalEnergy,
+                          "gas_internal_energy_erg");
+#endif
   if (Globals::my_rank == 0) {
     std::cout << std::scientific << std::setprecision(8)
               << "scf_rsg profile=" << filename
@@ -913,7 +1136,17 @@ int SurfaceRefinementCondition(MeshBlock* block) {
 }  // namespace
 
 void MeshBlock::InitUserMeshBlockData(ParameterInput*) {
+#if NRMGFLD_ENABLED
+  prfld->EnrollOpacityFunction(Opacity);
+  for (int face = 0; face < 6; ++face) {
+    prfld->marshak_face_boundary[face] = true;
+  }
+  prfld->marshak_top_alpha = marshak_alpha;
+  prfld->marshak_top_erad_ext = external_radiation_energy_code;
+  AllocateUserOutputVariables(16);
+#else
   AllocateUserOutputVariables(13);
+#endif
   SetUserOutputVariableName(0, "T_source");
   SetUserOutputVariableName(1, "stellar_frac");
   SetUserOutputVariableName(2, "radiative_frac");
@@ -927,6 +1160,11 @@ void MeshBlock::InitUserMeshBlockData(ParameterInput*) {
   SetUserOutputVariableName(10, "gravity_accel");
   SetUserOutputVariableName(11, "core_work_density");
   SetUserOutputVariableName(12, "gravity_torque_density");
+#if NRMGFLD_ENABLED
+  SetUserOutputVariableName(13, "Erad_cgs");
+  SetUserOutputVariableName(14, "Tgas_fld");
+  SetUserOutputVariableName(15, "Trad_fld");
+#endif
 }
 
 void MeshBlock::ProblemGenerator(ParameterInput*) {
@@ -950,7 +1188,27 @@ void MeshBlock::ProblemGenerator(ParameterInput*) {
         phydro->u(IM1,k,j,i) = mapped.momentum_x/momentum_scale;
         phydro->u(IM2,k,j,i) = mapped.momentum_y/momentum_scale;
         phydro->u(IM3,k,j,i) = mapped.momentum_z/momentum_scale;
+#if NRMGFLD_ENABLED
+        const Real cell_temperature = mapped.stellar_density > 0.0
+            ? scf_map::GasRadiationTemperature(
+                mapped.density, mapped.pressure, mean_molecular_weight)
+            : atmosphere_pressure*mean_molecular_weight
+                /(atmosphere_density*scf_map::kGasConstantCgs);
+        const Real cell_radiation_energy = mapped.stellar_density > 0.0
+            ? scf_map::kRadiationConstantCgs*std::pow(cell_temperature, 4)
+            : external_radiation_energy_code*energy_scale;
+        const Real cell_gas_pressure = mapped.stellar_density > 0.0
+            ? std::max(mapped.pressure-cell_radiation_energy/3.0,
+                       atmosphere_pressure_floor)
+            : mapped.pressure;
+        const Real cell_gas_internal = cell_gas_pressure/(gamma_gas-1.0);
+        phydro->u(IEN,k,j,i) =
+            (cell_gas_internal+mapped.kinetic_energy)/energy_scale;
+        prfld->u_gas(k,j,i) = cell_gas_internal/energy_scale;
+        prfld->u_rad(k,j,i) = cell_radiation_energy/energy_scale;
+#else
         phydro->u(IEN,k,j,i) = mapped.total_energy/energy_scale;
+#endif
 #if NSCALARS > 0
         pscalars->s(0,k,j,i) = mapped.stellar_density/density_scale;
 #endif
@@ -969,6 +1227,18 @@ void MeshBlock::ProblemGenerator(ParameterInput*) {
             /(velocity_unit*velocity_unit);
         user_out_var(5,k,j,i) = center.gas_potential
             /(velocity_unit*velocity_unit);
+#if NRMGFLD_ENABLED
+        const Real density_cgs = mapped.density;
+        const Real gas_pressure_cgs = (gamma_gas-1.0)
+            *prfld->u_gas(k,j,i)*energy_scale;
+        user_out_var(13,k,j,i) = prfld->u_rad(k,j,i)*energy_scale;
+        user_out_var(14,k,j,i) = gas_pressure_cgs*mean_molecular_weight
+            /(std::max(density_cgs, TINY_NUMBER)
+              *scf_map::kGasConstantCgs);
+        user_out_var(15,k,j,i) = std::pow(
+            std::max(user_out_var(13,k,j,i), TINY_NUMBER)
+              /scf_map::kRadiationConstantCgs, 0.25);
+#endif
       }
     }
   }
