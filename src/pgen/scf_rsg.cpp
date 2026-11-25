@@ -1130,6 +1130,29 @@ Real HistorySurfaceMachDiagnostic(MeshBlock* block, int output) {
   if (diagnostic == 5) return total*mass_unit*length_unit;
   if (diagnostic == 3 && surface_mach_diagnostic_threshold > 0.0
       && total >= surface_mach_diagnostic_threshold) {
+#if NRMGFLD_ENABLED
+    // The optional surface-cell report is used to distinguish a mechanical
+    // surface mismatch from radiative cooling/heating at the same cell.
+    // Refresh the lagged FLD terms here because surface histories precede the
+    // aggregate taper histories in the output ordering.
+    UpdateTaperRadiationDiagnostics(block);
+    const Real diffusion_heating = block->user_out_var(19,max_k,max_j,max_i);
+    const Real thermal_exchange = block->user_out_var(20,max_k,max_j,max_i);
+    const Real density = block->phydro->u(IDN,max_k,max_j,max_i);
+    const Real mx = block->phydro->u(IM1,max_k,max_j,max_i);
+    const Real my = block->phydro->u(IM2,max_k,max_j,max_i);
+    const Real mz = block->phydro->u(IM3,max_k,max_j,max_i);
+    const Real gas_energy = block->phydro->u(IEN,max_k,max_j,max_i)
+        -0.5*(mx*mx+my*my+mz*mz)/density;
+    const Real radiation_energy = block->prfld->u_rad(max_k,max_j,max_i);
+    const Real local_energy = gas_energy+radiation_energy;
+    const Real diffusion_time = std::abs(diffusion_heating) > 0.0
+        ? local_energy/std::abs(diffusion_heating)*time_unit
+        : std::numeric_limits<Real>::infinity();
+    const Real exchange_time = std::abs(thermal_exchange) > 0.0
+        ? local_energy/std::abs(thermal_exchange)*time_unit
+        : std::numeric_limits<Real>::infinity();
+#endif
     std::stringstream message;
     message << std::scientific << std::setprecision(16)
             << "[SCF_SURFACE_MACH_CELL] rank=" << Globals::my_rank
@@ -1153,6 +1176,14 @@ Real HistorySurfaceMachDiagnostic(MeshBlock* block, int output) {
             << " pressure_cgs=" << max_pressure*pressure_unit
             << " vr_cgs=" << max_radial_velocity*velocity_unit
             << " cs_cgs=" << max_sound_speed*velocity_unit
+#if NRMGFLD_ENABLED
+            << " fld_diffusion_erg_cm3_s="
+            << diffusion_heating*pressure_unit/time_unit
+            << " fld_exchange_erg_cm3_s="
+            << thermal_exchange*pressure_unit/time_unit
+            << " fld_diffusion_time_s=" << diffusion_time
+            << " fld_exchange_time_s=" << exchange_time
+#endif
             << std::endl;
     std::cout << message.str();
   }
