@@ -210,6 +210,11 @@ surface_tracer_lower = 1.0e-6
 surface_tracer_upper = 0.999999
 surface_refinement_density_g_cm3 = 3.0e-9
 surface_mach_diagnostic_threshold = -1.0
+# Optional initialization-only velocity relaxation.  All-negative values leave
+# the mapped star unchanged and preserve the baseline production configuration.
+relaxation_velocity_tau = -1.0
+relaxation_taper_start = -1.0
+relaxation_taper_end = -1.0
 rotate_atmosphere = true
 gas_mass_g = 2.8801452052462170e34
 core_mass_g = 1.2962446564904497e34
