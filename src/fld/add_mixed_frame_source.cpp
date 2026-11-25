@@ -191,8 +191,30 @@ void FLD::AddExplicitSourceTerms(const Real dt, const AthenaArray<Real> &prim,
               ? 0.5*(pmb->phydro->vf[X3DIR](k,j,i)
                      + pmb->phydro->vf[X3DIR](k+1,j,i)) : prim(IVZ,k,j,i);
           const Real source = -lambda*(vx*ex + vy*ey + vz*ez);
+          const Real old_rad = u_rad(k,j,i);
+          const Real next_rad = old_rad-dt*source;
+          if (explicit_positivity_diagnostics_
+              && (!std::isfinite(old_rad) || old_rad < 0.0
+                  || !std::isfinite(next_rad) || next_rad < 0.0)) {
+            std::stringstream msg;
+            msg << "### FATAL ERROR in explicit mixed-frame source update\n"
+                << "cycle=" << pmb->pmy_mesh->ncycle
+                << " time=" << pmb->pmy_mesh->time
+                << " dt=" << pmb->pmy_mesh->dt
+                << " gid=" << pmb->gid << " level=" << pmb->loc.level
+                << " cell=(" << k << ',' << j << ',' << i << ") xyz=("
+                << pmb->pcoord->x1v(i) << ',' << pmb->pcoord->x2v(j) << ','
+                << pmb->pcoord->x3v(k) << ")\n"
+                << "Er_old=" << old_rad << " source=" << source
+                << " source_delta=" << -dt*source
+                << " Er_next=" << next_rad << '\n'
+                << "lambda=" << lambda << " vx=" << vx << " vy=" << vy
+                << " vz=" << vz << " gradEr=(" << ex << ',' << ey << ','
+                << ez << ")\n";
+            ATHENA_ERROR(msg);
+          }
           if (NON_BAROTROPIC_EOS) hydro_u(IEN,k,j,i) += dt*source;
-          u_rad(k,j,i) = std::max(u_rad(k,j,i) - dt*source, TINY_NUMBER);
+          u_rad(k,j,i) = std::max(next_rad, TINY_NUMBER);
         }
       }
     }
