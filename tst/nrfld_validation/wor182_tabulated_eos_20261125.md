@@ -767,6 +767,26 @@ passes the short time-0.1 gate, but this interval is only about 2200 physical
 seconds and cannot establish long-term mechanical stability.  A controlled
 time-1 extension is required before deciding whether to retain the mapping.
 
+Job 348312 completed that extension to time 1 in 62 s.  All nine nonlinear
+solves converged in at most seven Newton iterations; 49 total FGMRES
+iterations were required, with a maximum of 16, and no warning or relaxed
+acceptance occurred.  The interior/outer Mach maxima were
+`0.002351/0.018010`, with no mass above radial Mach 0.1.  The homogeneous-cell
+control ended at outer Mach `0.01970`, so the pointwise split retained an
+8.6-percent improvement at time 1.
+
+Job 348317 then reached time 10 in 375 s.  All 76 nonlinear solves converged
+normally in at most seven Newton iterations; 454 total FGMRES iterations were
+required, with a maximum of 17.  The interior/outer Mach maxima were
+`0.007025/0.148274`.  The maximum above the surface-density threshold was only
+`0.006476`; the large velocity remained confined to lower-density cut-cell and
+atmosphere-facing material.  Nevertheless, `1.04e29 g` exceeded radial Mach
+0.1, compared with `6.66e28 g` in the homogeneous-cell control, while the
+outer maximum improved by only 3.8 percent (`0.15408` in the control).  No
+material exceeded Mach 0.3.  The pointwise split is numerically robust and
+slightly lowers the peak velocity, but it does not solve the long-time outer
+closure and is not a reason to extend this branch blindly to time 20.
+
 ## Open acceptance items
 
 1. Reconstruct the low-density outer density, material pressure, and radiation
