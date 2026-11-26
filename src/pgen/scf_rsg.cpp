@@ -530,9 +530,11 @@ void RebuildRadiativeSurfaceProfile(EosTable& table, Real luminosity) {
           : 0.0;
       const Real density = DensityFromMaterialPressureTemperature(
           table, gas_pressure, temperature);
+      const Real total_pressure = gas_pressure+radiation_energy/3.0;
       const bool valid = position >= upper_radius
           && substeps < 10000 && std::isfinite(density)
-          && density > atmosphere_density && gas_pressure > atmosphere_pressure
+          && density > atmosphere_density
+          && total_pressure > atmosphere_pressure
           && radiation_energy > 0.0;
       if (!valid) {
         ended = true;
@@ -553,7 +555,7 @@ void RebuildRadiativeSurfaceProfile(EosTable& table, Real luminosity) {
         state.radiative_fraction = 0.0;
       } else {
         state.density = density;
-        state.pressure = gas_pressure+radiation_energy/3.0;
+        state.pressure = total_pressure;
         state.temperature = temperature;
         state.radiative_fraction = 1.0;
         last_valid_temperature = temperature;
