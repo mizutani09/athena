@@ -1173,7 +1173,8 @@ Real HistorySurfaceMachDiagnostic(MeshBlock* block, int output) {
   Real minimum_pressure_x = 0.0, minimum_pressure_y = 0.0;
   Real minimum_pressure_z = 0.0, minimum_pressure_density = 0.0;
   Real minimum_pressure_stellar_density = 0.0;
-  Real minimum_pressure = 0.0, minimum_source_density = 0.0;
+  Real minimum_gas_pressure = 0.0, minimum_radiation_pressure = 0.0;
+  Real minimum_total_pressure = 0.0, minimum_source_density = 0.0;
   Real minimum_source_pressure = 0.0, minimum_pressure_ellipsoid = 0.0;
   for (int k = block->ks; k <= block->ke; ++k) {
     const Real z = block->pcoord->x3v(k);
@@ -1187,6 +1188,11 @@ Real HistorySurfaceMachDiagnostic(MeshBlock* block, int output) {
         const Real stellar_density = block->pscalars->s(0,k,j,i);
         if (!(density > 0.0) || stellar_density/density <= 0.5) continue;
         const Real pressure = block->phydro->w(IPR,k,j,i);
+        Real radiation_pressure = 0.0;
+#if NRMGFLD_ENABLED
+        radiation_pressure = block->prfld->u_rad(k,j,i)/3.0;
+#endif
+        const Real total_pressure = pressure+radiation_pressure;
         const Real sound_speed2 = AdiabaticSoundSpeedSquared(
             block, density, pressure);
         if (!(sound_speed2 > 0.0)) continue;
@@ -1208,7 +1214,7 @@ Real HistorySurfaceMachDiagnostic(MeshBlock* block, int output) {
           if (source.density > 5.0*atmosphere_density
               && source.density < surface_density_code*rho_unit
               && source.pressure > 0.0) {
-            const Real ratio = pressure*pressure_unit/source.pressure;
+            const Real ratio = total_pressure*pressure_unit/source.pressure;
             if (ratio < minimum_pressure_ratio) {
               minimum_pressure_ratio = ratio;
               minimum_pressure_x = x;
@@ -1216,7 +1222,9 @@ Real HistorySurfaceMachDiagnostic(MeshBlock* block, int output) {
               minimum_pressure_z = z;
               minimum_pressure_density = density;
               minimum_pressure_stellar_density = stellar_density;
-              minimum_pressure = pressure;
+              minimum_gas_pressure = pressure;
+              minimum_radiation_pressure = radiation_pressure;
+              minimum_total_pressure = total_pressure;
               minimum_source_density = source.density;
               minimum_source_pressure = source.pressure;
               minimum_pressure_ellipsoid = match_ellipsoidal_radius;
@@ -1285,12 +1293,17 @@ Real HistorySurfaceMachDiagnostic(MeshBlock* block, int output) {
             << " rho_cgs=" << minimum_pressure_density*rho_unit
             << " stellar_rho_cgs="
             << minimum_pressure_stellar_density*rho_unit
-            << " pressure_cgs=" << minimum_pressure*pressure_unit
+            << " gas_pressure_cgs=" << minimum_gas_pressure*pressure_unit
+            << " radiation_pressure_cgs="
+            << minimum_radiation_pressure*pressure_unit
+            << " total_pressure_cgs=" << minimum_total_pressure*pressure_unit
             << " source_rho_cgs=" << minimum_source_density
             << " source_pressure_cgs=" << minimum_source_pressure
             << " current_to_source_rho="
             << minimum_pressure_density*rho_unit/minimum_source_density
-            << " current_to_source_pressure=" << minimum_pressure_ratio
+            << " current_to_source_gas_pressure="
+            << minimum_gas_pressure*pressure_unit/minimum_source_pressure
+            << " current_to_source_total_pressure=" << minimum_pressure_ratio
             << std::endl;
     std::cout << message.str();
   }
@@ -1312,6 +1325,8 @@ Real HistorySurfaceMachDiagnostic(MeshBlock* block, int output) {
     const Real gas_energy = block->phydro->u(IEN,max_k,max_j,max_i)
         -0.5*(mx*mx+my*my+mz*mz)/density;
     const Real radiation_energy = block->prfld->u_rad(max_k,max_j,max_i);
+    const Real radiation_pressure = radiation_energy/3.0;
+    const Real total_pressure = max_pressure+radiation_pressure;
     const Real local_energy = gas_energy+radiation_energy;
     const Real diffusion_time = std::abs(diffusion_heating) > 0.0
         ? local_energy/std::abs(diffusion_heating)*time_unit
@@ -1424,8 +1439,14 @@ Real HistorySurfaceMachDiagnostic(MeshBlock* block, int output) {
             << " current_to_source_rho="
             << max_density*rho_unit/std::max(source.density,
                                              std::numeric_limits<Real>::min())
-            << " current_to_source_pressure="
+            << " radiation_pressure_cgs="
+            << radiation_pressure*pressure_unit
+            << " total_pressure_cgs=" << total_pressure*pressure_unit
+            << " current_to_source_gas_pressure="
             << max_pressure*pressure_unit/std::max(
+                source.pressure, std::numeric_limits<Real>::min())
+            << " current_to_source_total_pressure="
+            << total_pressure*pressure_unit/std::max(
                 source.pressure, std::numeric_limits<Real>::min())
 #endif
             << std::endl;
