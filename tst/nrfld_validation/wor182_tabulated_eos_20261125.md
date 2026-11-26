@@ -819,6 +819,16 @@ Relative mass and total-energy changes over this continuation were
 checkpoint.  Job 348735 runs on three XD nodes in `M-bulk-a` to continue the
 same undamped state to time 10 at CFL 0.3.
 
+Job 348735 completed that extension in 238 s.  All 76 nonlinear solves
+converged in at most four Newton iterations; 240 FGMRES solves used at most
+17 iterations, with no warning, relaxed acceptance, or breakdown.  Final
+interior/surface Mach maxima were `0.003156/0.063914`, no stellar mass
+exceeded radial Mach 0.1, relative mass drift was `+5.73e-11`, and the
+density/energy lower table margins were `+6.00/+1.31 dex`.  The surface Mach
+increased smoothly from 0.0060 at time 1, while the density-resolved envelope
+remained quieter than Mach 0.0032.  This passes the time-10 nonrotating FLD
+gate.  Job 348777 continues the same restart to time 100 at CFL 0.3.
+
 1. Reconstruct the low-density outer density, material pressure, and radiation
    profiles against the full rotating force balance and the WOR-151 cut
    luminosity.  Repeat the strong-
