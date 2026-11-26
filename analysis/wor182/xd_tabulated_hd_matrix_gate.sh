@@ -67,8 +67,9 @@ case "$eos_mode" in
     eos_file_type=binary
     # Material pressure at 1e4 K plus a*T^4/3.
     atmosphere_pressure=4.746614707e1
-    # Keep the numerical floor within the combined table's rho >= 1e-12 cgs domain.
-    density_floor=1.0e-4
+    # Keep a >=0.5 dex guard above the combined table's rho=1e-12 cgs edge.
+    # This is still 5.3 times below the 1.7e-11 cgs atmosphere.
+    density_floor=3.2e-4
     ;;
   *) echo "WOR182_EOS_MODE must be material or lte_radiation" >&2; exit 2 ;;
 esac
