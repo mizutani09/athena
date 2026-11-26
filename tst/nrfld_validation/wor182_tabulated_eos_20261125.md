@@ -652,6 +652,16 @@ margins stayed positive (the smallest was `+1.08 dex`).  Relative mass and
 radiation-energy changes were `-1.01e-11` and `+1.05e-6`.  Job 348229 now
 extends the same undamped state to time 1 at CFL 0.3.
 
+Job 348229 completed that extension in 70 s.  All nine Newton solves converged
+in at most seven iterations, FGMRES used at most 15 iterations, and there was
+again no solver anomaly.  The interior/surface Mach maxima were `0.00235` and
+`0.0196`, essentially the same as the original time-1 control (`0.00235` and
+`0.0192`).  The minimum exchange time was `1.66e5 s`, the minimum EOS margin
+was `+1.08 dex`, and relative mass drift was `-8.41e-11`.  The reconstruction
+therefore does not worsen the early mechanical transient.  Job 348230 extends
+it undamped to time 10, where the original taper had reached surface Mach
+0.209 and had begun its persistent pressure loss.
+
 ## Open acceptance items
 
 1. Reconstruct the low-density outer density, material pressure, and radiation
