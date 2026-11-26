@@ -513,16 +513,83 @@ from the maximum-Mach cells, it is not the direct cause of their motion.  Its
 spatial source and cancellation between the implicit gas/radiation terms
 still need to be localized before production use.
 
+Job 348160 localized the fastest exchange cell in every taper MeshBlock at
+time 100.  All 104 reports form a very thin shell at ellipsoidal radius
+`1.00002--1.00838` and density `2.51e-9--2.95e-9 g cm^-3`, immediately below
+the `3e-9 g cm^-3` surface match.  The cells remain close to LTE:
+`aT^4/E_r=1.00163--1.00334`.  Their effective Planck opacity is nevertheless
+`2.17e4--2.34e4 cm^2 g^-1`, making a sub-percent temperature difference a
+`0.039--0.095 s` exchange.  The large signed/absolute powers therefore arise
+from a stiff, nearly LTE matching shell and cancel between material and
+radiation; they are spatially distinct from the Mach maximum.
+
+Job 348163 added radial force components and the original SCF state to the
+time-100 Mach-cell report.  The reported cells have density ratios relative
+to the source profile of `0.985--1.43`, but alternating radial force residuals
+of `-0.724--+0.350 cm s^-2`.  The global Mach maximum has ellipsoidal radius
+1.063, density `2.95e-10 g cm^-3`, and inward radial residual
+`-0.560 cm s^-2`.  This confirms that damping is holding a mechanically
+misbalanced outer pressure profile rather than merely suppressing one
+coherent bulk contraction.
+
+### Total-pressure restart sweep
+
+The first pressure-profile diagnostic compared material pressure with the SCF
+total pressure.  That ratio is useful for the EOS/radiation split but is not a
+like-for-like support diagnostic.  Commit `b7b63b632` corrects the gate to
+report material, radiation, and total pressure separately and applies its
+threshold to `(P_gas+E_r/3)/P_SCF`.
+
+Job 348180 then read the same relaxed restarts at times 1, 20, 50, and 100
+without advancing them.  The following values are the distribution over the
+per-MeshBlock minimum total-pressure ratios in the selected outer band
+(`5 rho_atm < rho_source < 3e-9 g cm^-3`):
+
+| time | reports | minimum | 10th percentile | median | 90th percentile |
+| ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| 1 | 440 | 0.8384 | 0.8492 | 0.9131 | 0.9410 |
+| 20 | 688 | 0.08149 | 0.09982 | 0.8706 | 0.9130 |
+| 50 | 720 | 0.07444 | 0.09380 | 0.8171 | 0.8850 |
+| 100 | 744 | 0.06612 | 0.08325 | 0.7671 | 0.8482 |
+
+The low-ratio tail is therefore not an omitted radiation-pressure term.  By
+time 20, at least ten percent of the reported block minima retain only about
+ten percent of the SCF total pressure, while the median continues to erode
+through time 100.  This is direct evidence that the HD-polytropic taper is not
+a stationary FLD outer solution.
+
+### MESA-cut luminosity source
+
+The prior SCF-FLD gates injected no stellar luminosity.  Commit `8689558f3`
+adds an opt-in compact spherical source with an analytically normalized
+`(1-r^2/R_h^2)^2` kernel.  The physical input is kept separate from its
+spatial regularization: the production value is the WOR-151 MESA-cut
+luminosity `116315.98 Lsun`, while the default heating radius is the resolved
+soft-core support `4.520740656e12 cm`.  A history column records the actual
+mesh-integrated injection.
+
+The standalone C++ integration test reproduces the analytic kernel volume to
+`3.4e-14` relative error.  Fresh-map job 348178 then passed one FLD step with
+the luminosity enabled.  The L4 AMR mesh injected
+`4.452575265e38 erg s^-1`, only `1.01e-7` below the requested
+`4.452575714e38 erg s^-1`.  Newton converged in three iterations to maximum
+residual `7.64e-9`; each FGMRES solve used two iterations and there was no
+warning, backtracking, or EOS-domain violation.  The source implementation is
+therefore accepted, but it cannot by itself make the zero-flux HD taper a
+radiative equilibrium.  The next initial-data gate must rebuild the outer
+profile against the target luminosity, tabulated EOS, opacity, rotation, and
+FLD radiation force.
+
 ## Open acceptance items
 
-1. Reconstruct or relax the low-density outer density, pressure, and radiation
-   profiles against the full rotating force balance.  Repeat the strong-
+1. Reconstruct the low-density outer density, material pressure, and radiation
+   profiles against the full rotating force balance and the WOR-151 cut
+   luminosity.  Repeat the strong-
    damping gate, and start a taper only after the corotating removal power is
    demonstrably declining toward zero.  Then require a subsequent undamped
    interval to remain stable.
-2. Localize the cells responsible for the large aggregate implicit thermal
-   exchange and verify that the source cancellation is physically and
-   numerically acceptable.
+2. Verify the thin match-shell exchange cancellation on the rebuilt outer
+   profile and require its stiffness not to worsen relative to job 348160.
 3. Add a focused AMR regression for positivity-constrained FLD ghost
    prolongation and the Newton radiation active set.
 4. Keep relative L2 as the production surface-refinement level unless a new
