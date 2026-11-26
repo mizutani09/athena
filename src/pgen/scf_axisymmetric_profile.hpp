@@ -288,6 +288,14 @@ class AxisymmetricProfile {
   std::size_t angular_points() const { return mu_.size(); }
   double maximum_radius() const { return radii_.back(); }
   double mean_molecular_weight() const { return mean_molecular_weight_; }
+  double radius(std::size_t radial) const { return radii_.at(radial); }
+  double mu(std::size_t angular) const { return mu_.at(angular); }
+  const State& state(std::size_t radial, std::size_t angular) const {
+    return At(radial, angular);
+  }
+  State& mutable_state(std::size_t radial, std::size_t angular) {
+    return states_.at(radial*mu_.size()+angular);
+  }
 
  private:
   struct Bracket {

@@ -228,6 +228,11 @@ core_support_radius_cm = 4.5207406562668779e12
 # actual mesh-integrated power.  Set core_luminosity_lsun=0 for legacy gates.
 core_luminosity_lsun = 1.1631598e5
 luminosity_heating_radius_cm = 4.5207406562668779e12
+# Experimental opt-in: rebuild only the low-density SCF surface rays with the
+# same tabulated EOS, opacity, luminosity, FLD limiter, and effective
+# (self+core+rotation) potential used by the runtime model.
+rebuild_radiative_surface = false
+radiative_surface_match_density_g_cm3 = 3.0e-9
 radiation_external_temperature = 1.0e2
 lte_temperature_min_k = 3.1622776601683795e2
 lte_temperature_max_k = 1.0e9
