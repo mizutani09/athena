@@ -5,6 +5,5 @@ purpose = restart overlay for a full-volume conservative CE handoff snapshot
 file_type = hdf5
 variable = cons
 id = ce_handoff
-dt = -1
-next_time = 0.0
+dcycle = 1
 ghost_zones = false
