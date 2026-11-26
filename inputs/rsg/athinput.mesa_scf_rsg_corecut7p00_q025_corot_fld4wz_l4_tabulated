@@ -235,6 +235,9 @@ rebuild_radiative_surface = false
 radiative_surface_match_density_g_cm3 = 1.0e-9
 radiative_surface_superadiabatic_peak = 0.0
 radiative_surface_superadiabatic_width_fraction = 0.1
+# Experimental opt-in: preserve the tabulated-EOS gas/radiation split at
+# quadrature points only in cells containing both star and atmosphere.
+pointwise_fld_surface_cells = false
 radiation_external_temperature = 1.0e2
 lte_temperature_min_k = 3.1622776601683795e2
 lte_temperature_max_k = 1.0e9

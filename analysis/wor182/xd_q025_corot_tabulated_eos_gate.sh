@@ -34,6 +34,7 @@ rebuild_radiative_surface=${WOR182_REBUILD_RADIATIVE_SURFACE:-false}
 radiative_surface_match_density=${WOR182_RADIATIVE_SURFACE_MATCH_DENSITY:-1.0e-9}
 radiative_surface_superadiabatic_peak=${WOR182_RADIATIVE_SURFACE_SUPERADIABATIC_PEAK:-0.0}
 radiative_surface_superadiabatic_width=${WOR182_RADIATIVE_SURFACE_SUPERADIABATIC_WIDTH:-0.1}
+pointwise_fld_surface_cells=${WOR182_POINTWISE_FLD_SURFACE_CELLS:-false}
 surface_mach_diagnostic_threshold=${WOR182_SURFACE_MACH_DIAGNOSTIC_THRESHOLD:--1.0}
 relaxation_velocity_tau=${WOR182_RELAXATION_VELOCITY_TAU:--1.0}
 relaxation_taper_start=${WOR182_RELAXATION_TAPER_START:--1.0}
@@ -48,13 +49,14 @@ git rev-parse HEAD > "$run/git_commit.txt"
 git status --short > "$run/git_status.txt"
 sha256sum bin/athena "$input" data/eos/rsg_tomida2013_material_eos.tab \
   data/opacity/rsg_gray_opacity_t7.h5 > "$run/provenance.sha256"
-printf 'integrator=%s\nnlim=%s\ntlim=%s\ncfl=%s\ncore_luminosity_lsun=%s\nluminosity_heating_radius_cm=%s\nrebuild_radiative_surface=%s\nradiative_surface_match_density_g_cm3=%s\nradiative_surface_superadiabatic_peak=%s\nradiative_surface_superadiabatic_width_fraction=%s\nsurface_mach_diagnostic_threshold=%s\nrelaxation_velocity_tau=%s\nrelaxation_taper_start=%s\nrelaxation_taper_end=%s\n' \
+printf 'integrator=%s\nnlim=%s\ntlim=%s\ncfl=%s\ncore_luminosity_lsun=%s\nluminosity_heating_radius_cm=%s\nrebuild_radiative_surface=%s\nradiative_surface_match_density_g_cm3=%s\nradiative_surface_superadiabatic_peak=%s\nradiative_surface_superadiabatic_width_fraction=%s\npointwise_fld_surface_cells=%s\nsurface_mach_diagnostic_threshold=%s\nrelaxation_velocity_tau=%s\nrelaxation_taper_start=%s\nrelaxation_taper_end=%s\n' \
   "$integrator" "$nlim" "$tlim" "$cfl" \
   "$core_luminosity_lsun" "$luminosity_heating_radius_cm" \
   "$rebuild_radiative_surface" \
   "$radiative_surface_match_density" \
   "$radiative_surface_superadiabatic_peak" \
   "$radiative_surface_superadiabatic_width" \
+  "$pointwise_fld_surface_cells" \
   "$surface_mach_diagnostic_threshold" "$relaxation_velocity_tau" \
   "$relaxation_taper_start" "$relaxation_taper_end" \
   > "$run/run_config.txt"
@@ -71,6 +73,7 @@ set +e
   problem/radiative_surface_match_density_g_cm3="$radiative_surface_match_density" \
   problem/radiative_surface_superadiabatic_peak="$radiative_surface_superadiabatic_peak" \
   problem/radiative_surface_superadiabatic_width_fraction="$radiative_surface_superadiabatic_width" \
+  problem/pointwise_fld_surface_cells="$pointwise_fld_surface_cells" \
   problem/surface_mach_diagnostic_threshold="$surface_mach_diagnostic_threshold" \
   problem/relaxation_velocity_tau="$relaxation_velocity_tau" \
   problem/relaxation_taper_start="$relaxation_taper_start" \

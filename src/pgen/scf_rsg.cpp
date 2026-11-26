@@ -94,6 +94,7 @@ Real planck_taper_polar_radius, planck_taper_width;
 Real marshak_alpha;
 Real radiation_startup_dt_cap, radiation_startup_dt_end;
 Real taper_exchange_diagnostic_time_threshold;
+bool pointwise_fld_surface_cells;
 #endif
 constexpr int kWenozHistoryStart = 29;
 // WOR-177's compact softened core needs an L8/L9 resolution comparison on the
@@ -717,6 +718,80 @@ LteSplit SplitTotalPressureLte(MeshBlock* block, Real density_cgs,
           gas_pressure_cgs/pressure_unit,
           radiation_energy_cgs/pressure_unit};
 #endif
+}
+
+struct SurfaceCellRadiativeAverage {
+  Real gas_energy;
+  Real radiation_energy;
+  Real density_temperature;
+};
+
+SurfaceCellRadiativeAverage PointwiseSurfaceCellAverage(
+    MeshBlock* block, Real x_lower, Real x_upper,
+    Real y_lower, Real y_upper, Real z_lower, Real z_upper,
+    const std::vector<double>& nodes, const std::vector<double>& weights) {
+  SurfaceCellRadiativeAverage average{};
+  for (std::size_t k = 0; k < nodes.size(); ++k) {
+    const Real z = 0.5*((z_upper+z_lower)
+        +nodes[k]*(z_upper-z_lower));
+    for (std::size_t j = 0; j < nodes.size(); ++j) {
+      const Real y = 0.5*((y_upper+y_lower)
+          +nodes[j]*(y_upper-y_lower));
+      for (std::size_t i = 0; i < nodes.size(); ++i) {
+        const Real x = 0.5*((x_upper+x_lower)
+            +nodes[i]*(x_upper-x_lower));
+        const Real weight = weights[i]*weights[j]*weights[k]/8.0;
+        Real atmosphere_rho = 0.0, atmosphere_gas_pressure = 0.0;
+        scf_map::AtmosphereState(
+            atmosphere_model, x, y, z,
+            &atmosphere_rho, &atmosphere_gas_pressure);
+        const scf_map::State source = profile.Interpolate(std::hypot(x,y), z);
+        const bool stellar = source.density > atmosphere_rho
+            && source.pressure > atmosphere_gas_pressure;
+        const Real density_cgs = stellar ? source.density : atmosphere_rho;
+        const Real density_code = density_cgs/rho_unit;
+        Real temperature = 0.0;
+        Real gas_energy = 0.0;
+        Real radiation_energy = external_radiation_energy_code;
+        if (stellar) {
+          temperature = source.temperature;
+          Require(std::isfinite(temperature) && temperature > 0.0,
+                  "stellar surface quadrature point has invalid temperature");
+#if GENERAL_EOS
+          gas_energy = block->peos->EgasFromRhoT(
+              density_code, temperature/temperature_unit);
+#else
+          const Real radiation_pressure = scf_map::kRadiationConstantCgs
+              *std::pow(temperature,4)/3.0;
+          const Real gas_pressure = std::max(
+              source.pressure-radiation_pressure,
+              atmosphere_pressure_floor);
+          gas_energy = gas_pressure/pressure_unit/(gamma_gas-1.0);
+#endif
+          radiation_energy = scf_map::kRadiationConstantCgs
+              *std::pow(temperature,4)/pressure_unit;
+        } else {
+          const Real pressure_code = atmosphere_gas_pressure/pressure_unit;
+#if GENERAL_EOS
+          gas_energy = block->peos->EgasFromRhoP(
+              density_code, pressure_code);
+#else
+          gas_energy = pressure_code/(gamma_gas-1.0);
+#endif
+          temperature = GasTemperatureCgs(
+              block, density_code, pressure_code);
+        }
+        Require(std::isfinite(gas_energy) && gas_energy > 0.0
+                    && std::isfinite(radiation_energy)
+                    && radiation_energy >= 0.0,
+                "surface quadrature produced an invalid radiation split");
+        average.gas_energy += weight*gas_energy;
+        average.radiation_energy += weight*radiation_energy;
+        average.density_temperature += weight*density_cgs*temperature;
+      }
+    }
+  }
+  return average;
 }
 #endif
 
@@ -2128,6 +2203,8 @@ void Mesh::InitUserMeshData(ParameterInput* pin) {
           "radiation_external_temperature must be nonnegative");
   external_radiation_energy_code = scf_map::kRadiationConstantCgs
       *std::pow(external_temperature, 4)/pressure_unit;
+  pointwise_fld_surface_cells = pin->GetOrAddBoolean(
+      "problem", "pointwise_fld_surface_cells", false);
   planck_taper_radius = pin->GetOrAddReal(
       "problem", "atmosphere_planck_taper_radius_cm",
       surface_match_equatorial_radius);
@@ -2411,6 +2488,10 @@ void Mesh::InitUserMeshData(ParameterInput* pin) {
               << radiative_surface_superadiabatic_peak
               << " radiative_surface_superadiabatic_width_fraction="
               << radiative_surface_superadiabatic_width
+#if NRMGFLD_ENABLED
+              << " pointwise_fld_surface_cells="
+              << pointwise_fld_surface_cells
+#endif
               << " surface_refinement_level=" << surface_refinement_level
               << " surface_refinement_use_tracer="
               << surface_refinement_use_tracer
@@ -2515,6 +2596,13 @@ void MeshBlock::ProblemGenerator(ParameterInput*) {
   const Real density_scale = rho_unit;
   const Real momentum_scale = rho_unit*velocity_unit;
   const Real energy_scale = pressure_unit;
+#if NRMGFLD_ENABLED
+  std::vector<double> quadrature_nodes, quadrature_weights;
+  if (pointwise_fld_surface_cells) {
+    scf_map::GaussLegendreRule(
+        quadrature_order, &quadrature_nodes, &quadrature_weights);
+  }
+#endif
   for (int k = ks; k <= ke; ++k) {
     const Real z_lower = pcoord->x3f(k)*length_unit;
     const Real z_upper = pcoord->x3f(k+1)*length_unit;
@@ -2536,7 +2624,16 @@ void MeshBlock::ProblemGenerator(ParameterInput*) {
         Real cell_temperature = 0.0;
         Real cell_gas_internal_code = 0.0;
         Real cell_radiation_energy_code = external_radiation_energy_code;
-        if (mapped.stellar_density > 0.0) {
+        const bool mixed_surface_cell = mapped.stellar_density > 0.0
+            && mapped.atmosphere_density > 0.0;
+        if (pointwise_fld_surface_cells && mixed_surface_cell) {
+          const SurfaceCellRadiativeAverage split = PointwiseSurfaceCellAverage(
+              this, x_lower, x_upper, y_lower, y_upper, z_lower, z_upper,
+              quadrature_nodes, quadrature_weights);
+          cell_temperature = split.density_temperature/mapped.density;
+          cell_gas_internal_code = split.gas_energy;
+          cell_radiation_energy_code = split.radiation_energy;
+        } else if (mapped.stellar_density > 0.0) {
           const LteSplit split = SplitTotalPressureLte(
               this, mapped.density, mapped.pressure);
           cell_temperature = split.temperature;
