@@ -639,8 +639,18 @@ residual was `7.60e-9`.  After the step, the absolute exchange power was only
 `3.01e38 erg s^-1` and the minimum exchange time was `3.10e5 s`; the original
 job 348178 values were `5.40e38 erg s^-1` and `1.26e4 s`.  Absolute diffusion
 power was `2.77e39 erg s^-1`.  This low-density, zero-excess reconstruction is
-the accepted short-gate candidate; job 348224 advances it to time 0.1 before
-any long relaxation test.
+the accepted short-gate candidate.
+
+Undamped restart job 348224 advanced that candidate to time 0.1 at CFL 0.2 in
+310 s on three XD nodes.  All 114 nonlinear solves converged normally in at
+most seven Newton iterations; 256 FGMRES solves used at most 13 iterations.
+There was no warning, relaxed acceptance, backtracking failure, or fatal
+error.  The maximum interior and surface Mach numbers were `4.38e-4` and
+`0.00412`, respectively.  The minimum exchange time remained `1.75e5 s`, and
+the maximum absolute exchange power was only `2.36e38 erg s^-1`.  All EOS
+margins stayed positive (the smallest was `+1.08 dex`).  Relative mass and
+radiation-energy changes were `-1.01e-11` and `+1.05e-6`.  Job 348229 now
+extends the same undamped state to time 1 at CFL 0.3.
 
 ## Open acceptance items
 
