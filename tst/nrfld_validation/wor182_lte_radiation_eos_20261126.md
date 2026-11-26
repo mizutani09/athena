@@ -72,6 +72,19 @@ mass above radial Mach 0.1.  Both LTE models retained lower density and energy
 table margins of `+0.505` and `+0.187 dex`.  Jobs 348388--348391 continue these
 same restart chains to time 10 at CFL 0.3.
 
+The two rotating time-10 gates completed in 278 and 273 s on one node.
+Material-only job 348388 ended at interior/surface Mach
+`0.00709/0.10275`; LTE-radiation job 348389 ended at
+`0.00704/0.11191`.  Their masses above radial Mach 0.1 were only
+`4.20e27` and `6.93e27 g` (`2.1e-6` and `3.5e-6 Msun`), and the maximum at
+density above the surface threshold remained about 0.006.  Segment mass,
+angular-momentum, and mean-radius drifts were respectively
+`-1.21e-9/+1.90e-6/+4.75e-6` for material and
+`+5.43e-8/-2.29e-5/+5.20e-6` for LTE radiation.  The LTE lower density and
+energy margins remained fixed at `+0.505/+0.187 dex`.  Thus the trapped
+photon terms slightly increase the negligible-mass outer maximum but do not
+destabilize the resolved envelope through time 10.
+
 ## Acceptance path to CE
 
 Short gates are followed by time 1, time 10, and then undamped long relaxation
