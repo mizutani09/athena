@@ -95,9 +95,10 @@ as their quiet interior maxima.  Segment mass and total-energy changes were
 radiation.  The LTE lower density and energy margins again remained
 `+0.505/+0.187 dex`.  A two-node timing probe showed that this AMR HD case
 scales negatively beyond one node and cannot finish time 100 in the 30-minute
-test queue.  Jobs 348445--348448 therefore queue all four accepted time-10
-checkpoints for extension to time 100 at CFL 0.3 using one shared XD node and
-28 MPI ranks in the four-hour queue.  They save a restart every 50 cycles.
+test queue.  Jobs 348736--348739 run all four accepted time-10 checkpoints
+concurrently to time 100 at CFL 0.3 in `M-bulk-a`, using 28 MPI ranks and
+55 GB per job with two jobs sharing each node.  They save a restart every 50
+cycles.  This avoids serialization behind the unrelated `M-large-a` job.
 
 ## Acceptance path to CE
 
