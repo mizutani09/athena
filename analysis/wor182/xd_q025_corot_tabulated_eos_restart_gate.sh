@@ -110,7 +110,7 @@ set -e
 # Some MPI launchers return success when every rank exits through Athena's
 # command-line parameter fatal path.  Do not allow that to masquerade as a
 # completed numerical gate.
-if grep -q 'FATAL ERROR' "$run/stdout.log" "$run/stderr.log"; then
+if grep -Eq 'FATAL ERROR|^scf_rsg:' "$run/stdout.log" "$run/stderr.log"; then
   status=1
 fi
 

@@ -70,6 +70,8 @@ Real surface_match_equatorial_radius, surface_match_polar_radius;
 Real surface_mach_diagnostic_threshold;
 Real surface_pressure_ratio_diagnostic_threshold;
 Real radiative_surface_match_density;
+Real radiative_surface_superadiabatic_peak;
+Real radiative_surface_superadiabatic_width;
 Real relaxation_velocity_tau, relaxation_taper_start, relaxation_taper_end;
 #if EOS_TABLE_ENABLED
 Real eos_dens_pow;
@@ -302,7 +304,8 @@ struct RadiativeSurfaceDerivative {
 
 RadiativeSurfaceDerivative SurfaceDerivative(
     EosTable& table, Real radius, Real potential_gradient,
-    Real luminosity, Real gas_pressure, Real radiation_energy) {
+    Real target_radius, Real luminosity, Real gas_pressure,
+    Real radiation_energy) {
   RadiativeSurfaceDerivative result{};
   result.temperature = std::pow(
       radiation_energy/scf_map::kRadiationConstantCgs, 0.25);
@@ -318,6 +321,11 @@ RadiativeSurfaceDerivative SurfaceDerivative(
   const MaterialThermodynamics material = MaterialStateFromRhoT(
       table, result.density, result.temperature);
   result.nabla_ad = material.nabla_ad;
+  const Real surface_depth = (target_radius-radius)
+      /(radiative_surface_superadiabatic_width*target_radius);
+  const Real gradient_cap = result.nabla_ad
+      +radiative_surface_superadiabatic_peak
+          *std::exp(-surface_depth*surface_depth);
   const Real flux = luminosity/(4.0*PI*radius*radius);
   constexpr Real kLightSpeedCgs = 2.99792458e10;
   // First ask whether FLD carrying the full luminosity would be Schwarzschild
@@ -341,7 +349,7 @@ RadiativeSurfaceDerivative SurfaceDerivative(
       : std::numeric_limits<Real>::infinity();
   result.radiatively_stable = std::isfinite(nabla_radiative)
       && std::isfinite(result.nabla_ad) && result.nabla_ad > 0.0
-      && nabla_radiative <= result.nabla_ad;
+      && nabla_radiative <= gradient_cap;
   Real radiation_flux = flux;
   if (result.radiatively_stable) {
     result.nabla = nabla_radiative;
@@ -364,7 +372,7 @@ RadiativeSurfaceDerivative SurfaceDerivative(
       const Real effective_gravity = std::max(
           static_cast<Real>(0.0), potential_gradient
           -result.opacity*radiation_energy*middle_flux_ratio);
-      const Real gradient_ratio = 4.0*result.nabla_ad*effective_gravity
+      const Real gradient_ratio = 4.0*gradient_cap*effective_gravity
           /(result.opacity*gas_pressure);
       const Real transported_flux_ratio =
           RadFLD::FluxLimiterTimesR(gradient_ratio, false);
@@ -377,7 +385,7 @@ RadiativeSurfaceDerivative SurfaceDerivative(
     const Real natural_flux = kLightSpeedCgs*radiation_energy
         *0.5*(lower_flux_ratio+upper_flux_ratio);
     radiation_flux = std::max(0.0, std::min(flux, natural_flux));
-    result.nabla = result.nabla_ad;
+    result.nabla = gradient_cap;
     result.gas_pressure_gradient = result.density
         *(result.opacity*radiation_flux/kLightSpeedCgs-potential_gradient);
     result.radiation_energy_gradient = 4.0*radiation_energy*result.nabla
@@ -408,6 +416,10 @@ void RebuildRadiativeSurfaceProfile(EosTable& table, Real luminosity) {
   Require(table.nVar > 6,
           "radiative surface rebuild requires tabulated nabla_ad field 6");
   for (std::size_t angular = 0; angular < profile.angular_points(); ++angular) {
+    const Real mu = profile.mu(angular);
+    const Real target_radius = 1.0/std::sqrt(
+        (1.0-mu*mu)/SQR(surface_match_equatorial_radius)
+        +mu*mu/SQR(surface_match_polar_radius));
     std::size_t anchor = profile.radial_points();
     for (std::size_t radial = 1; radial < profile.radial_points(); ++radial) {
       const Real lower = profile.state(radial-1,angular).density;
@@ -438,7 +450,7 @@ void RebuildRadiativeSurfaceProfile(EosTable& table, Real luminosity) {
         -anchor_state.rotational_potential)
         /(profile.radius(anchor+1)-anchor_radius);
     const RadiativeSurfaceDerivative anchor_derivative = SurfaceDerivative(
-        table, anchor_radius, anchor_potential_gradient, luminosity,
+        table, anchor_radius, anchor_potential_gradient, target_radius, luminosity,
         gas_pressure, radiation_energy);
     Require(std::isfinite(anchor_derivative.radiation_flux_fraction),
             "radiative surface anchor derivative is invalid");
@@ -478,7 +490,7 @@ void RebuildRadiativeSurfaceProfile(EosTable& table, Real luminosity) {
       int substeps = 0;
       while (position < upper_radius && substeps < 10000) {
         const RadiativeSurfaceDerivative first = SurfaceDerivative(
-            table, position, potential_gradient, luminosity,
+            table, position, potential_gradient, target_radius, luminosity,
             gas_pressure, radiation_energy);
         if (!std::isfinite(first.gas_pressure_gradient)
             || !std::isfinite(first.radiation_energy_gradient)) break;
@@ -498,7 +510,7 @@ void RebuildRadiativeSurfaceProfile(EosTable& table, Real luminosity) {
             +0.5*step*first.radiation_energy_gradient;
         if (!(midpoint_pressure > 0.0) || !(midpoint_radiation > 0.0)) break;
         const RadiativeSurfaceDerivative midpoint = SurfaceDerivative(
-            table, position+0.5*step, potential_gradient, luminosity,
+            table, position+0.5*step, potential_gradient, target_radius, luminosity,
             midpoint_pressure, midpoint_radiation);
         if (!std::isfinite(midpoint.gas_pressure_gradient)
             || !std::isfinite(midpoint.radiation_energy_gradient)) break;
@@ -545,6 +557,19 @@ void RebuildRadiativeSurfaceProfile(EosTable& table, Real luminosity) {
         last_valid_temperature = temperature;
       }
     }
+    if (!ended && Globals::my_rank == 0) {
+      const scf_map::State& final_state = profile.state(
+          profile.radial_points()-1, angular);
+      std::cout << std::scientific << std::setprecision(8)
+                << "[SCF_RADIATIVE_SURFACE_NO_END] angular=" << angular
+                << " mu=" << mu
+                << " target_radius_cm=" << target_radius
+                << " final_radius_cm=" << profile.maximum_radius()
+                << " final_density_g_cm3=" << final_state.density
+                << " final_temperature_k=" << final_state.temperature
+                << " final_pressure_dyn_cm2=" << final_state.pressure
+                << std::endl;
+    }
     Require(ended, "radiative surface does not reach the atmosphere in-domain");
     ++rebuilt_rays;
   }
@@ -552,6 +577,10 @@ void RebuildRadiativeSurfaceProfile(EosTable& table, Real luminosity) {
     std::cout << std::scientific << std::setprecision(8)
               << "[SCF_RADIATIVE_SURFACE] rays=" << rebuilt_rays
               << " match_density_g_cm3=" << radiative_surface_match_density
+              << " superadiabatic_peak="
+              << radiative_surface_superadiabatic_peak
+              << " superadiabatic_width_fraction="
+              << radiative_surface_superadiabatic_width
               << " end_radius_min_cm=" << minimum_end_radius
               << " end_radius_max_cm=" << maximum_end_radius
               << " layer_thickness_min_cm=" << minimum_layer_thickness
@@ -1984,6 +2013,10 @@ void Mesh::InitUserMeshData(ParameterInput* pin) {
       "problem", "rebuild_radiative_surface", false);
   radiative_surface_match_density = pin->GetOrAddReal(
       "problem", "radiative_surface_match_density_g_cm3", 3.0e-9);
+  radiative_surface_superadiabatic_peak = pin->GetOrAddReal(
+      "problem", "radiative_surface_superadiabatic_peak", 0.0);
+  radiative_surface_superadiabatic_width = pin->GetOrAddReal(
+      "problem", "radiative_surface_superadiabatic_width_fraction", 0.1);
   const Real gas_mass = pin->GetReal("problem", "gas_mass_g");
   atmosphere_reference_radius = pin->GetReal(
       "problem", "atmosphere_reference_radius_cm");
@@ -2018,6 +2051,8 @@ void Mesh::InitUserMeshData(ParameterInput* pin) {
   Require(core_mass > 0.0 && core_support_radius > 0.0 && gas_mass > 0.0
           && core_luminosity_lsun >= 0.0 && luminosity_heating_radius > 0.0
           && radiative_surface_match_density > atmosphere_density
+          && radiative_surface_superadiabatic_peak >= 0.0
+          && radiative_surface_superadiabatic_width > 0.0
           && atmosphere_reference_radius > 0.0 && surface_polar_radius > 0.0
           && surface_match_equatorial_radius > 0.0
           && surface_match_polar_radius > 0.0,
@@ -2368,6 +2403,10 @@ void Mesh::InitUserMeshData(ParameterInput* pin) {
               << " rebuild_radiative_surface=" << rebuild_radiative_surface
               << " radiative_surface_match_density_g_cm3="
               << radiative_surface_match_density
+              << " radiative_surface_superadiabatic_peak="
+              << radiative_surface_superadiabatic_peak
+              << " radiative_surface_superadiabatic_width_fraction="
+              << radiative_surface_superadiabatic_width
               << " surface_refinement_level=" << surface_refinement_level
               << " surface_refinement_use_tracer="
               << surface_refinement_use_tracer
