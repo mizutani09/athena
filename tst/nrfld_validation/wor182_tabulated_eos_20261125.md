@@ -662,6 +662,16 @@ therefore does not worsen the early mechanical transient.  Job 348230 extends
 it undamped to time 10, where the original taper had reached surface Mach
 0.209 and had begun its persistent pressure loss.
 
+Job 348230 reached time 10 in 368 s.  All 76 nonlinear solves converged in at
+most six Newton iterations, FGMRES used at most 17 iterations, and no solver
+anomaly occurred.  The surface Mach maximum was `0.154`, 26 percent below the
+original undamped control's `0.209`.  The mass above radial Mach 0.1 was
+`5.76e28 g`, 69 percent below the original `1.86e29 g`.  The interior Mach
+maximum was `0.00702`; the minimum EOS margin and exchange time were
+`+1.08 dex` and `3.05e5 s`.  Relative mass drift was `-1.11e-9`.  The outer
+Mach number was still increasing at time 10, so job 348234 extends the
+undamped gate to time 20 before any stability claim.
+
 ## Open acceptance items
 
 1. Reconstruct the low-density outer density, material pressure, and radiation
