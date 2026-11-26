@@ -1,0 +1,18 @@
+<comment>
+purpose = zero-step primitive and user-output snapshot from an scf_rsg restart
+
+<output5>
+file_type = hdf5
+variable = prim
+id = diagnostic_prim
+dt = -1
+dcycle = 1
+ghost_zones = false
+
+<output6>
+file_type = hdf5
+variable = uov
+id = diagnostic_uov
+dt = -1
+dcycle = 1
+ghost_zones = false
