@@ -210,6 +210,7 @@ surface_tracer_lower = 1.0e-6
 surface_tracer_upper = 0.999999
 surface_refinement_density_g_cm3 = 3.0e-9
 surface_mach_diagnostic_threshold = -1.0
+surface_pressure_ratio_diagnostic_threshold = -1.0
 # Optional read-only report of the fastest local matter-radiation exchange in
 # each taper MeshBlock.  A negative threshold disables it.
 taper_exchange_diagnostic_time_threshold_s = -1.0

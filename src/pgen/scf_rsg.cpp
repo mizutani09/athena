@@ -67,6 +67,7 @@ Real atmosphere_density_floor, atmosphere_pressure_floor;
 Real atmosphere_reference_radius, surface_polar_radius, atmosphere_monopole_gm;
 Real surface_match_equatorial_radius, surface_match_polar_radius;
 Real surface_mach_diagnostic_threshold;
+Real surface_pressure_ratio_diagnostic_threshold;
 Real relaxation_velocity_tau, relaxation_taper_start, relaxation_taper_end;
 #if EOS_TABLE_ENABLED
 Real eos_dens_pow;
@@ -1135,6 +1136,12 @@ Real HistorySurfaceMachDiagnostic(MeshBlock* block, int output) {
   Real max_radial_velocity = 0.0, max_sound_speed = 0.0;
   Real max_ellipsoidal_radius = 0.0;
   int max_i = 0, max_j = 0, max_k = 0;
+  Real minimum_pressure_ratio = std::numeric_limits<Real>::infinity();
+  Real minimum_pressure_x = 0.0, minimum_pressure_y = 0.0;
+  Real minimum_pressure_z = 0.0, minimum_pressure_density = 0.0;
+  Real minimum_pressure_stellar_density = 0.0;
+  Real minimum_pressure = 0.0, minimum_source_density = 0.0;
+  Real minimum_source_pressure = 0.0, minimum_pressure_ellipsoid = 0.0;
   for (int k = block->ks; k <= block->ke; ++k) {
     const Real z = block->pcoord->x3v(k);
     for (int j = block->js; j <= block->je; ++j) {
@@ -1160,6 +1167,29 @@ Real HistorySurfaceMachDiagnostic(MeshBlock* block, int output) {
         const Real match_ellipsoidal_radius = std::sqrt(
             SQR(cylindrical_radius*length_unit/surface_match_equatorial_radius)
             +SQR(z*length_unit/surface_match_polar_radius));
+        if (diagnostic == 3
+            && surface_pressure_ratio_diagnostic_threshold > 0.0
+            && match_ellipsoidal_radius > 1.0) {
+          const scf_map::State source = profile.Interpolate(
+              cylindrical_radius*length_unit, z*length_unit);
+          if (source.density > 5.0*atmosphere_density
+              && source.density < surface_density_code*rho_unit
+              && source.pressure > 0.0) {
+            const Real ratio = pressure*pressure_unit/source.pressure;
+            if (ratio < minimum_pressure_ratio) {
+              minimum_pressure_ratio = ratio;
+              minimum_pressure_x = x;
+              minimum_pressure_y = y;
+              minimum_pressure_z = z;
+              minimum_pressure_density = density;
+              minimum_pressure_stellar_density = stellar_density;
+              minimum_pressure = pressure;
+              minimum_source_density = source.density;
+              minimum_source_pressure = source.pressure;
+              minimum_pressure_ellipsoid = match_ellipsoidal_radius;
+            }
+          }
+        }
         if (diagnostic == 0 && match_ellipsoidal_radius <= 1.0) {
           total = std::max(total, mach);
         }
@@ -1205,6 +1235,32 @@ Real HistorySurfaceMachDiagnostic(MeshBlock* block, int output) {
     return total*mass_unit;
   }
   if (diagnostic == 5) return total*mass_unit*length_unit;
+  if (diagnostic == 3
+      && surface_pressure_ratio_diagnostic_threshold > 0.0
+      && minimum_pressure_ratio <= surface_pressure_ratio_diagnostic_threshold) {
+    std::stringstream message;
+    message << std::scientific << std::setprecision(16)
+            << "[SCF_SURFACE_PRESSURE_CELL] rank=" << Globals::my_rank
+            << " cycle=" << block->pmy_mesh->ncycle
+            << " time=" << block->pmy_mesh->time
+            << " gid=" << block->gid
+            << " level=" << block->loc.level
+            << " x_code=" << minimum_pressure_x
+            << " y_code=" << minimum_pressure_y
+            << " z_code=" << minimum_pressure_z
+            << " ellipsoidal_radius=" << minimum_pressure_ellipsoid
+            << " rho_cgs=" << minimum_pressure_density*rho_unit
+            << " stellar_rho_cgs="
+            << minimum_pressure_stellar_density*rho_unit
+            << " pressure_cgs=" << minimum_pressure*pressure_unit
+            << " source_rho_cgs=" << minimum_source_density
+            << " source_pressure_cgs=" << minimum_source_pressure
+            << " current_to_source_rho="
+            << minimum_pressure_density*rho_unit/minimum_source_density
+            << " current_to_source_pressure=" << minimum_pressure_ratio
+            << std::endl;
+    std::cout << message.str();
+  }
   if (diagnostic == 3 && surface_mach_diagnostic_threshold > 0.0
       && total >= surface_mach_diagnostic_threshold) {
 #if NRMGFLD_ENABLED
@@ -1564,6 +1620,8 @@ void Mesh::InitUserMeshData(ParameterInput* pin) {
   surface_density_code = surface_density/rho_unit;
   surface_mach_diagnostic_threshold = pin->GetOrAddReal(
       "problem", "surface_mach_diagnostic_threshold", -1.0);
+  surface_pressure_ratio_diagnostic_threshold = pin->GetOrAddReal(
+      "problem", "surface_pressure_ratio_diagnostic_threshold", -1.0);
   Require(surface_refinement_level >= 0
               && surface_refinement_level <= max_level-root_level,
           "surface_refinement_level must lie within the configured mesh levels");
@@ -1573,6 +1631,8 @@ void Mesh::InitUserMeshData(ParameterInput* pin) {
           "invalid surface tracer refinement interval");
   Require(surface_density > 0.0,
           "surface_refinement_density_g_cm3 must be positive");
+  Require(surface_pressure_ratio_diagnostic_threshold != 0.0,
+          "surface pressure ratio diagnostic threshold must be negative or positive");
   if (adaptive) EnrollUserRefinementCondition(SurfaceRefinementCondition);
   const char* boundary_names[6] = {
       "ix1_bc", "ox1_bc", "ix2_bc", "ox2_bc", "ix3_bc", "ox3_bc"};
