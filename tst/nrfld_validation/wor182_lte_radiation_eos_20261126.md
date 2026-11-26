@@ -63,11 +63,29 @@ lower-density margin of `+0.505 dex` and a lower-energy margin of
 `+0.187 dex`.  Their wall times were 17.70 and 19.38 s.  These are the
 accepted short-gate configurations for extension.
 
+The accepted restarts were extended continuously from time 0.1 to time 1 at
+CFL 0.2.  Jobs 348370--348373 all completed in 49--52 s of solver wall time.
+The rotating material/LTE models ended at interior/surface Mach
+`0.00165/0.01103` and `0.00188/0.01174`; the nonrotating material/LTE models
+ended at `0.00163/0.01071` and `0.00185/0.01070`.  No model contained stellar
+mass above radial Mach 0.1.  Both LTE models retained lower density and energy
+table margins of `+0.505` and `+0.187 dex`.  Jobs 348388--348391 continue these
+same restart chains to time 10 at CFL 0.3.
+
 ## Acceptance path to CE
 
 Short gates are followed by time 1, time 10, and then undamped long relaxation
 only after Mach, mass drift, and all four EOS margins remain acceptable.
 The accepted final restart is not merely a checkpoint: its run configuration,
 executable/input/profile/EOS hashes, source commit, and history are retained
-beside it.  The CE problem generator can then consume that restart directly,
-avoiding a second lossy remap of the relaxed star.
+beside it.
+
+The legacy `$ATHENA/src/pgen/ce_main.cpp` uses different problem-specific
+restart arrays, code units, and EOS support, so its executable cannot safely
+read an `scf_rsg` binary restart as a cross-problem checkpoint.  The handoff
+therefore has two artifacts: the native restart for continuing `scf_rsg`, and
+a full-volume `cons` HDF5 snapshot on the native AMR mesh for CE import.
+`analysis/wor182/xd_ce_handoff_export.sh` creates the latter without advancing
+the state and records the density, energy, length, velocity, time, and momentum
+units plus hashes.  This permits a CE-side conservative importer and explicit
+unit conversion rather than an implicit, format-dependent restart read.
