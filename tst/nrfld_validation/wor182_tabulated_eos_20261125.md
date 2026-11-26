@@ -475,13 +475,55 @@ taper date.  Job 348059 keeps full strength continuously to time 100 and moves
 the proposed linear taper to 100--150.  Again, both the old and new schedules
 have unit strength at the restart time, so this introduces no discontinuity.
 
+Job 348059 completed the full-strength interval from time 50 to 100 in 2,139 s
+on three XD nodes.  All 413 Newton solves converged normally in at most eight
+iterations, FGMRES used at most 18 iterations, and there was no solver anomaly.
+The minimum gas-energy EOS margin was again `+0.181 dex`.  Relative to the
+time-50 restart, the final mass, angular momentum, mechanical-energy, and
+mechanical-plus-radiation-energy changes were `+2.82e-9`, `+1.51e-5`,
+`+1.19e-5`, and `+1.54e-4`; the mean and RMS stellar-radius changes were only
+`+1.75e-5` and `+8.55e-6`.
+
+The mechanically relevant acceptance gate did not pass.  The taper Mach
+maximum ended at 0.235 after reaching 0.236, while the interior maximum stayed
+below 0.00287 and no stellar material reached Mach 0.3.  The mass above Mach
+0.1 increased to `1.83e30 g` (`9.18e-4 Msun`).  More decisively, the artificial
+operator removed `1.42e42 erg` of corotating perturbation energy and its final
+removal power was `1.50e36 erg s^-1`, close to the segment maximum
+`1.54e36 erg s^-1` and larger than at time 50.  The calculation is numerically
+robust, but it has reached a damped, forced outer flow rather than a star that
+is ready to remain stable without relaxation.  The scheduled time-100 taper
+must therefore not be started.
+
+The time-100 one-step diagnostic job 348119 completed normally and reported
+the 32 largest surface-Mach cells.  The global maximum had radial Mach 0.235
+at ellipsoidal radius 1.063 and density `2.95e-10 g cm^-3`.  In these cells the
+gravity acceleration was commonly much larger than the pressure acceleration;
+the full-force residual was `0.57--0.73 cm s^-2` for representative maxima.
+Their matter-radiation exchange was numerically negligible (thermal-exchange
+times near `1e21 s`), so the maximum-Mach flow is a mechanical outer-profile
+mismatch, not direct radiative heating or cooling.  Velocity damping masks
+that mismatch but cannot repair it.
+
+The volume-integrated taper diagnostic separately reports a large stiff
+matter-radiation exchange magnitude, rising to about `7.02e43 erg s^-1` by
+time 100 even though the global radiation and gas energies, the EOS margins,
+and all nonlinear solves remain regular.  Because this exchange is absent
+from the maximum-Mach cells, it is not the direct cause of their motion.  Its
+spatial source and cancellation between the implicit gas/radiation terms
+still need to be localized before production use.
+
 ## Open acceptance items
 
-1. Complete the extended time-100 strong-damping gate, taper the artificial
-   damping to zero by time 150, and require a subsequent undamped interval to
-   remain stable.  A fully steady radiative/HSE outer-profile solve remains
-   the preferred longer-term construction.
-2. Add a focused AMR regression for positivity-constrained FLD ghost
+1. Reconstruct or relax the low-density outer density, pressure, and radiation
+   profiles against the full rotating force balance.  Repeat the strong-
+   damping gate, and start a taper only after the corotating removal power is
+   demonstrably declining toward zero.  Then require a subsequent undamped
+   interval to remain stable.
+2. Localize the cells responsible for the large aggregate implicit thermal
+   exchange and verify that the source cancellation is physically and
+   numerically acceptable.
+3. Add a focused AMR regression for positivity-constrained FLD ghost
    prolongation and the Newton radiation active set.
-3. Keep relative L2 as the production surface-refinement level unless a new
+4. Keep relative L2 as the production surface-refinement level unless a new
    outer profile changes the controlled A/B result.
