@@ -26,3 +26,18 @@ resolution = forward 160x512; Athena inverse table 160x512
 sha256 = 7051d1c5222f3ca7dddbbba1c48d473cb39bc5e76badb869b082625473a71576
 qualification = builder thermodynamic/monotonicity/conservation audit PASS; RSG profile entropy round-trip PASS
 known_approximation = LTE ideal H/He equilibrium, fixed H2 ortho:para 3:1, no metals/non-ideal effects
+
+# RSG production one-temperature material+radiation EOS
+filename = rsg_tomida2013_lte_radiation_eos.data
+source = rsg_tomida2013_material_eos.tab
+generator = src/pgen/eos_test.cpp, problem/lte_table_output
+schema = native-endian Athena general/eos_table binary, 7 fields
+closure = E_total=E_material+a*T^4; P_total=P_material+a*T^4/3
+transport = none; photons are perfectly trapped in one-temperature LTE
+domain = log10(rho/[g cm^-3]) -12..-3; log10(E_total/rho) 11.03171745226..16.89012661836
+resolution = 256 density x 1024 energy/pressure
+source_sha256 = 7051d1c5222f3ca7dddbbba1c48d473cb39bc5e76badb869b082625473a71576
+sha256 = 1327f9849d31d014ff480a77bdf34bf0fa007431bc460c800583adc8fc09f2a5
+qualification = interior 256x256 round-trip PASS: max energy 9.31e-4, max pressure 3.82e-3; root64 4wz star one-step PASS
+operational_guard = rho and E/rho must remain at least 0.5 and 0.1 dex inside their respective table edges
+known_limitation = raw binary requires the same Real width and endianness as the generator (x86_64 double here)

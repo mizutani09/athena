@@ -1,0 +1,34 @@
+{
+  "schema": "athena-general-eos-v7-binary",
+  "material_only": false,
+  "one_temperature_lte": true,
+  "radiation_transport": false,
+  "closure": {
+    "energy_density": "E_material + a_rad*T^4",
+    "pressure": "P_material + a_rad*T^4/3",
+    "specific_entropy": "s_material + 4*a_rad*T^3/(3*rho)"
+  },
+  "radiation_constant_cgs": 7.5657e-15,
+  "source": "rsg_tomida2013_material_eos.tab",
+  "source_sha256": "7051d1c5222f3ca7dddbbba1c48d473cb39bc5e76badb869b082625473a71576",
+  "grid": {
+    "logrho": [-12.0, -3.0, 256],
+    "log_specific_total_energy": [11.03171745226, 16.89012661836, 1024]
+  },
+  "ratios": [1.0, 5.352631919144, 5.352631919144, 1.0, 1.0, 5.352631919144, 1.0],
+  "validation": {
+    "samples_per_axis": 256,
+    "density_edge_guard_dex": 0.5,
+    "energy_edge_guard_dex": 0.1,
+    "max_energy_roundtrip_relative": 0.000930797750706,
+    "max_pressure_roundtrip_relative": 0.003813328073918,
+    "minimum_sound_speed_squared_cgs": 36931757644.78,
+    "minimum_nabla_ad": 0.05013413359362,
+    "root64_4wz_one_step": true
+  },
+  "binary": {
+    "real": "IEEE-754 float64",
+    "endianness": "little/native x86_64",
+    "sha256": "1327f9849d31d014ff480a77bdf34bf0fa007431bc460c800583adc8fc09f2a5"
+  }
+}

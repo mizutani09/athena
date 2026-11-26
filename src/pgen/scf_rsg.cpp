@@ -2659,7 +2659,24 @@ void MeshBlock::ProblemGenerator(ParameterInput*) {
         prfld->u_gas(k,j,i) = cell_gas_internal_code;
         prfld->u_rad(k,j,i) = cell_radiation_energy_code;
 #else
+#if GENERAL_EOS
+        // The SCF profile stores total supporting pressure.  Convert that
+        // pressure through the selected general EOS instead of reusing the
+        // ideal-gas gamma embedded in scf_map::CellAverage.  With
+        // eos_include_lte_radiation enabled this produces
+        // E_material+a*T^4; otherwise it produces material energy only.
+        const Real density_code = mapped.density/density_scale;
+        const Real pressure_code = mapped.pressure/energy_scale;
+        const Real internal_energy_code =
+            peos->EgasFromRhoP(density_code, pressure_code);
+        Require(std::isfinite(internal_energy_code)
+                    && internal_energy_code > 0.0,
+                "general EOS returned invalid initial internal energy");
+        phydro->u(IEN,k,j,i) = internal_energy_code
+            +mapped.kinetic_energy/energy_scale;
+#else
         phydro->u(IEN,k,j,i) = mapped.total_energy/energy_scale;
+#endif
 #endif
 #if NSCALARS > 0
         pscalars->s(0,k,j,i) = mapped.stellar_density/density_scale;

@@ -122,6 +122,10 @@ eos_egas_unit = 1.0e5
 eos_temp_unit = 1.0
 dens_pow = -1.0
 eos_table_clamp = false
+# Optically thick, one-temperature comparison closure.  This must remain
+# false for FLD builds, which evolve radiation energy independently.
+eos_include_lte_radiation = false
+eos_lte_inversion_max_iterations = 12
 
 <fld>
 is_couple = true

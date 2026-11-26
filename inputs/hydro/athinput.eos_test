@@ -39,8 +39,20 @@ gamma           = 1.4   # gamma = C_p/C_v
 iso_sound_speed = 1.0   # isothermal sound speed
 eos_file_name   = none  # Specify EOS table filename (if used)
 eos_file_type   = auto  # Specify EOS table file type [auto,ascii,binary,hdf5]
+eos_include_lte_radiation = false
+eos_lte_inversion_max_iterations = 12
 
 <problem>
 print_table         = true  # Print whole EOS table
 exponentiate_table  = true  # Print 10^<table value>
 eos_loop            = true  # Run EOS user input test loop
+lte_table_output    = none  # Optional generated LTE radiation EOS table
+lte_table_binary    = false # Write output in Athena++ binary EOS format
+lte_table_n_energy  = 512
+lte_table_n_density = 160
+lte_table_logrho_min = -12.0
+lte_table_logrho_max = -3.0
+roundtrip_grid_test = false
+roundtrip_grid_samples = 64
+roundtrip_density_margin_dex = 0.0
+roundtrip_energy_margin_dex = 0.0

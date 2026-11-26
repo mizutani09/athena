@@ -30,6 +30,19 @@
 namespace {
 Real dens_pow = -1.0;
 bool clamp_to_table = false;
+// Optional one-temperature LTE closure.  The table itself contains material
+// thermodynamics only; when enabled, the hydro energy and pressure are
+//
+//   E = E_material(rho,T) + a T^4,
+//   P = P_material(rho,T) + a T^4/3.
+//
+// This is the optically thick, perfectly coupled comparison model.  It must
+// not be combined with NR-FLD, which evolves the same radiation energy as an
+// independent conserved field.
+bool include_lte_radiation = false;
+Real radiation_constant_code = 0.0;
+int lte_inversion_max_iterations = 12;
+constexpr Real kRadiationConstantCgs = 7.5657e-15;
 constexpr int kPresOverEgas = 0;
 constexpr int kEgasOverPres = 1;
 constexpr int kAsqRhoOverPres = 2;
@@ -66,6 +79,215 @@ inline Real GetEntropyData(EosTable *ptable, const int kOut, const Real var,
   return std::pow(10.0, ptable->table.interpolate(kOut, x2, x1));
 }
 
+inline Real LogTablePartial(EosTable *ptable, int kOut, Real x2, Real x1,
+                            bool along_x2);
+
+inline Real MaterialPresFromRhoEg(EosTable *ptable, const Real rho,
+                                  const Real egas) {
+  return GetEosData(ptable, kPresOverEgas, egas, rho)*egas;
+}
+
+inline Real MaterialEgasFromRhoP(EosTable *ptable, const Real rho,
+                                 const Real pres) {
+  return GetEosData(ptable, kEgasOverPres, pres, rho)*pres;
+}
+
+inline Real MaterialAsqFromRhoP(EosTable *ptable, const Real rho,
+                                const Real pres) {
+  return GetEosData(ptable, kAsqRhoOverPres, pres, rho)*pres/rho;
+}
+
+inline Real MaterialTempFromRhoEg(EosTable *ptable, const Real rho,
+                                  const Real egas) {
+  Real x1, x2;
+  GetEosCoordinates(ptable, kTemperature, egas, rho, x2, x1);
+  const Real temperature_phys =
+      std::pow(10.0, ptable->table.interpolate(kTemperature, x2, x1));
+  return temperature_phys/ptable->tUnit;
+}
+
+inline bool MaterialEnergyBounds(EosTable *ptable, const Real rho,
+                                 Real *lower, Real *upper) {
+  if (ptable == nullptr || !std::isfinite(rho) || rho <= 0.0) return false;
+  const Real x1 = std::log10(rho*ptable->rhoUnit);
+  if (x1 < ptable->logRhoMin || x1 > ptable->logRhoMax) return false;
+  const Real offset = dens_pow*x1
+      +std::log10(ptable->EosRatios(kTemperature)*ptable->eUnit);
+  *lower = std::pow(10.0, ptable->logEgasMin-offset);
+  *upper = std::pow(10.0, ptable->logEgasMax-offset);
+  return std::isfinite(*lower) && std::isfinite(*upper)
+      && *lower > 0.0 && *upper > *lower;
+}
+
+inline Real RadiationEnergyFromTemperature(const Real temperature) {
+  return radiation_constant_code*std::pow(temperature, 4);
+}
+
+inline Real TotalEnergyFromMaterial(EosTable *ptable, const Real rho,
+                                    const Real material_energy) {
+  const Real temperature = MaterialTempFromRhoEg(ptable, rho, material_energy);
+  return material_energy+RadiationEnergyFromTemperature(temperature);
+}
+
+inline Real TotalPressureFromMaterial(EosTable *ptable, const Real rho,
+                                      const Real material_energy) {
+  const Real temperature = MaterialTempFromRhoEg(ptable, rho, material_energy);
+  return MaterialPresFromRhoEg(ptable, rho, material_energy)
+      +RadiationEnergyFromTemperature(temperature)/3.0;
+}
+
+inline Real MaterialDlnTDlnE(EosTable *ptable, const Real rho,
+                             const Real material_energy) {
+  Real x1, x2;
+  GetEosCoordinates(ptable, kTemperature, material_energy, rho, x2, x1);
+  return ptable->table.interpolateX2Derivative(kTemperature, x2, x1);
+}
+
+inline Real TotalEnergyLogDerivative(EosTable *ptable, const Real rho,
+                                     const Real material_energy) {
+  const Real temperature = MaterialTempFromRhoEg(ptable, rho, material_energy);
+  const Real radiation_energy = RadiationEnergyFromTemperature(temperature);
+  return material_energy+4.0*radiation_energy
+      *MaterialDlnTDlnE(ptable, rho, material_energy);
+}
+
+inline Real TotalPressureLogDerivative(EosTable *ptable, const Real rho,
+                                       const Real material_energy) {
+  const Real material_pressure =
+      MaterialPresFromRhoEg(ptable, rho, material_energy);
+  const Real temperature = MaterialTempFromRhoEg(ptable, rho, material_energy);
+  const Real radiation_energy = RadiationEnergyFromTemperature(temperature);
+  Real x1, x2;
+  GetEosCoordinates(ptable, kPresOverEgas, material_energy, rho, x2, x1);
+  const Real dlnp_dlnenergy =
+      1.0+ptable->table.interpolateX2Derivative(kPresOverEgas, x2, x1);
+  return material_pressure*dlnp_dlnenergy
+      +(4.0/3.0)*radiation_energy
+       *MaterialDlnTDlnE(ptable, rho, material_energy);
+}
+
+template <typename TotalQuantity, typename LogDerivative>
+Real MaterialEnergyFromTotal(EosTable *ptable, const Real rho,
+                             const Real target, const Real initial_guess,
+                             TotalQuantity total_quantity,
+                             LogDerivative log_derivative) {
+  if (!std::isfinite(target) || target <= 0.0)
+    return std::numeric_limits<Real>::quiet_NaN();
+  Real lower, upper;
+  if (!MaterialEnergyBounds(ptable, rho, &lower, &upper))
+    return std::numeric_limits<Real>::quiet_NaN();
+  const Real lower_value = total_quantity(ptable, rho, lower);
+  const Real upper_value = total_quantity(ptable, rho, upper);
+  if (!std::isfinite(lower_value) || !std::isfinite(upper_value)
+      || target < lower_value || target > upper_value)
+    return std::numeric_limits<Real>::quiet_NaN();
+  Real log_lower = std::log(lower);
+  Real log_upper = std::log(upper);
+  const Real bounded_guess = std::isfinite(initial_guess)
+      && initial_guess > 0.0
+      ? std::min(std::max(initial_guess, lower), upper)
+      : std::sqrt(lower*upper);
+  Real log_energy = std::log(bounded_guess);
+  for (int iteration = 0; iteration < lte_inversion_max_iterations;
+       ++iteration) {
+    const Real material_energy = std::exp(log_energy);
+    const Real value = total_quantity(ptable, rho, material_energy);
+    if (!std::isfinite(value)) return std::numeric_limits<Real>::quiet_NaN();
+    const Real relative = value/target-1.0;
+    // The source table is piecewise bilinear and does not carry more than
+    // roughly decimal-table precision.  Driving this inversion to machine
+    // epsilon only repeats identical interpolations at Riemann faces.
+    if (std::abs(relative) <= 1.0e-10)
+      return material_energy;
+    if (value < target) log_lower = log_energy;
+    else log_upper = log_energy;
+    const Real derivative = log_derivative(ptable, rho, material_energy);
+    Real candidate = log_energy;
+    if (std::isfinite(derivative) && derivative > 0.0) {
+      candidate -= std::log(value/target)*value/derivative;
+    }
+    if (!std::isfinite(candidate) || candidate <= log_lower
+        || candidate >= log_upper) {
+      candidate = 0.5*(log_lower+log_upper);
+    }
+    log_energy = candidate;
+  }
+  return std::exp(0.5*(log_lower+log_upper));
+}
+
+inline Real MaterialEnergyFromTotalEnergy(EosTable *ptable, const Real rho,
+                                          const Real total_energy) {
+  return MaterialEnergyFromTotal(
+      ptable, rho, total_energy, total_energy,
+      TotalEnergyFromMaterial, TotalEnergyLogDerivative);
+}
+
+inline Real MaterialEnergyFromTotalPressure(EosTable *ptable, const Real rho,
+                                            const Real total_pressure) {
+  const Real initial_guess =
+      MaterialEgasFromRhoP(ptable, rho, total_pressure);
+  return MaterialEnergyFromTotal(
+      ptable, rho, total_pressure, initial_guess,
+      TotalPressureFromMaterial, TotalPressureLogDerivative);
+}
+
+struct LteRadiationDerivatives {
+  Real total_energy;
+  Real total_pressure;
+  Real temperature;
+  Real sound_speed_squared;
+  Real dtemperature_drho_adiabatic;
+};
+
+inline LteRadiationDerivatives CoupledDerivatives(
+    EosTable *ptable, const Real rho, const Real material_energy) {
+  const Real material_pressure =
+      MaterialPresFromRhoEg(ptable, rho, material_energy);
+  const Real temperature =
+      MaterialTempFromRhoEg(ptable, rho, material_energy);
+  const Real radiation_energy = RadiationEnergyFromTemperature(temperature);
+
+  Real p_x2, p_x1, t_x2, t_x1;
+  Real x2, x1;
+  GetEosCoordinates(ptable, kPresOverEgas, material_energy, rho, x2, x1);
+  p_x2 = LogTablePartial(ptable, kPresOverEgas, x2, x1, true)+1.0;
+  p_x1 = LogTablePartial(ptable, kPresOverEgas, x2, x1, false)-dens_pow;
+  GetEosCoordinates(ptable, kTemperature, material_energy, rho, x2, x1);
+  t_x2 = LogTablePartial(ptable, kTemperature, x2, x1, true);
+  t_x1 = LogTablePartial(ptable, kTemperature, x2, x1, false);
+
+  LteRadiationDerivatives result{};
+  result.total_energy = material_energy+radiation_energy;
+  result.total_pressure = material_pressure+radiation_energy/3.0;
+  result.temperature = temperature;
+  if (!std::isfinite(t_x2) || std::abs(t_x2) <= TINY_NUMBER
+      || !std::isfinite(t_x1) || !std::isfinite(p_x1)
+      || !std::isfinite(p_x2) || !(temperature > 0.0)) {
+    result.sound_speed_squared = std::numeric_limits<Real>::quiet_NaN();
+    result.dtemperature_drho_adiabatic =
+        std::numeric_limits<Real>::quiet_NaN();
+    return result;
+  }
+
+  const Real chi_rho = p_x1-p_x2*t_x1/t_x2;
+  const Real chi_temperature = p_x2/t_x2;
+  const Real denergy_drho_temperature = material_energy/rho
+      *(-t_x1/t_x2-dens_pow);
+  const Real denergy_dtemperature_rho =
+      (material_energy/t_x2+4.0*radiation_energy)/temperature;
+  const Real dpressure_drho_temperature =
+      material_pressure/rho*chi_rho;
+  const Real dpressure_dtemperature_rho =
+      (material_pressure*chi_temperature
+       +4.0*radiation_energy/3.0)/temperature;
+  result.dtemperature_drho_adiabatic =
+      ((result.total_energy+result.total_pressure)/rho
+       -denergy_drho_temperature)/denergy_dtemperature_rho;
+  result.sound_speed_squared = dpressure_drho_temperature
+      +dpressure_dtemperature_rho*result.dtemperature_drho_adiabatic;
+  return result;
+}
+
 // Differentiate a log10(table field) with respect to one of the table's
 // logarithmic coordinates.  At an in-domain edge this becomes a one-sided
 // derivative, avoiding the half-slope produced by clamped central samples.
@@ -96,30 +318,43 @@ inline Real LogTablePartial(EosTable *ptable, const int kOut, const Real x2,
 //! \fn Real EquationOfState::PresFromRhoEg(Real rho, Real egas)
 //! \brief Return interpolated gas pressure
 Real EquationOfState::PresFromRhoEg(Real rho, Real egas) {
-  return GetEosData(ptable, kPresOverEgas, egas, rho) * egas;
+  if (!include_lte_radiation)
+    return MaterialPresFromRhoEg(ptable, rho, egas);
+  const Real material_energy =
+      MaterialEnergyFromTotalEnergy(ptable, rho, egas);
+  return TotalPressureFromMaterial(ptable, rho, material_energy);
 }
 
 //----------------------------------------------------------------------------------------
 //! \fn Real EquationOfState::EgasFromRhoP(Real rho, Real pres)
 //! \brief Return interpolated internal energy density
 Real EquationOfState::EgasFromRhoP(Real rho, Real pres) {
-  return GetEosData(ptable, kEgasOverPres, pres, rho) * pres;
+  if (!include_lte_radiation)
+    return MaterialEgasFromRhoP(ptable, rho, pres);
+  const Real material_energy =
+      MaterialEnergyFromTotalPressure(ptable, rho, pres);
+  return TotalEnergyFromMaterial(ptable, rho, material_energy);
 }
 
 //----------------------------------------------------------------------------------------
 //! \fn Real EquationOfState::AsqFromRhoP(Real rho, Real pres)
 //! \brief Return interpolated adiabatic sound speed squared
 Real EquationOfState::AsqFromRhoP(Real rho, Real pres) {
-  return GetEosData(ptable, kAsqRhoOverPres, pres, rho) * pres / rho;
+  if (!include_lte_radiation)
+    return MaterialAsqFromRhoP(ptable, rho, pres);
+  const Real material_energy =
+      MaterialEnergyFromTotalPressure(ptable, rho, pres);
+  return CoupledDerivatives(ptable, rho, material_energy).sound_speed_squared;
 }
 
 //----------------------------------------------------------------------------------------
 //! \fn Real EquationOfState::TempFromRhoEg(Real rho, Real egas)
 //! \brief Return interpolated gas temperature
 Real EquationOfState::TempFromRhoEg(Real rho, Real egas) {
-  Real x1, x2;
-  GetEosCoordinates(ptable, kTemperature, egas, rho, x2, x1);
-  Real temperature_phys = std::pow((Real)10, ptable->table.interpolate(kTemperature, x2, x1));
+  const Real material_energy = include_lte_radiation
+      ? MaterialEnergyFromTotalEnergy(ptable, rho, egas) : egas;
+  Real temperature_phys =
+      MaterialTempFromRhoEg(ptable, rho, material_energy)*ptable->tUnit;
   if (temperature_phys <= TINY_NUMBER) {
     // std::stringstream msg;
     // msg << "### FATAL ERROR in EquationOfState::TempFromRhoEg" << std::endl
@@ -160,7 +395,10 @@ Real EquationOfState::EgasFromRhoT(Real rho, Real temperature) {
   const Real x2 = 0.5*(lower+upper);
   const Real log_egas = x2-dens_pow*x1
       -std::log10(ptable->EosRatios(kTemperature)*ptable->eUnit);
-  return std::pow(10.0, log_egas);
+  const Real material_energy = std::pow(10.0, log_egas);
+  return include_lte_radiation
+      ? material_energy+RadiationEnergyFromTemperature(temperature)
+      : material_energy;
 }
 
 //----------------------------------------------------------------------------------------
@@ -173,12 +411,21 @@ Real EquationOfState::DlnTDlnEgasFromRhoEg(Real rho, Real egas) {
   // centered difference can straddle an interpolation knot and average two
   // slopes even though the nonlinear residual uses only the current cell's
   // slope, making the Newton Jacobian inconsistent in stiff coupling zones.
+  const Real material_energy = include_lte_radiation
+      ? MaterialEnergyFromTotalEnergy(ptable, rho, egas) : egas;
   Real x1, x2;
-  GetEosCoordinates(ptable, kTemperature, std::max(egas, TINY_NUMBER), rho,
+  GetEosCoordinates(ptable, kTemperature,
+                    std::max(material_energy, TINY_NUMBER), rho,
                     x2, x1);
   const Real derivative =
       ptable->table.interpolateX2Derivative(kTemperature, x2, x1);
-  return std::isfinite(derivative) ? derivative : 0.0;
+  if (!std::isfinite(derivative)) return 0.0;
+  if (!include_lte_radiation) return derivative;
+  const Real temperature =
+      MaterialTempFromRhoEg(ptable, rho, material_energy);
+  const Real radiation_energy = RadiationEnergyFromTemperature(temperature);
+  const Real denominator = material_energy/derivative+4.0*radiation_energy;
+  return denominator > 0.0 ? egas/denominator : 0.0;
 }
 
 //----------------------------------------------------------------------------------------
@@ -190,9 +437,23 @@ Real EquationOfState::NablaAdFromRhoP(Real rho, Real pres) {
     return std::numeric_limits<Real>::quiet_NaN();
   }
 
-  const Real egas = EgasFromRhoP(rho, pres);
-  if (!std::isfinite(egas) || egas <= 0.0)
+  const Real total_or_material_energy = EgasFromRhoP(rho, pres);
+  if (!std::isfinite(total_or_material_energy)
+      || total_or_material_energy <= 0.0)
     return std::numeric_limits<Real>::quiet_NaN();
+  const Real egas = include_lte_radiation
+      ? MaterialEnergyFromTotalEnergy(ptable, rho, total_or_material_energy)
+      : total_or_material_energy;
+
+  if (include_lte_radiation) {
+    const LteRadiationDerivatives derivatives =
+        CoupledDerivatives(ptable, rho, egas);
+    const Real nabla_ad = pres/derivatives.temperature
+        *derivatives.dtemperature_drho_adiabatic
+        /derivatives.sound_speed_squared;
+    return std::isfinite(nabla_ad) && nabla_ad > 0.0
+        ? nabla_ad : std::numeric_limits<Real>::quiet_NaN();
+  }
 
   // A seventh forward (rho,e_spec) field, when present, is the source EOS's
   // direct nabla_ad=(d ln T/d ln P)_s and is preferred to reconstructed
@@ -251,7 +512,17 @@ bool EquationOfState::HasEntropyTable() const {
 //! \brief Return specific entropy from the forward (rho, e_spec) field.
 Real EquationOfState::EntropyFromRhoEg(Real rho, Real egas) {
   if (!HasEntropyTable()) return std::numeric_limits<Real>::quiet_NaN();
-  return GetEntropyData(ptable, kEntropyRhoEg, egas, rho);
+  const Real material_energy = include_lte_radiation
+      ? MaterialEnergyFromTotalEnergy(ptable, rho, egas) : egas;
+  const Real material_entropy =
+      GetEntropyData(ptable, kEntropyRhoEg, material_energy, rho);
+  if (!include_lte_radiation) return material_entropy;
+  const Real temperature =
+      MaterialTempFromRhoEg(ptable, rho, material_energy)*ptable->tUnit;
+  const Real density_cgs = rho*ptable->rhoUnit;
+  const Real radiation_entropy = 4.0*kRadiationConstantCgs
+      *std::pow(temperature, 3)/(3.0*density_cgs);
+  return material_entropy+radiation_entropy;
 }
 
 //----------------------------------------------------------------------------------------
@@ -259,7 +530,10 @@ Real EquationOfState::EntropyFromRhoEg(Real rho, Real egas) {
 //! \brief Return specific entropy from the inverse (rho, P/rho) field.
 Real EquationOfState::EntropyFromRhoP(Real rho, Real pres) {
   if (!HasEntropyTable()) return std::numeric_limits<Real>::quiet_NaN();
-  return GetEntropyData(ptable, kEntropyRhoP, pres, rho);
+  if (!include_lte_radiation)
+    return GetEntropyData(ptable, kEntropyRhoP, pres, rho);
+  const Real total_energy = EgasFromRhoP(rho, pres);
+  return EntropyFromRhoEg(rho, total_energy);
 }
 
 //----------------------------------------------------------------------------------------
@@ -271,6 +545,28 @@ Real EquationOfState::PresFromRhoEntropy(Real rho, Real entropy,
   if (!HasEntropyTable() || !std::isfinite(rho) || !std::isfinite(entropy)
       || rho <= 0.0 || entropy <= 0.0) {
     return std::numeric_limits<Real>::quiet_NaN();
+  }
+
+  if (include_lte_radiation) {
+    Real lower, upper;
+    if (!MaterialEnergyBounds(ptable, rho, &lower, &upper))
+      return std::numeric_limits<Real>::quiet_NaN();
+    auto total_entropy = [&](const Real material_energy) {
+      const Real total_energy =
+          TotalEnergyFromMaterial(ptable, rho, material_energy);
+      return EntropyFromRhoEg(rho, total_energy);
+    };
+    const Real lower_entropy = total_entropy(lower);
+    const Real upper_entropy = total_entropy(upper);
+    if (!std::isfinite(lower_entropy) || !std::isfinite(upper_entropy)
+        || entropy < lower_entropy || entropy > upper_entropy)
+      return std::numeric_limits<Real>::quiet_NaN();
+    for (int iteration = 0; iteration < 64; ++iteration) {
+      const Real middle = std::sqrt(lower*upper);
+      if (total_entropy(middle) < entropy) lower = middle;
+      else upper = middle;
+    }
+    return TotalPressureFromMaterial(ptable, rho, std::sqrt(lower*upper));
   }
 
   const Real rho_safe = std::min(std::max(rho, density_floor_),
@@ -375,6 +671,42 @@ Real EquationOfState::RhoFromPEntropy(Real pres, Real entropy, Real rho_guess) {
   const Real target = std::log(std::max(entropy, TINY_NUMBER));
   const int nscan = 128;
 
+  if (include_lte_radiation) {
+    auto residual_total = [&](const Real logrho) {
+      const Real value = EntropyFromRhoP(std::exp(logrho), pres);
+      return std::isfinite(value) && value > 0.0
+          ? std::log(value)-target
+          : std::numeric_limits<Real>::quiet_NaN();
+    };
+    Real lower_log = log_lo;
+    Real lower_residual = residual_total(lower_log);
+    for (int n = 1; n <= nscan; ++n) {
+      const Real upper_log = log_lo+(log_hi-log_lo)*n/nscan;
+      const Real upper_residual = residual_total(upper_log);
+      if (std::isfinite(lower_residual) && std::isfinite(upper_residual)
+          && lower_residual*upper_residual <= 0.0) {
+        Real a = lower_log;
+        Real b = upper_log;
+        Real fa = lower_residual;
+        for (int iteration = 0; iteration < 64; ++iteration) {
+          const Real middle = 0.5*(a+b);
+          const Real fm = residual_total(middle);
+          if (!std::isfinite(fm))
+            return std::numeric_limits<Real>::quiet_NaN();
+          if (fa*fm <= 0.0) b = middle;
+          else {
+            a = middle;
+            fa = fm;
+          }
+        }
+        return std::exp(0.5*(a+b));
+      }
+      lower_log = upper_log;
+      lower_residual = upper_residual;
+    }
+    return std::numeric_limits<Real>::quiet_NaN();
+  }
+
   auto residual = [&](const Real logrho) {
     const Real rho = std::exp(logrho);
     const Real s = EntropyFromRhoP(rho, pres);
@@ -446,6 +778,36 @@ Real EquationOfState::RhoFromPEntropy(Real pres, Real entropy, Real rho_guess) {
 void EquationOfState::InitEosConstants(ParameterInput* pin) {
   dens_pow = pin->GetOrAddReal("hydro", "dens_pow", dens_pow);
   clamp_to_table = pin->GetOrAddBoolean("hydro", "eos_table_clamp", false);
+  include_lte_radiation = pin->GetOrAddBoolean(
+      "hydro", "eos_include_lte_radiation", false);
+  lte_inversion_max_iterations = pin->GetOrAddInteger(
+      "hydro", "eos_lte_inversion_max_iterations", 12);
+  if (lte_inversion_max_iterations < 4
+      || lte_inversion_max_iterations > 128) {
+    std::stringstream msg;
+    msg << "### FATAL ERROR in EquationOfState::InitEosConstants" << std::endl
+        << "hydro/eos_lte_inversion_max_iterations must lie in [4,128].";
+    ATHENA_ERROR(msg);
+  }
+#if NRMGFLD_ENABLED
+  if (include_lte_radiation) {
+    std::stringstream msg;
+    msg << "### FATAL ERROR in EquationOfState::InitEosConstants" << std::endl
+        << "hydro/eos_include_lte_radiation=true cannot be combined with "
+        << "NR-FLD because that would count a*T^4 twice." << std::endl;
+    ATHENA_ERROR(msg);
+  }
+#endif
+  radiation_constant_code = kRadiationConstantCgs
+      *std::pow(ptable->tUnit, 4)/ptable->eUnit;
+  if (!std::isfinite(radiation_constant_code)
+      || radiation_constant_code <= 0.0) {
+    std::stringstream msg;
+    msg << "### FATAL ERROR in EquationOfState::InitEosConstants" << std::endl
+        << "invalid LTE radiation constant in code units: "
+        << radiation_constant_code << std::endl;
+    ATHENA_ERROR(msg);
+  }
   derivative_log_step =
       pin->GetOrAddReal("hydro", "eos_derivative_log_step", derivative_log_step);
   if (!std::isfinite(derivative_log_step) || derivative_log_step <= 0.0) {
