@@ -23,6 +23,8 @@ export OMP_NUM_THREADS=1
 ulimit -c 0
 
 repository=${WOR182_REPOSITORY:-$HOME/simulation/athena-wor182-lte-radiation-eos}
+binary=${WOR182_BINARY:-bin/athena}
+require_float64=${WOR182_REQUIRE_FLOAT64:-true}
 restart=${WOR182_RESTART:?set WOR182_RESTART to the accepted relaxed checkpoint}
 model_tag=${WOR182_MODEL_TAG:?set WOR182_MODEL_TAG}
 overlay=inputs/rsg/athinput.scf_rsg_ce_handoff
@@ -30,12 +32,12 @@ run=/work/mizutaniks/wor182/${model_tag}_ce_handoff_${SLURM_JOB_ID}
 
 mkdir -p "$run"
 cd "$repository"
-test -x bin/athena
+test -x "$binary"
 test -s "$restart"
 test -s "$overlay"
 git rev-parse HEAD > "$run/git_commit.txt"
 git status --short > "$run/git_status.txt"
-sha256sum bin/athena "$restart" "$overlay" > "$run/provenance.sha256"
+sha256sum "$binary" "$restart" "$overlay" > "$run/provenance.sha256"
 printf '%s\n' \
   'rho_unit_g_cm3=1.0e-8' \
   'energy_density_unit_erg_cm3=1.0e5' \
@@ -49,7 +51,7 @@ printf '%s\n' \
 set +e
 /usr/bin/time -f 'wall_s=%e maxrss_kb=%M' -o "$run/time.log" \
   srun -n"$SLURM_NTASKS" --ntasks-per-node=56 \
-  bin/athena -r "$restart" -i "$overlay" -d "$run" \
+  "$binary" -r "$restart" -i "$overlay" -d "$run" \
   time/tlim=0.0 time/nlim=-1 output3/dt=-1 output4/dt=-1 \
   > "$run/stdout.log" 2> "$run/stderr.log"
 status=$?
@@ -64,6 +66,19 @@ if [[ -z "$handoff" || ! -s "$handoff" ]]; then
   status=1
 else
   sha256sum "$handoff" > "$run/handoff.sha256"
+  mpicxx -O2 -std=c++11 analysis/wor182/check_ce_handoff.cpp -lhdf5 \
+    -o "$run/check_ce_handoff"
+  precision_argument=()
+  if [[ "$require_float64" == true ]]; then
+    precision_argument+=(--require-float64)
+  elif [[ "$require_float64" != false ]]; then
+    echo 'WOR182_REQUIRE_FLOAT64 must be true or false' >&2
+    status=1
+  fi
+  if ! "$run/check_ce_handoff" "$handoff" "${precision_argument[@]}" \
+      > "$run/handoff_structure.txt"; then
+    status=1
+  fi
 fi
 cat "$run/time.log" || true
 exit "$status"
