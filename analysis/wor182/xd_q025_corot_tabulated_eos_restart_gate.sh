@@ -45,6 +45,10 @@ jacobian_check=${WOR182_JACOBIAN_CHECK:-false}
 jacobian_check_epsilon=${WOR182_JACOBIAN_CHECK_EPSILON:-1.0e-4}
 surface_refinement_level=${WOR182_SURFACE_REFINEMENT_LEVEL:-2}
 surface_refinement_density=${WOR182_SURFACE_REFINEMENT_DENSITY:-3.0e-9}
+rebuild_radiative_surface=${WOR182_REBUILD_RADIATIVE_SURFACE:-false}
+radiative_surface_match_density=${WOR182_RADIATIVE_SURFACE_MATCH_DENSITY:-1.0e-9}
+radiative_surface_superadiabatic_peak=${WOR182_RADIATIVE_SURFACE_SUPERADIABATIC_PEAK:-0.0}
+radiative_surface_superadiabatic_width=${WOR182_RADIATIVE_SURFACE_SUPERADIABATIC_WIDTH:-0.1}
 relaxation_velocity_tau=${WOR182_RELAXATION_VELOCITY_TAU:--1.0}
 relaxation_taper_start=${WOR182_RELAXATION_TAPER_START:--1.0}
 relaxation_taper_end=${WOR182_RELAXATION_TAPER_END:--1.0}
@@ -63,7 +67,7 @@ git status --short > "$run/git_status.txt"
 sha256sum bin/athena "$restart" "$input" \
   data/eos/rsg_tomida2013_material_eos.tab \
   data/opacity/rsg_gray_opacity_t7.h5 > "$run/provenance.sha256"
-printf 'restart=%s\ninput=%s\ntarget_time=%s\ncfl=%s\nnlim=%s\nintegrator=%s\nrestart_dcycle=%s\nhistory_dcycle=%s\nslice_output_dt=%s\nfgmres_threshold=%s\ndiagnostic_verbosity=%s\nsurface_mach_diagnostic_threshold=%s\nsurface_pressure_ratio_diagnostic_threshold=%s\ntaper_exchange_diagnostic_time_threshold=%s\nnr_backtrack_max=%s\nnr_min_step_scale=%s\nmixed_frame_terms=%s\nmixed_frame_transport=%s\njacobian_check=%s\njacobian_check_epsilon=%s\nsurface_refinement_level=%s\nsurface_refinement_density=%s\nrelaxation_velocity_tau=%s\nrelaxation_taper_start=%s\nrelaxation_taper_end=%s\ntasks_per_node=%s\n' \
+printf 'restart=%s\ninput=%s\ntarget_time=%s\ncfl=%s\nnlim=%s\nintegrator=%s\nrestart_dcycle=%s\nhistory_dcycle=%s\nslice_output_dt=%s\nfgmres_threshold=%s\ndiagnostic_verbosity=%s\nsurface_mach_diagnostic_threshold=%s\nsurface_pressure_ratio_diagnostic_threshold=%s\ntaper_exchange_diagnostic_time_threshold=%s\nnr_backtrack_max=%s\nnr_min_step_scale=%s\nmixed_frame_terms=%s\nmixed_frame_transport=%s\njacobian_check=%s\njacobian_check_epsilon=%s\nsurface_refinement_level=%s\nsurface_refinement_density=%s\nrebuild_radiative_surface=%s\nradiative_surface_match_density_g_cm3=%s\nradiative_surface_superadiabatic_peak=%s\nradiative_surface_superadiabatic_width_fraction=%s\nrelaxation_velocity_tau=%s\nrelaxation_taper_start=%s\nrelaxation_taper_end=%s\ntasks_per_node=%s\n' \
   "$restart" "$input" "$target_time" "$cfl" "$nlim" "$integrator" \
   "$restart_dcycle" "$history_dcycle" "$slice_output_dt" "$fgmres_threshold" \
   "$diagnostic_verbosity" "$surface_mach_diagnostic_threshold" \
@@ -73,6 +77,9 @@ printf 'restart=%s\ninput=%s\ntarget_time=%s\ncfl=%s\nnlim=%s\nintegrator=%s\nre
   "$mixed_frame_terms" "$mixed_frame_transport" \
   "$jacobian_check" "$jacobian_check_epsilon" \
   "$surface_refinement_level" "$surface_refinement_density" \
+  "$rebuild_radiative_surface" "$radiative_surface_match_density" \
+  "$radiative_surface_superadiabatic_peak" \
+  "$radiative_surface_superadiabatic_width" \
   "$relaxation_velocity_tau" "$relaxation_taper_start" \
   "$relaxation_taper_end" \
   "$tasks_per_node" \
@@ -95,6 +102,10 @@ set +e
   nrfld/jacobian_check_epsilon="$jacobian_check_epsilon" \
   problem/surface_refinement_level="$surface_refinement_level" \
   problem/surface_refinement_density_g_cm3="$surface_refinement_density" \
+  problem/rebuild_radiative_surface="$rebuild_radiative_surface" \
+  problem/radiative_surface_match_density_g_cm3="$radiative_surface_match_density" \
+  problem/radiative_surface_superadiabatic_peak="$radiative_surface_superadiabatic_peak" \
+  problem/radiative_surface_superadiabatic_width_fraction="$radiative_surface_superadiabatic_width" \
   problem/surface_mach_diagnostic_threshold="$surface_mach_diagnostic_threshold" \
   problem/surface_pressure_ratio_diagnostic_threshold="$surface_pressure_ratio_diagnostic_threshold" \
   problem/taper_exchange_diagnostic_time_threshold_s="$taper_exchange_diagnostic_time_threshold" \
