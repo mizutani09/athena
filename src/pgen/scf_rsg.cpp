@@ -1241,6 +1241,51 @@ Real HistorySurfaceMachDiagnostic(MeshBlock* block, int output) {
         block->user_out_var(17,max_k,max_j,max_i)*acceleration_scale;
     const Real full_force_scale =
         block->user_out_var(18,max_k,max_j,max_i)*acceleration_scale;
+    const Real radius = std::sqrt(max_x*max_x+max_y*max_y+max_z*max_z);
+    const Real dpx = (block->phydro->w(IPR,max_k,max_j,max_i+1)
+                     -block->phydro->w(IPR,max_k,max_j,max_i-1))
+        /(block->pcoord->x1v(max_i+1)-block->pcoord->x1v(max_i-1));
+    const Real dpy = (block->phydro->w(IPR,max_k,max_j+1,max_i)
+                     -block->phydro->w(IPR,max_k,max_j-1,max_i))
+        /(block->pcoord->x2v(max_j+1)-block->pcoord->x2v(max_j-1));
+    const Real dpz = (block->phydro->w(IPR,max_k+1,max_j,max_i)
+                     -block->phydro->w(IPR,max_k-1,max_j,max_i))
+        /(block->pcoord->x3v(max_k+1)-block->pcoord->x3v(max_k-1));
+    const Real apx = -dpx/density;
+    const Real apy = -dpy/density;
+    const Real apz = -dpz/density;
+    const Real asx = -(block->pgrav->phi(max_k,max_j,max_i+1)
+                      -block->pgrav->phi(max_k,max_j,max_i-1))
+        /(block->pcoord->x1v(max_i+1)-block->pcoord->x1v(max_i-1));
+    const Real asy = -(block->pgrav->phi(max_k,max_j+1,max_i)
+                      -block->pgrav->phi(max_k,max_j-1,max_i))
+        /(block->pcoord->x2v(max_j+1)-block->pcoord->x2v(max_j-1));
+    const Real asz = -(block->pgrav->phi(max_k+1,max_j,max_i)
+                      -block->pgrav->phi(max_k-1,max_j,max_i))
+        /(block->pcoord->x3v(max_k+1)-block->pcoord->x3v(max_k-1));
+    Real acx, acy, acz;
+    CoreAccelerationCode(block->pcoord, max_k, max_j, max_i,
+                         &acx, &acy, &acz);
+    Real arx = 0.0, ary = 0.0, arz = 0.0;
+    block->prfld->RadiationAcceleration(
+        max_k, max_j, max_i, density, &arx, &ary, &arz);
+    const Real centrifugal_x = angular_velocity_code*angular_velocity_code*max_x;
+    const Real centrifugal_y = angular_velocity_code*angular_velocity_code*max_y;
+    const Real inverse_radius = radius > 0.0 ? 1.0/radius : 0.0;
+    const auto radial_projection = [=](Real ax, Real ay, Real az) {
+      return (max_x*ax+max_y*ay+max_z*az)*inverse_radius*acceleration_scale;
+    };
+    const Real pressure_acceleration_radial = radial_projection(apx, apy, apz);
+    const Real gravity_acceleration_radial = radial_projection(
+        asx+acx, asy+acy, asz+acz);
+    const Real radiation_acceleration_radial = radial_projection(arx, ary, arz);
+    const Real centrifugal_acceleration_radial = radial_projection(
+        centrifugal_x, centrifugal_y, 0.0);
+    const Real full_force_residual_radial = radial_projection(
+        apx+asx+acx+arx+centrifugal_x,
+        apy+asy+acy+ary+centrifugal_y, apz+asz+acz+arz);
+    const scf_map::State source = profile.Interpolate(
+        std::hypot(max_x,max_y)*length_unit, max_z*length_unit);
 #endif
     std::stringstream message;
     message << std::scientific << std::setprecision(16)
@@ -1278,6 +1323,21 @@ Real HistorySurfaceMachDiagnostic(MeshBlock* block, int output) {
             << " full_force_residual_cgs=" << full_force_residual
             << " full_force_relative="
             << full_force_residual/std::max(full_force_scale, TINY_NUMBER)
+            << " pressure_accel_radial_cgs=" << pressure_acceleration_radial
+            << " gravity_accel_radial_cgs=" << gravity_acceleration_radial
+            << " radiation_accel_radial_cgs=" << radiation_acceleration_radial
+            << " centrifugal_accel_radial_cgs="
+            << centrifugal_acceleration_radial
+            << " full_force_residual_radial_cgs="
+            << full_force_residual_radial
+            << " source_rho_cgs=" << source.density
+            << " source_pressure_cgs=" << source.pressure
+            << " current_to_source_rho="
+            << max_density*rho_unit/std::max(source.density,
+                                             std::numeric_limits<Real>::min())
+            << " current_to_source_pressure="
+            << max_pressure*pressure_unit/std::max(
+                source.pressure, std::numeric_limits<Real>::min())
 #endif
             << std::endl;
     std::cout << message.str();
