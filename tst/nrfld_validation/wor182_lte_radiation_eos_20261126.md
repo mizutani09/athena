@@ -100,6 +100,25 @@ concurrently to time 100 at CFL 0.3 in `M-bulk-a`, using 28 MPI ranks and
 55 GB per job with two jobs sharing each node.  They save a restart every 50
 cycles.  This avoids serialization behind the unrelated `M-large-a` job.
 
+All four time-100 gates completed in 81--89 minutes while sharing two XD
+nodes.  The rotating/nonrotating material models ended at interior Mach
+`0.0219/0.0229`; their formal outer maxima were `0.797/0.494`.  Their masses
+above radial Mach 0.1 were `0.00338/0.00779 Msun`, concentrated near mean
+radii `941/915 Rsun` and geometric-mean densities
+`2.24e-10/3.49e-10 g cm^-3`.  Thus their bulk remains quiet, but their
+surface transient continues to grow and they are not yet final CE states.
+
+The trapped-LTE models are qualitatively worse.  Rotating/nonrotating
+interior Mach reached `0.143/0.141`, radial kinetic energy reached
+`2.34e44/2.41e44 erg`, and `0.0248/0.0283 Msun` exceeded radial Mach 0.1.
+That mass lies at mean radii `223/304 Rsun` and geometric-mean densities
+`5.17e-7/2.28e-7 g cm^-3`, so this is a deep-envelope radial disturbance,
+not a low-density cut-cell diagnostic.  The force L2 residual grew from
+about `1.5e-3` at time 10 to `9.5e-3` at time 100, while all EOS margins
+remained positive.  These runs are numerically finite but mechanically
+rejected.  They must not be extended or used as CE initial states until the
+combined-EOS equilibrium/thermodynamic response is audited.
+
 ## Acceptance path to CE
 
 Short gates are followed by time 1, time 10, and then undamped long relaxation
