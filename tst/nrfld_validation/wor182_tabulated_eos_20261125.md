@@ -580,6 +580,68 @@ radiative equilibrium.  The next initial-data gate must rebuild the outer
 profile against the target luminosity, tabulated EOS, opacity, rotation, and
 FLD radiation force.
 
+### Rotating radiative-surface reconstruction
+
+Commit `4c08236dc` added an opt-in C++ surface integrator starting from a
+chosen density on every SCF angular ray.  It inverts the production material
+EOS at fixed `(Pgas,T)`, uses the production Rosseland opacity and rotating
+SCF potential, and initializes `Er=aT^4`.  The first version incorrectly
+forced the full luminosity through the `3e-9 g cm^-3` match point.  Job 348187
+showed that this is not a viable RSG closure: the reconstructed layer was
+less than `7e10 cm` thick, removed `0.142 Msun`, raised the initial surface
+Mach maximum from `0.00124` to `0.0133`, and raised the maximum force residual
+ratio from `0.442` to `0.894`.
+
+Commit `01f39cbb6` therefore uses field 6 of the material-EOS table for
+`nabla_ad`.  Where the full FLD luminosity is Schwarzschild unstable, the
+temperature gradient is capped at `nabla_ad` and the remainder is assigned to
+unresolved convection.  Commit `53d132f18` made this split use the exact
+Levermore--Pomraning limiter instead of its diffusion-limit approximation.
+At the original match density, job 348195 reconstructed a
+`6.74e12--9.87e12 cm` layer and recovered the mapped mass to within `0.018%`
+of the original profile.  Only `(2.30--2.63)e-4` of the luminosity is carried
+radiatively at the anchor and all accepted integration substeps are
+convective.  This quantitatively explains why a static full-luminosity FLD
+solution cannot replace the RSG convective envelope at that depth.
+
+The purely adiabatic reconstruction at `3e-9 g cm^-3` over-expanded the outer
+shape by about four to six percent.  A Gaussian superadiabatic excess was
+then tested with a deeper `1e-8 g cm^-3` anchor.  Peak `delta-nabla=0.55`
+(job 348213) produced a plausible `3350--3600 K` edge and an outer shape
+within `0.4--2.2%` of the requested rotating surface.  Its one-step gate
+348216 converged cleanly (four Newton iterations, two FGMRES iterations per
+linear solve, final maximum residual `1.26e-9`), but it is not thermally
+acceptable.  The absolute matter-radiation exchange rose to
+`6.71e45 erg s^-1` and its minimum timescale fell to `0.0181 s`.
+
+Restart diagnostic 348219 localized that transient to
+`rho=(2.4--2.8)e-9 g cm^-3` near the old taper onset, not to the new outer
+edge.  The gas and radiation temperatures differ by only one to two percent,
+but effective Planck opacities of roughly `1e3 cm^2 g^-1` turn that mismatch
+into exchange times of `0.03--0.7 s`.  The superadiabatic gradient makes the
+radiative flux divergence change rapidly, while the static Athena model has
+no compensating convective-flux operator.  Smaller timesteps would resolve
+this transient but would not make the initial state stationary.
+
+The less invasive alternative retains the inner part of the old taper and
+matches at `1e-9 g cm^-3` with no superadiabatic excess.  Fresh-map job 348222
+ended only `0.49%` outside the polar target and `0.67%` outside the equatorial
+target.  Relative to job 348178 its mapped mass differs by `-0.0012%`, taper
+mass by `+0.078%`, and maximum force residual is unchanged at `0.441573`.
+The interior Mach maximum is unchanged at `3.60e-6`; the outer maximum is
+larger (`0.00371` versus `0.00124`) but much smaller than the fully rebuilt
+or superadiabatic cases.  Its initial absolute diffusion power is
+`2.78e39 erg s^-1`, below the original profile's `1.32e40 erg s^-1`.
+
+One-step job 348223 then passed the thermal gate.  Newton converged in three
+iterations, every FGMRES solve used two iterations, and the final maximum
+residual was `7.60e-9`.  After the step, the absolute exchange power was only
+`3.01e38 erg s^-1` and the minimum exchange time was `3.10e5 s`; the original
+job 348178 values were `5.40e38 erg s^-1` and `1.26e4 s`.  Absolute diffusion
+power was `2.77e39 erg s^-1`.  This low-density, zero-excess reconstruction is
+the accepted short-gate candidate; job 348224 advances it to time 0.1 before
+any long relaxation test.
+
 ## Open acceptance items
 
 1. Reconstruct the low-density outer density, material pressure, and radiation

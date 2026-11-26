@@ -232,7 +232,7 @@ luminosity_heating_radius_cm = 4.5207406562668779e12
 # same tabulated EOS, opacity, luminosity, FLD limiter, and effective
 # (self+core+rotation) potential used by the runtime model.
 rebuild_radiative_surface = false
-radiative_surface_match_density_g_cm3 = 3.0e-9
+radiative_surface_match_density_g_cm3 = 1.0e-9
 radiative_surface_superadiabatic_peak = 0.0
 radiative_surface_superadiabatic_width_fraction = 0.1
 radiation_external_temperature = 1.0e2
