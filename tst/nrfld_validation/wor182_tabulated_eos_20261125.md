@@ -730,6 +730,33 @@ fix improves the earliest cut-cell transient, but the time-10 dynamics are
 statistically unchanged.  Extending this variant to time 20 would therefore
 not address the missing outer-layer closure.
 
+### Pointwise tabulated-EOS split in mixed surface cells
+
+The time-20 Mach maximum lies in cells containing both stellar and atmosphere
+quadrature points.  The baseline mapper conservatively averages density,
+momentum, and total pressure first, then treats any cell with nonzero stellar
+mass as one homogeneous LTE state.  Because the tabulated EOS and the
+`a T^4` split are nonlinear, that operation does not preserve the pointwise
+gas/radiation partition at a curved surface.  An earlier ideal-EOS experiment
+was reverted before the tabulated-EOS work and cannot be reused directly.
+
+Commit `563f38251` adds a default-off replacement.  It leaves pure stellar and
+pure atmosphere cells on the accepted path.  Only cells containing both
+components re-evaluate the material internal energy from `(rho,T)` with the
+production EOS at each existing Gauss point, average material and radiation
+energies separately, and add the external radiation bath only to atmosphere
+points.  The opt-out path and all conserved density/momentum quadratures are
+unchanged.
+
+One-step job 348274 passed: Newton converged in three iterations, all three
+FGMRES solves used two iterations, and the final maximum residual was
+`7.60e-9`.  Initial outer Mach fell from `0.00302` to `0.00271`.  The thermal
+exchange gate was unchanged (`3.01e38 erg s^-1`, minimum time `3.10e5 s`), but
+absolute diffusion power increased from `3.04e39` to `4.18e39 erg s^-1` and
+the post-step maximum force residual increased from `0.181` to `0.213`.
+Therefore the mapping is numerically valid but is not yet accepted.  Job
+348276 performs the controlled undamped time-0.1 comparison.
+
 ## Open acceptance items
 
 1. Reconstruct the low-density outer density, material pressure, and radiation
