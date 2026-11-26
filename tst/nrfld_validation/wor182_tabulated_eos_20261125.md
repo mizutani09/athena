@@ -789,6 +789,28 @@ closure and is not a reason to extend this branch blindly to time 20.
 
 ## Open acceptance items
 
+### Nonrotating current-physics control
+
+Job 348348 mapped the spherical core-cut profile with the same material-only
+Tomida table, full mixed-frame FLD, zero-excess `1e-9 g cm^-3` radiative
+surface rebuild, pointwise mixed-cell split, root64 central L4 plus surface
+L2, RK4+4wz, and CFL 0.2.  It used one XD node/56 MPI ranks and reached time
+0.1 in 824 s.  The deliberately capped startup used 100 steps of `1e-5`; after
+the cap ended, the timestep doubled to the hydrodynamic limit instead of being
+artificially held fixed.
+
+All 121 nonlinear solves converged normally.  Newton used at most nine
+iterations and FGMRES at most 30; there was no relaxed acceptance,
+backtracking failure, or fatal error.  The largest post-cap step had initial
+maximum nonlinear residual 0.403 but converged in six Newton iterations to
+`8.92e-10`, so the timestep increase was not hiding a dead state.  Final
+interior/surface Mach maxima were `4.34e-4/5.44e-4`, no stellar mass exceeded
+radial Mach 0.1, and the density/energy lower EOS margins were
+`+6.00/+1.37 dex`.  This nonrotating model is much quieter than the rotating
+outer-layer controls and passes the time-0.1 FLD gate.  Job 348407 continues
+the exact restart to time 1 at CFL 0.3 without overlaying the rotating input
+parameters.
+
 1. Reconstruct the low-density outer density, material pressure, and radiation
    profiles against the full rotating force balance and the WOR-151 cut
    luminosity.  Repeat the strong-
