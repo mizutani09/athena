@@ -35,6 +35,7 @@ slice_output_dt=${WOR182_SLICE_OUTPUT_DT:--1}
 fgmres_threshold=${WOR182_FGMRES_THRESHOLD:-1.0e-4}
 diagnostic_verbosity=${WOR182_DIAGNOSTIC_VERBOSITY:-0}
 surface_mach_diagnostic_threshold=${WOR182_SURFACE_MACH_DIAGNOSTIC_THRESHOLD:--1.0}
+taper_exchange_diagnostic_time_threshold=${WOR182_TAPER_EXCHANGE_DIAGNOSTIC_TIME_THRESHOLD:--1.0}
 nr_backtrack_max=${WOR182_NR_BACKTRACK_MAX:-4}
 nr_min_step_scale=${WOR182_NR_MIN_STEP_SCALE:-0.05}
 mixed_frame_terms=${WOR182_MIXED_FRAME_TERMS:-true}
@@ -61,10 +62,11 @@ git status --short > "$run/git_status.txt"
 sha256sum bin/athena "$restart" "$input" \
   data/eos/rsg_tomida2013_material_eos.tab \
   data/opacity/rsg_gray_opacity_t7.h5 > "$run/provenance.sha256"
-printf 'restart=%s\ninput=%s\ntarget_time=%s\ncfl=%s\nnlim=%s\nintegrator=%s\nrestart_dcycle=%s\nhistory_dcycle=%s\nslice_output_dt=%s\nfgmres_threshold=%s\ndiagnostic_verbosity=%s\nsurface_mach_diagnostic_threshold=%s\nnr_backtrack_max=%s\nnr_min_step_scale=%s\nmixed_frame_terms=%s\nmixed_frame_transport=%s\njacobian_check=%s\njacobian_check_epsilon=%s\nsurface_refinement_level=%s\nsurface_refinement_density=%s\nrelaxation_velocity_tau=%s\nrelaxation_taper_start=%s\nrelaxation_taper_end=%s\ntasks_per_node=%s\n' \
+printf 'restart=%s\ninput=%s\ntarget_time=%s\ncfl=%s\nnlim=%s\nintegrator=%s\nrestart_dcycle=%s\nhistory_dcycle=%s\nslice_output_dt=%s\nfgmres_threshold=%s\ndiagnostic_verbosity=%s\nsurface_mach_diagnostic_threshold=%s\ntaper_exchange_diagnostic_time_threshold=%s\nnr_backtrack_max=%s\nnr_min_step_scale=%s\nmixed_frame_terms=%s\nmixed_frame_transport=%s\njacobian_check=%s\njacobian_check_epsilon=%s\nsurface_refinement_level=%s\nsurface_refinement_density=%s\nrelaxation_velocity_tau=%s\nrelaxation_taper_start=%s\nrelaxation_taper_end=%s\ntasks_per_node=%s\n' \
   "$restart" "$input" "$target_time" "$cfl" "$nlim" "$integrator" \
   "$restart_dcycle" "$history_dcycle" "$slice_output_dt" "$fgmres_threshold" \
   "$diagnostic_verbosity" "$surface_mach_diagnostic_threshold" \
+  "$taper_exchange_diagnostic_time_threshold" \
   "$nr_backtrack_max" "$nr_min_step_scale" \
   "$mixed_frame_terms" "$mixed_frame_transport" \
   "$jacobian_check" "$jacobian_check_epsilon" \
@@ -92,6 +94,7 @@ set +e
   problem/surface_refinement_level="$surface_refinement_level" \
   problem/surface_refinement_density_g_cm3="$surface_refinement_density" \
   problem/surface_mach_diagnostic_threshold="$surface_mach_diagnostic_threshold" \
+  problem/taper_exchange_diagnostic_time_threshold_s="$taper_exchange_diagnostic_time_threshold" \
   problem/relaxation_velocity_tau="$relaxation_velocity_tau" \
   problem/relaxation_taper_start="$relaxation_taper_start" \
   problem/relaxation_taper_end="$relaxation_taper_end" \
@@ -101,7 +104,7 @@ set +e
 status=$?
 set -e
 
-grep -E '^cycle=|\[NR\] status=|\[LINEAR_FGMRES\]|FATAL ERROR' \
+grep -E '^cycle=|\[NR\] status=|\[LINEAR_FGMRES\]|\[SCF_(SURFACE_MACH|TAPER_EXCHANGE)_CELL\]|FATAL ERROR' \
   "$run/stdout.log" "$run/stderr.log" > "$run/summary.log" || true
 sacct -j "${SLURM_JOB_ID}" -n -P \
   --format=JobID,State,Elapsed,TotalCPU,MaxRSS,MaxVMSize,AllocCPUS \

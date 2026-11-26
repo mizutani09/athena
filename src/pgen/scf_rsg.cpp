@@ -84,6 +84,7 @@ Real external_radiation_energy_code, planck_taper_radius;
 Real planck_taper_polar_radius, planck_taper_width;
 Real marshak_alpha;
 Real radiation_startup_dt_cap, radiation_startup_dt_end;
+Real taper_exchange_diagnostic_time_threshold;
 #endif
 constexpr int kWenozHistoryStart = 29;
 // WOR-177's compact softened core needs an L8/L9 resolution comparison on the
@@ -851,6 +852,8 @@ Real HistoryTaperRadiationDiagnostic(MeshBlock* block, int output) {
   const Real power_scale = energy_scale/time_unit;
   Real total = (diagnostic == 7 || diagnostic == 8)
       ? std::numeric_limits<Real>::infinity() : 0.0;
+  int minimum_i = -1, minimum_j = -1, minimum_k = -1;
+  Real minimum_ellipsoidal_radius = 0.0;
   for (int k = block->ks; k <= block->ke; ++k) {
     const Real z = block->pcoord->x3v(k);
     for (int j = block->js; j <= block->je; ++j) {
@@ -899,11 +902,80 @@ Real HistoryTaperRadiationDiagnostic(MeshBlock* block, int output) {
               total_energy/std::abs(diffusion_heating)*time_unit);
         }
         if (diagnostic == 8 && std::abs(thermal_exchange) > 0.0) {
-          total = std::min(total,
-              total_energy/std::abs(thermal_exchange)*time_unit);
+          const Real exchange_time =
+              total_energy/std::abs(thermal_exchange)*time_unit;
+          if (exchange_time < total) {
+            total = exchange_time;
+            minimum_i = i;
+            minimum_j = j;
+            minimum_k = k;
+            minimum_ellipsoidal_radius = ellipsoidal_radius;
+          }
         }
       }
     }
+  }
+  if (diagnostic == 8 && taper_exchange_diagnostic_time_threshold > 0.0
+      && total <= taper_exchange_diagnostic_time_threshold
+      && minimum_i >= 0) {
+    const int i = minimum_i;
+    const int j = minimum_j;
+    const int k = minimum_k;
+    const Real density = block->phydro->u(IDN,k,j,i);
+    const Real stellar_density = block->pscalars->s(0,k,j,i);
+    const Real mx = block->phydro->u(IM1,k,j,i);
+    const Real my = block->phydro->u(IM2,k,j,i);
+    const Real mz = block->phydro->u(IM3,k,j,i);
+    const Real gas_energy = block->phydro->u(IEN,k,j,i)
+        -0.5*(mx*mx+my*my+mz*mz)/density;
+    const Real radiation_energy = block->prfld->u_rad(k,j,i);
+#if GENERAL_EOS
+    const Real temperature = block->peos->TempFromRhoEg(
+        density, gas_energy)*temperature_unit;
+#else
+    const Real temperature = (gamma_gas-1.0)*gas_energy/density
+        *temperature_unit;
+#endif
+    const Real radiation_temperature = std::pow(
+        radiation_energy*pressure_unit/scf_map::kRadiationConstantCgs, 0.25);
+    const Real equilibrium = block->prfld->a_r
+        *std::pow(temperature/temperature_unit, 4);
+    const Real thermal_exchange =
+        block->user_out_var(kThermalExchange,k,j,i);
+    const Real volume = block->pcoord->GetCellVolume(k,j,i);
+    const Real effective_planck_opacity = block->prfld->sigma_p(k,j,i)
+        /(density*rho_unit*length_unit);
+    std::stringstream message;
+    message << std::scientific << std::setprecision(16)
+            << "[SCF_TAPER_EXCHANGE_CELL] rank=" << Globals::my_rank
+            << " cycle=" << block->pmy_mesh->ncycle
+            << " time=" << block->pmy_mesh->time
+            << " gid=" << block->gid
+            << " level=" << block->loc.level
+            << " i=" << i << " j=" << j << " k=" << k
+            << " x_code=" << block->pcoord->x1v(i)
+            << " y_code=" << block->pcoord->x2v(j)
+            << " z_code=" << block->pcoord->x3v(k)
+            << " ellipsoidal_radius=" << minimum_ellipsoidal_radius
+            << " rho_cgs=" << density*rho_unit
+            << " stellar_rho_cgs=" << stellar_density*rho_unit
+            << " stellar_fraction=" << stellar_density/density
+            << " pressure_cgs=" << block->phydro->w(IPR,k,j,i)*pressure_unit
+            << " gas_energy_erg_cm3=" << gas_energy*pressure_unit
+            << " radiation_energy_erg_cm3=" << radiation_energy*pressure_unit
+            << " gas_temperature_k=" << temperature
+            << " radiation_temperature_k=" << radiation_temperature
+            << " equilibrium_to_radiation="
+            << equilibrium/std::max(radiation_energy, TINY_NUMBER)
+            << " sigma_planck_code=" << block->prfld->sigma_p(k,j,i)
+            << " effective_planck_opacity_cm2_g=" << effective_planck_opacity
+            << " exchange_erg_cm3_s="
+            << thermal_exchange*pressure_unit/time_unit
+            << " cell_exchange_power_erg_s="
+            << thermal_exchange*volume*power_scale
+            << " exchange_time_s=" << total
+            << std::endl;
+    std::cout << message.str();
   }
   return total;
 }
@@ -1403,10 +1475,14 @@ void Mesh::InitUserMeshData(ParameterInput* pin) {
       "problem", "radiation_startup_dt_cap", -1.0);
   radiation_startup_dt_end = pin->GetOrAddReal(
       "problem", "radiation_startup_dt_end", 0.0);
+  taper_exchange_diagnostic_time_threshold = pin->GetOrAddReal(
+      "problem", "taper_exchange_diagnostic_time_threshold_s", -1.0);
   Require(planck_taper_radius > 0.0 && planck_taper_polar_radius > 0.0
               && planck_taper_width >= 0.0
               && marshak_alpha > 0.0 && radiation_startup_dt_end >= 0.0,
           "invalid Planck taper or Marshak boundary parameter");
+  Require(taper_exchange_diagnostic_time_threshold != 0.0,
+          "taper exchange diagnostic threshold must be negative or positive");
   if (radiation_startup_dt_cap > 0.0) {
     EnrollUserTimeStepFunction(RadiationStartupTimeStep);
   }
