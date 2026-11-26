@@ -672,6 +672,19 @@ maximum was `0.00702`; the minimum EOS margin and exchange time were
 Mach number was still increasing at time 10, so job 348234 extends the
 undamped gate to time 20 before any stability claim.
 
+Job 348234 completed the time-10--20 extension in 405 s.  All 88 nonlinear
+solves converged in at most six Newton iterations, FGMRES used at most 16
+iterations, and there was no solver anomaly.  Numerically the model remains
+robust, but it is not mechanically accepted: the surface Mach maximum kept
+increasing to `0.268`, the interior maximum reached `0.00814`, and
+`3.12e29 g` exceeded radial Mach 0.1.  No stellar material exceeded Mach 0.3.
+The gas-energy lower EOS margin dropped from `+1.35 dex` to `+0.181 dex` near
+time 17, while the minimum exchange time fell to `3.74e3 s`.  Relative mass
+drift over this segment was still only `-1.63e-9`.  The reconstruction delays
+and reduces the outer transient but does not eliminate it.  Zero-step job
+348240 localizes the time-20 pressure, force, and exchange mismatch before
+the next profile change.
+
 ## Open acceptance items
 
 1. Reconstruct the low-density outer density, material pressure, and radiation
