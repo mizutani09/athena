@@ -807,9 +807,17 @@ maximum nonlinear residual 0.403 but converged in six Newton iterations to
 interior/surface Mach maxima were `4.34e-4/5.44e-4`, no stellar mass exceeded
 radial Mach 0.1, and the density/energy lower EOS margins were
 `+6.00/+1.37 dex`.  This nonrotating model is much quieter than the rotating
-outer-layer controls and passes the time-0.1 FLD gate.  Job 348407 continues
+outer-layer controls and passes the time-0.1 FLD gate.  Job 348407 continued
 the exact restart to time 1 at CFL 0.3 without overlaying the rotating input
-parameters.
+parameters.  It completed in 144 s.  All nine nonlinear solves converged in
+at most six Newton iterations; 40 FGMRES solves used at most 23 iterations,
+with no warning, relaxed acceptance, or failure.  Final interior/surface Mach
+maxima were `0.002326/0.006027`, no stellar mass exceeded radial Mach 0.1,
+and the density/energy lower table margins remained `+6.00/+1.37 dex`.
+Relative mass and total-energy changes over this continuation were
+`+1.74e-12` and `-1.33e-6`.  This is an accepted nonrotating time-1 FLD
+checkpoint.  Job 348432 is queued on three XD nodes to continue the same
+undamped state to time 10 at CFL 0.3.
 
 1. Reconstruct the low-density outer density, material pressure, and radiation
    profiles against the full rotating force balance and the WOR-151 cut
