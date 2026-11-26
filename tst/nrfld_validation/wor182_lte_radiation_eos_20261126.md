@@ -93,8 +93,11 @@ Mach 0.1, and their maxima above the surface-density threshold were the same
 as their quiet interior maxima.  Segment mass and total-energy changes were
 `-3.40e-10/-6.53e-5` for material and `+9.02e-8/-6.12e-5` for LTE
 radiation.  The LTE lower density and energy margins again remained
-`+0.505/+0.187 dex`.  Jobs 348433--348435 and 348440 queue all four accepted
-time-10 checkpoints for extension to time 100 at CFL 0.3 on three nodes.
+`+0.505/+0.187 dex`.  A two-node timing probe showed that this AMR HD case
+scales negatively beyond one node and cannot finish time 100 in the 30-minute
+test queue.  Jobs 348445--348448 therefore queue all four accepted time-10
+checkpoints for extension to time 100 at CFL 0.3 using one shared XD node and
+28 MPI ranks in the four-hour queue.  They save a restart every 50 cycles.
 
 ## Acceptance path to CE
 
