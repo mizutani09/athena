@@ -417,9 +417,11 @@ void RebuildRadiativeSurfaceProfile(EosTable& table, Real luminosity) {
           "radiative surface rebuild requires tabulated nabla_ad field 6");
   for (std::size_t angular = 0; angular < profile.angular_points(); ++angular) {
     const Real mu = profile.mu(angular);
+    // Center the unresolved superadiabatic layer on the physical outer
+    // surface, not on the rho=surface_density inner diagnostic isosurface.
     const Real target_radius = 1.0/std::sqrt(
-        (1.0-mu*mu)/SQR(surface_match_equatorial_radius)
-        +mu*mu/SQR(surface_match_polar_radius));
+        (1.0-mu*mu)/SQR(atmosphere_reference_radius)
+        +mu*mu/SQR(surface_polar_radius));
     std::size_t anchor = profile.radial_points();
     for (std::size_t radial = 1; radial < profile.radial_points(); ++radial) {
       const Real lower = profile.state(radial-1,angular).density;
