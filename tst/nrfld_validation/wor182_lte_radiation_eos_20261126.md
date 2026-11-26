@@ -85,6 +85,17 @@ energy margins remained fixed at `+0.505/+0.187 dex`.  Thus the trapped
 photon terms slightly increase the negligible-mass outer maximum but do not
 destabilize the resolved envelope through time 10.
 
+The two nonrotating time-10 gates completed in 289 and 287 s on one node.
+Material-only job 348390 ended at interior/surface Mach
+`0.00264/0.08740`; LTE-radiation job 348391 ended at
+`0.00274/0.09077`.  Neither model contained any stellar mass above radial
+Mach 0.1, and their maxima above the surface-density threshold were the same
+as their quiet interior maxima.  Segment mass and total-energy changes were
+`-3.40e-10/-6.53e-5` for material and `+9.02e-8/-6.12e-5` for LTE
+radiation.  The LTE lower density and energy margins again remained
+`+0.505/+0.187 dex`.  Jobs 348433--348435 and 348440 queue all four accepted
+time-10 checkpoints for extension to time 100 at CFL 0.3 on three nodes.
+
 ## Acceptance path to CE
 
 Short gates are followed by time 1, time 10, and then undamped long relaxation
