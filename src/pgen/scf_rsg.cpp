@@ -37,6 +37,7 @@
 #include "scf_axisymmetric_profile.hpp"
 #include "scf_core_softening.hpp"
 #include "scf_fld_diagnostic.hpp"
+#include "scf_luminosity.hpp"
 #include "scf_relaxation.hpp"
 
 #if MAGNETIC_FIELDS_ENABLED
@@ -74,6 +75,9 @@ Real eos_dens_pow;
 #endif
 Real mean_molecular_weight, core_mass, core_support_radius;
 Real core_mass_code, core_support_radius_code, core_gm_code;
+Real core_luminosity_lsun, core_luminosity_code;
+Real luminosity_heating_radius, luminosity_heating_radius_code;
+Real luminosity_kernel_normalization_code;
 int quadrature_order;
 bool rotate_atmosphere, isothermal_atmosphere, surface_refinement_use_tracer;
 scf_map::AtmosphereModel atmosphere_model;
@@ -125,6 +129,8 @@ constexpr int kFinalHistoryCount =
 constexpr int kRelaxationHistoryStart = kFinalHistoryCount;
 constexpr int kRelaxationHistoryCount = 4;
 constexpr int kAllHistoryCount = kFinalHistoryCount+kRelaxationHistoryCount;
+constexpr int kLuminosityHistory = kAllHistoryCount;
+constexpr int kHistoryCount = kAllHistoryCount+1;
 
 int SurfaceRefinementCondition(MeshBlock* block);
 
@@ -349,6 +355,13 @@ void CoreGravitySource(MeshBlock* block, const Real, const Real dt,
           conserved(IEN,k,j,i) += 0.5*dt/block->pcoord->dx3v(k)
               *(block->phydro->flux[X3DIR](IDN,k,j,i)*dphi3_l
                 +block->phydro->flux[X3DIR](IDN,k+1,j,i)*dphi3_r);
+        }
+        if (core_luminosity_code > 0.0) {
+          const Real radius = std::sqrt(x*x+y*y+z*z);
+          const Real weight = scf_luminosity::Weight(
+              radius, luminosity_heating_radius_code);
+          conserved(IEN,k,j,i) += dt*core_luminosity_code*weight
+              /luminosity_kernel_normalization_code;
         }
       }
     }
@@ -642,6 +655,26 @@ Real HistoryMass(MeshBlock* block, int) {
         total += block->phydro->u(IDN,k,j,i)
             *block->pcoord->GetCellVolume(k,j,i)*scale;
   return total;
+}
+
+Real HistoryCoreLuminosity(MeshBlock* block, int) {
+  Real total_code = 0.0;
+  if (core_luminosity_code <= 0.0) return total_code;
+  for (int k = block->ks; k <= block->ke; ++k) {
+    for (int j = block->js; j <= block->je; ++j) {
+      for (int i = block->is; i <= block->ie; ++i) {
+        const Real x = block->pcoord->x1v(i);
+        const Real y = block->pcoord->x2v(j);
+        const Real z = block->pcoord->x3v(k);
+        const Real radius = std::sqrt(x*x+y*y+z*z);
+        total_code += core_luminosity_code
+            *scf_luminosity::Weight(radius, luminosity_heating_radius_code)
+            /luminosity_kernel_normalization_code
+            *block->pcoord->GetCellVolume(k,j,i);
+      }
+    }
+  }
+  return total_code*pressure_unit*std::pow(length_unit,3)/time_unit;
 }
 
 Real HistoryMeshLevel(MeshBlock* block, int output) {
@@ -1491,6 +1524,10 @@ void Mesh::InitUserMeshData(ParameterInput* pin) {
           "atmosphere_mode must be isothermal_monopole or uniform");
   core_mass = pin->GetReal("problem", "core_mass_g");
   core_support_radius = pin->GetReal("problem", "core_support_radius_cm");
+  core_luminosity_lsun = pin->GetOrAddReal(
+      "problem", "core_luminosity_lsun", 0.0);
+  luminosity_heating_radius = pin->GetOrAddReal(
+      "problem", "luminosity_heating_radius_cm", core_support_radius);
   const Real gas_mass = pin->GetReal("problem", "gas_mass_g");
   atmosphere_reference_radius = pin->GetReal(
       "problem", "atmosphere_reference_radius_cm");
@@ -1523,6 +1560,7 @@ void Mesh::InitUserMeshData(ParameterInput* pin) {
               && relaxation_taper_end > relaxation_taper_start),
           "velocity relaxation must be disabled or have tau>0 and 0<=start<end");
   Require(core_mass > 0.0 && core_support_radius > 0.0 && gas_mass > 0.0
+          && core_luminosity_lsun >= 0.0 && luminosity_heating_radius > 0.0
           && atmosphere_reference_radius > 0.0 && surface_polar_radius > 0.0
           && surface_match_equatorial_radius > 0.0
           && surface_match_polar_radius > 0.0,
@@ -1544,6 +1582,12 @@ void Mesh::InitUserMeshData(ParameterInput* pin) {
   core_mass_code = core_mass/mass_unit;
   core_support_radius_code = core_support_radius/length_unit;
   core_gm_code = gravity_code*core_mass_code;
+  constexpr Real kSolarLuminosityCgs = 3.828e33;
+  const Real power_unit = pressure_unit*std::pow(length_unit,3)/time_unit;
+  core_luminosity_code = core_luminosity_lsun*kSolarLuminosityCgs/power_unit;
+  luminosity_heating_radius_code = luminosity_heating_radius/length_unit;
+  luminosity_kernel_normalization_code =
+      scf_luminosity::VolumeNormalization(luminosity_heating_radius_code);
   atmosphere_monopole_gm = 6.67430e-8*(gas_mass+core_mass);
   atmosphere_density_floor = pin->GetReal("hydro", "dfloor")*rho_unit;
   atmosphere_pressure_floor = pin->GetReal("hydro", "pfloor")*pressure_unit;
@@ -1669,7 +1713,7 @@ void Mesh::InitUserMeshData(ParameterInput* pin) {
   Require(pin->GetOrAddBoolean("gravity", "fill_ghost", true),
           "gravity/fill_ghost must be true for force diagnostics");
 
-  AllocateUserHistoryOutput(kAllHistoryCount);
+  AllocateUserHistoryOutput(kHistoryCount);
   EnrollUserHistoryOutput(0, HistoryMass, "mapped_mass_g");
   EnrollUserHistoryOutput(1, HistoryStellarMass, "mapped_stellar_mass_g");
   EnrollUserHistoryOutput(2, HistoryAngularMomentum, "mapped_Jz_g_cm2_s");
@@ -1837,6 +1881,8 @@ void Mesh::InitUserMeshData(ParameterInput* pin) {
   EnrollUserHistoryOutput(kRelaxationHistoryStart+3,
                           HistoryRelaxationDamping,
                           "relaxation_corot_power_erg_s");
+  EnrollUserHistoryOutput(kLuminosityHistory, HistoryCoreLuminosity,
+                          "core_luminosity_injected_erg_s");
   if (Globals::my_rank == 0) {
     std::cout << std::scientific << std::setprecision(8)
               << "scf_rsg profile=" << filename
@@ -1849,6 +1895,9 @@ void Mesh::InitUserMeshData(ParameterInput* pin) {
               << " atmosphere_mode=" << atmosphere_mode
               << " core_mass_g=" << core_mass
               << " core_support_radius_cm=" << core_support_radius
+              << " core_luminosity_lsun=" << core_luminosity_lsun
+              << " luminosity_heating_radius_cm="
+              << luminosity_heating_radius
               << " surface_refinement_level=" << surface_refinement_level
               << " surface_refinement_use_tracer="
               << surface_refinement_use_tracer

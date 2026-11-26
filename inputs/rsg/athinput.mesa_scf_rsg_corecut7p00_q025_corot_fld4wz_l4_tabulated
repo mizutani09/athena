@@ -223,6 +223,11 @@ rotate_atmosphere = true
 gas_mass_g = 2.8801452052462170e34
 core_mass_g = 1.2962446564904497e34
 core_support_radius_cm = 4.5207406562668779e12
+# WOR-151 production luminosity at the operational MESA cut.  Deposition is
+# smoothed over the resolved core support; the history output records the
+# actual mesh-integrated power.  Set core_luminosity_lsun=0 for legacy gates.
+core_luminosity_lsun = 1.1631598e5
+luminosity_heating_radius_cm = 4.5207406562668779e12
 radiation_external_temperature = 1.0e2
 lte_temperature_min_k = 3.1622776601683795e2
 lte_temperature_max_k = 1.0e9
