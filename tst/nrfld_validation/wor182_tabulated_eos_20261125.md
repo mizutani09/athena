@@ -816,8 +816,8 @@ maxima were `0.002326/0.006027`, no stellar mass exceeded radial Mach 0.1,
 and the density/energy lower table margins remained `+6.00/+1.37 dex`.
 Relative mass and total-energy changes over this continuation were
 `+1.74e-12` and `-1.33e-6`.  This is an accepted nonrotating time-1 FLD
-checkpoint.  Job 348432 is queued on three XD nodes to continue the same
-undamped state to time 10 at CFL 0.3.
+checkpoint.  Job 348735 runs on three XD nodes in `M-bulk-a` to continue the
+same undamped state to time 10 at CFL 0.3.
 
 1. Reconstruct the low-density outer density, material pressure, and radiation
    profiles against the full rotating force balance and the WOR-151 cut
