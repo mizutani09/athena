@@ -145,14 +145,21 @@ void Require(bool condition, const std::string& message) {
 }
 
 #if NRMGFLD_ENABLED && EOS_TABLE_ENABLED
-Real MaterialPressureFromRhoT(EosTable& table, Real density,
-                              Real temperature) {
+struct MaterialThermodynamics {
+  Real pressure;
+  Real energy_density;
+  Real nabla_ad;
+};
+
+MaterialThermodynamics MaterialStateFromRhoT(
+    EosTable& table, Real density, Real temperature) {
+  const Real invalid = std::numeric_limits<Real>::quiet_NaN();
   if (!(density > 0.0) || !(temperature > 0.0)) {
-    return std::numeric_limits<Real>::quiet_NaN();
+    return {invalid, invalid, invalid};
   }
   const Real x1 = std::log10(density);
   if (x1 < table.logRhoMin || x1 > table.logRhoMax || table.nVar <= 3) {
-    return std::numeric_limits<Real>::quiet_NaN();
+    return {invalid, invalid, invalid};
   }
   const Real target = std::log10(temperature);
   Real lower = table.logEgasMin;
@@ -160,7 +167,7 @@ Real MaterialPressureFromRhoT(EosTable& table, Real density,
   const Real t_lower = table.table.interpolate(3, lower, x1);
   const Real t_upper = table.table.interpolate(3, upper, x1);
   if (target < t_lower || target > t_upper) {
-    return std::numeric_limits<Real>::quiet_NaN();
+    return {invalid, invalid, invalid};
   }
   for (int iteration = 0; iteration < 64; ++iteration) {
     const Real middle = 0.5*(lower+upper);
@@ -174,11 +181,27 @@ Real MaterialPressureFromRhoT(EosTable& table, Real density,
       +std::log10(table.EosRatios(0))+eos_dens_pow*x1;
   if (pressure_coordinate < table.logEgasMin
       || pressure_coordinate > table.logEgasMax) {
-    return std::numeric_limits<Real>::quiet_NaN();
+    return {invalid, invalid, invalid};
   }
   const Real energy = std::pow(10.0, log_energy);
-  return energy*std::pow(
+  const Real pressure = energy*std::pow(
       10.0, table.table.interpolate(0, pressure_coordinate, x1));
+  Real nabla_ad = invalid;
+  if (table.nVar > 6) {
+    const Real nabla_coordinate = log_energy
+        +std::log10(table.EosRatios(6))+eos_dens_pow*x1;
+    if (nabla_coordinate >= table.logEgasMin
+        && nabla_coordinate <= table.logEgasMax) {
+      nabla_ad = std::pow(
+          10.0, table.table.interpolate(6, nabla_coordinate, x1));
+    }
+  }
+  return {pressure, energy, nabla_ad};
+}
+
+Real MaterialPressureFromRhoT(EosTable& table, Real density,
+                              Real temperature) {
+  return MaterialStateFromRhoT(table, density, temperature).pressure;
 }
 
 Real DensityFromMaterialPressureTemperature(EosTable& table,
@@ -271,6 +294,10 @@ struct RadiativeSurfaceDerivative {
   Real density;
   Real temperature;
   Real opacity;
+  Real radiation_flux_fraction;
+  Real nabla_ad;
+  Real nabla;
+  bool radiatively_stable;
 };
 
 RadiativeSurfaceDerivative SurfaceDerivative(
@@ -288,14 +315,50 @@ RadiativeSurfaceDerivative SurfaceDerivative(
   }
   result.opacity = opacity_table->GetOpacityFromRhoT(
       RadFLD::SIGMA_R, result.density, result.temperature);
+  const MaterialThermodynamics material = MaterialStateFromRhoT(
+      table, result.density, result.temperature);
+  result.nabla_ad = material.nabla_ad;
   const Real flux = luminosity/(4.0*PI*radius*radius);
   constexpr Real kLightSpeedCgs = 2.99792458e10;
-  const Real flux_ratio = flux/(kLightSpeedCgs*radiation_energy);
-  const Real gradient_ratio = FluxLimiterGradientRatio(flux_ratio);
-  result.gas_pressure_gradient = result.density
+  // First ask whether diffusion carrying the full luminosity would be
+  // Schwarzschild stable.  The SCF match point is still in the high-opacity
+  // convective envelope, so imposing the full flux there produces an
+  // unphysically thin (< R_sun) surface.  In unstable cells cap the thermal
+  // gradient at the table-consistent nabla_ad and let unresolved convection
+  // carry the remaining luminosity.  This is the same closure used by the
+  // independently tested gray-envelope builder.
+  const Real full_flux_pressure_gradient = result.density
       *(result.opacity*flux/kLightSpeedCgs-potential_gradient);
-  result.radiation_energy_gradient = -result.opacity*result.density
-      *gradient_ratio*radiation_energy;
+  const Real full_flux_dlnp = full_flux_pressure_gradient/gas_pressure;
+  const Real full_flux_dlnt = -3.0*result.opacity*result.density*flux
+      /(4.0*kLightSpeedCgs*radiation_energy);
+  const Real nabla_radiative = full_flux_dlnp < 0.0
+      ? full_flux_dlnt/full_flux_dlnp
+      : std::numeric_limits<Real>::infinity();
+  result.radiatively_stable = std::isfinite(nabla_radiative)
+      && std::isfinite(result.nabla_ad) && result.nabla_ad > 0.0
+      && nabla_radiative <= result.nabla_ad;
+  Real radiation_flux = flux;
+  if (result.radiatively_stable) {
+    result.nabla = nabla_radiative;
+    const Real flux_ratio = flux/(kLightSpeedCgs*radiation_energy);
+    const Real gradient_ratio = FluxLimiterGradientRatio(flux_ratio);
+    result.gas_pressure_gradient = full_flux_pressure_gradient;
+    result.radiation_energy_gradient = -result.opacity*result.density
+        *gradient_ratio*radiation_energy;
+  } else {
+    const Real b_coefficient = 4.0*kLightSpeedCgs*radiation_energy
+        *result.nabla_ad/(3.0*result.opacity*gas_pressure);
+    radiation_flux = b_coefficient*potential_gradient
+        /(1.0+b_coefficient*result.opacity/kLightSpeedCgs);
+    radiation_flux = std::max(0.0, std::min(flux, radiation_flux));
+    result.nabla = result.nabla_ad;
+    result.gas_pressure_gradient = result.density
+        *(result.opacity*radiation_flux/kLightSpeedCgs-potential_gradient);
+    result.radiation_energy_gradient = 4.0*radiation_energy*result.nabla
+        *result.gas_pressure_gradient/gas_pressure;
+  }
+  result.radiation_flux_fraction = flux > 0.0 ? radiation_flux/flux : 0.0;
   return result;
 }
 
@@ -303,8 +366,22 @@ void RebuildRadiativeSurfaceProfile(EosTable& table, Real luminosity) {
   Require(luminosity > 0.0,
           "radiative surface rebuild requires a positive core luminosity");
   int rebuilt_rays = 0;
+  long long convective_substeps = 0;
+  long long radiative_substeps = 0;
+  int maximum_substeps_per_interval = 0;
   Real minimum_end_radius = std::numeric_limits<Real>::infinity();
   Real maximum_end_radius = 0.0;
+  Real minimum_layer_thickness = std::numeric_limits<Real>::infinity();
+  Real maximum_layer_thickness = 0.0;
+  Real minimum_anchor_temperature = std::numeric_limits<Real>::infinity();
+  Real maximum_anchor_temperature = 0.0;
+  Real minimum_end_temperature = std::numeric_limits<Real>::infinity();
+  Real maximum_end_temperature = 0.0;
+  Real minimum_anchor_radiation_flux_fraction =
+      std::numeric_limits<Real>::infinity();
+  Real maximum_anchor_radiation_flux_fraction = 0.0;
+  Require(table.nVar > 6,
+          "radiative surface rebuild requires tabulated nabla_ad field 6");
   for (std::size_t angular = 0; angular < profile.angular_points(); ++angular) {
     std::size_t anchor = profile.radial_points();
     for (std::size_t radial = 1; radial < profile.radial_points(); ++radial) {
@@ -327,6 +404,30 @@ void RebuildRadiativeSurfaceProfile(EosTable& table, Real luminosity) {
     Require(gas_pressure > atmosphere_pressure,
             "radiative surface anchor gas pressure is below the atmosphere");
     anchor_state.temperature = anchor_temperature;
+    const Real anchor_radius = profile.radius(anchor);
+    const Real anchor_potential_gradient = (
+        profile.state(anchor+1,angular).gas_potential
+        +profile.state(anchor+1,angular).core_potential
+        +profile.state(anchor+1,angular).rotational_potential
+        -anchor_state.gas_potential-anchor_state.core_potential
+        -anchor_state.rotational_potential)
+        /(profile.radius(anchor+1)-anchor_radius);
+    const RadiativeSurfaceDerivative anchor_derivative = SurfaceDerivative(
+        table, anchor_radius, anchor_potential_gradient, luminosity,
+        gas_pressure, radiation_energy);
+    Require(std::isfinite(anchor_derivative.radiation_flux_fraction),
+            "radiative surface anchor derivative is invalid");
+    minimum_anchor_temperature = std::min(
+        minimum_anchor_temperature, anchor_temperature);
+    maximum_anchor_temperature = std::max(
+        maximum_anchor_temperature, anchor_temperature);
+    minimum_anchor_radiation_flux_fraction = std::min(
+        minimum_anchor_radiation_flux_fraction,
+        anchor_derivative.radiation_flux_fraction);
+    maximum_anchor_radiation_flux_fraction = std::max(
+        maximum_anchor_radiation_flux_fraction,
+        anchor_derivative.radiation_flux_fraction);
+    Real last_valid_temperature = anchor_temperature;
     bool ended = false;
     for (std::size_t radial = anchor+1;
          radial < profile.radial_points(); ++radial) {
@@ -379,8 +480,12 @@ void RebuildRadiativeSurfaceProfile(EosTable& table, Real luminosity) {
         gas_pressure += step*midpoint.gas_pressure_gradient;
         radiation_energy += step*midpoint.radiation_energy_gradient;
         position += step;
+        if (midpoint.radiatively_stable) ++radiative_substeps;
+        else ++convective_substeps;
         ++substeps;
       }
+      maximum_substeps_per_interval = std::max(
+          maximum_substeps_per_interval, substeps);
       const Real temperature = radiation_energy > 0.0
           ? std::pow(radiation_energy/scf_map::kRadiationConstantCgs,0.25)
           : 0.0;
@@ -394,6 +499,14 @@ void RebuildRadiativeSurfaceProfile(EosTable& table, Real luminosity) {
         ended = true;
         minimum_end_radius = std::min(minimum_end_radius, upper_radius);
         maximum_end_radius = std::max(maximum_end_radius, upper_radius);
+        minimum_layer_thickness = std::min(
+            minimum_layer_thickness, upper_radius-anchor_radius);
+        maximum_layer_thickness = std::max(
+            maximum_layer_thickness, upper_radius-anchor_radius);
+        minimum_end_temperature = std::min(
+            minimum_end_temperature, last_valid_temperature);
+        maximum_end_temperature = std::max(
+            maximum_end_temperature, last_valid_temperature);
         state.density = 0.0;
         state.pressure = 0.0;
         state.enthalpy = 0.0;
@@ -403,7 +516,8 @@ void RebuildRadiativeSurfaceProfile(EosTable& table, Real luminosity) {
         state.density = density;
         state.pressure = gas_pressure+radiation_energy/3.0;
         state.temperature = temperature;
-        state.radiative_fraction = 0.0;
+        state.radiative_fraction = 1.0;
+        last_valid_temperature = temperature;
       }
     }
     Require(ended, "radiative surface does not reach the atmosphere in-domain");
@@ -415,6 +529,20 @@ void RebuildRadiativeSurfaceProfile(EosTable& table, Real luminosity) {
               << " match_density_g_cm3=" << radiative_surface_match_density
               << " end_radius_min_cm=" << minimum_end_radius
               << " end_radius_max_cm=" << maximum_end_radius
+              << " layer_thickness_min_cm=" << minimum_layer_thickness
+              << " layer_thickness_max_cm=" << maximum_layer_thickness
+              << " anchor_temperature_min_k=" << minimum_anchor_temperature
+              << " anchor_temperature_max_k=" << maximum_anchor_temperature
+              << " end_temperature_min_k=" << minimum_end_temperature
+              << " end_temperature_max_k=" << maximum_end_temperature
+              << " anchor_rad_flux_fraction_min="
+              << minimum_anchor_radiation_flux_fraction
+              << " anchor_rad_flux_fraction_max="
+              << maximum_anchor_radiation_flux_fraction
+              << " convective_substeps=" << convective_substeps
+              << " radiative_substeps=" << radiative_substeps
+              << " max_substeps_per_interval="
+              << maximum_substeps_per_interval
               << " luminosity_erg_s=" << luminosity << std::endl;
   }
 }
