@@ -829,6 +829,29 @@ increased smoothly from 0.0060 at time 1, while the density-resolved envelope
 remained quieter than Mach 0.0032.  This passes the time-10 nonrotating FLD
 gate.  Job 348777 continues the same restart to time 100 at CFL 0.3.
 
+Job 348777 completed the undamped time-10 to time-100 continuation on three
+XD nodes in 2433 s.  The calculation was numerically robust: all 745 nonlinear
+solves converged normally in at most four Newton iterations, 2373 FGMRES
+solves used 20258 iterations in total and at most 18 for one solve, and there
+was no warning, relaxed acceptance, failure, or Krylov breakdown.  Relative
+mapped-mass drift over the continuation was `+6.94e-10`; the total-energy
+change was `-2.99e-4`.  All EOS margins stayed positive at the endpoint
+(`+6.00/+2.187` dex in density and `+1.270/+1.081` dex in gas energy).
+
+The mechanical time-100 gate nevertheless failed.  The interior and
+low-density-taper radial Mach maxima grew from `0.00316/0.0646` just after
+time 10 to `0.2008/0.6918` at time 100.  The interior sequence at times
+20, 40, 60, 80, and 100 was `0.00588`, `0.0109`, `0.0259`, `0.0734`, and
+`0.2008`; radial kinetic energy grew from `3.02e41` to `2.41e44 erg`.
+At the endpoint, `1.998e32 g` (`0.1005 Msun`) exceeded radial Mach 0.1 and
+`4.206e31 g` (`0.0212 Msun`) exceeded Mach 0.3.  The full-force relative L2
+residual increased from `1.17e-3` near time 10 to `9.71e-3` at time 100.
+Thus the result is not a solver failure or an EOS-domain excursion, but a
+growing resolved-envelope disturbance.  The time-10 checkpoint remains a
+useful short control; the time-100 state must not be used as a relaxed CE
+initial condition.  The same EOS-consistent equilibrium and stability audit
+required by the trapped-LTE controls is now required for full FLD as well.
+
 1. Reconstruct the low-density outer density, material pressure, and radiation
    profiles against the full rotating force balance and the WOR-151 cut
    luminosity.  Repeat the strong-
