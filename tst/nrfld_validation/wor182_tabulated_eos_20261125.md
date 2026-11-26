@@ -682,8 +682,53 @@ The gas-energy lower EOS margin dropped from `+1.35 dex` to `+0.181 dex` near
 time 17, while the minimum exchange time fell to `3.74e3 s`.  Relative mass
 drift over this segment was still only `-1.63e-9`.  The reconstruction delays
 and reduces the outer transient but does not eliminate it.  Zero-step job
-348240 localizes the time-20 pressure, force, and exchange mismatch before
-the next profile change.
+348240 initially localized the time-20 pressure, force, and exchange mismatch,
+but its restart launcher had not reconstructed the candidate source profile;
+its source-pressure ratios must therefore not be used.  Commit `301173db8`
+adds the surface-reconstruction controls to restart gates.  Corrected job
+348241 reconstructed the `1e-9 g cm^-3`, zero-excess candidate before reading
+the time-20 state.  Over the per-MeshBlock outer-layer minima, the
+current-to-source total-pressure ratio had minimum/10th/median/90th/maximum
+`0.112/0.741/0.840/0.992/1.170`.  At source density above `1e-9 g cm^-3` the
+mean ratio was `0.9991` and none was below 0.9.  Below `1e-10 g cm^-3`, however,
+the mean ratio was `0.796` and 98.4 percent of reports were below 0.9.  The
+maximum Mach `0.268` cells lay still farther out at total density about
+`3.40e-11 g cm^-3` and were partially filled surface cells.  Thus the rebuilt
+interior remains matched while the atmosphere-facing tail contracts.
+
+The rebuild endpoint itself contained a consistency error: the stored source
+pressure is material plus LTE radiation pressure and the mapper compares that
+total with the atmosphere pressure, but the surface integrator stopped as soon
+as material pressure alone reached the atmosphere pressure.  Commit
+`6b6115f7c` uses the same total-pressure condition as the mapper.  Fresh-map
+job 348247 extended the polar/equatorial endpoints by about
+`1.4e11/2.1e11 cm`, reduced the initial outer Mach maximum from `0.00371` to
+`0.00302`, and mapped `2.87925537e34 g`, closer to the original profile, while
+leaving the maximum force residual essentially unchanged (`0.4416`).  One-step
+job 348249 converged in three Newton iterations with two FGMRES iterations per
+linear solve and final maximum residual `7.60e-9`.  Its minimum exchange time
+was `3.10e5 s`, absolute exchange power `3.01e38 erg s^-1`, and absolute
+diffusion power `3.04e39 erg s^-1`, so the mechanically cleaner endpoint does
+not worsen the accepted thermal gate.  Undamped job 348250 then reached time
+0.1 with all 114 nonlinear solves normal.  The interior Mach maximum was
+unchanged at `4.38e-4`, while the outer maximum was `0.00359`, 13 percent below
+the pre-fix candidate's `0.00412`; no stellar mass exceeded Mach 0.1.  The
+minimum exchange time remained `1.56e5 s`.  Job 348256 extends this corrected
+endpoint to time 1 at CFL 0.3.  It completed nine normal nonlinear solves and
+ended with interior/outer Mach maxima `0.00235/0.01970`, no mass above Mach
+0.1, gas-energy lower EOS margin `+1.37 dex`, and minimum exchange time
+`2.82e5 s`.  The old candidate's outer maximum was `0.01958`, so the early
+endpoint improvement has essentially disappeared by time 1.  Job 348258
+continued the controlled comparison to time 10.  Its 76 nonlinear solves all
+converged in at most seven iterations; 455 FGMRES solves used at most 17
+iterations.  The endpoint-corrected result had interior/outer Mach maxima
+`0.00703/0.15408` and `6.66e28 g` above Mach 0.1, versus
+`0.00702/0.15448` and `5.76e28 g` before the fix.  No material exceeded Mach
+0.3.  The minimum gas-energy EOS margin and exchange time were `+1.35 dex`
+and `3.06e5 s`; segment mass drift was `-1.11e-9`.  The total-pressure endpoint
+fix improves the earliest cut-cell transient, but the time-10 dynamics are
+statistically unchanged.  Extending this variant to time 20 would therefore
+not address the missing outer-layer closure.
 
 ## Open acceptance items
 
