@@ -754,8 +754,18 @@ FGMRES solves used two iterations, and the final maximum residual was
 exchange gate was unchanged (`3.01e38 erg s^-1`, minimum time `3.10e5 s`), but
 absolute diffusion power increased from `3.04e39` to `4.18e39 erg s^-1` and
 the post-step maximum force residual increased from `0.181` to `0.213`.
-Therefore the mapping is numerically valid but is not yet accepted.  Job
-348276 performs the controlled undamped time-0.1 comparison.
+Therefore the mapping is numerically valid but was not accepted from the
+one-step gate alone.  Undamped job 348276 then reached time 0.1 in 304 s with
+all 114 nonlinear solves converged in at most seven iterations and no solver
+anomaly.  The interior/outer Mach maxima were `4.38e-4/0.00297`, versus
+`4.38e-4/0.00359` for the endpoint-corrected homogeneous-cell control: a
+17 percent reduction in the outer maximum.  No stellar mass exceeded radial
+Mach 0.1.  Absolute diffusion and exchange powers ended at `1.82e38` and
+`2.39e38 erg s^-1`; their minimum local times were `3.93e4` and `1.50e5 s`,
+and the gas-energy lower EOS margin was `+1.25 dex`.  The pointwise split thus
+passes the short time-0.1 gate, but this interval is only about 2200 physical
+seconds and cannot establish long-term mechanical stability.  A controlled
+time-1 extension is required before deciding whether to retain the mapping.
 
 ## Open acceptance items
 
