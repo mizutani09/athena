@@ -28,7 +28,7 @@ rotation=${WOR182_ROTATION:-rotating}
 eos_mode=${WOR182_EOS_MODE:-material}
 tlim=${WOR182_TLIM:-0.1}
 cfl=${WOR182_CFL:-0.2}
-nlim=${WOR182_NLIM:-0}
+nlim=${WOR182_NLIM:--1}
 restart_dcycle=${WOR182_RESTART_DCYCLE:-1000}
 
 case "$rotation" in
