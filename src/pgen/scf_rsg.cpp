@@ -320,18 +320,22 @@ RadiativeSurfaceDerivative SurfaceDerivative(
   result.nabla_ad = material.nabla_ad;
   const Real flux = luminosity/(4.0*PI*radius*radius);
   constexpr Real kLightSpeedCgs = 2.99792458e10;
-  // First ask whether diffusion carrying the full luminosity would be
-  // Schwarzschild stable.  The SCF match point is still in the high-opacity
-  // convective envelope, so imposing the full flux there produces an
-  // unphysically thin (< R_sun) surface.  In unstable cells cap the thermal
-  // gradient at the table-consistent nabla_ad and let unresolved convection
-  // carry the remaining luminosity.  This is the same closure used by the
-  // independently tested gray-envelope builder.
+  // First ask whether FLD carrying the full luminosity would be Schwarzschild
+  // stable.  The SCF match point is still in the high-opacity convective
+  // envelope, so imposing the full flux there produces an unphysically thin
+  // (< R_sun) surface.  In unstable cells cap the thermal gradient at the
+  // table-consistent nabla_ad and let unresolved convection carry the
+  // remainder.  Use the same flux limiter as the evolution: the diffusion
+  // approximation badly underestimates the radiative acceleration in the
+  // optically thinner outer tail.
   const Real full_flux_pressure_gradient = result.density
       *(result.opacity*flux/kLightSpeedCgs-potential_gradient);
   const Real full_flux_dlnp = full_flux_pressure_gradient/gas_pressure;
-  const Real full_flux_dlnt = -3.0*result.opacity*result.density*flux
-      /(4.0*kLightSpeedCgs*radiation_energy);
+  const Real full_flux_ratio = flux/(kLightSpeedCgs*radiation_energy);
+  const Real full_flux_gradient_ratio =
+      FluxLimiterGradientRatio(full_flux_ratio);
+  const Real full_flux_dlnt = -0.25*result.opacity*result.density
+      *full_flux_gradient_ratio;
   const Real nabla_radiative = full_flux_dlnp < 0.0
       ? full_flux_dlnt/full_flux_dlnp
       : std::numeric_limits<Real>::infinity();
@@ -341,17 +345,38 @@ RadiativeSurfaceDerivative SurfaceDerivative(
   Real radiation_flux = flux;
   if (result.radiatively_stable) {
     result.nabla = nabla_radiative;
-    const Real flux_ratio = flux/(kLightSpeedCgs*radiation_energy);
-    const Real gradient_ratio = FluxLimiterGradientRatio(flux_ratio);
     result.gas_pressure_gradient = full_flux_pressure_gradient;
     result.radiation_energy_gradient = -result.opacity*result.density
-        *gradient_ratio*radiation_energy;
+        *full_flux_gradient_ratio*radiation_energy;
   } else {
-    const Real b_coefficient = 4.0*kLightSpeedCgs*radiation_energy
-        *result.nabla_ad/(3.0*result.opacity*gas_pressure);
-    radiation_flux = b_coefficient*potential_gradient
-        /(1.0+b_coefficient*result.opacity/kLightSpeedCgs);
-    radiation_flux = std::max(0.0, std::min(flux, radiation_flux));
+    // On an adiabat, dEr/dr=4 Er nabla_ad dlnP/dr.  Solve this together with
+    // F/(c Er)=lambda(R)R and gas HSE, rather than assuming lambda=1/3.
+    // The dimensionless flux is bounded both by free streaming and by the
+    // value at which radiative acceleration cancels gravity.
+    const Real eddington_flux_ratio = potential_gradient
+        /(result.opacity*radiation_energy);
+    Real lower_flux_ratio = 0.0;
+    Real upper_flux_ratio = std::max(
+        0.0, std::min(static_cast<Real>(1.0), eddington_flux_ratio));
+    for (int iteration = 0; iteration < 64; ++iteration) {
+      const Real middle_flux_ratio =
+          0.5*(lower_flux_ratio+upper_flux_ratio);
+      const Real effective_gravity = std::max(
+          static_cast<Real>(0.0), potential_gradient
+          -result.opacity*radiation_energy*middle_flux_ratio);
+      const Real gradient_ratio = 4.0*result.nabla_ad*effective_gravity
+          /(result.opacity*gas_pressure);
+      const Real transported_flux_ratio =
+          RadFLD::FluxLimiterTimesR(gradient_ratio, false);
+      if (middle_flux_ratio < transported_flux_ratio) {
+        lower_flux_ratio = middle_flux_ratio;
+      } else {
+        upper_flux_ratio = middle_flux_ratio;
+      }
+    }
+    const Real natural_flux = kLightSpeedCgs*radiation_energy
+        *0.5*(lower_flux_ratio+upper_flux_ratio);
+    radiation_flux = std::max(0.0, std::min(flux, natural_flux));
     result.nabla = result.nabla_ad;
     result.gas_pressure_gradient = result.density
         *(result.opacity*radiation_flux/kLightSpeedCgs-potential_gradient);
