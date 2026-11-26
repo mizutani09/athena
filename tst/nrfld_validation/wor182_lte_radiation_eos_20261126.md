@@ -113,3 +113,13 @@ a full-volume `cons` HDF5 snapshot on the native AMR mesh for CE import.
 the state and records the density, energy, length, velocity, time, and momentum
 units plus hashes.  This permits a CE-side conservative importer and explicit
 unit conversion rather than an implicit, format-dependent restart read.
+
+Zero-step export job 348443 validated the mechanism on the rotating
+material-EOS time-1 checkpoint.  It used a separate build with only
+`-h5double` added and produced the 444 MB HDF5 file in 8.84 s.  The C++
+handoff checker verified float64 storage with `/cons` shape
+`[8,1688,16,16,16]`, one `/Levels` and `/LogicalLocations` entry per native
+AMR MeshBlock, and matching face-coordinate arrays.  The eight fields are
+`dens`, `Etot`, `mom1`--`mom3`, self-gravity `phi`, and conserved scalars
+`s0`--`s1`.  Production handoff now rejects float32 output; the earlier
+float32 job 348439 is only a format test and is not an import candidate.
