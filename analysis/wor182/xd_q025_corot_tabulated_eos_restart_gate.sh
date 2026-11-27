@@ -57,6 +57,13 @@ relaxation_taper_end=${WOR182_RELAXATION_TAPER_END:--1.0}
 relaxation_core_radius=${WOR182_RELAXATION_CORE_RADIUS:--1.0}
 relaxation_core_taper_width=${WOR182_RELAXATION_CORE_TAPER_WIDTH:-0.0}
 relaxation_core_strength=${WOR182_RELAXATION_CORE_STRENGTH:-1.0}
+core_relaxation_arguments=()
+if [[ -n ${WOR182_RELAXATION_CORE_RADIUS+x} ]]; then
+  core_relaxation_arguments=(
+    problem/relaxation_core_radius_cm="$relaxation_core_radius"
+    problem/relaxation_core_taper_width_cm="$relaxation_core_taper_width"
+    problem/relaxation_core_strength="$relaxation_core_strength")
+fi
 tasks_per_node=${WOR182_TASKS_PER_NODE:-56}
 cfl_tag=${cfl//./p}
 time_tag=${target_time//./p}
@@ -126,9 +133,7 @@ fi
   problem/relaxation_velocity_tau="$relaxation_velocity_tau" \
   problem/relaxation_taper_start="$relaxation_taper_start" \
   problem/relaxation_taper_end="$relaxation_taper_end" \
-  problem/relaxation_core_radius_cm="$relaxation_core_radius" \
-  problem/relaxation_core_taper_width_cm="$relaxation_core_taper_width" \
-  problem/relaxation_core_strength="$relaxation_core_strength" \
+  "${core_relaxation_arguments[@]}" \
   output1/dcycle="$history_dcycle" output2/dcycle="$restart_dcycle" \
   output3/dt="$slice_output_dt" output4/dt="$slice_output_dt" \
   > "$run/stdout.log" 2> "$run/stderr.log"
