@@ -26,6 +26,7 @@ repository=${WOR182_REPOSITORY:-$HOME/simulation/athena-wor182-radiative-relaxat
 binary=${WOR182_BINARY:-bin/athena}
 restart=${WOR182_RESTART:?set WOR182_RESTART}
 model_tag=${WOR182_MODEL_TAG:?set WOR182_MODEL_TAG}
+equatorial_tab=${WOR182_EQUATORIAL_TAB:-false}
 overlay=inputs/rsg/athinput.scf_rsg_diagnostic_snapshot
 run=/work/mizutaniks/wor182/${model_tag}_snapshot_${SLURM_JOB_ID}
 
@@ -37,14 +38,25 @@ test -s "$overlay"
 git rev-parse HEAD > "$run/git_commit.txt"
 git status --short > "$run/git_status.txt"
 sha256sum "$binary" "$restart" "$overlay" > "$run/provenance.sha256"
-printf 'restart=%s\nmodel_tag=%s\n' "$restart" "$model_tag" > "$run/run_config.txt"
+printf 'restart=%s\nmodel_tag=%s\nequatorial_tab=%s\n' \
+  "$restart" "$model_tag" "$equatorial_tab" > "$run/run_config.txt"
+
+output_arguments=(output3/dt=-1 output4/dt=-1)
+if [[ "$equatorial_tab" == true ]]; then
+  # output3/output4 are the primitive and user-output equatorial slices stored
+  # in the restart.  A cycle trigger emits them without advancing the solution.
+  output_arguments+=(output3/dcycle=1 output4/dcycle=1)
+elif [[ "$equatorial_tab" != false ]]; then
+  echo 'WOR182_EQUATORIAL_TAB must be true or false' >&2
+  exit 2
+fi
 
 set +e
 /usr/bin/time -f 'wall_s=%e maxrss_kb=%M' -o "$run/time.log" \
   srun -n"$SLURM_NTASKS" --ntasks-per-node=56 \
   "$binary" -r "$restart" -i "$overlay" -d "$run" \
   time/tlim=0.0 time/nlim=-1 \
-  output3/dt=-1 output4/dt=-1 \
+  "${output_arguments[@]}" \
   > "$run/stdout.log" 2> "$run/stderr.log"
 status=$?
 set -e
@@ -61,5 +73,14 @@ for id in diagnostic_prim diagnostic_uov; do
     sha256sum "$output" >> "$run/snapshots.sha256"
   fi
 done
+if [[ "$equatorial_tab" == true ]]; then
+  for id in out3 out4; do
+    output=$(find "$run" -maxdepth 1 -name "*.${id}.*.tab" -print -quit)
+    if [[ -z "$output" || ! -s "$output" ]]; then
+      echo "missing ${id} equatorial tab snapshot" >&2
+      status=1
+    fi
+  done
+fi
 cat "$run/time.log" || true
 exit "$status"
