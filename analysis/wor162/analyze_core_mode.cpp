@@ -254,16 +254,28 @@ int main(int argc, char** argv) {
   try {
     if (argc < 4) {
       std::cerr << "usage: " << argv[0]
-                << " TAB_DIRECTORY OUTPUT.csv SNAPSHOT [SNAPSHOT ...]\n";
+                << " TAB_DIRECTORY OUTPUT.csv [--output-id=ID]"
+                   " SNAPSHOT [SNAPSHOT ...]\n";
       return 2;
+    }
+    int first_snapshot = 3;
+    std::string output_id = "out2";
+    const std::string output_option = argv[first_snapshot];
+    constexpr const char* kOutputPrefix = "--output-id=";
+    if (output_option.rfind(kOutputPrefix, 0) == 0) {
+      output_id = output_option.substr(std::string(kOutputPrefix).size());
+      ++first_snapshot;
+      if (first_snapshot >= argc || output_id.empty()) {
+        throw std::runtime_error("missing output ID or snapshot");
+      }
     }
     std::ofstream output(argv[2]);
     if (!output) throw std::runtime_error("cannot create output CSV");
     output << std::scientific << std::setprecision(12);
     WriteHeader(&output);
-    for (int argument = 3; argument < argc; ++argument) {
+    for (int argument = first_snapshot; argument < argc; ++argument) {
       const std::string snapshot = argv[argument];
-      const std::string pattern = std::string(argv[1])+"/*.out2."
+      const std::string pattern = std::string(argv[1])+"/*."+output_id+"."
           +snapshot+".tab";
       const std::vector<std::string> paths = Glob(pattern);
       const double time_over_tdyn = ReadTimeOverDynamicalTime(paths.front());
