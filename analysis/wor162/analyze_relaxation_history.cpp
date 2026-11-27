@@ -12,6 +12,7 @@ namespace {
 
 constexpr double kDay = 86400.0;
 constexpr double kDynamicalTime = 1.03413107e7;
+constexpr double kGravitationalConstant = 6.67430e-8;
 
 struct History {
   std::vector<std::string> names;
@@ -204,6 +205,7 @@ int main(int argc, char** argv) {
     std::ofstream csv(argv[2]);
     if (!csv) throw std::runtime_error("cannot create CSV output");
     csv << "time_code,time_days,time_over_tdyn,mass_relative_drift,J_relative_drift,"
+           "angular_momentum_g_cm2_s,angular_momentum_breakup_fraction,"
            "mechanical_energy_relative_drift,"
            "total_energy_with_radiation_relative_drift,radiation_energy_erg,"
            "gas_internal_energy_erg,radiation_to_gas_internal_energy,"
@@ -232,6 +234,7 @@ int main(int argc, char** argv) {
 
     double maximum_mass_drift = 0.0;
     double maximum_j_drift = 0.0;
+    double maximum_angular_momentum_breakup_fraction = 0.0;
     double maximum_energy_drift = 0.0;
     double maximum_total_with_radiation_drift = 0.0;
     double maximum_mach_rms = 0.0;
@@ -276,6 +279,11 @@ int main(int argc, char** argv) {
       const double nonradial_ke_fraction = row[nonradial_ke]/binding;
       const double mean_radius = row[r_mass]/row[mass];
       const double rms_radius = std::sqrt(row[r2_mass]/row[mass]);
+      const double breakup_angular_momentum = row[mass]*std::sqrt(
+          kGravitationalConstant*row[mass]*mean_radius);
+      const double angular_momentum_breakup_fraction =
+          breakup_angular_momentum > 0.0
+          ? std::abs(row[angular_momentum])/breakup_angular_momentum : 0.0;
       const double mean_radius_drift = Relative(mean_radius, initial_mean_radius);
       const double rms_radius_drift = Relative(rms_radius, initial_rms_radius);
       const double available_cells = has_wenoz ? row[wenoz_cells] : 0.0;
@@ -321,7 +329,8 @@ int main(int argc, char** argv) {
           ? row[relaxation_corot_power] : 0.0;
       csv << row[time] << ',' << row[time]*2.19999657e4/kDay << ','
           << row[time]*2.19999657e4/dynamical_time << ','
-          << mass_drift << ',' << j_drift << ',' << energy_drift << ','
+          << mass_drift << ',' << j_drift << ',' << row[angular_momentum] << ','
+          << angular_momentum_breakup_fraction << ',' << energy_drift << ','
           << total_with_radiation_drift << ',' << radiation << ','
           << gas_internal << ','
           << (gas_internal != 0.0 ? radiation/gas_internal : 0.0) << ','
@@ -347,6 +356,9 @@ int main(int argc, char** argv) {
           << '\n';
       maximum_mass_drift = std::max(maximum_mass_drift, std::abs(mass_drift));
       maximum_j_drift = std::max(maximum_j_drift, std::abs(j_drift));
+      maximum_angular_momentum_breakup_fraction = std::max(
+          maximum_angular_momentum_breakup_fraction,
+          angular_momentum_breakup_fraction);
       maximum_energy_drift = std::max(maximum_energy_drift, std::abs(energy_drift));
       maximum_total_with_radiation_drift = std::max(
           maximum_total_with_radiation_drift,
@@ -433,6 +445,12 @@ int main(int argc, char** argv) {
          << (initial[angular_momentum] != 0.0
              ? Relative(final[angular_momentum], initial[angular_momentum]) : 0.0)
          << ",\n"
+         << "  \"final_angular_momentum_g_cm2_s\": "
+         << final[angular_momentum] << ",\n"
+         << "  \"final_angular_momentum_breakup_fraction\": "
+         << std::abs(final[angular_momentum])
+             /(final[mass]*std::sqrt(kGravitationalConstant*final[mass]
+                 *final_mean_radius)) << ",\n"
          << "  \"final_mechanical_energy_relative_drift\": "
          << Relative(final_mechanical, initial_mechanical) << ",\n"
          << "  \"final_total_energy_with_radiation_relative_drift\": "
@@ -503,6 +521,8 @@ int main(int argc, char** argv) {
          << maximum_relaxation_corot_power << ",\n"
          << "  \"maximum_abs_mass_relative_drift\": " << maximum_mass_drift << ",\n"
          << "  \"maximum_abs_J_relative_drift\": " << maximum_j_drift << ",\n"
+         << "  \"maximum_angular_momentum_breakup_fraction\": "
+         << maximum_angular_momentum_breakup_fraction << ",\n"
          << "  \"maximum_abs_mechanical_energy_relative_drift\": "
          << maximum_energy_drift << ",\n"
          << "  \"maximum_abs_total_energy_with_radiation_relative_drift\": "

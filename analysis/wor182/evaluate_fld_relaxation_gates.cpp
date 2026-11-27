@@ -88,6 +88,8 @@ int main(int argc, char** argv) {
     const std::size_t time = Column(table, "time_over_tdyn");
     const std::size_t mass = Column(table, "mass_relative_drift");
     const std::size_t angular_momentum = Column(table, "J_relative_drift");
+    const std::size_t angular_momentum_breakup =
+        Column(table, "angular_momentum_breakup_fraction");
     const std::size_t total_energy =
         Column(table, "total_energy_with_radiation_relative_drift");
     const std::size_t radial_mach_rms = Column(table, "radial_mach_rms");
@@ -122,10 +124,14 @@ int main(int argc, char** argv) {
     const double reference_mean_radius = table.rows[reference_row][mean_radius];
     const double reference_rms_radius = table.rows[reference_row][rms_radius];
     const double reference_virial = table.rows[reference_row][virial];
+    const bool rotating =
+        table.rows[reference_row][angular_momentum_breakup] >= 1.0e-4;
 
     std::vector<Gate> gates = {
       {"stellar_mass_relative_drift", 0.0, 1.0e-5},
-      {"angular_momentum_relative_drift", 0.0, 1.0e-3},
+      {rotating ? "angular_momentum_relative_drift"
+                : "angular_momentum_breakup_fraction",
+       0.0, rotating ? 1.0e-3 : 1.0e-4},
       {"total_energy_with_radiation_relative_drift", 0.0, 1.0e-2},
       {"radial_mach_rms", 0.0, 5.0e-2},
       {"radial_mach_max_interior", 0.0, 1.0e-1},
@@ -143,8 +149,9 @@ int main(int argc, char** argv) {
     for (std::size_t i = reference_row; i < table.rows.size(); ++i) {
       const std::vector<double>& row = table.rows[i];
       gates[0].maximum = std::max(gates[0].maximum, std::abs(row[mass]));
-      gates[1].maximum = std::max(
-          gates[1].maximum, std::abs(row[angular_momentum]));
+      gates[1].maximum = std::max(gates[1].maximum,
+          rotating ? std::abs(row[angular_momentum])
+                   : std::abs(row[angular_momentum_breakup]));
       gates[2].maximum = std::max(
           gates[2].maximum, std::abs(row[total_energy]));
       gates[3].maximum = std::max(gates[3].maximum, row[radial_mach_rms]);
@@ -178,6 +185,8 @@ int main(int argc, char** argv) {
            << "  \"evaluated_samples\": " << samples << ",\n"
            << "  \"all_numeric_gates_pass\": "
            << (all_pass ? "true" : "false") << ",\n"
+           << "  \"rotating_angular_momentum_gate\": "
+           << (rotating ? "true" : "false") << ",\n"
            << "  \"surface_mach_is_diagnostic_only\": true,\n"
            << "  \"maximum_surface_mach\": " << maximum_surface_mach << ",\n"
            << "  \"final_high_mach_mean_radius_cm\": "
