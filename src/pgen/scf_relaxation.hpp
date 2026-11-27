@@ -22,6 +22,30 @@ inline T TaperStrength(T time, T taper_start, T taper_end) {
   return (taper_end-time)/(taper_end-taper_start);
 }
 
+// Smoothly select the numerical core.  A negative core radius disables the
+// selector.  taper_width=0 gives a sharp boundary; otherwise a cubic
+// smoothstep avoids a discontinuous damping rate at either edge.
+template <typename T>
+inline T CoreWeight(T radius, T core_radius, T taper_width) {
+  if (core_radius < T(0)) return T(0);
+  if (radius <= core_radius) return T(1);
+  if (taper_width <= T(0) || radius >= core_radius+taper_width) return T(0);
+  const T x = (radius-core_radius)/taper_width;
+  return T(1)-x*x*(T(3)-T(2)*x);
+}
+
+// Retain a core-only damping floor as the global temporal relaxation is
+// tapered away.  This lets an excised/softened numerical core remain quiet
+// without suppressing physical envelope convection.
+template <typename T>
+inline T CombinedStrength(T temporal_strength, T core_weight,
+                          T core_strength) {
+  temporal_strength = std::max(T(0), std::min(T(1), temporal_strength));
+  core_weight = std::max(T(0), std::min(T(1), core_weight));
+  core_strength = std::max(T(0), std::min(T(1), core_strength));
+  return temporal_strength+(T(1)-temporal_strength)*core_weight*core_strength;
+}
+
 // Dampen only the perturbation relative to rigid corotation.  factor=1 is the
 // identity and factor=0 returns the target velocity exactly.
 template <typename T>
