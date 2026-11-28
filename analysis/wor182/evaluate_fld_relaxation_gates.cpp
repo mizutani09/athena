@@ -90,8 +90,8 @@ int main(int argc, char** argv) {
     const std::size_t angular_momentum = Column(table, "J_relative_drift");
     const std::size_t angular_momentum_breakup =
         Column(table, "angular_momentum_breakup_fraction");
-    const std::size_t total_energy =
-        Column(table, "total_energy_with_radiation_relative_drift");
+    const std::size_t total_energy = Column(
+        table, "source_adjusted_total_energy_delta_over_abs_W");
     const std::size_t radial_mach_rms = Column(table, "radial_mach_rms");
     const std::size_t interior_mach =
         Column(table, "radial_mach_max_interior");
@@ -132,7 +132,7 @@ int main(int argc, char** argv) {
       {rotating ? "angular_momentum_relative_drift"
                 : "angular_momentum_breakup_fraction",
        0.0, rotating ? 1.0e-3 : 1.0e-4},
-      {"total_energy_with_radiation_relative_drift", 0.0, 1.0e-2},
+      {"source_adjusted_total_energy_delta_over_abs_W", 0.0, 1.0e-2},
       {"radial_mach_rms", 0.0, 5.0e-2},
       {"radial_mach_max_interior", 0.0, 1.0e-1},
       {"radial_mach_max_rho_ge_surface", 0.0, 1.0e-1},

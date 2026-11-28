@@ -246,7 +246,10 @@ int main(int argc, char** argv) {
     csv << "time_code,time_days,time_over_tdyn,mass_relative_drift,J_relative_drift,"
            "angular_momentum_g_cm2_s,angular_momentum_breakup_fraction,"
            "mechanical_energy_relative_drift,"
-           "total_energy_with_radiation_relative_drift,radiation_energy_erg,"
+           "total_energy_with_radiation_relative_drift,"
+           "total_energy_delta_over_abs_W,"
+           "source_adjusted_total_energy_delta_over_abs_W,"
+           "radiation_energy_erg,"
            "gas_internal_energy_erg,radiation_to_gas_internal_energy,"
            "radial_mach_rms,radial_mach_max,"
            "radial_ke_over_abs_W,nonradial_perturbation_ke_over_abs_W,"
@@ -297,6 +300,7 @@ int main(int argc, char** argv) {
     double maximum_wenoz_fallback_mass_fraction = 0.0;
     double maximum_meshblocks = 0.0;
     double cumulative_relaxation_inertial_work = 0.0;
+    double budget_relaxation_inertial_work = 0.0;
     double cumulative_relaxation_corot_removed = 0.0;
     double cumulative_core_luminosity_injected = 0.0;
     double maximum_abs_relaxation_inertial_power = 0.0;
@@ -380,6 +384,17 @@ int main(int argc, char** argv) {
           ? row[relaxation_corot_removed] : 0.0;
       const double corot_power = has_relaxation
           ? row[relaxation_corot_power] : 0.0;
+      cumulative_relaxation_inertial_work += relaxation_delta;
+      cumulative_relaxation_corot_removed += corot_removed;
+      if (row_index > 0) budget_relaxation_inertial_work += relaxation_delta;
+      const double total_energy_delta =
+          mechanical+radiation-initial_total_with_radiation;
+      const double total_energy_delta_over_abs_w =
+          total_energy_delta/initial_abs_gravitational_energy;
+      const double source_adjusted_total_energy_delta_over_abs_w =
+          (total_energy_delta-cumulative_core_luminosity_injected
+              -budget_relaxation_inertial_work)
+          /initial_abs_gravitational_energy;
       const double material_force_l2 = has_material_force
           ? NormRatio(row[material_force_error], row[material_force_norm]) : 0.0;
       const double full_force_l2 = has_full_force
@@ -390,7 +405,10 @@ int main(int argc, char** argv) {
           << row[time]*kCodeTimeSeconds/dynamical_time << ','
           << mass_drift << ',' << j_drift << ',' << row[angular_momentum] << ','
           << angular_momentum_breakup_fraction << ',' << energy_drift << ','
-          << total_with_radiation_drift << ',' << radiation << ','
+          << total_with_radiation_drift << ','
+          << total_energy_delta_over_abs_w << ','
+          << source_adjusted_total_energy_delta_over_abs_w << ','
+          << radiation << ','
           << gas_internal << ','
           << (gas_internal != 0.0 ? radiation/gas_internal : 0.0) << ','
           << mach_rms << ',' << row[mach_max] << ',' << radial_ke_fraction << ','
@@ -459,8 +477,6 @@ int main(int argc, char** argv) {
       // Each history row reports the artificial update from that completed
       // step.  Fresh runs start with a zero-valued time-zero row, whereas
       // restart histories begin with the first newly completed step.
-      cumulative_relaxation_inertial_work += relaxation_delta;
-      cumulative_relaxation_corot_removed += corot_removed;
       maximum_abs_relaxation_inertial_power = std::max(
           maximum_abs_relaxation_inertial_power, std::abs(relaxation_power));
       maximum_relaxation_corot_power = std::max(
@@ -485,7 +501,7 @@ int main(int argc, char** argv) {
         final_mechanical+final_radiation-initial_total_with_radiation;
     const double final_source_adjusted_total_energy_delta =
         final_total_with_radiation_delta-cumulative_core_luminosity_injected
-        -cumulative_relaxation_inertial_work;
+        -budget_relaxation_inertial_work;
     const double final_mean_radius = final[r_mass]/final[mass];
     const double final_rms_radius = std::sqrt(final[r2_mass]/final[mass]);
     const double final_available_cells = has_wenoz ? final[wenoz_cells] : 0.0;
