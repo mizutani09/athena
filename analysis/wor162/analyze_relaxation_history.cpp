@@ -102,6 +102,11 @@ double Relative(double value, double reference) {
   return (value-reference)/reference;
 }
 
+double NormRatio(double error_squared, double norm_squared) {
+  return norm_squared > 0.0
+      ? std::sqrt(std::max(0.0, error_squared/norm_squared)) : 0.0;
+}
+
 }  // namespace
 
 int main(int argc, char** argv) {
@@ -170,6 +175,14 @@ int main(int argc, char** argv) {
         h, "relaxation_corot_ke_removed_erg");
     const std::size_t relaxation_corot_power = OptionalColumn(
         h, "relaxation_corot_power_erg_s");
+    const std::size_t material_force_error = OptionalColumn(h, "force_error2");
+    const std::size_t material_force_norm = OptionalColumn(h, "force_norm2");
+    const std::size_t full_force_error = OptionalColumn(h, "full_force_error2");
+    const std::size_t full_force_norm = OptionalColumn(h, "full_force_norm2");
+    const std::size_t core_full_force_error = OptionalColumn(
+        h, "core_region_full_force_error2");
+    const std::size_t core_full_force_norm = OptionalColumn(
+        h, "core_region_full_force_norm2");
     std::vector<std::size_t> meshblocks;
     for (int level = 0; level < 32; ++level) {
       const std::size_t column = OptionalColumn(
@@ -191,6 +204,12 @@ int main(int argc, char** argv) {
         && relaxation_corot_removed < h.names.size()
         && relaxation_corot_power < h.names.size();
     const bool has_meshblocks = !meshblocks.empty();
+    const bool has_material_force = material_force_error < h.names.size()
+        && material_force_norm < h.names.size();
+    const bool has_full_force = full_force_error < h.names.size()
+        && full_force_norm < h.names.size();
+    const bool has_core_full_force = core_full_force_error < h.names.size()
+        && core_full_force_norm < h.names.size();
 
     const std::vector<double>& initial = h.rows.front();
     const double initial_mechanical = initial[hydro_energy]+initial[self_energy]
@@ -222,7 +241,9 @@ int main(int argc, char** argv) {
            "wenoz_sensor_fallback_cells,wenoz_amr_fallback_cells,"
            "wenoz_plm_fallback_cells,wenoz_sensor_fallback_fraction,"
            "wenoz_amr_fallback_fraction,wenoz_plm_fallback_fraction,"
-           "wenoz_plm_fallback_stellar_mass_fraction";
+           "wenoz_plm_fallback_stellar_mass_fraction,"
+           "material_force_l2_relative,full_force_l2_relative,"
+           "core_region_full_force_l2_relative";
     for (std::size_t level = 0; level < meshblocks.size(); ++level) {
       csv << ",meshblocks_L" << level;
     }
@@ -259,6 +280,9 @@ int main(int argc, char** argv) {
     double cumulative_relaxation_corot_removed = 0.0;
     double maximum_abs_relaxation_inertial_power = 0.0;
     double maximum_relaxation_corot_power = 0.0;
+    double maximum_material_force_l2 = 0.0;
+    double maximum_full_force_l2 = 0.0;
+    double maximum_core_full_force_l2 = 0.0;
     for (const std::vector<double>& row : h.rows) {
       const double mechanical = row[hydro_energy]+row[self_energy]+row[core_energy];
       const double mass_drift = Relative(row[mass], initial[mass]);
@@ -327,6 +351,12 @@ int main(int argc, char** argv) {
           ? row[relaxation_corot_removed] : 0.0;
       const double corot_power = has_relaxation
           ? row[relaxation_corot_power] : 0.0;
+      const double material_force_l2 = has_material_force
+          ? NormRatio(row[material_force_error], row[material_force_norm]) : 0.0;
+      const double full_force_l2 = has_full_force
+          ? NormRatio(row[full_force_error], row[full_force_norm]) : 0.0;
+      const double core_full_force_l2 = has_core_full_force
+          ? NormRatio(row[core_full_force_error], row[core_full_force_norm]) : 0.0;
       csv << row[time] << ',' << row[time]*2.19999657e4/kDay << ','
           << row[time]*2.19999657e4/dynamical_time << ','
           << mass_drift << ',' << j_drift << ',' << row[angular_momentum] << ','
@@ -347,7 +377,9 @@ int main(int argc, char** argv) {
           << amr_cells << ',' << fallback_cells << ','
           << (available_cells > 0.0 ? sensor_cells/available_cells : 0.0) << ','
           << (available_cells > 0.0 ? amr_cells/available_cells : 0.0) << ','
-          << fallback_fraction << ',' << fallback_mass_fraction;
+          << fallback_fraction << ',' << fallback_mass_fraction << ','
+          << material_force_l2 << ',' << full_force_l2 << ','
+          << core_full_force_l2;
       for (const std::size_t column : meshblocks) {
         csv << ',' << (has_meshblocks ? row[column] : 0.0);
       }
@@ -404,6 +436,11 @@ int main(int argc, char** argv) {
           maximum_abs_relaxation_inertial_power, std::abs(relaxation_power));
       maximum_relaxation_corot_power = std::max(
           maximum_relaxation_corot_power, corot_power);
+      maximum_material_force_l2 = std::max(
+          maximum_material_force_l2, material_force_l2);
+      maximum_full_force_l2 = std::max(maximum_full_force_l2, full_force_l2);
+      maximum_core_full_force_l2 = std::max(
+          maximum_core_full_force_l2, core_full_force_l2);
     }
 
     const std::vector<double>& final = h.rows.back();
@@ -423,6 +460,12 @@ int main(int argc, char** argv) {
         && wenoz_fallback_mass < h.names.size() ? final[wenoz_fallback_mass] : 0.0;
     const double final_high_mach_mass = has_surface_mach
         ? final[mach_gt_0p1_mass] : 0.0;
+    const double final_material_force_l2 = has_material_force
+        ? NormRatio(final[material_force_error], final[material_force_norm]) : 0.0;
+    const double final_full_force_l2 = has_full_force
+        ? NormRatio(final[full_force_error], final[full_force_norm]) : 0.0;
+    const double final_core_full_force_l2 = has_core_full_force
+        ? NormRatio(final[core_full_force_error], final[core_full_force_norm]) : 0.0;
     double initial_meshblock_total = 0.0;
     double final_meshblock_total = 0.0;
     if (has_meshblocks) {
@@ -501,6 +544,12 @@ int main(int argc, char** argv) {
              ? final_fallback_cells/final_available_cells : 0.0) << ",\n"
          << "  \"final_wenoz_plm_fallback_stellar_mass_fraction\": "
          << (final[mass] > 0.0 ? final_fallback_mass/final[mass] : 0.0) << ",\n"
+         << "  \"final_material_force_l2_relative\": "
+         << final_material_force_l2 << ",\n"
+         << "  \"final_full_force_l2_relative\": " << final_full_force_l2
+         << ",\n"
+         << "  \"final_core_region_full_force_l2_relative\": "
+         << final_core_full_force_l2 << ",\n"
          << "  \"initial_meshblocks\": " << initial_meshblock_total << ",\n"
          << "  \"final_meshblocks\": " << final_meshblock_total << ",\n"
          << "  \"maximum_meshblocks\": " << maximum_meshblocks << ",\n";
@@ -519,6 +568,12 @@ int main(int argc, char** argv) {
          << maximum_abs_relaxation_inertial_power << ",\n"
          << "  \"maximum_relaxation_corot_power_erg_s\": "
          << maximum_relaxation_corot_power << ",\n"
+         << "  \"maximum_material_force_l2_relative\": "
+         << maximum_material_force_l2 << ",\n"
+         << "  \"maximum_full_force_l2_relative\": "
+         << maximum_full_force_l2 << ",\n"
+         << "  \"maximum_core_region_full_force_l2_relative\": "
+         << maximum_core_full_force_l2 << ",\n"
          << "  \"maximum_abs_mass_relative_drift\": " << maximum_mass_drift << ",\n"
          << "  \"maximum_abs_J_relative_drift\": " << maximum_j_drift << ",\n"
          << "  \"maximum_angular_momentum_breakup_fraction\": "
