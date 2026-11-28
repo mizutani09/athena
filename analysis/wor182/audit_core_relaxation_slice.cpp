@@ -26,7 +26,11 @@ struct Cell {
   double vy;
   double vz;
   double stellar_fraction;
+  double force_residual;
+  double force_scale;
   double force_relative;
+  double full_force_residual;
+  double full_force_scale;
   double full_force_relative;
   double area;
 };
@@ -38,6 +42,10 @@ struct Bin {
   double diluted_mass = 0.0;
   double force2_mass = 0.0;
   double full_force2_mass = 0.0;
+  double force_residual2_mass = 0.0;
+  double force_scale2_mass = 0.0;
+  double full_force_residual2_mass = 0.0;
+  double full_force_scale2_mass = 0.0;
   double force_max = 0.0;
   double full_force_max = 0.0;
   double radial_mach2_mass = 0.0;
@@ -95,7 +103,8 @@ std::vector<Cell> ReadBlock(const std::string& primitive_path) {
   for (std::size_t i = 0; i < primitive.size(); ++i) {
     const std::vector<double>& p = primitive[i];
     const std::vector<double>& u = user[i];
-    if ((p.size() != 11 && p.size() != 12) || u.size() != 25) {
+    if ((p.size() != 11 && p.size() != 12)
+        || (u.size() != 23 && u.size() != 25)) {
       throw std::runtime_error("unexpected paired tab row width");
     }
     if (p[0] != u[0] || p[1] != u[1] || p[2] != u[2] || p[3] != u[3]) {
@@ -110,8 +119,14 @@ std::vector<Cell> ReadBlock(const std::string& primitive_path) {
     cell.vy = p[7];
     cell.vz = p[8];
     cell.stellar_fraction = p[p.size()-2];
-    cell.force_relative = u[12] > 0.0 ? std::abs(u[11])/u[12] : 0.0;
-    cell.full_force_relative = u[22] > 0.0 ? std::abs(u[21])/u[22] : 0.0;
+    cell.force_residual = std::abs(u[11]);
+    cell.force_scale = u[12];
+    cell.force_relative = cell.force_scale > 0.0
+        ? cell.force_residual/cell.force_scale : 0.0;
+    cell.full_force_residual = std::abs(u[21]);
+    cell.full_force_scale = u[22];
+    cell.full_force_relative = cell.full_force_scale > 0.0
+        ? cell.full_force_residual/cell.full_force_scale : 0.0;
     cell.area = 0.0;
     cells.push_back(cell);
     xs.insert(cell.x);
@@ -156,6 +171,12 @@ void Accumulate(Bin* bin, const Cell& cell, double omega, double tau,
   bin->force2_mass += weight*cell.force_relative*cell.force_relative;
   bin->full_force2_mass +=
       weight*cell.full_force_relative*cell.full_force_relative;
+  bin->force_residual2_mass += weight*cell.force_residual*cell.force_residual;
+  bin->force_scale2_mass += weight*cell.force_scale*cell.force_scale;
+  bin->full_force_residual2_mass +=
+      weight*cell.full_force_residual*cell.full_force_residual;
+  bin->full_force_scale2_mass +=
+      weight*cell.full_force_scale*cell.full_force_scale;
   if (cell.stellar_fraction >= 0.5) {
     bin->force_max = std::max(bin->force_max, cell.force_relative);
     bin->full_force_max = std::max(
@@ -215,8 +236,11 @@ int main(int argc, char** argv) {
     std::ofstream csv(argv[3]);
     if (!csv) throw std::runtime_error("cannot create CSV output");
     csv << "radius_left_rsun,radius_right_rsun,cells,mass_weight,"
-           "mean_stellar_fraction,diluted_mass_fraction,force_relative_rms,"
-           "force_relative_max,full_force_relative_rms,full_force_relative_max,"
+           "mean_stellar_fraction,diluted_mass_fraction,"
+           "material_force_relative_rms,material_force_norm_relative,"
+           "material_force_relative_max,snapshot_full_force_relative_rms,"
+           "snapshot_full_force_relative_max,"
+           "snapshot_full_force_norm_relative,"
            "radial_mach_rms,radial_mach_max,perturbation_mach_rms,"
            "effective_damping_rate,effective_damping_tau,radial_ke_fraction\n";
     csv << std::scientific << std::setprecision(12);
@@ -228,9 +252,13 @@ int main(int argc, char** argv) {
           << bin.mass << ',' << Fraction(bin.stellar_fraction_mass, bin.mass)
           << ',' << Fraction(bin.diluted_mass, bin.mass) << ','
           << std::sqrt(Fraction(bin.force2_mass, bin.mass)) << ','
+          << std::sqrt(Fraction(bin.force_residual2_mass,
+                                bin.force_scale2_mass)) << ','
           << bin.force_max << ','
           << std::sqrt(Fraction(bin.full_force2_mass, bin.mass)) << ','
           << bin.full_force_max << ','
+          << std::sqrt(Fraction(bin.full_force_residual2_mass,
+                                bin.full_force_scale2_mass)) << ','
           << std::sqrt(Fraction(bin.radial_mach2_mass, bin.mass)) << ','
           << bin.radial_mach_max << ','
           << std::sqrt(Fraction(bin.perturbation_mach2_mass, bin.mass)) << ','
@@ -248,6 +276,10 @@ int main(int argc, char** argv) {
       inner.diluted_mass += bin.diluted_mass;
       inner.force2_mass += bin.force2_mass;
       inner.full_force2_mass += bin.full_force2_mass;
+      inner.force_residual2_mass += bin.force_residual2_mass;
+      inner.force_scale2_mass += bin.force_scale2_mass;
+      inner.full_force_residual2_mass += bin.full_force_residual2_mass;
+      inner.full_force_scale2_mass += bin.full_force_scale2_mass;
       inner.force_max = std::max(inner.force_max, bin.force_max);
       inner.full_force_max = std::max(inner.full_force_max, bin.full_force_max);
       inner.radial_mach2_mass += bin.radial_mach2_mass;
@@ -263,6 +295,8 @@ int main(int argc, char** argv) {
     json << std::scientific << std::setprecision(12)
          << "{\n"
          << "  \"snapshot\": \"" << snapshot << "\",\n"
+         << "  \"force_diagnostic_note\": \"material force excludes radiation; "
+            "snapshot full force requires current FLD face state\",\n"
          << "  \"tab_files\": " << paths.size() << ",\n"
          << "  \"omega_code\": " << omega << ",\n"
          << "  \"relaxation_tau_code\": " << tau << ",\n"
@@ -274,12 +308,18 @@ int main(int argc, char** argv) {
          << Fraction(inner.stellar_fraction_mass, inner.mass) << ",\n"
          << "  \"inner_diluted_mass_fraction\": "
          << Fraction(inner.diluted_mass, inner.mass) << ",\n"
-         << "  \"inner_force_relative_rms\": "
+         << "  \"inner_material_force_relative_rms\": "
          << std::sqrt(Fraction(inner.force2_mass, inner.mass)) << ",\n"
-         << "  \"inner_force_relative_max\": " << inner.force_max << ",\n"
-         << "  \"inner_full_force_relative_rms\": "
+         << "  \"inner_material_force_norm_relative\": "
+         << std::sqrt(Fraction(inner.force_residual2_mass,
+                               inner.force_scale2_mass)) << ",\n"
+         << "  \"inner_material_force_relative_max\": " << inner.force_max << ",\n"
+         << "  \"inner_snapshot_full_force_relative_rms\": "
          << std::sqrt(Fraction(inner.full_force2_mass, inner.mass)) << ",\n"
-         << "  \"inner_full_force_relative_max\": "
+         << "  \"inner_snapshot_full_force_norm_relative\": "
+         << std::sqrt(Fraction(inner.full_force_residual2_mass,
+                               inner.full_force_scale2_mass)) << ",\n"
+         << "  \"inner_snapshot_full_force_relative_max\": "
          << inner.full_force_max << ",\n"
          << "  \"inner_radial_mach_rms\": "
          << std::sqrt(Fraction(inner.radial_mach2_mass, inner.mass)) << ",\n"

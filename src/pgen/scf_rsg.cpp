@@ -138,7 +138,13 @@ constexpr int kRelaxationHistoryStart = kFinalHistoryCount;
 constexpr int kRelaxationHistoryCount = 4;
 constexpr int kAllHistoryCount = kFinalHistoryCount+kRelaxationHistoryCount;
 constexpr int kLuminosityHistory = kAllHistoryCount;
-constexpr int kHistoryCount = kAllHistoryCount+1;
+constexpr int kCoreForceHistoryStart = kLuminosityHistory+1;
+#if NRMGFLD_ENABLED
+constexpr int kCoreForceHistoryCount = 2;
+#else
+constexpr int kCoreForceHistoryCount = 0;
+#endif
+constexpr int kHistoryCount = kCoreForceHistoryStart+kCoreForceHistoryCount;
 
 int SurfaceRefinementCondition(MeshBlock* block);
 
@@ -1597,6 +1603,19 @@ Real HistoryGravityDiagnostic(MeshBlock* block, int output) {
           total = std::max(total, block->user_out_var(17,k,j,i)
                                     /block->user_out_var(18,k,j,i));
         }
+        const Real x = block->pcoord->x1v(i);
+        const Real y = block->pcoord->x2v(j);
+        const Real z = block->pcoord->x3v(k);
+        const bool in_core_region = x*x+y*y+z*z
+            <= SQR(1.5*core_support_radius_code);
+        if (in_core_region && output == kCoreForceHistoryStart) {
+          total += stellar_density
+              *SQR(block->user_out_var(17,k,j,i))*volume;
+        }
+        if (in_core_region && output == kCoreForceHistoryStart+1) {
+          total += stellar_density
+              *SQR(block->user_out_var(18,k,j,i))*volume;
+        }
 #endif
       }
     }
@@ -2486,6 +2505,12 @@ void Mesh::InitUserMeshData(ParameterInput* pin) {
                           "relaxation_corot_power_erg_s");
   EnrollUserHistoryOutput(kLuminosityHistory, HistoryCoreLuminosity,
                           "core_luminosity_injected_erg_s");
+#if NRMGFLD_ENABLED
+  EnrollUserHistoryOutput(kCoreForceHistoryStart, HistoryGravityDiagnostic,
+                          "core_region_full_force_error2");
+  EnrollUserHistoryOutput(kCoreForceHistoryStart+1, HistoryGravityDiagnostic,
+                          "core_region_full_force_norm2");
+#endif
   if (Globals::my_rank == 0) {
     std::cout << std::scientific << std::setprecision(8)
               << "scf_rsg profile=" << filename
