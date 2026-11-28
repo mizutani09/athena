@@ -236,6 +236,11 @@ int main(int argc, char** argv) {
         initial[self_virial]+initial[core_virial]);
     const double initial_mean_radius = initial[r_mass]/initial[mass];
     const double initial_rms_radius = std::sqrt(initial[r2_mass]/initial[mass]);
+    const double initial_breakup_angular_momentum = initial[mass]*std::sqrt(
+        kGravitationalConstant*initial[mass]*initial_mean_radius);
+    const bool initial_has_significant_angular_momentum =
+        std::abs(initial[angular_momentum])
+            > 1.0e-10*initial_breakup_angular_momentum;
     std::ofstream csv(argv[2]);
     if (!csv) throw std::runtime_error("cannot create CSV output");
     csv << "time_code,time_days,time_over_tdyn,mass_relative_drift,J_relative_drift,"
@@ -310,7 +315,7 @@ int main(int argc, char** argv) {
       }
       const double mechanical = row[hydro_energy]+row[self_energy]+row[core_energy];
       const double mass_drift = Relative(row[mass], initial[mass]);
-      const double j_drift = initial[angular_momentum] != 0.0
+      const double j_drift = initial_has_significant_angular_momentum
           ? Relative(row[angular_momentum], initial[angular_momentum]) : 0.0;
       const double energy_drift = Relative(mechanical, initial_mechanical);
       const double radiation = has_radiation_energy ? row[radiation_energy] : 0.0;
@@ -514,7 +519,7 @@ int main(int argc, char** argv) {
          << "  \"final_mass_relative_drift\": "
          << Relative(final[mass], initial[mass]) << ",\n"
          << "  \"final_J_relative_drift\": "
-         << (initial[angular_momentum] != 0.0
+         << (initial_has_significant_angular_momentum
              ? Relative(final[angular_momentum], initial[angular_momentum]) : 0.0)
          << ",\n"
          << "  \"final_angular_momentum_g_cm2_s\": "
