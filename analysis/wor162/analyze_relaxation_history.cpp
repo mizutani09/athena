@@ -71,6 +71,15 @@ History ReadHistory(const std::string& filename,
   if (history.names.empty() || history.rows.empty()) {
     throw std::runtime_error("history file has no header or data");
   }
+  // Athena++ restart histories contain data only.  A binary may append the
+  // two localized force-balance columns introduced after the restart's
+  // original header was written, so extend an external legacy header when
+  // the row width identifies exactly that schema change.
+  if (!header_filename.empty()
+      && history.rows.front().size() == history.names.size()+2) {
+    history.names.push_back("core_region_full_force_error2");
+    history.names.push_back("core_region_full_force_norm2");
+  }
   for (const std::vector<double>& row : history.rows) {
     if (row.size() != history.names.size()) {
       throw std::runtime_error("history row width does not match header");
