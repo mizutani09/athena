@@ -13,6 +13,7 @@ namespace {
 constexpr double kDay = 86400.0;
 constexpr double kDynamicalTime = 1.03413107e7;
 constexpr double kGravitationalConstant = 6.67430e-8;
+constexpr double kCodeTimeSeconds = 2.19999657e4;
 
 struct History {
   std::vector<std::string> names;
@@ -184,6 +185,8 @@ int main(int argc, char** argv) {
         h, "relaxation_corot_ke_removed_erg");
     const std::size_t relaxation_corot_power = OptionalColumn(
         h, "relaxation_corot_power_erg_s");
+    const std::size_t core_luminosity = OptionalColumn(
+        h, "core_luminosity_injected_erg_s");
     const std::size_t material_force_error = OptionalColumn(h, "force_error2");
     const std::size_t material_force_norm = OptionalColumn(h, "force_norm2");
     const std::size_t full_force_error = OptionalColumn(h, "full_force_error2");
@@ -212,6 +215,7 @@ int main(int argc, char** argv) {
         && relaxation_inertial_power < h.names.size()
         && relaxation_corot_removed < h.names.size()
         && relaxation_corot_power < h.names.size();
+    const bool has_core_luminosity = core_luminosity < h.names.size();
     const bool has_meshblocks = !meshblocks.empty();
     const bool has_material_force = material_force_error < h.names.size()
         && material_force_norm < h.names.size();
@@ -289,12 +293,21 @@ int main(int argc, char** argv) {
     double maximum_meshblocks = 0.0;
     double cumulative_relaxation_inertial_work = 0.0;
     double cumulative_relaxation_corot_removed = 0.0;
+    double cumulative_core_luminosity_injected = 0.0;
     double maximum_abs_relaxation_inertial_power = 0.0;
     double maximum_relaxation_corot_power = 0.0;
     double maximum_material_force_l2 = 0.0;
     double maximum_full_force_l2 = 0.0;
     double maximum_core_full_force_l2 = 0.0;
-    for (const std::vector<double>& row : h.rows) {
+    for (std::size_t row_index = 0; row_index < h.rows.size(); ++row_index) {
+      const std::vector<double>& row = h.rows[row_index];
+      if (has_core_luminosity && row_index > 0) {
+        const std::vector<double>& previous = h.rows[row_index-1];
+        const double interval_seconds =
+            (row[time]-previous[time])*kCodeTimeSeconds;
+        cumulative_core_luminosity_injected += 0.5*interval_seconds
+            *(row[core_luminosity]+previous[core_luminosity]);
+      }
       const double mechanical = row[hydro_energy]+row[self_energy]+row[core_energy];
       const double mass_drift = Relative(row[mass], initial[mass]);
       const double j_drift = initial[angular_momentum] != 0.0
@@ -368,8 +381,8 @@ int main(int argc, char** argv) {
           ? NormRatio(row[full_force_error], row[full_force_norm]) : 0.0;
       const double core_full_force_l2 = has_core_full_force
           ? NormRatio(row[core_full_force_error], row[core_full_force_norm]) : 0.0;
-      csv << row[time] << ',' << row[time]*2.19999657e4/kDay << ','
-          << row[time]*2.19999657e4/dynamical_time << ','
+      csv << row[time] << ',' << row[time]*kCodeTimeSeconds/kDay << ','
+          << row[time]*kCodeTimeSeconds/dynamical_time << ','
           << mass_drift << ',' << j_drift << ',' << row[angular_momentum] << ','
           << angular_momentum_breakup_fraction << ',' << energy_drift << ','
           << total_with_radiation_drift << ',' << radiation << ','
@@ -463,6 +476,11 @@ int main(int argc, char** argv) {
         ? final[gas_internal_energy] : 0.0;
     const double final_gravity_virial = final[self_virial]+final[core_virial];
     const double final_binding = std::abs(final_gravity_virial);
+    const double final_total_with_radiation_delta =
+        final_mechanical+final_radiation-initial_total_with_radiation;
+    const double final_source_adjusted_total_energy_delta =
+        final_total_with_radiation_delta-cumulative_core_luminosity_injected
+        -cumulative_relaxation_inertial_work;
     const double final_mean_radius = final[r_mass]/final[mass];
     const double final_rms_radius = std::sqrt(final[r2_mass]/final[mass]);
     const double final_available_cells = has_wenoz ? final[wenoz_cells] : 0.0;
@@ -492,7 +510,7 @@ int main(int argc, char** argv) {
          << "  \"samples\": " << h.rows.size() << ",\n"
          << "  \"final_time_code\": " << h.rows.back()[time] << ",\n"
          << "  \"final_time_over_tdyn\": "
-         << h.rows.back()[time]*2.19999657e4/dynamical_time << ",\n"
+         << h.rows.back()[time]*kCodeTimeSeconds/dynamical_time << ",\n"
          << "  \"final_mass_relative_drift\": "
          << Relative(final[mass], initial[mass]) << ",\n"
          << "  \"final_J_relative_drift\": "
@@ -510,6 +528,18 @@ int main(int argc, char** argv) {
          << "  \"final_total_energy_with_radiation_relative_drift\": "
          << Relative(final_mechanical+final_radiation,
                      initial_total_with_radiation) << ",\n"
+         << "  \"final_total_energy_with_radiation_delta_over_abs_W\": "
+         << (initial_abs_gravitational_energy > 0.0
+                 ? final_total_with_radiation_delta
+                     /initial_abs_gravitational_energy
+                 : 0.0)
+         << ",\n"
+         << "  \"final_source_adjusted_total_energy_delta_over_abs_W\": "
+         << (initial_abs_gravitational_energy > 0.0
+                 ? final_source_adjusted_total_energy_delta
+                     /initial_abs_gravitational_energy
+                 : 0.0)
+         << ",\n"
          << "  \"initial_radiation_energy_erg\": " << initial_radiation << ",\n"
          << "  \"final_radiation_energy_erg\": " << final_radiation << ",\n"
          << "  \"final_gas_internal_energy_erg\": " << final_gas_internal << ",\n"
@@ -584,6 +614,14 @@ int main(int argc, char** argv) {
          << "  \"cumulative_relaxation_corot_ke_removed_over_abs_W\": "
          << (initial_abs_gravitational_energy > 0.0
                  ? cumulative_relaxation_corot_removed
+                     /initial_abs_gravitational_energy
+                 : 0.0)
+         << ",\n"
+         << "  \"cumulative_core_luminosity_injected_erg\": "
+         << cumulative_core_luminosity_injected << ",\n"
+         << "  \"cumulative_core_luminosity_injected_over_abs_W\": "
+         << (initial_abs_gravitational_energy > 0.0
+                 ? cumulative_core_luminosity_injected
                      /initial_abs_gravitational_energy
                  : 0.0)
          << ",\n"
