@@ -228,6 +228,8 @@ int main(int argc, char** argv) {
     const double initial_radiation = has_radiation_energy
         ? initial[radiation_energy] : 0.0;
     const double initial_total_with_radiation = initial_mechanical+initial_radiation;
+    const double initial_abs_gravitational_energy = std::abs(
+        initial[self_virial]+initial[core_virial]);
     const double initial_mean_radius = initial[r_mass]/initial[mass];
     const double initial_rms_radius = std::sqrt(initial[r2_mass]/initial[mass]);
     std::ofstream csv(argv[2]);
@@ -571,8 +573,20 @@ int main(int argc, char** argv) {
          << (has_relaxation ? "true" : "false") << ",\n"
          << "  \"cumulative_relaxation_inertial_work_erg\": "
          << cumulative_relaxation_inertial_work << ",\n"
+         << "  \"cumulative_relaxation_inertial_work_over_abs_W\": "
+         << (initial_abs_gravitational_energy > 0.0
+                 ? cumulative_relaxation_inertial_work
+                     /initial_abs_gravitational_energy
+                 : 0.0)
+         << ",\n"
          << "  \"cumulative_relaxation_corot_ke_removed_erg\": "
          << cumulative_relaxation_corot_removed << ",\n"
+         << "  \"cumulative_relaxation_corot_ke_removed_over_abs_W\": "
+         << (initial_abs_gravitational_energy > 0.0
+                 ? cumulative_relaxation_corot_removed
+                     /initial_abs_gravitational_energy
+                 : 0.0)
+         << ",\n"
          << "  \"maximum_abs_relaxation_inertial_power_erg_s\": "
          << maximum_abs_relaxation_inertial_power << ",\n"
          << "  \"maximum_relaxation_corot_power_erg_s\": "
