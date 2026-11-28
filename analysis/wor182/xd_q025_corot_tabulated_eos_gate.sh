@@ -52,6 +52,18 @@ surface_mach_diagnostic_threshold=${WOR182_SURFACE_MACH_DIAGNOSTIC_THRESHOLD:--1
 relaxation_velocity_tau=${WOR182_RELAXATION_VELOCITY_TAU:--1.0}
 relaxation_taper_start=${WOR182_RELAXATION_TAPER_START:--1.0}
 relaxation_taper_end=${WOR182_RELAXATION_TAPER_END:--1.0}
+relaxation_core_radius=${WOR182_RELAXATION_CORE_RADIUS:--1.0}
+relaxation_core_taper_width=${WOR182_RELAXATION_CORE_TAPER_WIDTH:-0.0}
+relaxation_core_strength=${WOR182_RELAXATION_CORE_STRENGTH:-1.0}
+relaxation_core_tau=${WOR182_RELAXATION_CORE_TAU:-$relaxation_velocity_tau}
+core_relaxation_arguments=()
+if [[ -n ${WOR182_RELAXATION_CORE_RADIUS+x} ]]; then
+  core_relaxation_arguments=(
+    problem/relaxation_core_radius_cm="$relaxation_core_radius"
+    problem/relaxation_core_taper_width_cm="$relaxation_core_taper_width"
+    problem/relaxation_core_strength="$relaxation_core_strength"
+    problem/relaxation_core_tau="$relaxation_core_tau")
+fi
 tasks_per_node=${WOR182_TASKS_PER_NODE:-56}
 run=/work/mizutaniks/wor182/${model_tag}_tabulated_eos_${SLURM_JOB_ID}
 
@@ -63,7 +75,7 @@ git rev-parse HEAD > "$run/git_commit.txt"
 git status --short > "$run/git_status.txt"
 sha256sum bin/athena "$input" data/eos/rsg_tomida2013_material_eos.tab \
   data/opacity/rsg_gray_opacity_t7.h5 > "$run/provenance.sha256"
-printf 'input=%s\nmodel_tag=%s\nprofile_file=%s\nangular_velocity_rad_s=%s\natmosphere_density_g_cm3=%s\natmosphere_pressure_dyn_cm2=%s\natmosphere_reference_radius_cm=%s\nsurface_polar_radius_cm=%s\nsurface_match_radius_cm=%s\nsurface_match_polar_radius_cm=%s\nrotate_atmosphere=%s\ngas_mass_g=%s\nplanck_taper_radius_cm=%s\nplanck_taper_polar_radius_cm=%s\nintegrator=%s\nnlim=%s\ntlim=%s\ncfl=%s\ncore_luminosity_lsun=%s\nluminosity_heating_radius_cm=%s\nrebuild_radiative_surface=%s\nradiative_surface_match_density_g_cm3=%s\nradiative_surface_superadiabatic_peak=%s\nradiative_surface_superadiabatic_width_fraction=%s\npointwise_fld_surface_cells=%s\nsurface_mach_diagnostic_threshold=%s\nrelaxation_velocity_tau=%s\nrelaxation_taper_start=%s\nrelaxation_taper_end=%s\ntasks_per_node=%s\n' \
+printf 'input=%s\nmodel_tag=%s\nprofile_file=%s\nangular_velocity_rad_s=%s\natmosphere_density_g_cm3=%s\natmosphere_pressure_dyn_cm2=%s\natmosphere_reference_radius_cm=%s\nsurface_polar_radius_cm=%s\nsurface_match_radius_cm=%s\nsurface_match_polar_radius_cm=%s\nrotate_atmosphere=%s\ngas_mass_g=%s\nplanck_taper_radius_cm=%s\nplanck_taper_polar_radius_cm=%s\nintegrator=%s\nnlim=%s\ntlim=%s\ncfl=%s\ncore_luminosity_lsun=%s\nluminosity_heating_radius_cm=%s\nrebuild_radiative_surface=%s\nradiative_surface_match_density_g_cm3=%s\nradiative_surface_superadiabatic_peak=%s\nradiative_surface_superadiabatic_width_fraction=%s\npointwise_fld_surface_cells=%s\nsurface_mach_diagnostic_threshold=%s\nrelaxation_velocity_tau=%s\nrelaxation_taper_start=%s\nrelaxation_taper_end=%s\nrelaxation_core_radius_cm=%s\nrelaxation_core_taper_width_cm=%s\nrelaxation_core_strength=%s\nrelaxation_core_tau=%s\ntasks_per_node=%s\n' \
   "$input" "$model_tag" "$profile_file" "$angular_velocity" \
   "$atmosphere_density" "$atmosphere_pressure" \
   "$atmosphere_reference_radius" "$surface_polar_radius" \
@@ -78,7 +90,9 @@ printf 'input=%s\nmodel_tag=%s\nprofile_file=%s\nangular_velocity_rad_s=%s\natmo
   "$radiative_surface_superadiabatic_width" \
   "$pointwise_fld_surface_cells" \
   "$surface_mach_diagnostic_threshold" "$relaxation_velocity_tau" \
-  "$relaxation_taper_start" "$relaxation_taper_end" "$tasks_per_node" \
+  "$relaxation_taper_start" "$relaxation_taper_end" \
+  "$relaxation_core_radius" "$relaxation_core_taper_width" \
+  "$relaxation_core_strength" "$relaxation_core_tau" "$tasks_per_node" \
   > "$run/run_config.txt"
 
 set +e
@@ -110,6 +124,7 @@ set +e
   problem/relaxation_velocity_tau="$relaxation_velocity_tau" \
   problem/relaxation_taper_start="$relaxation_taper_start" \
   problem/relaxation_taper_end="$relaxation_taper_end" \
+  "${core_relaxation_arguments[@]}" \
   output1/dcycle=1 output2/dcycle=1000 \
   output3/dt=-1 output4/dt=-1 \
   > "$run/stdout.log" 2> "$run/stderr.log"
