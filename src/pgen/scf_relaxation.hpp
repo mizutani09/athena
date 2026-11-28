@@ -46,6 +46,19 @@ inline T CombinedStrength(T temporal_strength, T core_weight,
   return temporal_strength+(T(1)-temporal_strength)*core_weight*core_strength;
 }
 
+// Combine a global relaxation time with an independently configurable
+// numerical-core time.  This reduces exactly to CombinedStrength/global_tau
+// when both times are equal, preserving legacy behavior.
+template <typename T>
+inline T CombinedRate(T temporal_strength, T core_weight, T core_strength,
+                      T global_tau, T core_tau) {
+  temporal_strength = std::max(T(0), std::min(T(1), temporal_strength));
+  core_weight = std::max(T(0), std::min(T(1), core_weight));
+  core_strength = std::max(T(0), std::min(T(1), core_strength));
+  return temporal_strength/global_tau
+      +(T(1)-temporal_strength)*core_weight*core_strength/core_tau;
+}
+
 // Dampen only the perturbation relative to rigid corotation.  factor=1 is the
 // identity and factor=0 returns the target velocity exactly.
 template <typename T>

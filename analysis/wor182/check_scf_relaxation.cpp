@@ -32,6 +32,10 @@ int main() {
   ok = ok && Close(scf_relaxation::CombinedStrength(1.0, 0.5, 0.4), 1.0);
   ok = ok && Close(scf_relaxation::CombinedStrength(0.0, 0.5, 0.4), 0.2);
   ok = ok && Close(scf_relaxation::CombinedStrength(0.25, 0.5, 0.4), 0.4);
+  ok = ok && Close(scf_relaxation::CombinedRate(
+      0.25, 0.5, 0.4, 8.0, 2.0), 0.10625);
+  ok = ok && Close(scf_relaxation::CombinedRate(
+      0.25, 0.5, 0.4, 8.0, 8.0), 0.4/8.0);
 
   const auto unchanged = scf_relaxation::DampTowardCorotation(
       4.0, -2.0, 3.0, 2.0, -5.0, 0.25, 1.0);

@@ -57,12 +57,14 @@ relaxation_taper_end=${WOR182_RELAXATION_TAPER_END:--1.0}
 relaxation_core_radius=${WOR182_RELAXATION_CORE_RADIUS:--1.0}
 relaxation_core_taper_width=${WOR182_RELAXATION_CORE_TAPER_WIDTH:-0.0}
 relaxation_core_strength=${WOR182_RELAXATION_CORE_STRENGTH:-1.0}
+relaxation_core_tau=${WOR182_RELAXATION_CORE_TAU:-$relaxation_velocity_tau}
 core_relaxation_arguments=()
 if [[ -n ${WOR182_RELAXATION_CORE_RADIUS+x} ]]; then
   core_relaxation_arguments=(
     problem/relaxation_core_radius_cm="$relaxation_core_radius"
     problem/relaxation_core_taper_width_cm="$relaxation_core_taper_width"
-    problem/relaxation_core_strength="$relaxation_core_strength")
+    problem/relaxation_core_strength="$relaxation_core_strength"
+    problem/relaxation_core_tau="$relaxation_core_tau")
 fi
 tasks_per_node=${WOR182_TASKS_PER_NODE:-56}
 cfl_tag=${cfl//./p}
@@ -79,7 +81,7 @@ git status --short > "$run/git_status.txt"
 sha256sum bin/athena "$restart" "$input" \
   data/eos/rsg_tomida2013_material_eos.tab \
   data/opacity/rsg_gray_opacity_t7.h5 > "$run/provenance.sha256"
-printf 'restart=%s\ninput=%s\nrestart_input_overlay=%s\nmodel_tag=%s\ntarget_time=%s\ncfl=%s\nnlim=%s\nintegrator=%s\nrestart_dcycle=%s\nhistory_dcycle=%s\nslice_output_dt=%s\nfgmres_threshold=%s\ndiagnostic_verbosity=%s\nsurface_mach_diagnostic_threshold=%s\nsurface_pressure_ratio_diagnostic_threshold=%s\ntaper_exchange_diagnostic_time_threshold=%s\nnr_backtrack_max=%s\nnr_min_step_scale=%s\nmixed_frame_terms=%s\nmixed_frame_transport=%s\njacobian_check=%s\njacobian_check_epsilon=%s\nsurface_refinement_level=%s\nsurface_refinement_density=%s\nrebuild_radiative_surface=%s\nradiative_surface_match_density_g_cm3=%s\nradiative_surface_superadiabatic_peak=%s\nradiative_surface_superadiabatic_width_fraction=%s\nrelaxation_velocity_tau=%s\nrelaxation_taper_start=%s\nrelaxation_taper_end=%s\nrelaxation_core_radius_cm=%s\nrelaxation_core_taper_width_cm=%s\nrelaxation_core_strength=%s\ntasks_per_node=%s\n' \
+printf 'restart=%s\ninput=%s\nrestart_input_overlay=%s\nmodel_tag=%s\ntarget_time=%s\ncfl=%s\nnlim=%s\nintegrator=%s\nrestart_dcycle=%s\nhistory_dcycle=%s\nslice_output_dt=%s\nfgmres_threshold=%s\ndiagnostic_verbosity=%s\nsurface_mach_diagnostic_threshold=%s\nsurface_pressure_ratio_diagnostic_threshold=%s\ntaper_exchange_diagnostic_time_threshold=%s\nnr_backtrack_max=%s\nnr_min_step_scale=%s\nmixed_frame_terms=%s\nmixed_frame_transport=%s\njacobian_check=%s\njacobian_check_epsilon=%s\nsurface_refinement_level=%s\nsurface_refinement_density=%s\nrebuild_radiative_surface=%s\nradiative_surface_match_density_g_cm3=%s\nradiative_surface_superadiabatic_peak=%s\nradiative_surface_superadiabatic_width_fraction=%s\nrelaxation_velocity_tau=%s\nrelaxation_taper_start=%s\nrelaxation_taper_end=%s\nrelaxation_core_radius_cm=%s\nrelaxation_core_taper_width_cm=%s\nrelaxation_core_strength=%s\nrelaxation_core_tau=%s\ntasks_per_node=%s\n' \
   "$restart" "$input" "$restart_input_overlay" "$model_tag" \
   "$target_time" "$cfl" "$nlim" "$integrator" \
   "$restart_dcycle" "$history_dcycle" "$slice_output_dt" "$fgmres_threshold" \
@@ -96,6 +98,7 @@ printf 'restart=%s\ninput=%s\nrestart_input_overlay=%s\nmodel_tag=%s\ntarget_tim
   "$relaxation_velocity_tau" "$relaxation_taper_start" \
   "$relaxation_taper_end" "$relaxation_core_radius" \
   "$relaxation_core_taper_width" "$relaxation_core_strength" \
+  "$relaxation_core_tau" \
   "$tasks_per_node" \
   > "$run/run_config.txt"
 

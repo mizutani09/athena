@@ -75,7 +75,7 @@ Real radiative_surface_superadiabatic_width;
 Real relaxation_velocity_tau, relaxation_taper_start, relaxation_taper_end;
 Real relaxation_core_radius, relaxation_core_radius_code;
 Real relaxation_core_taper_width, relaxation_core_taper_width_code;
-Real relaxation_core_strength;
+Real relaxation_core_strength, relaxation_core_tau;
 #if EOS_TABLE_ENABLED
 Real eos_dens_pow;
 #endif
@@ -2083,6 +2083,8 @@ void Mesh::InitUserMeshData(ParameterInput* pin) {
       "problem", "relaxation_core_taper_width_cm", 0.0);
   relaxation_core_strength = pin->GetOrAddReal(
       "problem", "relaxation_core_strength", 1.0);
+  relaxation_core_tau = pin->GetOrAddReal(
+      "problem", "relaxation_core_tau", relaxation_velocity_tau);
   atmosphere_density = pin->GetReal("problem", "atmosphere_density_g_cm3");
   const Real atmosphere_temperature =
       pin->GetReal("problem", "atmosphere_temperature_k");
@@ -2138,10 +2140,11 @@ void Mesh::InitUserMeshData(ParameterInput* pin) {
           "velocity relaxation must be disabled or have tau>0 and 0<=start<end");
   Require(relaxation_core_taper_width >= 0.0
               && relaxation_core_strength >= 0.0
-              && relaxation_core_strength <= 1.0,
-          "core relaxation taper width and strength must be valid");
+              && relaxation_core_strength <= 1.0
+              && (relaxation_core_radius < 0.0 || relaxation_core_tau > 0.0),
+          "core relaxation taper, strength, and tau must be valid");
   Require(relaxation_core_radius < 0.0 || relaxation_velocity_tau > 0.0,
-          "core relaxation requires positive velocity relaxation tau");
+          "core relaxation requires positive global velocity relaxation tau");
   Require(core_mass > 0.0 && core_support_radius > 0.0 && gas_mass > 0.0
           && core_luminosity_lsun >= 0.0 && luminosity_heating_radius > 0.0
           && radiative_surface_match_density > atmosphere_density
@@ -2520,6 +2523,7 @@ void Mesh::InitUserMeshData(ParameterInput* pin) {
               << " relaxation_core_taper_width_cm="
               << relaxation_core_taper_width
               << " relaxation_core_strength=" << relaxation_core_strength
+              << " relaxation_core_tau=" << relaxation_core_tau
               << " G_code=" << gravity_code
               << " frame=inertial\n";
   }
@@ -2741,14 +2745,14 @@ void MeshBlock::UserWorkInLoop() {
         const Real core_weight = scf_relaxation::CoreWeight(
             radius, relaxation_core_radius_code,
             relaxation_core_taper_width_code);
-        const Real strength = scf_relaxation::CombinedStrength(
-            temporal_strength, core_weight, relaxation_core_strength);
-        if (strength <= 0.0) continue;
+        const Real rate = scf_relaxation::CombinedRate(
+            temporal_strength, core_weight, relaxation_core_strength,
+            relaxation_velocity_tau, relaxation_core_tau);
+        if (rate <= 0.0) continue;
         const Real dvx = vx+angular_velocity_code*y;
         const Real dvy = vy-angular_velocity_code*pcoord->x1v(i);
         const Real corot_kinetic = 0.5*density*(dvx*dvx+dvy*dvy+vz*vz);
-        const Real factor = std::exp(
-            -strength*stellar_fraction*dt/relaxation_velocity_tau);
+        const Real factor = std::exp(-stellar_fraction*dt*rate);
         const auto velocity = scf_relaxation::DampTowardCorotation(
             vx, vy, vz, pcoord->x1v(i), y, angular_velocity_code, factor);
         const Real old_kinetic = 0.5*density*(vx*vx+vy*vy+vz*vz);
